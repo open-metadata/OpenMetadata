@@ -73,13 +73,18 @@ run_ometa_integration_tests:  ## Run Python integration tests
 unit_ingestion:  ## Run Python unit tests
 	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
 
-.PHONY: coverage
-coverage:  ## Run all Python tests and generate the coverage report
+.PHONY: run_python_tests
+run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
+	coverage report || true
+
+.PHONY: coverage
+coverage:  ## Run all Python tests and generate the coverage XML report
+	$(MAKE) run_python_tests
 	coverage xml -o ingestion/coverage.xml
-	cat ingestion/coverage.xml
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
@@ -87,9 +92,9 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
 		-e SONAR_LOGIN=$(token) \
-		-v ${PWD}:/usr/src \
+		-v ${PWD}/ingestion:/usr/src \
 		sonarsource/sonar-scanner-cli \
-		-Dproject.settings=ingestion/sonar-project.properties
+		-Dproject.settings=sonar-project.properties
 
 ## Ingestion publish
 .PHONY: publish

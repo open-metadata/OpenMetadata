@@ -31,8 +31,7 @@ import org.openmetadata.catalog.type.TagLabel;
 @Builder(setterPrefix = "with")
 class AttributeBasedFacts {
   private MetadataOperation operation;
-  private EntityInterface
-      entity; // Entity can be null in some cases, where the operation may not be on a specific entity.
+  private EntityInterface entity; // Entity can be null when the operation may not be on a specific entity.
   private boolean checkOperation;
 
   // Do not allow anything external or the builder itself change the value of facts.

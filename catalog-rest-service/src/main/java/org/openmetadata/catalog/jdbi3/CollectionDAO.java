@@ -443,6 +443,10 @@ public interface CollectionDAO {
     List<EntityRelationshipRecord> findFrom(
         @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
 
+    @SqlQuery("SELECT fromId, fromEntity, json FROM entity_relationship " + "WHERE toId = :toId ORDER BY fromId")
+    @RegisterRowMapper(FromRelationshipMapper.class)
+    List<EntityRelationshipRecord> findFrom(@Bind("toId") String toId);
+
     //
     // Delete Operations
     //

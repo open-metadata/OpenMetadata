@@ -19,6 +19,7 @@ import { ReactSlackChat } from 'react-slack-chat/dist/react-slack-chat-with-defa
 import AppState from '../../AppState';
 import ChannelIcon from '../../assets/img/slackChat/icon-support.svg';
 import UserIcon from '../../assets/img/slackChat/icon-user.svg';
+import './SlackChat.css';
 
 type Props = {
   slackConfig: SlackChatConfig;

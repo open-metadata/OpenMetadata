@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+/// <reference types="cypress" />
+
 import { searchEntity, visitEntityTab } from '../../common/common';
 import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
@@ -52,7 +54,10 @@ describe('MyData page should work', () => {
   const checkRecentlySearchElement = (term) => {
     searchEntity(term);
     cy.clickOnLogo();
-    cy.get(`[data-testid="search-term-${term}"]`).should('be.visible').click();
+    cy.get(`[data-testid="search-term-${term}"]`)
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
     cy.get('[data-testid="searchBox"]')
       .invoke('val')
       .then((text) => {
@@ -62,9 +67,10 @@ describe('MyData page should work', () => {
     cy.get(
       `[data-testid="Recently-Search-${term}"] > :nth-child(1) > .tw-flex > .tw-opacity-0 > [data-testid="image"]`
     )
+      .scrollIntoView()
       .invoke('show')
       .click();
-    cy.contains(NO_SEARCHED_TERMS).should('be.visible');
+    cy.contains(NO_SEARCHED_TERMS).scrollIntoView().should('be.visible');
   };
 
   const followAndOwnTheEntity = (termObj) => {
@@ -160,7 +166,7 @@ describe('MyData page should work', () => {
   });
 
   it('Listing Recent search terms with redirection should work properly', () => {
-    cy.contains(NO_SEARCHED_TERMS).should('be.visible');
+    cy.contains(NO_SEARCHED_TERMS).scrollIntoView().should('be.visible');
 
     checkRecentlySearchElement(SEARCH_ENTITY_TABLE.table_1.term);
     checkRecentlySearchElement(SEARCH_ENTITY_TOPIC.topic_1.term);

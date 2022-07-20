@@ -596,7 +596,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void cleanup(EntityInterface entityInterface) throws JsonProcessingException {
+  protected void cleanup(T entityInterface) throws IOException {
     String id = entityInterface.getId().toString();
 
     // Delete all the relationships to other entities
@@ -897,6 +897,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
   }
 
+  public List<EntityRelationshipRecord> findFrom(String toId) {
+    return daoCollection.relationshipDAO().findFrom(toId);
+  }
+
   public EntityReference getContainer(UUID toId) throws IOException {
     return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
   }
@@ -1067,17 +1071,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       uuids.add(UUID.fromString(id));
     }
     return uuids;
-  }
-
-  public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
-    if (ids == null) {
-      return null;
-    }
-    List<EntityReference> entityReferences = new ArrayList<>();
-    for (UUID id : ids) {
-      entityReferences.add(new EntityReference().withId(id).withType(entityType));
-    }
-    return entityReferences;
   }
 
   protected List<EntityReference> getIngestionPipelines(T service) throws IOException {
