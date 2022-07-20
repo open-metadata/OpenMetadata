@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import { AxiosError } from 'axios';
+import { SlackChatConfig } from 'Models';
+import React, { useEffect, useState } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { fetchSlackConfig } from '../axiosAPIs/miscAPI';
 import Appbar from '../components/app-bar/Appbar';
 import Loader from '../components/Loader/Loader';
+import SlackChat from '../components/SlackChat/SlackChat';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -39,6 +43,7 @@ const AppRouter = () => {
     isSigningIn,
     getCallBackComponent,
   } = useAuthContext();
+  const [slackConfig, setSlackConfig] = useState<SlackChatConfig | undefined>();
   const callbackComponent = getCallBackComponent();
   const oidcProviders = [
     AuthTypes.GOOGLE,
@@ -48,15 +53,50 @@ const AppRouter = () => {
   const isOidcProvider =
     authConfig?.provider && oidcProviders.includes(authConfig.provider);
 
+  const fetchSlackChatConfig = () => {
+    fetchSlackConfig()
+      .then((res) => {
+        if (res.data) {
+          const { apiToken, botName, channels } = res.data;
+          const slackConfig = {
+            apiToken,
+            botName,
+            channels,
+          };
+          setSlackConfig(slackConfig);
+        } else {
+          throw '';
+        }
+      })
+      .catch((err: AxiosError) => {
+        // eslint-disable-next-line no-console
+        console.error(err);
+        setSlackConfig(undefined);
+      });
+  };
+
+  useEffect(() => {
+    fetchSlackChatConfig();
+  }, []);
+
+  const slackChat =
+    slackConfig && slackConfig.apiToken ? (
+      <SlackChat slackConfig={slackConfig} />
+    ) : null;
+
   return loading ? (
     <Loader />
   ) : (
     <>
       {isOidcProvider ? (
-        <AuthenticatedAppRouter />
+        <>
+          <AuthenticatedAppRouter />
+          {slackChat}
+        </>
       ) : (
         <>
           <Appbar />
+          {slackChat}
           <Switch>
             <Route exact path={ROUTES.HOME}>
               {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
