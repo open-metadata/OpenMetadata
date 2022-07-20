@@ -44,6 +44,7 @@ import org.openmetadata.catalog.util.RestUtil;
 public class DefaultAuthorizer implements Authorizer {
   private Set<String> adminUsers;
   private Set<String> botUsers;
+  private Set<String> testUsers;
   private String principalDomain;
 
   @Override
@@ -51,60 +52,40 @@ public class DefaultAuthorizer implements Authorizer {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
+    this.testUsers = new HashSet<>(config.getTestPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    mayBeAddAdminUsers();
-    mayBeAddBotUsers();
+    initializeUsers();
   }
 
-  private void mayBeAddAdminUsers() {
+  private void initializeUsers() {
     LOG.debug("Checking user entries for admin users");
+    String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
     for (String adminUser : adminUsers) {
-      try {
-        EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-        User user = userRepository.getByName(null, adminUser, Fields.EMPTY_FIELDS);
-        if (user != null && (user.getIsAdmin() == null || !user.getIsAdmin())) {
-          user.setIsAdmin(true);
-        }
-        addOrUpdateUser(user);
-      } catch (EntityNotFoundException | IOException ex) {
-        String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
-        User user =
-            new User()
-                .withId(UUID.randomUUID())
-                .withName(adminUser)
-                .withEmail(adminUser + "@" + domain)
-                .withIsAdmin(true)
-                .withUpdatedBy(adminUser)
-                .withUpdatedAt(System.currentTimeMillis());
-        addOrUpdateUser(user);
-      }
+      User user = user(adminUser, domain, adminUser).withIsAdmin(true);
+      addOrUpdateUser(user);
     }
-  }
 
-  private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
     for (String botUser : botUsers) {
-      try {
-        EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-        User user = userRepository.getByName(null, botUser, Fields.EMPTY_FIELDS);
-        if (user != null && (user.getIsBot() == null || !user.getIsBot())) {
-          user.setIsBot(true);
-        }
-        addOrUpdateUser(user);
-      } catch (EntityNotFoundException | IOException ex) {
-        String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
-        User user =
-            new User()
-                .withId(UUID.randomUUID())
-                .withName(botUser)
-                .withEmail(botUser + "@" + domain)
-                .withIsBot(true)
-                .withUpdatedBy(botUser)
-                .withUpdatedAt(System.currentTimeMillis());
-        addOrUpdateUser(user);
-      }
+      User user = user(botUser, domain, botUser).withIsBot(true);
+      addOrUpdateUser(user);
     }
+
+    LOG.debug("Checking user entries for test users");
+    for (String testUser : testUsers) {
+      User user = user(testUser, domain, testUser);
+      addOrUpdateUser(user);
+    }
+  }
+
+  private User user(String name, String domain, String updatedBy) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withEmail(name + "@" + domain)
+        .withUpdatedBy(updatedBy)
+        .withUpdatedAt(System.currentTimeMillis());
   }
 
   @Override
