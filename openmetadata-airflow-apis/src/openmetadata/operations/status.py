@@ -27,25 +27,26 @@ def status(dag_id: str) -> Response:
     :return: API Response
     """
 
-    session = settings.Session()
-    dag_model = session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
+    with settings.Session() as session:
 
-    if not dag_model:
-        return ApiResponse.not_found(f"DAG {dag_id} not found.")
+        dag_model = session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
 
-    runs = (
-        session.query(DagRun)
-        .filter(
-            DagRun.dag_id == dag_id,
+        if not dag_model:
+            return ApiResponse.not_found(f"DAG {dag_id} not found.")
+
+        runs = (
+            session.query(DagRun)
+            .filter(
+                DagRun.dag_id == dag_id,
+            )
+            .order_by(DagRun.start_date.desc())
+            .limit(10)
+            .all()
         )
-        .order_by(DagRun.start_date.desc())
-        .limit(10)
-        .all()
-    )
 
-    formatted = [
-        json.loads(ResponseFormat.format_dag_run_state(dag_run).json())
-        for dag_run in runs
-    ]
+        formatted = [
+            json.loads(ResponseFormat.format_dag_run_state(dag_run).json())
+            for dag_run in runs
+        ]
 
-    return ApiResponse.success(formatted)
+        return ApiResponse.success(formatted)
