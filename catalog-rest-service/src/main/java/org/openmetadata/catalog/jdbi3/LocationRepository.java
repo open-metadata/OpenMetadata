@@ -31,6 +31,7 @@ import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -207,6 +208,11 @@ public class LocationRepository extends EntityRepository<Location> {
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.LOCATION, STORAGE_SERVICE));
+  }
+
+  public List<EntityReference> getEntityDetails(String id) throws IOException {
+    List<CollectionDAO.EntityRelationshipRecord> records = findFrom(id);
+    return EntityUtil.getEntityReferences(records);
   }
 
   public void setService(Location location, EntityReference service) throws IOException {

@@ -12,45 +12,45 @@
  */
 
 import classNames from 'classnames';
-import { isEqual } from 'lodash';
-import React, { Fragment } from 'react';
+import React from 'react';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
 
 const TaskStatus = ({ status }: { status: ThreadTaskStatus }) => {
-  const openCheck = isEqual(status, ThreadTaskStatus.Open);
-  const closedCheck = isEqual(status, ThreadTaskStatus.Closed);
+  const openCheck = status === ThreadTaskStatus.Open;
+  const closedCheck = status === ThreadTaskStatus.Closed;
 
   return (
-    <Fragment>
-      <div
+    <div
+      className={classNames(
+        'tw-rounded-3xl tw-px-2 tw-p-0',
+        {
+          'tw-bg-task-status-bg': openCheck,
+        },
+        { 'tw-bg-gray-100': closedCheck }
+      )}
+      data-testid="task-status">
+      <span
         className={classNames(
-          'tw-rounded-3xl tw-px-2 tw-p-0',
+          'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
           {
-            'tw-bg-task-status-bg': openCheck,
+            'tw-bg-task-status-fg': openCheck,
           },
-          { 'tw-bg-gray-100': closedCheck }
-        )}>
-        <span
-          className={classNames(
-            'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
-            {
-              'tw-bg-task-status-fg': openCheck,
-            },
-            {
-              'tw-bg-gray-500': closedCheck,
-            }
-          )}
-        />
-        <span
-          className={classNames(
-            'tw-ml-1',
-            { 'tw-text-task-status-fg': openCheck },
-            { 'tw-text-gray-500': closedCheck }
-          )}>
-          {status}
-        </span>
-      </div>
-    </Fragment>
+          {
+            'tw-bg-gray-500': closedCheck,
+          }
+        )}
+        data-testid="task-status-badge"
+      />
+      <span
+        className={classNames(
+          'tw-ml-1',
+          { 'tw-text-task-status-fg': openCheck },
+          { 'tw-text-gray-500': closedCheck }
+        )}
+        data-testid="task-status-text">
+        {status}
+      </span>
+    </div>
   );
 };
 

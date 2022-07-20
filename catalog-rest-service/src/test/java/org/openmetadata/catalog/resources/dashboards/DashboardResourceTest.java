@@ -233,7 +233,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
       List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedRefs, actualRefs);
+      assertEntityReferences(expectedRefs, actualRefs);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

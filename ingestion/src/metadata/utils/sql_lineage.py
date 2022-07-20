@@ -314,6 +314,7 @@ def get_lineage_by_query(
                     )
     except Exception as err:
         logger.debug(str(err))
+        logger.debug(f"Query : {query}")
         logger.warning(f"Ingesting lineage failed")
 
 
@@ -349,6 +350,6 @@ def get_lineage_via_table_entity(
                 query=query,
             ) or []
     except Exception as e:
-        logger.error("Failed to create view lineage")
+        logger.warn("Failed to create view lineage")
         logger.debug(f"Query : {query}")
         logger.debug(traceback.format_exc())

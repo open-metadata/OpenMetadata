@@ -346,13 +346,21 @@ site_menu:
 
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT
     url: /openmetadata/ingestion/workflows/metadata/dbt
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT CLI
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-cli
 
   - category: OpenMetadata / Ingestion / Workflows / Usage
     url: /openmetadata/ingestion/workflows/usage
+  - category: OpenMetadata / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
+    url: /openmetadata/ingestion/workflows/usage/usage-workflow-query-logs
   - category: OpenMetadata / Ingestion / Workflows / Profiler
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
+  - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually
+    url: /openmetadata/ingestion/lineage/edit-lineage-manually
   - category: OpenMetadata / Ingestion / Versioning
     url: /openmetadata/ingestion/versioning
   - category: OpenMetadata / Ingestion / Versioning / Change Feeds
@@ -861,12 +869,30 @@ site_menu:
     url: /developers
     color: violet-70
     icon: developer_mode
+  - category: Developers / Architecture
+    url: /developers/architecture
+  - category: Developers / Architecture / Understand Code Layout
+    url: /developers/architecture/code-layout
   - category: Developers / Open Source Community
     url: /developers/open-source-community
   - category: Developers / Contribute
     url: /developers/contribute
-  - category: Developers / Build the Code and Run Tests
-    url: /developers/build-code-and-run-tests
+  - category: Developers / Contribute / Build the Code and Run Tests
+    url: /developers/contribute/build-code-and-run-tests
+  - category: Developers / Contribute / Build the Code and Run Tests / Prerequisites
+    url: /developers/contribute/build-code-and-run-tests/prerequisites
+  - category: Developers / Contribute / Build the Code and Run Tests / OpenMetadata Server
+    url: /developers/contribute/build-code-and-run-tests/openmetadata-server
+  - category: Developers / Contribute / Build the Code and Run Tests / Ingestion Framework
+    url: /developers/contribute/build-code-and-run-tests/ingestion-framework
+  - category: Developers / Contribute / Build the Code and Run Tests / Generate Typescript Types From JSON Schema
+    url: /developers/contribute/build-code-and-run-tests/generate-typescript-types-from-json-schema
+  - category: Developers / Contribute / Build the Code and Run Tests / OpenMetadata UI
+    url: /developers/contribute/build-code-and-run-tests/openmetadata-ui
+  - category: Developers / Contribute / Build the Code and Run Tests / Cypress Integration Tests
+    url: /developers/contribute/build-code-and-run-tests/cypress-integration-tests
+  - category: Developers / Contribute / UX Style Guide
+    url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
 
@@ -878,8 +904,8 @@ site_menu:
     url: /sdk/python
   - category: SDK / Python SDK / Entities
     url: /sdk/python/entities
-  - category: SDK / Python SDK / Entities / ML Model Python SDK
-    url: /sdk/python/entities/ml-model-sdk
+  - category: SDK / Python SDK / Entities / ML Model
+    url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
   - category: SDK / Python SDK / Ingestion / DBT

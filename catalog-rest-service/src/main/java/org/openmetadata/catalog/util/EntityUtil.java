@@ -253,6 +253,28 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
+  public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
+    if (ids == null) {
+      return null;
+    }
+    List<EntityReference> entityReferences = new ArrayList<>();
+    for (UUID id : ids) {
+      entityReferences.add(new EntityReference().withId(id).withType(entityType));
+    }
+    return entityReferences;
+  }
+
+  public static List<UUID> toIds(List<EntityReference> refs) {
+    if (refs == null) {
+      return null;
+    }
+    List<UUID> ids = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      ids.add(ref.getId());
+    }
+    return ids;
+  }
+
   @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);

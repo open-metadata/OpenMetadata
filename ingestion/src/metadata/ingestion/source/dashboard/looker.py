@@ -111,7 +111,7 @@ class LookerSource(DashboardServiceSource):
         """
 
         yield CreateDashboardRequest(
-            name=dashboard_details.id,
+            name=dashboard_details.id.replace("::", "_"),
             displayName=dashboard_details.title,
             description=dashboard_details.description or "",
             charts=[
@@ -197,7 +197,7 @@ class LookerSource(DashboardServiceSource):
             self.metadata,
             entity_type=LineageDashboard,
             service_name=self.config.serviceName,
-            dashboard_name=dashboard_details.id,
+            dashboard_name=dashboard_details.id.replace("::", "_"),
         )
         to_entity = self.metadata.get_by_name(
             entity=LineageDashboard,

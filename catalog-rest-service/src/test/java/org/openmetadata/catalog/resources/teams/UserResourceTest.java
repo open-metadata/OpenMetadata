@@ -132,10 +132,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .createRequest("user-data-consumer", "", "", null)
                 .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
             ADMIN_AUTH_HEADERS);
-
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = TEAM1.getEntityReference();
   }
 
   @Test
@@ -410,6 +406,48 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertTrue(users.getData().stream().anyMatch(isUser0));
+    assertTrue(users.getData().stream().anyMatch(isUser1));
+    assertTrue(users.getData().stream().anyMatch(isUser2));
+  }
+
+  @Test
+  void get_listUsersWithAdminFilter_200_ok(TestInfo test) throws IOException {
+    ResultList<User> users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    int initialUserCount = users.getPaging().getTotal();
+    Map<String, String> adminQueryParams = new HashMap<>();
+    adminQueryParams.put("isAdmin", "true");
+    users = listEntities(adminQueryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    int initialAdminCount = users.getPaging().getTotal();
+
+    // user0 is admin
+    // user1 is not an admin
+    // user2 is not an admin
+    CreateUser create = createRequest(test, 0).withIsAdmin(true);
+    User user0 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    create = createRequest(test, 1).withIsAdmin(false);
+    User user1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    create = createRequest(test, 2).withIsAdmin(false);
+    User user2 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    Predicate<User> isUser0 = u -> u.getId().equals(user0.getId());
+    Predicate<User> isUser1 = u -> u.getId().equals(user1.getId());
+    Predicate<User> isUser2 = u -> u.getId().equals(user2.getId());
+
+    users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(initialUserCount + 3, users.getPaging().getTotal());
+
+    // list admin users
+    users = listEntities(adminQueryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(initialAdminCount + 1, users.getData().size());
+    assertEquals(initialAdminCount + 1, users.getPaging().getTotal());
+    assertTrue(users.getData().stream().anyMatch(isUser0));
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("isAdmin", "false");
+
+    // list non-admin users
+    users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(initialUserCount - initialAdminCount + 2, users.getPaging().getTotal());
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
   }
@@ -830,7 +868,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedList = (List<EntityReference>) expected;
       List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedList, actualList);
+      assertEntityReferences(expectedList, actualList);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
