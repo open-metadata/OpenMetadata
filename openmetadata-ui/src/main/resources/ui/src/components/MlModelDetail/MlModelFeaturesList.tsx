@@ -14,10 +14,9 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -26,13 +25,8 @@ import {
   getEntityName,
   getHtmlForNonAdminAction,
 } from '../../utils/CommonUtils';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -57,9 +51,6 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   );
   const [editTag, setEditTag] = useState<boolean>(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const [allTags, setAllTags] = useState<Array<TagOption>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const handleCancelEditDescription = () => {
     setSelectedFeature({});
@@ -111,50 +102,6 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       handleFeaturesUpdate(updatedFeatures);
     }
     handleCancelEditTags();
-  };
-
-  const fetchTagsAndGlossaryTerms = () => {
-    setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
-      .then((values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setAllTags(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-      })
-      .catch(() => {
-        setAllTags([]);
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
   };
 
   const Separator = () => {
@@ -252,10 +199,6 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       onClick={() => {
                         setSelectedFeature(feature);
                         setEditTag(true);
-                        // Fetch tags and terms only once
-                        if (allTags.length === 0 || tagFetchFailed) {
-                          fetchTagsAndGlossaryTerms();
-                        }
                       }}>
                       <NonAdminAction
                         html={getHtmlForNonAdminAction(Boolean(owner))}
@@ -267,14 +210,8 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           editable={
                             selectedFeature?.name === feature.name && editTag
                           }
-                          isLoading={
-                            isTagLoading &&
-                            selectedFeature?.name === feature.name &&
-                            editTag
-                          }
                           selectedTags={feature.tags || []}
                           size="small"
-                          tagList={allTags}
                           type="label"
                           onCancel={handleCancelEditTags}
                           onSelectionChange={handleTagsChange}>

@@ -158,11 +158,12 @@ export const getTeamsByQuery = async (params: {
 };
 
 export const getTagSuggestions: Function = (
-  term: string
+  term: string,
+  index?: string
 ): Promise<AxiosResponse> => {
   const params = {
     q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
+    index: index ?? `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
   };
 
   return APIClient.get(`/search/suggest`, { params });

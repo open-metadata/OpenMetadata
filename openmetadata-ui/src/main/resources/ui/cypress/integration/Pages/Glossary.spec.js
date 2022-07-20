@@ -180,12 +180,12 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]')
+    cy.get('[data-testid="tag-select"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
     cy.wait(500);
-    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
+    cy.get('[data-testid*="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-details"]')
       .scrollIntoView()
@@ -259,12 +259,12 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]')
+   cy.get('[data-testid="tag-select"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
     cy.wait(500);
-    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
+    cy.get('[data-testid*="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-term"]')
       .scrollIntoView()
@@ -350,11 +350,11 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get(':nth-child(1) > .css-xb97g8')
+   cy.get(':nth-child(1) > .ant-select-selection-item > .ant-select-selection-item-remove')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get(':nth-child(1) > .css-xb97g8')
+    cy.get(':nth-child(1) > .ant-select-selection-item > .ant-select-selection-item-remove')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -367,12 +367,12 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get(':nth-child(1) > .css-xb97g8')
+    cy.get(':nth-child(1) > .ant-select-selection-item > .ant-select-selection-item-remove')
       .scrollIntoView()
       .should('be.visible')
       .click();
 
-    cy.get(':nth-child(1) > .css-xb97g8')
+    cy.get(':nth-child(1) > .ant-select-selection-item > .ant-select-selection-item-remove')
       .scrollIntoView()
       .should('be.visible')
       .click();
