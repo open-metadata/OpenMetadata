@@ -1,4 +1,4 @@
-import { Popover } from 'antd';
+import { Card, Popover, Typography } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { TableDetail } from 'Models';
@@ -14,6 +14,7 @@ import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.
 import Loader from '../../Loader/Loader';
 import { Status } from '../../ManageTab/ManageTab.interface';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
+import './tier-card.css';
 
 export interface TierCardProps {
   currentUser?: EntityReference;
@@ -94,10 +95,15 @@ const TierCard = ({
   };
   const getTierCards = () => {
     return (
-      <div
-        className="tw-flex tw-flex-col tw-mb-7 margin-[10px]"
+      <Card
+        className="tier-card"
         data-testid="cards"
-        style={{ margin: '10px', width: '760px' }}>
+        headStyle={{
+          borderBottom: 'none',
+          paddingLeft: '16px',
+          paddingTop: '12px',
+        }}
+        title={<Typography.Title level={5}>Edit Tier</Typography.Title>}>
         {tierData.map((card, i) => (
           <NonAdminAction
             html={
@@ -113,7 +119,7 @@ const TierCard = ({
             <CardListItem
               card={card}
               className={classNames(
-                'tw-mb-0 tw-shadow',
+                'tw-mb-0 tw-shadow tw-rounded-t-none pl-[16px]',
                 {
                   'tw-rounded-t-md': i === 0,
                 },
@@ -129,7 +135,7 @@ const TierCard = ({
             />
           </NonAdminAction>
         ))}
-      </div>
+      </Card>
     );
   };
 
