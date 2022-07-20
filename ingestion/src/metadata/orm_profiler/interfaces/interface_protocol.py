@@ -14,13 +14,13 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from abc import abstractmethod
-from typing import Dict, Optional, Protocol
+from abc import abstractmethod, ABC
+from typing import Dict, Optional
 
 from metadata.generated.schema.tests.basic import TestCaseResult
 
 
-class InterfaceProtocol(Protocol):
+class InterfaceProtocol(ABC):
     """Protocol interface for the processor"""
 
     @abstractmethod

@@ -21,6 +21,7 @@ from sqlalchemy import Column
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
@@ -41,7 +42,7 @@ from metadata.utils.timeout import cls_timeout
 logger = sqa_interface_registry_logger()
 
 
-class SQAProfilerInterface:
+class SQAProfilerInterface(InterfaceProtocol):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -198,7 +199,7 @@ class SQAProfilerInterface:
         self,
         column: Column,
         metric: Metrics,
-    ) -> Dict[str, Union[str, int]]:
+    ) -> Optional[Dict[str, Union[str, int]]]:
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -212,7 +213,7 @@ class SQAProfilerInterface:
             col_metric = metric(column)
             metric_query = col_metric.query(sample=self.sample, session=self.session)
             if not metric_query:
-                return
+                return None
             if col_metric.metric_type == dict:
                 results = self.runner.select_all_from_query(metric_query)
                 data = {k: [result[k] for result in results] for k in dict(results[0])}
