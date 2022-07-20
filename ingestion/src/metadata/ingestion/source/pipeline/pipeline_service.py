@@ -154,7 +154,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[AddLineageRequest]:
         """
         Yields lineage if config is enabled
         """
@@ -193,7 +193,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         return self.status
 
     def close(self):
-        pass
+        """
+        Method to implement any required logic after the ingesion process is completed
+        """
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -220,4 +222,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         test_connection(self.connection)
 
     def prepare(self):
-        pass
+        """
+        Method to implement any required logic before starting the ingesion process
+        """

@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -67,7 +67,7 @@ class GlueSource(PipelineServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_pipelines_list(self) -> Optional[List[Any]]:
+    def get_pipelines_list(self) -> Iterable[dict]:
         """
         Get List of all pipelines
         """
@@ -127,7 +127,7 @@ class GlueSource(PipelineServiceSource):
 
     def yield_pipeline_status(
         self, pipeline_details: Any
-    ) -> Optional[OMetaPipelineStatus]:
+    ) -> Iterable[OMetaPipelineStatus]:
         for job in self.job_name_list:
             try:
                 runs = self.glue.get_job_runs(JobName=job)

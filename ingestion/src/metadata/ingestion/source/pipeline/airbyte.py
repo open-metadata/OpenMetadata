@@ -12,7 +12,7 @@
 Airbyte source to extract metadata
 """
 
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 from pydantic import BaseModel
 
@@ -64,10 +64,6 @@ class AirbytePipelineDetails(BaseModel):
 
     workspace: dict
     connection: dict
-
-    def __init__(self, workspace: dict, connection: dict) -> None:
-        self.workspace = workspace
-        self.connection = connection
 
 
 class AirbyteSource(PipelineServiceSource):
@@ -239,7 +235,7 @@ class AirbyteSource(PipelineServiceSource):
                 )
             )
 
-    def get_pipelines_list(self) -> Optional[List[AirbytePipelineDetails]]:
+    def get_pipelines_list(self) -> Iterable[AirbytePipelineDetails]:
         """
         Get List of all pipelines
         """
