@@ -11,6 +11,7 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+import logging
 import time
 from unittest import TestCase
 
@@ -64,6 +65,22 @@ class OMetaESTest(TestCase):
     service_type = "databaseService"
 
     @classmethod
+    def check_es_index(cls) -> None:
+        """
+        Wait until the index has been updated with the test table.
+        """
+        logging.info("Checking ES index status...")
+
+        res = None
+        while not res:
+            res = cls.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es"
+            )
+            if not res:
+                time.sleep(1)
+
+    @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare ingredients
@@ -101,7 +118,7 @@ class OMetaESTest(TestCase):
         cls.entity = cls.metadata.create_or_update(create)
 
         # Leave some time for indexes to get updated, otherwise this happens to fast
-        time.sleep(5)
+        cls.check_es_index()
 
     @classmethod
     def tearDownClass(cls) -> None:
