@@ -77,8 +77,26 @@ jobs:
         # fix coverage xml report for github
         sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
 
+    # we have to pass these args values since we are working with the 'pull_request_target' trigger
+    - name: Push Results in PR to Sonar
+      uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'pull_request_target' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/
+        args: >
+          -Dproject.settings=ingestion/sonar-project.properties
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          -Dsonar.pullrequest.branch=${{ github.head_ref }}
+          -Dsonar.pullrequest.github.repository=OpenMetadata
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+          -Dsonar.pullrequest.provider=github
+
     - name: Push Results to Sonar
       uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'push' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
