@@ -24,7 +24,9 @@ import APIClient from './index';
 export const getUsers = (
   arrQueryFields?: string,
   limit?: number,
-  team?: { [key: string]: string }
+  team?: { [key: string]: string },
+  isAdmin?: boolean,
+  isBot?: boolean
 ): Promise<AxiosResponse> => {
   let qParam = '';
   if (!isUndefined(team)) {
@@ -34,6 +36,12 @@ export const getUsers = (
         pre + `${curr[0]}=${curr[1]}${index !== paramArr.length - 1 ? '&' : ''}`
       );
     }, '');
+  }
+  if (!isUndefined(isAdmin)) {
+    qParam = `${qParam}&isAdmin=${isAdmin}`;
+  }
+  if (!isUndefined(isBot)) {
+    qParam = `${qParam}&isBot=${isBot}`;
   }
   const url =
     `${getURLWithQueryFields('/users', arrQueryFields, qParam)}` +

@@ -28,6 +28,13 @@
         "type": "string"
       }
     },
+    "testPrincipals": {
+      "description": "List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT TO BE USED IN PRODUCTION SETUP**",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "principalDomain": {
       "description": "Principal Domain",
       "type": "string"

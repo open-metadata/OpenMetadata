@@ -18,6 +18,8 @@ working with OpenMetadata entities.
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
+from metadata.utils.secrets_manager import get_secrets_manager
 
 try:
     from typing import get_args
@@ -132,6 +134,7 @@ class OpenMetadata(
     ESMixin,
     OMetaServerMixin,
     OMetaDashboardMixin,
+    OMetaPatchMixin,
     Generic[T, C],
 ):
     """
@@ -167,6 +170,11 @@ class OpenMetadata(
             )
 
         self._auth_provider = auth_provider_fn(self.config)
+
+        # Load the secrets' manager client
+        self.secrets_manager_client = get_secrets_manager(
+            config.secretsManagerProvider, config.secretsManagerCredentials
+        )
 
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,

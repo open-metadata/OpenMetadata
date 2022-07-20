@@ -73,7 +73,7 @@ const EntityDeleteModal: FC<Prop> = ({
           </p>
         </div>
         <div className={classNames('tw-modal-body')} data-testid="body-text">
-          <p className="tw-mb-2 tw-break-all">
+          <p className="tw-mb-2">
             {bodyText ||
               `Once you delete this ${getTitleCase(
                 entityType

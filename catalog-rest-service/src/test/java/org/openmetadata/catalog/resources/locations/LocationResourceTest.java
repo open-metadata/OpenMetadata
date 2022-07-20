@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
@@ -36,6 +38,7 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.entity.data.Location;
@@ -101,6 +104,26 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  private List<EntityReference> getAssociatedEntity(Location location) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("locations/association/%s", location.getId()));
+    return (List<EntityReference>) TestUtils.get(target, List.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void get_entity_from_location(TestInfo test) throws IOException {
+    Location location = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String actualValue = getAssociatedEntity(location).toString();
+    LinkedHashMap<Object, Object> expected = new LinkedHashMap<>();
+    expected.put("id", location.getService().getId());
+    expected.put("type", location.getService().getType());
+    expected.put("name", location.getService().getName());
+    expected.put("fullyQualifiedName", location.getService().getFullyQualifiedName());
+    expected.put("deleted", location.getService().getDeleted());
+    List<Map<Object, Object>> expectedValue = new ArrayList<>();
+    expectedValue.add(expected);
+    assertEquals(expectedValue.toString(), actualValue);
   }
 
   @Test
