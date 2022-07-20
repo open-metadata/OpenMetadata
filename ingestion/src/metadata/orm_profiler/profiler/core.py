@@ -12,10 +12,10 @@
 """
 Main Profile definition and queries to execute
 """
-import warnings
 import traceback
+import warnings
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generic, List, Optional, Tuple, Type
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
@@ -24,6 +24,7 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
@@ -31,7 +32,6 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TMetric,
 )
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
@@ -103,36 +103,20 @@ class Profiler(Generic[TMetric]):
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
 
-        # We will compute the sample from the property
-        self.profiler_interface.create_sampler(
-            table=table,
-            profile_sample=profile_sample,
-            partition_details=self._partition_details,
-            profile_sample_query=self._profile_sample_query,
-        )
-
-
-        self.profiler_interface.create_runner(
-                table=table,
-                partition_details=self._partition_details,
-                profile_sample_query=self._profile_sample_query,
-        )
-
-
     @property
     def session(self) -> Session:
         """Kept for backward compatibility"""
         warnings.warn(
             "`<instance>`.session will be retired as platform specific. Instead use"
             "`<instance>.profiler_interface` to see if session is supported by the profiler interface",
-            DeprecationWarning
+            DeprecationWarning,
         )
         if isinstance(self.profiler_interface, SQAProfilerInterface):
             return self.profiler_interface.session
 
         raise ValueError(
             f"session is not supported for profiler interface {self.profiler_interface.__class__.__name__}"
-            )
+        )
 
     @property
     def table(self) -> DeclarativeMeta:
@@ -226,7 +210,6 @@ class Profiler(Generic[TMetric]):
                     f"We need {metric.required_metrics()} for {metric.name}, but only got {names} in the profiler"
                 )
 
-
     def run_static_metrics(self, col: Column):
         """
         Run the profiler and store its results
@@ -249,7 +232,6 @@ class Profiler(Generic[TMetric]):
             logger.warning(
                 f"Error trying to compute column profile for {col.name} - {err}"
             )
-
 
     def run_table_metrics(self):
         """
@@ -275,7 +257,6 @@ class Profiler(Generic[TMetric]):
                 f"Error while running table metric for: {self.table.__tablename__} - {err}"
             )
 
-
     def run_query_metrics(self, col: Column) -> None:
         """
         Run QueryMetrics
@@ -292,7 +273,6 @@ class Profiler(Generic[TMetric]):
                 logger.error(
                     f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
                 )
-
 
     def run_composed_metrics(self, col: Column):
         """
@@ -314,7 +294,9 @@ class Profiler(Generic[TMetric]):
             # Composed metrics require the results as an argument
             logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
-            self._column_results[col.name][metric.name()] = self.profiler_interface.get_composed_metrics(
+            self._column_results[col.name][
+                metric.name()
+            ] = self.profiler_interface.get_composed_metrics(
                 col,
                 metric,
                 current_col_results,
@@ -346,7 +328,6 @@ class Profiler(Generic[TMetric]):
                     f"Error trying to compute column profile for {col.name} - {err}"
                 )
 
-
     def execute_column(self, col: Column) -> None:
         """
         Run the profiler on all the columns that
@@ -368,7 +349,6 @@ class Profiler(Generic[TMetric]):
         logger.debug(f"Running profiler for {self.table.__tablename__}")
 
         self.run_table_metrics()
-
 
         for col in self.columns:
             logger.debug(

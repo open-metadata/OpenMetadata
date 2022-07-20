@@ -14,18 +14,17 @@ Test Sample behavior
 """
 from unittest import TestCase
 
-from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
-from sqlalchemy.orm import DeclarativeMeta, declarative_base
+from sqlalchemy import TEXT, Column, Integer, String, func
+from sqlalchemy.orm import declarative_base
 
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.core import Profiler
-from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.utils.connections import create_and_bind_session
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.core import Profiler
+from metadata.orm_profiler.profiler.sampler import Sampler
 
 Base = declarative_base()
 
@@ -100,10 +99,14 @@ class SampleTest(TestCase):
         Sample property should be properly generated
         """
 
+        self.sqa_profiler_interface.create_sampler(User, profile_sample=50.0)
+
         # Randomly pick table_count to init the Profiler, we don't care for this test
         table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
-            table_count, profiler_interface=self.sqa_profiler_interface, table=User, profile_sample=50.0
+            table_count,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
         )
 
         res = self.session.query(func.count()).select_from(profiler.sample).first()
@@ -113,9 +116,15 @@ class SampleTest(TestCase):
         """
         Profile sample should be ignored in row count
         """
+
+        self.sqa_profiler_interface.create_sampler(User, profile_sample=50.0)
+        self.sqa_profiler_interface.create_runner(User)
+
         table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
-            table_count, profiler_interface=self.sqa_profiler_interface, table=User, profile_sample=50.0
+            table_count,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
         )
         res = profiler.execute()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
@@ -127,16 +136,28 @@ class SampleTest(TestCase):
         There's a random component, so we cannot ensure to always
         get 15 rows, but for sure we should get less than 30.
         """
+
+        self.sqa_profiler_interface.create_sampler(
+            User,
+            profile_sample=50.0,
+        )
+        self.sqa_profiler_interface.create_runner(User)
+
         count = Metrics.COUNT.value
         profiler = Profiler(
             count,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
-            profile_sample=50.0,
             use_cols=[User.name],
         )
         res = profiler.execute()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
+
+        self.sqa_profiler_interface.create_sampler(
+            User,
+            profile_sample=100.0,
+        )
+        self.sqa_profiler_interface.create_runner(User)
 
         profiler = Profiler(
             count,
@@ -152,12 +173,18 @@ class SampleTest(TestCase):
         """
         Histogram should run correctly
         """
+
+        self.sqa_profiler_interface.create_sampler(
+            User,
+            profile_sample=50.0,
+        )
+        self.sqa_profiler_interface.create_runner(User)
+
         hist = Metrics.HISTOGRAM.value
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
-            profile_sample=50.0,
             use_cols=[User.id],
         )
         res = profiler.execute()._column_results
@@ -165,11 +192,16 @@ class SampleTest(TestCase):
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
+        self.sqa_profiler_interface.create_sampler(
+            User,
+            profile_sample=100.0,
+        )
+        self.sqa_profiler_interface.create_runner(User)
+
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
-            profile_sample=100.0,
             use_cols=[User.id],
         )
         res = profiler.execute()._column_results
@@ -181,12 +213,18 @@ class SampleTest(TestCase):
         """
         Unique count should run correctly
         """
+
+        self.sqa_profiler_interface.create_sampler(
+            User,
+            profile_sample=50.0,
+        )
+        self.sqa_profiler_interface.create_runner(User)
+
         hist = Metrics.UNIQUE_COUNT.value
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
-            profile_sample=50.0,
             use_cols=[User.name],
         )
         res = profiler.execute()._column_results
@@ -195,11 +233,16 @@ class SampleTest(TestCase):
         # This tests might very rarely, fail, depending on the sampled random data.
         assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] <= 1
 
+        self.sqa_profiler_interface.create_sampler(
+            User,
+            profile_sample=100.0,
+        )
+        self.sqa_profiler_interface.create_runner(User)
+
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
-            profile_sample=100.0,
             use_cols=[User.name],
         )
         res = profiler.execute()._column_results

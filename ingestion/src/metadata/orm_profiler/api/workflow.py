@@ -41,6 +41,7 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.utils import fqn
 from metadata.utils.connections import (
     create_and_bind_session,
@@ -132,15 +133,14 @@ class ProfilerWorkflow:
             yield table
 
     def create_processor(self, service_connection_config):
+        self.processor_interface = SQAProfilerInterface(service_connection_config)
         self.processor = get_processor(
             processor_type=self.config.processor.type,  # orm-profiler
             processor_config=self.config.processor or ProfilerProcessorConfig(),
             metadata_config=self.metadata_config,
             _from="orm_profiler",
-            # Pass the session as kwargs for the profiler
-            session=create_and_bind_session(
-                self.create_engine_for_session(service_connection_config)
-            ),
+            # Pass the processor_interface as kwargs for the profiler
+            processor_interface=self.processor_interface,
         )
 
     def create_engine_for_session(self, service_connection_config):
@@ -226,7 +226,7 @@ class ProfilerWorkflow:
                 if hasattr(self, "sink"):
                     self.sink.write_record(profile_and_tests)
 
-            self.processor.session.close()
+            self.processor_interface.session.close()
 
     def print_status(self) -> int:
         """

@@ -16,18 +16,17 @@ Test SQA Interface
 from unittest import TestCase
 
 from pytest import raises
+from sqlalchemy import TEXT, Column, Integer, String
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
-from sqlalchemy import Column, Integer, TEXT, String
 
-from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
-
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.orm_profiler.profiler.sampler import Sampler
 
 
 class User(declarative_base()):
@@ -41,14 +40,12 @@ class User(declarative_base()):
 
 
 class SQAProfilerInterfaceTest(TestCase):
-
     def setUp(self) -> None:
         sqlite_conn = SQLiteConnection(
-                            scheme=SQLiteScheme.sqlite_pysqlite,
-                        )
+            scheme=SQLiteScheme.sqlite_pysqlite,
+        )
         self.sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
         self.table = User
-
 
     def test_init_interface(self):
         """Test we can instantiate our interface object correctly"""
@@ -56,7 +53,6 @@ class SQAProfilerInterfaceTest(TestCase):
         assert self.sqa_profiler_interface._sampler == None
         assert self.sqa_profiler_interface._runner == None
         assert isinstance(self.sqa_profiler_interface.session, Session)
-
 
     def test_create_sampler(self):
         """Test we can create our sampler correctly"""
@@ -75,7 +71,6 @@ class SQAProfilerInterfaceTest(TestCase):
         self.sqa_profiler_interface.create_sampler(self.table)
         self.sqa_profiler_interface.create_runner(self.table)
         assert isinstance(self.sqa_profiler_interface.runner, QueryRunner)
-
 
     def test_private_attributes(self):
         with raises(AttributeError):

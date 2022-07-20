@@ -12,6 +12,7 @@
 """
 Test Profiler behavior
 """
+from curses.ascii import US
 from unittest import TestCase
 
 import pytest
@@ -19,17 +20,17 @@ import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.generated.schema.entity.data.table import ColumnProfile
-from metadata.ingestion.source import sqa_types
-from metadata.orm_profiler.metrics.core import add_props
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
-from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.ingestion.source import sqa_types
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.orm_profiler.metrics.core import add_props
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler
 
 Base = declarative_base()
 
@@ -64,6 +65,10 @@ class ProfilerTest(TestCase):
         ]
         cls.sqa_profiler_interface.session.add_all(data)
         cls.sqa_profiler_interface.session.commit()
+
+    def setUp(self) -> None:
+        self.sqa_profiler_interface.create_sampler(User)
+        self.sqa_profiler_interface.create_runner(User)
 
     def test_default_profiler(self):
         """
@@ -138,7 +143,11 @@ class ProfilerTest(TestCase):
         with pytest.raises(MissingMetricException):
             # We are missing ingredients here
             Profiler(
-                like, like_ratio, profiler_interface=self.sqa_profiler_interface, table=User, use_cols=[User.age]
+                like,
+                like_ratio,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
             )
 
     def test_skipped_types(self):

@@ -43,8 +43,10 @@ def cli_logger():
 def profiler_logger():
     return logging.getLogger(Loggers.PROFILER.value)
 
+
 def sqa_interface_registry_logger():
     return logging.getLogger(Loggers.SQA_PROFILER_INTERFACE.value)
+
 
 def ingestion_logger():
     return logging.getLogger(Loggers.INGESTION.value)
