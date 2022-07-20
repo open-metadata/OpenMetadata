@@ -26,4 +26,21 @@ def kill_all(dag_id: str) -> Response:
     :return: API Response
     """
 
-    pass
+    with settings.Session() as session:
+
+        dag_model = session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
+
+        if not dag_model:
+            return ApiResponse.not_found(f"DAG {dag_id} not found.")
+
+        runs = (
+            session.query(DagRun)
+            .filter(
+                DagRun.dag_id == dag_id,
+            )
+            .order_by(DagRun.start_date.desc())
+            .limit(10)
+            .all()
+        )
+
+        print(runs)
