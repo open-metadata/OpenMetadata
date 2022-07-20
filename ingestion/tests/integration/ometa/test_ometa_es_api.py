@@ -70,14 +70,20 @@ class OMetaESTest(TestCase):
         Wait until the index has been updated with the test table.
         """
         logging.info("Checking ES index status...")
+        tries = 0
 
         res = None
         while not res:
+
+            if tries >= 5:  # Kill in 5 seconds
+                break
+
             res = cls.metadata.es_search_from_fqn(
                 entity_type=Table,
-                fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es"
+                fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
             )
             if not res:
+                tries += 1
                 time.sleep(1)
 
     @classmethod
