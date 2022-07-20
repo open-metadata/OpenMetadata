@@ -11,7 +11,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-public class TypeUtilTest {
+class TypeUtilTest {
   private static final String customAttributes;
   private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -24,7 +24,7 @@ public class TypeUtilTest {
   }
 
   @Test
-  public void testTypeValue() throws IOException {
+  void testTypeValue() throws IOException {
     JsonSchema intSchema = JsonUtils.getJsonSchema("{ \"type\" : \"integer\", \"minimum\": 10}");
     JsonSchema stringSchema = JsonUtils.getJsonSchema("{ \"type\" : \"string\"}");
     JsonNode json = mapper.readTree(customAttributes);
