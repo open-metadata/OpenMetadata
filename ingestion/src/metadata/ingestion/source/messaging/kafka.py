@@ -12,7 +12,7 @@
 import concurrent.futures
 import sys
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, Optional
 
 import confluent_kafka
 from confluent_kafka.admin import AdminClient, ConfigResource
@@ -70,7 +70,7 @@ class KafkaSource(MessagingServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_topic_list(self) -> Optional[List[Any]]:
+    def get_topic_list(self) -> Iterable[KafkaTopicDetails]:
         topics_dict = self.admin_client.list_topics().topics
         for topic_name, topic_metadata in topics_dict.items():
             yield KafkaTopicDetails(
