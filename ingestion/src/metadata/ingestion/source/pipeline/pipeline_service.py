@@ -159,7 +159,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         Yields lineage if config is enabled
         """
         if self.source_config.includeLineage:
-            yield from self.yield_pipeline_lineage_details(pipeline_details)
+            yield from self.yield_pipeline_lineage_details(pipeline_details) or []
 
     status: PipelineSourceStatus
     source_config: PipelineServiceMetadataPipeline
