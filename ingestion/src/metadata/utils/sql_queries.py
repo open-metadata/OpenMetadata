@@ -7,9 +7,9 @@ REDSHIFT_SQL_STATEMENT = """
       FROM pg_catalog.stl_query
      WHERE userid > 1
           -- Filter out all automated & cursor queries
-          AND querytxt NOT ILIKE 'fetch %'
-          AND querytxt NOT ILIKE 'padb_fetch_sample: %'
-          AND querytxt NOT ILIKE 'Undoing % transactions on table % with current xid%'
+          AND querytxt NOT ILIKE 'fetch %%'
+          AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
+          AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
