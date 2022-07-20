@@ -402,11 +402,11 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/datetime"}, {"$ref": "../../type/basic.json#/definitions/date"}]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/datetime"}, {"$ref": "../../type/basic.json#/definitions/date"}]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
         },
         "minLength": {
           "description": "Minimum string length in a column.",
