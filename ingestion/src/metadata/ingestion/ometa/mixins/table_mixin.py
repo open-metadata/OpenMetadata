@@ -13,6 +13,7 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
+import traceback
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -64,11 +65,30 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param sample_data: Data to add
         """
-        resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
-            data=sample_data.json(),
-        )
-        return TableData(**resp["sampleData"])
+        resp = None
+        try:
+            resp = self.client.put(
+                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+                data=sample_data.json(),
+            )
+        except Exception as err:
+            logger.error(
+                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+
+        if resp:
+            try:
+                return TableData(**resp["sampleData"])
+            except UnicodeError as err:
+                logger.error(
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__} - {err}"
+                )
+                logger.debug(traceback.format_exc())
+            except Exception as err:
+                logger.error(
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__} - {err}"
+                )
 
     def ingest_table_profile_data(
         self, table: Table, table_profile: List[TableProfile]
@@ -123,7 +143,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_usage_request: Usage data to add
         """
-        resp = self.client.post(
+        resp = self.client.put(
             f"/usage/table/{table.id.__root__}", data=table_usage_request.json()
         )
         logger.debug("published table usage %s", resp)

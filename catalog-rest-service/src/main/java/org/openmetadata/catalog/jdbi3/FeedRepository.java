@@ -18,6 +18,7 @@ import static org.openmetadata.catalog.Entity.PIPELINE;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.TOPIC;
 import static org.openmetadata.catalog.Entity.getEntityRepository;
+import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.catalog.type.Relationship.CREATED;
 import static org.openmetadata.catalog.type.Relationship.IS_ABOUT;
@@ -25,6 +26,10 @@ import static org.openmetadata.catalog.type.Relationship.REPLIED_TO;
 import static org.openmetadata.catalog.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.catalog.util.EntityUtil.compareEntityReference;
 import static org.openmetadata.catalog.util.EntityUtil.populateEntityReferences;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_TEAM_DISPLAY;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_TEAM_NAME;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_USER_DISPLAY;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_USER_NAME;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.jsonwebtoken.lang.Collections;
@@ -75,12 +80,9 @@ import org.openmetadata.catalog.type.TaskDetails;
 import org.openmetadata.catalog.type.TaskStatus;
 import org.openmetadata.catalog.type.TaskType;
 import org.openmetadata.catalog.type.ThreadType;
-import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.*;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class FeedRepository {
@@ -367,7 +369,9 @@ public class FeedRepository {
           oldValue = task.getOldValue();
         }
         message =
-            String.format("Resolved the Task with Description - %s", getPlaintextDiff(oldValue, task.getNewValue()));
+            String.format(
+                "Resolved the Task with Description - %s",
+                getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, oldValue, task.getNewValue()));
       } else if (List.of(TaskType.RequestTag, TaskType.UpdateTag).contains(type)) {
         List<TagLabel> tags;
         if (task.getOldValue() != null) {
@@ -376,7 +380,10 @@ public class FeedRepository {
         }
         tags = JsonUtils.readObjects(task.getNewValue(), TagLabel.class);
         String newValue = getTagFQNs(tags);
-        message = String.format("Resolved the Task with Tag(s) - %s", getPlaintextDiff(oldValue, newValue));
+        message =
+            String.format(
+                "Resolved the Task with Tag(s) - %s",
+                getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, oldValue, newValue));
       } else {
         message = "Resolved the Task.";
       }
@@ -883,12 +890,26 @@ public class FeedRepository {
   private Thread populateAssignees(Thread thread) {
     if (thread.getType().equals(ThreadType.Task)) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
-      try {
-        assignees = EntityUtil.populateEntityReferences(assignees);
-        thread.getTask().setAssignees(assignees);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      for (EntityReference ref : assignees) {
+        try {
+          EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+          EntityUtil.copy(ref2, ref);
+        } catch (EntityNotFoundException exception) {
+          // mark the not found user as deleted user since
+          // user will not be found in case of permanent deletion of user or team
+          if (ref.getType().equals(Entity.TEAM)) {
+            ref.setName(DELETED_TEAM_NAME);
+            ref.setDisplayName(DELETED_TEAM_DISPLAY);
+          } else {
+            ref.setName(DELETED_USER_NAME);
+            ref.setDisplayName(DELETED_USER_DISPLAY);
+          }
+        } catch (IOException ioException) {
+          throw new RuntimeException(ioException);
+        }
       }
+      assignees.sort(compareEntityReference);
+      thread.getTask().setAssignees(assignees);
     }
     return thread;
   }

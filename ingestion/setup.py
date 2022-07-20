@@ -44,6 +44,8 @@ base_requirements = {
     "jsonschema",
     "sqllineage==1.3.5",
     "antlr4-python3-runtime==4.9.2",
+    "boto3~=1.19.12",
+    "botocore==1.22.12",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",
@@ -134,8 +136,6 @@ plugins: Dict[str, Set[str]] = {
     "pinotdb": {"pinotdb~=0.3.11"},
 }
 dev = {
-    "boto3==1.20.14",
-    "botocore==1.23.14",
     "datamodel-code-generator==0.12.0",
     "black==22.3.0",
     "pycln==1.3.2",
@@ -156,6 +156,12 @@ test = {
     "pandas==1.3.5",
     # great_expectations tests
     "great-expectations~=0.15.0",
+    # Airflow tests
+    "apache-airflow==2.1.4",
+    "marshmallow-sqlalchemy>=0.26.0",
+    "SQLAlchemy-Utils>=0.38.0",
+    "pymysql>=1.0.2",
+    "requests==2.26.0",
 }
 
 build_options = {"includes": ["_cffi_backend"]}

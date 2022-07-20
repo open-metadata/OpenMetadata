@@ -36,7 +36,11 @@ import {
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
-import { getRequestTagsPath, TASK_ENTITIES } from '../../../utils/TasksUtils';
+import {
+  getRequestTagsPath,
+  getUpdateTagsPath,
+  TASK_ENTITIES,
+} from '../../../utils/TasksUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
@@ -112,6 +116,9 @@ const EntityPageInfo = ({
 
   const handleRequestTags = () => {
     history.push(getRequestTagsPath(entityType as string, entityFqn as string));
+  };
+  const handleUpdateTags = () => {
+    history.push(getUpdateTagsPath(entityType as string, entityFqn as string));
   };
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
@@ -314,15 +321,16 @@ const EntityPageInfo = ({
 
   const getRequestTagsElements = useCallback(() => {
     const hasTags = !isEmpty(tags);
+    const text = hasTags ? 'Update request tags' : 'Request tags';
 
-    return onThreadLinkSelect && !hasTags ? (
+    return onThreadLinkSelect ? (
       <button
         className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
         data-testid="request-description"
-        onClick={handleRequestTags}>
+        onClick={hasTags ? handleUpdateTags : handleRequestTags}>
         <Popover
           destroyTooltipOnHide
-          content="Request tags"
+          content={text}
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
@@ -341,7 +349,7 @@ const EntityPageInfo = ({
           onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
         }>
         <span className="tw-flex">
-          <SVGIcons alt="comments" icon={Icons.TASK_ICON} />
+          <SVGIcons alt="comments" icon={Icons.TASK_ICON} width="16px" />
           <span className="tw-ml-1" data-testid="tag-task-count">
             {tagTask.count}
           </span>
@@ -531,7 +539,7 @@ const EntityPageInfo = ({
                   }}>
                   {tags.length || tier ? (
                     <button
-                      className="tw-w-8 tw-h-auto tw-flex-none focus:tw-outline-none"
+                      className="tw-w-auto tw-h-auto tw-flex-none focus:tw-outline-none"
                       data-testid="edit-button">
                       <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
                     </button>

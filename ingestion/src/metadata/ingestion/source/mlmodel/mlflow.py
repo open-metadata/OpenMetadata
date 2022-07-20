@@ -13,12 +13,10 @@
 import ast
 import json
 import traceback
-from dataclasses import dataclass, field
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple, cast
 
 from mlflow.entities import RunData
-from mlflow.entities.model_registry import ModelVersion
-from mlflow.tracking import MlflowClient
+from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
@@ -33,77 +31,25 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
-from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.connections import get_connection
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
+from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-@dataclass
-class MlFlowStatus(SourceStatus):
-    """
-    ML Model specific Status
-    """
-
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-
-    def scanned(self, record: str) -> None:
-        """
-        Log successful ML Model scans
-        """
-        self.success.append(record)
-        logger.info("ML Model scanned: %s", record)
-
-    def failed(self, model_name: str, reason: str) -> None:
-        """
-        Log failed ML Model scans
-        """
-        self.failures.append(model_name)
-        logger.error("ML Model failed: %s - %s", model_name, reason)
-
-    def warned(self, model_name: str, reason: str) -> None:
-        """
-        Log Ml Model with warnings
-        """
-        self.warnings.append(model_name)
-        logger.warning("ML Model warning: %s - %s", model_name, reason)
-
-
-class MlflowSource(Source[CreateMlModelRequest]):
+class MlflowSource(MlModelServiceSource):
     """
     Source implementation to ingest MLFlow data.
 
     We will iterate on the registered ML Models
     and prepare an iterator of CreateMlModelRequest
     """
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__()
-        self.config = config
-        self.service_connection = self.config.serviceConnection.__root__.config
-
-        self.metadata = OpenMetadata(metadata_config)
-
-        self.connection = get_connection(self.service_connection)
-        self.test_connection()
-        self.client = self.connection.client
-
-        self.status = MlFlowStatus()
-        self.service = self.metadata.get_service_or_create(
-            entity=MlModelService, config=config
-        )
-
-    def prepare(self):
-        pass
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -116,15 +62,20 @@ class MlflowSource(Source[CreateMlModelRequest]):
 
         return cls(config, metadata_config)
 
-    def next_record(self) -> Iterable[CreateMlModelRequest]:
+    def get_mlmodels(self) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:
         """
-        Fetch all registered models from MlFlow.
+        List and filters models from the registry
+        """
+        for model in cast(RegisteredModel, self.client.list_registered_models()):
 
-        We are setting the `algorithm` to a constant
-        as there is not a non-trivial generic approach
-        for retrieving the algorithm from the registry.
-        """
-        for model in self.client.list_registered_models():
+            if filter_by_mlmodel(
+                self.source_config.mlModelFilterPattern, mlmodel_name=model.name
+            ):
+                self.status.filter(
+                    f"{self.config.serviceName}.{model.name}",
+                    "MlModel name pattern not allowed",
+                )
+                continue
 
             # Get the latest version
             latest_version: Optional[ModelVersion] = next(
@@ -139,21 +90,35 @@ class MlflowSource(Source[CreateMlModelRequest]):
                 self.status.failed(model.name, reason="Invalid version")
                 continue
 
-            run = self.client.get_run(latest_version.run_id)
+            yield model, latest_version
 
-            self.status.scanned(model.name)
+    def _get_algorithm(self) -> str:
+        return "mlmodel"
 
-            yield CreateMlModelRequest(
-                name=model.name,
-                description=model.description,
-                algorithm="mlflow",  # Setting this to a constant
-                mlHyperParameters=self._get_hyper_params(run.data),
-                mlFeatures=self._get_ml_features(
-                    run.data, latest_version.run_id, model.name
-                ),
-                mlStore=self._get_ml_store(latest_version),
-                service=EntityReference(id=self.service.id, type="mlmodelService"),
-            )
+    def yield_mlmodel(
+        self, model_and_version: Tuple[RegisteredModel, ModelVersion]
+    ) -> Iterable[CreateMlModelRequest]:
+        """
+        Prepare the Request model
+        """
+        model, latest_version = model_and_version
+        self.status.scanned(model.name)
+
+        run = self.client.get_run(latest_version.run_id)
+
+        yield CreateMlModelRequest(
+            name=model.name,
+            description=model.description,
+            algorithm=self._get_algorithm(),  # Setting this to a constant
+            mlHyperParameters=self._get_hyper_params(run.data),
+            mlFeatures=self._get_ml_features(
+                run.data, latest_version.run_id, model.name
+            ),
+            mlStore=self._get_ml_store(latest_version),
+            service=EntityReference(
+                id=self.context.mlmodel_service.id, type="mlmodelService"
+            ),
+        )
 
     @staticmethod
     def _get_hyper_params(data: RunData) -> Optional[List[MlHyperParameter]]:
@@ -222,14 +187,3 @@ class MlflowSource(Source[CreateMlModelRequest]):
                 self.status.warned(model_name, reason)
 
         return None
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def close(self) -> None:
-        """
-        Don't need to close the client
-        """
-
-    def test_connection(self) -> None:
-        pass

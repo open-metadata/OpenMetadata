@@ -20,21 +20,16 @@ AUTHORIZER_ADMIN_PRINCIPALS: [ admin ]  # Your `name` from name@domain.com
 AUTHORIZER_INGESTION_PRINCIPALS: [ ingestion-bot ]
 AUTHORIZER_PRINCIPAL_DOMAIN: open-metadata.org
 
-AUTHENTICATION_PROVIDER: azure
+AUTHENTICATION_PROVIDER: google
 AUTHENTICATION_PUBLIC_KEYS:
-  - "https://login.microsoftonline.com/common/discovery/keys"
-AUTHENTICATION_AUTHORITY: "https://login.microsoftonline.com/{Tenant ID}"
+  - "https://www.googleapis.com/oauth2/v3/certs"
+AUTHENTICATION_AUTHORITY: "https://accounts.google.com"
 AUTHENTICATION_CLIENT_ID: Client ID
 AUTHENTICATION_CALLBACK_URL: http://localhost:8585/callback
 
 # Airflow Configuration
-AIRFLOW_AUTH_PROVIDER: azure
-OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET: Client Secret
-OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL: "https://login.microsoftonline.com/{Tenant ID}"
-OM_AUTH_AIRFLOW_AZURE_SCOPES:
-  - scope 1
-  - scope 2
-OM_AUTH_AIRFLOW_AZURE_CLIENT_ID: Client Id
+AIRFLOW_AUTH_PROVIDER: google
+OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH: /path/to/secret.json
 ```
 
 ## 2. Start Docker
