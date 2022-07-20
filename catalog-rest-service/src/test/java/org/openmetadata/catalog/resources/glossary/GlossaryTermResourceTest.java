@@ -415,7 +415,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
           @SuppressWarnings("unchecked")
           List<EntityReference> expectedRefs = (List<EntityReference>) expected;
           List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-          assertEntityReferencesFieldChange(expectedRefs, actualRefs);
+          assertEntityReferences(expectedRefs, actualRefs);
           break;
         }
       case "synonyms":
