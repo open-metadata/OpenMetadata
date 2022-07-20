@@ -78,7 +78,7 @@ class MessagingServiceTopology(ServiceTopology):
                 type_=Topic,
                 context="Topic",
                 processor="yield_topic",
-                consumer=["topic_service"],
+                consumer=["messaging_service"],
             )
         ],
     )
@@ -119,12 +119,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_topic_details(self, topic: Any) -> Any:
-        """
-        Get Topic Details
-        """
-
-    @abstractmethod
     def get_topic_name(self, topic_details: Any) -> str:
         """
         Get Topic Name
@@ -158,7 +152,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
         self.status = MessagingSourceStatus()
 
-    @abstractmethod
     def get_topic(self) -> Any:
         for topic_details in self.get_topic_list():
             if filter_by_topic(

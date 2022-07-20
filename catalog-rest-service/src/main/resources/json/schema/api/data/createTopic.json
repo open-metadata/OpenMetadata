@@ -44,6 +44,11 @@
         "$ref": "../../entity/data/topic.json#/definitions/cleanupPolicy"
       }
     },
+    "sampleData": {
+      "description": "Sample data for a topic.",
+      "$ref": "../../entity/data/topic.json#/definitions/topicSampleData",
+      "default": null
+    },
     "replicationFactor": {
       "description": "Replication Factor in integer (more than 1).",
       "type": "integer"
