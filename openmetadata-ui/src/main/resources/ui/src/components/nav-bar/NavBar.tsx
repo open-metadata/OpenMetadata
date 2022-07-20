@@ -12,17 +12,28 @@
  */
 
 import { Badge, Dropdown, Space } from 'antd';
-import { debounce } from 'lodash';
+import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
+import Logo from '../../assets/svg/logo-monogram.svg';
 import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
+import {
+  hasNotificationPermission,
+  shouldRequestPermission,
+} from '../../utils/BrowserNotificationUtils';
+import {
+  getEntityFQN,
+  getEntityType,
+  prepareFeedLink,
+} from '../../utils/FeedUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
@@ -49,6 +60,7 @@ const NavBar = ({
   handleKeyDown,
   handleOnClick,
 }: NavBarProps) => {
+  const history = useHistory();
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
@@ -110,17 +122,69 @@ const NavBar = ({
     setActiveTab(key);
   };
 
+  const showBrowserNotification = (
+    about: string,
+    createdBy: string,
+    id: string,
+    type: string
+  ) => {
+    if (!hasNotificationPermission()) {
+      return;
+    }
+    const entityType = getEntityType(about);
+    const entityFQN = getEntityFQN(about);
+    let body;
+    let path: string;
+    switch (type) {
+      case 'Task':
+        body = `${createdBy} assigned you a new task.`;
+        path = getTaskDetailPath(toString(id)).pathname;
+
+        break;
+      case 'Conversation':
+        body = `${createdBy} mentioned you in a comment.`;
+        path = prepareFeedLink(entityType as string, entityFQN as string);
+    }
+    const notification = new Notification('Notification From OpenMetadata', {
+      body: body,
+      icon: Logo,
+    });
+    notification.onclick = () => {
+      history.push(path);
+    };
+  };
+
+  useEffect(() => {
+    if (shouldRequestPermission()) {
+      Notification.requestPermission();
+    }
+  }, []);
+
   useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
         if (newActivity) {
+          const activity = JSON.parse(newActivity);
           setHasTaskNotification(true);
+          showBrowserNotification(
+            activity.about,
+            activity.createdBy,
+            activity.task.id,
+            activity.type
+          );
         }
       });
 
       socket.on(SOCKET_EVENTS.MENTION_CHANNEL, (newActivity) => {
         if (newActivity) {
+          const activity = JSON.parse(newActivity);
           setHasMentionNotification(true);
+          showBrowserNotification(
+            activity.about,
+            activity.createdBy,
+            activity.task.id,
+            activity.type
+          );
         }
       });
     }

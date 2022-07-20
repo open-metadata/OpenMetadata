@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import Icon from '@ant-design/icons';
+import React from 'react';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
-import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 
 export const tabsInfo = [
   {
@@ -29,16 +28,17 @@ export const tabsInfo = [
       />
     ),
   },
-  {
-    name: 'Mention',
-    key: 'Conversation',
-    icon: (
-      <Icon
-        component={IconMentions}
-        style={{
-          marginRight: '8px',
-        }}
-      />
-    ),
-  },
+  // TODO: remove comments when Backend support for Mention is done
+  //   {
+  //     name: 'Mention',
+  //     key: 'Conversation',
+  //     icon: (
+  //       <Icon
+  //         component={IconMentions}
+  //         style={{
+  //           marginRight: '8px',
+  //         }}
+  //       />
+  //     ),
+  //   },
 ];

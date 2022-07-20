@@ -16,13 +16,13 @@ import React, { FC } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import { getEntityLink } from '../../utils/TableUtils';
+import { prepareFeedLink } from '../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
 
@@ -73,24 +73,6 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
     return displayName;
   };
 
-  const prepareFeedLink = () => {
-    const withoutFeedEntities = [
-      EntityType.WEBHOOK,
-      EntityType.GLOSSARY,
-      EntityType.GLOSSARY_TERM,
-      EntityType.TYPE,
-      EntityType.MLMODEL,
-    ];
-
-    const entityLink = getEntityLink(entityType, entityFQN);
-
-    if (!withoutFeedEntities.includes(entityType as EntityType)) {
-      return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
-    } else {
-      return entityLink;
-    }
-  };
-
   return (
     <div className="tw-flex tw-leading-4 tw-items-start">
       {icon}
@@ -99,7 +81,9 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         {feedType === ThreadType.Conversation ? (
           <span>
             <span> posted on </span> <span>{entityType} </span>
-            <Link className="tw-truncate" to={prepareFeedLink()}>
+            <Link
+              className="tw-truncate"
+              to={prepareFeedLink(entityType, entityFQN)}>
               <button className="tw-text-info" disabled={AppState.isTourOpen}>
                 <div>{entityDisplayName()}</div>
               </button>
