@@ -45,11 +45,6 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-ATLAS_DEFAULT_CONFIG = {
-    "serviceConnection": {"config": {}},
-    "sourceConfig": {"config": {"tableFilterPattern": {}}},
-}
-
 
 @dataclass
 class AtlasSourceStatus(SourceStatus):
@@ -113,16 +108,14 @@ class AtlasSource(Source):
 
     def next_record(self):
         for key in self.service_connection.entityTypes["Table"].keys():
-            yield from self.get_database_service(self.service_connection.dbService)
-            yield from self.create_database_entity(self.service_connection.dbService)
+            self.service = self.metadata.get_by_name(
+                entity=DatabaseService, fqn=self.service_connection.dbService
+            )
             self.tables[key] = self.atlas_client.list_entities(entityType=key)
 
         for key in self.service_connection.entityTypes.get("Topic", []):
-            self.message_service = self.get_message_service(
-                self.service_connection.messagingService
-            )
-            yield from self.create_topic_entity(
-                self.service_connection.messagingService
+            self.message_service = self.metadata.get_by_name(
+                entity=MessagingService, fqn=self.service_connection.messagingService
             )
             self.topics[key] = self.atlas_client.list_entities(entityType=key)
 
@@ -255,68 +248,6 @@ class AtlasSource(Source):
                 id=self.service.id, type=self.service_connection.serviceType
             ),
         )
-
-    def get_database_service(self, dbService):
-        ATLAS_DEFAULT_CONFIG["type"] = dbService
-        ATLAS_DEFAULT_CONFIG["serviceName"] = dbService
-        config = WorkflowSource.parse_obj(ATLAS_DEFAULT_CONFIG)
-        create_service_entity = self.metadata.get_create_service_from_source(
-            entity=DatabaseService, config=config
-        )
-
-        yield create_service_entity
-        logger.info(f"Created Database Service {ATLAS_DEFAULT_CONFIG['serviceName']}")
-        self.service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.service_connection.dbService
-        )
-
-    def create_database_entity(self, database):
-        try:
-            self.status.scanned(database)
-            yield CreateDatabaseRequest(
-                name=database,
-                description=database,
-                service=EntityReference(
-                    id=self.service.id,
-                    type="databaseService",
-                ),
-            )
-        except Exception as e:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create database entity, due to {e}")
-            self.status.failure(database["name"], str(e))
-            return None
-
-    def get_message_service(self, messagingService):
-        ATLAS_DEFAULT_CONFIG["type"] = messagingService
-        ATLAS_DEFAULT_CONFIG["serviceName"] = self.service_connection.messagingService
-        config = WorkflowSource.parse_obj(ATLAS_DEFAULT_CONFIG)
-        create_service_entity = self.metadata.get_create_service_from_source(
-            entity=MessagingService, config=config
-        )
-
-        yield create_service_entity
-        self.message_service = self.metadata.get_by_name(
-            entity=MessagingService, fqn=ATLAS_DEFAULT_CONFIG["serviceName"]
-        )
-        logger.info(f"Created Messaging Service {ATLAS_DEFAULT_CONFIG['serviceName']}")
-
-    def create_topic_entity(self, topic):
-        try:
-            self.status.scanned(topic)
-            yield CreateTopicRequest(
-                name=topic,
-                description=topic,
-                service=EntityReference(
-                    id=self.message_service.id,
-                    type="messagingService",
-                ),
-            )
-        except Exception as e:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create topic entity, due to {e}")
-            self.status.failure(topic["name"], str(e))
-            return None
 
     def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
         lineage_response = self.atlas_client.get_lineage(source_guid)
