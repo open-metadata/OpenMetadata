@@ -57,10 +57,11 @@ export const DescriptionTabs = ({
     <Tabs
       activeKey={activeTab}
       className="ant-tabs-description"
+      data-testid="tabs"
       size="small"
       type="card"
       onChange={onTabChange}>
-      <TabPane key="1" tab="Current">
+      <TabPane data-testid="current-tab" key="1" tab="Current">
         <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-4">
           {description.trim() ? (
             <RichTextEditorPreviewer
@@ -73,13 +74,13 @@ export const DescriptionTabs = ({
           )}
         </div>
       </TabPane>
-      <TabPane key="2" tab="Diff">
+      <TabPane data-testid="diff-tab" key="2" tab="Diff">
         <DiffView
           className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-3"
           diffArr={diffs}
         />
       </TabPane>
-      <TabPane key="3" tab="New">
+      <TabPane data-testid="new-tab" key="3" tab="New">
         <RichTextEditor
           className="tw-my-0"
           height="208px"

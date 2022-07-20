@@ -35,6 +35,10 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from openmetadata.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
+
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -57,6 +61,12 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     :param ingestion_pipeline: With the service ref
     :return: WorkflowSource
     """
+    secrets_manager = (
+        ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
+    )
+    ingestion_pipeline.openMetadataServerConnection.secretsManagerCredentials = (
+        build_secrets_manager_credentials(secrets_manager)
+    )
 
     metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
 
@@ -88,6 +98,10 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     if not service:
         raise ValueError(f"Could not get service from type {service_type}")
+
+    service = metadata.secrets_manager_client.add_service_config_connection(
+        service, service_type
+    )
 
     return WorkflowSource(
         type=service.serviceType.value.lower(),

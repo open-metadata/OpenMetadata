@@ -53,7 +53,6 @@ import { Column } from '../generated/entity/data/table';
 import { EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
-  getEntityName,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   prepareLabel,
@@ -173,11 +172,7 @@ export const getLineageData = (
   ) => void,
   removeNodeHandler: (node: Node) => void,
   columns: { [key: string]: Column[] },
-  currentData: { nodes: Node[]; edges: Edge[] },
-  addPipelineClick?: (
-    evt: React.MouseEvent<HTMLButtonElement>,
-    data: CustomEdgeData
-  ) => void
+  currentData: { nodes: Node[]; edges: Edge[] }
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -204,7 +199,7 @@ export const getLineageData = (
               target: edge.toEntity,
               targetHandle: toColumn,
               sourceHandle: fromColumn,
-              type: edgeType,
+              type: isEditMode ? edgeType : 'custom',
               markerEnd: {
                 type: MarkerType.ArrowClosed,
               },
@@ -214,7 +209,6 @@ export const getLineageData = (
                 target: edge.toEntity,
                 targetHandle: toColumn,
                 sourceHandle: fromColumn,
-                isEditMode,
                 onEdgeClick,
                 isColumnLineage: true,
               },
@@ -228,23 +222,18 @@ export const getLineageData = (
       id: `edge-${edge.fromEntity}-${edge.toEntity}`,
       source: `${edge.fromEntity}`,
       target: `${edge.toEntity}`,
-      type: edgeType,
-      animated: !isUndefined(edge.lineageDetails?.pipeline),
+      type: isEditMode ? edgeType : 'custom',
       style: { strokeWidth: '2px' },
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
       data: {
         id: `edge-${edge.fromEntity}-${edge.toEntity}`,
-        label: getEntityName(edge.lineageDetails?.pipeline),
-        pipeline: edge.lineageDetails?.pipeline,
         source: `${edge.fromEntity}`,
         target: `${edge.toEntity}`,
         sourceType: sourceType?.type,
         targetType: targetType?.type,
-        isEditMode,
         onEdgeClick,
-        addPipelineClick,
         isColumnLineage: false,
       },
     });

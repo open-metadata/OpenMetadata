@@ -56,6 +56,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.teams.team import TeamType
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -63,7 +64,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
@@ -552,16 +553,8 @@ class SampleDataSource(Source[Entity]):
         for edge in self.lineage:
             from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
             to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
-            edge_entity_ref = get_lineage_entity_ref(
-                edge["edge_meta"], self.metadata_config
-            )
-            lineage_details = LineageDetails(pipeline=edge_entity_ref)
             lineage = AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=from_entity_ref,
-                    toEntity=to_entity_ref,
-                    lineageDetails=lineage_details,
-                )
+                edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
             yield lineage
 
@@ -664,6 +657,7 @@ class SampleDataSource(Source[Entity]):
                         name=user["teams"],
                         displayName=user["teams"],
                         description=f"This is {user['teams']} description.",
+                        teamType=TeamType.Department,
                     )
                 ]
                 if not self.list_policies:

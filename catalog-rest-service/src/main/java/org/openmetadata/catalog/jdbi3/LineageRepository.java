@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,16 +65,6 @@ public class LineageRepository {
     EntityReference to = addLineage.getEdge().getToEntity();
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
-    if (addLineage.getEdge().getLineageDetails() != null
-        && addLineage.getEdge().getLineageDetails().getPipeline() != null) {
-
-      // Validate pipeline entity
-      EntityReference pipeline = addLineage.getEdge().getLineageDetails().getPipeline();
-      pipeline = Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
-
-      // Add pipeline entity details to lineage details
-      addLineage.getEdge().getLineageDetails().withPipeline(pipeline);
-    }
     // Validate lineage details
     String detailsJson = validateLineageDetails(from, to, addLineage.getEdge().getLineageDetails());
 
@@ -83,7 +75,7 @@ public class LineageRepository {
 
   private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details)
       throws IOException {
-    if (details == null) {
+    if (details == null || listOrEmpty(details.getColumnsLineage()).isEmpty()) {
       return null;
     }
 
@@ -94,19 +86,17 @@ public class LineageRepository {
 
     Table fromTable = dao.tableDAO().findEntityById(from.getId());
     Table toTable = dao.tableDAO().findEntityById(to.getId());
-    if (columnsLineage != null) {
-      for (ColumnLineage columnLineage : columnsLineage) {
-        for (String fromColumn : columnLineage.getFromColumns()) {
-          // From column belongs to the fromNode
-          if (fromColumn.startsWith(fromTable.getFullyQualifiedName())) {
-            TableRepository.validateColumnFQN(fromTable, fromColumn);
-          } else {
-            Table otherTable = dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
-            TableRepository.validateColumnFQN(otherTable, fromColumn);
-          }
+    for (ColumnLineage columnLineage : columnsLineage) {
+      for (String fromColumn : columnLineage.getFromColumns()) {
+        // From column belongs to the fromNode
+        if (fromColumn.startsWith(fromTable.getFullyQualifiedName())) {
+          TableRepository.validateColumnFQN(fromTable, fromColumn);
+        } else {
+          Table otherTable = dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
+          TableRepository.validateColumnFQN(otherTable, fromColumn);
         }
-        TableRepository.validateColumnFQN(toTable, columnLineage.getToColumn());
       }
+      TableRepository.validateColumnFQN(toTable, columnLineage.getToColumn());
     }
     return JsonUtils.pojoToJson(details);
   }

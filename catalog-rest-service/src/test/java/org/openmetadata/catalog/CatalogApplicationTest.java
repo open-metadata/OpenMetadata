@@ -29,6 +29,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 @Slf4j
@@ -92,6 +93,7 @@ public abstract class CatalogApplicationTest {
     if (APP != null) {
       APP.after();
     }
+    SubjectContext.cleanup();
   }
 
   public static Client getClient() {
