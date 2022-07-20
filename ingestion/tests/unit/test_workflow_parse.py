@@ -16,6 +16,9 @@ from unittest import TestCase
 
 from pydantic import ValidationError
 
+from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
@@ -39,6 +42,7 @@ from metadata.generated.schema.entity.services.metadataService import MetadataCo
 from metadata.ingestion.api.parser import (
     get_connection_class,
     get_service_type,
+    parse_test_connection_request_gracefully,
     parse_workflow_config_gracefully,
 )
 
@@ -195,5 +199,64 @@ class TestWorkflowParse(TestCase):
 
         self.assertIn(
             "1 validation error for GlueConnection\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            str(err.exception),
+        )
+
+    def test_test_connection_mysql(self):
+        """
+        Test the TestConnection for MySQL
+        """
+        config_dict = {
+            "connection": {
+                "config": {
+                    "type": "Mysql",
+                    "username": "openmetadata_user",
+                    "password": "openmetadata_password",
+                    "hostPort": "localhost:3306",
+                }
+            },
+            "connectionType": "Database",
+        }
+
+        self.assertIsInstance(
+            parse_test_connection_request_gracefully(config_dict),
+            TestServiceConnectionRequest,
+        )
+
+        config_dict_ko = {
+            "connection": {
+                "config": {
+                    "type": "Mysql",
+                    "username": "openmetadata_user",
+                    "password": "openmetadata_password",
+                }
+            },
+            "connectionType": "Database",
+        }
+
+        with self.assertRaises(ValidationError) as err:
+            parse_test_connection_request_gracefully(config_dict_ko)
+        self.assertIn(
+            "1 validation error for MysqlConnection\nhostPort\n  field required (type=value_error.missing)",
+            str(err.exception),
+        )
+
+        config_dict_ko2 = {
+            "connection": {
+                "config": {
+                    "type": "Mysql",
+                    "username": "openmetadata_user",
+                    "password": "openmetadata_password",
+                    "hostPort": "localhost:3306",
+                    "random": "value",
+                }
+            },
+            "connectionType": "Database",
+        }
+
+        with self.assertRaises(ValidationError) as err:
+            parse_test_connection_request_gracefully(config_dict_ko2)
+        self.assertIn(
+            "1 validation error for MysqlConnection\nrandom\n  extra fields not permitted (type=value_error.extra)",
             str(err.exception),
         )

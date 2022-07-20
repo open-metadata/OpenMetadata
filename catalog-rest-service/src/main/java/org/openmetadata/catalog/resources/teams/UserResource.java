@@ -70,6 +70,7 @@ import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -152,6 +153,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Returns list of admin users if set to true", schema = @Schema(type = "boolean"))
+          @QueryParam("isAdmin")
+          Boolean isAdmin,
+      @Parameter(description = "Returns list of bot users if set to true", schema = @Schema(type = "boolean"))
+          @QueryParam("isBot")
+          Boolean isBot,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -160,6 +167,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
+    if (isAdmin != null) {
+      filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
+    }
+    if (isBot != null) {
+      filter.addQueryParam("isBot", String.valueOf(isBot));
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -555,7 +568,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
-        .withTeams(dao.toEntityReferences(create.getTeams(), Entity.TEAM))
-        .withRoles(dao.toEntityReferences(create.getRoles(), Entity.ROLE));
+        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
+        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 }

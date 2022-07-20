@@ -141,7 +141,7 @@ const UserPage = () => {
           setIsFeedLoading(false);
         });
     },
-    [taskStatus]
+    [taskStatus, userData]
   );
 
   const handleFeedFetchFromFeedList = useCallback(

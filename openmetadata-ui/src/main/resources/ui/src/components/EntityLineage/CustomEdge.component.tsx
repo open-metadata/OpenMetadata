@@ -13,12 +13,8 @@
 
 import React, { Fragment } from 'react';
 import { EdgeProps, getBezierPath, getEdgeCenter } from 'react-flow-renderer';
-import {
-  foreignObjectSize,
-  pipelineEdgeWidth,
-} from '../../constants/Lineage.constants';
-import { EntityType } from '../../enums/entity.enum';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { foreignObjectSize } from '../../constants/Lineage.constants';
+import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
 
 export const CustomEdge = ({
@@ -34,7 +30,7 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
-  const { onEdgeClick, addPipelineClick, ...rest } = data;
+  const { onEdgeClick, ...rest } = data;
   const offset = 4;
 
   const edgePath = getBezierPath({
@@ -69,12 +65,6 @@ export const CustomEdge = ({
     targetY,
   });
 
-  const isTableToTableEdge = () => {
-    const { sourceType, targetType } = data;
-
-    return sourceType === EntityType.TABLE && targetType === EntityType.TABLE;
-  };
-
   const getInvisiblePath = (path: string) => {
     return (
       <path
@@ -100,90 +90,26 @@ export const CustomEdge = ({
       />
       {getInvisiblePath(invisibleEdgePath)}
       {getInvisiblePath(invisibleEdgePath1)}
-      {!data.isColumnLineage && isTableToTableEdge() ? (
-        data.label ? (
-          <foreignObject
-            data-testid="pipeline-label"
-            height={foreignObjectSize}
-            requiredExtensions="http://www.w3.org/1999/xhtml"
-            width={pipelineEdgeWidth}
-            x={edgeCenterX - pipelineEdgeWidth / 2}
-            y={edgeCenterY - foreignObjectSize / 2}>
-            <body
-              onClick={(event) =>
-                data.isEditMode &&
-                addPipelineClick?.(event, rest as CustomEdgeData)
-              }>
-              <div className="tw-flex-center tw-bg-body-main tw-gap-2 tw-border tw-rounded tw-p-2">
-                <div className="tw-flex tw-items-center tw-gap-2">
-                  <SVGIcons
-                    alt="times-circle"
-                    icon={Icons.PIPELINE_GREY}
-                    width="14px"
-                  />
-                  <span data-testid="pipeline-name">{data.label}</span>
-                </div>
-                {data.isEditMode && (
-                  <button className="tw-cursor-pointer tw-flex tw-z-9999">
-                    <SVGIcons
-                      alt="times-circle"
-                      icon={Icons.EDIT_OUTLINE_PRIMARY}
-                      width="16px"
-                    />
-                  </button>
-                )}
-              </div>
-            </body>
-          </foreignObject>
-        ) : (
-          selected &&
-          data.isEditMode && (
-            <foreignObject
-              data-testid="add-pipeline"
-              height={foreignObjectSize}
-              requiredExtensions="http://www.w3.org/1999/xhtml"
-              width={foreignObjectSize}
-              x={edgeCenterX - foreignObjectSize / offset}
-              y={edgeCenterY - foreignObjectSize / offset}>
-              <button
-                className="tw-cursor-pointer tw-flex tw-z-9999"
-                style={{
-                  transform: 'rotate(45deg)',
-                }}
-                onClick={(event) =>
-                  addPipelineClick?.(event, rest as CustomEdgeData)
-                }>
-                <SVGIcons
-                  alt="times-circle"
-                  icon="icon-times-circle"
-                  width="16px"
-                />
-              </button>
-            </foreignObject>
-          )
-        )
-      ) : (
-        selected &&
-        data.isEditMode && (
-          <foreignObject
-            data-testid="delete-button"
-            height={foreignObjectSize}
-            requiredExtensions="http://www.w3.org/1999/xhtml"
-            width={foreignObjectSize}
-            x={edgeCenterX - foreignObjectSize / offset}
-            y={edgeCenterY - foreignObjectSize / offset}>
-            <button
-              className="tw-cursor-pointer tw-flex tw-z-9999"
-              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
-              <SVGIcons
-                alt="times-circle"
-                icon="icon-times-circle"
-                width="16px"
-              />
-            </button>
-          </foreignObject>
-        )
-      )}
+
+      {selected ? (
+        <foreignObject
+          data-testid="delete-button"
+          height={foreignObjectSize}
+          requiredExtensions="http://www.w3.org/1999/xhtml"
+          width={foreignObjectSize}
+          x={edgeCenterX - foreignObjectSize / offset}
+          y={edgeCenterY - foreignObjectSize / offset}>
+          <button
+            className="tw-cursor-pointer tw-flex tw-z-9999"
+            onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
+            <SVGIcons
+              alt="times-circle"
+              icon="icon-times-circle"
+              width="16px"
+            />
+          </button>
+        </foreignObject>
+      ) : null}
     </Fragment>
   );
 };

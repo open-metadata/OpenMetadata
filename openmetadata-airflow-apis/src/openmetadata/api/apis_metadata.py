@@ -93,11 +93,6 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "rest_status",
-        "description": "Get the status of Airflow REST status",
-        "http_method": "GET",
-    },
-    {
         "name": "enable_dag",
         "description": "Mark the DAG as enabled to run on the next schedule.",
         "http_method": "POST",
