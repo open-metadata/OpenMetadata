@@ -293,6 +293,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       // Load set of resource types
       RESOURCES.addAll(Entity.listEntities());
       RESOURCES.add("lineage");
+      RESOURCES.add("feed");
       Collections.sort(RESOURCES);
     }
     return RESOURCES;

@@ -27,7 +27,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
-import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -41,40 +41,30 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean hasPermissions(AuthenticationContext ctx, EntityReference entityOwnership) {
+  public boolean hasPermissions(SecurityContext securityContext, EntityReference entityOwnership) {
     return true;
   }
 
   @Override
   public boolean hasPermissions(
-      AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
+      SecurityContext securityContext, EntityReference entityReference, MetadataOperation operation) {
     return true;
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference) {
+  public List<MetadataOperation> listPermissions(SecurityContext securityContext, EntityReference entityReference) {
     // Return all operations.
     return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
   }
 
   @Override
-  public boolean isAdmin(AuthenticationContext ctx) {
-    return true;
-  }
-
-  @Override
-  public boolean isBot(AuthenticationContext ctx) {
-    return true;
-  }
-
-  @Override
-  public boolean isOwner(AuthenticationContext ctx, EntityReference entityReference) {
+  public boolean isOwner(SecurityContext securityContext, EntityReference entityReference) {
     return true;
   }
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {}
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {}
 
   private void addAnonymousUser() {
     String username = "anonymous";

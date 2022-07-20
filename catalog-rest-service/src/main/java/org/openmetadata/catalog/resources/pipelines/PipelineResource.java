@@ -59,7 +59,6 @@ import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
@@ -354,7 +353,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
     return addHref(uriInfo, pipeline);
   }

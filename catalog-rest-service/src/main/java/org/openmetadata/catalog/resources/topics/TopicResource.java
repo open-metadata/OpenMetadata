@@ -59,7 +59,6 @@ import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
@@ -349,7 +348,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the topic", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid TopicSampleData sampleData)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Topic topic = dao.addSampleData(UUID.fromString(id), sampleData);
     return addHref(uriInfo, topic);
   }

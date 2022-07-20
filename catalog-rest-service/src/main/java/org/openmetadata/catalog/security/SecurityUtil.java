@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.security;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
@@ -25,6 +24,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonPatchUtils;
@@ -38,45 +38,6 @@ public final class SecurityUtil {
 
   private SecurityUtil() {}
 
-  public static void authorizeAdmin(Authorizer authorizer, SecurityContext securityContext, int checkFlags) {
-    if (checkOwner(checkFlags) || checkPermissions(checkFlags)) {
-      throw new IllegalArgumentException("Only ADMIN or BOT authorization is allowed");
-    }
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
-    if (authorizer.isAdmin(authenticationCtx)) {
-      return;
-    }
-    if (checkBot(checkFlags) && authorizer.isBot(authenticationCtx)) {
-      return;
-    }
-    throw new AuthorizationException(notAdmin(authenticationCtx.getPrincipal()));
-  }
-
-  public static void authorize(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      EntityReference entity,
-      EntityReference owner,
-      int checkFlags) {
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
-    if (authorizer.isAdmin(authenticationCtx)) {
-      return;
-    }
-    if (checkFlags == 0) {
-      throw new AuthorizationException(notAdmin(authenticationCtx.getPrincipal()));
-    }
-    if ((checkFlags | BOT) > 0 && authorizer.isBot(authenticationCtx)) {
-      return;
-    }
-    if ((checkFlags | OWNER) > 0 && authorizer.isOwner(authenticationCtx, owner)) {
-      return;
-    }
-    if ((checkFlags | PERMISSIONS) > 0 && authorizer.hasPermissions(authenticationCtx, entity)) {
-      return;
-    }
-    throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal()));
-  }
-
   /** This helper function checks if user has permission to perform the given metadata operation. */
   public static void checkAdminRoleOrPermissions(
       Authorizer authorizer,
@@ -85,11 +46,13 @@ public final class SecurityUtil {
       MetadataOperation metadataOperation) {
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
 
-    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(securityContext.getUserPrincipal().getName());
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
       return;
     }
 
-    if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
+    // TODO fix this
+    if (!authorizer.hasPermissions(securityContext, entityReference, metadataOperation)) {
       throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal(), metadataOperation.value()));
     }
   }
@@ -107,9 +70,11 @@ public final class SecurityUtil {
       JsonPatch patch) {
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
 
-    if (authorizer.isAdmin(authenticationCtx)
-        || authorizer.isBot(authenticationCtx)
-        || authorizer.hasPermissions(authenticationCtx, ownerReference)) {
+    // TODO use subject context
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(securityContext.getUserPrincipal().getName());
+    if (subjectContext.isAdmin()
+        || subjectContext.isBot()
+        || authorizer.hasPermissions(securityContext, ownerReference)) {
       return;
     }
 
@@ -120,7 +85,7 @@ public final class SecurityUtil {
       throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal()));
     }
     for (MetadataOperation metadataOperation : metadataOperations) {
-      if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
+      if (!authorizer.hasPermissions(securityContext, entityReference, metadataOperation)) {
         throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal(), metadataOperation.value()));
       }
     }

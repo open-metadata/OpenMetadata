@@ -71,13 +71,16 @@ public class SubjectContext {
     return Boolean.TRUE.equals(user.getIsBot());
   }
 
-  public boolean isOwner(EntityReference entityOwner) {
-    if (entityOwner.getType().equals(Entity.USER) && entityOwner.getName().equals(user.getName())) {
+  public boolean isOwner(EntityReference owner) {
+    if (owner == null) {
+      return false;
+    }
+    if (owner.getType().equals(Entity.USER) && owner.getName().equals(user.getName())) {
       return true; // Owner is same as user.
     }
-    if (entityOwner.getType().equals(Entity.TEAM)) {
+    if (owner.getType().equals(Entity.TEAM)) {
       for (EntityReference userTeam : user.getTeams()) {
-        if (userTeam.getName().equals(entityOwner.getName())) {
+        if (userTeam.getName().equals(owner.getName())) {
           return true; // Owner is a team, and the user is part of this team.
         }
       }

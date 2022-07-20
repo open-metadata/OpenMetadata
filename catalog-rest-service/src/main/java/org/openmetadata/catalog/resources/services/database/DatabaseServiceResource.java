@@ -58,7 +58,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -377,7 +376,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   private DatabaseService decryptOrNullify(SecurityContext securityContext, DatabaseService databaseService) {
     try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+      authorizer.authorizeAdmin(securityContext, true);
     } catch (AuthorizationException e) {
       return databaseService.withConnection(null);
     }

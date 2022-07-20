@@ -64,7 +64,6 @@ import org.openmetadata.catalog.jdbi3.TypeRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -391,7 +390,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid CustomProperty property)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, false);
     PutResponse<Type> response =
         dao.addCustomProperty(uriInfo, securityContext.getUserPrincipal().getName(), id, property);
     addHref(uriInfo, response.getEntity());

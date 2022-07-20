@@ -36,7 +36,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
-import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
@@ -94,7 +94,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean hasPermissions(AuthenticationContext ctx, EntityReference owner) {
+  public boolean hasPermissions(SecurityContext ctx, EntityReference owner) {
     // Since we have roles and operations. An Admin could enable updateDescription, tags, ownership permissions to
     // a role and assign that to the users who can update the entities. With this we can look at the owner as a strict
     // requirement to manage entities. So if owner is null we will not allow users to update entities. They can get a
@@ -104,10 +104,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public boolean hasPermissions(
-      AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
-    validate(ctx);
+      SecurityContext securityContext, EntityReference entityReference, MetadataOperation operation) {
     try {
-      SubjectContext subjectContext = SubjectContext.getSubjectContext(SecurityUtil.getUserName(ctx));
+      SubjectContext subjectContext = getSubjectContext(securityContext);
       List<EntityReference> allRoles = subjectContext.getAllRoles();
       if (entityReference == null) {
         // In some cases there is no specific entity being acted upon. Eg: Lineage.
@@ -128,16 +127,15 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference) {
-    validate(ctx);
+  public List<MetadataOperation> listPermissions(SecurityContext securityContext, EntityReference entityReference) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
 
-    if (isAdmin(ctx) || isBot(ctx)) {
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
       // Admins and bots have permissions to do all operations.
       return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
     }
 
     try {
-      SubjectContext subjectContext = SubjectContext.getSubjectContext(SecurityUtil.getUserName(ctx));
       List<EntityReference> allRoles = subjectContext.getAllRoles();
       if (entityReference == null) {
         return RoleEvaluator.getInstance().getAllowedOperations(allRoles, null);
@@ -156,35 +154,12 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean isAdmin(AuthenticationContext ctx) {
-    validate(ctx);
-    try {
-      SubjectContext subjectContext = SubjectContext.getSubjectContext(SecurityUtil.getUserName(ctx));
-      return subjectContext.isAdmin();
-    } catch (EntityNotFoundException ex) {
-      return false;
-    }
-  }
-
-  @Override
-  public boolean isBot(AuthenticationContext ctx) {
-    validate(ctx);
-    try {
-      SubjectContext subjectContext = SubjectContext.getSubjectContext(SecurityUtil.getUserName(ctx));
-      return subjectContext.isBot();
-    } catch (EntityNotFoundException ex) {
-      return false;
-    }
-  }
-
-  @Override
-  public boolean isOwner(AuthenticationContext ctx, EntityReference owner) {
+  public boolean isOwner(SecurityContext securityContext, EntityReference owner) {
     if (owner == null) {
       return false;
     }
-    validate(ctx);
     try {
-      SubjectContext subjectContext = SubjectContext.getSubjectContext(SecurityUtil.getUserName(ctx));
+      SubjectContext subjectContext = getSubjectContext(securityContext);
       return subjectContext.isOwner(owner);
     } catch (EntityNotFoundException ex) {
       return false;
@@ -193,9 +168,14 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
+      throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      return;
+    }
+
+    if (subjectContext.isOwner(resourceContext.getOwner())) {
       return;
     }
 
@@ -204,7 +184,19 @@ public class DefaultAuthorizer implements Authorizer {
         && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
       return;
     }
-    throw new AuthorizationException(noPermission(securityContext.getUserPrincipal()));
+    List<MetadataOperation> metadataOperations = operationContext.getOperations();
+
+    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
+    if (metadataOperations.isEmpty()) {
+      throw new AuthorizationException(noPermission(securityContext.getUserPrincipal()));
+    }
+    for (MetadataOperation operation : metadataOperations) {
+      if (!RoleEvaluator.getInstance()
+          .hasPermissions(subjectContext.getAllRoles(), resourceContext.getEntity(), operation)) {
+        throw new AuthorizationException(noPermission(securityContext.getUserPrincipal(), operation.value()));
+      }
+    }
+    return;
   }
 
   @Override
@@ -214,12 +206,6 @@ public class DefaultAuthorizer implements Authorizer {
       return;
     }
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal()));
-  }
-
-  private void validate(AuthenticationContext ctx) {
-    if (ctx == null || ctx.getPrincipal() == null) {
-      throw new AuthenticationException("No principal in AuthenticationContext");
-    }
   }
 
   private void addOrUpdateUser(User user) {
@@ -238,11 +224,6 @@ public class DefaultAuthorizer implements Authorizer {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
-
-    try {
-      return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
-    } catch (EntityNotFoundException ex) {
-      throw new AuthenticationException("No principal in AuthenticationContext");
-    }
+    return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
   }
 }

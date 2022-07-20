@@ -17,10 +17,8 @@ import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -38,10 +36,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final K dao;
   protected final Authorizer authorizer;
   private final boolean supportsOwner;
-  private final OperationContext createOperationContext;
-  private final OperationContext deleteOperationContext;
-  private final OperationContext getOperationContext;
-  private final OperationContext listOperationContext;
+  protected final OperationContext createOperationContext;
+  protected final OperationContext deleteOperationContext;
+  protected final OperationContext getOperationContext;
+  protected final OperationContext listOperationContext;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
@@ -51,16 +49,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.dao = repository;
     this.authorizer = authorizer;
 
-    createOperationContext =
-        OperationContext.builder().resource("resource").operations(List.of(MetadataOperation.CREATE)).build();
-    deleteOperationContext =
-        OperationContext.builder().resource("resource").operations(List.of(MetadataOperation.DELETE)).build();
+    createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    deleteOperationContext = new OperationContext(entityType, MetadataOperation.DELETE);
 
     // TODO View_ALL vs view without test results, sample data, etc?
-    listOperationContext =
-        OperationContext.builder().resource(entityType).operations(List.of(MetadataOperation.VIEW_ALL)).build();
-    getOperationContext =
-        OperationContext.builder().resource(entityType).operations(List.of(MetadataOperation.VIEW_ALL)).build();
+    listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
   }
 
   public final Fields getFields(String fields) {
@@ -124,9 +118,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, int checkFlags)
       throws IOException {
-    dao.prepare(entity);
-    EntityReference owner = SecurityUtil.checkOwner(checkFlags) ? dao.getOriginalOwner(entity) : null;
-    SecurityUtil.authorize(authorizer, securityContext, null, owner, checkFlags);
+    dao.prepare(entity); // TODO fix this
+    authorizer.authorize(
+        securityContext, createOperationContext, getResourceContextByName(entity.getFullyQualifiedName()));
     PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -134,9 +128,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, String id, JsonPatch patch)
       throws IOException {
-    T entity = dao.get(uriInfo, id, supportsOwner ? getFields(FIELD_OWNER) : Fields.EMPTY_FIELDS);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, entity.getEntityReference(), entity.getOwner(), patch);
+    // TODO fix this
+    OperationContext operationContext = new OperationContext(entityType, patch);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PatchResponse<T> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -151,7 +145,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean hardDelete,
       int checkFlags)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, checkFlags);
+    authorizer.authorizeAdmin(securityContext, true);
     DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -165,7 +159,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean hardDelete,
       int checkFlags)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, checkFlags);
+    authorizer.authorizeAdmin(securityContext, true);
     DeleteResponse<T> response =
         dao.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
@@ -184,17 +178,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return entity;
   }
 
-  private ResourceContext getResourceContext() {
-    return ResourceContext.builder().resource(entityType).build();
+  protected ResourceContext getResourceContext() {
+    return ResourceContext.builder().resource(entityType).entityRepository(dao).build();
   }
 
-  private ResourceContext getResourceContextById(String id) {
+  protected ResourceContext getResourceContextById(String id) {
     String fields = supportsOwner ? FIELD_OWNER : null;
-    return ResourceContext.builder().resource(entityType).id(id).fields(fields).build();
+    return ResourceContext.builder().resource(entityType).entityRepository(dao).id(id).fields(fields).build();
   }
 
-  private ResourceContext getResourceContextByName(String name) {
+  protected ResourceContext getResourceContextByName(String name) {
     String fields = supportsOwner ? FIELD_OWNER : null;
-    return ResourceContext.builder().resource(entityType).name(name).fields(fields).build();
+    return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).fields(fields).build();
   }
 }
