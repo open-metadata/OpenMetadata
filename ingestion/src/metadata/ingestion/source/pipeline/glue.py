@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import traceback
 from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -128,33 +129,35 @@ class GlueSource(PipelineServiceSource):
         self, pipeline_details: Any
     ) -> Optional[OMetaPipelineStatus]:
         for job in self.job_name_list:
-
-            runs = self.glue.get_job_runs(JobName=job)
-            runs = runs.get("JobRuns", [])
-
-            for attempt in runs:
-                task_status = []
-                task_status.append(
-                    TaskStatus(
-                        name=attempt["JobName"],
+            try:
+                runs = self.glue.get_job_runs(JobName=job)
+                runs = runs.get("JobRuns", [])
+                for attempt in runs:
+                    task_status = []
+                    task_status.append(
+                        TaskStatus(
+                            name=attempt["JobName"],
+                            executionStatus=STATUS_MAP.get(
+                                attempt["JobRunState"].lower(), StatusType.Pending
+                            ).value,
+                            startTime=attempt["StartedOn"].timestamp(),
+                            endTime=attempt["CompletedOn"].timestamp(),
+                        )
+                    )
+                    pipeline_status = PipelineStatus(
+                        taskStatus=task_status,
+                        executionDate=attempt["StartedOn"].timestamp(),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,
-                        startTime=attempt["StartedOn"].timestamp(),
-                        endTime=attempt["CompletedOn"].timestamp(),
                     )
-                )
-                pipeline_status = PipelineStatus(
-                    taskStatus=task_status,
-                    executionDate=attempt["StartedOn"].timestamp(),
-                    executionStatus=STATUS_MAP.get(
-                        attempt["JobRunState"].lower(), StatusType.Pending
-                    ).value,
-                )
-                yield OMetaPipelineStatus(
-                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                    pipeline_status=pipeline_status,
-                )
+                    yield OMetaPipelineStatus(
+                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                        pipeline_status=pipeline_status,
+                    )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(err)
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
