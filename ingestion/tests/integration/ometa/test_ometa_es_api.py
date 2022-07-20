@@ -117,7 +117,7 @@ class OMetaESTest(TestCase):
 
         cls.entity = cls.metadata.create_or_update(create)
 
-        # Leave some time for indexes to get updated, otherwise this happens to fast
+        # Leave some time for indexes to get updated, otherwise this happens too fast
         cls.check_es_index()
 
     @classmethod
