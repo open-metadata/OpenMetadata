@@ -412,7 +412,7 @@ const EntityTable = ({
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-hidden group-hover:tw-inline-block"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -446,7 +446,7 @@ const EntityTable = ({
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100 tw-align-top"
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-hidden group-hover:tw-inline-block tw-align-top"
         data-testid="request-tags"
         onClick={() =>
           hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)

@@ -45,7 +45,7 @@ export const getFieldThreadElement = (
 
   return !isEmpty(threadValue) ? (
     <button
-      className="link-text tw-self-start tw-w-8 tw-h-8 tw-flex-none tw-mx-1 tw-opacity-0 group-hover:tw-opacity-100"
+      className="link-text tw-self-start tw-w-8 tw-h-8 tw-flex-none tw-mx-1"
       data-testid="field-thread"
       onClick={(e) => {
         e.preventDefault();
