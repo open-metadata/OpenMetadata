@@ -37,8 +37,6 @@ import {
   getEntityName,
   getEntityPlaceHolder,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
@@ -51,7 +49,6 @@ import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
@@ -102,18 +99,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
+
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const hasEditAccess = () => {
     const loggedInUser = AppState.getCurrentUserDetails();
@@ -448,7 +438,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -555,19 +544,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
-            />
-          ) : null}
-          {selectedField ? (
-            <RequestDescriptionModal
-              createThread={createThread}
-              defaultValue={getDefaultValue(owner as EntityReference)}
-              header="Request description"
-              threadLink={getEntityFeedLink(
-                EntityType.TOPIC,
-                topicFQN,
-                selectedField
-              )}
-              onCancel={closeRequestModal}
             />
           ) : null}
         </div>

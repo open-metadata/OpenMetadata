@@ -29,6 +29,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
+  TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -47,7 +48,6 @@ const Description: FC<DescriptionProps> = ({
   entityName,
   entityFieldThreads,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   entityType,
   entityFqn,
   entityFieldTasks,
@@ -88,7 +88,7 @@ const Description: FC<DescriptionProps> = ({
   const RequestDescriptionEl = () => {
     const hasDescription = Boolean(description.trim());
 
-    return onEntityFieldSelect ? (
+    return TASK_ENTITIES.includes(entityType as EntityType) ? (
       <button
         className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
         data-testid="request-description"

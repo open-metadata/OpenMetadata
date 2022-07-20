@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
-import { entityUrlMap } from '../constants/feed.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
-import { EntityReference } from '../generated/entity/teams/user';
 import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
 import SVGIcons, { Icons } from './SvgUtils';
@@ -84,20 +82,4 @@ export const getFieldThreadElement = (
       ) : null}
     </Fragment>
   );
-};
-
-export const getDefaultValue = (owner: EntityReference) => {
-  const message = 'Can you add a description?';
-  if (isUndefined(owner)) {
-    return `${message}`;
-  } else {
-    const name = owner.name;
-    const displayName = owner.displayName;
-    const entityType = owner.type;
-    const mention = `<a href=${`/${
-      entityUrlMap[entityType as keyof typeof entityUrlMap]
-    }/${name}`}>@${displayName}</a>`;
-
-    return `${mention} ${message}`;
-  }
 };

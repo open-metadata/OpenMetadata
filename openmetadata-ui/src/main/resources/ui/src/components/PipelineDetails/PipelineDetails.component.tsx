@@ -36,8 +36,6 @@ import {
   getEntityName,
   getEntityPlaceHolder,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -50,7 +48,6 @@ import Entitylineage from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
@@ -110,8 +107,6 @@ const PipelineDetails = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [selectedField, setSelectedField] = useState<string>('');
-
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [selectedExecution, setSelectedExecution] = useState<PipelineStatus>(
     () => {
@@ -125,13 +120,6 @@ const PipelineDetails = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const hasEditAccess = () => {
     const loggedInUser = AppState.getCurrentUserDetails();
@@ -421,7 +409,6 @@ const PipelineDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -535,19 +522,6 @@ const PipelineDetails = ({
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
-        />
-      ) : null}
-      {selectedField ? (
-        <RequestDescriptionModal
-          createThread={createThread}
-          defaultValue={getDefaultValue(owner as EntityReference)}
-          header="Request description"
-          threadLink={getEntityFeedLink(
-            EntityType.PIPELINE,
-            pipelineFQN,
-            selectedField
-          )}
-          onCancel={closeRequestModal}
         />
       ) : null}
     </PageContainer>
