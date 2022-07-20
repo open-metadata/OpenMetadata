@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
+from metadata.orm_profiler.profiler.utils import bytes_to_hex, get_bytes_column_indexes
 
 RANDOM_LABEL = "random"
 
@@ -100,6 +101,9 @@ class Sampler:
             .limit(self.sample_limit)
             .all()
         )
+
+        if get_bytes_column_indexes(sqa_columns):
+            sqa_sample = bytes_to_hex(sqa_sample, get_bytes_column_indexes(sqa_columns))
 
         return TableData(
             columns=[column.name for column in sqa_columns],
