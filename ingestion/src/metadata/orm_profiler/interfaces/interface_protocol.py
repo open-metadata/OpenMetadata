@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
 from metadata.generated.schema.tests.basic import TestCaseResult
