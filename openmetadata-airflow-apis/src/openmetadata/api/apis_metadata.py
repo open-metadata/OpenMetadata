@@ -10,7 +10,7 @@
 #  limitations under the License.
 from typing import Any, Dict, Optional
 
-# TODO LOG (just link v1)
+# TODO https://github.com/open-metadata/OpenMetadata/issues/6215
 APIS_METADATA = [
     {
         "name": "deploy_dag",
@@ -34,7 +34,7 @@ APIS_METADATA = [
         "arguments": [],
         "post_arguments": [
             {
-                "name": "workflow_name",
+                "name": "dag_id",
                 "description": "Workflow name to run",
                 "required": True,
             },
@@ -109,6 +109,20 @@ APIS_METADATA = [
     {
         "name": "disable_dag",
         "description": "Mark the DAG as disabled. It will not run on the next schedule.",
+        "http_method": "POST",
+        "arguments": [],
+        "post_arguments": [
+            {
+                "name": "dag_id",
+                "description": "The id of the dag",
+                "form_input_type": "text",
+                "required": True,
+            },
+        ],
+    },
+    {
+        "name": "kill_all",
+        "description": "Mark all not finished tasks of a DAG as failed to kill the execution",
         "http_method": "POST",
         "arguments": [],
         "post_arguments": [

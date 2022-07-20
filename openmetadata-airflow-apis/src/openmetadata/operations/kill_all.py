@@ -9,16 +9,21 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Helper functions
+Module containing the logic to kill all DAG not finished executions
 """
-import re
-from typing import Optional
+
+from airflow import settings
+from airflow.models import DagModel, DagRun
+from flask import Response
+from openmetadata.api.response import ApiResponse, ResponseFormat
 
 
-def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
+def kill_all(dag_id: str) -> Response:
     """
-    Given a string we want to use as a dag_id, we should
-    give it a cleanup as Airflow does not support anything
-    that is not alphanumeric for the name
+    Validate that the DAG is registered by Airflow.
+    If exists, check the DagRun
+    :param dag_id: DAG to find
+    :return: API Response
     """
-    return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id) if raw_dag_id else None
+
+    pass

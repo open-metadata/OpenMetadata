@@ -105,7 +105,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
       String triggerUrl = String.format(triggerEndPoint, serviceURL);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("workflow_name", pipelineName);
+      requestPayload.put("dag_id", pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response.body();
