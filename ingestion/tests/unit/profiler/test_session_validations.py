@@ -18,10 +18,17 @@ from unittest import TestCase
 from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+    SQLiteScheme,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual import (
     ColumnValuesMissingCount,
+)
+from metadata.generated.schema.tests.column.columnValuesToBeInSet import (
+    ColumnValuesToBeInSet,
 )
 from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
     ColumnValuesToBeNotInSet,
@@ -29,8 +36,14 @@ from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
 from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
     ColumnValuesToMatchRegex,
 )
-from metadata.orm_profiler.validations.core import validate
-from metadata.utils.connections import create_and_bind_session
+from metadata.generated.schema.tests.column.columnValuesToNotMatchRegex import (
+    ColumnValuesToNotMatchRegex,
+)
+from metadata.generated.schema.tests.table.tableCustomSQLQuery import (
+    TableCustomSQLQuery,
+)
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.orm_profiler.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 Base = declarative_base()
@@ -46,13 +59,15 @@ class User(Base):
     age = Column(Integer)
 
 
-class MetricsTest(TestCase):
+class SessionValidation(TestCase):
     """
     Run checks on different metrics
     """
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
-    session = create_and_bind_session(engine)
+    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    engine = sqa_profiler_interface.session.get_bind()
+    session = sqa_profiler_interface.session
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -80,17 +95,21 @@ class MetricsTest(TestCase):
         cls.session.add_all(data)
         cls.session.commit()
 
+    def setUp(self) -> None:
+        self.sqa_profiler_interface.create_sampler(User)
+        self.sqa_profiler_interface.create_runner(User)
+
     def test_column_values_not_in_set(self):
         """
         Check that the metric runs and the results are correctly validated
         """
         column_profile = ColumnProfile(name="name")  # column name
 
-        res_ok = validate(
+        res_ok = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["random", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -100,11 +119,11 @@ class MetricsTest(TestCase):
             result="Found countInSet=0. It should be 0.",
         )
 
-        res_ko = validate(
+        res_ko = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -114,11 +133,11 @@ class MetricsTest(TestCase):
             result="Found countInSet=1. It should be 0.",
         )
 
-        res_aborted = validate(
+        res_aborted = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=ColumnProfile(name="random"),
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -137,11 +156,11 @@ class MetricsTest(TestCase):
         """
         column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
 
-        res_ok = validate(
+        res_ok = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -151,11 +170,11 @@ class MetricsTest(TestCase):
             result="Found 2 value(s) matching regex pattern vs 2 value(s) in the column.",
         )
 
-        res_ko = validate(
+        res_ko = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="Jo%"),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -165,11 +184,11 @@ class MetricsTest(TestCase):
             result="Found 1 value(s) matching regex pattern vs 2 value(s) in the column.",
         )
 
-        res_aborted = validate(
+        res_aborted = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
             col_profile=ColumnProfile(name="name"),
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -187,11 +206,11 @@ class MetricsTest(TestCase):
         """
         column_profile = ColumnProfile(name="nickname", nullCount=1)
 
-        res_ok = validate(
+        res_ok = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(missingCountValue=1),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -201,14 +220,16 @@ class MetricsTest(TestCase):
             result="Found missingCount=1.0. It should be 1.",
         )
 
-        res_ok_2 = validate(
+        res_ok_2 = validation_enum_registry.registry[
+            "columnValuesMissingCountToBeEqual"
+        ](
             ColumnValuesMissingCount(
                 missingCountValue=2,
                 missingValueMatch=["johnny b goode"],
             ),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -218,13 +239,13 @@ class MetricsTest(TestCase):
             result="Found missingCount=2.0. It should be 2.",
         )
 
-        res_ko = validate(
+        res_ko = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(
                 missingCountValue=0,
             ),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -234,13 +255,15 @@ class MetricsTest(TestCase):
             result="Found missingCount=1.0. It should be 0.",
         )
 
-        res_aborted = validate(
+        res_aborted = validation_enum_registry.registry[
+            "columnValuesMissingCountToBeEqual"
+        ](
             ColumnValuesMissingCount(
                 missingCountValue=0,
             ),
             col_profile=ColumnProfile(name="nickname"),
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -250,4 +273,88 @@ class MetricsTest(TestCase):
             result=(
                 "We expect `nullCount` to be informed on the profiler for ColumnValuesMissingCount."
             ),
+        )
+
+    def test_column_values_to_be_in_set(self):
+        """
+        Check that the metric runs and the results are correctly validated
+        """
+        column_profile = ColumnProfile(name="name")  # column name
+
+        res_ok = validation_enum_registry.registry["columnValuesToBeInSet"](
+            ColumnValuesToBeInSet(allowedValues=["random", "forbidden"]),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            runner=self.sqa_profiler_interface.runner,
+            table=User,
+        )
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Failed,
+            result="Found countInSet=0",
+        )
+
+    def test_column_values_to_not_match_regex(self):
+        """
+        Check that the metric runs and the results are correctly validated
+        """
+        column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
+
+        res_ok = validation_enum_registry.registry["columnValuesToNotMatchRegex"](
+            ColumnValuesToNotMatchRegex(forbiddenRegex="J%"),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            runner=self.sqa_profiler_interface.runner,
+            table=User,
+        )
+
+        print(res_ok)
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Failed,
+            result="Found 2 matching the forbidden regex pattern. Expected 0.",
+        )
+
+    def test_table_custom_sql_query(self):
+        """
+        Check that the metric runs and the results are correctly validated
+        """
+        table_profile = TableProfile(profileDate=EXECUTION_DATE.timestamp())
+
+        res_ok = (
+            validation_enum_registry.registry["tableCustomSQLQuery"](
+                TableCustomSQLQuery(sqlExpression="SELECT * FROM users WHERE age < 10"),
+                table_profile=table_profile,
+                execution_date=EXECUTION_DATE,
+                session=self.session,
+                table=User,
+            )
+            or []
+        )
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Success,
+            result="Found 0 row(s). Test query is expected to return 0 row.",
+        )
+
+        res_ok = (
+            validation_enum_registry.registry["tableCustomSQLQuery"](
+                TableCustomSQLQuery(
+                    sqlExpression="SELECT * FROM users WHERE LOWER(name) LIKE '%john%'"
+                ),
+                table_profile=table_profile,
+                execution_date=EXECUTION_DATE,
+                session=self.session,
+                table=User,
+            )
+            or []
+        )
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Failed,
+            result="Found 1 row(s). Test query is expected to return 0 row.",
         )

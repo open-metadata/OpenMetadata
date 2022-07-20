@@ -12,15 +12,29 @@
 """
 Test Metrics behavior
 """
+import datetime
 from unittest import TestCase
 
-from sqlalchemy import TEXT, Column, Integer, String, create_engine
+from sqlalchemy import (
+    TEXT,
+    Column,
+    Date,
+    DateTime,
+    Integer,
+    String,
+    Time,
+    create_engine,
+)
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+    SQLiteScheme,
+)
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
-from metadata.utils.connections import create_and_bind_session
 
 Base = declarative_base()
 
@@ -33,6 +47,9 @@ class User(Base):
     nickname = Column(String(256))
     comments = Column(TEXT)
     age = Column(Integer)
+    dob = Column(DateTime)  # date of birth
+    tob = Column(Time)  # time of birth
+    doe = Column(Date)  # date of employment
 
 
 class MetricsTest(TestCase):
@@ -40,8 +57,9 @@ class MetricsTest(TestCase):
     Run checks on different metrics
     """
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
-    session = create_and_bind_session(engine)
+    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    engine = sqa_profiler_interface.session.get_bind()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -57,6 +75,9 @@ class MetricsTest(TestCase):
                 nickname="johnny b goode",
                 comments="no comments",
                 age=30,
+                dob=datetime.datetime(1992, 5, 17),
+                tob=datetime.time(11, 2, 32),
+                doe=datetime.date(2020, 1, 12),
             ),
             User(
                 name="Jane",
@@ -64,6 +85,9 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments="maybe some comments",
                 age=31,
+                dob=datetime.datetime(1991, 4, 4),
+                tob=datetime.time(10, 1, 31),
+                doe=datetime.date(2009, 11, 11),
             ),
             User(
                 name="John",
@@ -71,10 +95,17 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments=None,
                 age=None,
+                dob=datetime.datetime(1982, 2, 2),
+                tob=datetime.time(9, 3, 25),
+                doe=datetime.date(2012, 12, 1),
             ),
         ]
-        cls.session.add_all(data)
-        cls.session.commit()
+        cls.sqa_profiler_interface.session.add_all(data)
+        cls.sqa_profiler_interface.session.commit()
+
+    def setUp(self) -> None:
+        self.sqa_profiler_interface.create_sampler(User)
+        self.sqa_profiler_interface.create_runner(User)
 
     def test_count(self):
         """
@@ -82,7 +113,10 @@ class MetricsTest(TestCase):
         """
         count = Metrics.COUNT.value
         profiler = Profiler(
-            count, session=self.session, table=User, use_cols=[User.name]
+            count,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            use_cols=[User.name],
         )
         res = profiler.execute()._column_results
 
@@ -95,7 +129,10 @@ class MetricsTest(TestCase):
         """
         min_age = Metrics.MIN.value
         profiler = Profiler(
-            min_age, session=self.session, table=User, use_cols=[User.age]
+            min_age,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            use_cols=[User.age],
         )
         res = profiler.execute()._column_results
 
@@ -108,12 +145,51 @@ class MetricsTest(TestCase):
         """
         std_age = Metrics.STDDEV.value
         profiler = Profiler(
-            std_age, session=self.session, table=User, use_cols=[User.age]
+            std_age,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            use_cols=[User.age],
         )
         res = profiler.execute()._column_results
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
         assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
+
+    def test_earliest_time(self):
+        """
+        Check Earliest Time Metric
+        """
+        earliest_time = Metrics.MIN.value
+        profiler = Profiler(
+            earliest_time,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            use_cols=[User.dob, User.tob, User.doe],
+        )
+        res = profiler.execute()._column_results
+        assert (
+            res.get(User.dob.name).get(Metrics.MIN.name) == "1982-02-02 00:00:00.000000"
+        )
+        assert res.get(User.tob.name).get(Metrics.MIN.name) == "09:03:25.000000"
+        assert res.get(User.doe.name).get(Metrics.MIN.name) == "2009-11-11"
+
+    def test_latest_time(self):
+        """
+        Check Latest Time Metric
+        """
+        latest_time = Metrics.MAX.value
+        profiler = Profiler(
+            latest_time,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            use_cols=[User.dob, User.tob, User.doe],
+        )
+        res = profiler.execute()._column_results
+        assert (
+            res.get(User.dob.name).get(Metrics.MAX.name) == "1992-05-17 00:00:00.000000"
+        )
+        assert res.get(User.tob.name).get(Metrics.MAX.name) == "11:02:32.000000"
+        assert res.get(User.doe.name).get(Metrics.MAX.name) == "2020-01-12"
 
     def test_null_count(self):
         """
@@ -121,7 +197,10 @@ class MetricsTest(TestCase):
         """
         null_count = Metrics.NULL_COUNT.value
         profiler = Profiler(
-            null_count, session=self.session, table=User, use_cols=[User.nickname]
+            null_count,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            use_cols=[User.nickname],
         )
         res = profiler.execute()._column_results
 
@@ -141,7 +220,7 @@ class MetricsTest(TestCase):
             count,
             null_count,
             null_ratio,
-            session=self.session,
+            profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.nickname],
         )
@@ -156,7 +235,9 @@ class MetricsTest(TestCase):
         Check Table Metric run
         """
         table_count = Metrics.ROW_COUNT.value
-        profiler = Profiler(table_count, session=self.session, table=User)
+        profiler = Profiler(
+            table_count, profiler_interface=self.sqa_profiler_interface, table=User
+        )
         res = profiler.execute()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 3
 
@@ -165,9 +246,11 @@ class MetricsTest(TestCase):
         Check Column Count metric
         """
         col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
-        profiler = Profiler(col_count, session=self.session, table=User)
+        profiler = Profiler(
+            col_count, profiler_interface=self.sqa_profiler_interface, table=User
+        )
         res = profiler.execute()._table_results
-        assert res.get(Metrics.COLUMN_COUNT.name) == 6
+        assert res.get(Metrics.COLUMN_COUNT.name) == 9
 
     def test_avg(self):
         """
@@ -177,7 +260,12 @@ class MetricsTest(TestCase):
         # Integer
         avg = Metrics.MEAN.value
         res = (
-            Profiler(avg, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                avg,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
+            )
             .execute()
             ._column_results
         )
@@ -187,7 +275,12 @@ class MetricsTest(TestCase):
         # String
         avg = Metrics.MEAN.value
         res = (
-            Profiler(avg, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                avg,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -197,7 +290,12 @@ class MetricsTest(TestCase):
         # Text
         avg = Metrics.MEAN.value
         res = (
-            Profiler(avg, session=self.session, table=User, use_cols=[User.comments])
+            Profiler(
+                avg,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.comments],
+            )
             .execute()
             ._column_results
         )
@@ -216,7 +314,7 @@ class MetricsTest(TestCase):
                 count,
                 unique,
                 dup_count,
-                session=self.session,
+                profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
             )
@@ -233,7 +331,12 @@ class MetricsTest(TestCase):
 
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
         res = (
-            Profiler(hist, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                hist,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
+            )
             .execute()
             ._column_results
         )
@@ -252,7 +355,12 @@ class MetricsTest(TestCase):
         # that the metrics runs correctly rather than the implementation logic.
         like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
         res = (
-            Profiler(like, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                like,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -261,7 +369,12 @@ class MetricsTest(TestCase):
 
         like = add_props(expression="Jo%")(Metrics.LIKE_COUNT.value)
         res = (
-            Profiler(like, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                like,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -272,7 +385,7 @@ class MetricsTest(TestCase):
         # with pytest.raises(AttributeError):
         #     Profiler(
         #         Metrics.LIKE_COUNT.value,
-        #         session=self.session,
+        #         profiler_interface=self.sqa_profiler_interface,
         #         table=User,
         #         use_cols=[User.age],
         #     ).execute()
@@ -283,7 +396,12 @@ class MetricsTest(TestCase):
         """
         ilike = add_props(expression="j%")(Metrics.ILIKE_COUNT.value)
         res = (
-            Profiler(ilike, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                ilike,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -292,7 +410,12 @@ class MetricsTest(TestCase):
 
         ilike = add_props(expression="ja%")(Metrics.ILIKE_COUNT.value)
         res = (
-            Profiler(ilike, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                ilike,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -303,7 +426,7 @@ class MetricsTest(TestCase):
         # with pytest.raises(AttributeError):
         #     Profiler(
         #         Metrics.ILIKE_COUNT.value,
-        #         session=self.session,
+        #         profiler_interface=self.sqa_profiler_interface,
         #         table=User,
         #         use_cols=[User.age],
         #     ).execute()
@@ -320,7 +443,7 @@ class MetricsTest(TestCase):
                 like,
                 count,
                 like_ratio,
-                session=self.session,
+                profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
             )
@@ -344,7 +467,7 @@ class MetricsTest(TestCase):
                 ilike,
                 count,
                 ilike_ratio,
-                session=self.session,
+                profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
             )
@@ -361,7 +484,12 @@ class MetricsTest(TestCase):
         _max = Metrics.MAX.value
 
         res = (
-            Profiler(_max, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                _max,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
+            )
             .execute()
             ._column_results
         )
@@ -370,7 +498,7 @@ class MetricsTest(TestCase):
 
         # TMP disable min/max on strings
         # res = (
-        #     Profiler(_max, session=self.session, table=User, use_cols=[User.name])
+        #     Profiler(_max, profiler_interface=self.sqa_profiler_interface, table=User, use_cols=[User.name])
         #     .execute()
         #     ._column_results
         # )
@@ -386,7 +514,12 @@ class MetricsTest(TestCase):
 
         # Integer
         res = (
-            Profiler(min_length, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                min_length,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
+            )
             .execute()
             ._column_results
         )
@@ -395,7 +528,12 @@ class MetricsTest(TestCase):
 
         # String
         res = (
-            Profiler(min_length, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                min_length,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -405,7 +543,10 @@ class MetricsTest(TestCase):
         # Text
         res = (
             Profiler(
-                min_length, session=self.session, table=User, use_cols=[User.comments]
+                min_length,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.comments],
             )
             .execute()
             ._column_results
@@ -421,7 +562,12 @@ class MetricsTest(TestCase):
 
         # Integer
         res = (
-            Profiler(max_length, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                max_length,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
+            )
             .execute()
             ._column_results
         )
@@ -430,7 +576,12 @@ class MetricsTest(TestCase):
 
         # String
         res = (
-            Profiler(max_length, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                max_length,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -440,7 +591,10 @@ class MetricsTest(TestCase):
         # Text
         res = (
             Profiler(
-                max_length, session=self.session, table=User, use_cols=[User.comments]
+                max_length,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.comments],
             )
             .execute()
             ._column_results
@@ -455,7 +609,12 @@ class MetricsTest(TestCase):
         _sum = Metrics.SUM.value
 
         res = (
-            Profiler(_sum, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                _sum,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
+            )
             .execute()
             ._column_results
         )
@@ -463,7 +622,12 @@ class MetricsTest(TestCase):
         assert res.get(User.age.name)[Metrics.SUM.name] == 61
 
         res = (
-            Profiler(_sum, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                _sum,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -477,7 +641,10 @@ class MetricsTest(TestCase):
         unique_count = Metrics.UNIQUE_COUNT.value
         res = (
             Profiler(
-                unique_count, session=self.session, table=User, use_cols=[User.name]
+                unique_count,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
             )
             .execute()
             ._column_results
@@ -497,7 +664,7 @@ class MetricsTest(TestCase):
                 count,
                 unique_count,
                 unique_ratio,
-                session=self.session,
+                profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
             )
@@ -517,7 +684,7 @@ class MetricsTest(TestCase):
         res = (
             Profiler(
                 count,
-                session=self.session,
+                profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
             )
@@ -539,7 +706,7 @@ class MetricsTest(TestCase):
                 count,
                 distinct_count,
                 distinct_ratio,
-                session=self.session,
+                profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
             )
@@ -559,7 +726,12 @@ class MetricsTest(TestCase):
 
         set_count = add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
         res = (
-            Profiler(set_count, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                set_count,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -568,7 +740,12 @@ class MetricsTest(TestCase):
 
         set_count = add_props(values=["John", "Jane"])(Metrics.COUNT_IN_SET.value)
         res = (
-            Profiler(set_count, session=self.session, table=User, use_cols=[User.name])
+            Profiler(
+                set_count,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.name],
+            )
             .execute()
             ._column_results
         )
@@ -589,16 +766,24 @@ class MetricsTest(TestCase):
             comments = Column(TEXT)
             age = Column(Integer)
 
+        self.sqa_profiler_interface.create_sampler(EmptyUser)
+        self.sqa_profiler_interface.create_runner(EmptyUser)
+
         EmptyUser.__table__.create(bind=self.engine)
 
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
         res = (
-            Profiler(hist, session=self.session, table=EmptyUser, use_cols=[User.age])
+            Profiler(
+                hist,
+                profiler_interface=self.sqa_profiler_interface,
+                table=EmptyUser,
+                use_cols=[EmptyUser.age],
+            )
             .execute()
             ._column_results
         )
 
-        assert res.get(User.age.name).get(Metrics.HISTOGRAM.name) is None
+        assert res.get(EmptyUser.age.name).get(Metrics.HISTOGRAM.name) is None
 
     def test_not_like_count(self):
         """
@@ -621,7 +806,10 @@ class MetricsTest(TestCase):
                 )
                 res = (
                     Profiler(
-                        not_like, session=self.session, table=User, use_cols=[User.name]
+                        not_like,
+                        profiler_interface=self.sqa_profiler_interface,
+                        table=User,
+                        use_cols=[User.name],
                     )
                     .execute()
                     ._column_results
@@ -636,7 +824,12 @@ class MetricsTest(TestCase):
 
         median = Metrics.MEDIAN.value
         res = (
-            Profiler(median, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                median,
+                profiler_interface=self.sqa_profiler_interface,
+                table=User,
+                use_cols=[User.age],
+            )
             .execute()
             ._column_results
         )

@@ -84,7 +84,6 @@ class OrmProfilerProcessor(Processor[Table]):
         config: ProfilerProcessorConfig,
         metadata_config: OpenMetadataConnection,
         processor_interface: InterfaceProtocol,
-        workflow_profile_sample: Optional[float] = None,
     ):
         super().__init__()
         self.config = config
@@ -95,9 +94,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
-
         self.processor_interface = processor_interface
-        self.workflow_profile_sample = workflow_profile_sample
 
     @classmethod
     def create(
@@ -113,18 +110,12 @@ class OrmProfilerProcessor(Processor[Table]):
         config = ProfilerProcessorConfig.parse_obj(config_dict)
 
         processor_interface = kwargs.get("processor_interface")
-        workflow_profile_sample = kwargs.get("workflow_profile_sample")
         if not processor_interface:
             raise ValueError(
                 "Cannot initialise the ProfilerProcessor without processor interface object"
             )
 
-        return cls(
-            config,
-            metadata_config,
-            processor_interface=processor_interface,
-            workflow_profile_sample=workflow_profile_sample,
-        )
+        return cls(config, metadata_config, processor_interface=processor_interface)
 
     def get_table_profile_sample(self, table: Table) -> Optional[float]:
         """
@@ -140,14 +131,6 @@ class OrmProfilerProcessor(Processor[Table]):
             my_record_tests = self.get_record_test_def(table)
             if my_record_tests and my_record_tests.profile_sample:
                 return my_record_tests.profile_sample
-
-        if self.workflow_profile_sample:
-            if (
-                table.profileSample is not None
-                and self.workflow_profile_sample != table.profileSample
-            ):
-                return table.profileSample
-            return self.workflow_profile_sample
 
         return table.profileSample or None
 
@@ -287,7 +270,7 @@ class OrmProfilerProcessor(Processor[Table]):
         Log test case results
         """
         self.status.tested(name)
-        if result.testCaseStatus != TestCaseStatus.Success:
+        if not result.testCaseStatus == TestCaseStatus.Success:
             self.status.failure(f"{name}: {result.result}")
 
     @staticmethod
