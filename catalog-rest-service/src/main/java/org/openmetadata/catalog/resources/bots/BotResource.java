@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.bots;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -257,7 +255,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
     Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, bot, ADMIN);
+    return createOrUpdate(uriInfo, securityContext, bot, false);
   }
 
   @PATCH
@@ -306,7 +304,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the Bot", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, true, hardDelete, ADMIN);
+    return delete(uriInfo, securityContext, id, true, hardDelete, false);
   }
 
   private Bot getBot(CreateBot create, String user) {

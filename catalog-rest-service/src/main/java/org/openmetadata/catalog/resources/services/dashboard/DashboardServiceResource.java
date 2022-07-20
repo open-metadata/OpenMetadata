@@ -14,9 +14,6 @@
 package org.openmetadata.catalog.resources.services.dashboard;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -319,7 +316,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException {
     DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
@@ -350,7 +347,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private DashboardService getService(CreateDashboardService create, String user) {

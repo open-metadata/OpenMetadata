@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -323,7 +319,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
     Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, glossary, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, glossary, true);
   }
 
   @DELETE
@@ -350,7 +346,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           boolean hardDelete,
       @Parameter(description = "Glossary Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) {

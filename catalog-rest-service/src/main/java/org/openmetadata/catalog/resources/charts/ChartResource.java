@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.charts;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -323,7 +319,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, chart, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, chart, true);
   }
 
   @PUT
@@ -388,7 +384,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           boolean hardDelete,
       @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   private Chart getChart(CreateChart create, String user) {

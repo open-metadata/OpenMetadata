@@ -27,25 +27,16 @@ public interface Authorizer {
   /** Initialize the authorizer */
   void init(AuthorizerConfiguration config, Jdbi jdbi);
 
-  /**
-   * Check if the authenticated user has given permission on the target entity identified by the given resourceType and
-   * resourceName
-   */
-  boolean hasPermissions(SecurityContext securityContext, EntityReference entityReference);
-
-  /**
-   * Check if the authenticated user (subject) has permission to perform the {@link MetadataOperation} on the target
-   * entity (object).
-   */
-  boolean hasPermissions(SecurityContext securityContext, EntityReference entityReference, MetadataOperation operation);
-
   /** Returns a list of operations that the authenticated user (subject) can perform on the target entity (object). */
-  List<MetadataOperation> listPermissions(SecurityContext securityContext, EntityReference entityReference);
+  List<MetadataOperation> listPermissions(SecurityContext securityContext, ResourceContextInterface resourceContext);
 
   boolean isOwner(SecurityContext ctx, EntityReference entityReference);
 
   void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext,
+      boolean allowBots)
       throws IOException;
 
   void authorizeAdmin(SecurityContext securityContext, boolean allowBots);

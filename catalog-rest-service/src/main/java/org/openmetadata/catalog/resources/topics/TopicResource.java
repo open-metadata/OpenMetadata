@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.topics;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -326,7 +322,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
     Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, topic, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, topic, true);
   }
 
   @PUT
@@ -423,7 +419,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           boolean hardDelete,
       @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   private Topic getTopic(CreateTopic create, String user) {

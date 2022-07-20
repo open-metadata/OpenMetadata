@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -321,7 +317,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, table, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, table, true);
   }
 
   @PATCH
@@ -370,7 +366,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   @DELETE
@@ -393,7 +389,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete, ADMIN | BOT);
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete, true);
   }
 
   @PUT

@@ -486,7 +486,7 @@ public class FeedResource {
     // TODO fix this
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerOfPost(post));
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 

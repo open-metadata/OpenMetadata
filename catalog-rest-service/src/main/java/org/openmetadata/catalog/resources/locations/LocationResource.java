@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.locations;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -386,7 +382,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, location, true);
   }
 
   @PATCH
@@ -435,7 +431,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           boolean hardDelete,
       @Parameter(description = "Location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   @PUT

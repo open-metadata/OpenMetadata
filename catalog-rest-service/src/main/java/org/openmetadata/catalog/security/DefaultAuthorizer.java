@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
@@ -31,7 +30,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
@@ -40,9 +38,7 @@ import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
@@ -88,46 +84,15 @@ public class DefaultAuthorizer implements Authorizer {
     return new User()
         .withId(UUID.randomUUID())
         .withName(name)
+        .withFullyQualifiedName(name)
         .withEmail(name + "@" + domain)
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis());
   }
 
   @Override
-  public boolean hasPermissions(SecurityContext ctx, EntityReference owner) {
-    // Since we have roles and operations. An Admin could enable updateDescription, tags, ownership permissions to
-    // a role and assign that to the users who can update the entities. With this we can look at the owner as a strict
-    // requirement to manage entities. So if owner is null we will not allow users to update entities. They can get a
-    // role that allows them to update the entity.
-    return isOwner(ctx, owner);
-  }
-
-  @Override
-  public boolean hasPermissions(
-      SecurityContext securityContext, EntityReference entityReference, MetadataOperation operation) {
-    try {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      List<EntityReference> allRoles = subjectContext.getAllRoles();
-      if (entityReference == null) {
-        // In some cases there is no specific entity being acted upon. Eg: Lineage.
-        return RoleEvaluator.getInstance().hasPermissions(allRoles, null, operation);
-      }
-
-      EntityInterface entity =
-          Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
-      EntityReference owner = entity.getOwner();
-
-      if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && subjectContext.isOwner(owner)) {
-        return true; // Entity is owned by the user.
-      }
-      return RoleEvaluator.getInstance().hasPermissions(allRoles, entity, operation);
-    } catch (IOException | EntityNotFoundException ex) {
-      return false;
-    }
-  }
-
-  @Override
-  public List<MetadataOperation> listPermissions(SecurityContext securityContext, EntityReference entityReference) {
+  public List<MetadataOperation> listPermissions(
+      SecurityContext securityContext, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
@@ -137,17 +102,15 @@ public class DefaultAuthorizer implements Authorizer {
 
     try {
       List<EntityReference> allRoles = subjectContext.getAllRoles();
-      if (entityReference == null) {
+      if (resourceContext == null) {
         return RoleEvaluator.getInstance().getAllowedOperations(allRoles, null);
       }
-      EntityInterface entity =
-          Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
-      EntityReference owner = entity.getOwner();
+      EntityReference owner = resourceContext.getOwner();
       if (owner == null || subjectContext.isOwner(owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
         return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
       }
-      return RoleEvaluator.getInstance().getAllowedOperations(allRoles, entity);
+      return RoleEvaluator.getInstance().getAllowedOperations(allRoles, resourceContext.getEntity());
     } catch (IOException | EntityNotFoundException ex) {
       return Collections.emptyList();
     }
@@ -168,10 +131,13 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext,
+      boolean allowBots)
       throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
       return;
     }
 

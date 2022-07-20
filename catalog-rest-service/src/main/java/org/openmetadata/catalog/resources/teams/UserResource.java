@@ -13,9 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -364,7 +361,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext, true);
     } else {
-      authorizer.authorize(securityContext, createOperationContext, getResourceContextByName(user.getName()));
+      authorizer.authorize(securityContext, createOperationContext, getResourceContextByName(user.getName()), true);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
@@ -549,7 +546,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) {

@@ -13,9 +13,6 @@
 
 package org.openmetadata.catalog.resources.events;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -276,7 +273,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
     Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, webhook, ADMIN | BOT);
+    Response response = createOrUpdate(uriInfo, securityContext, webhook, true);
     dao.updateWebhookPublisher((Webhook) response.getEntity());
     return response;
   }
@@ -327,7 +324,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, InterruptedException {
-    Response response = delete(uriInfo, securityContext, id, false, true, ADMIN);
+    Response response = delete(uriInfo, securityContext, id, false, true, false);
     dao.deleteWebhookPublisher(UUID.fromString(id));
     return response;
   }

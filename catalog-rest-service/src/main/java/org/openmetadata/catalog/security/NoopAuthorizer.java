@@ -41,18 +41,8 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean hasPermissions(SecurityContext securityContext, EntityReference entityOwnership) {
-    return true;
-  }
-
-  @Override
-  public boolean hasPermissions(
-      SecurityContext securityContext, EntityReference entityReference, MetadataOperation operation) {
-    return true;
-  }
-
-  @Override
-  public List<MetadataOperation> listPermissions(SecurityContext securityContext, EntityReference entityReference) {
+  public List<MetadataOperation> listPermissions(
+      SecurityContext securityContext, ResourceContextInterface resourceContext) {
     // Return all operations.
     return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
   }
@@ -64,7 +54,10 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {}
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext,
+      boolean allowBots) {}
 
   private void addAnonymousUser() {
     String username = "anonymous";

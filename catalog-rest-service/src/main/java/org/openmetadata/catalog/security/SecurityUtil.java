@@ -13,95 +13,20 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import java.security.Principal;
-import java.util.List;
 import java.util.Map;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.SecurityContext;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.util.JsonPatchUtils;
 
 public final class SecurityUtil {
-  public static final int ADMIN = 1;
-  public static final int BOT = 2;
-  public static final int OWNER = 4;
-  public static final int PERMISSIONS = 8;
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
 
   private SecurityUtil() {}
 
-  /** This helper function checks if user has permission to perform the given metadata operation. */
-  public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      EntityReference entityReference,
-      MetadataOperation metadataOperation) {
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
-
-    SubjectContext subjectContext = SubjectContext.getSubjectContext(securityContext.getUserPrincipal().getName());
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      return;
-    }
-
-    // TODO fix this
-    if (!authorizer.hasPermissions(securityContext, entityReference, metadataOperation)) {
-      throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal(), metadataOperation.value()));
-    }
-  }
-
-  /**
-   * Most REST API requests should yield a single metadata operation. There are cases where the JSON patch request may
-   * yield multiple metadata operations. This helper function checks if user has permission to perform the given set of
-   * metadata operations that can be derived from JSON patch.
-   */
-  public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      EntityReference entityReference,
-      EntityReference ownerReference,
-      JsonPatch patch) {
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
-
-    // TODO use subject context
-    SubjectContext subjectContext = SubjectContext.getSubjectContext(securityContext.getUserPrincipal().getName());
-    if (subjectContext.isAdmin()
-        || subjectContext.isBot()
-        || authorizer.hasPermissions(securityContext, ownerReference)) {
-      return;
-    }
-
-    List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
-
-    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
-    if (metadataOperations.isEmpty()) {
-      throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal()));
-    }
-    for (MetadataOperation metadataOperation : metadataOperations) {
-      if (!authorizer.hasPermissions(securityContext, entityReference, metadataOperation)) {
-        throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal(), metadataOperation.value()));
-      }
-    }
-  }
-
-  public static String getUserName(AuthenticationContext context) {
-    return getUserName(context.getPrincipal());
-  }
-
   public static String getUserName(Principal principal) {
     return principal == null ? null : principal.getName().split("[/@]")[0];
-  }
-
-  public static AuthenticationContext getAuthenticationContext(SecurityContext securityContext) {
-    Principal principal = securityContext.getUserPrincipal();
-    return new AuthenticationContext(principal);
   }
 
   public static Map<String, String> authHeaders(String username) {
@@ -130,17 +55,5 @@ public final class SecurityUtil {
               headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
     }
     return target.request();
-  }
-
-  public static boolean checkBot(int checkFlags) {
-    return (checkFlags & BOT) > 0;
-  }
-
-  public static boolean checkOwner(int checkFlags) {
-    return (checkFlags & OWNER) > 0;
-  }
-
-  public static boolean checkPermissions(int checkFlags) {
-    return (checkFlags & PERMISSIONS) > 0;
   }
 }

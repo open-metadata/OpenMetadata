@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.mlmodel;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -320,7 +316,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update)
       throws IOException {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, service, true);
   }
 
   @DELETE
@@ -349,7 +345,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Parameter(description = "Id of the mlModel service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private MlModelService getService(CreateMlModelService create, String user) {

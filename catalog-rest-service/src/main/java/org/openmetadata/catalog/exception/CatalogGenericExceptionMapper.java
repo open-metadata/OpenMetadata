@@ -41,7 +41,6 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   @Override
   public Response toResponse(Throwable ex) {
     LOG.debug(ex.getMessage());
-    ex.printStackTrace();
     if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {
       final Response response = BadRequestException.of().getResponse();
       return Response.fromResponse(response)

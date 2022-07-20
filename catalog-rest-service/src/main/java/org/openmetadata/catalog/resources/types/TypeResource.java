@@ -13,9 +13,6 @@
 
 package org.openmetadata.catalog.resources.types;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.google.inject.Inject;
@@ -350,7 +347,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) throws IOException {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, type, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, type, true);
   }
 
   @DELETE
@@ -369,7 +366,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, true, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, true, true);
   }
 
   @PUT

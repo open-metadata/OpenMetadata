@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -330,7 +326,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, pipeline, true);
   }
 
   @PUT
@@ -429,7 +425,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   private Pipeline getPipeline(CreatePipeline create, String user) {

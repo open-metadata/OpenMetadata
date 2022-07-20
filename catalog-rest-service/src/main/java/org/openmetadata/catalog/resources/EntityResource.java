@@ -52,7 +52,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     deleteOperationContext = new OperationContext(entityType, MetadataOperation.DELETE);
 
-    // TODO View_ALL vs view without test results, sample data, etc?
     listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
   }
@@ -81,7 +80,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String after)
       throws IOException {
     RestUtil.validateCursors(before, after);
-    authorizer.authorize(securityContext, listOperationContext, getResourceContext());
+    authorizer.authorize(securityContext, listOperationContext, getResourceContext(), true);
     Fields fields = getFields(fieldsParam);
 
     ResultList<T> resultList;
@@ -95,7 +94,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
       throws IOException {
-    authorizer.authorize(securityContext, getOperationContext, getResourceContextById(id));
+    authorizer.authorize(securityContext, getOperationContext, getResourceContextById(id), true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -103,7 +102,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
-    authorizer.authorize(securityContext, getOperationContext, getResourceContextByName(name));
+    authorizer.authorize(securityContext, getOperationContext, getResourceContextByName(name), true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
@@ -116,11 +115,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
-  public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, int checkFlags)
+  public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, boolean allowBots)
       throws IOException {
-    dao.prepare(entity); // TODO fix this
+    dao.prepare(entity);
     authorizer.authorize(
-        securityContext, createOperationContext, getResourceContextByName(entity.getFullyQualifiedName()));
+        securityContext, createOperationContext, getResourceContextByName(entity.getFullyQualifiedName()), allowBots);
     PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -128,9 +127,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, String id, JsonPatch patch)
       throws IOException {
-    // TODO fix this
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
     PatchResponse<T> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -143,9 +141,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String id,
       boolean recursive,
       boolean hardDelete,
-      int checkFlags)
+      boolean allowBots)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    authorizer.authorizeAdmin(securityContext, allowBots);
     DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -157,9 +155,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String name,
       boolean recursive,
       boolean hardDelete,
-      int checkFlags)
+      boolean allowBots)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    authorizer.authorizeAdmin(securityContext, allowBots);
     DeleteResponse<T> response =
         dao.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());

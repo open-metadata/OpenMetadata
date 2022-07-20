@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.database;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -326,7 +322,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -357,7 +353,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private DatabaseService getService(CreateDatabaseService create, String user) {
