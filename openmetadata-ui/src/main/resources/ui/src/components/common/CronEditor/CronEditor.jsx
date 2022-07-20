@@ -13,6 +13,7 @@
 
 /* eslint-disable */
 
+import { isEmpty } from 'lodash';
 import React, { useState } from 'react';
 import { pluralize } from '../../../utils/CommonUtils';
 import {
@@ -58,7 +59,7 @@ const getCron = (state) => {
     case 'year':
       return getYearCron(selectedYearOption);
     default:
-      return '* * * * *';
+      return '';
   }
 };
 
@@ -74,7 +75,7 @@ const CronEditor = (props) => {
   };
   const getStateValue = (valueStr) => {
     let stateVal = {
-      selectedPeriod: 'week',
+      selectedPeriod: '',
       selectedMinOption: {
         min: 5,
       },
@@ -115,27 +116,29 @@ const CronEditor = (props) => {
 
     stateVal.selectedPeriod = t || stateVal.selectedPeriod;
 
-    const selectedPeriodObj =
-      stateVal[
-        'selected' + (t.charAt(0).toUpperCase() + t.substr(1)) + 'Option'
-      ];
+    if (!isEmpty(t)) {
+      const selectedPeriodObj =
+        stateVal[
+          'selected' + (t.charAt(0).toUpperCase() + t.substr(1)) + 'Option'
+        ];
 
-    let targets = toDisplay[t];
+      let targets = toDisplay[t];
 
-    for (let i = 0; i < targets.length; i++) {
-      let tgt = targets[i];
+      for (let i = 0; i < targets.length; i++) {
+        let tgt = targets[i];
 
-      if (tgt == 'time') {
-        selectedPeriodObj.hour = v.hour;
-        selectedPeriodObj.min = v.min;
-      } else {
-        selectedPeriodObj[tgt] = v[tgt];
+        if (tgt == 'time') {
+          selectedPeriodObj.hour = v.hour;
+          selectedPeriodObj.min = v.min;
+        } else {
+          selectedPeriodObj[tgt] = v[tgt];
+        }
       }
     }
 
     return stateVal;
   };
-  const [value, setCronValue] = useState(props.value || '0 0 * * 0');
+  const [value, setCronValue] = useState(props.value || '');
   const [state, setState] = useState(getStateValue(value));
   const [periodOptions] = useState(getPeriodOptions());
   const [minuteSegmentOptions] = useState(getMinuteSegmentOptions());
@@ -586,6 +589,11 @@ const CronEditor = (props) => {
           {getWeekComponent(cronPeriodString)}
           {getMonthComponent(cronPeriodString)}
           {getYearComponent(cronPeriodString)}
+          {isEmpty(value) && (
+            <p className="tw-col-span-2">
+              Pipeline will only be triggered manually.
+            </p>
+          )}
         </div>
       </div>
     </div>
