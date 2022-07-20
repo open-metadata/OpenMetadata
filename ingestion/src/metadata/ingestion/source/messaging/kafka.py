@@ -12,12 +12,12 @@
 import concurrent.futures
 import sys
 import traceback
-from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional
 
 import confluent_kafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 from confluent_kafka.schema_registry.schema_registry_client import Schema
+from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import SchemaType, TopicSampleData
@@ -34,26 +34,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import logger
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.messaging.messaging_service import MessagingServiceSource
-from metadata.utils.connection_clients import KafkaClient
-from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_topic
 
 
-@dataclass
-class KafkaTopicDetails:
+class KafkaTopicDetails(BaseModel):
     """
     Wrapper Class to combine the topic_name with topic_metadata
     """
 
     topic_name: str
     topic_metadata: Any
-
-    def __init__(self, topic_name: str, topic_metadata: Any) -> None:
-        self.topic_name = topic_name
-        self.topic_metadata = topic_metadata
 
 
 class KafkaSource(MessagingServiceSource):
@@ -82,7 +73,9 @@ class KafkaSource(MessagingServiceSource):
     def get_topic_list(self) -> Optional[List[Any]]:
         topics_dict = self.admin_client.list_topics().topics
         for topic_name, topic_metadata in topics_dict.items():
-            yield KafkaTopicDetails(topic_name, topic_metadata)
+            yield KafkaTopicDetails(
+                topic_name=topic_name, topic_metadata=topic_metadata
+            )
 
     def get_topic_name(self, topic_details: KafkaTopicDetails) -> str:
         """
@@ -90,7 +83,9 @@ class KafkaSource(MessagingServiceSource):
         """
         return topic_details.topic_name
 
-    def yield_topic(self, topic_details: KafkaTopicDetails) -> Any:
+    def yield_topic(
+        self, topic_details: KafkaTopicDetails
+    ) -> Iterable[CreateTopicRequest]:
         logger.info("Fetching topic schema {}".format(topic_details.topic_name))
         topic_schema = self._parse_topic_metadata(topic_details.topic_name)
         logger.info("Fetching topic config {}".format(topic_details.topic_name))
@@ -137,13 +132,13 @@ class KafkaSource(MessagingServiceSource):
 
         if topic_schema is not None:
             topic.schemaText = topic_schema.schema_str
-            if topic_schema.schema_type == "AVRO":
+            if topic_schema.schema_type.lower() == SchemaType.Avro.value.lower():
                 topic.schemaType = SchemaType.Avro.name
                 if self.generate_sample_data:
                     topic.sampleData = self._get_sample_data(topic.name)
-            elif topic_schema.schema_type == "PROTOBUF":
+            elif topic_schema.schema_type.lower() == SchemaType.Protobuf.name.lower():
                 topic.schemaType = SchemaType.Protobuf.name
-            elif topic_schema.schema_type == "JSON":
+            elif topic_schema.schema_type.lower() == SchemaType.JSON.name.lower():
                 topic.schemaType = SchemaType.JSON.name
             else:
                 topic.schemaType = SchemaType.Other.name
