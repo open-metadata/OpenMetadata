@@ -113,12 +113,12 @@ class AtlasSource(Source):
 
     def next_record(self):
         for key in self.service_connection.entityTypes["Table"].keys():
-            yield from self.create_database_service(self.service_connection.dbService)
+            yield from self.get_database_service(self.service_connection.dbService)
             yield from self.create_database_entity(self.service_connection.dbService)
             self.tables[key] = self.atlas_client.list_entities(entityType=key)
 
         for key in self.service_connection.entityTypes.get("Topic", []):
-            self.message_service = self.create_message_service(
+            self.message_service = self.get_message_service(
                 self.service_connection.messagingService
             )
             yield from self.create_topic_entity(
@@ -256,7 +256,7 @@ class AtlasSource(Source):
             ),
         )
 
-    def create_database_service(self, dbService):
+    def get_database_service(self, dbService):
         ATLAS_DEFAULT_CONFIG["type"] = dbService
         ATLAS_DEFAULT_CONFIG["serviceName"] = dbService
         config = WorkflowSource.parse_obj(ATLAS_DEFAULT_CONFIG)
@@ -287,7 +287,7 @@ class AtlasSource(Source):
             self.status.failure(database["name"], str(e))
             return None
 
-    def create_message_service(self, messagingService):
+    def get_message_service(self, messagingService):
         ATLAS_DEFAULT_CONFIG["type"] = messagingService
         ATLAS_DEFAULT_CONFIG["serviceName"] = self.service_connection.messagingService
         config = WorkflowSource.parse_obj(ATLAS_DEFAULT_CONFIG)
