@@ -41,13 +41,10 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
+from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.utils import fqn
-from metadata.utils.connections import (
-    create_and_bind_session,
-    get_connection,
-    test_connection,
-)
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_fqn
 from metadata.utils.logger import profiler_logger
 
@@ -133,7 +130,9 @@ class ProfilerWorkflow:
             yield table
 
     def create_processor(self, service_connection_config):
-        self.processor_interface = SQAProfilerInterface(service_connection_config)
+        self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
+            service_connection_config
+        )
         self.processor = get_processor(
             processor_type=self.config.processor.type,  # orm-profiler
             processor_config=self.config.processor or ProfilerProcessorConfig(),

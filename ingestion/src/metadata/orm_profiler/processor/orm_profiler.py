@@ -37,6 +37,7 @@ from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
+from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
@@ -82,7 +83,7 @@ class OrmProfilerProcessor(Processor[Table]):
         self,
         config: ProfilerProcessorConfig,
         metadata_config: OpenMetadataConnection,
-        processor_interface: SQAProfilerInterface,
+        processor_interface: InterfaceProtocol,
     ):
         super().__init__()
         self.config = config

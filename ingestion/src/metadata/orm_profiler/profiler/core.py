@@ -21,9 +21,9 @@ from pydantic import ValidationError
 from sqlalchemy import Column, inspect
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
-from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
@@ -63,7 +63,7 @@ class Profiler(Generic[TMetric]):
     def __init__(
         self,
         *metrics: Type[TMetric],
-        profiler_interface: SQAProfilerInterface,
+        profiler_interface: InterfaceProtocol,
         table: DeclarativeMeta,
         profile_date: datetime = datetime.now(),
         ignore_cols: Optional[List[str]] = None,
