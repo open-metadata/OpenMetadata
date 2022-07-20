@@ -17,7 +17,7 @@ export const cardStyle = {
   active: 'tw-border-primary',
   selected: 'tw-border-primary',
   header: {
-    base: 'tw-flex tw-px-5 tw-py-3 tw-cursor-pointer tw-justify-between tw-items-center tw-rounded-t-md',
+    base: 'tw-flex tw-px-5 tw-py-3 tw-cursor-pointer tw-justify-between tw-items-center',
     default: '',
     active: 'tw-bg-primary-lite tw-border-b tw-border-primary',
     selected: 'tw-bg-primary tw-text-white',
