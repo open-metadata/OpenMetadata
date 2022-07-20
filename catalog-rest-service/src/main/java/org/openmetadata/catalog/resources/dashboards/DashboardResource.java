@@ -281,7 +281,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dashboard, ADMIN | BOT);
+    return create(uriInfo, securityContext, dashboard, true);
   }
 
   @PATCH

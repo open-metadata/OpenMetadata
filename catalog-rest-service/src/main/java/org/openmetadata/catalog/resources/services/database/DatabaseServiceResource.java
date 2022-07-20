@@ -304,7 +304,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
     DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }

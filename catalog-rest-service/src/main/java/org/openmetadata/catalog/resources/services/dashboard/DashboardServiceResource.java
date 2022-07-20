@@ -297,7 +297,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
       throws IOException {
     DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }

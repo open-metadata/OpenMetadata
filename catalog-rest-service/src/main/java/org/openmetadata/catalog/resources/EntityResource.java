@@ -87,7 +87,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String after)
       throws IOException {
     RestUtil.validateCursors(before, after);
-    authorizer.hasPermissions1(securityContext, listOperationContext, getResourceContext());
+    authorizer.authorize(securityContext, listOperationContext, getResourceContext());
     Fields fields = getFields(fieldsParam);
 
     ResultList<T> resultList;
@@ -101,7 +101,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
       throws IOException {
-    authorizer.hasPermissions1(securityContext, getOperationContext, getResourceContextById(id));
+    authorizer.authorize(securityContext, getOperationContext, getResourceContextById(id));
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -109,13 +109,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
-    authorizer.hasPermissions1(securityContext, getOperationContext, getResourceContextByName(name));
+    authorizer.authorize(securityContext, getOperationContext, getResourceContextByName(name));
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 
-  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity, int flags) throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, flags);
+  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity, boolean allowBots)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, allowBots);
     entity = addHref(uriInfo, dao.create(uriInfo, entity));
     LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
     return Response.created(entity.getHref()).entity(entity).build();
@@ -187,12 +188,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return ResourceContext.builder().resource(entityType).build();
   }
 
-  private ResourceContext getResourceContextById(String id) throws IOException {
+  private ResourceContext getResourceContextById(String id) {
     String fields = supportsOwner ? FIELD_OWNER : null;
     return ResourceContext.builder().resource(entityType).id(id).fields(fields).build();
   }
 
-  private ResourceContext getResourceContextByName(String name) throws IOException {
+  private ResourceContext getResourceContextByName(String name) {
     String fields = supportsOwner ? FIELD_OWNER : null;
     return ResourceContext.builder().resource(entityType).name(name).fields(fields).build();
   }

@@ -321,7 +321,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, role, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, role, true);
     RoleEvaluator.getInstance().update((Role) response.getEntity());
     return response;
   }

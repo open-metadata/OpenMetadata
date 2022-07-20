@@ -282,7 +282,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
     Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, topic, ADMIN | BOT);
+    return create(uriInfo, securityContext, topic, true);
   }
 
   @PATCH

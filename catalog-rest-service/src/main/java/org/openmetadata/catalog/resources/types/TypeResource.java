@@ -307,7 +307,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create)
       throws IOException {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, type, ADMIN | BOT);
+    return create(uriInfo, securityContext, type, true);
   }
 
   @PATCH

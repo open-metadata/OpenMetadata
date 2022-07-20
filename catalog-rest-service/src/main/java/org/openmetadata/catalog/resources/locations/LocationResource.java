@@ -366,7 +366,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, location, ADMIN | BOT);
+    return create(uriInfo, securityContext, location, true);
   }
 
   @PUT

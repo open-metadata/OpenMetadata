@@ -234,7 +234,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException {
     MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, mlModel, ADMIN | BOT);
+    return create(uriInfo, securityContext, mlModel, true);
   }
 
   @PATCH

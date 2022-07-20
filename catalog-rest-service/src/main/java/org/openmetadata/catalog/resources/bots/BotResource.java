@@ -238,7 +238,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create)
       throws IOException {
     Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, bot, ADMIN);
+    return create(uriInfo, securityContext, bot, false);
   }
 
   @PUT

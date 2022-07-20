@@ -314,7 +314,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, policy, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, policy, true);
     PolicyEvaluator.getInstance().update((Policy) response.getEntity());
     return response;
   }

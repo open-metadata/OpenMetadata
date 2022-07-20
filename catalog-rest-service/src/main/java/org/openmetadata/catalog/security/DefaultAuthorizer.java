@@ -14,6 +14,8 @@
 package org.openmetadata.catalog.security;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import java.io.IOException;
@@ -190,19 +192,28 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean hasPermissions1(
+  public void authorize(
       SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      return true;
+      return;
     }
 
     // TODO view is currently allowed for everyone
     if (operationContext.getOperations().size() == 1
         && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
-      return true;
+      return;
     }
-    return false;
+    throw new AuthorizationException(noPermission(securityContext.getUserPrincipal()));
+  }
+
+  @Override
+  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal()));
   }
 
   private void validate(AuthenticationContext ctx) {

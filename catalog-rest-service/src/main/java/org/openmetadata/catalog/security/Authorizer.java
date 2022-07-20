@@ -47,6 +47,7 @@ public interface Authorizer {
 
   boolean isOwner(AuthenticationContext ctx, EntityReference entityReference);
 
-  boolean hasPermissions1(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext);
+  void authorize(SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext);
+
+  void authorizeAdmin(SecurityContext securityContext, boolean allowBots);
 }

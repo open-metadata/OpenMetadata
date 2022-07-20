@@ -282,7 +282,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
     DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, schema, ADMIN | BOT);
+    return create(uriInfo, securityContext, schema, true);
   }
 
   @PATCH

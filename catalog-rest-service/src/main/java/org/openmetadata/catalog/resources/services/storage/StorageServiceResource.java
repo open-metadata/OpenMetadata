@@ -271,7 +271,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
       throws IOException {
     StorageService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    return create(uriInfo, securityContext, service, true);
   }
 
   @PUT

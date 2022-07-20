@@ -278,7 +278,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, database, ADMIN | BOT);
+    return create(uriInfo, securityContext, database, true);
   }
 
   @PATCH

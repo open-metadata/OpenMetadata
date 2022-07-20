@@ -300,7 +300,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    return create(uriInfo, securityContext, service, true);
   }
 
   @PUT

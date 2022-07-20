@@ -283,7 +283,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, team, ADMIN | BOT);
+    return create(uriInfo, securityContext, team, true);
   }
 
   @PUT

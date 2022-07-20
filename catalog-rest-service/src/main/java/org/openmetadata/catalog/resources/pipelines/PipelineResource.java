@@ -285,7 +285,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, pipeline, ADMIN | BOT);
+    return create(uriInfo, securityContext, pipeline, true);
   }
 
   @PATCH

@@ -151,7 +151,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
       throws IOException {
     addToReport(securityContext, report);
-    return create(uriInfo, securityContext, report, ADMIN | BOT);
+    return create(uriInfo, securityContext, report, true);
   }
 
   @PUT

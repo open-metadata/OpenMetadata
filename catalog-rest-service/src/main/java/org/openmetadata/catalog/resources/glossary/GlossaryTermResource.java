@@ -326,7 +326,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, term, ADMIN | BOT);
+    return create(uriInfo, securityContext, term, true);
   }
 
   @PATCH

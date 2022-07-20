@@ -159,7 +159,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
       throws IOException {
     addToMetrics(securityContext, metrics);
-    return create(uriInfo, securityContext, metrics, ADMIN | BOT);
+    return create(uriInfo, securityContext, metrics, true);
   }
 
   @PUT

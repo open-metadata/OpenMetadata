@@ -278,7 +278,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, chart, ADMIN | BOT);
+    return create(uriInfo, securityContext, chart, true);
   }
 
   @PATCH

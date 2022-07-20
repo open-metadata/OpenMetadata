@@ -302,7 +302,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, table, ADMIN | BOT);
+    return create(uriInfo, securityContext, table, true);
   }
 
   @PUT

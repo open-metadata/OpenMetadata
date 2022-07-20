@@ -300,7 +300,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService create)
       throws IOException {
     MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    return create(uriInfo, securityContext, service, true);
   }
 
   @PUT

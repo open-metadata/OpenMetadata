@@ -73,10 +73,8 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean hasPermissions1(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
-    return true;
-  }
+  public void authorize(
+      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {}
 
   private void addAnonymousUser() {
     String username = "anonymous";
@@ -107,4 +105,7 @@ public class NoopAuthorizer implements Authorizer {
       LOG.debug("Anonymous user entry: {} already exists.", user);
     }
   }
+
+  @Override
+  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {}
 }
