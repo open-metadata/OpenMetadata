@@ -24,48 +24,17 @@ import {
   faSearch,
   faTimes,
 } from '@fortawesome/free-solid-svg-icons';
-import { AxiosError } from 'axios';
-import { SlackChatConfig } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import { AuthProvider } from './authentication/auth-provider/AuthProvider';
-import { fetchSlackConfig } from './axiosAPIs/miscAPI';
-import SlackChat from './components/SlackChat/SlackChat';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import { toastOptions } from './constants/toast.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
 import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
-  const [slackConfig, setSlackConfig] = useState<SlackChatConfig | undefined>();
-  const fetchSlackChatConfig = () => {
-    fetchSlackConfig()
-      .then((res) => {
-        if (res.data) {
-          const { apiToken, botName, channels } = res.data;
-          const slackConfig = {
-            apiToken,
-            botName,
-            channels,
-          };
-          setSlackConfig(slackConfig);
-        } else {
-          throw '';
-        }
-      })
-      .catch((err: AxiosError) => {
-        // eslint-disable-next-line no-console
-        console.error(err);
-        setSlackConfig(undefined);
-      });
-  };
-
-  useEffect(() => {
-    fetchSlackChatConfig();
-  }, []);
-
   library.add(
     faTimes,
     faCheck,
@@ -87,9 +56,6 @@ const App: FunctionComponent = () => {
             <WebSocketProvider>
               <AuthProvider childComponentType={AppRouter}>
                 <AppRouter />
-                {slackConfig && slackConfig.apiToken ? (
-                  <SlackChat slackConfig={slackConfig} />
-                ) : null}
               </AuthProvider>
             </WebSocketProvider>
           </ErrorBoundry>
