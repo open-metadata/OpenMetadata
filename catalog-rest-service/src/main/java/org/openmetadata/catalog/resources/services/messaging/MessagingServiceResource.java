@@ -25,9 +25,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -54,13 +52,12 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
-import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MessagingConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -70,12 +67,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices")
-public class MessagingServiceResource extends EntityResource<MessagingService, MessagingServiceRepository> {
+public class MessagingServiceResource
+    extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
 
   public static final String FIELDS = FIELD_OWNER;
-
-  private final SecretsManager secretsManager;
 
   @Override
   public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
@@ -85,8 +81,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
   }
 
   public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(MessagingService.class, new MessagingServiceRepository(dao, secretsManager), authorizer);
-    this.secretsManager = secretsManager;
+    super(MessagingService.class, new MessagingServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
@@ -300,7 +295,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    decryptOrNullify(securityContext, (MessagingService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -325,7 +322,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    decryptOrNullify(securityContext, (MessagingService) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -362,22 +361,13 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
         .withServiceType(create.getServiceType());
   }
 
-  private ResultList<MessagingService> decryptOrNullify(
-      SecurityContext securityContext, ResultList<MessagingService> messagingServices) {
-    Optional.ofNullable(messagingServices.getData())
-        .orElse(Collections.emptyList())
-        .forEach(messagingService -> decryptOrNullify(securityContext, messagingService));
-    return messagingServices;
+  @Override
+  protected MessagingService nullifyConnection(MessagingService service) {
+    return service.withConnection(null);
   }
 
-  private MessagingService decryptOrNullify(SecurityContext securityContext, MessagingService messagingService) {
-    try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    } catch (AuthorizationException e) {
-      return messagingService.withConnection(null);
-    }
-    secretsManager.encryptOrDecryptServiceConnection(
-        messagingService.getConnection(), messagingService.getServiceType().value(), messagingService.getName(), false);
-    return messagingService;
+  @Override
+  protected String extractServiceType(MessagingService service) {
+    return service.getServiceType().value();
   }
 }

@@ -24,9 +24,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -53,13 +51,12 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
-import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -69,11 +66,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelineServices")
-public class PipelineServiceResource extends EntityResource<PipelineService, PipelineServiceRepository> {
+public class PipelineServiceResource
+    extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
   static final String FIELDS = "pipelines,owner";
-
-  private final SecretsManager secretsManager;
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -84,8 +80,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   }
 
   public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(PipelineService.class, new PipelineServiceRepository(dao, secretsManager), authorizer);
-    this.secretsManager = secretsManager;
+    super(PipelineService.class, new PipelineServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {
@@ -362,22 +357,13 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
         .withConnection(create.getConnection());
   }
 
-  private ResultList<PipelineService> decryptOrNullify(
-      SecurityContext securityContext, ResultList<PipelineService> pipelineServices) {
-    Optional.ofNullable(pipelineServices.getData())
-        .orElse(Collections.emptyList())
-        .forEach(pipelineService -> decryptOrNullify(securityContext, pipelineService));
-    return pipelineServices;
+  @Override
+  protected PipelineService nullifyConnection(PipelineService service) {
+    return service.withConnection(null);
   }
 
-  private PipelineService decryptOrNullify(SecurityContext securityContext, PipelineService pipelineService) {
-    try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    } catch (AuthorizationException e) {
-      return pipelineService.withConnection(null);
-    }
-    secretsManager.encryptOrDecryptServiceConnection(
-        pipelineService.getConnection(), pipelineService.getServiceType().value(), pipelineService.getName(), false);
-    return pipelineService;
+  @Override
+  protected String extractServiceType(PipelineService service) {
+    return service.getServiceType().value();
   }
 }

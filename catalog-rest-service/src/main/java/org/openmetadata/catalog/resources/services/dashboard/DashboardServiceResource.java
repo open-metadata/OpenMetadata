@@ -25,9 +25,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -54,11 +52,10 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
-import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -70,11 +67,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboardServices")
-public class DashboardServiceResource extends EntityResource<DashboardService, DashboardServiceRepository> {
+public class DashboardServiceResource
+    extends ServiceEntityResource<DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   static final String FIELDS = FIELD_OWNER;
-
-  private final SecretsManager secretsManager;
 
   @Override
   public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
@@ -84,8 +80,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   }
 
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(DashboardService.class, new DashboardServiceRepository(dao, secretsManager), authorizer);
-    this.secretsManager = secretsManager;
+    super(DashboardService.class, new DashboardServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -360,22 +355,13 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
         .withConnection(create.getConnection());
   }
 
-  private ResultList<DashboardService> decryptOrNullify(
-      SecurityContext securityContext, ResultList<DashboardService> dashboardServices) {
-    Optional.ofNullable(dashboardServices.getData())
-        .orElse(Collections.emptyList())
-        .forEach(dashboardService -> decryptOrNullify(securityContext, dashboardService));
-    return dashboardServices;
+  @Override
+  protected DashboardService nullifyConnection(DashboardService service) {
+    return service.withConnection(null);
   }
 
-  private DashboardService decryptOrNullify(SecurityContext securityContext, DashboardService dashboardService) {
-    try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    } catch (AuthorizationException e) {
-      return dashboardService.withConnection(null);
-    }
-    secretsManager.encryptOrDecryptServiceConnection(
-        dashboardService.getConnection(), dashboardService.getServiceType().value(), dashboardService.getName(), false);
-    return dashboardService;
+  @Override
+  protected String extractServiceType(DashboardService service) {
+    return service.getServiceType().value();
   }
 }
