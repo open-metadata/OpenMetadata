@@ -155,6 +155,28 @@ const NotificationBox = ({
     );
   };
 
+  const notificationList = useMemo(
+    () =>
+      isEmpty(notifications) ? (
+        <div className="tw-h-full tw-flex tw-items-center tw-justify-center">
+          <p>No notifications Found</p>
+        </div>
+      ) : (
+        <List
+          dataSource={notificationDropDownList}
+          renderItem={(item) => (
+            <List.Item
+              style={{
+                padding: '10px 0px 10px 16px',
+              }}>
+              {item}
+            </List.Item>
+          )}
+        />
+      ),
+    [notifications]
+  );
+
   return (
     <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded tw-flex tw-flex-col tw-justify-between tw-shadow-lg">
       <div className="tw-flex tw-justify-between">
@@ -187,23 +209,7 @@ const NotificationBox = ({
               </div>
             ) : (
               <div className="tw-h-64 tw-overflow-scroll">
-                {isEmpty(notifications) ? (
-                  <div className="tw-h-full tw-flex tw-items-center tw-justify-center">
-                    <p>{`No ${name} Found`}</p>
-                  </div>
-                ) : (
-                  <List
-                    dataSource={notificationDropDownList}
-                    renderItem={(item) => (
-                      <List.Item
-                        style={{
-                          padding: '10px 0px 10px 16px',
-                        }}>
-                        {item}
-                      </List.Item>
-                    )}
-                  />
-                )}
+                {notificationList}
               </div>
             )}
           </Tabs.TabPane>
