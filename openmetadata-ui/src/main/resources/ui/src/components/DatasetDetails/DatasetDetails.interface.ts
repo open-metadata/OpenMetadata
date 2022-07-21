@@ -48,6 +48,7 @@ export interface DatasetDetailsProps {
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   version?: string;
+  entityId?: string;
   joins: TableJoins;
   tableType: TableType;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;

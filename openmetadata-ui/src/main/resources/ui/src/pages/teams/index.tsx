@@ -31,6 +31,7 @@ import {
 } from '../../axiosAPIs/teamsAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
+import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -60,7 +61,6 @@ import {
   hasEditAccess,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
-import { getInfoElements } from '../../utils/EntityUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddUsersModal from './AddUsersModal';
@@ -832,7 +832,11 @@ const TeamsPage = () => {
                       <div className="tw-flex tw-gap-1 tw-mb-2 tw-flex-wrap">
                         {extraInfo.map((info, index) => (
                           <span className="tw-flex" key={index}>
-                            {getInfoElements(info)}
+                            <EntitySummaryDetails
+                              data={info}
+                              updateOwner={handleUpdateTeam}
+                            />
+
                             {extraInfo.length !== 1 &&
                             index < extraInfo.length - 1 ? (
                               <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">

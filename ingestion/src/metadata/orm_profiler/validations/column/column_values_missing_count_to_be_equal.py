@@ -16,7 +16,8 @@ ColumnValuesMissingCount validation implementation
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy import inspect
+from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
@@ -25,7 +26,7 @@ from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual im
 )
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.validations.utils import run_col_metric
+from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -35,9 +36,8 @@ def column_values_missing_count_to_be_equal(
     test_case: ColumnValuesMissingCount,
     col_profile: ColumnProfile,
     execution_date: datetime,
-    session: Optional[Session] = None,
+    runner: QueryRunner = None,
     table: Optional[DeclarativeMeta] = None,
-    profile_sample: Optional[float] = None,
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -66,19 +66,22 @@ def column_values_missing_count_to_be_equal(
         )
 
         try:
-            set_count_res = run_col_metric(
-                metric=set_count,
-                session=session,
-                table=table,
-                column=col_profile.name,
-                profile_sample=profile_sample,
+            col = next(
+                (col for col in inspect(table).c if col.name == col_profile.name),
+                None,
             )
+            if col is None:
+                raise ValueError(
+                    f"Cannot find the configured column {col_profile.name} for ColumnValuesToBeNotInSet"
+                )
+
+            set_count_dict = dict(runner.select_first_from_sample(set_count(col).fn()))
+            set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
             # Add set count for special values into the missing count
             missing_count += set_count_res
 
         except Exception as err:  # pylint: disable=broad-except
-            session.rollback()
             msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name} - {err}"
             logger.error(msg)
             return TestCaseResult(
