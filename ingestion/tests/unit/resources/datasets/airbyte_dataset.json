@@ -1,0 +1,436 @@
+{
+    "workspace": [
+        {
+            "workspaceId": "af5680ec-2687-4fe0-bd55-5ad5f020a603",
+            "customerId": "de633783-f0f2-4248-9ea2-092c4b5e1165",
+            "email": "mayur@getcollate.io",
+            "name": "af5680ec-2687-4fe0-bd55-5ad5f020a603",
+            "slug": "af5680ec-2687-4fe0-bd55-5ad5f020a603",
+            "initialSetupComplete": true,
+            "displaySetupWizard": false,
+            "anonymousDataCollection": false,
+            "news": false,
+            "securityUpdates": false,
+            "notifications": []
+        }
+    ],
+    "connection": [
+        {
+            "connectionId": "a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+            "name": "MSSQL <> Postgres",
+            "namespaceDefinition": "source",
+            "namespaceFormat": "${SOURCE_NAMESPACE}",
+            "prefix": "",
+            "sourceId": "ed3783a9-8479-4be0-80aa-2075ccc6e310",
+            "destinationId": "4181764f-3ed8-44cb-9b8e-fefff7fb5ea9",
+            "operationIds": ["942463dd-f37c-4794-8931-88da6c166a04"],
+            "syncCatalog": {
+                "streams": [
+                    {
+                        "stream": {
+                            "name": "brands",
+                            "jsonSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "brand_id": {"type": "number"},
+                                    "brand_name": {"type": "string"}
+                                }
+                            },
+                            "supportedSyncModes": ["full_refresh", "incremental"],
+                            "defaultCursorField": [],
+                            "sourceDefinedPrimaryKey": [["brand_id"]],
+                            "namespace": "production"
+                        },
+                        "config": {
+                            "syncMode": "full_refresh",
+                            "cursorField": [],
+                            "destinationSyncMode": "overwrite",
+                            "primaryKey": [["brand_id"]],
+                            "aliasName": "brands",
+                            "selected": true
+                        }
+                    },
+                    {
+                        "stream": {
+                            "name": "categories",
+                            "jsonSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "category_id": {"type": "number"},
+                                    "category_name": {"type": "string"}
+                                }
+                            },
+                            "supportedSyncModes": ["full_refresh", "incremental"],
+                            "defaultCursorField": [],
+                            "sourceDefinedPrimaryKey": [["category_id"]],
+                            "namespace": "production"
+                        },
+                        "config": {
+                            "syncMode": "full_refresh",
+                            "cursorField": [],
+                            "destinationSyncMode": "overwrite",
+                            "primaryKey": [["category_id"]],
+                            "aliasName": "categories",
+                            "selected": true
+                        }
+                    },
+                    {
+                        "stream": {
+                            "name": "products",
+                            "jsonSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "brand_id": {"type": "number"},
+                                    "list_price": {"type": "number"},
+                                    "model_year": {"type": "number"},
+                                    "product_id": {"type": "number"},
+                                    "category_id": {"type": "number"},
+                                    "product_name": {"type": "string"}
+                                }
+                            },
+                            "supportedSyncModes": ["full_refresh", "incremental"],
+                            "defaultCursorField": [],
+                            "sourceDefinedPrimaryKey": [["product_id"]],
+                            "namespace": "production"
+                        },
+                        "config": {
+                            "syncMode": "full_refresh",
+                            "cursorField": [],
+                            "destinationSyncMode": "overwrite",
+                            "primaryKey": [["product_id"]],
+                            "aliasName": "products",
+                            "selected": true
+                        }
+                    },
+                    {
+                        "stream": {
+                            "name": "stocks",
+                            "jsonSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "quantity": {"type": "number"},
+                                    "store_id": {"type": "number"},
+                                    "product_id": {"type": "number"}
+                                }
+                            },
+                            "supportedSyncModes": ["full_refresh", "incremental"],
+                            "defaultCursorField": [],
+                            "sourceDefinedPrimaryKey": [["store_id"], ["product_id"]],
+                            "namespace": "production"
+                        },
+                        "config": {
+                            "syncMode": "full_refresh",
+                            "cursorField": [],
+                            "destinationSyncMode": "overwrite",
+                            "primaryKey": [["store_id"], ["product_id"]],
+                            "aliasName": "stocks",
+                            "selected": true
+                        }
+                    }
+                ]
+            },
+            "schedule": {"units": 24, "timeUnit": "hours"},
+            "status": "inactive"
+        }
+    ],
+    "jobs": [
+        {
+            "job": {
+                "id": 14,
+                "configType": "sync",
+                "configId": "a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+                "createdAt": 1655482894,
+                "updatedAt": 1655482894,
+                "status": "running"
+            },
+            "attempts": [
+                {
+                    "id": 0,
+                    "status": "running",
+                    "createdAt": 1655482894,
+                    "updatedAt": 1655482894,
+                    "streamStats": []
+                }
+            ]
+        },
+        {
+            "job": {
+                "id": 13,
+                "configType": "sync",
+                "configId": "a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+                "createdAt": 1655393914,
+                "updatedAt": 1655394054,
+                "status": "succeeded"
+            },
+            "attempts": [
+                {
+                    "id": 0,
+                    "status": "succeeded",
+                    "createdAt": 1655393914,
+                    "updatedAt": 1655394054,
+                    "endedAt": 1655394054,
+                    "bytesSynced": 85607,
+                    "recordsSynced": 1276,
+                    "totalStats": {
+                        "recordsEmitted": 1276,
+                        "bytesEmitted": 85607,
+                        "stateMessagesEmitted": 0,
+                        "recordsCommitted": 1276
+                    },
+                    "streamStats": [
+                        {
+                            "streamName": "brands",
+                            "stats": {
+                                "recordsEmitted": 9,
+                                "bytesEmitted": 333,
+                                "recordsCommitted": 9
+                            }
+                        },
+                        {
+                            "streamName": "categories",
+                            "stats": {
+                                "recordsEmitted": 7,
+                                "bytesEmitted": 359,
+                                "recordsCommitted": 7
+                            }
+                        },
+                        {
+                            "streamName": "stocks",
+                            "stats": {
+                                "recordsEmitted": 939,
+                                "bytesEmitted": 41608,
+                                "recordsCommitted": 939
+                            }
+                        },
+                        {
+                            "streamName": "products",
+                            "stats": {
+                                "recordsEmitted": 321,
+                                "bytesEmitted": 43307,
+                                "recordsCommitted": 321
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "job": {
+                "id": 12,
+                "configType": "sync",
+                "configId": "a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+                "createdAt": 1655305875,
+                "updatedAt": 1655306562,
+                "status": "succeeded"
+            },
+            "attempts": [
+                {
+                    "id": 0,
+                    "status": "failed",
+                    "createdAt": 1655305876,
+                    "updatedAt": 1655306230,
+                    "endedAt": 1655306230,
+                    "bytesSynced": 8348,
+                    "recordsSynced": 74,
+                    "totalStats": {
+                        "recordsEmitted": 74,
+                        "bytesEmitted": 8348,
+                        "stateMessagesEmitted": 0,
+                        "recordsCommitted": 0
+                    },
+                    "streamStats": [
+                        {
+                            "streamName": "brands",
+                            "stats": {"recordsEmitted": 9, "bytesEmitted": 333}
+                        },
+                        {
+                            "streamName": "categories",
+                            "stats": {"recordsEmitted": 7, "bytesEmitted": 359}
+                        },
+                        {
+                            "streamName": "products",
+                            "stats": {"recordsEmitted": 58, "bytesEmitted": 7656}
+                        }
+                    ],
+                    "failureSummary": {
+                        "failures": [
+                            {
+                                "failureOrigin": "destination",
+                                "externalMessage": "Something went wrong within the destination connector",
+                                "internalMessage": "io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process exited with non-zero exit code 134",
+                                "stacktrace": "java.util.concurrent.CompletionException: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process exited with non-zero exit code 134\n\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\n\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1807)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)\n\tat java.base/java.lang.Thread.run(Thread.java:833)\nCaused by: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process exited with non-zero exit code 134\n\tat io.airbyte.workers.general.DefaultReplicationWorker.lambda$getDestinationOutputRunnable$7(DefaultReplicationWorker.java:410)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1804)\n\t... 3 more\n",
+                                "timestamp": 1655306025606
+                            },
+                            {
+                                "failureOrigin": "destination",
+                                "externalMessage": "Something went wrong within the destination connector",
+                                "internalMessage": "io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process message delivery failed",
+                                "stacktrace": "java.util.concurrent.CompletionException: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process message delivery failed\n\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\n\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1807)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)\n\tat java.base/java.lang.Thread.run(Thread.java:833)\nCaused by: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process message delivery failed\n\tat io.airbyte.workers.general.DefaultReplicationWorker.lambda$getReplicationRunnable$6(DefaultReplicationWorker.java:339)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1804)\n\t... 3 more\nCaused by: java.io.IOException: Stream closed\n\tat java.base/java.lang.ProcessBuilder$NullOutputStream.write(ProcessBuilder.java:445)\n\tat java.base/java.io.OutputStream.write(OutputStream.java:162)\n\tat java.base/java.io.BufferedOutputStream.write(BufferedOutputStream.java:123)\n\tat java.base/sun.nio.cs.StreamEncoder.writeBytes(StreamEncoder.java:234)\n\tat java.base/sun.nio.cs.StreamEncoder.implWrite(StreamEncoder.java:304)\n\tat java.base/sun.nio.cs.StreamEncoder.implWrite(StreamEncoder.java:282)\n\tat java.base/sun.nio.cs.StreamEncoder.write(StreamEncoder.java:132)\n\tat java.base/java.io.OutputStreamWriter.write(OutputStreamWriter.java:205)\n\tat java.base/java.io.BufferedWriter.flushBuffer(BufferedWriter.java:120)\n\tat java.base/java.io.BufferedWriter.write(BufferedWriter.java:233)\n\tat java.base/java.io.Writer.write(Writer.java:249)\n\tat io.airbyte.workers.internal.DefaultAirbyteDestination.accept(DefaultAirbyteDestination.java:90)\n\tat io.airbyte.workers.general.DefaultReplicationWorker.lambda$getReplicationRunnable$6(DefaultReplicationWorker.java:337)\n\t... 4 more\n",
+                                "timestamp": 1655306038360
+                            }
+                        ],
+                        "partialSuccess": false
+                    }
+                },
+                {
+                    "id": 1,
+                    "status": "failed",
+                    "createdAt": 1655306230,
+                    "updatedAt": 1655306418,
+                    "endedAt": 1655306418,
+                    "bytesSynced": 8348,
+                    "recordsSynced": 74,
+                    "totalStats": {
+                        "recordsEmitted": 74,
+                        "bytesEmitted": 8348,
+                        "stateMessagesEmitted": 0,
+                        "recordsCommitted": 0
+                    },
+                    "streamStats": [
+                        {
+                            "streamName": "brands",
+                            "stats": {"recordsEmitted": 9, "bytesEmitted": 333}
+                        },
+                        {
+                            "streamName": "categories",
+                            "stats": {"recordsEmitted": 7, "bytesEmitted": 359}
+                        },
+                        {
+                            "streamName": "products",
+                            "stats": {"recordsEmitted": 58, "bytesEmitted": 7656}
+                        }
+                    ],
+                    "failureSummary": {
+                        "failures": [
+                            {
+                                "failureOrigin": "destination",
+                                "externalMessage": "Something went wrong within the destination connector",
+                                "internalMessage": "io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process exited with non-zero exit code 134",
+                                "stacktrace": "java.util.concurrent.CompletionException: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process exited with non-zero exit code 134\n\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\n\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1807)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)\n\tat java.base/java.lang.Thread.run(Thread.java:833)\nCaused by: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process exited with non-zero exit code 134\n\tat io.airbyte.workers.general.DefaultReplicationWorker.lambda$getDestinationOutputRunnable$7(DefaultReplicationWorker.java:410)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1804)\n\t... 3 more\n",
+                                "timestamp": 1655306269423
+                            },
+                            {
+                                "failureOrigin": "destination",
+                                "externalMessage": "Something went wrong within the destination connector",
+                                "internalMessage": "io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process message delivery failed",
+                                "stacktrace": "java.util.concurrent.CompletionException: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process message delivery failed\n\tat java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)\n\tat java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1807)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)\n\tat java.base/java.lang.Thread.run(Thread.java:833)\nCaused by: io.airbyte.workers.general.DefaultReplicationWorker$DestinationException: Destination process message delivery failed\n\tat io.airbyte.workers.general.DefaultReplicationWorker.lambda$getReplicationRunnable$6(DefaultReplicationWorker.java:339)\n\tat java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1804)\n\t... 3 more\nCaused by: java.io.IOException: Stream closed\n\tat java.base/java.lang.ProcessBuilder$NullOutputStream.write(ProcessBuilder.java:445)\n\tat java.base/java.io.OutputStream.write(OutputStream.java:162)\n\tat java.base/java.io.BufferedOutputStream.write(BufferedOutputStream.java:123)\n\tat java.base/sun.nio.cs.StreamEncoder.writeBytes(StreamEncoder.java:234)\n\tat java.base/sun.nio.cs.StreamEncoder.implWrite(StreamEncoder.java:304)\n\tat java.base/sun.nio.cs.StreamEncoder.implWrite(StreamEncoder.java:282)\n\tat java.base/sun.nio.cs.StreamEncoder.write(StreamEncoder.java:132)\n\tat java.base/java.io.OutputStreamWriter.write(OutputStreamWriter.java:205)\n\tat java.base/java.io.BufferedWriter.flushBuffer(BufferedWriter.java:120)\n\tat java.base/java.io.BufferedWriter.write(BufferedWriter.java:233)\n\tat java.base/java.io.Writer.write(Writer.java:249)\n\tat io.airbyte.workers.internal.DefaultAirbyteDestination.accept(DefaultAirbyteDestination.java:90)\n\tat io.airbyte.workers.general.DefaultReplicationWorker.lambda$getReplicationRunnable$6(DefaultReplicationWorker.java:337)\n\t... 4 more\n",
+                                "timestamp": 1655306276831
+                            }
+                        ],
+                        "partialSuccess": false
+                    }
+                },
+                {
+                    "id": 2,
+                    "status": "succeeded",
+                    "createdAt": 1655306418,
+                    "updatedAt": 1655306562,
+                    "endedAt": 1655306562,
+                    "bytesSynced": 85607,
+                    "recordsSynced": 1276,
+                    "totalStats": {
+                        "recordsEmitted": 1276,
+                        "bytesEmitted": 85607,
+                        "stateMessagesEmitted": 0,
+                        "recordsCommitted": 1276
+                    },
+                    "streamStats": [
+                        {
+                            "streamName": "brands",
+                            "stats": {
+                                "recordsEmitted": 9,
+                                "bytesEmitted": 333,
+                                "recordsCommitted": 9
+                            }
+                        },
+                        {
+                            "streamName": "categories",
+                            "stats": {
+                                "recordsEmitted": 7,
+                                "bytesEmitted": 359,
+                                "recordsCommitted": 7
+                            }
+                        },
+                        {
+                            "streamName": "stocks",
+                            "stats": {
+                                "recordsEmitted": 939,
+                                "bytesEmitted": 41608,
+                                "recordsCommitted": 939
+                            }
+                        },
+                        {
+                            "streamName": "products",
+                            "stats": {
+                                "recordsEmitted": 321,
+                                "bytesEmitted": 43307,
+                                "recordsCommitted": 321
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "job": {
+                "id": 9,
+                "configType": "sync",
+                "configId": "a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+                "createdAt": 1654758154,
+                "updatedAt": 1654758294,
+                "status": "succeeded"
+            },
+            "attempts": [
+                {
+                    "id": 0,
+                    "status": "succeeded",
+                    "createdAt": 1654758154,
+                    "updatedAt": 1654758294,
+                    "endedAt": 1654758294,
+                    "bytesSynced": 85607,
+                    "recordsSynced": 1276,
+                    "totalStats": {
+                        "recordsEmitted": 1276,
+                        "bytesEmitted": 85607,
+                        "stateMessagesEmitted": 0,
+                        "recordsCommitted": 1276
+                    },
+                    "streamStats": [
+                        {
+                            "streamName": "brands",
+                            "stats": {
+                                "recordsEmitted": 9,
+                                "bytesEmitted": 333,
+                                "recordsCommitted": 9
+                            }
+                        },
+                        {
+                            "streamName": "categories",
+                            "stats": {
+                                "recordsEmitted": 7,
+                                "bytesEmitted": 359,
+                                "recordsCommitted": 7
+                            }
+                        },
+                        {
+                            "streamName": "stocks",
+                            "stats": {
+                                "recordsEmitted": 939,
+                                "bytesEmitted": 41608,
+                                "recordsCommitted": 939
+                            }
+                        },
+                        {
+                            "streamName": "products",
+                            "stats": {
+                                "recordsEmitted": 321,
+                                "bytesEmitted": 43307,
+                                "recordsCommitted": 321
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
