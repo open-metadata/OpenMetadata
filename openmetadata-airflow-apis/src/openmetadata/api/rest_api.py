@@ -73,7 +73,8 @@ class REST_API(AppBuilderBaseView):
 
         return clean_dag_id(raw_dag_id)
 
-    def get_request_dag_id(self) -> Optional[str]:
+    @staticmethod
+    def get_request_dag_id() -> Optional[str]:
         """
         Try to fetch the dag_id from the JSON request
         and clean it
@@ -245,7 +246,7 @@ class REST_API(AppBuilderBaseView):
         """
         Check the status of a DAG runs
         """
-        dag_id = self.get_request_dag_id()
+        dag_id = self.get_arg_dag_id()
 
         if not dag_id:
             return ApiResponse.bad_request("Missing dag_id argument in the request")

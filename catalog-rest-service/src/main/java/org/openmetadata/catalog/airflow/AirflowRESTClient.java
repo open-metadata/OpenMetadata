@@ -216,6 +216,25 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
+  public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
+    try {
+      String killEndPoint = "%s/rest_api/api?api=kill_all";
+      String killUrl = String.format(killEndPoint, serviceURL);
+      JSONObject requestPayload = new JSONObject();
+      requestPayload.put("dag_id", ingestionPipeline.getName());
+      response = post(killUrl, requestPayload.toString());
+      if (response.statusCode() == 200) {
+        return response;
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to kill running workflows", e.getMessage());
+    }
+    throw new PipelineServiceClientException(
+        String.format("Failed to kill running workflows due to %s", response.body()));
+  }
+
+  @Override
   public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
     try {
       HttpResponse<String> response =
