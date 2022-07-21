@@ -1,5 +1,5 @@
 [run]
-source = venv/lib/python3.9/site-packages/openmetadata
+source = env/lib/python3.9/site-packages/openmetadata
 relative_files = True
 branch = True
 [report]

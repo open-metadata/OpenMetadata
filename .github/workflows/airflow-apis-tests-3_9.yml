@@ -83,7 +83,7 @@ jobs:
       if: ${{ github.event_name == 'pull_request_target' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
       with:
         projectBaseDir: openmetadata-airflow-apis/
         args: >
@@ -98,6 +98,6 @@ jobs:
       if: ${{ github.event_name == 'push' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
       with:
         projectBaseDir: openmetadata-airflow-apis/
