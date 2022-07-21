@@ -158,7 +158,6 @@ export const testServiceCreationAndIngestion = (
 export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.goToHomePage();
 
-  cy.intercept('GET', '/api/v1/*').as('getServices');
   cy.get(
     '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
   )
@@ -175,7 +174,17 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('exist')
     .should('be.visible')
     .click();
-  cy.wait('@getServices');
+
+  cy.get(`[data-testid="inactive-link"]`)
+    .should('exist')
+    .should('be.visible')
+    .invoke('text')
+    .then((text) => {
+      expect(text).to.equal(service_Name);
+    });
+
+  cy.wait(1000);
+
   cy.get('[data-testid="Manage"]').should('exist').should('be.visible').click();
   cy.get('[data-testid="delete-button"]')
     .should('exist')
