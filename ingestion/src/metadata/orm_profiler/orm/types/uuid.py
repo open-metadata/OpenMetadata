@@ -48,7 +48,7 @@ class UUIDString(TypeDecorator):
 
     def process_result_value(self, value: str, dialect):
         """This is executed during result retrieval
-        
+
         Args:
             value: database record
             dialect: database dialect
