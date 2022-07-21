@@ -101,7 +101,6 @@ class Sampler:
             .all()
         )
 
-
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
