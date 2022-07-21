@@ -14,7 +14,7 @@ Test Sample behavior
 """
 from unittest import TestCase
 
-from sqlalchemy import BINARY, TEXT, Column, Integer, String, func
+from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
@@ -23,9 +23,9 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.orm.registry import CustomTypes
 
 Base = declarative_base()
 
