@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Badge } from 'antd';
 import { isEmpty, isEqual } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
-import { Comments, CommentsPlus, Tasks } from './SvgUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getFieldThreadElement = (
   columnName: string,
@@ -44,30 +42,32 @@ export const getFieldThreadElement = (
   const isTaskType = isEqual(threadType, ThreadType.Task);
 
   return !isEmpty(threadValue) ? (
-    <Badge
-      color="#7147E8"
-      count={threadValue.count}
-      data-testid="field-thread-count"
-      size="small">
-      <Icon
-        component={isTaskType ? Tasks : Comments}
-        data-testid="field-thread"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onThreadLinkSelect?.(
-            threadValue.entityLink,
-            isTaskType ? ThreadType.Task : ThreadType.Conversation
-          );
-        }}
-      />
-    </Badge>
+    <button
+      className="link-text"
+      data-testid="field-thread"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onThreadLinkSelect?.(
+          threadValue.entityLink,
+          isTaskType ? ThreadType.Task : ThreadType.Conversation
+        );
+      }}>
+      <span className="tw-flex">
+        <SVGIcons
+          alt="comments"
+          icon={isTaskType ? Icons.TASK_ICON : Icons.COMMENT}
+        />
+        <span className="tw-ml-1" data-testid="field-thread-count">
+          {threadValue.count}
+        </span>
+      </span>
+    </button>
   ) : (
     <Fragment>
       {entityType && entityFqn && entityField && flag && !isTaskType ? (
-        <Icon
-          className="link-text tw-self-start tw-h-8 tw-opacity-0 group-hover:tw-opacity-100"
-          component={CommentsPlus}
+        <button
+          className="link-text"
           data-testid="start-field-thread"
           onClick={(e) => {
             e.preventDefault();
@@ -75,8 +75,9 @@ export const getFieldThreadElement = (
             onThreadLinkSelect?.(
               getEntityFeedLink(entityType, entityFqn, entityField)
             );
-          }}
-        />
+          }}>
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} />
+        </button>
       ) : null}
     </Fragment>
   );

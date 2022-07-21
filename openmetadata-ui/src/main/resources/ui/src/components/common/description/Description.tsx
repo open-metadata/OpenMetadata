@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
-import classNames from 'classnames';
+import { Popover, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
@@ -90,7 +89,6 @@ const Description: FC<DescriptionProps> = ({
 
     return TASK_ENTITIES.includes(entityType as EntityType) ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
         data-testid="request-description"
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
@@ -105,11 +103,7 @@ const Description: FC<DescriptionProps> = ({
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
-          <SVGIcons
-            alt="request-description"
-            icon={Icons.REQUEST}
-            width="16px"
-          />
+          <SVGIcons alt="request-description" icon={Icons.REQUEST} />
         </Popover>
       </button>
     ) : null;
@@ -122,11 +116,10 @@ const Description: FC<DescriptionProps> = ({
   }) => {
     return !isUndefined(descriptionThread) ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
         data-testid="description-thread"
         onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
         <span className="tw-flex">
-          <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
+          <SVGIcons alt="comments" icon={Icons.COMMENT} />{' '}
           <span className="tw-ml-1" data-testid="description-thread-count">
             {' '}
             {descriptionThread.count}
@@ -137,7 +130,6 @@ const Description: FC<DescriptionProps> = ({
       <Fragment>
         {description?.trim() && onThreadLinkSelect ? (
           <button
-            className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
             data-testid="start-description-thread"
             onClick={() =>
               onThreadLinkSelect?.(
@@ -148,24 +140,33 @@ const Description: FC<DescriptionProps> = ({
                 )
               )
             }>
-            <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+            <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} />
           </button>
         ) : null}
       </Fragment>
     );
   };
 
-  const getDescriptionTaskElement = () => {
-    return !isUndefined(tasks) ? (
+  const DescriptionTaskElement = ({
+    descriptionTaskThread,
+  }: {
+    descriptionTaskThread?: EntityFieldThreads;
+  }) => {
+    return !isUndefined(descriptionTaskThread) ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+        className="link-text"
         data-testid="description-task"
-        onClick={() => onThreadLinkSelect?.(tasks.entityLink, ThreadType.Task)}>
-        <span className="tw-flex">
-          <SVGIcons alt="tasks" icon={Icons.TASK_ICON} width="16px" />{' '}
+        onClick={() =>
+          onThreadLinkSelect?.(
+            descriptionTaskThread.entityLink,
+            ThreadType.Task
+          )
+        }>
+        <span className="tw-flex tw-items-center">
+          <SVGIcons alt="tasks" icon={Icons.TASK_ICON} />
           <span className="tw-ml-1" data-testid="description-tasks-count">
             {' '}
-            {tasks.count}
+            {descriptionTaskThread.count}
           </span>
         </span>
       </button>
@@ -174,63 +175,57 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-0.5')}>
+      <Space size={12}>
         {checkPermission() && (
-          <button
-            className="tw-w-7 tw-h-8 tw-flex-none focus:tw-outline-none"
-            data-testid="edit-description"
-            onClick={handleUpdate}>
-            <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
+          <button data-testid="edit-description" onClick={handleUpdate}>
+            <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
           </button>
         )}
         {isTaskSupported(entityType as EntityType) ? (
           <Fragment>
-            {' '}
             <RequestDescriptionEl />
-            {getDescriptionTaskElement()}
+            <DescriptionTaskElement descriptionTaskThread={tasks} />
           </Fragment>
         ) : null}
 
         <DescriptionThreadEl descriptionThread={thread} />
-      </div>
+      </Space>
     ) : null;
   };
 
   return (
     <div className="schema-description tw-relative">
-      <div className="tw-px-3 tw-py-1 tw-flex">
-        <div className="tw-relative">
-          <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"
-            data-testid="description"
-            id="center">
-            {description?.trim() ? (
-              <RichTextEditorPreviewer
-                blurClasses={
-                  blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
-                }
-                className="tw-pl-2"
-                enableSeeMoreVariant={!removeBlur}
-                markdown={description}
-                maxHtClass="tw-max-h-36"
-                maxLen={800}
-              />
-            ) : (
-              <span className="tw-no-description tw-p-2">No description </span>
-            )}
-          </div>
-          {isEdit && (
-            <ModalWithMarkdownEditor
-              header={`Edit description for ${entityName}`}
-              placeholder="Enter Description"
-              value={description}
-              onCancel={onCancel}
-              onSave={onDescriptionUpdate}
+      <Space align="baseline" className="tw-px-3" size={16}>
+        <div
+          className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"
+          data-testid="description"
+          id="center">
+          {description?.trim() ? (
+            <RichTextEditorPreviewer
+              blurClasses={
+                blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
+              }
+              className="tw-pl-2"
+              enableSeeMoreVariant={!removeBlur}
+              markdown={description}
+              maxHtClass="tw-max-h-36"
+              maxLen={800}
             />
+          ) : (
+            <span className="tw-no-description tw-p-2">No description </span>
           )}
         </div>
         <DescriptionActions />
-      </div>
+      </Space>
+      {isEdit && (
+        <ModalWithMarkdownEditor
+          header={`Edit description for ${entityName}`}
+          placeholder="Enter Description"
+          value={description}
+          onCancel={onCancel}
+          onSave={onDescriptionUpdate}
+        />
+      )}
     </div>
   );
 };

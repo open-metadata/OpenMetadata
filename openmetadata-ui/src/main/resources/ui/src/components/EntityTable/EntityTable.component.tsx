@@ -13,7 +13,7 @@
 
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover, Space } from 'antd';
+import { Divider, Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
@@ -68,6 +68,7 @@ import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/Modal
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import { TABLE_HEADERS } from './EntityTable.constant';
+import './EntityTable.css';
 import { EntityTableProps } from './EntityTable.interface';
 
 const EntityTable = ({
@@ -412,7 +413,6 @@ const EntityTable = ({
 
     return (
       <button
-        className="tw-h-8 link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -429,11 +429,7 @@ const EntityTable = ({
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
-          <SVGIcons
-            alt="request-description"
-            icon={Icons.REQUEST}
-            width="16px"
-          />
+          <SVGIcons alt="request-description" icon={Icons.REQUEST} />
         </Popover>
       </button>
     );
@@ -717,70 +713,75 @@ const EntityTable = ({
                       )}
                       {cell.column.id === 'description' && (
                         <div>
-                          <div className="tw-inline-block">
-                            <Space
-                              data-testid="description"
-                              id={`column-description-${index}`}
-                              size={12}>
-                              <div>
-                                {cell.value ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={cell.value}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description{' '}
-                                  </span>
-                                )}
-                              </div>
-                              <Space wrap align="start" size={12}>
-                                {getFieldThreadElement(
-                                  getColumnName(cell),
-                                  EntityField.DESCRIPTION,
-                                  entityFieldThreads as EntityFieldThreads[],
-                                  onThreadLinkSelect,
-                                  EntityType.TABLE,
-                                  entityFqn,
-                                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                                    cell
-                                  )}${ENTITY_LINK_SEPARATOR}description`,
-                                  Boolean(cell.value)
-                                )}
-                                {getFieldThreadElement(
-                                  getColumnName(cell),
-                                  EntityField.DESCRIPTION,
-                                  entityFieldTasks as EntityFieldThreads[],
-                                  onThreadLinkSelect,
-                                  EntityType.TABLE,
-                                  entityFqn,
-                                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                                    cell
-                                  )}${ENTITY_LINK_SEPARATOR}description`,
-                                  Boolean(cell.value),
-                                  ThreadType.Task
-                                )}
-                                {!isReadOnly ? (
-                                  <Fragment>
-                                    {checkPermission() && (
-                                      <button
-                                        className="tw-self-start tw-h-8 tw-opacity-0 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        onClick={() =>
-                                          handleUpdate(row.original, row.id)
-                                        }>
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="14px"
-                                        />
-                                      </button>
-                                    )}
-                                    {getRequestDescriptionElement(cell)}
-                                  </Fragment>
-                                ) : null}
-                              </Space>
+                          <Space
+                            className="ant-space-custom"
+                            data-testid="description"
+                            direction="vertical"
+                            id={`column-description-${index}`}>
+                            <div>
+                              {cell.value ? (
+                                <RichTextEditorPreviewer
+                                  markdown={cell.value}
+                                />
+                              ) : (
+                                <span className="tw-no-description">
+                                  No description{' '}
+                                </span>
+                              )}
+                            </div>
+
+                            <Divider
+                              dashed
+                              className="ant-divider-column-action"
+                            />
+
+                            <Space wrap align="start" size={12}>
+                              {getFieldThreadElement(
+                                getColumnName(cell),
+                                EntityField.DESCRIPTION,
+                                entityFieldThreads as EntityFieldThreads[],
+                                onThreadLinkSelect,
+                                EntityType.TABLE,
+                                entityFqn,
+                                `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                  cell
+                                )}${ENTITY_LINK_SEPARATOR}description`,
+                                Boolean(cell.value)
+                              )}
+                              {getFieldThreadElement(
+                                getColumnName(cell),
+                                EntityField.DESCRIPTION,
+                                entityFieldTasks as EntityFieldThreads[],
+                                onThreadLinkSelect,
+                                EntityType.TABLE,
+                                entityFqn,
+                                `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                  cell
+                                )}${ENTITY_LINK_SEPARATOR}description`,
+                                Boolean(cell.value),
+                                ThreadType.Task
+                              )}
+                              {!isReadOnly ? (
+                                <Fragment>
+                                  {checkPermission() && (
+                                    <button
+                                      onClick={() =>
+                                        handleUpdate(row.original, row.id)
+                                      }>
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="14px"
+                                      />
+                                    </button>
+                                  )}
+                                  {getRequestDescriptionElement(cell)}
+                                </Fragment>
+                              ) : null}
                             </Space>
-                          </div>
+                          </Space>
+
                           {checkIfJoinsAvailable(row.original.name) && (
                             <div
                               className="tw-mt-3"
