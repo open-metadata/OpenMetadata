@@ -25,7 +25,7 @@ concurrency:
   group: airflow-apis-tests-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
-  py-run-tests:
+  airflow-apis-tests:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -72,13 +72,16 @@ jobs:
     - name: Run Python Tests & Record Coverage
       run: |
         source env/bin/activate
-        make coverage
+        make install_apis
+        make coverage_apis
         rm pom.xml
         # fix coverage xml report for github
-        sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
+        sed -i 's/src\/openmetadata/\/github\/workspace\/openmetadata-airflow-apis\/src\/openmetadata/g' openmetadata-airflow-apis/ci-coverage.xml
 
     - name: Push Results to Sonar
       uses: sonarsource/sonarcloud-github-action@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
+      with:
+        projectBaseDir: openmetadata-airflow-apis/
