@@ -17,6 +17,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
+import GlobalSettingPage from '../pages/GlobalSettingPage/GlobalSettingPage';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const MyDataPage = withSuspenseFallback(
@@ -342,6 +343,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
+      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
+      <Route
+        exact
+        component={GlobalSettingPage}
+        path={ROUTES.SETTINGS_WITH_TAB}
+      />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
