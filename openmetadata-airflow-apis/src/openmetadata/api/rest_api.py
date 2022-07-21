@@ -35,6 +35,7 @@ from openmetadata.api.utils import jwt_token_secure
 from openmetadata.helpers import clean_dag_id
 from openmetadata.operations.delete import delete_dag_id
 from openmetadata.operations.deploy import DagDeployer
+from openmetadata.operations.kill_all import kill_all
 from openmetadata.operations.last_dag_logs import last_dag_logs
 from openmetadata.operations.state import disable_dag, enable_dag
 from openmetadata.operations.status import status
@@ -46,6 +47,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
 )
 from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
+
+MISSING_DAG_ID_EXCEPTION_MSG = "Missing dag_id argument in the request"
 
 
 class REST_API(AppBuilderBaseView):
@@ -62,6 +65,25 @@ class REST_API(AppBuilderBaseView):
     @staticmethod
     def get_request_arg(req, arg) -> Optional[str]:
         return req.args.get(arg) or req.form.get(arg)
+
+    def get_arg_dag_id(self) -> Optional[str]:
+        """
+        Try to fetch the dag_id from the args
+        and clean it
+        """
+        raw_dag_id = self.get_request_arg(request, "dag_id")
+
+        return clean_dag_id(raw_dag_id)
+
+    @staticmethod
+    def get_request_dag_id() -> Optional[str]:
+        """
+        Try to fetch the dag_id from the JSON request
+        and clean it
+        """
+        raw_dag_id = request.get_json().get("dag_id")
+
+        return clean_dag_id(raw_dag_id)
 
     # '/' Endpoint where the Admin page is which allows you to view the APIs available and trigger them
     @app_builder_expose("/")
@@ -134,22 +156,10 @@ class REST_API(AppBuilderBaseView):
 
         # Deciding which function to use based off the API object that was requested.
         # Some functions are custom and need to be manually routed to.
-        if api == "deploy_dag":
-            return self.deploy_dag()
-        if api == "trigger_dag":
-            return self.trigger_dag()
-        if api == "test_connection":
-            return self.test_connection()
-        if api == "dag_status":
-            return self.dag_status()
-        if api == "delete_dag":
-            return self.delete_dag()
-        if api == "last_dag_logs":
-            return self.last_dag_logs()
-        if api == "enable_dag":
-            return self.enable_dag()
-        if api == "disable_dag":
-            return self.disable_dag()
+        # The required API name will be the method name to invoke.
+        api_fn = getattr(self, api)
+        if api_fn:
+            return api_fn()
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
@@ -212,21 +222,17 @@ class REST_API(AppBuilderBaseView):
                 error=f"Internal error testing connection {err} - {traceback.format_exc()}",
             )
 
-    @staticmethod
-    def trigger_dag() -> Response:
+    def trigger_dag(self) -> Response:
         """
         Trigger a dag run
         """
-        request_json = request.get_json()
+        dag_id = self.get_request_dag_id()
 
-        raw_dag_id = request_json.get("workflow_name")
-        if not raw_dag_id:
-            return ApiResponse.bad_request("workflow_name should be informed")
-
-        dag_id = clean_dag_id(raw_dag_id)
+        if not dag_id:
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
-            run_id = request_json.get("run_id")
+            run_id = self.get_request_arg(request, "run_id")
             response = trigger(dag_id, run_id)
 
             return response
@@ -242,12 +248,10 @@ class REST_API(AppBuilderBaseView):
         """
         Check the status of a DAG runs
         """
-        raw_dag_id: str = self.get_request_arg(request, "dag_id")
+        dag_id = self.get_arg_dag_id()
 
-        if not raw_dag_id:
-            return ApiResponse.bad_request("Missing dag_id argument in the request")
-
-        dag_id = clean_dag_id(raw_dag_id)
+        if not dag_id:
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return status(dag_id)
@@ -268,12 +272,10 @@ class REST_API(AppBuilderBaseView):
             "workflow_name": "my_ingestion_pipeline3"
         }
         """
-        raw_dag_id: str = self.get_request_arg(request, "dag_id")
+        dag_id = self.get_arg_dag_id()
 
-        if not raw_dag_id:
-            return ApiResponse.bad_request("workflow_name should be informed")
-
-        dag_id = clean_dag_id(raw_dag_id)
+        if not dag_id:
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return delete_dag_id(dag_id)
@@ -306,18 +308,14 @@ class REST_API(AppBuilderBaseView):
                 error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
             )
 
-    @staticmethod
-    def enable_dag() -> Response:
+    def enable_dag(self) -> Response:
         """
         Given a DAG ID, mark the dag as enabled
         """
-        request_json = request.get_json()
+        dag_id = self.get_request_dag_id()
 
-        raw_dag_id = request_json.get("dag_id")
-        if not raw_dag_id:
-            return ApiResponse.bad_request(f"Missing dag_id argument in the request")
-
-        dag_id = clean_dag_id(raw_dag_id)
+        if not dag_id:
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return enable_dag(dag_id)
@@ -329,18 +327,14 @@ class REST_API(AppBuilderBaseView):
                 error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
             )
 
-    @staticmethod
-    def disable_dag() -> Response:
+    def disable_dag(self) -> Response:
         """
         Given a DAG ID, mark the dag as disabled
         """
-        request_json = request.get_json()
+        dag_id = self.get_request_dag_id()
 
-        raw_dag_id = request_json.get("dag_id")
-        if not raw_dag_id:
-            return ApiResponse.bad_request(f"Missing dag_id argument in the request")
-
-        dag_id = clean_dag_id(raw_dag_id)
+        if not dag_id:
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return disable_dag(dag_id)
@@ -350,4 +344,24 @@ class REST_API(AppBuilderBaseView):
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
+            )
+
+    def kill_all(self) -> Response:
+        """
+        Given a DAG ID, mark all running tasks as FAILED
+        to kill the processes' execution.
+        """
+        dag_id = self.get_request_dag_id()
+
+        if not dag_id:
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
+
+        try:
+            return kill_all(dag_id)
+
+        except Exception as exc:
+            logging.info(f"Failed to get kill runs for '{dag_id}'")
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Failed to kill runs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
             )
