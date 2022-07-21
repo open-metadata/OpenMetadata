@@ -61,7 +61,7 @@ jobs:
     - name: Install open-metadata dependencies
       run: |
         source env/bin/activate
-        make install_test
+        make install_all install_test
 
     - name: Start Server and Ingest Sample Data
       env:
