@@ -14,6 +14,8 @@ Expand sqlalchemy types to map them to OpenMetadata DataType
 """
 # pylint: disable=duplicate-code
 
+from typing import Optional
+
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
 
 
@@ -37,7 +39,7 @@ class HexByteString(TypeDecorator):
         if not isinstance(value, bytes):
             raise TypeError("HexByteString columns support only bytes values.")
 
-    def process_result_value(self, value: str, dialect) -> str:
+    def process_result_value(self, value: str, dialect) -> Optional[str]:
         """This is executed during result retrieval
 
         Args:
