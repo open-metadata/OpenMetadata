@@ -11,9 +11,15 @@
 """Metabase source module"""
 
 import traceback
+from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
 import requests
+
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
 from sqllineage.runner import LineageRunner
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
