@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,7 +58,6 @@ import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
@@ -302,7 +297,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, table, ADMIN | BOT);
+    return create(uriInfo, securityContext, table, true);
   }
 
   @PUT
@@ -322,7 +317,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, table, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, table, true);
   }
 
   @PATCH
@@ -371,7 +366,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   @DELETE
@@ -394,7 +389,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete, ADMIN | BOT | OWNER);
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete, true);
   }
 
   @PUT
@@ -445,7 +440,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid TableJoins joins)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addJoins(UUID.fromString(id), joins);
     return addHref(uriInfo, table);
   }
@@ -469,7 +464,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid TableData tableData)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addSampleData(UUID.fromString(id), tableData);
     return addHref(uriInfo, table);
   }
@@ -493,7 +488,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid TableProfile tableProfile)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addTableProfileData(UUID.fromString(id), tableProfile);
     return addHref(uriInfo, table);
   }
@@ -541,7 +536,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid SQLQuery sqlQuery)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addQuery(UUID.fromString(id), sqlQuery);
     return addHref(uriInfo, table);
   }
@@ -565,7 +560,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid DataModel dataModel)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addDataModel(UUID.fromString(id), dataModel);
     return addHref(uriInfo, table);
   }
@@ -589,7 +584,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid CreateTableTest createTableTest)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     TableTest tableTest = getTableTest(securityContext, createTableTest);
     Table table = dao.addTableTest(UUID.fromString(id), tableTest);
     return addHref(uriInfo, table);
@@ -615,7 +610,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Table Test Type", schema = @Schema(type = "string")) @PathParam("tableTestType")
           String tableTestType)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.deleteTableTest(UUID.fromString(id), tableTestType);
     return addHref(uriInfo, table);
   }
@@ -639,7 +634,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid CreateColumnTest createColumnTest)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     ColumnTest columnTest = getColumnTest(securityContext, createColumnTest);
     Table table = dao.addColumnTest(UUID.fromString(id), columnTest);
     return addHref(uriInfo, table);
@@ -664,7 +659,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid CreateCustomMetric createCustomMetric)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
     Table table = dao.addCustomMetric(UUID.fromString(id), customMetric);
     return addHref(uriInfo, table);
@@ -692,7 +687,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("columnTestType")
           String columnTestType)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.deleteColumnTest(UUID.fromString(id), columnName, columnTestType);
     return addHref(uriInfo, table);
   }
@@ -719,7 +714,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("customMetricName")
           String customMetricName)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.deleteCustomMetric(UUID.fromString(id), columnName, customMetricName);
     return addHref(uriInfo, table);
   }

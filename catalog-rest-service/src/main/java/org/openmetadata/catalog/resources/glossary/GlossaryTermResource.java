@@ -13,9 +13,6 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -326,7 +323,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, term, ADMIN | BOT);
+    return create(uriInfo, securityContext, term, true);
   }
 
   @PATCH
@@ -372,7 +369,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, term, ADMIN | BOT);
+    return createOrUpdate(uriInfo, securityContext, term, true);
   }
 
   @DELETE
@@ -398,7 +395,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           boolean hardDelete,
       @Parameter(description = "Glossary Term Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {

@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -43,14 +44,18 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityLineage;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.TagLabel;
 
 @Path("/v1/lineage")
 @Api(value = "Lineage resource", tags = "Lineage resource")
@@ -165,7 +170,11 @@ public class LineageResource {
   public Response addLineage(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
       throws IOException {
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.EDIT_LINEAGE);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext(),
+        true);
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -201,7 +210,11 @@ public class LineageResource {
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("toId")
           String toId)
       throws IOException {
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.EDIT_LINEAGE);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext(),
+        true);
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
@@ -217,4 +230,21 @@ public class LineageResource {
     Entity.withHref(uriInfo, lineage.getNodes());
     return lineage;
   }
+
+  class LineageResourceContext implements ResourceContextInterface {
+    @Override
+    public EntityReference getOwner() throws IOException {
+      return null;
+    }
+
+    @Override
+    public List<TagLabel> getTags() throws IOException {
+      return null;
+    }
+
+    @Override
+    public EntityInterface getEntity() throws IOException {
+      return null;
+    }
+  };
 }
