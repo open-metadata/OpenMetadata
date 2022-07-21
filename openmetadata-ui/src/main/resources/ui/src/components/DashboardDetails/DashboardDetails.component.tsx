@@ -244,6 +244,36 @@ const DashboardDetails = ({
     }
   };
 
+  const onOwnerUpdate = (newOwner?: Dashboard['owner']) => {
+    if (newOwner) {
+      const updatedDashboardDetails = {
+        ...dashboardDetails,
+        owner: newOwner
+          ? { ...dashboardDetails.owner, ...newOwner }
+          : dashboardDetails.owner,
+      };
+      settingsUpdateHandler(updatedDashboardDetails);
+    }
+  };
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Dashboard['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : dashboardDetails.tags;
+      const updatedDashboardDetails = {
+        ...dashboardDetails,
+        tags: tierTag,
+      };
+      settingsUpdateHandler(updatedDashboardDetails);
+    }
+  };
   const onSettingsUpdate = (
     newOwner?: Dashboard['owner'],
     newTier?: string
@@ -478,6 +508,8 @@ const DashboardDetails = ({
           tagsHandler={onTagUpdate}
           tier={tier || ''}
           titleLinks={slashedDashboardName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}

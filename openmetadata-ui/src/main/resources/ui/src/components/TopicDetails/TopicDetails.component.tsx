@@ -265,7 +265,42 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       setIsEdit(false);
     }
   };
+  const onOwnerUpdate = (newOwner?: Topic['owner']) => {
+    if (newOwner) {
+      const updatedTopicDetails = {
+        ...topicDetails,
+        owner: newOwner
+          ? {
+              ...topicDetails.owner,
+              ...newOwner,
+            }
+          : topicDetails.owner,
+      };
+      settingsUpdateHandler(updatedTopicDetails);
+    }
+  };
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Topic['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(topicDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : topicDetails.tags;
+      const updatedTopicDetails = {
+        ...topicDetails,
+        tags: tierTag,
+      };
 
+      return settingsUpdateHandler(updatedTopicDetails);
+    } else {
+      return Promise.reject();
+    }
+  };
   const onSettingsUpdate = (newOwner?: Topic['owner'], newTier?: string) => {
     if (newOwner || newTier) {
       const tierTag: Topic['tags'] = newTier
@@ -402,6 +437,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
           titleLinks={slashedTopicName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}

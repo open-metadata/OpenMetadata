@@ -13,7 +13,6 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
-import time
 from typing import Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
@@ -60,44 +59,12 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def _search_es_entity_retry(
-        self, entity_type: Type[T], query_string: str, retries: int = 3
-    ) -> Optional[List[T]]:
-        """
-        Run the ES query `retries` times if the results are None.
-
-        It might be because the index has not yet been updated.
-
-        :param entity_type: Entity to look for
-        :param query_string: Query to run
-        :param retries: Times to retry
-        :return: List of Entities or None
-        """
-        times = max(1, retries)  # Try at least once
-        while times:
-            entity_list = self._search_es_entity(
-                entity_type=entity_type, query_string=query_string
-            )
-            if entity_list:
-                return entity_list
-
-            logger.debug(
-                f"Could not find any entities for ES query {query_string}. Will retry in 1 second..."
-            )
-
-            times -= 1
-            if times:  # Only wait if we have another iteration coming
-                time.sleep(1)
-
-        return None
-
     def es_search_from_fqn(
         self,
         entity_type: Type[T],
         fqn_search_string: str,
         from_count: int = 0,
         size: int = 10,
-        retries: int = 3,
     ) -> Optional[List[T]]:
         """
         Given a service_name and some filters, search for entities using ES
@@ -106,7 +73,6 @@ class ESMixin(Generic[T]):
         :param fqn_search_string: string used to search by FQN. E.g., service.*.schema.table
         :param from_count: Records to expect
         :param size: Number of records
-        :param retries: Number of retries for the ES query
         :return: List of entities
         """
         query_string = self.fqdn_search.format(
@@ -117,9 +83,11 @@ class ESMixin(Generic[T]):
         )
 
         try:
-            return self._search_es_entity_retry(
-                entity_type=entity_type, query_string=query_string, retries=retries
+            entity_list = self._search_es_entity(
+                entity_type=entity_type, query_string=query_string
             )
+            if entity_list:
+                return entity_list
 
         except KeyError:
             logger.warning(

@@ -238,6 +238,36 @@ const PipelineDetails = ({
     setEditTask(undefined);
   };
 
+  const onOwnerUpdate = (newOwner?: Pipeline['owner']) => {
+    if (newOwner) {
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        owner: newOwner
+          ? { ...pipelineDetails.owner, ...newOwner }
+          : pipelineDetails.owner,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Pipeline['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : pipelineDetails.tags;
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        tags: tierTag,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
   const onSettingsUpdate = (newOwner?: Pipeline['owner'], newTier?: string) => {
     if (newOwner || newTier) {
       const tierTag: Pipeline['tags'] = newTier
@@ -372,6 +402,8 @@ const PipelineDetails = ({
           tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedPipelineName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}

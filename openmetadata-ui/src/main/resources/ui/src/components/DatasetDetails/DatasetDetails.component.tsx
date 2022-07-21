@@ -445,6 +445,42 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const onOwnerUpdate = (newOwner?: Table['owner']) => {
+    if (newOwner) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        owner: {
+          ...tableDetails.owner,
+          ...newOwner,
+        },
+      };
+      settingsUpdateHandler(updatedTableDetails);
+    }
+  };
+
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Table['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(tableDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : tableDetails.tags;
+      const updatedTableDetails = {
+        ...tableDetails,
+        tags: tierTag,
+      };
+
+      return settingsUpdateHandler(updatedTableDetails);
+    } else {
+      return Promise.reject();
+    }
+  };
+
   const onSettingsUpdate = (newOwner?: Table['owner'], newTier?: string) => {
     if (newOwner || newTier) {
       const tierTag: Table['tags'] = newTier
@@ -583,6 +619,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             entityFieldThreadCount
           )}
           entityFqn={datasetFQN}
+          entityId={tableDetails.id}
           entityName={entityName}
           entityType={EntityType.TABLE}
           extraInfo={extraInfo}
@@ -595,6 +632,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedTableName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
