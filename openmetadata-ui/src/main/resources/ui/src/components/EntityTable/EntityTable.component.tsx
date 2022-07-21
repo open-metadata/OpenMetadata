@@ -738,7 +738,7 @@ const EntityTable = ({
                                   <Fragment>
                                     {checkPermission() && (
                                       <button
-                                        className="tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none tw-flex-none"
+                                        className="tw-self-start tw-w-8 tw-h-8 tw-hidden tw-ml-1 group-hover:tw-inline-block focus:tw-outline-none tw-flex-none"
                                         onClick={() =>
                                           handleUpdate(row.original, row.id)
                                         }>
