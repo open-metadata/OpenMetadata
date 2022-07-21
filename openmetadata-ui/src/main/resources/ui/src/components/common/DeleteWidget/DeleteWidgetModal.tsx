@@ -66,7 +66,7 @@ const DeleteWidgetV1 = ({
     setName(e.target.value);
   };
 
-  const handleOnEntityDelete = (softDelete = false) => {
+  const handleOnEntityDelete = (softDelete = true) => {
     setEntityDeleteState((prev) => ({ ...prev, state: true, softDelete }));
   };
 

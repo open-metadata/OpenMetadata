@@ -11,6 +11,8 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+import logging
+import time
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -63,6 +65,25 @@ class OMetaESTest(TestCase):
     service_type = "databaseService"
 
     @classmethod
+    def check_es_index(cls) -> None:
+        """
+        Wait until the index has been updated with the test table.
+        """
+        logging.info("Checking ES index status...")
+        tries = 0
+
+        res = None
+        while not res and tries <= 5:  # Kill in 5 seconds
+
+            res = cls.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
+            )
+            if not res:
+                tries += 1
+                time.sleep(1)
+
+    @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare ingredients
@@ -99,6 +120,9 @@ class OMetaESTest(TestCase):
 
         cls.entity = cls.metadata.create_or_update(create)
 
+        # Leave some time for indexes to get updated, otherwise this happens too fast
+        cls.check_es_index()
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -131,7 +155,6 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         # We get the created table back
@@ -149,7 +172,6 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         self.assertIsNotNone(res)
@@ -166,7 +188,6 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         self.assertIsNotNone(res)
@@ -179,7 +200,6 @@ class OMetaESTest(TestCase):
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string="random",
-            retries=1,
         )
 
         self.assertIsNone(res)

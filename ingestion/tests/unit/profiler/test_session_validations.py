@@ -19,6 +19,10 @@ from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+    SQLiteScheme,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual import (
     ColumnValuesMissingCount,
@@ -38,8 +42,8 @@ from metadata.generated.schema.tests.column.columnValuesToNotMatchRegex import (
 from metadata.generated.schema.tests.table.tableCustomSQLQuery import (
     TableCustomSQLQuery,
 )
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.validations.core import validation_enum_registry
-from metadata.utils.connections import create_and_bind_session
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 Base = declarative_base()
@@ -60,8 +64,10 @@ class SessionValidation(TestCase):
     Run checks on different metrics
     """
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
-    session = create_and_bind_session(engine)
+    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    engine = sqa_profiler_interface.session.get_bind()
+    session = sqa_profiler_interface.session
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -89,6 +95,10 @@ class SessionValidation(TestCase):
         cls.session.add_all(data)
         cls.session.commit()
 
+    def setUp(self) -> None:
+        self.sqa_profiler_interface.create_sampler(User)
+        self.sqa_profiler_interface.create_runner(User)
+
     def test_column_values_not_in_set(self):
         """
         Check that the metric runs and the results are correctly validated
@@ -99,7 +109,7 @@ class SessionValidation(TestCase):
             ColumnValuesToBeNotInSet(forbiddenValues=["random", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -113,7 +123,7 @@ class SessionValidation(TestCase):
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -127,7 +137,7 @@ class SessionValidation(TestCase):
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=ColumnProfile(name="random"),
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -150,7 +160,7 @@ class SessionValidation(TestCase):
             ColumnValuesToMatchRegex(regex="J%"),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -164,7 +174,7 @@ class SessionValidation(TestCase):
             ColumnValuesToMatchRegex(regex="Jo%"),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -178,7 +188,7 @@ class SessionValidation(TestCase):
             ColumnValuesToMatchRegex(regex="J%"),
             col_profile=ColumnProfile(name="name"),
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -200,7 +210,7 @@ class SessionValidation(TestCase):
             ColumnValuesMissingCount(missingCountValue=1),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -219,7 +229,7 @@ class SessionValidation(TestCase):
             ),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -235,7 +245,7 @@ class SessionValidation(TestCase):
             ),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -253,7 +263,7 @@ class SessionValidation(TestCase):
             ),
             col_profile=ColumnProfile(name="nickname"),
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -275,7 +285,7 @@ class SessionValidation(TestCase):
             ColumnValuesToBeInSet(allowedValues=["random", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
 
@@ -295,9 +305,11 @@ class SessionValidation(TestCase):
             ColumnValuesToNotMatchRegex(forbiddenRegex="J%"),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
-            session=self.session,
+            runner=self.sqa_profiler_interface.runner,
             table=User,
         )
+
+        print(res_ok)
 
         assert res_ok == TestCaseResult(
             executionTime=EXECUTION_DATE.timestamp(),

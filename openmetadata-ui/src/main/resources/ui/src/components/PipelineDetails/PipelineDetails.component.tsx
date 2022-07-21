@@ -12,6 +12,7 @@
  */
 
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
@@ -250,6 +251,36 @@ const PipelineDetails = ({
     setEditTask(undefined);
   };
 
+  const onOwnerUpdate = (newOwner?: Pipeline['owner']) => {
+    if (newOwner) {
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        owner: newOwner
+          ? { ...pipelineDetails.owner, ...newOwner }
+          : pipelineDetails.owner,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Pipeline['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : pipelineDetails.tags;
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        tags: tierTag,
+      };
+      settingsUpdateHandler(updatedPipelineDetails);
+    }
+  };
   const onSettingsUpdate = (newOwner?: Pipeline['owner'], newTier?: string) => {
     if (newOwner || newTier) {
       const tierTag: Pipeline['tags'] = newTier
@@ -384,6 +415,8 @@ const PipelineDetails = ({
           tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedPipelineName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
@@ -430,13 +463,15 @@ const PipelineDetails = ({
                   <div
                     className="tw-flex-grow tw-w-full tw-h-full"
                     style={{ height: 'calc(100% - 250px)' }}>
-                    {tasks ? (
+                    {!isEmpty(tasks) ? (
                       <TasksDAGView
                         selectedExec={selectedExecution}
                         tasks={tasks}
                       />
                     ) : (
-                      <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+                      <div
+                        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                        data-testid="no-tasks-data">
                         <span>No task data is available</span>
                       </div>
                     )}

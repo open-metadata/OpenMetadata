@@ -93,7 +93,7 @@ export const AuthProvider = ({
 }: AuthProviderProps) => {
   const location = useLocation();
   const history = useHistory();
-  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout>();
+  const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const oidcUserToken = localStorage.getItem(oidcTokenKey);
@@ -319,7 +319,7 @@ export const AuthProvider = ({
             const timerId = setTimeout(() => {
               trySilentSignIn();
             }, diff);
-            setTimeoutId(timerId);
+            setTimeoutId(Number(timerId));
           } else {
             trySilentSignIn();
           }
@@ -336,7 +336,7 @@ export const AuthProvider = ({
    * Clean silentSignIn activities if going on
    */
   const cleanup = useCallback(() => {
-    clearTimeout(timeoutId as NodeJS.Timeout);
+    clearTimeout(timeoutId);
   }, [timeoutId]);
 
   useEffect(() => {

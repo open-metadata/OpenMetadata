@@ -67,6 +67,6 @@ class UniqueRatio(ComposedMetric):
             # setting a global seed, and it is more interesting
             # to have a wider variety of results for the
             # profiler runs.
-            return min(res_unique / res_count, 100)
+            return min(res_unique / res_count, 1)
 
         return None
