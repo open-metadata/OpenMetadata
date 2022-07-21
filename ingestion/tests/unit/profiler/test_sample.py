@@ -18,6 +18,7 @@ from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.utils.connections import create_and_bind_session
@@ -214,6 +215,59 @@ class SampleTest(TestCase):
         # Order matters, this is how we'll present the data
         names = [str(col.__root__) for col in sample_data.columns]
         assert names == ["id", "name", "fullname", "nickname", "comments", "age"]
+
+    def test_sample_data_binary(self):
+        """
+        We should be able to pick up sample data from the sampler
+        """
+
+        class UserBinary(Base):
+            __tablename__ = "users_binary"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(256))
+            fullname = Column(String(256))
+            nickname = Column(String(256))
+            comments = Column(TEXT)
+            age = Column(Integer)
+            password_hash = Column(CustomTypes.BYTES.value)
+
+        UserBinary.__table__.create(bind=self.engine)
+
+        for i in range(10):
+            data = [
+                UserBinary(
+                    name="John",
+                    fullname="John Doe",
+                    nickname="johnny b goode",
+                    comments="no comments",
+                    age=30,
+                    password_hash=b"foo",
+                ),
+            ]
+
+            self.session.add_all(data)
+            self.session.commit()
+
+        sampler = Sampler(session=self.session, table=UserBinary)
+        sample_data = sampler.fetch_sample_data()
+
+        assert len(sample_data.columns) == 7
+        assert len(sample_data.rows) == 10
+
+        names = [str(col.__root__) for col in sample_data.columns]
+        assert names == [
+            "id",
+            "name",
+            "fullname",
+            "nickname",
+            "comments",
+            "age",
+            "password_hash",
+        ]
+
+        assert type(sample_data.rows[0][6]) == str
+
+        UserBinary.__table__.drop(bind=self.engine)
 
     def test_sample_from_user_query(self):
         """
