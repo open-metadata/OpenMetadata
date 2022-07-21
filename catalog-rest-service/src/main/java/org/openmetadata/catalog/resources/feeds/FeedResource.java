@@ -511,7 +511,7 @@ public class FeedResource {
         .withMessage(create.getMessage())
         .withCreatedBy(create.getFrom())
         .withAbout(create.getAbout())
-        .withAddressedTo(create.getMessage())
+        .withAddressedTo(create.getAddressedTo())
         .withReactions(Collections.emptyList())
         .withType(create.getType())
         .withTask(getTaskDetails(create.getTaskDetails()))
@@ -543,9 +543,7 @@ public class FeedResource {
   private List<EntityReference> formatAssignees(List<EntityReference> assignees) {
     List<EntityReference> result = new ArrayList<>();
     assignees.forEach(
-        assignee -> {
-          result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType()));
-        });
+        assignee -> result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType())));
     return result;
   }
 }

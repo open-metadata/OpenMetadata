@@ -32,7 +32,6 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -155,30 +154,33 @@ public class ChangeEventHandler implements EventHandler {
             return;
           case Conversation:
             WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
-            if (thread.getAddressedTo() != null && !thread.getAddressedTo().equals(StringUtils.EMPTY)) {
-              // need to send notification to all the user or team's user addressed
-              List<EntityLink> mentions = MessageParser.getEntityLinks(thread.getAddressedTo());
-              mentions.forEach(
-                  (entityLink) -> {
-                    String fqn = entityLink.getEntityFQN();
-                    switch (entityLink.getEntityType()) {
-                      case USER:
-                        User user = dao.userDAO().findEntityByName(fqn);
-                        WebSocketManager.getInstance()
-                            .sendToOne(user.getId(), WebSocketManager.mentionChannel, jsonThread);
-                        break;
-                      case TEAM:
-                        Team team = dao.teamDAO().findEntityByName(fqn);
-                        // fetch all that are there in the team
-                        List<EntityRelationshipRecord> records =
-                            dao.relationshipDAO()
-                                .findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-                        WebSocketManager.getInstance()
-                            .sendToManyWithString(records, WebSocketManager.mentionChannel, jsonThread);
-                        break;
-                    }
-                  });
+            List<EntityLink> mentions;
+            if (thread.getPostsCount() == 0) {
+              mentions = MessageParser.getEntityLinks(thread.getMessage());
+            } else {
+              Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
+              mentions = MessageParser.getEntityLinks(latestPost.getMessage());
             }
+            mentions.forEach(
+                (entityLink) -> {
+                  String fqn = entityLink.getEntityFQN();
+                  switch (entityLink.getEntityType()) {
+                    case USER:
+                      User user = dao.userDAO().findEntityByName(fqn);
+                      WebSocketManager.getInstance()
+                          .sendToOne(user.getId(), WebSocketManager.mentionChannel, jsonThread);
+                      break;
+                    case TEAM:
+                      Team team = dao.teamDAO().findEntityByName(fqn);
+                      // fetch all that are there in the team
+                      List<EntityRelationshipRecord> records =
+                          dao.relationshipDAO()
+                              .findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                      WebSocketManager.getInstance()
+                          .sendToManyWithString(records, WebSocketManager.mentionChannel, jsonThread);
+                      break;
+                  }
+                });
             return;
           case Announcement:
           default:
