@@ -105,7 +105,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
       String triggerUrl = String.format(triggerEndPoint, serviceURL);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("workflow_name", pipelineName);
+      requestPayload.put("dag_id", pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response.body();
@@ -187,16 +187,15 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public HttpResponse<String> getServiceStatus() {
-    HttpResponse<String> response;
     try {
-      HttpResponse<String> response = requestAuthenticatedForJsonContent("%s/rest_api/api?api=rest_status", serviceURL);
+      HttpResponse<String> response = requestNoAuthForJsonContent("%s/rest_api/health", serviceURL);
       if (response.statusCode() == 200) {
         return response;
       }
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
+      throw new PipelineServiceClientException("Failed to get REST status.");
     }
-    throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
+    throw new PipelineServiceClientException("Failed to get REST status.");
   }
 
   @Override
@@ -237,19 +236,17 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
-    HttpResponse<String> response;
     try {
-      response =
+      HttpResponse<String> response =
           requestAuthenticatedForJsonContent(
               "%s/rest_api/api?api=last_dag_logs&dag_id=%s", serviceURL, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to get last ingestion logs.", e.getMessage());
+      throw new PipelineServiceClientException("Failed to get last ingestion logs.");
     }
-    throw new PipelineServiceClientException(
-        String.format("Failed to get last ingestion logs due to %s", response.body()));
+    throw new PipelineServiceClientException("Failed to get last ingestion logs.");
   }
 
   private HttpResponse<String> requestAuthenticatedForJsonContent(String stringUrlFormat, Object... stringReplacement)
@@ -263,6 +260,13 @@ public class AirflowRESTClient extends PipelineServiceClient {
             .header(AUTH_HEADER, authToken)
             .GET()
             .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> requestNoAuthForJsonContent(String stringUrlFormat, Object... stringReplacement)
+      throws IOException, InterruptedException {
+    String url = String.format(stringUrlFormat, stringReplacement);
+    HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header(CONTENT_HEADER, CONTENT_TYPE).GET().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }
