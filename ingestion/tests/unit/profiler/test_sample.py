@@ -25,6 +25,7 @@ from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerI
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.sampler import Sampler
+from metadata.orm_profiler.orm.registry import CustomTypes
 
 Base = declarative_base()
 
@@ -278,7 +279,7 @@ class SampleTest(TestCase):
             nickname = Column(String(256))
             comments = Column(TEXT)
             age = Column(Integer)
-            password_hash = Column(BINARY)
+            password_hash = Column(CustomTypes.BYTES.value)
 
         UserBinary.__table__.create(bind=self.engine)
 
