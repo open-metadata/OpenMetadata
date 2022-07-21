@@ -64,12 +64,21 @@ class REST_API(AppBuilderBaseView):
     def get_request_arg(req, arg) -> Optional[str]:
         return req.args.get(arg) or req.form.get(arg)
 
-    def get_request_dag_id(self) -> Optional[str]:
+    def get_arg_dag_id(self) -> Optional[str]:
         """
-        Try to fetch the dag_id from the request
+        Try to fetch the dag_id from the args
         and clean it
         """
-        raw_dag_id: str = self.get_request_arg(request, "dag_id")
+        raw_dag_id = self.get_request_arg(request, "dag_id")
+
+        return clean_dag_id(raw_dag_id)
+
+    def get_request_dag_id(self) -> Optional[str]:
+        """
+        Try to fetch the dag_id from the JSON request
+        and clean it
+        """
+        raw_dag_id = request.get_json().get("dag_id")
 
         return clean_dag_id(raw_dag_id)
 
@@ -260,7 +269,7 @@ class REST_API(AppBuilderBaseView):
             "workflow_name": "my_ingestion_pipeline3"
         }
         """
-        dag_id = self.get_request_dag_id()
+        dag_id = self.get_arg_dag_id()
 
         if not dag_id:
             return ApiResponse.bad_request("Missing dag_id argument in the request")

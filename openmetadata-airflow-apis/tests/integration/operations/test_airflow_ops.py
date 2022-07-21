@@ -50,7 +50,10 @@ os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
 os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"] = "sqlite:////tmp/airflow/airflow.db"
 os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
 os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
-    (Path(__file__).parent.parent.parent.parent / "src/plugins/dag_templates/dag_runner.j2").absolute()
+    (
+        Path(__file__).parent.parent.parent.parent
+        / "src/plugins/dag_templates/dag_runner.j2"
+    ).absolute()
 )
 
 
@@ -60,9 +63,12 @@ from airflow.operators.bash import BashOperator
 from airflow.utils import db, timezone
 from airflow.utils.state import DagRunState
 from airflow.utils.types import DagRunType
+from openmetadata.operations.delete import delete_dag_id
 from openmetadata.operations.deploy import DagDeployer
+from openmetadata.operations.kill_all import kill_all
 from openmetadata.operations.state import disable_dag, enable_dag
 from openmetadata.operations.status import status
+from openmetadata.operations.trigger import trigger
 
 
 class TestAirflowOps(TestCase):
@@ -70,9 +76,7 @@ class TestAirflowOps(TestCase):
     dagbag: DagBag
     dag: DAG
 
-    conn = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api"
-    )
+    conn = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(conn)
 
     @classmethod
@@ -85,10 +89,10 @@ class TestAirflowOps(TestCase):
         db.initdb()
 
         with DAG(
-                "dag_status",
-                description="A lineage test DAG",
-                schedule_interval=datetime.timedelta(days=1),
-                start_date=datetime.datetime(2021, 1, 1),
+            "dag_status",
+            description="A lineage test DAG",
+            schedule_interval=datetime.timedelta(days=1),
+            start_date=datetime.datetime(2021, 1, 1),
         ) as cls.dag:
             BashOperator(  # Using BashOperator as a random example
                 task_id="task1",
@@ -127,6 +131,11 @@ class TestAirflowOps(TestCase):
             - Missing DAG
         """
 
+        res = status(dag_id="random")
+
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(res.json, {"error": "DAG random not found."})
+
         res = status(dag_id="dag_status")
 
         self.assertEqual(res.status_code, 200)
@@ -154,10 +163,18 @@ class TestAirflowOps(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json), 2)
 
-        res = status(dag_id="random")
+        res = kill_all(dag_id="dag_status")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(
+            res.json, {"message": f"Workflow [dag_status] has been killed"}
+        )
 
-        self.assertEqual(res.status_code, 404)
-        self.assertEqual(res.json, {"error": "DAG random not found."})
+        res = status(dag_id="dag_status")
+
+        self.assertEqual(res.status_code, 200)
+
+        res_status = {elem.get("state") for elem in res.json}
+        self.assertEqual(res_status, {"failed", "success"})
 
     def test_dag_state(self):
         """
@@ -179,41 +196,62 @@ class TestAirflowOps(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json, {"message": "DAG dag_status has been disabled"})
 
-    def test_dag_deploy(self):
+    def test_dag_deploy_and_delete(self):
         """
         DAGs can be deployed
         """
-        service = self.metadata.create_or_update(CreateDatabaseServiceRequest(
-            name="test-service-ops",
-            serviceType=DatabaseServiceType.Mysql,
-            connection=DatabaseConnection(
-                config=MysqlConnection(
-                    username="username",
-                    password="password",
-                    hostPort="http://localhost:1234",
-                )
-            ),
-        ))
+        service = self.metadata.create_or_update(
+            CreateDatabaseServiceRequest(
+                name="test-service-ops",
+                serviceType=DatabaseServiceType.Mysql,
+                connection=DatabaseConnection(
+                    config=MysqlConnection(
+                        username="username",
+                        password="password",
+                        hostPort="http://localhost:1234",
+                    )
+                ),
+            )
+        )
 
         ingestion_pipeline = IngestionPipeline(
             id=uuid.uuid4(),
             pipelineType=PipelineType.metadata,
             name="my_new_dag",
-            sourceConfig=SourceConfig(
-                config=DatabaseServiceMetadataPipeline()
-            ),
+            sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,
             airflowConfig=AirflowConfig(),
-            service=EntityReference(id=service.id, type="databaseService", name="test-service-ops")
+            service=EntityReference(
+                id=service.id, type="databaseService", name="test-service-ops"
+            ),
         )
 
+        # Create the DAG
         deployer = DagDeployer(ingestion_pipeline, self.dagbag)
         res = deployer.deploy()
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json, {"message": "Workflow [my_new_dag] has been created"})
+        self.assertEqual(
+            res.json, {"message": "Workflow [my_new_dag] has been created"}
+        )
 
         dag_file = Path("/tmp/airflow/dags/my_new_dag.py")
         self.assertTrue(dag_file.is_file())
 
+        # Trigger it
+        res = trigger(dag_id="my_new_dag", run_id=None)
 
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("Workflow [my_new_dag] has been triggered", res.json["message"])
+
+        # Delete it
+        res = delete_dag_id("my_new_dag")
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json, {"message": "DAG [my_new_dag] has been deleted"})
+
+        self.assertFalse(dag_file.is_file())
+
+        # Cannot find it anymore
+        res = status(dag_id="my_new_dag")
+        self.assertEqual(res.status_code, 404)

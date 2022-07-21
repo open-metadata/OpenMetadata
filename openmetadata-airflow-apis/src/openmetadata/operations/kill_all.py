@@ -11,9 +11,11 @@
 """
 Module containing the logic to kill all DAG not finished executions
 """
+from typing import List
 
 from airflow import settings
-from airflow.models import DagModel, DagRun
+from airflow.models import DagModel, DagRun, TaskInstance
+from airflow.utils.state import DagRunState, TaskInstanceState
 from flask import Response
 from openmetadata.api.response import ApiResponse, ResponseFormat
 
@@ -33,14 +35,33 @@ def kill_all(dag_id: str) -> Response:
         if not dag_model:
             return ApiResponse.not_found(f"DAG {dag_id} not found.")
 
-        runs = (
+        runs: List[DagRun] = (
             session.query(DagRun)
             .filter(
                 DagRun.dag_id == dag_id,
+                DagRun.state.in_((DagRunState.RUNNING, DagRunState.QUEUED)),
             )
-            .order_by(DagRun.start_date.desc())
-            .limit(10)
             .all()
         )
 
-        print(runs)
+        instances: List[TaskInstance] = session.query(TaskInstance).filter(
+            TaskInstance.dag_id == dag_id,
+            TaskInstance.state.notin_(
+                (TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)
+            ),
+        )
+
+        if not runs or not instances:
+            return ApiResponse.not_found(
+                f"Workflow [{dag_id}] has no running or pending runs nor tasks"
+            )
+
+        for dag_run in runs:
+            dag_run.set_state(DagRunState.FAILED)
+
+        for instance in instances:
+            instance.set_state(TaskInstanceState.FAILED)
+
+        session.commit()
+
+        return ApiResponse.success({"message": f"Workflow [{dag_id}] has been killed"})
