@@ -321,7 +321,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (MessagingService) response.getEntity());
+    return response;
   }
 
   @DELETE
