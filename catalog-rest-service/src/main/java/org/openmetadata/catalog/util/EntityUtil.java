@@ -401,4 +401,14 @@ public final class EntityUtil {
         .withDescription(tag.getDescription())
         .withSource(TagSource.TAG);
   }
+
+  // For Apis with Request Body as String.
+  // Replacing '"' present in the id as extra quotes are appended which results in UUID of 38 chars
+  public static String formatUID(String id) {
+    if (id.startsWith("\"") && id.endsWith("\"")) {
+      return id.replace("\"", "");
+    } else {
+      return id;
+    }
+  }
 }

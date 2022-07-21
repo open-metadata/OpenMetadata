@@ -58,6 +58,7 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -455,7 +456,10 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
@@ -481,7 +485,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 

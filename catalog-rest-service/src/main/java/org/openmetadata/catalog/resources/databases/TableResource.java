@@ -69,6 +69,7 @@ import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -413,7 +414,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
@@ -513,7 +517,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(description = "Id of the location to be added", schema = @Schema(type = "string")) String locationId)
       throws IOException {
-    Table table = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
+    Table table = dao.addLocation(UUID.fromString(id), UUID.fromString(EntityUtil.formatUID(locationId)));
     return Response.ok().entity(table).build();
   }
 
@@ -741,7 +745,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
