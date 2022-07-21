@@ -200,7 +200,7 @@ const MyDataPage = () => {
   };
 
   const fetchTeamsAndUsersCount = () => {
-    getUsers('', 0)
+    getUsers('', 0, undefined, undefined, false)
       .then((res) => {
         if (res.data) {
           setUserCount(res.data.paging.total);

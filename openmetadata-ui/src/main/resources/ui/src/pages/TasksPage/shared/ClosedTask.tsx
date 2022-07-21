@@ -33,13 +33,15 @@ const ClosedTask: FC<ClosedTaskProps> = ({ task }) => {
             name={task?.closedBy || ''}
             width="20"
           />
-          <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline tw-ml-1">
+          <span
+            className="tw-font-semibold tw-cursor-pointer hover:tw-underline tw-ml-1"
+            data-testid="task-closedby">
             {task?.closedBy}
           </span>{' '}
         </span>
       </UserPopOverCard>
       <span className="tw-ml-1"> closed this task </span>
-      <span className="tw-ml-1">
+      <span className="tw-ml-1" data-testid="task-closedAt">
         {toLower(getDayTimeByTimeStamp(task?.closedAt as number))}
       </span>
     </div>

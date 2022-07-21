@@ -35,6 +35,7 @@ import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
+import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -78,7 +79,6 @@ import {
   isEven,
   pluralize,
 } from '../../utils/CommonUtils';
-import { getInfoElements } from '../../utils/EntityUtils';
 import {
   getEditConnectionPath,
   getServicesWithTabPath,
@@ -936,7 +936,11 @@ const ServicePage: FunctionComponent = () => {
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
-                  {getInfoElements(info)}
+                  <EntitySummaryDetails
+                    data={info}
+                    updateOwner={handleUpdateOwner}
+                  />
+
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                     <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                       |

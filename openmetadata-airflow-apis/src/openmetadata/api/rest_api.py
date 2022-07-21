@@ -42,12 +42,10 @@ from openmetadata.operations.test_connection import test_source_connection
 from openmetadata.operations.trigger import trigger
 from pydantic.error_wrappers import ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
-    TestServiceConnectionRequest,
-)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 
 
 class REST_API(AppBuilderBaseView):
@@ -95,6 +93,21 @@ class REST_API(AppBuilderBaseView):
             rbac_authentication_enabled=True,
         )
 
+    @csrf.exempt  # Exempt the CSRF token
+    @app_builder_expose("/health", methods=["GET"])  # for Flask AppBuilder
+    def health(self):
+        """
+        /health endpoint to check Airflow REST status without auth
+        """
+
+        try:
+            return ApiResponse.success({"status": "healthy"})
+        except Exception as err:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Internal error obtaining REST status - {err} - {traceback.format_exc()}",
+            )
+
     # '/api' REST Endpoint where API requests should all come in
     @csrf.exempt  # Exempt the CSRF token
     @admin_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask Admin
@@ -121,8 +134,6 @@ class REST_API(AppBuilderBaseView):
 
         # Deciding which function to use based off the API object that was requested.
         # Some functions are custom and need to be manually routed to.
-        if api == "rest_status":
-            return self.rest_status()
         if api == "deploy_dag":
             return self.deploy_dag()
         if api == "trigger_dag":
@@ -143,23 +154,6 @@ class REST_API(AppBuilderBaseView):
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
         )
-
-    @staticmethod
-    def rest_status() -> Response:
-        """
-        Check that the Airflow REST is reachable
-        and running correctly.
-        """
-        try:
-            url = AIRFLOW_WEBSERVER_BASE_URL + REST_API_ENDPOINT
-            return ApiResponse.success(
-                {"message": f"Airflow REST {REST_API_PLUGIN_VERSION} running at {url}"}
-            )
-        except Exception as err:
-            return ApiResponse.error(
-                status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Internal error obtaining REST status - {err} - {traceback.format_exc()}",
-            )
 
     def deploy_dag(self) -> Response:
         """
@@ -199,7 +193,9 @@ class REST_API(AppBuilderBaseView):
         json_request = request.get_json()
 
         try:
-            test_service_connection = TestServiceConnectionRequest(**json_request)
+            test_service_connection = parse_test_connection_request_gracefully(
+                config_dict=json_request
+            )
             response = test_source_connection(test_service_connection)
 
             return response

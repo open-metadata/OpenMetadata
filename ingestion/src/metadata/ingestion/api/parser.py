@@ -16,6 +16,9 @@ from typing import Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
+from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardServiceType,
@@ -185,3 +188,33 @@ def parse_workflow_config_gracefully(
     except ValidationError:
         parse_workflow_source(config_dict)
         parse_server_config(config_dict)
+
+
+def parse_test_connection_request_gracefully(
+    config_dict: dict,
+) -> Optional[TestServiceConnectionRequest]:
+    """
+    This function either correctly parses the pydantic class,
+    or throws a scoped error while fetching the required source
+    connection class
+
+    :param config_dict: JSON workflow config
+    :return: TestServiceConnectionRequest or scoped error
+    """
+
+    try:
+        test_service_connection = TestServiceConnectionRequest.parse_obj(config_dict)
+        return test_service_connection
+
+    except ValidationError:
+        # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
+        source_type = config_dict["connection"]["config"]["type"]
+        logger.error(
+            f"Error parsing the Workflow Configuration for {source_type} ingestion"
+        )
+
+        service_type = get_service_type(source_type)
+        connection_class = get_connection_class(source_type, service_type)
+
+        # Parse the dictionary with the scoped class
+        connection_class.parse_obj(config_dict["connection"]["config"])

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import 'tailwindcss/tailwind.css';
+import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
+import './antd-master.less';
 import './fonts.css';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';

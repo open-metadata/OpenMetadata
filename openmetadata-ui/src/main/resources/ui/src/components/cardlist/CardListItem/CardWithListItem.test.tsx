@@ -45,7 +45,7 @@ describe('Test CardWithListing Component', () => {
 
     expect(card).toBeInTheDocument();
 
-    expect(getByTestId('icon')).toBeEmptyDOMElement();
+    expect(getByTestId('select-tier-buuton')).toBeInTheDocument();
   });
 
   it('OnClick onSelect function should call', () => {

@@ -59,7 +59,13 @@ public class RoleEvaluator {
     try {
       Fields roleFields = roleRepository.getFields("policies");
       ResultList<Role> roles = roleRepository.listAfter(null, roleFields, filter, Short.MAX_VALUE, null);
-      roles.getData().forEach(r -> roleToPolicies.put(r.getId(), r.getPolicies()));
+      roles
+          .getData()
+          .forEach(
+              r -> {
+                LOG.info("Adding to role {}:{} policies {}", r.getName(), r.getId(), r.getPolicies());
+                roleToPolicies.put(r.getId(), r.getPolicies());
+              });
     } catch (IOException e) {
       LOG.error("Failed to load roles", e);
     }
@@ -67,8 +73,8 @@ public class RoleEvaluator {
 
   public boolean hasPermissions(List<EntityReference> roles, EntityInterface entity, MetadataOperation operation) {
     // Role based permission
-    for (EntityReference roleRef : roles) {
-      List<EntityReference> policies = roleToPolicies.get(roleRef.getId());
+    for (EntityReference role : roles) {
+      List<EntityReference> policies = roleToPolicies.get(role.getId());
       for (EntityReference policy : policies) {
         if (PolicyEvaluator.getInstance().hasPermission(policy.getId(), entity, operation)) {
           return true;
@@ -80,8 +86,8 @@ public class RoleEvaluator {
 
   public List<MetadataOperation> getAllowedOperations(List<EntityReference> roles, EntityInterface entity) {
     List<MetadataOperation> list = new ArrayList<>();
-    for (EntityReference roleRef : roles) {
-      List<EntityReference> policies = roleToPolicies.get(roleRef.getId());
+    for (EntityReference role : roles) {
+      List<EntityReference> policies = roleToPolicies.get(role.getId());
       for (EntityReference policy : policies) {
         list.addAll(PolicyEvaluator.getInstance().getAllowedOperations(policy.getId(), entity));
       }
@@ -91,9 +97,11 @@ public class RoleEvaluator {
 
   public void update(Role role) {
     roleToPolicies.put(role.getId(), role.getPolicies());
+    LOG.info("Updating to role {}:{} policies {}", role.getName(), role.getId(), role.getPolicies());
   }
 
   public void delete(Role role) {
     roleToPolicies.remove(role.getId());
+    LOG.info("Removing to role {}:{}", role.getName(), role.getId());
   }
 }
