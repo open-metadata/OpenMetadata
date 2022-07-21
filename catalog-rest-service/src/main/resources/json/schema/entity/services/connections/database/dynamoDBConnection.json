@@ -24,12 +24,6 @@
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
     },
-    "database": {
-      "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
-      "type": "string",
-      "default": "DynamoDB"
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -48,7 +42,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "awsConfig"
-  ]
+  "required": ["awsConfig"]
 }

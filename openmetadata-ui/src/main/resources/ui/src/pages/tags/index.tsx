@@ -44,7 +44,7 @@ import ConfirmationModal from '../../components/Modals/ConfirmationModal/Confirm
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
+import { delimiterRegex } from '../../constants/regex.constants';
 import {
   CreateTagCategory,
   TagCategoryType,
@@ -154,8 +154,6 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (nameWithSpace.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
       } else if (
@@ -315,8 +313,6 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (nameWithSpace.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
       } else if (
@@ -411,6 +407,7 @@ const TagsPage = () => {
     return (
       <Card
         data-testid="data-summary-container"
+        size="small"
         style={leftPanelAntCardStyle}
         title={
           <div className="tw-flex tw-justify-between tw-items-center">
@@ -423,7 +420,7 @@ const TagsPage = () => {
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
-                className={classNames('tw-h-7 tw-px-2 tw-my-2', {
+                className={classNames('tw-px-2 ', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
                 data-testid="add-category"

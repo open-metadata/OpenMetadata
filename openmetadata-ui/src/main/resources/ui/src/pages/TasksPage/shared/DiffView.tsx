@@ -26,7 +26,7 @@ export const DiffView = ({
   const elements = diffArr.map((diff) => {
     if (diff.added) {
       return (
-        <ins className="diff-added" key={uniqueId()}>
+        <ins className="diff-added" data-testid="diff-added" key={uniqueId()}>
           {diff.value}
         </ins>
       );
@@ -34,6 +34,7 @@ export const DiffView = ({
     if (diff.removed) {
       return (
         <del
+          data-testid="diff-removed"
           key={uniqueId()}
           style={{ color: 'grey', textDecoration: 'line-through' }}>
           {diff.value}
@@ -41,7 +42,11 @@ export const DiffView = ({
       );
     }
 
-    return <span key={uniqueId()}>{diff.value}</span>;
+    return (
+      <span data-testid="diff-normal" key={uniqueId()}>
+        {diff.value}
+      </span>
+    );
   });
 
   return (
@@ -50,11 +55,15 @@ export const DiffView = ({
         'tw-w-full tw-max-h-52 tw-overflow-y-auto',
         className
       )}>
-      <pre className="tw-whitespace-pre-wrap tw-mb-0">
+      <pre
+        className="tw-whitespace-pre-wrap tw-mb-0"
+        data-testid="diff-container">
         {diffArr.length ? (
           elements
         ) : (
-          <span className="tw-text-grey-muted">No diff available</span>
+          <span className="tw-text-grey-muted" data-testid="noDiff-placeholder">
+            No diff available
+          </span>
         )}
       </pre>
     </div>

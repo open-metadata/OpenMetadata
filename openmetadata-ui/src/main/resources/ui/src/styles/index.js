@@ -17,6 +17,7 @@ import './fonts.css';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
 import './tailwind.css';
+import './antd-master.less';
 import './temp.css';
 import './x-custom/code-mirror.css';
 import './x-custom/CronEditor.css';

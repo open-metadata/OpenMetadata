@@ -16,9 +16,9 @@ import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import TagsViewer from '../../tags-viewer/tags-viewer';
+import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
@@ -56,7 +56,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
               className="tw-flex tw-items-center"
               data-testid={info.key}
               key={i}>
-              {getInfoElements(info)}
+              <EntitySummaryDetails data={info} />
               {i !== extraInfo.length - 1 && (
                 <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                   |

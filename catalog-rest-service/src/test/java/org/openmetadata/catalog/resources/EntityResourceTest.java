@@ -57,6 +57,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -166,12 +167,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
+  // Users
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static User USER2;
   public static EntityReference USER_OWNER2;
+
+  public static Team ORG_TEAM;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
+
   public static User USER_WITH_DATA_STEWARD_ROLE;
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REFERENCE;
@@ -267,6 +272,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new RoleResourceTest().setupRoles(test);
     new UserResourceTest().setupUsers(test);
+    new TeamResourceTest().setupTeams(test);
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();
@@ -277,7 +283,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
-
     new TableResourceTest().setupDatabaseSchemas(test);
   }
 
@@ -1953,13 +1958,28 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void assertEntityReferencesFieldChange(
-      List<EntityReference> expectedList, List<EntityReference> actualList) {
+  protected void assertEntityReferences(List<EntityReference> expectedList, List<EntityReference> actualList) {
     for (EntityReference expected : expectedList) {
       EntityReference actual =
           actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);
       assertNotNull(actual, "Expected entity reference " + expected.getId() + " not found");
     }
+  }
+
+  protected void assertEntityReferencesContain(List<EntityReference> list, EntityReference reference) {
+    assertFalse(listOrEmpty(list).isEmpty());
+    EntityReference actual =
+        list.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, reference)).findAny().orElse(null);
+    assertNotNull(actual, "Expected entity reference " + reference.getId() + " not found");
+  }
+
+  protected void assertEntityReferencesDoesNotContain(List<EntityReference> list, EntityReference reference) {
+    if (listOrEmpty(list).isEmpty()) {
+      return; // Empty list does not contain the reference we are looking for
+    }
+    EntityReference actual =
+        list.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, reference)).findAny().orElse(null);
+    assertNull(actual, "Expected entity reference " + reference.getId() + " is still found");
   }
 
   protected void assertStrings(List<String> expectedList, List<String> actualList) {
