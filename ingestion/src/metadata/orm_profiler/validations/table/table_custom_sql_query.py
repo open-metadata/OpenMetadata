@@ -19,7 +19,6 @@ from datetime import datetime
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 
-from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableCustomSQLQuery import (
     TableCustomSQLQuery,

@@ -44,7 +44,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type import basic
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,

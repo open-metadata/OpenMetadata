@@ -1,0 +1,340 @@
+[
+  {
+    "name" : "bot",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name": "chart",
+    "operations": [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditTags",
+      "EditOwner",
+      "EditTier",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "dashboard",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditTags",
+      "EditOwner",
+      "EditTier",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "dashboardService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "database",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "databaseSchema",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "databaseService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "glossary",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "glossaryTerm",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "ingestionPipeline",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "location",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "messagingService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "metrics",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "mlmodel",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "mlmodelService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "pipeline",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "pipelineService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "policy",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "report",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "role",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "storageService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "table",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewUsage",
+      "ViewTests",
+      "ViewQueries",
+      "ViewDataProfile",
+      "ViewSampleData",
+      "EditAll",
+      "EditDescription",
+      "EditTags",
+      "EditOwner",
+      "EditTier",
+      "EditCustomFields",
+      "EditTests",
+      "EditQueries",
+      "EditDataProfile",
+      "EditSampleData"
+    ]
+  },
+  {
+    "name" : "tag",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "tagCategory",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "team",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields",
+      "EditUsers"
+    ]
+  },
+  {
+    "name" : "topic",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "type",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "user",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "webhook",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditCustomFields"
+    ]
+  }
+]

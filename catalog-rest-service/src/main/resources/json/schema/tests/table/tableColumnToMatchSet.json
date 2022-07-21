@@ -11,7 +11,7 @@
         "type": "string"
       },
       "ordered": {
-        "description": "Wether or not to considered the order of the list when performing the match",
+        "description": "Whether or not to considered the order of the list when performing the match",
         "type": "boolean",
         "default": false
       }

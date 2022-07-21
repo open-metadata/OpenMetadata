@@ -15,7 +15,7 @@ package org.openmetadata.catalog.resources.policies;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -47,11 +47,13 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
+import org.openmetadata.catalog.resources.policies.PolicyResource.ResourceDescriptorList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
+import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PolicyUtils;
@@ -189,10 +191,17 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void get_policyResources() throws HttpResponseException {
     // Get list of policy resources and make sure it has all the entities and other resources
-    List<String> resources = getPolicyResources(ADMIN_AUTH_HEADERS);
-    List<String> entities = Entity.listEntities();
-    assertTrue(resources.containsAll(entities));
-    assertTrue(resources.contains("lineage"));
+    ResourceDescriptorList actualResourceDescriptors = getPolicyResources(ADMIN_AUTH_HEADERS);
+    assertNotNull(actualResourceDescriptors.getData());
+    System.out.println(actualResourceDescriptors.getData());
+
+    // Ensure all entities are captured in resource descriptor list
+    List<String> entities = Entity.getEntityList();
+    for (String entity : entities) {
+      ResourceDescriptor resourceDescriptor =
+          actualResourceDescriptors.getData().stream().filter(rd -> rd.getName().equals(entity)).findFirst().get();
+      assertNotNull(resourceDescriptor);
+    }
   }
 
   @Override
@@ -231,8 +240,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     return TestUtils.post(getResource("locations"), createLocation, Location.class, ADMIN_AUTH_HEADERS);
   }
 
-  public final List<String> getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
+  public final ResourceDescriptorList getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/resources");
-    return (List<String>) TestUtils.get(target, List.class, authHeaders);
+    return TestUtils.get(target, ResourceDescriptorList.class, authHeaders);
   }
 }

@@ -94,14 +94,14 @@ class PermissionsResourceTest extends CatalogApplicationTest {
     dataStewardPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
     dataStewardPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
     // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
-    dataStewardPermissions.put(MetadataOperation.TEAM_EDIT_USERS, Boolean.FALSE);
+    dataStewardPermissions.put(MetadataOperation.EDIT_USERS, Boolean.FALSE);
 
     dataConsumerPermissions.put(MetadataOperation.EDIT_DESCRIPTION, Boolean.TRUE);
     dataConsumerPermissions.put(MetadataOperation.EDIT_LINEAGE, Boolean.FALSE);
     dataConsumerPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
     dataConsumerPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
     // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
-    dataConsumerPermissions.put(MetadataOperation.TEAM_EDIT_USERS, Boolean.FALSE);
+    dataConsumerPermissions.put(MetadataOperation.EDIT_USERS, Boolean.FALSE);
 
     return Stream.of(
         Arguments.of(TestUtils.ADMIN_USER_NAME, adminPermissions),

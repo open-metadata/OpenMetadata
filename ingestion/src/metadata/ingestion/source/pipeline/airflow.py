@@ -24,7 +24,6 @@ from sqlalchemy.orm import Session
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
-    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
