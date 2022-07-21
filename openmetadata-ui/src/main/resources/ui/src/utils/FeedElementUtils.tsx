@@ -44,7 +44,11 @@ export const getFieldThreadElement = (
   const isTaskType = isEqual(threadType, ThreadType.Task);
 
   return !isEmpty(threadValue) ? (
-    <Badge color="#7147E8" count={threadValue.count} size="small">
+    <Badge
+      color="#7147E8"
+      count={threadValue.count}
+      data-testid="field-thread-count"
+      size="small">
       <Icon
         component={isTaskType ? Tasks : Comments}
         data-testid="field-thread"
