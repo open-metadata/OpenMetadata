@@ -274,6 +274,41 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
+  const onOwnerUpdate = (newOwner?: Mlmodel['owner']) => {
+    if (newOwner) {
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        owner: newOwner
+          ? {
+              ...mlModelDetail.owner,
+              ...newOwner,
+            }
+          : mlModelDetail.owner,
+      };
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Mlmodel['tags'] = newTier
+        ? [
+            ...mlModelTags,
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : mlModelDetail.tags;
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        tags: tierTag,
+      };
+
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+
   const onSettingsUpdate = (newOwner?: Mlmodel['owner'], newTier?: string) => {
     if (newOwner || newTier) {
       const tierTag: Mlmodel['tags'] = newTier
@@ -440,6 +475,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           tagsHandler={onTagUpdate}
           tier={mlModelTier}
           titleLinks={slashedMlModelName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

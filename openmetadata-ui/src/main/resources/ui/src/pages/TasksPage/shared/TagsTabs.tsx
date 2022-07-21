@@ -48,17 +48,19 @@ export const TagsTabs = ({ tags, suggestedTags, onChange }: Props) => {
       size="small"
       type="card"
       onChange={onTabChange}>
-      <TabPane key={TaskTabs.CURRENT} tab="Current">
-        <div className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1">
+      <TabPane data-testid="current-tab" key={TaskTabs.CURRENT} tab="Current">
+        <div
+          className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
+          data-testid="tags">
           {tags.map((tag) => (
             <Tag key={uniqueId()}>{tag.tagFQN}</Tag>
           ))}
         </div>
       </TabPane>
-      <TabPane key={TaskTabs.DIFF} tab="Diff">
+      <TabPane data-testid="diff-tab" key={TaskTabs.DIFF} tab="Diff">
         <TagsDiffView diffArr={diffs} />
       </TabPane>
-      <TabPane key={TaskTabs.NEW} tab="New">
+      <TabPane data-testid="new-tab" key={TaskTabs.NEW} tab="New">
         <TagSuggestion selectedTags={suggestedTags} onChange={onChange} />
       </TabPane>
     </Tabs>

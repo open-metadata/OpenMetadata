@@ -67,23 +67,23 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	coverage report || true
+	coverage report --rcfile ingestion/.coveragerc || true
 
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
-	coverage xml -o ingestion/coverage.xml
+	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml
 	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
@@ -95,6 +95,18 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 		-v ${PWD}/ingestion:/usr/src \
 		sonarsource/sonar-scanner-cli \
 		-Dproject.settings=sonar-project.properties
+
+.PHONY: run_apis_tests
+run_apis_tests:  ## Run the openmetadata airflow apis tests
+	coverage erase
+	coverage run --rcfile openmetadata-airflow-apis/.coveragerc -a --branch -m pytest --junitxml=openmetadata-airflow-apis/junit/test-results.xml openmetadata-airflow-apis/tests
+	coverage report --rcfile openmetadata-airflow-apis/.coveragerc
+
+.PHONY: coverage_apis
+coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
+	$(MAKE) run_apis_tests
+	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
 ## Ingestion publish
 .PHONY: publish

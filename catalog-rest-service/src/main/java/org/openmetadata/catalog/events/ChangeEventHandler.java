@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.events;
 
 import static org.openmetadata.catalog.Entity.TEAM;
+import static org.openmetadata.catalog.Entity.USER;
 import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
@@ -36,9 +37,12 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
+import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
+import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
 import org.openmetadata.catalog.type.*;
@@ -150,6 +154,33 @@ public class ChangeEventHandler implements EventHandler {
             return;
           case Conversation:
             WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
+            List<EntityLink> mentions;
+            if (thread.getPostsCount() == 0) {
+              mentions = MessageParser.getEntityLinks(thread.getMessage());
+            } else {
+              Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
+              mentions = MessageParser.getEntityLinks(latestPost.getMessage());
+            }
+            mentions.forEach(
+                (entityLink) -> {
+                  String fqn = entityLink.getEntityFQN();
+                  switch (entityLink.getEntityType()) {
+                    case USER:
+                      User user = dao.userDAO().findEntityByName(fqn);
+                      WebSocketManager.getInstance()
+                          .sendToOne(user.getId(), WebSocketManager.mentionChannel, jsonThread);
+                      break;
+                    case TEAM:
+                      Team team = dao.teamDAO().findEntityByName(fqn);
+                      // fetch all that are there in the team
+                      List<EntityRelationshipRecord> records =
+                          dao.relationshipDAO()
+                              .findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                      WebSocketManager.getInstance()
+                          .sendToManyWithString(records, WebSocketManager.mentionChannel, jsonThread);
+                      break;
+                  }
+                });
             return;
           case Announcement:
           default:
