@@ -29,6 +29,7 @@ class Loggers(Enum):
     INGESTION = "Ingestion"
     UTILS = "Utils"
     GREAT_EXPECTATIONS = "GreatExpectations"
+    SQA_PROFILER_INTERFACE = "SQAProfilerInterface"
 
 
 def ometa_logger():
@@ -41,6 +42,10 @@ def cli_logger():
 
 def profiler_logger():
     return logging.getLogger(Loggers.PROFILER.value)
+
+
+def sqa_interface_registry_logger():
+    return logging.getLogger(Loggers.SQA_PROFILER_INTERFACE.value)
 
 
 def ingestion_logger():

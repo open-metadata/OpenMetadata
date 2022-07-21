@@ -56,6 +56,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.teams.team import TeamType
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -656,6 +657,7 @@ class SampleDataSource(Source[Entity]):
                         name=user["teams"],
                         displayName=user["teams"],
                         description=f"This is {user['teams']} description.",
+                        teamType=TeamType.Department,
                     )
                 ]
                 if not self.list_policies:

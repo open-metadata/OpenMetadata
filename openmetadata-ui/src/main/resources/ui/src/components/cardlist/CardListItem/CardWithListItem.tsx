@@ -79,7 +79,16 @@ const CardListItem: FunctionComponent<Props> = ({
     } else if (isActive) {
       return getTierSelectButton(cardId);
     } else {
-      return null;
+      return (
+        <Button
+          data-testid="select-tier-buuton"
+          size="small"
+          theme="primary"
+          variant="outlined"
+          onClick={() => onSave(cardId)}>
+          Select
+        </Button>
+      );
     }
   };
 

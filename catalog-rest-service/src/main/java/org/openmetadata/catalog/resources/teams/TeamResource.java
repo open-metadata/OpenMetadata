@@ -48,6 +48,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -59,8 +61,10 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 @Path("/v1/teams")
 @Api(value = "Teams collection", tags = "Teams collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -82,6 +86,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     super(Team.class, new TeamRepository(dao), authorizer);
   }
 
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    dao.initOrganization("organization");
+  }
+
   public static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
     TeamList() {}
@@ -91,7 +100,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     }
   }
 
-  static final String FIELDS = "owner,profile,users,owns,defaultRoles";
+  static final String FIELDS = "owner,profile,users,owns,defaultRoles,parents,children";
 
   @GET
   @Valid
@@ -349,7 +358,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
-        .withUsers(dao.toEntityReferences(ct.getUsers(), Entity.USER))
-        .withDefaultRoles(dao.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE));
+        .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))
+        .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
+        .withTeamType(ct.getTeamType())
+        .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
+        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM));
   }
 }

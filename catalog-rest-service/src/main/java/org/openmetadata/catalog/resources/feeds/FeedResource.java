@@ -543,9 +543,7 @@ public class FeedResource {
   private List<EntityReference> formatAssignees(List<EntityReference> assignees) {
     List<EntityReference> result = new ArrayList<>();
     assignees.forEach(
-        assignee -> {
-          result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType()));
-        });
+        assignee -> result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType())));
     return result;
   }
 }

@@ -15,6 +15,8 @@ package org.openmetadata.catalog.exception;
 
 import java.security.Principal;
 import java.util.UUID;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
+import org.openmetadata.catalog.entity.teams.Team;
 
 public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
@@ -130,5 +132,25 @@ public final class CatalogExceptionMessage {
 
   public static String jsonValidationError(String fieldName, String validationMessages) {
     return String.format("Custom field %s has invalid JSON %s", fieldName, validationMessages);
+  }
+
+  public static String invalidParent(Team parent, String child, TeamType childType) {
+    return String.format(
+        "Team %s of type %s can't be of parent of team %s of type %s",
+        parent.getName(), parent.getTeamType(), child, childType);
+  }
+
+  public static String invalidChild(String parent, TeamType parentType, Team child) {
+    return String.format(
+        "Team %s of type %s can't have child team %s of type %s",
+        parent, parentType, child.getName(), child.getTeamType());
+  }
+
+  public static String unexpectedParent() {
+    return "Team of type Organization can't have a parent team";
+  }
+
+  public static String invalidParentCount(int validParentCount, TeamType teamType) {
+    return String.format("Team of type %s can have only %s parents", teamType, validParentCount);
   }
 }

@@ -13,7 +13,14 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { isNil, isString, isUndefined, startCase, uniqueId } from 'lodash';
+import {
+  isNil,
+  isString,
+  isUndefined,
+  startCase,
+  uniqBy,
+  uniqueId,
+} from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { Link, useHistory, useLocation } from 'react-router-dom';
@@ -114,7 +121,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       assetTags.unshift(tier as TagLabel);
     }
 
-    return [...new Set(assetTags)];
+    return [...uniqBy(assetTags, 'tagFQN')];
   };
 
   const handleLinkClick = () => {

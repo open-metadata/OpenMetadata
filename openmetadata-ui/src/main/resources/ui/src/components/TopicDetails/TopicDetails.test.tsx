@@ -32,7 +32,13 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
     })),
   };
 });
-
+jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
+});
 const mockUserTeam = [
   {
     description: 'description',

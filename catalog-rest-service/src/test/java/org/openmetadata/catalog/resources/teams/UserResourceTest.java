@@ -132,10 +132,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .createRequest("user-data-consumer", "", "", null)
                 .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
             ADMIN_AUTH_HEADERS);
-
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = TEAM1.getEntityReference();
   }
 
   @Test
@@ -328,9 +324,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void post_validAdminUser_200_ok(TestInfo test) throws IOException {
     CreateUser create =
         createRequest(test, 6)
-            .withName("test1")
+            .withName("testAdmin")
             .withDisplayName("displayName")
-            .withEmail("test1@email.com")
+            .withEmail("testAdmin@email.com")
             .withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -556,8 +552,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Ensure username can't be changed using patch
     User user =
         createEntity(
-            createRequest(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com"),
-            authHeaders("test@email.com"));
+            createRequest(test, 6).withName("test1").withDisplayName("displayName").withEmail("test1@email.com"),
+            authHeaders("test1@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     String newDisplayName = "newDisplayName";
     user.setDisplayName(newDisplayName); // Update the name
@@ -872,7 +868,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedList = (List<EntityReference>) expected;
       List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedList, actualList);
+      assertEntityReferences(expectedList, actualList);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
