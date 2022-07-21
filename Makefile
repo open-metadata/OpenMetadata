@@ -96,6 +96,10 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 		sonarsource/sonar-scanner-cli \
 		-Dproject.settings=sonar-project.properties
 
+.PHONY: coverage_apis
+coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
+	echo "random"
+
 ## Ingestion publish
 .PHONY: publish
 publish:  ## Publish the ingestion module to PyPI
