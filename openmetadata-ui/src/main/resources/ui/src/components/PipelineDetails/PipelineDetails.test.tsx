@@ -60,9 +60,30 @@ const mockUserTeam = [
   },
 ];
 
+const mockTasks = [
+  {
+    name: 'snowflake_task',
+    displayName: 'Snowflake Task',
+    description: 'Airflow operator to perform ETL on snowflake tables',
+    taskUrl:
+      'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
+    downstreamTasks: ['assert_table_exists'],
+    taskType: 'SnowflakeOperator',
+  },
+  {
+    name: 'assert_table_exists',
+    displayName: 'Assert Table Exists',
+    description: 'Assert if a table exists',
+    taskUrl:
+      'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
+    downstreamTasks: [],
+    taskType: 'HiveOperator',
+  },
+];
+
 const PipelineDetailsProps = {
   pipelineUrl: '',
-  tasks: [],
+  tasks: mockTasks,
   serviceType: '',
   users: [],
   pipelineDetails: {} as Pipeline,
@@ -214,6 +235,17 @@ describe('Test PipelineDetails component', () => {
 
     expect(taskDetail).toBeInTheDocument();
     expect(pipelineStatus).toBeInTheDocument();
+  });
+
+  it('Should render no tasks data placeholder is tasks list is empty', async () => {
+    const { findByTestId } = render(
+      <PipelineDetails {...PipelineDetailsProps} tasks={[]} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(await findByTestId('no-tasks-data')).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {

@@ -320,7 +320,7 @@ const PipelineDetailsPage = () => {
           });
 
           setPipelineUrl(pipelineUrl);
-          setTasks(tasks);
+          setTasks(tasks || []);
 
           setPipelineStatus(
             (pipelineStatus as Pipeline['pipelineStatus']) || []
@@ -329,7 +329,7 @@ const PipelineDetailsPage = () => {
           fetchServiceDetails(service.type, service.name)
             .then((hostPort: string) => {
               setPipelineUrl(hostPort + pipelineUrl);
-              const updatedTasks = (tasks as Task[]).map((task) => ({
+              const updatedTasks = ((tasks || []) as Task[]).map((task) => ({
                 ...task,
                 taskUrl: hostPort + task.taskUrl,
               }));
@@ -354,6 +354,8 @@ const PipelineDetailsPage = () => {
             jsonData['api-error-messages']['fetch-pipeline-details-error']
           );
         }
+      })
+      .finally(() => {
         setLoading(false);
       });
   };
