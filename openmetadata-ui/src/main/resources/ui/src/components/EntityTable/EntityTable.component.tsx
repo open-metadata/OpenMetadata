@@ -412,7 +412,7 @@ const EntityTable = ({
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-hidden group-hover:tw-inline-block"
+        className=" tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100 tw-pl-3"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -446,7 +446,7 @@ const EntityTable = ({
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-hidden group-hover:tw-inline-block tw-align-top"
+        className=" tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-hidden group-hover:tw-inline-block tw-align-top"
         data-testid="request-tags"
         onClick={() =>
           hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
@@ -734,11 +734,36 @@ const EntityTable = ({
                                 )}
                               </div>
                               <div className="tw-flex tw--mt-1.5">
+                                {getFieldThreadElement(
+                                  getColumnName(cell),
+                                  EntityField.DESCRIPTION,
+                                  entityFieldThreads as EntityFieldThreads[],
+                                  onThreadLinkSelect,
+                                  EntityType.TABLE,
+                                  entityFqn,
+                                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                    cell
+                                  )}${ENTITY_LINK_SEPARATOR}description`,
+                                  Boolean(cell.value)
+                                )}
+                                {getFieldThreadElement(
+                                  getColumnName(cell),
+                                  EntityField.DESCRIPTION,
+                                  entityFieldTasks as EntityFieldThreads[],
+                                  onThreadLinkSelect,
+                                  EntityType.TABLE,
+                                  entityFqn,
+                                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                    cell
+                                  )}${ENTITY_LINK_SEPARATOR}description`,
+                                  Boolean(cell.value),
+                                  ThreadType.Task
+                                )}
                                 {!isReadOnly ? (
                                   <Fragment>
                                     {checkPermission() && (
                                       <button
-                                        className="tw-self-start tw-w-8 tw-h-8 tw-hidden tw-ml-1 group-hover:tw-inline-block focus:tw-outline-none tw-flex-none"
+                                        className="tw-self-start  tw-h-8 tw-opacity-0 group-hover:tw-opacity-100 focus:tw-outline-none tw-flex-none tw-pl-3"
                                         onClick={() =>
                                           handleUpdate(row.original, row.id)
                                         }>
@@ -751,31 +776,6 @@ const EntityTable = ({
                                       </button>
                                     )}
                                     {getRequestDescriptionElement(cell)}
-                                    {getFieldThreadElement(
-                                      getColumnName(cell),
-                                      EntityField.DESCRIPTION,
-                                      entityFieldThreads as EntityFieldThreads[],
-                                      onThreadLinkSelect,
-                                      EntityType.TABLE,
-                                      entityFqn,
-                                      `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                                        cell
-                                      )}${ENTITY_LINK_SEPARATOR}description`,
-                                      Boolean(cell.value)
-                                    )}
-                                    {getFieldThreadElement(
-                                      getColumnName(cell),
-                                      EntityField.DESCRIPTION,
-                                      entityFieldTasks as EntityFieldThreads[],
-                                      onThreadLinkSelect,
-                                      EntityType.TABLE,
-                                      entityFqn,
-                                      `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                                        cell
-                                      )}${ENTITY_LINK_SEPARATOR}description`,
-                                      Boolean(cell.value),
-                                      ThreadType.Task
-                                    )}
                                   </Fragment>
                                 ) : null}
                               </div>
