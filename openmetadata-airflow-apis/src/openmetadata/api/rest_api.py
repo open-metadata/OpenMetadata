@@ -48,7 +48,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 
-MISSING_DAG_ID_EXCEPTION_MSG = MISSING_DAG_ID_EXCEPTION_MSG
+MISSING_DAG_ID_EXCEPTION_MSG = "Missing dag_id argument in the request"
 
 
 class REST_API(AppBuilderBaseView):
