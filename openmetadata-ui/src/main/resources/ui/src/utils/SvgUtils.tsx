@@ -19,7 +19,9 @@ import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
-import IconCommentPlus from '../assets/svg/add-chat.svg';
+import IconCommentPlus, {
+  ReactComponent as CommentsPlus,
+} from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
@@ -31,7 +33,9 @@ import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
-import IconComments from '../assets/svg/comment.svg';
+import IconComments, {
+  ReactComponent as Comments,
+} from '../assets/svg/comment.svg';
 import IconTaskClose from '../assets/svg/complete.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
@@ -147,7 +151,9 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
-import IconTaskColor from '../assets/svg/Task-ic.svg';
+import IconTaskColor, {
+  ReactComponent as Tasks,
+} from '../assets/svg/Task-ic.svg';
 import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
@@ -960,3 +966,5 @@ const SVGIcons: FunctionComponent<Props> = ({
 };
 
 export default SVGIcons;
+
+export { Comments, Tasks, CommentsPlus };

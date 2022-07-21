@@ -733,7 +733,7 @@ const EntityTable = ({
                                   </span>
                                 )}
                               </div>
-                              <Space size={12}>
+                              <Space wrap align="start" size={12}>
                                 {getFieldThreadElement(
                                   getColumnName(cell),
                                   EntityField.DESCRIPTION,
