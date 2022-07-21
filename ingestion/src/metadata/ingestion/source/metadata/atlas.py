@@ -104,6 +104,9 @@ class AtlasSource(Source):
         return cls(config, metadata_config)
 
     def prepare(self):
+        """
+        Not required to implement
+        """
         pass
 
     def next_record(self):
@@ -111,13 +114,13 @@ class AtlasSource(Source):
             self.service = self.metadata.get_by_name(
                 entity=DatabaseService, fqn=self.service_connection.dbService
             )
-            self.tables[key] = self.atlas_client.list_entities(entityType=key)
+            self.tables[key] = self.atlas_client.list_entities(entity_type=key)
 
         for key in self.service_connection.entityTypes.get("Topic", []):
             self.message_service = self.metadata.get_by_name(
                 entity=MessagingService, fqn=self.service_connection.messagingService
             )
-            self.topics[key] = self.atlas_client.list_entities(entityType=key)
+            self.topics[key] = self.atlas_client.list_entities(entity_type=key)
 
         if self.tables:
             for key in self.tables:
@@ -261,7 +264,6 @@ class AtlasSource(Source):
             db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
                 self.service_connection.entityTypes["Table"][name]["db"]
             ]
-            db = self.get_database_entity(db_entity["displayText"])
             if not tbl_entity["referredEntities"].get(key):
                 continue
             table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"][
@@ -306,17 +308,14 @@ class AtlasSource(Source):
                     to_entity_ref = self.get_lineage_entity_ref(
                         to_fqn, self.metadata_config, "table"
                     )
-                    if (
-                        from_entity_ref
-                        and to_entity_ref
-                        and not from_entity_ref == to_entity_ref
-                    ):
-                        lineage = AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=from_entity_ref, toEntity=to_entity_ref
-                            )
-                        )
-                        yield lineage
+                    yield from self.yield_lineage(from_entity_ref, to_entity_ref)
+
+    def yield_lineage(self, from_entity_ref, to_entity_ref):
+        if from_entity_ref and to_entity_ref and not from_entity_ref == to_entity_ref:
+            lineage = AddLineageRequest(
+                edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
+            )
+            yield lineage
 
     def get_lineage_entity_ref(self, fqn, metadata_config, type) -> EntityReference:
         metadata = OpenMetadata(metadata_config)
