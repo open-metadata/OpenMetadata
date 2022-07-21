@@ -13,7 +13,7 @@
 
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover } from 'antd';
+import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
@@ -412,7 +412,7 @@ const EntityTable = ({
 
     return (
       <button
-        className=" tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100 tw-pl-3"
+        className="tw-h-8 link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -718,10 +718,10 @@ const EntityTable = ({
                       {cell.column.id === 'description' && (
                         <div>
                           <div className="tw-inline-block">
-                            <div
-                              className="tw-flex"
+                            <Space
                               data-testid="description"
-                              id={`column-description-${index}`}>
+                              id={`column-description-${index}`}
+                              size={12}>
                               <div>
                                 {cell.value ? (
                                   <RichTextEditorPreviewer
@@ -733,7 +733,7 @@ const EntityTable = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="tw-flex tw--mt-1.5">
+                              <Space size={12}>
                                 {getFieldThreadElement(
                                   getColumnName(cell),
                                   EntityField.DESCRIPTION,
@@ -763,7 +763,7 @@ const EntityTable = ({
                                   <Fragment>
                                     {checkPermission() && (
                                       <button
-                                        className="tw-self-start  tw-h-8 tw-opacity-0 group-hover:tw-opacity-100 focus:tw-outline-none tw-flex-none tw-pl-3"
+                                        className="tw-self-start tw-h-8 tw-opacity-0 group-hover:tw-opacity-100 focus:tw-outline-none"
                                         onClick={() =>
                                           handleUpdate(row.original, row.id)
                                         }>
@@ -778,8 +778,8 @@ const EntityTable = ({
                                     {getRequestDescriptionElement(cell)}
                                   </Fragment>
                                 ) : null}
-                              </div>
-                            </div>
+                              </Space>
+                            </Space>
                           </div>
                           {checkIfJoinsAvailable(row.original.name) && (
                             <div
