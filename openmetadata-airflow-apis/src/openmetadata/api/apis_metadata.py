@@ -10,6 +10,8 @@
 #  limitations under the License.
 from typing import Any, Dict, Optional
 
+DAG_ID_DESCRIPTION = "The ID of the DAG."
+
 # TODO https://github.com/open-metadata/OpenMetadata/issues/6215
 APIS_METADATA = [
     {
@@ -35,7 +37,7 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "dag_id",
-                "description": "Workflow name to run",
+                "description": DAG_ID_DESCRIPTION,
                 "required": True,
             },
         ],
@@ -60,7 +62,7 @@ APIS_METADATA = [
         "arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -73,7 +75,7 @@ APIS_METADATA = [
         "arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag to delete",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -86,7 +88,7 @@ APIS_METADATA = [
         "arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -100,7 +102,7 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -114,7 +116,7 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -128,7 +130,7 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },

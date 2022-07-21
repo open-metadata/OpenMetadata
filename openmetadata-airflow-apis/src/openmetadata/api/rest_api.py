@@ -48,6 +48,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 
+MISSING_DAG_ID_EXCEPTION_MSG = MISSING_DAG_ID_EXCEPTION_MSG
+
 
 class REST_API(AppBuilderBaseView):
     """API View which extends either flask AppBuilderBaseView or flask AdminBaseView"""
@@ -227,7 +229,7 @@ class REST_API(AppBuilderBaseView):
         dag_id = self.get_request_dag_id()
 
         if not dag_id:
-            return ApiResponse.bad_request("Missing dag_id argument in the request")
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             run_id = self.get_request_arg(request, "run_id")
@@ -249,7 +251,7 @@ class REST_API(AppBuilderBaseView):
         dag_id = self.get_arg_dag_id()
 
         if not dag_id:
-            return ApiResponse.bad_request("Missing dag_id argument in the request")
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return status(dag_id)
@@ -273,7 +275,7 @@ class REST_API(AppBuilderBaseView):
         dag_id = self.get_arg_dag_id()
 
         if not dag_id:
-            return ApiResponse.bad_request("Missing dag_id argument in the request")
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return delete_dag_id(dag_id)
@@ -313,7 +315,7 @@ class REST_API(AppBuilderBaseView):
         dag_id = self.get_request_dag_id()
 
         if not dag_id:
-            return ApiResponse.bad_request("Missing dag_id argument in the request")
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return enable_dag(dag_id)
@@ -332,7 +334,7 @@ class REST_API(AppBuilderBaseView):
         dag_id = self.get_request_dag_id()
 
         if not dag_id:
-            return ApiResponse.bad_request("Missing dag_id argument in the request")
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return disable_dag(dag_id)
@@ -352,7 +354,7 @@ class REST_API(AppBuilderBaseView):
         dag_id = self.get_request_dag_id()
 
         if not dag_id:
-            return ApiResponse.bad_request("Missing dag_id argument in the request")
+            return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
         try:
             return kill_all(dag_id)
