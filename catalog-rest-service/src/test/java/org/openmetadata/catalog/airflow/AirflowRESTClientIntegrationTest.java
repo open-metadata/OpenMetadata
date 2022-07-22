@@ -32,7 +32,7 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
 
 @ExtendWith(MockitoExtension.class)
-public class AirflowRESTClientIntegrationTest {
+class AirflowRESTClientIntegrationTest {
 
   private static final String DAG_NAME = "test_dag";
   private static final String URI_TO_HANDLE_REQUEST = "/";
@@ -57,7 +57,7 @@ public class AirflowRESTClientIntegrationTest {
   }
 
   @Test
-  public void testLastIngestionLogsAreRetrievedWhenStatusCodesAre200() {
+  void testLastIngestionLogsAreRetrievedWhenStatusCodesAre200() {
     Map<String, String> expectedMap = Map.of("key1", "value1", "key2", "value2");
 
     registerMockedEndpoints(200, 200);
@@ -66,7 +66,7 @@ public class AirflowRESTClientIntegrationTest {
   }
 
   @Test
-  public void testLastIngestionLogsExceptionWhenLoginFails() {
+  void testLastIngestionLogsExceptionWhenLoginFails() {
     registerMockedEndpoints(404, 200);
 
     Exception exception =
@@ -80,7 +80,7 @@ public class AirflowRESTClientIntegrationTest {
   }
 
   @Test
-  public void testLastIngestionLogsExceptionWhenStatusCode404() {
+  void testLastIngestionLogsExceptionWhenStatusCode404() {
     registerMockedEndpoints(200, 404);
 
     Exception exception =
