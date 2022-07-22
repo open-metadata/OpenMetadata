@@ -15,7 +15,7 @@ import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
 import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 
-public class AirflowConfigValidatorImpl implements ConstraintValidator<AirflowConfigValidator, AirflowConfiguration> {
+public class AirflowConfigValidationImpl implements ConstraintValidator<AirflowConfigValidation, AirflowConfiguration> {
   public static final String CLIENT_ID = "clientId";
   public static final String DOMAIN = "domain";
   public static final String EMAIL = "email";
@@ -33,7 +33,7 @@ public class AirflowConfigValidatorImpl implements ConstraintValidator<AirflowCo
     context.disableDefaultConstraintViolation();
     StringBuilder message = new StringBuilder();
     if (authProvider != OpenMetadataServerConnection.AuthProvider.NO_AUTH && authConfig == null) {
-      message.append(String.format(" \n %s SSO client config requires authConfig section", authProvider));
+      message.append(String.format("\n%s SSO client config requires authConfig section", authProvider));
       context.buildConstraintViolationWithTemplate(message.toString()).addConstraintViolation();
       return false;
     }

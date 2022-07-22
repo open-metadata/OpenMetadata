@@ -9,8 +9,8 @@ import javax.validation.Payload;
 
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-@Constraint(validatedBy = AirflowConfigValidatorImpl.class)
-public @interface AirflowConfigValidator {
+@Constraint(validatedBy = AirflowConfigValidationImpl.class)
+public @interface AirflowConfigValidation {
   String message() default "This will be replaced by the validation";
 
   Class<?>[] groups() default {};

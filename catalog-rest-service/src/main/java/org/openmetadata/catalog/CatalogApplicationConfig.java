@@ -34,7 +34,7 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
-import org.openmetadata.catalog.validators.AirflowConfigValidator;
+import org.openmetadata.catalog.validators.AirflowConfigValidation;
 
 @Getter
 @Setter
@@ -62,7 +62,9 @@ public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @AirflowConfigValidator
+  @AirflowConfigValidation
+  @NotNull
+  @Valid
   @JsonProperty("airflowConfiguration")
   private AirflowConfiguration airflowConfiguration;
 
