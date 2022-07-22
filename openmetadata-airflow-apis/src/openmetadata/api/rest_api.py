@@ -115,6 +115,7 @@ class REST_API(AppBuilderBaseView):
             rbac_authentication_enabled=True,
         )
 
+    @csrf.exempt  # Exempt the CSRF token
     @app_builder_expose("/health", methods=["GET"])  # for Flask AppBuilder
     def health(self):
         """
@@ -130,6 +131,7 @@ class REST_API(AppBuilderBaseView):
             )
 
     # '/api' REST Endpoint where API requests should all come in
+    @csrf.exempt  # Exempt the CSRF token
     @admin_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask Admin
     @app_builder_expose(
         "/api", methods=["GET", "POST", "DELETE"]
