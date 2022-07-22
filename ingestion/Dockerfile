@@ -1,4 +1,4 @@
-FROM python:3.9-slim as base
+FROM python:3.9.13-slim as base
 ENV AIRFLOW_HOME=/airflow
 RUN apt-get update && \
     apt-get install -y gcc libsasl2-modules libsasl2-dev curl build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget --no-install-recommends && \
