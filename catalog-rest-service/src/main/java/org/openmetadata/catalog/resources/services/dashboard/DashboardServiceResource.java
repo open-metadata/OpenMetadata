@@ -14,9 +14,6 @@
 package org.openmetadata.catalog.resources.services.dashboard;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,7 +55,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -139,7 +135,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<DashboardService> dashboardServices =
-        super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
   }
 
@@ -297,7 +293,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
       throws IOException {
     DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
@@ -320,7 +316,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException {
     DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
@@ -351,7 +347,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private DashboardService getService(CreateDashboardService create, String user) {
@@ -370,7 +366,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
 
   private DashboardService decryptOrNullify(SecurityContext securityContext, DashboardService dashboardService) {
     try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+      authorizer.authorizeAdmin(securityContext, true);
     } catch (AuthorizationException e) {
       return dashboardService.withConnection(null);
     }

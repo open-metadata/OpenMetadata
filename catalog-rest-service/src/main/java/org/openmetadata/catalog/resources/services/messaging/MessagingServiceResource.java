@@ -14,9 +14,6 @@
 package org.openmetadata.catalog.resources.services.messaging;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,7 +55,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -142,7 +138,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<MessagingService> messagingServices =
-        super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, messagingServices));
   }
 
@@ -300,7 +296,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    return create(uriInfo, securityContext, service, true);
   }
 
   @PUT
@@ -325,7 +321,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (MessagingService) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -353,7 +351,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private MessagingService getService(CreateMessagingService create, String user) {
@@ -372,7 +370,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
 
   private MessagingService decryptOrNullify(SecurityContext securityContext, MessagingService messagingService) {
     try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+      authorizer.authorizeAdmin(securityContext, true);
     } catch (AuthorizationException e) {
       return messagingService.withConnection(null);
     }

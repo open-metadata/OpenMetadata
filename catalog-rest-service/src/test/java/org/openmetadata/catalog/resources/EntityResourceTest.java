@@ -136,6 +136,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -847,7 +848,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
     K updateRequest = createRequest(getEntityName(test), "newDescription", "displayName", null);
-    assertResponse(() -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS), FORBIDDEN, noPermission(TEST_USER_NAME));
+    assertResponse(
+        () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        noPermission(TEST_USER_NAME, MetadataOperation.CREATE.value()));
   }
 
   @Test
