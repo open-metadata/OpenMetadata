@@ -116,6 +116,7 @@ const Description: FC<DescriptionProps> = ({
   }) => {
     return !isUndefined(descriptionThread) ? (
       <button
+        className="link-text"
         data-testid="description-thread"
         onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
         <span className="tw-flex">
@@ -175,7 +176,7 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <Space size={12}>
+      <Space align="start" size={12}>
         {checkPermission() && (
           <button data-testid="edit-description" onClick={handleUpdate}>
             <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
