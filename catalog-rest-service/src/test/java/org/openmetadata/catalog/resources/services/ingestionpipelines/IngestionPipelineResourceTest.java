@@ -273,10 +273,11 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Update the pipeline. Updating description is ignored when backend already has description
     Integer pipelineConcurrency = 110;
     Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
     String expectedScheduleInterval = "7 * * * *";
-    // Updating description is ignored when backend already has description
     IngestionPipeline ingestion =
         updateIngestionPipeline(
             request

@@ -18,7 +18,7 @@ export interface DeleteWidgetModalProps {
   entityName: string;
   entityType: string;
   isAdminUser?: boolean;
-  entityId: string;
+  entityId?: string;
   isRecursiveDelete?: boolean;
   afterDeleteAction?: () => void;
 }

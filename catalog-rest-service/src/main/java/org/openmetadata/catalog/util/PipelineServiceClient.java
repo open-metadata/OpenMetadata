@@ -93,4 +93,7 @@ public abstract class PipelineServiceClient {
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline);
+
+  /* Get the all last run logs of a deployed pipeline */
+  public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
 }

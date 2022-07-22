@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.tags;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
@@ -57,7 +55,6 @@ import org.openmetadata.catalog.jdbi3.TagCategoryRepository;
 import org.openmetadata.catalog.jdbi3.TagRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -293,7 +290,7 @@ public class TagResource {
   public Response createCategory(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     TagCategory category = getTagCategory(securityContext, create);
     category = addHref(uriInfo, daoCategory.create(uriInfo, category));
     return Response.created(category.getHref()).entity(category).build();
@@ -320,7 +317,7 @@ public class TagResource {
           String category,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     tag = addHref(categoryHref, dao.create(uriInfo, tag));
@@ -356,7 +353,7 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
@@ -378,7 +375,7 @@ public class TagResource {
           String categoryName,
       @Valid CreateTagCategory create)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     TagCategory category = getTagCategory(securityContext, create);
     // TODO clean this up
     if (categoryName.equals(create.getName())) { // Not changing the name
@@ -412,7 +409,7 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     RestUtil.PutResponse response;
@@ -456,7 +453,7 @@ public class TagResource {
           String secondaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, false);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
@@ -485,7 +482,7 @@ public class TagResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Tag category id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     TagCategory tagCategory = daoCategory.delete(uriInfo, id);
     addHref(uriInfo, tagCategory);
     return new RestUtil.DeleteResponse<>(tagCategory, RestUtil.ENTITY_DELETED).toResponse();
@@ -504,7 +501,7 @@ public class TagResource {
       @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
       @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Tag tag = dao.delete(uriInfo, id);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     addHref(categoryHref, tag);

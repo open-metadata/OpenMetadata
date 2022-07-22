@@ -93,6 +93,7 @@ import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.CreateTaskDetails;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Reaction;
 import org.openmetadata.catalog.type.ReactionType;
@@ -972,7 +973,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Post post = thread.getPosts().get(0);
     UUID threadId = thread.getId();
     UUID postId = post.getId();
-    assertResponse(() -> deletePost(threadId, postId, AUTH_HEADERS), FORBIDDEN, noPermission(USER.getName()));
+    assertResponse(
+        () -> deletePost(threadId, postId, AUTH_HEADERS),
+        FORBIDDEN,
+        noPermission(USER.getName(), MetadataOperation.DELETE.value()));
   }
 
   @Test
@@ -1256,10 +1260,6 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   private static <T, U> Predicate<U> bind(BiPredicate<T, U> f, T t) {
     return u -> f.test(t, u);
-  }
-
-  private static <T> boolean contains(List<T> list, T item, Comparator<? super T> comparator) {
-    return list.stream().anyMatch(bind(match(comparator), item));
   }
 
   private static <T> boolean containsAll(List<T> list, List<T> items, Comparator<? super T> comparator) {

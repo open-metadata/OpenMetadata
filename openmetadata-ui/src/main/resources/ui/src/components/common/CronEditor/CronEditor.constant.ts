@@ -15,6 +15,11 @@
 export const getPeriodOptions = () => {
   return [
     {
+      label: 'none',
+      value: '',
+      prep: '',
+    },
+    {
       label: 'minutes',
       value: 'minute',
       prep: '',
