@@ -133,7 +133,7 @@ class OMetaTableMixin:
         """
         seen_queries = LRUCache(LRU_CACHE_SIZE)
         for query in table_queries:
-            if not query.query in seen_queries:
+            if query.query not in seen_queries:
                 self.client.put(
                     f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
                     data=query.json(),
