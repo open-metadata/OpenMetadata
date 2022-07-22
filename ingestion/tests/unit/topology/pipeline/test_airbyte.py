@@ -1,19 +1,29 @@
 import json
-import uuid
 from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
     TaskStatus,
 )
+from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
+    PipelineService,
+    PipelineServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.airbyte import AirbytePipelineDetails
+from metadata.ingestion.source.pipeline.airbyte import (
+    AirbytePipelineDetails,
+    AirbyteSource,
+)
 
 mock_data_file = open("ingestion/tests/unit/resources/datasets/airbyte_dataset.json")
 mock_data: dict = json.load(mock_data_file)
@@ -94,7 +104,36 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             taskUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
         )
     ],
-    service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
+    ),
+)
+
+MOCK_PIPELINE_SERVICE = PipelineService(
+    id="85811038-099a-11ed-861d-0242ac120002",
+    name="airbyte_source",
+    connection=PipelineConnection(),
+    serviceType=PipelineServiceType.Airbyte,
+)
+
+MOCK_PIPELINE = Pipeline(
+    id="2aaa012e-099a-11ed-861d-0242ac120002",
+    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    fullyQualifiedName="airbyte_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    displayName="MSSQL <> Postgres",
+    description="",
+    pipelineUrl=MOCK_CONNECTION_URI_PATH,
+    tasks=[
+        Task(
+            name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+            displayName="MSSQL <> Postgres",
+            description="",
+            taskUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
+        )
+    ],
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
+    ),
 )
 
 
@@ -107,32 +146,32 @@ class AirbyteUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.airbyte.AirbyteClient")
     def init_workflow(self, airbyte_client, test_connection):
         test_connection.return_value = False
+        config = OpenMetadataWorkflowConfig.parse_obj(mock_airbyte_config)
+        self.aribyte = AirbyteSource.create(
+            mock_airbyte_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        self.aribyte.context.__dict__["pipeline"] = MOCK_PIPELINE
+        self.aribyte.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
         self.client = airbyte_client.return_value
         self.client.list_jobs.return_value = mock_data.get("jobs")
         self.client.list_workspaces.return_value = mock_data.get("workspace")
         self.client.list_connections.return_value = mock_data.get("connection")
-        self.workflow = Workflow.create(mock_airbyte_config)
-        self.workflow.execute()
-        self.workflow.stop()
 
     def test_pipeline_list(self):
-        assert (
-            list(self.workflow.source.get_pipelines_list())[0]
-            == EXPECTED_ARIBYTE_DETAILS
-        )
+        assert list(self.aribyte.get_pipelines_list())[0] == EXPECTED_ARIBYTE_DETAILS
 
     def test_pipeline_name(self):
-        assert self.workflow.source.get_pipeline_name(
+        assert self.aribyte.get_pipeline_name(
             EXPECTED_ARIBYTE_DETAILS
         ) == mock_data.get("connection")[0].get("connectionId")
 
     def test_pipelines(self):
-        pipline = list(self.workflow.source.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0]
-        EXPECTED_CREATED_PIPELINES.service = pipline.service
+        pipline = list(self.aribyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0]
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
         assert (
-            list(self.workflow.source.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS))
+            list(self.aribyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS))
             == EXPECTED_PIPELINE_STATUS
         )
