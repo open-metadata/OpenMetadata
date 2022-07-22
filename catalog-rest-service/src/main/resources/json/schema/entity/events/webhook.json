@@ -23,6 +23,20 @@
       "description": "Display Name that identifies this webhook.",
       "type": "string"
     },
+    "webhookType": {
+      "description": "Type of webhook slack,generic etc",
+      "type": "string",
+      "default": "generic",
+      "enum": ["slack", "generic"],
+      "javaEnums": [
+        {
+          "name": "slack"
+        },
+        {
+          "name": "generic"
+        }
+      ]
+    },
     "description": {
       "description": "Description of the application.",
       "$ref": "../../type/basic.json#/definitions/markdown"

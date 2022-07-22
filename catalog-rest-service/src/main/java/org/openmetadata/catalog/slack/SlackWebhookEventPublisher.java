@@ -10,27 +10,30 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.events.AbstractEventPublisher;
+import org.openmetadata.catalog.events.WebhookPublisher;
 import org.openmetadata.catalog.events.errors.EventPublisherException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.ChangeEventParser;
 
 @Slf4j
-public class SlackWebhookEventPublisher extends AbstractEventPublisher {
+public class SlackWebhookEventPublisher extends WebhookPublisher {
   private final Invocation.Builder target;
   private final Client client;
   private final String openMetadataUrl;
 
-  public SlackWebhookEventPublisher(SlackPublisherConfiguration config) {
-    super(config.getBatchSize(), config.getFilters());
-    String slackWebhookURL = config.getWebhookUrl();
+  public SlackWebhookEventPublisher(Webhook webhook, CollectionDAO dao) {
+    super(webhook, dao);
+    String slackWebhookURL = webhook.getEndpoint().toString();
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
     clientBuilder.connectTimeout(10, TimeUnit.SECONDS);
     clientBuilder.readTimeout(12, TimeUnit.SECONDS);
     client = clientBuilder.build();
     target = client.target(slackWebhookURL).request();
-    openMetadataUrl = refineUri(config.getOpenMetadataUrl());
+    // TODO: Fix this
+    openMetadataUrl = refineUri("http://localhost:8585");
   }
 
   @Override

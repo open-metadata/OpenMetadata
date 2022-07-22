@@ -81,8 +81,6 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
-import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
-import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.socket.FeedServlet;
 import org.openmetadata.catalog.socket.SocketAddressFilter;
 import org.openmetadata.catalog.socket.WebSocketManager;
@@ -158,7 +156,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // start event hub before registering publishers
     EventPubSub.start();
     // Register Event publishers
-    registerEventPublisher(catalogConfig);
+    registerEventPublisher(catalogConfig, jdbi);
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
@@ -247,23 +245,12 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
-  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig) {
+  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig, Jdbi jdbi) {
     // register ElasticSearch Event publisher
     if (catalogApplicationConfig.getElasticSearchConfiguration() != null) {
       ElasticSearchEventPublisher elasticSearchEventPublisher =
           new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
-    }
-    // register slack Event publishers
-    if (catalogApplicationConfig.getSlackEventPublishers() != null) {
-      for (SlackPublisherConfiguration slackPublisherConfiguration :
-          catalogApplicationConfig.getSlackEventPublishers()) {
-        if (slackPublisherConfiguration.getWebhookUrl() != null
-            && !slackPublisherConfiguration.getWebhookUrl().isEmpty()) {
-          SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
-          EventPubSub.addEventHandler(slackPublisher);
-        }
-      }
     }
   }
 

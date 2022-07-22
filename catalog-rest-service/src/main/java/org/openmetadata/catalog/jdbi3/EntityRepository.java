@@ -1083,7 +1083,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return ingestionPipelines;
   }
 
-  enum Operation {
+  public enum Operation {
     PUT,
     PATCH,
     SOFT_DELETE;

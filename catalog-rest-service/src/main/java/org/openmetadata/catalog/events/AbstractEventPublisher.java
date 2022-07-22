@@ -13,16 +13,16 @@ import org.openmetadata.catalog.type.EventType;
 @Slf4j
 public abstract class AbstractEventPublisher implements EventPublisher {
   // Backoff timeout in seconds. Delivering events is retried 5 times.
-  private static final int BACKOFF_NORMAL = 0;
-  private static final int BACKOFF_3_SECONDS = 3 * 1000;
-  private static final int BACKOFF_30_SECONDS = 30 * 1000;
-  private static final int BACKOFF_5_MINUTES = 5 * 60 * 1000;
-  private static final int BACKOFF_1_HOUR = 60 * 60 * 1000;
-  private static final int BACKOFF_24_HOUR = 24 * 60 * 60 * 1000;
+  protected static final int BACKOFF_NORMAL = 0;
+  protected static final int BACKOFF_3_SECONDS = 3 * 1000;
+  protected static final int BACKOFF_30_SECONDS = 30 * 1000;
+  protected static final int BACKOFF_5_MINUTES = 5 * 60 * 1000;
+  protected static final int BACKOFF_1_HOUR = 60 * 60 * 1000;
+  protected static final int BACKOFF_24_HOUR = 24 * 60 * 60 * 1000;
 
-  private int currentBackoffTime = BACKOFF_NORMAL;
-  private final List<ChangeEvent> batch = new ArrayList<>();
-  private final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
+  protected int currentBackoffTime = BACKOFF_NORMAL;
+  protected final List<ChangeEvent> batch = new ArrayList<>();
+  protected final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
   private final int batchSize;
 
   protected AbstractEventPublisher(int batchSize, List<EventFilter> filters) {
@@ -63,7 +63,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
     }
   }
 
-  private void setNextBackOff() {
+  protected void setNextBackOff() {
     if (currentBackoffTime == BACKOFF_NORMAL) {
       currentBackoffTime = BACKOFF_3_SECONDS;
     } else if (currentBackoffTime == BACKOFF_3_SECONDS) {
