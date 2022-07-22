@@ -67,6 +67,8 @@ _TYPE_MAP = {
     DataType.UUID: CustomTypes.UUID.value,
 }
 
+SQA_RESERVED_ATTRIBUTES = ["metadata"]
+
 
 def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
     """Check whether column or table name are not uppercase for snowflake table.
@@ -118,7 +120,11 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
     """
 
     cols = {
-        str(col.name.__root__): build_orm_col(idx, col, table.serviceType)
+        (
+            col.name.__root__ + "_"
+            if col.name.__root__ in SQA_RESERVED_ATTRIBUTES
+            else col.name.__root__
+        ): build_orm_col(idx, col, table.serviceType)
         for idx, col in enumerate(table.columns)
     }
 
