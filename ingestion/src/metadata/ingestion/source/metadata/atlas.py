@@ -311,7 +311,7 @@ class AtlasSource(Source):
                     yield from self.yield_lineage(from_entity_ref, to_entity_ref)
 
     def yield_lineage(self, from_entity_ref, to_entity_ref):
-        if from_entity_ref and to_entity_ref and not from_entity_ref == to_entity_ref:
+        if from_entity_ref and to_entity_ref and from_entity_ref != to_entity_ref:
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
