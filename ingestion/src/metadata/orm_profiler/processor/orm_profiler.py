@@ -270,7 +270,7 @@ class OrmProfilerProcessor(Processor[Table]):
         Log test case results
         """
         self.status.tested(name)
-        if not result.testCaseStatus == TestCaseStatus.Success:
+        if result.testCaseStatus != TestCaseStatus.Success:
             self.status.failure(f"{name}: {result.result}")
 
     @staticmethod
