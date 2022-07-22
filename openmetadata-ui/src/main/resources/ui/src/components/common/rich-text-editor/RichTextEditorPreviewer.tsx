@@ -53,7 +53,9 @@ const RichTextEditorPreviewer = ({
         }
       )}
       data-testid="viewer-container">
-      <Viewer extendedAutolinks initialValue={content} key={uniqueId()} />
+      <div data-testid="markdown-parser">
+        <Viewer extendedAutolinks initialValue={content} key={uniqueId()} />
+      </div>
 
       <BlurLayout
         blurClasses={blurClasses}
