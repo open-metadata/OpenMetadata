@@ -41,12 +41,10 @@ public abstract class SecretsManager {
     OpenMetadataServerConnection.AuthProvider authProvider =
         OpenMetadataServerConnection.AuthProvider.fromValue(airflowConfiguration.getAuthProvider());
     String openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
-    OpenMetadataServerConnection openMetadataServerConnection = new OpenMetadataServerConnection();
-    openMetadataServerConnection.setAuthProvider(authProvider);
-    openMetadataServerConnection.setHostPort(openMetadataURL);
-    openMetadataServerConnection.setSecurityConfig(
-        decryptAuthProviderConfig(authProvider, airflowConfiguration.getAuthConfig()));
-    return openMetadataServerConnection;
+    return new OpenMetadataServerConnection()
+        .withAuthProvider(authProvider)
+        .withHostPort(openMetadataURL)
+        .withSecurityConfig(decryptAuthProviderConfig(authProvider, airflowConfiguration.getAuthConfig()));
   }
 
   public abstract AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration);

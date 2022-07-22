@@ -20,6 +20,7 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 public class AWSSecretsManager extends SecretsManager {
 
+  public static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
   private static AWSSecretsManager INSTANCE = null;
 
   private SecretsManagerClient secretsClient;
@@ -108,7 +109,7 @@ public class AWSSecretsManager extends SecretsManager {
       throw new SecretsManagerException("Error parsing to JSON the auth config :" + e.getMessage());
     }
     if (authProviderJson != null) {
-      upsertSecret(buildSecretId("auth-provider", authProvider.value()), authProviderJson);
+      upsertSecret(buildSecretId(AUTH_PROVIDER_SECRET_ID_SUFFIX, authProvider.value()), authProviderJson);
     }
     airflowConfiguration.setAuthConfig(null);
     return airflowConfiguration;

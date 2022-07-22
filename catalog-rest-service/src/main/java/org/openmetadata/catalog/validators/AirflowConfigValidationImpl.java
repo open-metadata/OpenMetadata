@@ -33,7 +33,7 @@ public class AirflowConfigValidationImpl implements ConstraintValidator<AirflowC
     context.disableDefaultConstraintViolation();
     StringBuilder message = new StringBuilder();
     if (authProvider != OpenMetadataServerConnection.AuthProvider.NO_AUTH && authConfig == null) {
-      message.append(String.format("\n%s SSO client config requires authConfig section", authProvider));
+      message.append(String.format("%n%s SSO client config requires authConfig section", authProvider));
       context.buildConstraintViolationWithTemplate(message.toString()).addConstraintViolation();
       return false;
     }
@@ -74,7 +74,7 @@ public class AirflowConfigValidationImpl implements ConstraintValidator<AirflowC
       case NO_AUTH:
         break;
       default:
-        message.append(String.format("\nOpenMetadata doesn't support auth provider type %s", authProvider.value()));
+        message.append(String.format("%nOpenMetadata doesn't support auth provider type %s", authProvider.value()));
     }
     if (message.length() != 0) {
       context.buildConstraintViolationWithTemplate(message.toString()).addConstraintViolation();
@@ -89,7 +89,7 @@ public class AirflowConfigValidationImpl implements ConstraintValidator<AirflowC
       OpenMetadataServerConnection.AuthProvider authProvider,
       StringBuilder message) {
     if (nullOrEmpty(fieldValue)) {
-      message.append(String.format("\n%s SSO client config requires %s", authProvider, fieldName));
+      message.append(String.format("%n%s SSO client config requires %s", authProvider, fieldName));
     }
   }
 
@@ -99,7 +99,7 @@ public class AirflowConfigValidationImpl implements ConstraintValidator<AirflowC
       OpenMetadataServerConnection.AuthProvider authProvider,
       StringBuilder message) {
     if (nullOrEmpty(fieldValue)) {
-      message.append(String.format("\n%s SSO client config requires %s", authProvider, fieldName));
+      message.append(String.format("%n%s SSO client config requires %s", authProvider, fieldName));
     }
   }
 }
