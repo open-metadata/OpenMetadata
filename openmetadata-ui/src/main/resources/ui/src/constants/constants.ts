@@ -19,6 +19,11 @@ export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
+export const SUPPORTED_DOMAIN_TYPES = [
+  'localhost:3000',
+  'localhost:8585',
+  'sandbox-beta.open-metadata.org',
+];
 
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGIN_VALUE = 1;

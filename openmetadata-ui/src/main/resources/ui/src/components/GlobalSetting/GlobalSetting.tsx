@@ -13,15 +13,14 @@
 
 import React from 'react';
 import PageLayout from '../containers/PageLayout';
-import { GlobalSettingProps } from './GlobalSetting.interface';
 import './GlobalSetting.less';
 import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
 
-const GlobalSetting = ({ activeTab }: GlobalSettingProps) => {
+const GlobalSetting = () => {
   return (
     <PageLayout
       classes="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel activeTab={activeTab} />}>
+      leftPanel={<GlobalSettingLeftPanel />}>
       GlobalSettingPage
     </PageLayout>
   );

@@ -11,27 +11,14 @@
  *  limitations under the License.
  */
 
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React from 'react';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlobalSetting from '../../components/GlobalSetting/GlobalSetting';
-import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
 
 const GlobalSettingPage = () => {
-  const { tab } = useParams<{ [key: string]: string }>();
-  const [activeTab, setActiveTab] = useState<GlobalSettingOptions>(
-    (tab as GlobalSettingOptions) ?? GlobalSettingOptions.USERS
-  );
-
-  useEffect(() => {
-    if (tab) {
-      setActiveTab(tab as GlobalSettingOptions);
-    }
-  }, [tab]);
-
   return (
     <PageContainerV1 className="tw-pt-4">
-      <GlobalSetting activeTab={activeTab} />
+      <GlobalSetting />
     </PageContainerV1>
   );
 };
