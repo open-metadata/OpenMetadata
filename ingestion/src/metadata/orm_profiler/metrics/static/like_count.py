@@ -17,6 +17,7 @@ Like Count Metric definition
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.sum import SumFn
 
 
 class LikeCount(StaticMetric):
@@ -46,6 +47,4 @@ class LikeCount(StaticMetric):
             raise AttributeError(
                 "Like Count requires an expression to be set: add_props(expression=...)(Metrics.LIKE_COUNT)"
             )
-        return func.sum(
-            case([(column(self.col.name).like(self.expression), 1)], else_=0)
-        )
+        return SumFn(case([(column(self.col.name).like(self.expression), 1)], else_=0))
