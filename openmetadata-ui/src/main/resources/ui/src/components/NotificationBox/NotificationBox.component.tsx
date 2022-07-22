@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, List, Tabs } from 'antd';
+import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +25,7 @@ import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
+import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
@@ -43,9 +44,6 @@ const NotificationBox = ({
   const [notifications, setNotifications] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const [icon, setIcon] = useState<JSX.Element>(
-    <SVGIcons alt="" className="tw-mr-2" icon={Icons.TASK} width="14px" />
-  );
   const [viewAllPath, setViewAllPath] = useState<string>(
     `${getUserPath(currentUser?.name as string)}/tasks?feedFilter=ASSIGNED_TO`
   );
@@ -68,9 +66,9 @@ const NotificationBox = ({
           entityFQN={entityFQN as string}
           entityType={entityType as string}
           feedType={feed.type || ThreadType.Conversation}
-          icon={icon}
           key={`${mainFeed.from} ${idx}`}
           taskDetails={feed.task}
+          timestamp={mainFeed.postTs}
         />
       );
     });
@@ -110,14 +108,7 @@ const NotificationBox = ({
       const { threadType, feedFilter } = getFilters(key as ThreadType);
 
       getNotificationData(threadType, feedFilter);
-      setIcon(
-        <SVGIcons
-          alt=""
-          className="tw-mr-2"
-          icon={key === 'Task' ? Icons.TASK : Icons.MENTIONS}
-          width="14px"
-        />
-      );
+
       setViewAllPath(
         `${getUserPath(
           currentUser?.name as string
@@ -158,38 +149,37 @@ const NotificationBox = ({
   const notificationList = useMemo(
     () =>
       isEmpty(notifications) ? (
-        <div className="tw-h-full tw-flex tw-items-center tw-justify-center">
+        <div className="tw-h-64 tw-flex tw-items-center tw-justify-center">
           <p>No notifications Found</p>
         </div>
       ) : (
         <List
           dataSource={notificationDropDownList}
+          footer={
+            <Button block href={viewAllPath} type="link">
+              <span>view all</span>
+            </Button>
+          }
+          itemLayout="vertical"
           renderItem={(item) => (
-            <List.Item
-              style={{
-                padding: '10px 0px 10px 16px',
-              }}>
+            <List.Item className="hover:tw-bg-body-hover tw-cursor-pointer">
               {item}
             </List.Item>
           )}
+          size="small"
         />
       ),
     [notifications]
   );
 
   return (
-    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded tw-flex tw-flex-col tw-justify-between tw-shadow-lg">
-      <div className="tw-flex tw-justify-between">
-        <div
-          className="tw-text-base tw-font-medium tw-px-4 tw-pt-3 tw-pb-1"
-          data-testid="notification-heading">
-          Notifications
-        </div>
-        <Button href={viewAllPath} type="link">
-          <span className="tw-pt-2.5">view all</span>
-        </Button>
-      </div>
-
+    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded tw-flex tw-flex-col tw-justify-between tw-shadow-lg notification-box">
+      <Typography.Title
+        className="tw-px-4 tw-pt-3 tw-pb-1"
+        data-testid="notification-heading"
+        level={5}>
+        Notifications
+      </Typography.Title>
       <Tabs
         defaultActiveKey="Task"
         size="small"
@@ -208,9 +198,7 @@ const NotificationBox = ({
                 <Loader size="small" />
               </div>
             ) : (
-              <div className="tw-h-64 tw-overflow-scroll">
-                {notificationList}
-              </div>
+              notificationList
             )}
           </Tabs.TabPane>
         ))}

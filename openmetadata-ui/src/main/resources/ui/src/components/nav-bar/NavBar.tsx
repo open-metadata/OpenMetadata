@@ -286,8 +286,7 @@ const NavBar = ({
                     />
                   }
                   overlayStyle={{
-                    width: '373px',
-                    height: '368px',
+                    width: '425px',
                   }}
                   placement="bottomRight"
                   trigger={['click']}

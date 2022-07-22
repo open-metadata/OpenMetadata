@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes, ReactNode } from 'react';
+import { HTMLAttributes } from 'react';
 import { ActivityFeedCardProp } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface NotificationFeedProp
@@ -20,5 +20,5 @@ export interface NotificationFeedProp
   createdBy: string;
   entityType: string;
   entityFQN: string;
-  icon: ReactNode;
+  timestamp?: number;
 }

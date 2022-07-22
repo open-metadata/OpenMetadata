@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { toString } from 'lodash';
+import { Avatar, List, Space, Typography } from 'antd';
+import { capitalize, toString } from 'lodash';
+import moment from 'moment';
 import React, { FC } from 'react';
 import { Link } from 'react-router-dom';
-import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -30,7 +31,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   createdBy,
   entityFQN,
   entityType,
-  icon,
+  timestamp,
   feedType,
   taskDetails,
 }) => {
@@ -74,33 +75,55 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   };
 
   return (
-    <div className="tw-flex tw-leading-4 tw-items-start">
-      {icon}
-      <span>
-        <span>{createdBy}</span>
-        {feedType === ThreadType.Conversation ? (
-          <span>
-            <span> posted on </span> <span>{entityType} </span>
-            <Link
-              className="tw-truncate"
-              to={prepareFeedLink(entityType, entityFQN)}>
-              <button className="tw-text-info" disabled={AppState.isTourOpen}>
-                <div>{entityDisplayName()}</div>
-              </button>
-            </Link>
-          </span>
-        ) : (
-          <>
-            <span className="tw-px-1">assigned you a new task</span>
-            <Link to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
-              <button className="tw-text-info" disabled={AppState.isTourOpen}>
-                {`#${taskDetails?.id}`} <span>{taskDetails?.type}</span>
-              </button>
-            </Link>
-          </>
-        )}
-      </span>
-    </div>
+    <Link
+      className="tw-no-underline"
+      to={
+        feedType === ThreadType.Conversation
+          ? prepareFeedLink(entityType, entityFQN)
+          : getTaskDetailPath(toString(taskDetails?.id)).pathname
+      }>
+      <List.Item.Meta
+        avatar={
+          <Avatar alt={createdBy} src="">
+            {capitalize(createdBy.substring(0, 1))}
+          </Avatar>
+        }
+        className="tw-m-0"
+        description={
+          <Space direction="vertical" size={0}>
+            <Typography.Paragraph
+              className="tw-m-0"
+              style={{ color: '#37352F', marginBottom: 0 }}>
+              <>{createdBy}</>
+              {feedType === ThreadType.Conversation ? (
+                <>
+                  <span> posted on </span> <span>{entityType} </span>
+                  <Link
+                    className="tw-truncate"
+                    to={prepareFeedLink(entityType, entityFQN)}>
+                    {entityDisplayName()}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <span className="tw-px-1">assigned you a new task</span>
+                  <Link
+                    to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
+                    {`#${taskDetails?.id}`} {taskDetails?.type}
+                  </Link>
+                </>
+              )}
+            </Typography.Paragraph>
+            <Typography.Text
+              style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
+              title={moment(timestamp).format('MMM, DD, YYYY hh:mm:ss')}>
+              {moment(timestamp).fromNow()}
+            </Typography.Text>
+          </Space>
+        }
+        style={{ marginBottom: 0 }}
+      />
+    </Link>
   );
 };
 
