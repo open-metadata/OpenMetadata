@@ -86,8 +86,7 @@ class UsageSource(Source[TableQuery], ABC):
         if self.config.sourceConfig.config.queryLogFilePath:
             query_list = []
             with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
-                records = csv.DictReader(fin)
-                for i in [next(records) for _ in range(10000)]:
+                for i in csv.DictReader(fin):
                     query_dict = dict(i)
                     analysis_date = (
                         datetime.utcnow()
@@ -125,7 +124,6 @@ class UsageSource(Source[TableQuery], ABC):
                         )
                     )
                     queries = []
-                    rows = [next(rows) for _ in range(2000)]
                     for row in rows:
                         row = dict(row)
                         try:

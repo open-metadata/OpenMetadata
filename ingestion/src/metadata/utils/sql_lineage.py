@@ -183,7 +183,6 @@ def _create_lineage_by_table_name(
     """
 
     try:
-        
         from_table_entities = get_table_entities_from_query(
             metadata=metadata,
             service_name=service_name,
@@ -280,7 +279,6 @@ def get_lineage_by_query(
     DictConfigurator.configure = configure
     column_lineage_map.clear()
     
-
     try:
         result = LineageRunner(query)
 
