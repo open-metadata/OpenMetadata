@@ -84,6 +84,13 @@ jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab.component</p>);
 });
 
+jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
+});
 const mockTabHandler = jest.fn().mockImplementation((fn, value) => fn(value));
 
 jest.mock('../common/TabsPane/TabsPane', () => {

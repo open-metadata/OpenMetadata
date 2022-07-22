@@ -87,7 +87,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(500); 
+  cy.wait(500);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -127,6 +127,7 @@ export const testServiceCreationAndIngestion = (
 
   // Schedule & Deploy
   cy.contains('Schedule for Ingestion').should('be.visible');
+  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
@@ -216,7 +217,7 @@ export const visitEntityTab = (id) => {
 export const searchEntity = (term) => {
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
-  cy.get('[data-testid="suggestion-overlay"]').click(1,1);
+  cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
 };
 
 // add new tag to entity and its table

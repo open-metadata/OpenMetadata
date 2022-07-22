@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -281,7 +277,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dashboard, ADMIN | BOT);
+    return create(uriInfo, securityContext, dashboard, true);
   }
 
   @PATCH
@@ -327,7 +323,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dashboard, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, dashboard, true);
   }
 
   @PUT
@@ -392,7 +388,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           boolean hardDelete,
       @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   private Dashboard getDashboard(CreateDashboard create, String user) {

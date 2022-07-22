@@ -13,8 +13,12 @@
 
 package org.openmetadata.catalog.security;
 
+import java.io.IOException;
 import java.util.List;
+import javax.ws.rs.core.SecurityContext;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 
@@ -23,24 +27,17 @@ public interface Authorizer {
   /** Initialize the authorizer */
   void init(AuthorizerConfiguration config, Jdbi jdbi);
 
-  /**
-   * Check if the authenticated user has given permission on the target entity identified by the given resourceType and
-   * resourceName
-   */
-  boolean hasPermissions(AuthenticationContext ctx, EntityReference entityReference);
-
-  /**
-   * Check if the authenticated user (subject) has permission to perform the {@link MetadataOperation} on the target
-   * entity (object).
-   */
-  boolean hasPermissions(AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation);
-
   /** Returns a list of operations that the authenticated user (subject) can perform on the target entity (object). */
-  List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference);
+  List<MetadataOperation> listPermissions(SecurityContext securityContext, ResourceContextInterface resourceContext);
 
-  boolean isAdmin(AuthenticationContext ctx);
+  boolean isOwner(SecurityContext ctx, EntityReference entityReference);
 
-  boolean isBot(AuthenticationContext ctx);
+  void authorize(
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext,
+      boolean allowBots)
+      throws IOException;
 
-  boolean isOwner(AuthenticationContext ctx, EntityReference entityReference);
+  void authorizeAdmin(SecurityContext securityContext, boolean allowBots);
 }

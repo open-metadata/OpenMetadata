@@ -1,0 +1,9 @@
+[run]
+source = env/lib/python3.9/site-packages/openmetadata
+relative_files = True
+branch = True
+[report]
+omit =
+    *__init__*
+    tests/*
+    src/plugins/*
