@@ -165,6 +165,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('be.visible')
     .click();
   cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+  cy.wait(1000);
 
   //redirecting to services page
   cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
