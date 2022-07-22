@@ -12,19 +12,25 @@
  */
 
 import React from 'react';
-import GlobalSettingRoute from '../../router/GlobalSettingRoute';
-import PageLayout from '../containers/PageLayout';
-import './GlobalSetting.less';
-import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
+import { Route, Switch } from 'react-router-dom';
+import { GlobalSettingOptions } from '../constants/globalSettings.constants';
+import { getSettingPath } from '../utils/RouterUtils';
+import withSuspenseFallback from './withSuspenseFallback';
 
-const GlobalSetting = () => {
+const WebhooksPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../pages/WebhooksPage/WebhooksPageV1.component'))
+);
+
+const GlobalSettingRoute = () => {
   return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRoute />
-    </PageLayout>
+    <Switch>
+      <Route
+        exact
+        component={WebhooksPageV1}
+        path={getSettingPath(GlobalSettingOptions.WEBHOOK)}
+      />
+    </Switch>
   );
 };
 
-export default GlobalSetting;
+export default GlobalSettingRoute;

@@ -11,20 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import GlobalSettingRoute from '../../router/GlobalSettingRoute';
-import PageLayout from '../containers/PageLayout';
-import './GlobalSetting.less';
-import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
-
-const GlobalSetting = () => {
-  return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRoute />
-    </PageLayout>
-  );
-};
-
-export default GlobalSetting;
+.webhook-right-panel {
+  max-width: 290px;
+}
