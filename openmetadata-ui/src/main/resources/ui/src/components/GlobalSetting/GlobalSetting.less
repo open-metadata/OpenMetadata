@@ -12,8 +12,14 @@
  */
 
 .global-setting-left-panel.ant-menu-inline {
+  box-shadow: 0px 2px 8px 0px rgba(0, 0, 0, 0.15);
+  width: 290px;
   .ant-menu-item::after {
     left: 0;
     right: unset;
+  }
+  .ant-menu-item-group:not(:first-child) {
+    margin-top: 10px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
   }
 }
