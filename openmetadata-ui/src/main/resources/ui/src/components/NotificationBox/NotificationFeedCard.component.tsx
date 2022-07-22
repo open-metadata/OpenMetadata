@@ -69,7 +69,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 
     // Remove quotes if the name is wrapped in quotes
     if (displayName) {
-      displayName = displayName.replace(/^"+|"+$/g, '');
+      displayName = displayName.replace(/(?:^"+)|(?:"+$)/g, '');
     }
 
     return displayName;
