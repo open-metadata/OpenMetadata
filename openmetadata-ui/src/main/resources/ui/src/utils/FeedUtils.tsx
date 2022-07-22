@@ -43,11 +43,13 @@ import {
   linkRegEx,
   mentionRegEx,
 } from '../constants/feed.constants';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Post, Thread, ThreadType } from '../generated/entity/feed/thread';
 import { getEntityPlaceHolder } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
+import { getEntityLink } from './TableUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -421,4 +423,22 @@ export const getFeedAction = (type: ThreadType) => {
   }
 
   return 'posted on';
+};
+
+export const prepareFeedLink = (entityType: string, entityFQN: string) => {
+  const withoutFeedEntities = [
+    EntityType.WEBHOOK,
+    EntityType.GLOSSARY,
+    EntityType.GLOSSARY_TERM,
+    EntityType.TYPE,
+    EntityType.MLMODEL,
+  ];
+
+  const entityLink = getEntityLink(entityType, entityFQN);
+
+  if (!withoutFeedEntities.includes(entityType as EntityType)) {
+    return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+  } else {
+    return entityLink;
+  }
 };
