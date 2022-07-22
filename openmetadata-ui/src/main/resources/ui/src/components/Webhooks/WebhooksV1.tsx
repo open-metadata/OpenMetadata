@@ -124,25 +124,29 @@ const WebhooksV1: FC<WebhooksProps> = ({
         <div className="tw-flex tw-items-center tw-justify-between">
           <Select
             bordered={false}
-            className="tw-min-w-64 tw-text-body"
+            className="tw-min-w-64 tw-text-body webhook-filter-select"
             mode="multiple"
             options={statuses}
             placeholder="Filter by status"
             onChange={onStatusFilter}
           />
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-webhook-button"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={onAddWebhook}>
-              Add Webhook
-            </Button>
-          </NonAdminAction>
+          {filteredData.length > 0 && (
+            <NonAdminAction
+              position="bottom"
+              title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Button
+                className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                })}
+                data-testid="add-webhook-button"
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={onAddWebhook}>
+                Add Webhook
+              </Button>
+            </NonAdminAction>
+          )}
         </div>
         {filteredData.length ? (
           <>
