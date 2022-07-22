@@ -19,6 +19,7 @@ from typing import List
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.sum import SumFn
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -54,7 +55,7 @@ class CountInSet(StaticMetric):
 
         try:
             set_values = set(self.values)
-            return func.sum(case([(column(self.col.name).in_(set_values), 1)], else_=0))
+            return SumFn(case([(column(self.col.name).in_(set_values), 1)], else_=0))
 
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Error trying to run countInSet for {self.col.name} - {err}")

@@ -20,7 +20,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 
-public class MessageParserTest {
+class MessageParserTest {
   @Test
   void parseMessage() {
     String s =

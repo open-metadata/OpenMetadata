@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -294,7 +290,7 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
       throws IOException {
     PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
@@ -317,7 +313,7 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException {
     PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
@@ -348,7 +344,7 @@ public class PipelineServiceResource
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private PipelineService getService(CreatePipelineService create, String user) {

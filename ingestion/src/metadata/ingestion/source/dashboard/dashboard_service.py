@@ -205,7 +205,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Yields lineage if config is enabled
         """
         if self.source_config.dbServiceName:
-            yield from self.yield_dashboard_lineage_details(dashboard_details)
+            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
 
     def yield_tag(self, *args, **kwargs) -> Optional[Iterable[OMetaTagAndCategory]]:
         """

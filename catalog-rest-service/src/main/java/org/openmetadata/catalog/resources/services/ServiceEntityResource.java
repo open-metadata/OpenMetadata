@@ -1,8 +1,5 @@
 package org.openmetadata.catalog.resources.services;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-
 import java.util.Collections;
 import java.util.Optional;
 import javax.ws.rs.core.SecurityContext;
@@ -13,7 +10,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 public abstract class ServiceEntityResource<
@@ -30,11 +26,7 @@ public abstract class ServiceEntityResource<
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
     try {
-      if (secretsManager.isLocal()) {
-        SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-      } else {
-        SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
-      }
+      authorizer.authorizeAdmin(securityContext, secretsManager.isLocal());
     } catch (AuthorizationException e) {
       return nullifyConnection(service);
     }

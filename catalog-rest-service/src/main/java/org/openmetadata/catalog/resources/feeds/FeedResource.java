@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,6 +48,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.feed.CloseTask;
 import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
@@ -64,9 +61,12 @@ import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.PostResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.CreateTaskDetails;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.TaskDetails;
 import org.openmetadata.catalog.type.TaskStatus;
@@ -483,7 +483,10 @@ public class FeedResource {
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
     // delete post only if the admin/bot/author tries to delete it
-    SecurityUtil.authorize(authorizer, securityContext, null, dao.getOwnerOfPost(post), ADMIN | BOT | OWNER);
+    // TODO fix this
+    OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerOfPost(post));
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 

@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.mlmodel;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -295,7 +291,7 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService create)
       throws IOException {
     MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
@@ -318,7 +314,7 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update)
       throws IOException {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
@@ -349,7 +345,7 @@ public class MlModelServiceResource
       @Parameter(description = "Id of the mlModel service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private MlModelService getService(CreateMlModelService create, String user) {

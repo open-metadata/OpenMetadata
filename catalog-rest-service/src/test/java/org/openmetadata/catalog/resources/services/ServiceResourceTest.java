@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.security.Principal;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +26,7 @@ import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ServiceRepository;
 import org.openmetadata.catalog.secrets.SecretsManager;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,13 +48,10 @@ public abstract class ServiceResourceTest<
 
   @Mock protected SecurityContext securityContext;
 
-  @Mock protected Principal principal;
-
   @BeforeEach
   void beforeEach() throws IOException {
     mockServiceResourceSpecific();
     when(collectionDAO.relationshipDAO()).thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
-    when(securityContext.getUserPrincipal()).thenReturn(principal);
     when(service.getId()).thenReturn(UUID.randomUUID());
     when(service.withHref(any())).thenReturn(service);
     lenient()
@@ -84,8 +81,18 @@ public abstract class ServiceResourceTest<
   void testGetCallDecryptOrNullify(boolean isLocalSecretManager, boolean isAdmin, boolean isBot, boolean shouldBeNull)
       throws IOException {
     lenient().when(secretsManager.isLocal()).thenReturn(isLocalSecretManager);
-    lenient().when(authorizer.isAdmin(any())).thenReturn(isAdmin);
-    lenient().when(authorizer.isBot(any())).thenReturn(isBot);
+
+    if (isLocalSecretManager && !isAdmin && !isBot) {
+      lenient()
+          .doThrow(new AuthorizationException(""))
+          .when(authorizer)
+          .authorizeAdmin(any(SecurityContext.class), eq(true));
+    } else if (!isLocalSecretManager && !isAdmin) {
+      lenient()
+          .doThrow(new AuthorizationException(""))
+          .when(authorizer)
+          .authorizeAdmin(any(SecurityContext.class), eq(false));
+    }
 
     R actual = callGetFromResource(serviceResource);
 

@@ -14,9 +14,6 @@
 package org.openmetadata.catalog.resources.services.messaging;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -137,7 +134,7 @@ public class MessagingServiceResource
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<MessagingService> messagingServices =
-        super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, messagingServices));
   }
 
@@ -295,7 +292,7 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }
@@ -322,7 +319,7 @@ public class MessagingServiceResource
       @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }
@@ -352,7 +349,7 @@ public class MessagingServiceResource
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private MessagingService getService(CreateMessagingService create, String user) {

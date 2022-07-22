@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -283,7 +279,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, team, ADMIN | BOT);
+    return create(uriInfo, securityContext, team, true);
   }
 
   @PUT
@@ -302,7 +298,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, team, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, team, true);
   }
 
   @PATCH
@@ -351,7 +347,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean hardDelete,
       @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   private Team getTeam(CreateTeam ct, String user) {
