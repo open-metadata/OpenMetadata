@@ -82,6 +82,8 @@ class TestSecretsManager(TestCase):
         expected_service = deepcopy(self.service)
         expected_service.connection.config = self.database_connection
 
+        self.service.connection = None
+
         aws_manager.add_service_config_connection(self.service, self.service_type)
 
         self.assertEqual(expected_service, self.service)
