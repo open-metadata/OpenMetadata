@@ -17,7 +17,12 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
+import { isAllowedHost } from '../utils/CommonUtils';
 import withSuspenseFallback from './withSuspenseFallback';
+
+const GlobalSettingPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/GlobalSettingPage/GlobalSettingPage'))
+);
 
 const MyDataPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MyDataPage/MyDataPage.component'))
@@ -342,6 +347,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
+
+      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS}>
+        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
+      </Route>
+      <Route
+        exact
+        component={GlobalSettingPage}
+        path={ROUTES.SETTINGS_WITH_TAB}>
+        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
+      </Route>
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

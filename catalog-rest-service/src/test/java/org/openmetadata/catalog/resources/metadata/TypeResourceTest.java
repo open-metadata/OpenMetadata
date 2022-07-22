@@ -83,7 +83,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   @Test
-  public void put_customProperty_200() throws HttpResponseException {
+  void put_customProperty_200() throws HttpResponseException {
     Type tableEntity = getEntityByName("table", "customProperties", ADMIN_AUTH_HEADERS);
     assertTrue(listOrEmpty(tableEntity.getCustomProperties()).isEmpty());
 
@@ -108,7 +108,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   @Test
-  public void put_customPropertyToPropertyType_4xx() {
+  void put_customPropertyToPropertyType_4xx() {
     // Adding a custom property to a property type is not allowed (only entity type is allowed)
     CustomProperty field =
         new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
