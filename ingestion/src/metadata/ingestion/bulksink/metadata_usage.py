@@ -85,8 +85,11 @@ class MetadataUsageBulkSink(BulkSink):
             for query in queries
             if "create" in query.query.lower() or "insert" in query.query.lower()
         ]
+        seen_queries = set()
 
         for query in create_or_insert_queries:
+            if query in seen_queries:
+                continue
             lineages = get_lineage_by_query(
                 self.metadata,
                 query=query,
@@ -97,6 +100,7 @@ class MetadataUsageBulkSink(BulkSink):
             for lineage in lineages or []:
                 created_lineage = self.metadata.add_lineage(lineage)
                 logger.info(f"Successfully added Lineage {created_lineage}")
+            seen_queries.add(query)
 
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount
@@ -259,12 +263,12 @@ class MetadataUsageBulkSink(BulkSink):
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount
     ) -> TableJoins:
-        table_joins: TableJoins = TableJoins(
-            columnJoins=[], directTableJoins=[], startDate=table_usage.date
-        )
         """
         Method to get Table Joins
         """
+        table_joins: TableJoins = TableJoins(
+            columnJoins=[], directTableJoins=[], startDate=table_usage.date
+        )
         column_joins_dict = {}
         for column_join in table_usage.joins:
             joined_with = {}

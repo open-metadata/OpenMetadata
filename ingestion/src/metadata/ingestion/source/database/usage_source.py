@@ -86,13 +86,14 @@ class UsageSource(Source[TableQuery], ABC):
         if self.config.sourceConfig.config.queryLogFilePath:
             query_list = []
             with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
-                for i in csv.DictReader(fin):
+                records = csv.DictReader(fin)
+                for i in [next(records) for _ in range(10000)]:
                     query_dict = dict(i)
                     analysis_date = (
                         datetime.utcnow()
                         if not query_dict.get("start_time")
                         else datetime.strptime(
-                            query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S"
+                            query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
                         )
                     )
                     query_list.append(
@@ -101,7 +102,7 @@ class UsageSource(Source[TableQuery], ABC):
                             userName=query_dict.get("user_name", ""),
                             startTime=query_dict.get("start_time", ""),
                             endTime=query_dict.get("end_time", ""),
-                            analysisDate=analysis_date.date(),
+                            analysisDate=analysis_date,
                             aborted=self.get_aborted_status(query_dict),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
@@ -124,6 +125,7 @@ class UsageSource(Source[TableQuery], ABC):
                         )
                     )
                     queries = []
+                    rows = [next(rows) for _ in range(2000)]
                     for row in rows:
                         row = dict(row)
                         try:

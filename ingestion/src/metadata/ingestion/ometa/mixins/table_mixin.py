@@ -128,11 +128,14 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_queries: SqlQuery to add
         """
+        seen_queries = set()
         for query in table_queries:
-            self.client.put(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                data=query.json(),
-            )
+            if not query.query in seen_queries:
+                self.client.put(
+                    f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
+                    data=query.json(),
+                )
+                seen_queries.add(query.query)
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
