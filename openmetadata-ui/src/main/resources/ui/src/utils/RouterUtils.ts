@@ -192,3 +192,13 @@ export const getAddGlossaryTermsPath = (
 
   return path;
 };
+
+export const getSettingPath = (tab?: string) => {
+  let path = tab ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
