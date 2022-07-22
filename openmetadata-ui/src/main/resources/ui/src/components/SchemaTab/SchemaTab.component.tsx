@@ -36,7 +36,6 @@ type Props = {
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-  onEntityFieldSelect?: (value: string) => void;
   onUpdate?: (columns: Table['columns']) => void;
 };
 
@@ -49,7 +48,6 @@ const SchemaTab: FunctionComponent<Props> = ({
   owner,
   entityFieldThreads,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   isReadOnly = false,
   entityFqn,
   tableConstraints,
@@ -88,7 +86,6 @@ const SchemaTab: FunctionComponent<Props> = ({
               searchText={lowerCase(searchText)}
               tableColumns={columns}
               tableConstraints={tableConstraints}
-              onEntityFieldSelect={onEntityFieldSelect}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onUpdate}
             />

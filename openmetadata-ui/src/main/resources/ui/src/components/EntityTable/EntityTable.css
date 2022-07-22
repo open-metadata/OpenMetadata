@@ -1,0 +1,12 @@
+.ant-space-custom > .ant-space-item {
+  width: 100%;
+}
+
+.ant-space-item:last-child {
+  text-align: center;
+}
+
+.ant-divider-column-action {
+  margin: 4px 0px;
+  color: #6b7280;
+}

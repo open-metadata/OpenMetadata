@@ -439,7 +439,7 @@ describe('Test EntityTable Component', () => {
 
     expect(onThreadLinkSelect).toBeCalled();
 
-    const threadCount = await findByTestId(threadButton, 'field-thread-count');
+    const threadCount = await findByTestId(container, 'field-thread-count');
 
     expect(threadCount).toBeInTheDocument();
 

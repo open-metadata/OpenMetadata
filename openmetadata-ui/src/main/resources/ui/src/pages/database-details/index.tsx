@@ -52,7 +52,6 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
-import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -71,7 +70,6 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Thread } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
@@ -87,7 +85,6 @@ import {
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -130,7 +127,6 @@ const DatabaseDetails: FunctionComponent = () => {
     getCurrentDatabaseDetailsTab(tab)
   );
   const [error, setError] = useState('');
-
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
@@ -140,7 +136,7 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
+
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [currentPage, setCurrentPage] = useState(1);
@@ -246,13 +242,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const onThreadPanelClose = () => {
     setThreadLink('');
-  };
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
   };
 
   const getEntityFeedCount = () => {
@@ -687,7 +676,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
                 onDescriptionUpdate={onDescriptionUpdate}
-                onEntityFieldSelect={onEntityFieldSelect}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
             </div>
@@ -854,21 +842,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 threadLink={threadLink}
                 updateThreadHandler={updateThreadHandler}
                 onCancel={onThreadPanelClose}
-              />
-            ) : null}
-            {selectedField ? (
-              <RequestDescriptionModal
-                createThread={createThread}
-                defaultValue={getDefaultValue(
-                  database?.owner as EntityReference
-                )}
-                header="Request description"
-                threadLink={getEntityFeedLink(
-                  EntityType.DATABASE,
-                  databaseFQN,
-                  selectedField
-                )}
-                onCancel={closeRequestModal}
               />
             ) : null}
           </div>

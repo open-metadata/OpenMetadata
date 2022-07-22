@@ -33,5 +33,4 @@ export interface DescriptionProps {
   onCancel?: () => void;
   onDescriptionUpdate?: (value: string) => void;
   onSuggest?: (value: string) => void;
-  onEntityFieldSelect?: (value: string) => void;
 }
