@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar, List, Space, Typography } from 'antd';
-import { capitalize, toString } from 'lodash';
+import { List, Space, Typography } from 'antd';
+import { toString } from 'lodash';
 import moment from 'moment';
 import React, { FC } from 'react';
 import { Link } from 'react-router-dom';
@@ -25,6 +25,7 @@ import {
 } from '../../utils/CommonUtils';
 import { prepareFeedLink } from '../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
 
 const NotificationFeedCard: FC<NotificationFeedProp> = ({
@@ -83,11 +84,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
           : getTaskDetailPath(toString(taskDetails?.id)).pathname
       }>
       <List.Item.Meta
-        avatar={
-          <Avatar alt={createdBy} src="">
-            {capitalize(createdBy.substring(0, 1))}
-          </Avatar>
-        }
+        avatar={<ProfilePicture id="" name={createdBy} width="32" />}
         className="tw-m-0"
         description={
           <Space direction="vertical" size={0}>
