@@ -55,6 +55,7 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
 
 search_cache = {}
 
+
 def search_table_entities(
     metadata: OpenMetadata,
     service_name: str,
@@ -278,7 +279,7 @@ def get_lineage_by_query(
     # Reverting changes after import is done
     DictConfigurator.configure = configure
     column_lineage_map.clear()
-    
+
     try:
         result = LineageRunner(query)
 
