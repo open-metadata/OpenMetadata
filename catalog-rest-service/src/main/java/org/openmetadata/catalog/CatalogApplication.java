@@ -156,7 +156,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // start event hub before registering publishers
     EventPubSub.start();
     // Register Event publishers
-    registerEventPublisher(catalogConfig, jdbi);
+    registerEventPublisher(catalogConfig);
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
@@ -245,7 +245,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
-  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig, Jdbi jdbi) {
+  private void registerEventPublisher(CatalogApplicationConfig catalogApplicationConfig) {
     // register ElasticSearch Event publisher
     if (catalogApplicationConfig.getElasticSearchConfiguration() != null) {
       ElasticSearchEventPublisher elasticSearchEventPublisher =
