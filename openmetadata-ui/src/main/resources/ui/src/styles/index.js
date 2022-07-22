@@ -24,3 +24,4 @@ import './x-custom/CronEditor.css';
 import './x-custom/EntityVersionTimeLine.css';
 import './x-custom/stepper.css';
 import './x-master.css';
+import 'react-awesome-query-builder/lib/css/styles.css';

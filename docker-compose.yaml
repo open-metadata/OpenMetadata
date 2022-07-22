@@ -1,0 +1,31 @@
+version: '3.7'
+services:
+
+  openmetadata_db:
+    image: artifactory.inf.bloomberg.com/bb-dbinf/postgres:13.4
+    environment:
+      PGPASSWORD: postgres
+      PGPORT: 5430
+      PGUSER: postgres
+      PGSID: openmetadata
+    ports:
+      - 5430:5430
+
+  elasticsearch:
+    image: artprod.dev.bloomberg.com/datalake/elasticsearch:7.10.3
+    healthcheck:
+      test: ["CMD", "curl", "-X", "GET", "localhost:9200/_cluster/health?wait_for_status=green&timeout=5s"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    environment:
+      - discovery.type=single-node
+    ports:
+      - 9200:9200
+      - 9300:9300
+
+networks:
+  default:
+    name: intellij
+    external: true

@@ -18,7 +18,11 @@ addLicensing(){
     echo "$txt" > "$dir"
 }
 generateType(){
+    START_TIME=`date +%s`
+    echo "[$PWD/${schema_directory}$1] - Starting quicktype"
     ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types > /dev/null 2>&1
+    END_TIME=`date +%s`
+    echo "[$PWD/${schema_directory}$1] - Finished quicktype - total $((END_TIME - START_TIME))"
     if [ -s $om_ui_directory$2 ]
     then
         addLicensing "$om_ui_directory$2"
@@ -47,6 +51,6 @@ getTypes(){
 }
 
 # Checkout root directory to generate typescript from schema
-cd ../../../../..
+#cd ../../../../..
 getTypes
 wait

@@ -34,7 +34,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
@@ -66,11 +65,10 @@ import {
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
-import AdvancedFields from '../AdvancedSearch/AdvancedFields';
-import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { AdvanceField, ExploreProps } from './explore.interface';
+import { ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
+import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -128,43 +126,9 @@ const Explore: React.FC<ExploreProps> = ({
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
 
-  const [selectedAdvancedFields, setSelectedAdvancedField] = useState<
-    Array<AdvanceField>
-  >([]);
   const [isInitialFilterSet, setIsInitialFilterSet] = useState<boolean>(
     !isEmpty(initialFilter)
   );
-
-  const onAdvancedFieldSelect = (value: string) => {
-    const flag = selectedAdvancedFields.some((field) => field.key === value);
-    if (!flag) {
-      setSelectedAdvancedField((pre) => [
-        ...pre,
-        { key: value, value: undefined },
-      ]);
-    }
-  };
-  const onAdvancedFieldRemove = (value: string) => {
-    setSelectedAdvancedField((pre) =>
-      pre.filter((field) => field.key !== value)
-    );
-  };
-
-  const onAdvancedFieldClear = () => {
-    setSelectedAdvancedField([]);
-  };
-
-  const onAdvancedFieldValueSelect = (field: AdvanceField) => {
-    setSelectedAdvancedField((pre) => {
-      return pre.map((preField) => {
-        if (preField.key === field.key) {
-          return field;
-        } else {
-          return preField;
-        }
-      });
-    });
-  };
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -206,20 +170,6 @@ const Explore: React.FC<ExploreProps> = ({
 
   const handleShowDeleted = (checked: boolean) => {
     onShowDeleted(checked);
-  };
-
-  const onClearFilterHandler = (type: string[], isForceClear = false) => {
-    setSelectedAdvancedField([]);
-    const updatedFilter = type.reduce((filterObj, type) => {
-      return { ...filterObj, [type]: [] };
-    }, {});
-    const queryParamFilters = initialFilter;
-    setIsFilterSet(false);
-
-    handleFilterChange({
-      ...updatedFilter,
-      ...(isForceClear ? {} : queryParamFilters),
-    });
   };
 
   const paginate = (pageNumber: string | number) => {
@@ -387,12 +337,6 @@ const Explore: React.FC<ExploreProps> = ({
   const getSortingElements = () => {
     return (
       <div className="tw-flex">
-        <AdvancedSearchDropDown
-          index={searchIndex}
-          selectedItems={selectedAdvancedFields}
-          onSelect={onAdvancedFieldSelect}
-        />
-
         <SortingDropDown
           fieldList={fieldList}
           handleFieldDropDown={handleFieldDropDown}
@@ -426,10 +370,6 @@ const Explore: React.FC<ExploreProps> = ({
     return selectedTab === currentTab ? 'active' : '';
   };
 
-  const resetFilters = (isForceReset = false) => {
-    onClearFilterHandler(visibleFilters, isForceReset);
-  };
-
   const getTabCount = (index: string, isActive: boolean, className = '') => {
     switch (index) {
       case SearchIndex.TABLE:
@@ -451,7 +391,6 @@ const Explore: React.FC<ExploreProps> = ({
       setIsEntityLoading(true);
       setData([]);
       handlePathChange(tabsInfo[selectedTab - 1].path);
-      resetFilters();
       history.push({
         pathname: getExplorePathWithSearch(
           searchQuery,
@@ -515,17 +454,6 @@ const Explore: React.FC<ExploreProps> = ({
       }
       fetchTableData();
     }
-  };
-
-  const handleAdvancedSearch = (advancedFields: AdvanceField[]) => {
-    const advancedFilterObject: FilterObject = {};
-    advancedFields.forEach((field) => {
-      if (field.value) {
-        advancedFilterObject[field.key] = [field.value];
-      }
-    });
-
-    handleFilterChange(advancedFilterObject);
   };
 
   useEffect(() => {
@@ -633,15 +561,6 @@ const Explore: React.FC<ExploreProps> = ({
   }, [filters]);
 
   /**
-   * on index change clear the filters
-   */
-  useEffect(() => {
-    if (!isMounting.current) {
-      setSelectedAdvancedField([]);
-    }
-  }, [searchIndex]);
-
-  /**
    * if search query is there then make sortfield as empty (Relevance)
    * otherwise change it to INITIAL_SORT_FIELD (last_updated)
    */
@@ -652,15 +571,6 @@ const Explore: React.FC<ExploreProps> = ({
       setSortField(INITIAL_SORT_FIELD);
     }
   }, [searchText]);
-
-  /**
-   * on advance field change call handleAdvancedSearch methdod
-   */
-  useEffect(() => {
-    if (!isMounting.current) {
-      handleAdvancedSearch(selectedAdvancedFields);
-    }
-  }, [selectedAdvancedFields]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -674,17 +584,6 @@ const Explore: React.FC<ExploreProps> = ({
           data-testid="data-summary-container"
           style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
           <Fragment>
-            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
-              <Button
-                className={classNames('tw-underline tw-pb-4')}
-                disabled={!getFilterCount(filters)}
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => resetFilters(true)}>
-                Clear All
-              </Button>
-            </div>
             <div className="tw-filter-seperator" />
             {!error && (
               <FacetFilter
@@ -704,9 +603,6 @@ const Explore: React.FC<ExploreProps> = ({
     );
   };
 
-  const advanceFieldCheck =
-    !connectionError && Boolean(selectedAdvancedFields.length);
-
   return (
     <Fragment>
       <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
@@ -715,15 +611,7 @@ const Explore: React.FC<ExploreProps> = ({
         ) : (
           <>
             {!connectionError && getTabs()}
-            {advanceFieldCheck && (
-              <AdvancedFields
-                fields={selectedAdvancedFields}
-                index={searchIndex}
-                onClear={onAdvancedFieldClear}
-                onFieldRemove={onAdvancedFieldRemove}
-                onFieldValueSelect={onAdvancedFieldValueSelect}
-              />
-            )}
+            <AdvancedSearch />
             <SearchedData
               showResultCount
               currentPage={currentPage}

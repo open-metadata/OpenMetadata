@@ -125,11 +125,15 @@
     <sonar.working.directory>target/sonar</sonar.working.directory>
     <maven.sonar-plugin.version>3.7.0.1746</maven.sonar-plugin.version>
     <sonar.language>java</sonar.language>
-    <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.0</testng.version>
     <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
     <json-schema-validator.version>1.0.70</json-schema-validator.version>
+
+    <!-- Bloomberg Overrides: disable sonar and rpm builds   -->
+    <sonar.skip>true</sonar.skip>
+    <rpm.disabled>true</rpm.disabled>
+    <!-- End of Bloomberg Overrides   -->
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -302,10 +306,10 @@
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-spatial3d</artifactId>
           </exclusion>
-          <exclusion>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-suggest</artifactId>
-          </exclusion>
+<!--          <exclusion>-->
+<!--            <groupId>org.apache.lucene</groupId>-->
+<!--            <artifactId>lucene-suggest</artifactId>-->
+<!--          </exclusion>-->
         </exclusions>
       </dependency>
       <dependency>

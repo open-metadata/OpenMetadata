@@ -162,10 +162,10 @@
           <groupId>org.apache.lucene</groupId>
           <artifactId>lucene-spatial3d</artifactId>
         </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-suggest</artifactId>
-        </exclusion>
+<!--        <exclusion>-->
+<!--          <groupId>org.apache.lucene</groupId>-->
+<!--          <artifactId>lucene-suggest</artifactId>-->
+<!--        </exclusion>-->
       </exclusions>
     </dependency>
     <dependency>

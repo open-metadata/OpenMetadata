@@ -11,56 +11,74 @@
  *  limitations under the License.
  */
 
-export const COMMON_DROPDOWN_ITEMS = [
+import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { SearchIndex } from '../enums/search.enum';
+
+export enum AdvancedSearchFieldKey {
+  Owner = 'owner.name',
+  Tag = 'tags',
+  Service = 'service.name',
+  Schema = 'databaseSchema.name',
+  Columns = 'columns',
+  Database = 'database.name',
+  Chart = 'chars.displayName',
+  Task = 'tasks.dispalyName',
+}
+
+const common = [
   {
+    key: AdvancedSearchFieldKey.Owner,
     label: 'Owner',
-    key: 'owner.name',
   },
   {
+    key: AdvancedSearchFieldKey.Tag,
     label: 'Tag',
-    key: 'tags',
   },
   {
+    key: AdvancedSearchFieldKey.Service,
     label: 'Service',
-    key: 'service.name',
+    searchField: AdvancedFields.SERVICE,
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
+  ...common,
   {
-    label: 'Column',
-    key: 'columns.name',
-  },
-
-  {
-    label: 'Schema',
-    key: 'databaseSchema.name',
-  },
-  {
+    key: AdvancedSearchFieldKey.Database,
     label: 'Database',
-    key: 'database.name',
+    searchField: AdvancedFields.DATABASE,
+    searchIndex: SearchIndex.TABLE,
+  },
+  {
+    key: AdvancedSearchFieldKey.Schema,
+    label: 'Schema',
+    searchField: AdvancedFields.SCHEMA,
+    searchIndex: SearchIndex.TABLE,
+  },
+  {
+    key: AdvancedSearchFieldKey.Columns,
+    label: 'Column',
+    searchField: AdvancedFields.COLUMN,
+    SearchIndex: SearchIndex.TABLE,
   },
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
+  ...common,
   {
+    key: AdvancedSearchFieldKey.Chart,
     label: 'Chart',
-    key: 'charts.displayName',
+    searchField: AdvancedFields.CHART,
+    searchIndex: SearchIndex.DASHBOARD,
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
+  ...common,
   {
+    key: AdvancedSearchFieldKey.Task,
     label: 'Task',
-    key: 'tasks.displayName',
+    searchField: AdvancedFields.TASK,
+    SearchIndex: SearchIndex.PIPELINE,
   },
 ];
-
-export const ALL_DROPDOWN_ITEMS = [
-  ...COMMON_DROPDOWN_ITEMS,
-  ...TABLE_DROPDOWN_ITEMS,
-  ...DASHBOARD_DROPDOWN_ITEMS,
-  ...PIPELINE_DROPDOWN_ITEMS,
-];
-
-export const MISC_FIELDS = ['owner.name', 'tags'];

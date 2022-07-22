@@ -1,0 +1,236 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+swagger:
+  resourcePackage: org.openmetadata.catalog.resources
+
+
+server:
+  rootPath: '/api/*'
+  applicationConnectors:
+    - type: http
+      port: ${SERVER_PORT:-8585}
+  adminConnectors:
+    - type: http
+      port: ${SERVER_ADMIN_PORT:-8586}
+
+# Above configuration for running http is fine for dev and testing.
+# For production setup, where UI app will hit apis through DPS it 
+# is strongly recommended to run https instead. Note that only
+# keyStorePath and keyStorePassword are mandatory properties. Values
+# for other properties are defaults
+#server:
+  #applicationConnectors:
+  #  - type: https
+  #    port: 8585
+  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePassword: changeit
+  #    keyStoreType: JKS
+  #    keyStoreProvider:
+  #    trustStorePath: /path/to/file
+  #    trustStorePassword: changeit
+  #    trustStoreType: JKS
+  #    trustStoreProvider:
+  #    keyManagerPassword: changeit
+  #    needClientAuth: false
+  #    wantClientAuth:
+  #    certAlias: <alias>
+  #    crlPath: /path/to/file
+  #    enableCRLDP: false
+  #    enableOCSP: false
+  #    maxCertPathLength: (unlimited)
+  #    ocspResponderUrl: (none)
+  #    jceProvider: (none)
+  #    validateCerts: true
+  #    validatePeers: true
+  #    supportedProtocols: SSLv3
+  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    allowRenegotiation: true
+  #    endpointIdentificationAlgorithm: (none)
+ 
+  #adminConnectors:
+  #  - type: https
+  #    port: 8586
+  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePassword: changeit 
+  #    keyStoreType: JKS
+  #    keyStoreProvider:
+  #    trustStorePath: /path/to/file
+  #    trustStorePassword: changeit
+  #    trustStoreType: JKS
+  #    trustStoreProvider:
+  #    keyManagerPassword: changeit
+  #    needClientAuth: false
+  #    wantClientAuth:
+  #    certAlias: <alias>
+  #    crlPath: /path/to/file
+  #    enableCRLDP: false
+  #    enableOCSP: false
+  #    maxCertPathLength: (unlimited)
+  #    ocspResponderUrl: (none)
+  #    jceProvider: (none)
+  #    validateCerts: true
+  #    validatePeers: true
+  #    supportedProtocols: SSLv3
+  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+  #    allowRenegotiation: true
+  #    endpointIdentificationAlgorithm: (none)
+
+# Logging settings.
+# https://logback.qos.ch/manual/layouts.html#conversionWord
+logging:
+  level: INFO
+  loggers:
+    io.swagger: ERROR
+  appenders:
+    - type: console
+      threshold: ALL
+      queueSize: 512
+      discardingThreshold: 0
+      timeZone: UTC
+      target: stdout
+      logFormat: '%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n'
+
+database:
+  # the name of the JDBC driver, mysql in our case
+  driverClass: org.postgresql.Driver
+  # the username and password
+  user: postgres
+  password: postgres
+  # the JDBC URL; the database is called openmetadata_db
+  url: jdbc:postgresql://localhost:5430/postgres?sslmode=disable
+
+migrationConfiguration:
+  path: "./bootstrap/sql"
+
+# Authorizer Configuration
+authorizerConfiguration:
+  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
+  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
+  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
+  enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
+
+authenticationConfiguration:
+  provider: ${AUTHENTICATION_PROVIDER:-no-auth}
+  # This will only be valid when provider type specified is customOidc
+  providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
+  authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
+  clientId: ${AUTHENTICATION_CLIENT_ID:-""}
+  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
+  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-""}
+  jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
+  keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
+
+elasticsearch:
+  host: localhost
+  port: 9200
+  scheme: http
+  username: ${ELASTICSEARCH_USER:-""}
+  password: ${ELASTICSEARCH_PASSWORD:-""}
+  truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
+  truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
+  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
+  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
+
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.catalog.events.AuditEventHandler"
+    - "org.openmetadata.catalog.events.ChangeEventHandler"
+
+airflowConfiguration:
+  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
+  username: ${AIRFLOW_USERNAME:-admin}
+  password: ${AIRFLOW_PASSWORD:-admin}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openmetadata"
+  authConfig:
+    azure:
+      clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
+      authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
+      scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
+      clientId:  ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
+    google:
+      secretKey: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
+      audience: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
+    okta:
+      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
+      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
+      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
+      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
+      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
+    auth0:
+      clientId: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET:-""}
+      domain: ${OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL:-""}
+    customOidc:
+      clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
+      tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+    openmetadata:
+      jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
+
+slackEventPublishers:
+  - name: "slack events"
+    webhookUrl: ${SLACK_WEBHOOK_URL:-""}
+    openMetadataUrl: ${OPENMETADATA_SERVER_URL}
+    filters:
+      - eventType: "entityCreated"
+        entities:
+         - "*"
+      - eventType: "entityUpdated"
+        entities:
+         - "*"
+      - eventType: "entitySoftDeleted"
+        entities:
+         - "*"
+      - eventType: "entityDeleted"
+        entities:
+         - "*"
+
+# no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
+# to secure your instance of OpenMetadata with TLS and encryption at rest.
+fernetConfiguration:
+  fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
+
+secretsManagerConfiguration:
+  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws"
+#  secretsManager: aws
+#  parameters:
+#    region:
+#    accessKeyId:
+#    secretAccessKey:
+
+health:
+  delayedShutdownHandlerEnabled: true
+  shutdownWaitPeriod: 1s
+  healthChecks:
+    - name: OpenMetadataServerHealthCheck
+      critical: true
+      schedule:
+        checkInterval: 2500ms
+        downtimeInterval: 10s
+        failureAttempts: 2
+        successAttempts: 1
+
+sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
+slackChat:
+  apiToken: ${SLACK_CHAT_API_TOKEN:-""}
+  botName: ${SLACK_CHAT_BOT_NAME:-""}
+  channels: ${SLACK_CHAT_CHANNELS:-[]}

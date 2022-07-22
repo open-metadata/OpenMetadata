@@ -62,6 +62,7 @@
     "quilljs-markdown": "^1.1.10",
     "rc-tree": "^5.4.3",
     "react": "^16.14.0",
+    "react-awesome-query-builder": "^5.1.2",
     "react-codemirror2": "^7.2.1",
     "react-context-mutex": "^2.0.0",
     "react-copy-to-clipboard": "^5.0.4",

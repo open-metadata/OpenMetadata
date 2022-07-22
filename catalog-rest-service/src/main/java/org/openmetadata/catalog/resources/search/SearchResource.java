@@ -52,7 +52,7 @@ import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
+import org.elasticsearch.search.suggest.SuggestionBuilder;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 
@@ -229,11 +229,12 @@ public class SearchResource {
       throws IOException {
     SearchRequest searchRequest = new SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion(fieldName).prefix(query);
+    SuggestionBuilder suggestionBuilder = SuggestBuilders.termSuggestion(fieldName).text(query);
     SuggestBuilder suggestBuilder = new SuggestBuilder();
     suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
     searchSourceBuilder.suggest(suggestBuilder);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.fetchSource(false);
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();
