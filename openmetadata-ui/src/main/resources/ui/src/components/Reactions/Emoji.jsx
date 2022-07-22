@@ -43,7 +43,7 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
 
   // check if current user has reacted with emoji
   const isReacted = reactionList.some(
-    (reactionItem) => reactionItem.user.id === currentUser.id
+    (reactionItem) => reactionItem.user.id === currentUser?.id
   );
 
   const reactedUserList = reactionList.map(
