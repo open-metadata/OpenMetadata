@@ -36,6 +36,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.sql_lineage import (
     get_column_fqn,
     get_lineage_by_query,
@@ -43,6 +44,8 @@ from metadata.utils.sql_lineage import (
 )
 
 logger = ingestion_logger()
+
+LRU_CACHE_SIZE = 4096
 
 
 class MetadataUsageSinkConfig(ConfigModel):
@@ -85,7 +88,7 @@ class MetadataUsageBulkSink(BulkSink):
             for query in queries
             if "create" in query.query.lower() or "insert" in query.query.lower()
         ]
-        seen_queries = set()
+        seen_queries = LRUCache(LRU_CACHE_SIZE)
 
         for query in create_or_insert_queries:
             if query in seen_queries:
@@ -100,7 +103,7 @@ class MetadataUsageBulkSink(BulkSink):
             for lineage in lineages or []:
                 created_lineage = self.metadata.add_lineage(lineage)
                 logger.info(f"Successfully added Lineage {created_lineage}")
-            seen_queries.add(query)
+            seen_queries.put(query, None)  # None because it really doesn't matter.
 
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount

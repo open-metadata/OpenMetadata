@@ -172,9 +172,9 @@ class OpenMetadata(
         self._auth_provider = auth_provider_fn(self.config)
 
         # Load the secrets' manager client
-        self.secrets_manager_client = get_secrets_manager(
-            config.secretsManagerProvider, config.secretsManagerCredentials
-        )
+        # self.secrets_manager_client = get_secrets_manager(
+        #     config.secretsManagerProvider, config.secretsManagerCredentials
+        # )
 
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
