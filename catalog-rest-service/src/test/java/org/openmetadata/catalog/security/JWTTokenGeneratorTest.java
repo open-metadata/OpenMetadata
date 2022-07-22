@@ -27,7 +27,7 @@ import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class JWTTokenGeneratorTest {
+class JWTTokenGeneratorTest {
   protected static final String rsaPrivateKeyPath = ResourceHelpers.resourceFilePath("private_key.der");
   protected static final String rsaPublicKeyPath = ResourceHelpers.resourceFilePath("public_key.der");
   protected JWTTokenConfiguration jwtTokenConfiguration;
