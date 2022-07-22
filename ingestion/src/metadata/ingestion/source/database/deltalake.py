@@ -177,7 +177,6 @@ class DeltalakeSource(DatabaseServiceSource):
                     and table.tableType
                     and table.tableType.lower() != "view"
                 ):
-                    table_name = self.standardize_table_name(schema_name, table_name)
                     self.context.table_description = table.description
                     yield table_name, TableType.Regular
 
@@ -186,9 +185,8 @@ class DeltalakeSource(DatabaseServiceSource):
                     and table.tableType
                     and table.tableType.lower() == "view"
                 ):
-                    view_name = self.standardize_table_name(schema_name, table_name)
                     self.context.table_description = table.description
-                    yield view_name, TableType.View
+                    yield table_name, TableType.View
 
             except Exception as err:
                 logger.error(err)
@@ -243,7 +241,6 @@ class DeltalakeSource(DatabaseServiceSource):
         pass
 
     def _fetch_view_schema(self, view_name: str) -> Optional[Dict]:
-        describe_output = []
         try:
             describe_output = self.spark.sql(f"describe extended {view_name}").collect()
         except Exception as e:
@@ -275,7 +272,6 @@ class DeltalakeSource(DatabaseServiceSource):
 
     def _get_col_info(self, row):
         parsed_string = ColumnTypeParser._parse_datatype_string(row["data_type"])
-        column = None
         if parsed_string:
             parsed_string["dataLength"] = self._check_col_length(
                 parsed_string["dataType"], row["data_type"]
@@ -316,7 +312,6 @@ class DeltalakeSource(DatabaseServiceSource):
         return column
 
     def get_columns(self, schema: str, table: str) -> List[Column]:
-        raw_columns = []
         field_dict: Dict[str, Any] = {}
         table_name = f"{schema}.{table}"
         try:
@@ -349,9 +344,6 @@ class DeltalakeSource(DatabaseServiceSource):
 
     def close(self):
         pass
-
-    def standardize_table_name(self, schema: str, table: str) -> str:
-        return table
 
     def test_connection(self) -> None:
         pass
