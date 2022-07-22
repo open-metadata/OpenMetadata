@@ -228,7 +228,7 @@ class Profiler(Generic[TMetric]):
         try:
             row = self.profiler_interface.get_static_metrics(col, col_metrics)
             self._column_results[col.name].update(dict(row))
-        except (TimeoutError, Exception) as err:
+        except Exception as err:
             logger.warning(
                 f"Error trying to compute column profile for {col.name} - {err}"
             )
@@ -251,7 +251,7 @@ class Profiler(Generic[TMetric]):
             row = self.profiler_interface.get_table_metrics(table_metrics)
             if row:
                 self._table_results.update(dict(row))
-        except (TimeoutError, Exception) as err:
+        except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Error while running table metric for: {self.table.__tablename__} - {err}"
@@ -268,7 +268,7 @@ class Profiler(Generic[TMetric]):
                 row = self.profiler_interface.get_query_metrics(col, metric)
                 self._column_results[col.name].update(dict(row))
 
-            except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
+            except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
