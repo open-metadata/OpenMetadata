@@ -23,10 +23,10 @@ from typing import Union
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.event import listen
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
-from sqlalchemy.event import listen
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
@@ -127,14 +127,8 @@ class SourceConnectionException(Exception):
     Raised when we cannot connect to the source
     """
 
-def inject_query_header(
-    conn,
-    cursor,
-    statement,
-    parameters,
-    context,
-    executemany
-):
+
+def inject_query_header(conn, cursor, statement, parameters, context, executemany):
     header_obj = {"app": "OpenMetadata", "version": "0.0.0"}
     statement_with_header = f"/* {json.dumps(header_obj)} */ \n" + statement
     return statement_with_header, parameters
