@@ -12,6 +12,7 @@
  */
 
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
@@ -462,13 +463,15 @@ const PipelineDetails = ({
                   <div
                     className="tw-flex-grow tw-w-full tw-h-full"
                     style={{ height: 'calc(100% - 250px)' }}>
-                    {tasks ? (
+                    {!isEmpty(tasks) ? (
                       <TasksDAGView
                         selectedExec={selectedExecution}
                         tasks={tasks}
                       />
                     ) : (
-                      <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+                      <div
+                        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                        data-testid="no-tasks-data">
                         <span>No task data is available</span>
                       </div>
                     )}

@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.mlmodel;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -57,7 +53,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -300,7 +295,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService create)
       throws IOException {
     MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    return create(uriInfo, securityContext, service, true);
   }
 
   @PUT
@@ -321,7 +316,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update)
       throws IOException {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, service, true);
   }
 
   @DELETE
@@ -350,7 +345,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Parameter(description = "Id of the mlModel service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private MlModelService getService(CreateMlModelService create, String user) {
@@ -369,7 +364,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
 
   private MlModelService decryptOrNullify(SecurityContext securityContext, MlModelService mlModelService) {
     try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+      authorizer.authorizeAdmin(securityContext, true);
     } catch (AuthorizationException e) {
       return mlModelService.withConnection(null);
     }
