@@ -157,6 +157,7 @@ export const AuthProvider = ({
     localStorage.removeItem(oidcTokenKey);
     setIsUserAuthenticated(false);
     setLoadingIndicator(false);
+    clearTimeout(timeoutId);
     if (forceLogout) {
       onLogoutHandler();
     } else {
