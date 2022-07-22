@@ -1,18 +1,24 @@
 source:
-  type: atlas
-  config:
-    service_name: local_atlas
-    atlas_host: http://192.168.1.8:21000
-    user_name: admin
-    password: admin
-    service_type: Hive
-    host_port: localhost:10000
-    entity_types: examples/workflows/atlas_mapping.json
-sink:
+  type: Atlas
+  serviceName: local_atlas
+  serviceConnection:
+    config:
+      type: Atlas
+      atlasHost: http://192.168.1.8:21000
+      username: username
+      password: password
+      serviceType: Hive
+      dbService: name of database service
+      messagingService: name of messaging service
+      hostPort: localhost:10000
+      entityTypes: examples/workflows/atlas_mapping.yaml
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink: 
   type: metadata-rest
   config: {}
-metadata_server:
-  type: metadata-server
-  config:
-    api_endpoint: http://localhost:8585/api
-    auth_provider_type: no-auth
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
