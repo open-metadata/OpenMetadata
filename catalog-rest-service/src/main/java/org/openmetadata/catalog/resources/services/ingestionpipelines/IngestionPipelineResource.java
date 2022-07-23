@@ -63,13 +63,12 @@ import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
-import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.OpenMetadataClientSecurityUtil;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -83,7 +82,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private AirflowConfiguration airflowConfiguration;
-  private SecretsManagerConfiguration secretsManagerConfiguration;
+  private final SecretsManager secretsManager;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -92,13 +91,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
+  public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   public void initialize(CatalogApplicationConfig config) {
     this.airflowConfiguration = config.getAirflowConfiguration();
-    this.secretsManagerConfiguration = config.getSecretsManagerConfiguration();
     this.pipelineServiceClient = new AirflowRESTClient(config.getAirflowConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
   }
@@ -551,8 +550,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
     OpenMetadataServerConnection openMetadataServerConnection =
-        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
-    openMetadataServerConnection.setSecretsManagerProvider(this.secretsManagerConfiguration.getSecretsManager());
+        secretsManager.decryptServerConnection(airflowConfiguration);
+    openMetadataServerConnection.setSecretsManagerProvider(this.secretsManager.getSecretsManagerProvider());
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
