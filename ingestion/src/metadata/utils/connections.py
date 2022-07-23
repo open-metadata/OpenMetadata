@@ -131,12 +131,12 @@ class SourceConnectionException(Exception):
 
 def render_query_header(ometa_version: str) -> str:
     header_obj = {"app": "OpenMetadata", "version": ometa_version}
-    return f"/* {json.dumps(header_obj)} */\n"
+    return f"/* {json.dumps(header_obj)} */"
 
 
 def inject_query_header(conn, cursor, statement, parameters, context, executemany):
     version = pkg_resources.require("openmetadata-ingestion")[0].version
-    statement_with_header = render_query_header(version) + statement
+    statement_with_header = render_query_header(version) + "\n" + statement
     return statement_with_header, parameters
 
 
