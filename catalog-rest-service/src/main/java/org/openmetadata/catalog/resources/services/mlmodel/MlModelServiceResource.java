@@ -20,9 +20,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -49,12 +47,12 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MlModelServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
-import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MlModelConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -64,12 +62,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodelServices")
-public class MlModelServiceResource extends EntityResource<MlModelService, MlModelServiceRepository> {
+public class MlModelServiceResource
+    extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
 
   public static final String FIELDS = "pipelines,owner";
-
-  private final SecretsManager secretsManager;
 
   @Override
   public MlModelService addHref(UriInfo uriInfo, MlModelService service) {
@@ -80,8 +77,7 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
   }
 
   public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(MlModelService.class, new MlModelServiceRepository(dao, secretsManager), authorizer);
-    this.secretsManager = secretsManager;
+    super(MlModelService.class, new MlModelServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class MlModelServiceList extends ResultList<MlModelService> {
@@ -295,7 +291,9 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService create)
       throws IOException {
     MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (MlModelService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -316,7 +314,9 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update)
       throws IOException {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (MlModelService) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -354,22 +354,13 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
         .withConnection(create.getConnection());
   }
 
-  private ResultList<MlModelService> decryptOrNullify(
-      SecurityContext securityContext, ResultList<MlModelService> mlModelServices) {
-    Optional.ofNullable(mlModelServices.getData())
-        .orElse(Collections.emptyList())
-        .forEach(mlModelService -> decryptOrNullify(securityContext, mlModelService));
-    return mlModelServices;
+  @Override
+  protected MlModelService nullifyConnection(MlModelService service) {
+    return service.withConnection(null);
   }
 
-  private MlModelService decryptOrNullify(SecurityContext securityContext, MlModelService mlModelService) {
-    try {
-      authorizer.authorizeAdmin(securityContext, true);
-    } catch (AuthorizationException e) {
-      return mlModelService.withConnection(null);
-    }
-    secretsManager.encryptOrDecryptServiceConnection(
-        mlModelService.getConnection(), mlModelService.getServiceType().value(), mlModelService.getName(), false);
-    return mlModelService;
+  @Override
+  protected String extractServiceType(MlModelService service) {
+    return service.getServiceType().value();
   }
 }

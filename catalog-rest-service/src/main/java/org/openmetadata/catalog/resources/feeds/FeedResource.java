@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -55,11 +56,13 @@ import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.ResolveTask;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.PostResourceContext;
@@ -71,6 +74,7 @@ import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.TaskDetails;
 import org.openmetadata.catalog.type.TaskStatus;
 import org.openmetadata.catalog.type.ThreadType;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -282,6 +286,7 @@ public class FeedResource {
       @Valid ResolveTask resolveTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
+    checkPermissionsForResolveTask(task, securityContext);
     return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
   }
 
@@ -306,7 +311,46 @@ public class FeedResource {
       @Valid CloseTask closeTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
+    checkPermissionsForResolveTask(task, securityContext);
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask).toResponse();
+  }
+
+  private void checkPermissionsForResolveTask(Thread thread, SecurityContext securityContext) throws IOException {
+    if (thread.getType().equals(ThreadType.Task)) {
+      TaskDetails taskDetails = thread.getTask();
+      List<EntityReference> assignees = taskDetails.getAssignees();
+      String createdBy = thread.getCreatedBy();
+      // Validate about data entity is valid
+      EntityLink about = EntityLink.parse(thread.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+
+      // Get owner for the addressed to Entity
+      EntityReference owner = Entity.getOwner(aboutRef);
+
+      String userName = securityContext.getUserPrincipal().getName();
+      User loggedInUser = dao.findUserByName(userName);
+      List<EntityReference> teams = loggedInUser.getTeams();
+      List<String> teamNames = new ArrayList<>();
+      if (teams != null) {
+        teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+      }
+
+      // check if logged in user satisfies any of the following
+      // - Creator of the task
+      // - logged in user or the teams they belong to were assigned the task
+      // - logged in user or the teams they belong to owns the entity that the task is about
+      List<String> finalTeamNames = teamNames;
+      if (createdBy.equals(userName)
+          || assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))
+          || assignees.stream().anyMatch(assignee -> finalTeamNames.contains(assignee.getName()))
+          || owner.getName().equals(userName)
+          || teamNames.contains(owner.getName())) {
+        // don't throw any exception
+      } else {
+        // Only admins or bots can close or resolve task other than the above-mentioned users
+        authorizer.authorizeAdmin(securityContext, true);
+      }
+    }
   }
 
   @PATCH
