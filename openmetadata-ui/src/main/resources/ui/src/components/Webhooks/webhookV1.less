@@ -11,20 +11,14 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import GlobalSettingRoute from '../../router/GlobalSettingRoute';
-import PageLayout from '../containers/PageLayout';
-import './GlobalSetting.less';
-import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
+@import '../../styles/antd-master.less';
 
-const GlobalSetting = () => {
-  return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRoute />
-    </PageLayout>
-  );
-};
+.webhook-right-panel {
+  max-width: 290px;
+}
 
-export default GlobalSetting;
+.webhook-filter-select {
+  .anticon-close {
+    color: @primary-color;
+  }
+}
