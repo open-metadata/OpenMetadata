@@ -11,7 +11,7 @@ REDSHIFT_SQL_STATEMENT = """
           AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
           AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
           AND querytxt NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
-          AND querytxt NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
+          AND querytxt NOT LIKE '/* {"app": "dbt", %%} */%%'
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
