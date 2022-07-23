@@ -201,11 +201,11 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
         return created_service
 
 
-def datetime_to_ts(date: datetime) -> int:
+def datetime_to_ts(date: Optional[datetime]) -> Optional[int]:
     """
     Convert a given date to a timestamp as an Int in milliseconds
     """
-    return int(date.timestamp() * 1_000)
+    return int(date.timestamp() * 1_000) if date else None
 
 
 def get_formatted_entity_name(name: str) -> Optional[str]:

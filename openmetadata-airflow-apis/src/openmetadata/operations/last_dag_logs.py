@@ -12,19 +12,21 @@
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
 import glob
+import gzip
 import os
 from pathlib import Path
 
-from airflow.models import DagModel, DagRun
+from airflow.models import DagModel
 from flask import Response
-from openmetadata.api.response import ApiResponse, ResponseFormat
+from openmetadata.api.response import ApiResponse
 
 
-def last_dag_logs(dag_id: str) -> Response:
+def last_dag_logs(dag_id: str, compress: bool = True) -> Response:
     """
     Validate that the DAG is registered by Airflow and have at least one Run.
     If exists, returns all logs for each task instance of the last DAG run.
     :param dag_id: DAG to find
+    :param compress: to compress the results or not
     :return: API Response
     """
 
@@ -54,11 +56,18 @@ def last_dag_logs(dag_id: str) -> Response:
                 filter(os.path.isfile, glob.glob(f"{dir_path}/*.log")),
                 key=os.path.getmtime,
             )
-            response[
-                task_instance.task_id
-            ] = f"\n*** Reading local file: {task_instance.log_filepath}\n".join(
-                [Path(log).read_text() for log in sorted_logs]
+
+            log_res = f"\n*** Reading local file: {task_instance.log_filepath}\n".join(
+                [Path(sorted_logs[-1]).read_text()]
             )
+
+            # Return the response in bytes (if compress) without the b'...'
+            response[task_instance.task_id] = (
+                str(gzip.compress(bytes(log_res, "utf-8")))[2:-1]
+                if compress
+                else log_res
+            )
+
         else:
             return ApiResponse.not_found(
                 f"Logs for task instance '{task_instance}' of DAG '{dag_id}' not found."

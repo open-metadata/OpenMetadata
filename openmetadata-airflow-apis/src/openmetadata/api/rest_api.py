@@ -14,7 +14,7 @@ Airflow REST API definition
 
 import logging
 import traceback
-from typing import Optional
+from typing import Any, Optional
 
 from airflow import settings
 from airflow.models import DagBag, DagModel
@@ -63,7 +63,7 @@ class REST_API(AppBuilderBaseView):
         return dagbag
 
     @staticmethod
-    def get_request_arg(req, arg) -> Optional[str]:
+    def get_request_arg(req, arg) -> Optional[Any]:
         return req.args.get(arg) or req.form.get(arg)
 
     def get_arg_dag_id(self) -> Optional[str]:
@@ -292,6 +292,7 @@ class REST_API(AppBuilderBaseView):
         Retrieve all logs from the task instances of a last DAG run
         """
         raw_dag_id: str = self.get_request_arg(request, "dag_id")
+        compress: bool = self.get_request_arg(request, "compress")
 
         if not raw_dag_id:
             ApiResponse.bad_request("Missing dag_id parameter in the request")
@@ -299,7 +300,7 @@ class REST_API(AppBuilderBaseView):
         dag_id = clean_dag_id(raw_dag_id)
 
         try:
-            return last_dag_logs(dag_id)
+            return last_dag_logs(dag_id, compress or True)
 
         except Exception as exc:
             logging.info(f"Failed to get last run logs for '{dag_id}'")
