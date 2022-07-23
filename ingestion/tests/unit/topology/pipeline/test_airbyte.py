@@ -1,4 +1,18 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Test Airbyte using the topology
+"""
 import json
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -25,8 +39,9 @@ from metadata.ingestion.source.pipeline.airbyte import (
     AirbyteSource,
 )
 
-mock_data_file = open("ingestion/tests/unit/resources/datasets/airbyte_dataset.json")
-mock_data: dict = json.load(mock_data_file)
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
+with open(mock_file_path) as file:
+    mock_data: dict = json.load(file)
 
 mock_airbyte_config = {
     "source": {
@@ -147,31 +162,31 @@ class AirbyteUnitTest(TestCase):
     def init_workflow(self, airbyte_client, test_connection):
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.parse_obj(mock_airbyte_config)
-        self.aribyte = AirbyteSource.create(
+        self.airbyte = AirbyteSource.create(
             mock_airbyte_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.aribyte.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.aribyte.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.airbyte.context.__dict__["pipeline"] = MOCK_PIPELINE
+        self.airbyte.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
         self.client = airbyte_client.return_value
         self.client.list_jobs.return_value = mock_data.get("jobs")
         self.client.list_workspaces.return_value = mock_data.get("workspace")
         self.client.list_connections.return_value = mock_data.get("connection")
 
     def test_pipeline_list(self):
-        assert list(self.aribyte.get_pipelines_list())[0] == EXPECTED_ARIBYTE_DETAILS
+        assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_ARIBYTE_DETAILS
 
     def test_pipeline_name(self):
-        assert self.aribyte.get_pipeline_name(
+        assert self.airbyte.get_pipeline_name(
             EXPECTED_ARIBYTE_DETAILS
         ) == mock_data.get("connection")[0].get("connectionId")
 
     def test_pipelines(self):
-        pipline = list(self.aribyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0]
+        pipline = list(self.airbyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0]
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
         assert (
-            list(self.aribyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS))
+            list(self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS))
             == EXPECTED_PIPELINE_STATUS
         )
