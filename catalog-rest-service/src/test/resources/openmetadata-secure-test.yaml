@@ -150,6 +150,20 @@ authenticationConfiguration:
     - "preferred_username"
     - "sub"
 
+samlConfiguration:
+  idp:
+    entityId: ""
+    ssoLoginUrl: ""
+    ssoLogoutUrl: ""
+    idpX509Certificate: ""
+  sp:
+    entityId: ""
+    acs: ""
+    logoutUrl: ""
+    spX509Certificate: ""
+    callback: ""
+    tokenValidity: "7"
+
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
   rsaprivateKeyFilePath: "src/test/resources/private_key.der"
