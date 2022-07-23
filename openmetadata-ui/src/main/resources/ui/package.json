@@ -32,7 +32,7 @@
     "axios": "^0.21.1",
     "codemirror": "^5.62.3",
     "cookie-storage": "^6.1.0",
-    "core-js": "^3.10.1",
+    "core-js": "^3.23.3",
     "cronstrue": "^1.122.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "dagre": "^0.8.5",
