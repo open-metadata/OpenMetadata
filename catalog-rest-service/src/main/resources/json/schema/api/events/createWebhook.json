@@ -50,6 +50,20 @@
     "secretKey": {
       "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
       "type": "string"
+    },
+    "webhookType": {
+      "description": "Type of webhook slack,generic etc",
+      "type": "string",
+      "default": "generic",
+      "enum": ["slack", "generic"],
+      "javaEnums": [
+        {
+          "name": "slack"
+        },
+        {
+          "name": "generic"
+        }
+      ]
     }
   },
   "required": ["name", "endpoint", "eventFilters"],

@@ -81,8 +81,6 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
-import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
-import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.socket.FeedServlet;
 import org.openmetadata.catalog.socket.SocketAddressFilter;
 import org.openmetadata.catalog.socket.WebSocketManager;
@@ -253,17 +251,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       ElasticSearchEventPublisher elasticSearchEventPublisher =
           new ElasticSearchEventPublisher(catalogApplicationConfig.getElasticSearchConfiguration());
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
-    }
-    // register slack Event publishers
-    if (catalogApplicationConfig.getSlackEventPublishers() != null) {
-      for (SlackPublisherConfiguration slackPublisherConfiguration :
-          catalogApplicationConfig.getSlackEventPublishers()) {
-        if (slackPublisherConfiguration.getWebhookUrl() != null
-            && !slackPublisherConfiguration.getWebhookUrl().isEmpty()) {
-          SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
-          EventPubSub.addEventHandler(slackPublisher);
-        }
-      }
     }
   }
 
