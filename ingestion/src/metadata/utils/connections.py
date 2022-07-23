@@ -20,6 +20,7 @@ from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
+import pkg_resources
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
@@ -128,9 +129,14 @@ class SourceConnectionException(Exception):
     """
 
 
+def render_query_header(ometa_version: str) -> str:
+    header_obj = {"app": "OpenMetadata", "version": ometa_version}
+    return f"/* {json.dumps(header_obj)} */\n"
+
+
 def inject_query_header(conn, cursor, statement, parameters, context, executemany):
-    header_obj = {"app": "OpenMetadata", "version": "0.0.0"}
-    statement_with_header = f"/* {json.dumps(header_obj)} */ \n" + statement
+    version = pkg_resources.require("openmetadata-ingestion")[0].version
+    statement_with_header = render_query_header(version) + statement
     return statement_with_header, parameters
 
 
