@@ -286,16 +286,19 @@ describe('TeamsAndUsers page', () => {
     cy.wait(500); // Wait for result to load after api success
     cy.get('@resultLink').click();
 
-    // cy.get('[data-testid="Manage"]').should('be.visible').click();
     cy.get('[data-testid="Owner"] [data-testid="image"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    // cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
+
+    cy.intercept('GET', '/api/v1/search/query?q=***&from=0&size=10&*').as(
+      'searchQuery'
+    );
+    cy.wait('@searchQuery');
     cy.wait(1000);
     cy.get('[data-testid="dropdown-tab"]')
-      .scrollIntoView()
       .eq(0)
+      .scrollIntoView()
       .should('exist')
       .click();
 
