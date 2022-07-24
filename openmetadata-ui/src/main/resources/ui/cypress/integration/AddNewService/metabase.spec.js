@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+
+const serviceType = 'Metabase';
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Metabase Ingestion', () => {
   it('add and ingest data', () => {
@@ -35,10 +38,15 @@ describe('Metabase Ingestion', () => {
     };
 
     testServiceCreationAndIngestion(
-      'Metabase',
+      serviceType,
       connectionInput,
       addIngestionInput,
+      serviceName,
       'dashboard'
     );
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService('Dashboard', serviceName);
   });
 });

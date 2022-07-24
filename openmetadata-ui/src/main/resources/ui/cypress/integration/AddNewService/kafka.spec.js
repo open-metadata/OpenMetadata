@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+
+const serviceType = 'Kafka';
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Kafka Ingestion', () => {
   it('add and ingest data', () => {
@@ -37,7 +40,12 @@ describe('Kafka Ingestion', () => {
       'Kafka',
       connectionInput,
       addIngestionInput,
+      serviceName,
       'messaging'
     );
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService('Messaging', serviceName);
   });
 });

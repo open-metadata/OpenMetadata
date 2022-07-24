@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+
+const serviceType = 'Snowflake';
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Snowflake Ingestion', () => {
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
@@ -32,9 +35,14 @@ describe('Snowflake Ingestion', () => {
     };
 
     testServiceCreationAndIngestion(
-      'Snowflake',
+      serviceType,
       connectionInput,
-      addIngestionInput
+      addIngestionInput,
+      serviceName,
     );
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService('Database', serviceName);
   });
 });
