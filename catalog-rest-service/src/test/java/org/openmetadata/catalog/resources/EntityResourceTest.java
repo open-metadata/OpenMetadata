@@ -156,7 +156,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
-  protected final boolean supportsFollowers;
+  protected boolean supportsFollowers;
   protected boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;

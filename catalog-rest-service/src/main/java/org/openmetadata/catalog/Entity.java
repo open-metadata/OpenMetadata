@@ -98,6 +98,7 @@ public final class Entity {
   public static final String TAG = "tag";
   public static final String TAG_CATEGORY = "tagCategory";
   public static final String TYPE = "type";
+  public static final String TEST_DEFINITION = "testDefinition";
 
   //
   // Policy entity

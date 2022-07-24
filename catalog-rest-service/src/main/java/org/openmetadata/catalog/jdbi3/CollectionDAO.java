@@ -66,6 +66,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
@@ -185,6 +186,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TypeEntityDAO typeEntityDAO();
+
+  @CreateSqlObject
+  TestDefinitionDAO testDefinitionDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2005,6 +2009,23 @@ public interface CollectionDAO {
     @Override
     default boolean supportsSoftDelete() {
       return false;
+    }
+  }
+
+  interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
+    @Override
+    default String getTableName() {
+      return "test_definition_entity";
+    }
+
+    @Override
+    default Class<TestDefinition> getEntityClass() {
+      return TestDefinition.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
     }
   }
 }

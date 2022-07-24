@@ -1,16 +1,24 @@
 {
-  "$id": "https://open-metadata.org/schema/tests/testCase.json",
+  "$id": "https://open-metadata.org/schema/tests/testDefinition.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TestCase",
-  "description": "TestCase a test definition to capture data quality tests against data entities.",
+  "title": "TestDefinition",
+  "description": "TestDefinition is a test definition to capture data quality tests against data entities.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.TestCase",
+  "javaType": "org.openmetadata.catalog.tests.TestDefinition",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "testPlatform": {
       "javaType": "org.openmetadata.catalog.tests.TestPlatform",
       "description": "This schema defines the platform where tests are defined and ran.",
       "type": "string",
-      "enum": ["OpenMetadata", "GreatExpectations", "DBT", "Deequ"]
+      "enum": [
+        "OpenMetadata",
+        "GreatExpectations",
+        "DBT",
+        "Deequ",
+        "Soda",
+        "Other"
+      ]
     },
     "dataType": {
       "javaType": "org.openmetadata.catalog.type.TestCaseParameterDataType",
@@ -41,11 +49,11 @@
           "type": "string"
         },
         "displayName": {
-          "description": "Display Name that identifies this column name.",
+          "description": "Display Name that identifies this parameter name.",
           "type": "string"
         },
         "dataType": {
-          "description": "Data type of the column (int, date etc.).",
+          "description": "Data type of the parameter (int, date etc.).",
           "$ref": "#/definitions/dataType"
         },
         "description": {
@@ -79,6 +87,14 @@
       "description": "Name that identifies this test case.",
       "$ref": "../type/basic.json#/definitions/entityName"
     },
+    "displayName": {
+      "description": "Display Name that identifies this test case.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "description": {
       "description": "Description of the testcase.",
       "$ref": "../type/basic.json#/definitions/markdown"
@@ -103,6 +119,10 @@
       "$ref": "../type/entityReference.json",
       "default": null
     },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../type/basic.json#/definitions/timestamp"
@@ -110,8 +130,21 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
     }
   },
-  "required": ["name", "description"],
+  "required": ["name", "description", "testPlatform"],
   "additionalProperties": false
 }
