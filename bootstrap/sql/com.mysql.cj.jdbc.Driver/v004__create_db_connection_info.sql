@@ -7,3 +7,7 @@ ADD teamType VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.teamType') NOT NULL;
 UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.database')
 WHERE serviceType = 'DynamoDB';
+
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.connectionOptions')
+WHERE serviceType = 'DeltaLake';

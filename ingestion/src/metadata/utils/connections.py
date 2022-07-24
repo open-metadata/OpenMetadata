@@ -285,6 +285,8 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
+        # Download delta-core jars when creating the SparkSession
+        .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
     )
     if connection.metastoreHostPort:
         builder.config(
@@ -292,7 +294,14 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
             f"thrift://{connection.metastoreHostPort}",
         )
     elif connection.metastoreFilePath:
-        builder.config("spark.sql.warehouse.dir", f"{connection.metastoreFilePath}")
+        # From https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell
+        # derby.system.home is the one in charge of the path for `metastore_db` dir and `derby.log`
+        # We can use this option to control testing, as well as to properly point to the right
+        # local database when ingesting data
+        builder.config(
+            "spark.driver.extraJavaOptions",
+            f"-Dderby.system.home={connection.metastoreFilePath}",
+        )
 
     if connection.connectionArguments:
         for key, value in connection.connectionArguments:

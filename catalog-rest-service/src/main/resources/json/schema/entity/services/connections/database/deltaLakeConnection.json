@@ -35,12 +35,9 @@
       "description": "pySpark App Name.",
       "type": "string"
     },
-    "connectionOptions": {
-      "title": "Connection Options",
-      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-    },
     "connectionArguments": {
       "title": "Connection Arguments",
+      "description": "Key-Value pairs that will be used to add configs to the SparkSession.",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {

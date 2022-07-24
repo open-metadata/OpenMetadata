@@ -7,3 +7,7 @@ ADD teamType VARCHAR(64) GENERATED ALWAYS AS (json ->> 'teamType') STORED NOT NU
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,database}'
 where serviceType = 'DynamoDB';
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,connectionOptions}'
+where serviceType = 'DeltaLake';

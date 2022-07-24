@@ -398,6 +398,13 @@ class CommonDbSourceService(
         pass
 
     def standardize_table_name(self, schema: str, table: str) -> str:
+        """
+        This method is interesting to be maintained in case
+        some connector, such as BigQuery, needs to perform
+        some added logic here.
+
+        Returning `table` is just the default implementation.
+        """
         return table
 
     def yield_table_tag(self) -> Iterable[OMetaTagAndCategory]:
