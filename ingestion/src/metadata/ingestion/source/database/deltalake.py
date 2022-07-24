@@ -1,9 +1,9 @@
 import re
 import traceback
+from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from pyspark.sql import SparkSession
-from pyspark.sql.types import ArrayType, MapType, StructType
 from pyspark.sql.utils import AnalysisException, ParseException
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -42,6 +42,20 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 DEFAULT_DATABASE = "default"
+
+
+class SparkTableType(Enum):
+    MANAGED = "MANAGED"
+    TEMPORARY = "TEMPORARY"
+    VIEW = "VIEW"
+    EXTERNAL = "EXTERNAL"
+
+
+TABLE_TYPE_MAP = {
+    SparkTableType.MANAGED.value: TableType.Regular,
+    SparkTableType.VIEW.value: TableType.View,
+    SparkTableType.EXTERNAL.value: TableType.External,
+}
 
 
 class MetaStoreNotFoundException(Exception):
@@ -175,15 +189,22 @@ class DeltalakeSource(DatabaseServiceSource):
                 if (
                     self.source_config.includeTables
                     and table.tableType
-                    and table.tableType.lower() != "view"
+                    and table.tableType != SparkTableType.VIEW.value
                 ):
+                    # We will skip ingesting any TMP table
+                    if table.tableType == SparkTableType.TEMPORARY.value:
+                        logger.debug(f"Skipping temporary table {table.name}")
+                        continue
+
                     self.context.table_description = table.description
-                    yield table_name, TableType.Regular
+                    yield table_name, TABLE_TYPE_MAP.get(
+                        table.tableType, TableType.Regular
+                    )
 
                 if (
                     self.source_config.includeViews
                     and table.tableType
-                    and table.tableType.lower() == "view"
+                    and table.tableType == SparkTableType.VIEW.value
                 ):
                     self.context.table_description = table.description
                     yield table_name, TableType.View
@@ -195,7 +216,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 )
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Optional[CreateTableRequest]]:
         """
         From topology.
