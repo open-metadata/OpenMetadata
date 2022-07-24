@@ -10,6 +10,7 @@
 #  limitations under the License.
 import json
 import os
+from itertools import islice
 from typing import Any
 
 import pandas as pd
@@ -31,23 +32,18 @@ def read_tsv_from_gcs(
     read_csv_from_s3(client, key, bucket_name, sep="\t", sample_size=sample_size)
 
 
-def read_json_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
-    obj = client.get_object(Bucket=bucket_name, Key=key)
-    json_text = obj["Body"].read().decode("utf-8")
-    data = json.loads(json_text)
-    if isinstance(data, list):
-        df = pd.DataFrame.from_dict(data)
-    else:
-        df = pd.DataFrame.from_dict(dict([(k, pd.Series(v)) for k, v in data.items()]))
-    return df
+def read_json_from_s3(
+    client: Any, key: str, bucket_name: str, sample_size=100
+) -> DataFrame:
+    line_stream = client.get_object(Bucket=bucket_name, Key=key)["Body"].iter_lines()
+    return pd.DataFrame.from_records(map(json.loads, line_stream), nrows=sample_size)
 
 
 def read_parquet_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
     s3 = fs.S3FileSystem(region=client.meta.region_name)
     return (
         ParquetFile(s3.open_input_file(os.path.join(bucket_name, key)))
-        .schema
-        .to_arrow_schema()
+        .schema.to_arrow_schema()
         .empty_table()
         .to_pandas()
     )
