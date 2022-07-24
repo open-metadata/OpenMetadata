@@ -266,7 +266,7 @@ describe('TeamsAndUsers page', () => {
       });
   });
 
-  it('Assets tab should work properly', () => {
+  it.only('Assets tab should work properly', () => {
     cy.get('[data-testid="Assets"]').should('be.visible').click();
     cy.get('[data-testid="Assets"]').should('have.class', 'active');
     cy.get('[data-testid="Assets"] > .tw-py-px > [data-testid="filter-count"]')
@@ -286,12 +286,21 @@ describe('TeamsAndUsers page', () => {
     cy.wait(500); // Wait for result to load after api success
     cy.get('@resultLink').click();
 
-    cy.get('[data-testid="Manage"]').should('be.visible').click();
-    cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-
-    cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
+    // cy.get('[data-testid="Manage"]').should('be.visible').click();
+    cy.get('[data-testid="Owner"] [data-testid="image"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    // cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
+    cy.wait(1000);
+    cy.get('[data-testid="dropdown-tab"]')
+      .scrollIntoView()
+      .eq(0)
+      .should('exist')
+      .click();
 
     cy.get('[data-testid="list-item"] > .tw-truncate')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
