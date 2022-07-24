@@ -44,7 +44,7 @@ const DeleteWidgetBody = ({
           {header}
         </Ellipses>
         <p
-          className="tw-text-grey-muted tw-text-xs tw-break-all"
+          className="tw-text-grey-muted tw-text-xs"
           data-testid="danger-zone-text-para">
           {description}
         </p>

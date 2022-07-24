@@ -18,6 +18,13 @@ import TableDataCardBody from './TableDataCardBody';
 jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
+jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
+});
 
 describe('Test TableDataCardBody Component', () => {
   const extraInfo = [

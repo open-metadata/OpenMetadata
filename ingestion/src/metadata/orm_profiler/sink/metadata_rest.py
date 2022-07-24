@@ -13,6 +13,7 @@
 OpenMetadata REST Sink implementation for the ORM Profiler results
 """
 import traceback
+from typing import Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -29,7 +30,7 @@ logger = profiler_logger()
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: str = None
+    api_endpoint: Optional[str] = None
 
 
 class MetadataRestSink(Sink[Entity]):

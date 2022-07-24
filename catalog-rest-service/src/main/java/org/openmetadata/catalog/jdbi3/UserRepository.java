@@ -30,6 +30,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.UserResource;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -119,6 +120,11 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected void postDelete(User entity) {
+    SubjectContext.invalidateKey(entity.getName());
+  }
+
+  @Override
   public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
@@ -180,7 +186,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getDefaultRole() throws IOException {
     // TODO multiple default roleIds?
     List<UUID> defaultRoleIds = toIds(daoCollection.roleDAO().getDefaultRolesIds());
-    List<EntityReference> refs = toEntityReferences(defaultRoleIds, Entity.ROLE);
+    List<EntityReference> refs = EntityUtil.toEntityReferences(defaultRoleIds, Entity.ROLE);
     return EntityUtil.populateEntityReferences(refs);
   }
 

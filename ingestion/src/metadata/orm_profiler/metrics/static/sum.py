@@ -17,6 +17,7 @@ SUM Metric definition
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.sum import SumFn
 from metadata.orm_profiler.orm.registry import is_quantifiable
 
 
@@ -36,6 +37,6 @@ class Sum(StaticMetric):
     @_label
     def fn(self):
         if is_quantifiable(self.col.type):
-            return func.sum(column(self.col.name))
+            return SumFn(column(self.col.name))
 
         return None

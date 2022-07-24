@@ -106,6 +106,26 @@ export const getUpdateDescriptionPath = (
   return { pathname, search: searchParams.toString() };
 };
 
+export const getUpdateTagsPath = (
+  entityType: string,
+  entityFQN: string,
+  field?: string,
+  value?: string
+) => {
+  let pathname = ROUTES.UPDATE_TAGS;
+  pathname = pathname
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+  const searchParams = new URLSearchParams();
+
+  if (!isUndefined(field) && !isUndefined(value)) {
+    searchParams.append('field', field);
+    searchParams.append('value', value);
+  }
+
+  return { pathname, search: searchParams.toString() };
+};
+
 export const getTaskDetailPath = (taskId: string) => {
   const pathname = ROUTES.TASK_DETAIL.replace(PLACEHOLDER_TASK_ID, taskId);
 

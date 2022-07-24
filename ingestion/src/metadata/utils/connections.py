@@ -20,9 +20,11 @@ from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
+import pkg_resources
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.event import listen
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
@@ -127,6 +129,17 @@ class SourceConnectionException(Exception):
     """
 
 
+def render_query_header(ometa_version: str) -> str:
+    header_obj = {"app": "OpenMetadata", "version": ometa_version}
+    return f"/* {json.dumps(header_obj)} */"
+
+
+def inject_query_header(conn, cursor, statement, parameters, context, executemany):
+    version = pkg_resources.require("openmetadata-ingestion")[0].version
+    statement_with_header = render_query_header(version) + "\n" + statement
+    return statement_with_header, parameters
+
+
 def create_generic_connection(connection, verbose: bool = False) -> Engine:
     """
     Generic Engine creation from connection object
@@ -141,6 +154,7 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
     )
+    listen(engine, "before_cursor_execute", inject_query_header, retval=True)
 
     return engine
 
@@ -279,6 +293,10 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
         )
     elif connection.metastoreFilePath:
         builder.config("spark.sql.warehouse.dir", f"{connection.metastoreFilePath}")
+
+    if connection.connectionArguments:
+        for key, value in connection.connectionArguments:
+            builder.config(key, value)
 
     deltalake_connection = DeltaLakeClient(
         configure_spark_with_delta_pip(builder).getOrCreate()

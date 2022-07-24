@@ -185,7 +185,7 @@
           "type": "integer"
         },
         "dataTypeDisplay": {
-          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
+          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
           "type": "string"
         },
         "description": {
@@ -402,11 +402,11 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/dateTime" }, { "$ref": "../../type/basic.json#/definitions/date" }]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/dateTime" }, { "$ref": "../../type/basic.json#/definitions/date" }]
         },
         "minLength": {
           "description": "Minimum string length in a column.",

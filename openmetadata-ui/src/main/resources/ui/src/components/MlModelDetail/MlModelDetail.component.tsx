@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { startCase, uniqueId } from 'lodash';
+import { isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityTags,
@@ -160,15 +160,19 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showLabel: true,
       isLink: true,
     },
-    {
-      key: 'Dashboard',
-      value: getDashboardDetailsPath(
-        mlModelDetail.dashboard?.fullyQualifiedName as string
-      ),
-      placeholderText: getEntityName(mlModelDetail.dashboard),
-      showLabel: true,
-      isLink: true,
-    },
+    ...(!isUndefined(mlModelDetail.dashboard)
+      ? [
+          {
+            key: 'Dashboard',
+            value: getDashboardDetailsPath(
+              mlModelDetail.dashboard?.fullyQualifiedName as string
+            ),
+            placeholderText: getEntityName(mlModelDetail.dashboard),
+            showLabel: true,
+            isLink: true,
+          },
+        ]
+      : []),
   ];
 
   const hasEditAccess = () => {
@@ -267,6 +271,41 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       ];
       const updatedMlModel = { ...mlModelDetail, tags: updatedTags };
       tagUpdateHandler(updatedMlModel);
+    }
+  };
+
+  const onOwnerUpdate = (newOwner?: Mlmodel['owner']) => {
+    if (newOwner) {
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        owner: newOwner
+          ? {
+              ...mlModelDetail.owner,
+              ...newOwner,
+            }
+          : mlModelDetail.owner,
+      };
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Mlmodel['tags'] = newTier
+        ? [
+            ...mlModelTags,
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : mlModelDetail.tags;
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        tags: tierTag,
+      };
+
+      settingsUpdateHandler(updatedMlModelDetails);
     }
   };
 
@@ -436,6 +475,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           tagsHandler={onTagUpdate}
           tier={mlModelTier}
           titleLinks={slashedMlModelName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

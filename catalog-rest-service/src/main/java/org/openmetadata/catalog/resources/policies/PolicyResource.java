@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.policies;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,7 +61,6 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -106,17 +101,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
 
     public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
-  }
-
-  public static class OperationList extends ResultList<MetadataOperation> {
-    @SuppressWarnings("unused")
-    OperationList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public OperationList(List<MetadataOperation> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -305,6 +289,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       // Load set of resource types
       RESOURCES.addAll(Entity.listEntities());
       RESOURCES.add("lineage");
+      RESOURCES.add("feed");
       Collections.sort(RESOURCES);
     }
     return RESOURCES;
@@ -326,7 +311,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, policy, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, policy, true);
     PolicyEvaluator.getInstance().update((Policy) response.getEntity());
     return response;
   }
@@ -376,7 +361,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, policy, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, policy, true);
     PolicyEvaluator.getInstance().update((Policy) response.getEntity());
     return response;
   }
@@ -401,7 +386,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           boolean hardDelete,
       @Parameter(description = "Policy Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
     PolicyEvaluator.getInstance().delete((Policy) response.getEntity());
     return response;
   }

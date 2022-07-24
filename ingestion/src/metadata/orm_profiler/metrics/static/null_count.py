@@ -17,6 +17,7 @@ Null Count Metric definition
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.sum import SumFn
 
 
 class NullCount(StaticMetric):
@@ -44,4 +45,4 @@ class NullCount(StaticMetric):
 
     @_label
     def fn(self):
-        return func.sum(case([(column(self.col.name).is_(None), 1)], else_=0))
+        return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))

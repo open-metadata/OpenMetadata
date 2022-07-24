@@ -17,6 +17,7 @@ from unittest import TestCase
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.type import basic
 from metadata.ingestion.ometa.utils import format_name, get_entity_type, model_str
+from metadata.utils.connections import render_query_header
 
 
 class OMetaUtilsTest(TestCase):
@@ -53,4 +54,10 @@ class OMetaUtilsTest(TestCase):
         )
         self.assertEqual(
             model_str(basic.FullyQualifiedEntityName(__root__="FQDN")), "FQDN"
+        )
+
+    def test_render_query_headers_builds_the_right_string(self) -> None:
+        assert (
+            render_query_header("0.0.1")
+            == '/* {"app": "OpenMetadata", "version": "0.0.1"} */'
         )

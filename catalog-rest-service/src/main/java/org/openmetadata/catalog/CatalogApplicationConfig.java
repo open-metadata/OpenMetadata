@@ -33,81 +33,59 @@ import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 
+@Getter
+@Setter
 public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("database")
   @NotNull
   @Valid
-  @Getter
-  @Setter
   private DataSourceFactory dataSourceFactory;
 
   @JsonProperty("swagger")
-  @Getter
-  @Setter
   private SwaggerBundleConfiguration swaggerBundleConfig;
 
   @JsonProperty("authorizerConfiguration")
-  @Getter
-  @Setter
   private AuthorizerConfiguration authorizerConfiguration;
 
   @JsonProperty("authenticationConfiguration")
-  @Getter
-  @Setter
   private AuthenticationConfiguration authenticationConfiguration;
 
   @JsonProperty("jwtTokenConfiguration")
-  @Getter
-  @Setter
   private JWTTokenConfiguration jwtTokenConfiguration;
 
   @JsonProperty("elasticsearch")
-  @Getter
-  @Setter
   private ElasticSearchConfiguration elasticSearchConfiguration;
 
   @JsonProperty("eventHandlerConfiguration")
-  @Getter
-  @Setter
   private EventHandlerConfiguration eventHandlerConfiguration;
 
   @JsonProperty("airflowConfiguration")
-  @Getter
-  @Setter
   private AirflowConfiguration airflowConfiguration;
 
   @JsonProperty("slackEventPublishers")
-  @Getter
-  @Setter
   private List<SlackPublisherConfiguration> slackEventPublishers;
 
   @JsonProperty("migrationConfiguration")
   @NotNull
-  @Getter
-  @Setter
   private MigrationConfiguration migrationConfiguration;
 
   @JsonProperty("fernetConfiguration")
-  @Getter
-  @Setter
   private FernetConfiguration fernetConfiguration;
 
   @JsonProperty("health")
   @NotNull
   @Valid
-  @Getter
-  @Setter
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
   @JsonProperty("sandboxModeEnabled")
-  @Getter
-  @Setter
   private boolean sandboxModeEnabled;
 
+  @JsonProperty("slackChat")
+  private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
+
   @JsonProperty("secretsManagerConfiguration")
-  @Getter
-  @Setter
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
   @Override

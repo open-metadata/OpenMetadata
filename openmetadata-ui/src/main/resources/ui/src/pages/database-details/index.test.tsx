@@ -235,6 +235,26 @@ jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
+jest.mock(
+  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(
+        <p data-testid="entity-summary-details">
+          EntitySummaryDetails component
+        </p>
+      );
+  }
+);
+
+jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="delete-entity">DeleteWidgetModal component</p>
+    );
+});
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();
 

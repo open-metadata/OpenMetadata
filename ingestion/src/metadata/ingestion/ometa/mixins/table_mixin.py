@@ -13,6 +13,7 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
+import traceback
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -30,8 +31,11 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.lru_cache import LRUCache
 
 logger = ometa_logger()
+
+LRU_CACHE_SIZE = 4096
 
 
 class OMetaTableMixin:
@@ -64,11 +68,30 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param sample_data: Data to add
         """
-        resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
-            data=sample_data.json(),
-        )
-        return TableData(**resp["sampleData"])
+        resp = None
+        try:
+            resp = self.client.put(
+                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+                data=sample_data.json(),
+            )
+        except Exception as err:
+            logger.error(
+                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+
+        if resp:
+            try:
+                return TableData(**resp["sampleData"])
+            except UnicodeError as err:
+                logger.error(
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__} - {err}"
+                )
+                logger.debug(traceback.format_exc())
+            except Exception as err:
+                logger.error(
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__} - {err}"
+                )
 
     def ingest_table_profile_data(
         self, table: Table, table_profile: List[TableProfile]
@@ -108,11 +131,14 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_queries: SqlQuery to add
         """
+        seen_queries = LRUCache(LRU_CACHE_SIZE)
         for query in table_queries:
-            self.client.put(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                data=query.json(),
-            )
+            if query.query not in seen_queries:
+                self.client.put(
+                    f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
+                    data=query.json(),
+                )
+                seen_queries.put(query.query, None)
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
@@ -123,7 +149,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_usage_request: Usage data to add
         """
-        resp = self.client.post(
+        resp = self.client.put(
             f"/usage/table/{table.id.__root__}", data=table_usage_request.json()
         )
         logger.debug("published table usage %s", resp)

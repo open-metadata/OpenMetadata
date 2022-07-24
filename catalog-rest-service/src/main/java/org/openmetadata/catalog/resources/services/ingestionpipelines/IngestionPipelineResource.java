@@ -15,9 +15,6 @@ package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_PIPELINE_STATUSES;
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
@@ -322,7 +319,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT);
+    return create(uriInfo, securityContext, ingestionPipeline, true);
   }
 
   @PATCH
@@ -369,7 +366,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, ingestionPipeline, true);
   }
 
   @POST
@@ -441,7 +438,30 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
     pipelineServiceClient.toggleIngestion(pipeline);
-    return createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, pipeline, true);
+  }
+
+  @POST
+  @Path("/kill/{id}")
+  @Operation(
+      operationId = "killIngestionPipelineRuns",
+      summary = "Mark as failed and kill any not-finished workflow or task for the IngestionPipeline",
+      tags = "IngestionPipelines",
+      description = "Kill an ingestion pipeline by ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The ingestion",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
+      })
+  public Response killIngestion(
+      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
+      throws IOException {
+    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+    HttpResponse<String> response = pipelineServiceClient.killIngestion(ingestionPipeline);
+    return Response.status(200, response.body()).build();
   }
 
   @POST
@@ -503,7 +523,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   @GET
@@ -524,7 +544,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context SecurityContext securityContext,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(id);
+    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+    Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline);
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 

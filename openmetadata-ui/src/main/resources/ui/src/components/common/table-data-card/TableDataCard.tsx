@@ -13,10 +13,17 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { isNil, isString, isUndefined, startCase, uniqueId } from 'lodash';
+import {
+  isNil,
+  isString,
+  isUndefined,
+  startCase,
+  uniqBy,
+  uniqueId,
+} from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
@@ -114,7 +121,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       assetTags.unshift(tier as TagLabel);
     }
 
-    return [...new Set(assetTags)];
+    return [...uniqBy(assetTags, 'tagFQN')];
   };
 
   const handleLinkClick = () => {
@@ -151,13 +158,15 @@ const TableDataCard: FunctionComponent<Props> = ({
             src={serviceTypeLogo(serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
-            <button
-              className="tw-text-grey-body tw-font-semibold"
-              data-testid="table-link"
-              id={`${id}Title`}
-              onClick={handleLinkClick}>
-              {stringToHTML(name)}
-            </button>
+            <Link to={getEntityLink(indexType, fullyQualifiedName)}>
+              <button
+                className="tw-text-grey-body tw-font-semibold"
+                data-testid="table-link"
+                id={`${id}Title`}
+                onClick={handleLinkClick}>
+                {stringToHTML(name)}
+              </button>
+            </Link>
           </h6>
           {deleted && (
             <>

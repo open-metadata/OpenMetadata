@@ -14,37 +14,39 @@
 package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedConstruction.Context;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 
 @ExtendWith(MockitoExtension.class)
 public class IngestionPipelineResourceUnitTest {
 
-  private static final String DAG_NAME = "test_dag";
+  private static final String DAG_ID = UUID.randomUUID().toString();
 
   private IngestionPipelineResource ingestionPipelineResource;
-
-  @Mock UriInfo uriInfo;
 
   @Mock SecurityContext securityContext;
 
@@ -52,30 +54,42 @@ public class IngestionPipelineResourceUnitTest {
 
   @Mock CollectionDAO collectionDAO;
 
-  @Spy CollectionDAO.IngestionPipelineDAO ingestionPipelineDAO;
-
   @Mock CatalogApplicationConfig catalogApplicationConfig;
 
+  @Mock IngestionPipeline ingestionPipeline;
+
   @BeforeEach
-  void setUp() {
-    doReturn(ingestionPipelineDAO).when(collectionDAO).ingestionPipelineDAO();
+  void setUp() throws IOException {
+    CollectionDAO.IngestionPipelineDAO entityDAO = mock(CollectionDAO.IngestionPipelineDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.EntityRelationshipRecord entityRelationshipRecord =
+        mock(CollectionDAO.EntityRelationshipRecord.class);
+    when(entityRelationshipRecord.getId()).thenReturn(UUID.randomUUID());
+    when(entityRelationshipRecord.getType()).thenReturn("ingestionPipeline");
+    when(relationshipDAO.findFrom(any(), any(), anyInt())).thenReturn(List.of(entityRelationshipRecord));
+    when(collectionDAO.ingestionPipelineDAO()).thenReturn(entityDAO);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(entityDAO.findEntityById(any(), any())).thenReturn(ingestionPipeline);
+    when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(mock(EntityReference.class));
+    when(entityDAO.getEntityClass()).thenReturn(IngestionPipeline.class);
+    when(ingestionPipeline.getId()).thenReturn(UUID.fromString(DAG_ID));
     ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer);
   }
 
   @Test
-  public void testLastIngestionLogsAreRetrievedWhen() throws IOException {
+  public void testLastIngestionLogsAreRetrieved() throws IOException {
     Map<String, String> expectedMap = Map.of("task", "log");
     try (MockedConstruction<AirflowRESTClient> mocked =
         mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
       ingestionPipelineResource.initialize(catalogApplicationConfig);
       assertEquals(
-          expectedMap, ingestionPipelineResource.getLastIngestionLogs(uriInfo, securityContext, DAG_NAME).getEntity());
+          expectedMap, ingestionPipelineResource.getLastIngestionLogs(null, securityContext, DAG_ID).getEntity());
       PipelineServiceClient client = mocked.constructed().get(0);
-      verify(client).getLastIngestionLogs(DAG_NAME);
+      verify(client).getLastIngestionLogs(ingestionPipeline);
     }
   }
 
   private void preparePipelineServiceClient(AirflowRESTClient mockPipelineServiceClient, Context context) {
-    doReturn(Map.of("task", "log")).when(mockPipelineServiceClient).getLastIngestionLogs(anyString());
+    when(mockPipelineServiceClient.getLastIngestionLogs(any())).thenReturn(Map.of("task", "log"));
   }
 }

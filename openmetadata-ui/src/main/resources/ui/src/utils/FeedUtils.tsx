@@ -150,6 +150,10 @@ export const getThreadValue = (
   return threadValue;
 };
 
+export const buildMentionLink = (entityType: string, entityFqn: string) => {
+  return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
+};
+
 export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
@@ -166,9 +170,10 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             `@${hit._source.name ?? hit._source.display_name}`,
             hit._source.deleted
           ),
-          link: `/${entityUrlMap[entityType as keyof typeof entityUrlMap]}/${
+          link: buildMentionLink(
+            entityUrlMap[entityType as keyof typeof entityUrlMap],
             hit._source.name
-          }`,
+          ),
         };
       });
     } else {
@@ -184,9 +189,10 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             `@${hit._source.name ?? hit._source.display_name}`,
             hit._source.deleted
           ),
-          link: `/${entityUrlMap[entityType as keyof typeof entityUrlMap]}/${
+          link: buildMentionLink(
+            entityUrlMap[entityType as keyof typeof entityUrlMap],
             hit._source.name
-          }`,
+          ),
         };
       });
     }
@@ -204,7 +210,10 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         return {
           id: hit._id,
           value: `#${entityType}/${hit._source.name}`,
-          link: `/${entityType}/${getEncodedFqn(hit._source.fqdn)}`,
+          link: buildMentionLink(
+            entityType,
+            getEncodedFqn(hit._source.fullyQualifiedName)
+          ),
         };
       });
     } else {
@@ -217,7 +226,10 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         return {
           id: hit._id,
           value: `#${entityType}/${hit._source.name}`,
-          link: `/${entityType}/${getEncodedFqn(hit._source.fqdn)}`,
+          link: buildMentionLink(
+            entityType,
+            getEncodedFqn(hit._source.fullyQualifiedName)
+          ),
         };
       });
     }

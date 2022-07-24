@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.locations;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,6 +56,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -293,6 +290,33 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   }
 
   @GET
+  @Path("/association/{id}")
+  @Operation(
+      operationId = "getEntityByLocation",
+      summary = "Get a table associated with location",
+      tags = "locations",
+      description = "Get a table associated with location by given `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "location",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+        @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
+      })
+  public List<EntityReference> getTableFromLocation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "location version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version)
+      throws IOException {
+    return dao.getEntityDetails(id);
+  }
+
+  @GET
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificLocationVersion",
@@ -338,7 +362,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, location, ADMIN | BOT);
+    return create(uriInfo, securityContext, location, true);
   }
 
   @PUT
@@ -358,7 +382,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, location, true);
   }
 
   @PATCH
@@ -407,7 +431,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           boolean hardDelete,
       @Parameter(description = "Location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   @PUT
