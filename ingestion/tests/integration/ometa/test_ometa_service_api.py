@@ -179,8 +179,8 @@ class OMetaServiceTest(TestCase):
             "serviceConnection": {
                 "config": {
                     "type": "Looker",
-                    "username": "looker_user",
-                    "password": "looker_pwd",
+                    "clientId": "id",
+                    "clientSecret": "secret",
                     "hostPort": "http://random:1234",
                 }
             },
@@ -195,7 +195,7 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DashboardServiceType.Looker
-        assert service.connection.config.password.get_secret_value() == "looker_pwd"
+        assert service.connection.config.clientSecret.get_secret_value() == "secret"
 
         # Check get
         assert service == self.metadata.get_service_or_create(

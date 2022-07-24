@@ -372,10 +372,9 @@ def test_looker():
         "serviceConnection": {
             "config": {
                 "type": "Looker",
-                "username": "username",
-                "password": "password",
+                "clientId": "username",
+                "clientSecret": "password",
                 "hostPort": "http://hostPort",
-                "env": "env",
             }
         },
         "sourceConfig": {"config": {}},
