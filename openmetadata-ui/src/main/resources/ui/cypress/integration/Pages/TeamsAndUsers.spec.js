@@ -266,7 +266,7 @@ describe('TeamsAndUsers page', () => {
       });
   });
 
-  it.only('Assets tab should work properly', () => {
+  it('Assets tab should work properly', () => {
     cy.get('[data-testid="Assets"]').should('be.visible').click();
     cy.get('[data-testid="Assets"]').should('have.class', 'active');
     cy.get('[data-testid="Assets"] > .tw-py-px > [data-testid="filter-count"]')
