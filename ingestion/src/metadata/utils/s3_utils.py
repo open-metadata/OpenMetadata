@@ -44,5 +44,10 @@ def read_json_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
 
 def read_parquet_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
     s3 = fs.S3FileSystem(region=client.meta.region_name)
-    pf = ParquetFile(s3.open_input_file(os.path.join(bucket_name, key)))
-    return pf.schema.to_arrow_schema().empty_table().to_pandas()
+    return (
+        ParquetFile(s3.open_input_file(os.path.join(bucket_name, key)))
+        .schema
+        .to_arrow_schema()
+        .empty_table()
+        .to_pandas()
+    )
