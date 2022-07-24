@@ -70,7 +70,6 @@ class OMetaChartTest(TestCase):
         """
         Prepare ingredients
         """
-        print("are we coming here")
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
         cls.entity = Chart(
