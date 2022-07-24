@@ -106,7 +106,6 @@ public final class TablesInitializer {
         null, SchemaMigrationOption.ES_DROP.toString(), false, "Drop all the indexes in the elastic search");
     OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
     OPTIONS.addOption(null, SchemaMigrationOption.CREATE_INGESTION_BOT.toString(), false, "Create Ingestion Bot");
-    OPTIONS.addOption(null, SchemaMigrationOption.UPDATE_INGESTION_BOT.toString(), false, "Update Ingestion Bot");
   }
 
   private TablesInitializer() {}
@@ -277,9 +276,6 @@ public final class TablesInitializer {
       case CREATE_INGESTION_BOT:
         createIngestionBot(config);
         break;
-      case UPDATE_INGESTION_BOT:
-        updateIngestionBot(config);
-        break;
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
@@ -349,53 +345,6 @@ public final class TablesInitializer {
     }
   }
 
-  private static void updateIngestionBot(CatalogApplicationConfig config) {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    String domain =
-        config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
-            ? DEFAULT_PRINCIPAL_DOMAIN
-            : config.getAuthorizerConfiguration().getPrincipalDomain();
-    String botUser = "ingestion-bot";
-
-    User user =
-        new User()
-            .withId(UUID.randomUUID())
-            .withName(botUser)
-            .withEmail(botUser + "@" + domain)
-            .withIsBot(true)
-            .withUpdatedBy(botUser)
-            .withUpdatedAt(System.currentTimeMillis());
-    JWTAuthMechanism jwtAuthMechanism = null;
-    if (config.getJwtTokenConfiguration() != null) {
-      JWTTokenGenerator.getInstance().init(config.getJwtTokenConfiguration());
-      GenerateTokenRequest generateTokenRequest =
-          new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
-      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
-      jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
-      AuthenticationMechanism authenticationMechanism =
-          new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
-      user.setAuthenticationMechanism(authenticationMechanism);
-    }
-    try {
-      CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-      UserRepository userRepository = new UserRepository(daoObject);
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
-      printToConsoleInDebug("Updated user entry: " + addedUser.getEntity());
-      if (jwtAuthMechanism != null) {
-        printToConsoleMandatory(JsonUtils.pojoToJson(user));
-      }
-    } catch (Exception exception) {
-      throw new RuntimeException("Failed to update ingestion-bot");
-    }
-  }
-
   private static void addOrUpdateUser(User user, Jdbi jdbi) throws Exception {
     CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
     UserRepository userRepository = new UserRepository(daoObject);
@@ -414,8 +363,7 @@ public final class TablesInitializer {
     ES_DROP("es-drop"),
     ES_CREATE("es-create"),
     ES_MIGRATE("es-migrate"),
-    CREATE_INGESTION_BOT("create-ingestion-bot"),
-    UPDATE_INGESTION_BOT("update-ingestion-bot");
+    CREATE_INGESTION_BOT("create-ingestion-bot");
     private final String value;
 
     SchemaMigrationOption(String schemaMigrationOption) {

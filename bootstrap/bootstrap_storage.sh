@@ -88,7 +88,7 @@ fi
 opt="$1"
 
 case "${opt}" in
-create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate | create-ingestion-bot | update-ingestion-bot)
+create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate | create-ingestion-bot)
     execute "${opt}"
     ;;
 drop-create )
