@@ -14,24 +14,38 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
-import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
+import React, {
+  Fragment,
+  RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
+import AppState from '../../AppState';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import {
   JoinedWith,
   Table,
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
+import { ThreadType } from '../../generated/entity/feed/thread';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getPartialNameFromFQN,
+  getEntityName,
+  getEntityPlaceHolder,
+  getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
-  getUserTeams,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -50,6 +64,7 @@ import PageContainer from '../containers/PageContainer';
 import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import Loader from '../Loader/Loader';
 import ManageTab from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTable, {
@@ -60,6 +75,7 @@ import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableQueries from '../TableQueries/TableQueries';
+import { CustomPropertyTable } from './CustomPropertyTable/CustomPropertyTable';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -83,7 +99,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   descriptionUpdateHandler,
   columnsUpdateHandler,
   settingsUpdateHandler,
-  users,
   usageSummary,
   joins,
   tableType,
@@ -121,8 +136,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleSelectedColumn,
   selectedColumn,
   deletePostHandler,
+  paging,
+  fetchFeedHandler,
+  handleExtentionUpdate,
+  updateThreadHandler,
+  entityFieldTaskCount,
 }: DatasetDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -132,10 +151,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     startDate: new Date(),
     dayCount: 0,
     columnJoins: [],
+    directTableJoins: [],
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
   const [selectedField, setSelectedField] = useState<string>('');
+
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -161,13 +186,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     );
   };
   const hasEditAccess = () => {
+    const loggedInUser = AppState.getCurrentUserDetails();
     if (owner?.type === 'user') {
-      return owner.id === getCurrentUserId();
+      return owner.id === loggedInUser?.id;
     } else {
-      return getUserTeams().some((team) => team.id === owner?.id);
+      return Boolean(
+        loggedInUser?.teams?.length &&
+          loggedInUser?.teams?.some((team) => team.id === owner?.id)
+      );
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );
@@ -186,7 +215,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -265,6 +294,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
+      name: 'Custom Properties',
+      icon: {
+        alt: 'custom_properties',
+        name: 'custom_properties-light-grey',
+        title: 'custom_properties',
+        selectedName: 'custom_properties-primery',
+      },
+      isProtected: false,
+      position: 9,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -273,40 +313,79 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: false,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 9,
+      position: 10,
     },
   ];
 
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
   > => {
-    let freqJoin: Array<JoinedWith & { name: string }> = [];
-    for (const joinData of tableJoinData.columnJoins as ColumnJoins[]) {
-      freqJoin = [
-        ...freqJoin,
-        ...(joinData?.joinedWith?.map((joinedCol) => {
-          const tableFQN = getTableFQNFromColumnFQN(
-            joinedCol?.fullyQualifiedName as string
-          );
+    const tableFQNGrouping = [
+      ...(tableJoinData.columnJoins?.flatMap(
+        (cjs) =>
+          cjs.joinedWith?.map<JoinedWith>((jw) => ({
+            fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
+            joinCount: jw.joinCount,
+          })) ?? []
+      ) ?? []),
+      ...(tableJoinData.directTableJoins ?? []),
+    ].reduce(
+      (result, jw) => ({
+        ...result,
+        [jw.fullyQualifiedName]:
+          (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
+      }),
+      {} as Record<string, number>
+    );
 
-          return {
-            name: getPartialNameFromFQN(tableFQN, ['database', 'table'], '.'),
-            fullyQualifiedName: tableFQN,
-            joinCount: joinedCol.joinCount,
-          };
-        }) as Array<JoinedWith & { name: string }>),
-      ].sort((a, b) =>
-        (a?.joinCount as number) > (b?.joinCount as number)
-          ? 1
-          : (b?.joinCount as number) > (a?.joinCount as number)
-          ? -1
-          : 0
+    return Object.entries(tableFQNGrouping)
+      .map<JoinedWith & { name: string }>(
+        ([fullyQualifiedName, joinCount]) => ({
+          fullyQualifiedName,
+          joinCount,
+          name: getPartialNameFromTableFQN(
+            fullyQualifiedName,
+            [FqnPart.Database, FqnPart.Table],
+            FQN_SEPARATOR_CHAR
+          ),
+        })
+      )
+      .sort((a, b) => b.joinCount - a.joinCount);
+  };
+
+  const prepareTableRowInfo = () => {
+    const rowData =
+      (tableProfile
+        ?.map((d) => ({
+          date: d.profileDate,
+          value: d.rowCount ?? 0,
+        }))
+        .reverse() as Array<{
+        date: Date;
+        value: number;
+      }>) ?? [];
+
+    if (!isUndefined(tableProfile) && tableProfile.length > 0) {
+      return (
+        <div className="tw-flex">
+          {rowData.length > 1 && (
+            <TableProfilerGraph
+              className="tw--mt-4"
+              data={rowData}
+              height={38}
+              toolTipPos={{ x: 20, y: -30 }}
+            />
+          )}
+          <span
+            className={classNames({
+              'tw--ml-6': rowData.length > 1,
+            })}>{`${tableProfile[0].rowCount || 0} rows`}</span>
+        </div>
       );
+    } else {
+      return '';
     }
-
-    return freqJoin;
   };
 
   const extraInfo: Array<ExtraInfo> = [
@@ -314,13 +393,20 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
-      placeholderText: owner?.displayName || '',
+          ? getTeamAndUserDetailsPath(owner?.name || '')
+          : getEntityName(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
-    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
+    {
+      key: 'Tier',
+      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
     { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
     { value: `${weeklyUsageCount} queries` },
@@ -335,32 +421,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     {
       key: 'Rows',
-      value:
-        !isUndefined(tableProfile) && tableProfile.length > 0 ? (
-          <div className="tw-flex">
-            <TableProfilerGraph
-              className="tw--mt-4"
-              data={
-                tableProfile
-                  ?.map((d) => ({
-                    date: d.profileDate,
-                    value: d.rowCount ?? 0,
-                  }))
-                  .reverse() as Array<{
-                  date: Date;
-                  value: number;
-                }>
-              }
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-            <span className="tw--ml-6">{`${
-              tableProfile[0].rowCount || 0
-            } rows`}</span>
-          </div>
-        ) : (
-          ''
-        ),
+      value: prepareTableRowInfo(),
     },
     { key: 'Tests', value: getTableTestsValue(tableTestCase) },
   ];
@@ -392,6 +453,42 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         columns: updateColumns,
       };
       columnsUpdateHandler(updatedTableDetails);
+    }
+  };
+
+  const onOwnerUpdate = (newOwner?: Table['owner']) => {
+    if (newOwner) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        owner: {
+          ...tableDetails.owner,
+          ...newOwner,
+        },
+      };
+      settingsUpdateHandler(updatedTableDetails);
+    }
+  };
+
+  const onTierUpdate = (newTier?: string) => {
+    if (newTier) {
+      const tierTag: Table['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(tableDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : tableDetails.tags;
+      const updatedTableDetails = {
+        ...tableDetails,
+        tags: tierTag,
+      };
+
+      return settingsUpdateHandler(updatedTableDetails);
+    } else {
+      return Promise.reject();
     }
   };
 
@@ -471,19 +568,30 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
     setThreadLink('');
   };
 
-  useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      fetchFeedHandler(pagingObj.after);
     }
-  }, [users, followers]);
+  };
 
   useEffect(() => {
     setFollowersData(followers);
@@ -496,17 +604,33 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setTableJoinData(joins);
   }, [joins]);
 
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
+  }, [paging, isentityThreadLoading, isInView]);
+
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      fetchFeedHandler(paging.after, feedType, threadType);
+    },
+    [paging]
+  );
+
   return (
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           isTagEditable
           deleted={deleted}
+          entityFieldTasks={getEntityFieldThreadCounts(
+            EntityField.TAGS,
+            entityFieldTaskCount
+          )}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={datasetFQN}
+          entityId={tableDetails.id}
           entityName={entityName}
           entityType={EntityType.TABLE}
           extraInfo={extraInfo}
@@ -519,6 +643,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedTableName}
+          updateOwner={onOwnerUpdate}
+          updateTier={onTierUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
@@ -531,203 +657,246 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-
-          <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-            {activeTab === 1 && (
-              <div
-                className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full"
-                id="schemaDetails">
-                <div className="tw-col-span-3">
-                  <Description
-                    description={description}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      'description',
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={datasetFQN}
+          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
+              {activeTab === 1 && (
+                <div
+                  className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full"
+                  id="schemaDetails">
+                  <div className="tw-col-span-3 tw--ml-5">
+                    <Description
+                      description={description}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldTaskCount
+                      )}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={datasetFQN}
+                      entityName={entityName}
+                      entityType={EntityType.TABLE}
+                      hasEditAccess={hasEditAccess()}
+                      isEdit={isEdit}
+                      isReadOnly={deleted}
+                      owner={owner}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onEntityFieldSelect={onEntityFieldSelect}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                  <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
+                    <FrequentlyJoinedTables
+                      header="Frequently Joined Tables"
+                      tableList={getFrequentlyJoinedWithTables()}
+                    />
+                  </div>
+                  <div className="tw-col-span-full">
+                    <SchemaTab
+                      columnName={getPartialNameFromTableFQN(
+                        datasetFQN,
+                        [FqnPart['Column']],
+                        FQN_SEPARATOR_CHAR
+                      )}
+                      columns={columns}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.COLUMNS,
+                        entityFieldTaskCount
+                      )}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        EntityField.COLUMNS,
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={datasetFQN}
+                      hasEditAccess={hasEditAccess()}
+                      isReadOnly={deleted}
+                      joins={tableJoinData.columnJoins as ColumnJoins[]}
+                      owner={owner}
+                      sampleData={sampleData}
+                      tableConstraints={tableDetails.tableConstraints}
+                      onEntityFieldSelect={onEntityFieldSelect}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                      onUpdate={onColumnsUpdate}
+                    />
+                  </div>
+                </div>
+              )}
+              {activeTab === 2 && (
+                <div
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
+                  id="activityfeed">
+                  <div />
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    className=""
+                    deletePostHandler={deletePostHandler}
                     entityName={entityName}
+                    feedList={entityThread}
+                    postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
+                  />
+                  <div />
+                </div>
+              )}
+              {activeTab === 3 && (
+                <div id="sampleDataDetails">
+                  <SampleDataTable
+                    isLoading={isSampleDataLoading}
+                    sampleData={getSampleDataWithType()}
+                  />
+                </div>
+              )}
+              {activeTab === 4 && (
+                <div
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
+                  id="tablequeries">
+                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
+                    <Fragment>
+                      <div />
+                      <TableQueries
+                        isLoading={isQueriesLoading}
+                        queries={tableQueries}
+                      />
+                      <div />
+                    </Fragment>
+                  ) : (
+                    <div
+                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      data-testid="no-queries">
+                      <span>No queries data available.</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {activeTab === 5 && (
+                <div>
+                  <TableProfiler
+                    columns={columns.map((col) => ({
+                      constraint: col.constraint as string,
+                      colName: col.name,
+                      colType: col.dataTypeDisplay as string,
+                      dataType: col.dataType as string,
+                      colTests: col.columnTests,
+                    }))}
+                    isTableDeleted={deleted}
+                    qualityTestFormHandler={qualityTestFormHandler}
+                    tableProfiles={tableProfile}
+                  />
+                </div>
+              )}
+
+              {activeTab === 6 && (
+                <DataQualityTab
+                  columnOptions={columns}
+                  handleAddColumnTestCase={handleAddColumnTestCase}
+                  handleAddTableTestCase={handleAddTableTestCase}
+                  handleRemoveColumnTest={handleRemoveColumnTest}
+                  handleRemoveTableTest={handleRemoveTableTest}
+                  handleSelectedColumn={handleSelectedColumn}
+                  handleShowTestForm={handleShowTestForm}
+                  handleTestModeChange={handleTestModeChange}
+                  isTableDeleted={deleted}
+                  selectedColumn={selectedColumn}
+                  showTestForm={showTestForm}
+                  tableTestCase={tableTestCase}
+                  testMode={testMode}
+                />
+              )}
+
+              {activeTab === 7 && (
+                <div
+                  className={classNames(
+                    'tw-px-2',
+                    location.pathname.includes(ROUTES.TOUR)
+                      ? 'tw-h-70vh'
+                      : 'tw-h-full'
+                  )}
+                  id="lineageDetails">
+                  <Entitylineage
+                    addLineageHandler={addLineageHandler}
+                    deleted={deleted}
+                    entityLineage={entityLineage}
+                    entityLineageHandler={entityLineageHandler}
+                    isLoading={isLineageLoading}
+                    isNodeLoading={isNodeLoading}
+                    isOwner={hasEditAccess()}
+                    lineageLeafNodes={lineageLeafNodes}
+                    loadNodeHandler={loadNodeHandler}
+                    removeLineageHandler={removeLineageHandler}
+                  />
+                </div>
+              )}
+              {activeTab === 8 && Boolean(dataModel?.sql) && (
+                <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
+                  <SchemaEditor
+                    className="tw-h-full"
+                    mode={{ name: CSMode.SQL }}
+                    value={dataModel?.sql || ''}
+                  />
+                </div>
+              )}
+              {activeTab === 9 && (
+                <CustomPropertyTable
+                  handleExtentionUpdate={handleExtentionUpdate}
+                  tableDetails={tableDetails}
+                />
+              )}
+              {activeTab === 10 && (
+                <div>
+                  <ManageTab
+                    allowDelete
+                    allowSoftDelete={!deleted}
+                    currentTier={tier?.tagFQN}
+                    currentUser={owner}
+                    entityId={tableDetails.id}
+                    entityName={tableDetails.name}
                     entityType={EntityType.TABLE}
                     hasEditAccess={hasEditAccess()}
-                    isEdit={isEdit}
-                    isReadOnly={deleted}
-                    owner={owner}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onEntityFieldSelect={onEntityFieldSelect}
-                    onThreadLinkSelect={onThreadLinkSelect}
+                    hideOwner={deleted}
+                    hideTier={deleted}
+                    manageSectionType={EntityType.TABLE}
+                    onSave={onSettingsUpdate}
                   />
                 </div>
-                <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
-                  <FrequentlyJoinedTables
-                    header="Frequently Joined Tables"
-                    tableList={getFrequentlyJoinedWithTables()}
-                  />
-                </div>
-                <div className="tw-col-span-full">
-                  <SchemaTab
-                    columnName={getPartialNameFromFQN(
-                      datasetFQN,
-                      ['column'],
-                      '.'
-                    )}
-                    columns={columns}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      'columns',
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={datasetFQN}
-                    hasEditAccess={hasEditAccess()}
-                    isReadOnly={deleted}
-                    joins={tableJoinData.columnJoins as ColumnJoins[]}
-                    owner={owner}
-                    sampleData={sampleData}
-                    onEntityFieldSelect={onEntityFieldSelect}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                    onUpdate={onColumnsUpdate}
-                  />
-                </div>
-
-                {threadLink ? (
-                  <ActivityThreadPanel
-                    createThread={createThread}
-                    deletePostHandler={deletePostHandler}
-                    open={Boolean(threadLink)}
-                    postFeedHandler={postFeedHandler}
-                    threadLink={threadLink}
-                    onCancel={onThreadPanelClose}
-                  />
-                ) : null}
-                {selectedField ? (
-                  <RequestDescriptionModal
-                    createThread={createThread}
-                    defaultValue={getDefaultValue(owner)}
-                    header="Request description"
-                    threadLink={getEntityFeedLink(
-                      EntityType.TABLE,
-                      datasetFQN,
-                      selectedField
-                    )}
-                    onCancel={closeRequestModal}
-                  />
-                ) : null}
-              </div>
-            )}
-            {activeTab === 2 && (
+              )}
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
-                id="activityfeed">
-                <div />
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  className=""
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  isLoading={isentityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                />
-                <div />
+                data-testid="observer-element"
+                id="observer-element"
+                ref={elementRef as RefObject<HTMLDivElement>}>
+                {getLoader()}
               </div>
-            )}
-            {activeTab === 3 && (
-              <div id="sampleDataDetails">
-                <SampleDataTable
-                  isLoading={isSampleDataLoading}
-                  sampleData={getSampleDataWithType()}
-                />
-              </div>
-            )}
-            {activeTab === 4 && (
-              <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
-                id="tablequeries">
-                <div />
-                <TableQueries
-                  isLoading={isQueriesLoading}
-                  queries={tableQueries}
-                />
-                <div />
-              </div>
-            )}
-            {activeTab === 5 && (
-              <div>
-                <TableProfiler
-                  columns={columns.map((col) => ({
-                    constraint: col.constraint as string,
-                    colName: col.name,
-                    colType: col.dataTypeDisplay as string,
-                    dataType: col.dataType as string,
-                    colTests: col.columnTests,
-                  }))}
-                  isTableDeleted={deleted}
-                  qualityTestFormHandler={qualityTestFormHandler}
-                  tableProfiles={tableProfile}
-                />
-              </div>
-            )}
-
-            {activeTab === 6 && (
-              <DataQualityTab
-                columnOptions={columns}
-                handleAddColumnTestCase={handleAddColumnTestCase}
-                handleAddTableTestCase={handleAddTableTestCase}
-                handleRemoveColumnTest={handleRemoveColumnTest}
-                handleRemoveTableTest={handleRemoveTableTest}
-                handleSelectedColumn={handleSelectedColumn}
-                handleShowTestForm={handleShowTestForm}
-                handleTestModeChange={handleTestModeChange}
-                isTableDeleted={deleted}
-                selectedColumn={selectedColumn}
-                showTestForm={showTestForm}
-                tableTestCase={tableTestCase}
-                testMode={testMode}
-              />
-            )}
-
-            {activeTab === 7 && (
-              <div
-                className={classNames(
-                  location.pathname.includes(ROUTES.TOUR)
-                    ? 'tw-h-70vh'
-                    : 'tw-h-full'
-                )}
-                id="lineageDetails">
-                <Entitylineage
-                  addLineageHandler={addLineageHandler}
-                  deleted={deleted}
-                  entityLineage={entityLineage}
-                  entityLineageHandler={entityLineageHandler}
-                  isLoading={isLineageLoading}
-                  isNodeLoading={isNodeLoading}
-                  isOwner={hasEditAccess()}
-                  lineageLeafNodes={lineageLeafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  removeLineageHandler={removeLineageHandler}
-                />
-              </div>
-            )}
-            {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
-                <SchemaEditor
-                  className="tw-h-full"
-                  mode={{ name: CSMode.SQL }}
-                  value={dataModel?.sql || ''}
-                />
-              </div>
-            )}
-            {activeTab === 9 && !deleted && (
-              <div>
-                <ManageTab
-                  currentTier={tier?.tagFQN}
-                  currentUser={owner?.id}
-                  hasEditAccess={hasEditAccess()}
-                  onSave={onSettingsUpdate}
-                />
-              </div>
-            )}
+            </div>
           </div>
+          {threadLink ? (
+            <ActivityThreadPanel
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              open={Boolean(threadLink)}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              threadType={threadType}
+              updateThreadHandler={updateThreadHandler}
+              onCancel={onThreadPanelClose}
+            />
+          ) : null}
+          {selectedField ? (
+            <RequestDescriptionModal
+              createThread={createThread}
+              defaultValue={getDefaultValue(owner)}
+              header="Request description"
+              threadLink={getEntityFeedLink(
+                EntityType.TABLE,
+                datasetFQN,
+                selectedField
+              )}
+              onCancel={closeRequestModal}
+            />
+          ) : null}
         </div>
       </div>
     </PageContainer>

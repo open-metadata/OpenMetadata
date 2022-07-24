@@ -1,0 +1,19 @@
+source:
+  type: amundsen
+  serviceName: local_amundsen
+  serviceConnection:
+    config:
+      type: Amundsen
+      username: neo4j
+      password: test
+      hostPort: bolt://192.168.1.8:7687
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

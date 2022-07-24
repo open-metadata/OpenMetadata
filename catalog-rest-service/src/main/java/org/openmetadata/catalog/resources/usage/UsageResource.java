@@ -27,6 +27,7 @@ import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -64,6 +65,7 @@ public class UsageResource {
   @Valid
   @Path("/{entity}/{id}")
   @Operation(
+      operationId = "getEntityUsageByID",
       summary = "Get usage",
       tags = "usage",
       description = "Get usage details for an entity identified by `id`.",
@@ -104,6 +106,7 @@ public class UsageResource {
   @Valid
   @Path("/{entity}/name/{fqn}")
   @Operation(
+      operationId = "getEntityUsageByFQN",
       summary = "Get usage by name",
       tags = "usage",
       description = "Get usage details for an entity identified by fully qualified name.",
@@ -136,8 +139,7 @@ public class UsageResource {
               description =
                   "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
           @QueryParam("date")
-          String date)
-      throws IOException {
+          String date) {
     // TODO add href
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -147,6 +149,7 @@ public class UsageResource {
   @POST
   @Path("/{entity}/{id}")
   @Operation(
+      operationId = "reportEntityUsageWithID",
       summary = "Report usage",
       tags = "usage",
       description =
@@ -171,13 +174,44 @@ public class UsageResource {
           String id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
       throws IOException {
-    dao.create(entity, id, usage);
-    return Response.status(Response.Status.CREATED).build();
+    return dao.create(entity, id, usage).toResponse();
+  }
+
+  @PUT
+  @Path("/{entity}/{id}")
+  @Operation(
+      operationId = "reportEntityUsageWithID",
+      summary = "Report usage",
+      tags = "usage",
+      description =
+          "Report usage information for an entity on a given date. System stores last 30 days of usage "
+              + "information. Usage information older than 30 days is deleted.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Usage information",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity type for which usage is reported",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+          String id,
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
+      throws IOException {
+    return dao.createOrUpdate(entity, id, usage).toResponse();
   }
 
   @POST
   @Path("/{entity}/name/{fqn}")
   @Operation(
+      operationId = "reportEntityUsageWithFQN",
       summary = "Report usage by name",
       tags = "usage",
       description =
@@ -206,13 +240,48 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
       throws IOException {
-    dao.createByName(entity, fullyQualifiedName, usage);
-    return Response.status(Response.Status.CREATED).build();
+    return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
+  }
+
+  @PUT
+  @Path("/{entity}/name/{fqn}")
+  @Operation(
+      operationId = "reportEntityUsageWithFQN",
+      summary = "Report usage by name",
+      tags = "usage",
+      description =
+          "Report usage information for an entity by name on a given date. System stores last 30 days "
+              + "of usage information. Usage information older than 30 days is deleted.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Usage information",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createorUpdateByName(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Entity type for which usage is reported",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(
+              description = "Fully qualified name of the entity that uniquely identifies an entity",
+              required = true,
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fullyQualifiedName,
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
+      throws IOException {
+    return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
   }
 
   @POST
   @Path("/compute.percentile/{entity}/{date}")
   @Operation(
+      operationId = "computeEntityUsagePercentile",
       summary = "Compute percentiles",
       tags = "usage",
       description = "Compute percentile ranking for an entity based on last 30 days of usage.",

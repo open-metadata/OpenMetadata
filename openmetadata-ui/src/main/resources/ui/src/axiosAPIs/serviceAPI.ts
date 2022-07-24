@@ -12,7 +12,9 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isNil } from 'lodash';
 import { ServiceOption } from 'Models';
+import { ConfigData } from '../interface/service.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -21,9 +23,20 @@ export const getServiceDetails: Function = (): Promise<AxiosResponse> => {
 };
 
 export const getServices: Function = (
-  serviceName: string
+  serviceName: string,
+  limit?: number
 ): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/${serviceName}`);
+  let url = `/services/${serviceName}`;
+  const searchParams = new URLSearchParams();
+
+  if (!isNil(limit)) {
+    searchParams.set('limit', `${limit}`);
+  }
+
+  const strSearchParams = searchParams.toString();
+  url += strSearchParams ? `?${strSearchParams}` : '';
+
+  return APIClient.get(url);
 };
 
 export const getServiceById: Function = (
@@ -34,12 +47,12 @@ export const getServiceById: Function = (
 };
 
 export const getServiceByFQN: Function = (
-  serviceName: string,
+  serviceCat: string,
   fqn: string,
   arrQueryFields = ''
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields(
-    `/services/${serviceName}/name/${fqn}`,
+    `/services/${serviceCat}/name/${fqn}`,
     arrQueryFields
   );
 
@@ -47,23 +60,35 @@ export const getServiceByFQN: Function = (
 };
 
 export const postService: Function = (
-  serviceName: string,
+  serviceCat: string,
   options: ServiceOption
 ): Promise<AxiosResponse> => {
-  return APIClient.post(`/services/${serviceName}`, options);
+  return APIClient.post(`/services/${serviceCat}`, options);
 };
 
 export const updateService: Function = (
-  serviceName: string,
+  serviceCat: string,
   _id: string,
   options: ServiceOption
 ): Promise<AxiosResponse> => {
-  return APIClient.put(`/services/${serviceName}`, options);
+  return APIClient.put(`/services/${serviceCat}`, options);
 };
 
 export const deleteService: Function = (
-  serviceName: string,
+  serviceCat: string,
   id: string
 ): Promise<AxiosResponse> => {
-  return APIClient.delete(`/services/${serviceName}/${id}`);
+  return APIClient.delete(`/services/${serviceCat}/${id}`);
+};
+
+export const TestConnection = (
+  data: ConfigData,
+  type: string
+): Promise<AxiosResponse> => {
+  const payload = {
+    connection: { config: data },
+    connectionType: type,
+  };
+
+  return APIClient.post(`/services/ingestionPipelines/testConnection`, payload);
 };

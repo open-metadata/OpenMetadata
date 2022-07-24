@@ -13,7 +13,7 @@ import logging
 import os
 import pathlib
 import sys
-import traceback
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
 import click
@@ -22,18 +22,13 @@ from pydantic import ValidationError
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import run_backup
 from metadata.cli.docker import run_docker
+from metadata.cli.ingest import run_ingest
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import cli_logger, set_loggers_level
 
-logger = logging.getLogger(__name__)
-
-logging.getLogger("urllib3").setLevel(logging.WARN)
-# Configure logger.
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
-)
-logging.basicConfig(format=BASE_LOGGING_FORMAT)
+logger = cli_logger()
 
 
 @click.group()
@@ -55,17 +50,11 @@ def check() -> None:
 )
 def metadata(debug: bool, log_level: str) -> None:
     if debug:
-        logging.getLogger().setLevel(logging.INFO)
-        logging.getLogger("metadata").setLevel(logging.DEBUG)
-        logging.getLogger("ORM Profiler Workflow").setLevel(logging.DEBUG)
-        logging.getLogger("Profiler").setLevel(logging.DEBUG)
+        set_loggers_level(logging.DEBUG)
     elif log_level:
-        logging.getLogger().setLevel(log_level)
+        set_loggers_level(log_level)
     else:
-        logging.getLogger().setLevel(logging.WARNING)
-        logging.getLogger("metadata").setLevel(logging.INFO)
-        logging.getLogger("ORM Profiler Workflow").setLevel(logging.INFO)
-        logging.getLogger("Profiler").setLevel(logging.INFO)
+        set_loggers_level(logging.INFO)
 
 
 @metadata.command()
@@ -77,22 +66,11 @@ def metadata(debug: bool, log_level: str) -> None:
     required=True,
 )
 def ingest(config: str) -> None:
-    """Main command for ingesting metadata into Metadata"""
-    config_file = pathlib.Path(config)
-    workflow_config = load_config_file(config_file)
-
-    try:
-        logger.debug(f"Using config: {workflow_config}")
-        workflow = Workflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
-        logger.debug(traceback.print_exc())
-        sys.exit(1)
-
-    workflow.execute()
-    workflow.stop()
-    ret = workflow.print_status()
-    sys.exit(ret)
+    """
+    Main command for ingesting metadata into Metadata.
+    Logging is controlled via the JSON config
+    """
+    run_ingest(config_path=config)
 
 
 @metadata.command()
@@ -122,49 +100,31 @@ def profile(config: str) -> None:
 
 
 @metadata.command()
-@click.option(
-    "-c",
-    "--config",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Workflow config",
-    required=True,
-)
-def report(config: str) -> None:
-    """Report command to generate static pages with metadata"""
-    config_file = pathlib.Path(config)
-    workflow_config = load_config_file(config_file)
-    file_sink = {"type": "file", "config": {"filename": "/tmp/datasets.json"}}
+@click.option("-h", "--host", help="Webserver Host", type=str, default="0.0.0.0")
+@click.option("-p", "--port", help="Webserver Port", type=int, default=8000)
+def webhook(host: str, port: int) -> None:
+    """Simple Webserver to test webhook metadata events"""
 
-    try:
-        logger.info(f"Using config: {workflow_config}")
-        if workflow_config.get("sink"):
-            del workflow_config["sink"]
-        workflow_config["sink"] = file_sink
-        ### add json generation as the sink
-        workflow = Workflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
-        sys.exit(1)
+    class WebhookHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
 
-    workflow.execute()
-    workflow.stop()
-    ret = workflow.print_status()
-    os.environ.setdefault(
-        "DJANGO_SETTINGS_MODULE", "metadata_server.openmetadata.settings"
-    )
-    try:
-        from django.core.management import call_command
-        from django.core.wsgi import get_wsgi_application
+            message = "Hello, World! Here is a GET response"
+            self.wfile.write(bytes(message, "utf8"))
 
-        application = get_wsgi_application()
-        call_command("runserver", "localhost:8000")
-    except ImportError as exc:
-        logger.error(exc)
-        raise ImportError(
-            "Couldn't import Django. Are you sure it's installed and "
-            "available on your PYTHONPATH environment variable? Did you "
-            "forget to activate a virtual environment?"
-        ) from exc
+        def do_POST(self):
+            content_len = int(self.headers.get("Content-Length"))
+            post_body = self.rfile.read(content_len)
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            logger.info(post_body)
+
+    logger.info(f"Starting server at {host}:{port}")
+    with HTTPServer((host, port), WebhookHandler) as server:
+        server.serve_forever()
 
 
 @metadata.command()
@@ -198,15 +158,36 @@ def report(config: str) -> None:
     required=False,
 )
 @click.option("--reset-db", help="Reset OpenMetadata Data", is_flag=True)
+@click.option(
+    "--ingest-sample-data", help="Enable the sample metadata ingestion", is_flag=True
+)
 def docker(
-    start, stop, pause, resume, clean, file_path, env_file_path, reset_db
+    start,
+    stop,
+    pause,
+    resume,
+    clean,
+    file_path,
+    env_file_path,
+    reset_db,
+    ingest_sample_data,
 ) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
-    run_docker(start, stop, pause, resume, clean, file_path, env_file_path, reset_db)
+    run_docker(
+        start,
+        stop,
+        pause,
+        resume,
+        clean,
+        file_path,
+        env_file_path,
+        reset_db,
+        ingest_sample_data,
+    )
 
 
 @metadata.command()

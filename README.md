@@ -16,7 +16,7 @@
 - [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
-- [Roadmap](docs/roadmap.md)
+- [Roadmap](roadmap.md)
 - [Documentation and support](#documentation-and-support)
 - [Contributors](#contributors)
 - [License](#license)
@@ -50,7 +50,7 @@ Take a look and play with sample data at [http://sandbox.open-metadata.org](http
 
 
 ## Install and run OpenMetadata
-Get up and running in few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/install/run-openmetadata).
+Get up and running in few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/deploy/local-deployment).
 
 ## Documentation and Support
 

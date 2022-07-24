@@ -17,6 +17,7 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
+import { FormattedTableData } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import SearchedData from './SearchedData';
@@ -27,9 +28,18 @@ const mockData = [
     name: 'name1',
     description: 'description1',
     fullyQualifiedName: 'fullyQualifiedName1',
-    owner: 'owner1',
-    tags: ['tags1', 'tags2', 'tags3'],
-    tier: 'tier1',
+    owner: {
+      deleted: false,
+      displayName: 'Customer_Support',
+      name: 'Customer_Support',
+      description: 'This is Customer_Support description.',
+      id: '32a6706e-8862-48e5-b3f3-ff280045ae32',
+      href: 'http://localhost:8585/api/v1/teams/32a6706e-8862-48e5-b3f3-ff280045ae32',
+      type: 'team',
+      fullyQualifiedName: 'Customer_Support',
+    },
+    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+    tier: { tagFQN: 'tier1' },
     index: 'index1',
   },
   {
@@ -38,8 +48,8 @@ const mockData = [
     description: 'description2',
     fullyQualifiedName: 'fullyQualifiedName2',
     owner: 'owner2',
-    tags: ['tags1', 'tags2', 'tags3'],
-    tier: 'tier2',
+    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+    tier: { tagFQN: 'tier2' },
     index: 'index1',
   },
   {
@@ -48,11 +58,11 @@ const mockData = [
     description: 'description3',
     fullyQualifiedName: 'fullyQualifiedName3',
     owner: 'owner3',
-    tags: ['tags1', 'tags2', 'tags3'],
-    tier: 'tier3',
+    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+    tier: { tagFQN: 'tier3' },
     index: 'index1',
   },
-];
+] as FormattedTableData[];
 
 const mockPaginate = jest.fn();
 
@@ -62,7 +72,7 @@ jest.mock('../common/table-data-card/TableDataCard', () => {
     .mockReturnValue(<p data-testid="table-data-card">TableDataCard</p>);
 });
 
-jest.mock('../Pagination', () => {
+jest.mock('../common/next-previous/NextPrevious', () => {
   return jest.fn().mockReturnValue(<p>Pagination</p>);
 });
 
@@ -78,6 +88,7 @@ describe('Test SearchedData Component', () => {
   it('Component should render', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -96,6 +107,7 @@ describe('Test SearchedData Component', () => {
   it('Should display table card according to data provided in props', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -114,6 +126,7 @@ describe('Test SearchedData Component', () => {
   it('If children is provided it should display', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -131,6 +144,7 @@ describe('Test SearchedData Component', () => {
   it('Pagination Should be there if data is more than 10 count', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -148,6 +162,7 @@ describe('Test SearchedData Component', () => {
   it('Onboarding component should display if there is showOnboardingTemplate is true', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         showOnboardingTemplate
         currentPage={0}
         data={[]}
@@ -165,6 +180,7 @@ describe('Test SearchedData Component', () => {
   it('ErrorPlaceHolderES component should display if there is no data', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={[]}
         paginate={mockPaginate}

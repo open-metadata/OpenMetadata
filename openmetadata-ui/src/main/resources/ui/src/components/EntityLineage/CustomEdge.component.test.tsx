@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  findAllByTestId,
+  findByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
-import { ArrowHeadType, EdgeProps, Position } from 'react-flow-renderer';
+import { EdgeProps, Position } from 'react-flow-renderer';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomEdge } from './CustomEdge.component';
 
@@ -30,8 +35,7 @@ const mockCustomEdgeProp = {
   sourcePosition: Position.Left,
   targetPosition: Position.Right,
   style: {},
-  arrowHeadType: ArrowHeadType.ArrowClosed,
-  markerEndId: '',
+  markerEnd: '',
   data: {
     source: 'node1',
     target: 'node2',
@@ -40,36 +44,34 @@ const mockCustomEdgeProp = {
       id: 'node1',
     },
   },
+  selected: true,
 } as EdgeProps;
 
 describe('Test CustomEdge Component', () => {
-  it('Check if CustomeEdge has all child elements', async () => {
+  it('Check if CustomEdge has all child elements', async () => {
     const { container } = render(<CustomEdge {...mockCustomEdgeProp} />, {
       wrapper: MemoryRouter,
     });
 
     const deleteButton = await findByTestId(container, 'delete-button');
-    const edgePathElement = await findByTestId(
+    const edgePathElement = await findAllByTestId(
       container,
       'react-flow-edge-path'
     );
 
     expect(deleteButton).toBeInTheDocument();
-    expect(edgePathElement).toBeInTheDocument();
+    expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 
-  it('Check if CustomeEdge has selectedNode as empty object', async () => {
+  it('Check if CustomEdge has selected as false', async () => {
     const { container } = render(
-      <CustomEdge
-        {...mockCustomEdgeProp}
-        data={{ ...mockCustomEdgeProp.data, selectedNode: {} }}
-      />,
+      <CustomEdge {...mockCustomEdgeProp} selected={false} />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const edgePathElement = await findByTestId(
+    const edgePathElement = await findAllByTestId(
       container,
       'react-flow-edge-path'
     );
@@ -77,6 +79,6 @@ describe('Test CustomEdge Component', () => {
     const deleteButton = queryByTestId(container, 'delete-button');
 
     expect(deleteButton).not.toBeInTheDocument();
-    expect(edgePathElement).toBeInTheDocument();
+    expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 });

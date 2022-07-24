@@ -20,8 +20,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -41,7 +39,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -50,7 +47,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/metrics")
@@ -77,10 +73,10 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Metrics.class);
 
   @GET
   @Operation(
+      operationId = "listMetrics",
       summary = "List metrics",
       tags = "metrics",
       description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
@@ -105,7 +101,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
       @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter();
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -113,6 +109,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getMetricByID",
       summary = "Get a metric",
       tags = "metrics",
       description = "Get a metric by `id`.",
@@ -138,12 +135,13 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @POST
   @Operation(
+      operationId = "createMetric",
       summary = "Create a metric",
       tags = "metrics",
       description = "Create a new metric.",
@@ -155,14 +153,14 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException, ParseException {
+      throws IOException {
     addToMetrics(securityContext, metrics);
-    dao.create(uriInfo, metrics);
-    return Response.created(metrics.getHref()).entity(metrics).build();
+    return create(uriInfo, securityContext, metrics, true);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateMetric",
       summary = "Create or update a metric",
       tags = "metrics",
       description = "Create a new metric, if it does not exist or update an existing metric.",
@@ -174,11 +172,9 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
     addToMetrics(securityContext, metrics);
-    PutResponse<Metrics> response = dao.createOrUpdate(uriInfo, metrics);
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, metrics, true);
   }
 
   private void addToMetrics(SecurityContext securityContext, Metrics metrics) {

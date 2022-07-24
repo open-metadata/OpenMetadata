@@ -16,50 +16,39 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
-import itertools
-import uuid
-from typing import Iterable, List, Optional
+from copy import deepcopy
+from typing import Iterable, List
 
 import click
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
-from metadata.config.common import (
-    ConfigModel,
-    DynamicTypedConfig,
-    WorkflowExecutionError,
-)
-from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
+from metadata.config.common import WorkflowExecutionError
+from metadata.config.workflow import get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.api.common import WorkflowContext
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import (
-    SQLConnectionConfig,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
-from metadata.orm_profiler.utils import logger
-from metadata.utils.engines import create_and_bind_session, get_engine
+from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.utils import fqn
+from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.filters import filter_by_fqn
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
-
-
-class ProfilerWorkflowConfig(ConfigModel):
-    """
-    Configurations we expect to find in the
-    Workflow JSON
-    """
-
-    run_id: str = Field(default_factory=lambda: str(uuid.uuid1()))
-    source: DynamicTypedConfig
-    metadata_server: DynamicTypedConfig
-    processor: Optional[DynamicTypedConfig] = None
-    sink: Optional[DynamicTypedConfig] = None
+logger = profiler_logger()
 
 
 class ProfilerWorkflow:
@@ -67,52 +56,31 @@ class ProfilerWorkflow:
     Configure and run the ORM profiler
     """
 
-    config: ProfilerWorkflowConfig
-    ctx: WorkflowContext
-    source: Source
+    config: OpenMetadataWorkflowConfig
     processor: Processor
     sink: Sink
     metadata: OpenMetadata
 
-    def __init__(self, config: ProfilerWorkflowConfig):
+    def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-        self.ctx = WorkflowContext(workflow_id=self.config.run_id)
-
-        self.metadata_config = MetadataServerConfig.parse_obj(
-            self.config.metadata_server.dict().get("config", {})
+        self.metadata_config: OpenMetadataConnection = (
+            self.config.workflowConfig.openMetadataServerConfig
         )
 
-        # We will use the existing sources to build the Engine
-        self.source = get_ingestion_source(
-            source_type=self.config.source.type,
-            context=self.ctx,
-            source_config=self.config.source,
-            metadata_config=self.metadata_config,
-        )
-
-        if not isinstance(self.source, SQLSource):
-            raise ValueError(
-                f"Invalid source type for {self.source}. We only support SQLSource in the Profiler"
-            )
+        # Prepare the connection to the source service
+        # We don't need the whole Source class, as it is the OM Server
 
         # Init and type the source config
-        self.source_config: SQLConnectionConfig = self.source.config
+        self.source_config: DatabaseServiceProfilerPipeline = (
+            self.config.source.sourceConfig.config
+        )
         self.source_status = SQLSourceStatus()
 
-        self.processor = get_processor(
-            processor_type=self.config.processor.type,  # orm-profiler
-            context=self.ctx,
-            processor_config=self.config.processor or ProfilerProcessorConfig(),
-            metadata_config=self.metadata_config,
-            _from="orm_profiler",
-            # Pass the session as kwargs for the profiler
-            session=create_and_bind_session(get_engine(self.source_config)),
-        )
+        self.processor = None
 
         if self.config.sink:
             self.sink = get_sink(
                 sink_type=self.config.sink.type,
-                context=self.ctx,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
                 _from="orm_profiler",
@@ -121,17 +89,24 @@ class ProfilerWorkflow:
         # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
 
+        if not self._validate_service_name():
+            raise ValueError(
+                f"Service name `{self.config.source.serviceName}` does not exist. "
+                "Make sure you have run the ingestion for the service specified in the profiler workflow. "
+                "If so, make sure the profiler service name matches the service name specified during ingestion."
+            )
+
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
         """
         Parse a JSON (dict) and create the workflow
         """
         try:
-            config = ProfilerWorkflowConfig.parse_obj(config_dict)
+            config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
             return cls(config)
         except ValidationError as err:
             logger.error("Error trying to parse the Profiler Workflow configuration")
-            raise ValidationError(f"Error parsing workflow - {err}")
+            raise err
 
     def filter_entities(self, tables: List[Table]) -> Iterable[Table]:
         """
@@ -142,28 +117,48 @@ class ProfilerWorkflow:
         """
         for table in tables:
 
-            # Validate schema
-            if not self.source_config.schema_filter_pattern.included(
-                table.database.name
+            if filter_by_fqn(
+                fqn_filter_pattern=self.source_config.fqnFilterPattern,
+                fqn=table.fullyQualifiedName.__root__,
             ):
                 self.source_status.filter(
-                    table.database.name, "Schema pattern not allowed"
+                    table.fullyQualifiedName.__root__, "Schema pattern not allowed"
                 )
                 continue
 
-            # Validate database
-            if not self.source_config.table_filter_pattern.included(
-                str(table.name.__root__)
-            ):
-                self.source_status.filter(
-                    table.fullyQualifiedName, "Table name pattern not allowed"
-                )
-                continue
-
-            self.source_status.scanned(table.fullyQualifiedName)
+            self.source_status.scanned(table.fullyQualifiedName.__root__)
             yield table
 
-    def list_entities(self) -> Iterable[Table]:
+    def create_processor(self, service_connection_config):
+        self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
+            service_connection_config
+        )
+        self.processor = get_processor(
+            processor_type=self.config.processor.type,  # orm-profiler
+            processor_config=self.config.processor or ProfilerProcessorConfig(),
+            metadata_config=self.metadata_config,
+            _from="orm_profiler",
+            # Pass the processor_interface as kwargs for the profiler
+            processor_interface=self.processor_interface,
+        )
+
+    def create_engine_for_session(self, service_connection_config):
+        """Create SQLAlchemy engine to use with a session object"""
+        engine = get_connection(service_connection_config)
+        test_connection(engine)
+
+        return engine
+
+    def get_database_entities(self):
+        """List all databases in service"""
+
+        for database in self.metadata.list_all_entities(
+            entity=Database,
+            params={"service": self.config.source.serviceName},
+        ):
+            yield database
+
+    def get_table_entities(self, database):
         """
         List and filter OpenMetadata tables based on the
         source configuration.
@@ -178,45 +173,65 @@ class ProfilerWorkflow:
 
         Same with `schema_filter_pattern`.
         """
-
-        # First, get all the databases for the service:
-        all_dbs = self.metadata.list_entities(
-            entity=Database,
-            params={"service": self.source_config.service_name},
+        all_tables = self.metadata.list_all_entities(
+            entity=Table,
+            fields=[
+                "tableProfile",
+                "profileSample",
+                "profileQuery",
+                "tests",
+            ],
+            params={
+                "service": self.config.source.serviceName,
+                "database": fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.config.source.serviceName,
+                    database_name=database.name.__root__,
+                ),
+            },
         )
 
-        # Then list all tables from each db.
-        # This returns a nested structure [[db1 tables], [db2 tables]...]
-        all_tables = [
-            self.metadata.list_entities(
-                entity=Table,
-                fields=[
-                    "tableProfile",
-                    "tests",
-                ],  # We will need it for window metrics to check past data
-                params={
-                    "database": f"{self.source_config.service_name}.{database.name.__root__}"
-                },
-            ).entities
-            for database in all_dbs.entities
-        ]
-
-        # Flatten the structure into a List[Table]
-        flat_tables = list(itertools.chain.from_iterable(all_tables))
-
-        yield from self.filter_entities(flat_tables)
+        yield from self.filter_entities(all_tables)
 
     def execute(self):
         """
         Run the profiling and tests
         """
-        for entity in self.list_entities():
-            profile_and_tests: ProfilerResponse = self.processor.process(entity)
+        copy_service_connection_config = deepcopy(
+            self.config.source.serviceConnection.__root__.config
+        )
+        for database in self.get_database_entities():
+            if hasattr(
+                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
+            ):
+                if hasattr(
+                    self.config.source.serviceConnection.__root__.config, "database"
+                ):
+                    copy_service_connection_config.database = database.name.__root__
+                if hasattr(
+                    self.config.source.serviceConnection.__root__.config, "catalog"
+                ):
+                    copy_service_connection_config.catalog = database.name.__root__
 
-            if hasattr(self, "sink"):
-                self.sink.write_record(profile_and_tests)
+            self.create_processor(copy_service_connection_config)
+
+            for entity in self.get_table_entities(database=database):
+                profile_and_tests: ProfilerResponse = self.processor.process(
+                    record=entity,
+                    generate_sample_data=self.source_config.generateSampleData,
+                )
+
+                if hasattr(self, "sink"):
+                    self.sink.write_record(profile_and_tests)
+
+            self.processor_interface.session.close()
 
     def print_status(self) -> int:
+        """
+        Runs click echo to print the
+        workflow results
+        """
         click.echo()
         click.secho("Source Status:", bold=True)
         click.echo(self.source_status.as_string())
@@ -234,16 +249,16 @@ class ProfilerWorkflow:
         ):
             click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-        elif (
+        if (
             self.source_status.warnings
             or self.processor.get_status().failures
             or (hasattr(self, "sink") and self.sink.get_status().warnings)
         ):
             click.secho("Workflow finished with warnings", fg="yellow", bold=True)
             return 0
-        else:
-            click.secho("Workflow finished successfully", fg="green", bold=True)
-            return 0
+
+        click.secho("Workflow finished successfully", fg="green", bold=True)
+        return 0
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -274,8 +289,15 @@ class ProfilerWorkflow:
                     "Sink reported warnings", self.sink.get_status()
                 )
 
+    def _validate_service_name(self):
+        """Validate service name exists in OpenMetadata"""
+        return self.metadata.get_by_name(
+            entity=DatabaseService, fqn=self.config.source.serviceName
+        )
+
     def stop(self):
         """
         Close all connections
         """
         self.metadata.close()
+        self.processor.close()

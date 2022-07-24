@@ -22,10 +22,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
-import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -51,14 +49,14 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/services/dashboardServices")
@@ -66,11 +64,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboardServices")
-public class DashboardServiceResource extends EntityResource<DashboardService, DashboardServiceRepository> {
+public class DashboardServiceResource
+    extends ServiceEntityResource<DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(DashboardService.class);
 
   @Override
   public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
@@ -79,8 +76,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
     return service;
   }
 
-  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DashboardService.class, new DashboardServiceRepository(dao), authorizer);
+  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(DashboardService.class, new DashboardServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -94,8 +91,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
 
   @GET
   @Operation(
+      operationId = "listDashboardsService",
       summary = "List dashboard services",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a list of dashboard services.",
       responses = {
         @ApiResponse(
@@ -106,6 +104,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       })
   public ResultList<DashboardService> list(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @QueryParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -129,17 +128,19 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+      throws IOException {
+    ListFilter filter = new ListFilter(include);
+    ResultList<DashboardService> dashboardServices =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
   }
 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDashboardServiceByID",
       summary = "Get a dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a dashboard service by `id`.",
       responses = {
         @ApiResponse(
@@ -164,15 +165,17 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+      throws IOException {
+    DashboardService dashboardService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, dashboardService);
   }
 
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getDashboardServiceByFQN",
       summary = "Get dashboard service by name",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a dashboard service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -197,15 +200,17 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+      throws IOException {
+    DashboardService dashboardService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, dashboardService);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDashboardServiceVersion",
       summary = "List dashboard service versions",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a list of all the versions of a dashboard service identified by `id`",
       responses = {
         @ApiResponse(
@@ -217,15 +222,30 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
-    return dao.listVersions(id);
+      throws IOException {
+    EntityHistory entityHistory = dao.listVersions(id);
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    DashboardService dashboardService = JsonUtils.readValue((String) json, DashboardService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, dashboardService));
+                  } catch (IOException e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDashboardServiceVersion",
       summary = "Get a version of the dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a version of the dashboard service by given `id`",
       responses = {
         @ApiResponse(
@@ -246,64 +266,63 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
-    return dao.getVersion(id, version);
+      throws IOException {
+    DashboardService dashboardService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, dashboardService);
   }
 
   @POST
   @Operation(
+      operationId = "createDashboardService",
       summary = "Create a dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Create a new dashboard service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDashboardService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DashboardService service = getService(create, securityContext);
-    service = addHref(uriInfo, dao.create(uriInfo, service));
-    return Response.created(service.getHref()).entity(service).build();
+      throws IOException {
+    DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    return response;
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDashboardService",
       summary = "Update a Dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Update an existing dashboard service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDashboardService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
-      throws IOException, ParseException {
-    DashboardService service = getService(update, securityContext);
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(service));
-    PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    return response;
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDashboardService",
       summary = "Delete a Dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description =
           "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -317,26 +336,29 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<DashboardService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private DashboardService getService(CreateDashboardService create, SecurityContext securityContext) {
-    return new DashboardService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private DashboardService getService(CreateDashboardService create, String user) {
+    return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
-        .withDashboardUrl(create.getDashboardUrl())
-        .withUsername(create.getUsername())
-        .withPassword(create.getPassword())
-        .withOwner(create.getOwner())
-        .withIngestionSchedule(create.getIngestionSchedule())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withConnection(create.getConnection());
+  }
+
+  @Override
+  protected DashboardService nullifyConnection(DashboardService service) {
+    return service.withConnection(null);
+  }
+
+  @Override
+  protected String extractServiceType(DashboardService service) {
+    return service.getServiceType().value();
   }
 }

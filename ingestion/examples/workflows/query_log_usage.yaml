@@ -1,0 +1,31 @@
+source:
+  type: query-log-usage
+  serviceName: local_mysql
+  serviceConnection:
+    config:
+      type: Mysql
+      username: openmetadata_user
+      password: openmetadata_password
+      hostPort: localhost:3306
+      connectionOptions: {}
+      connectionArguments: {}
+  sourceConfig:
+    config:
+      queryLogDuration: '1'
+      queryLogFilePath: <path to query log file>
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/query_log_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/query_log_usage
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

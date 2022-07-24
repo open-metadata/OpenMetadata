@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
@@ -36,14 +38,14 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.entity.data.Location;
-import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResource.LocationList;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -59,12 +61,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Override
-  public CreateLocation createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateLocation()
-        .withName(name)
-        .withService(getContainer())
-        .withDescription(description)
-        .withOwner(owner);
+  public CreateLocation createRequest(String name) {
+    return new CreateLocation().withName(name).withPath(name).withService(getContainer());
   }
 
   @Override
@@ -73,14 +71,14 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Override
+  public EntityReference getContainer(Location entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Location location, CreateLocation createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(location),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
-
+    assertEquals(createRequest.getPath(), location.getPath());
     // Validate service
     EntityReference expectedService = createRequest.getService();
     if (expectedService != null) {
@@ -94,12 +92,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   @Override
   public void compareEntities(Location expected, Location patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
-    // Entity specific validation
     assertEquals(expected.getDisplayName(), patched.getDisplayName());
     assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
     assertEquals(expected.getLocationType(), patched.getLocationType());
@@ -110,13 +102,28 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Override
-  public EntityInterface<Location> getEntityInterface(Location entity) {
-    return new LocationEntityInterface(entity);
-  }
-
-  @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  private List<EntityReference> getAssociatedEntity(Location location) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("locations/association/%s", location.getId()));
+    return (List<EntityReference>) TestUtils.get(target, List.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void get_entity_from_location(TestInfo test) throws IOException {
+    Location location = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String actualValue = getAssociatedEntity(location).toString();
+    LinkedHashMap<Object, Object> expected = new LinkedHashMap<>();
+    expected.put("id", location.getService().getId());
+    expected.put("type", location.getService().getType());
+    expected.put("name", location.getService().getName());
+    expected.put("fullyQualifiedName", location.getService().getFullyQualifiedName());
+    expected.put("deleted", location.getService().getDeleted());
+    List<Map<Object, Object>> expectedValue = new ArrayList<>();
+    expectedValue.add(expected);
+    assertEquals(expectedValue.toString(), actualValue);
   }
 
   @Test
@@ -142,22 +149,12 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     LocationList allLocations =
         listPrefixes(
             null,
-            AWS_STORAGE_SERVICE_REFERENCE.getName() + "." + locationName,
+            FullyQualifiedName.add(AWS_STORAGE_SERVICE_REFERENCE.getFullyQualifiedName(), locationName),
             1000000,
             null,
             null,
             ADMIN_AUTH_HEADERS);
     assertEquals(5, allLocations.getData().size(), "Wrong number of prefix locations");
-  }
-
-  @Test
-  void post_validLocations_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateLocation create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -181,14 +178,10 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     // Create location for each service and test APIs
     for (EntityReference service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
-
       // List locations by filtering on service name and ensure right locations are returned
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("service", service.getName());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", service.getName());
+
       ResultList<Location> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Location location : list.getData()) {
         assertEquals(service.getName(), location.getService().getName());
@@ -212,9 +205,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     return TestUtils.put(getResource("locations"), create, Location.class, status, authHeaders);
   }
 
-  /** Validate returned fields GET .../locations/{id}?fields="..." or GET .../locations/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
+  public Location validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
     String fields = "";
     location =
         byName
@@ -229,7 +221,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
             ? getEntityByName(location.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(location.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(location.getService(), location.getServiceType());
-    assertListNotNull(location.getOwner(), location.getFollowers(), location.getTags());
+    // Checks for other owner, tags, and followers is done in the base class
+    return location;
   }
 
   public static LocationList listPrefixes(

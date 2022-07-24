@@ -1,0 +1,24 @@
+source:
+  type: redshift
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Redshift
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      username: username
+      password: strong_password
+      database: dev
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

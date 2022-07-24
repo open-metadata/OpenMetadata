@@ -11,120 +11,133 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { debounce, isEqual, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { TableDetail } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import appState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
-import { getUserTeams } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
-import { Button } from '../buttons/Button/Button';
-import CardListItem from '../card-list/CardListItem/CardWithListItems';
-import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
+import jsonData from '../../jsons/en';
+import { getOwnerList } from '../../utils/ManageUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  searchFormattedUsersAndTeams,
+  suggestFormattedUsersAndTeams,
+} from '../../utils/UserDataUtils';
+import CardListItem from '../cardlist/CardListItem/CardWithListItem';
+import { CardWithListItems } from '../cardlist/CardListItem/CardWithListItem.interface';
+import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import DropDownList from '../dropdown/DropDownList';
+import OwnerWidget from '../common/OwnerWidget/OwnerWidget';
 import Loader from '../Loader/Loader';
+import { ManageProps, Status } from './ManageTab.interface';
 
-type Props = {
-  currentTier?: string;
-  currentUser?: string;
-  hideTier?: boolean;
-  onSave: (
-    owner: TableDetail['owner'],
-    tier: TableDetail['tier']
-  ) => Promise<void>;
-  hasEditAccess: boolean;
-  allowTeamOwner?: boolean;
-};
-
-const ManageTab: FunctionComponent<Props> = ({
+const ManageTab: FunctionComponent<ManageProps> = ({
   currentTier = '',
-  currentUser = '',
+  currentUser,
   hideTier = false,
+  hideOwner = false,
   onSave,
   hasEditAccess,
   allowTeamOwner = true,
-}: Props) => {
-  const { userPermissions } = useAuth();
+  isJoinable,
+  allowDelete,
+  entityName,
+  entityType,
+  entityId,
+  allowSoftDelete,
+  isRecursiveDelete,
+  deletEntityMessage,
+  handleIsJoinable,
+  afterDeleteAction,
+  manageSectionType,
+}: ManageProps) => {
+  const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const getOwnerList = () => {
-    const user = !isEmpty(appState.userDetails)
-      ? appState.userDetails
-      : appState.users.length
-      ? appState.users[0]
-      : undefined;
-    const teams = getUserTeams().map((team) => ({
-      name: team?.displayName || team.name || '',
-      value: team.id,
-      group: 'Teams',
-      type: 'team',
-    }));
 
-    if (user?.isAdmin) {
-      const users = appState.users
-        .map((user) => ({
-          name: user.displayName || user.name || '',
-          value: user.id,
-          group: 'Users',
-          type: 'user',
-        }))
-        .filter((u) => u.value != user.id);
-      const teams = appState.userTeams.map((team) => ({
-        name: team.displayName || team.name || '',
-        value: team.id,
-        group: 'Teams',
-        type: 'team',
-      }));
-
-      return [
-        {
-          name: user.displayName || user.name || '',
-          value: user.id,
-          group: 'Users',
-          type: 'user',
-        },
-        ...users,
-        ...teams,
-      ];
-    } else {
-      return user
-        ? [
-            {
-              name: user.displayName || user.name,
-              value: user.id,
-              group: 'Users',
-              type: 'user',
-            },
-            ...teams,
-          ]
-        : teams;
-    }
-  };
-  const [loading, setLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
-    'initial'
-  );
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
+  const [statusOwner, setStatusOwner] = useState<Status>('initial');
+  const [statusTier, setStatusTier] = useState<Status>('initial');
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
+  const [teamJoinable, setTeamJoinable] = useState(isJoinable);
 
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>('');
 
-  const getOwnerById = (): string => {
-    return listOwners.find((item) => item.value === owner)?.name || '';
+  const setInitialOwnerLoadingState = () => {
+    setStatusOwner('initial');
   };
 
-  const getOwnerGroup = () => {
-    return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
+  const setInitialTierLoadingState = () => {
+    setStatusTier('initial');
+  };
+
+  const prepareOwner = (updatedOwner?: EntityReference) => {
+    return !isEqual(updatedOwner, currentUser) ? updatedOwner : undefined;
+  };
+
+  const prepareTier = (updatedTier: string) => {
+    return updatedTier !== currentTier ? updatedTier : undefined;
+  };
+
+  const handleOwnerSave = (
+    updatedOwner: EntityReference,
+    updatedTier: string
+  ) => {
+    setStatusOwner('waiting');
+    const newOwner = prepareOwner(updatedOwner);
+    if (hideTier) {
+      if (newOwner || !isUndefined(teamJoinable)) {
+        onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
+          setInitialOwnerLoadingState();
+        });
+      } else {
+        setInitialOwnerLoadingState();
+      }
+    } else {
+      const newTier = prepareTier(updatedTier);
+      onSave?.(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+        setInitialOwnerLoadingState();
+      });
+    }
+  };
+
+  const handleTierSave = (updatedTier: string) => {
+    setStatusTier('waiting');
+    const newOwner = prepareOwner(currentUser);
+    if (hideTier) {
+      if (newOwner || !isUndefined(teamJoinable)) {
+        onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
+          setInitialTierLoadingState();
+        });
+      } else {
+        setInitialTierLoadingState();
+      }
+    } else {
+      const newTier = prepareTier(updatedTier);
+      onSave?.(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+        setInitialTierLoadingState();
+      });
+    }
   };
 
   const handleOwnerSelection = (
@@ -134,7 +147,9 @@ const ManageTab: FunctionComponent<Props> = ({
     if (value) {
       const newOwner = listOwners.find((item) => item.value === value);
       if (newOwner) {
-        setOwner(newOwner.value);
+        const { value: id, type } = newOwner;
+        setOwner({ id, type });
+        handleOwnerSave({ id, type }, activeTier);
       }
     }
     setListVisible(false);
@@ -144,77 +159,174 @@ const ManageTab: FunctionComponent<Props> = ({
     setActiveTier(cardId);
   };
 
-  const setInitialLoadingState = () => {
-    setStatus('initial');
-    setLoading(false);
+  const getOwnerSearch = useCallback(
+    (searchQuery = WILD_CARD_CHAR, from = 1) => {
+      setIsUserLoading(true);
+      searchFormattedUsersAndTeams(searchQuery, from)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const getOwnerSuggestion = useCallback(
+    (qSearchText = '') => {
+      setIsUserLoading(true);
+      setListOwners([]);
+      suggestFormattedUsersAndTeams(qSearchText)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams, true));
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const debouncedOnChange = useCallback(
+    (text: string): void => {
+      if (text) {
+        getOwnerSuggestion(text);
+      } else {
+        getOwnerSearch();
+      }
+    },
+    [getOwnerSuggestion, getOwnerSearch]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
+    debouncedOnChange,
+  ]);
+
+  const handleOwnerSearch = (text: string) => {
+    setSearchText(text);
+    debounceOnSearch(text);
   };
 
-  const handleSave = () => {
-    setLoading(true);
-    setStatus('waiting');
-    // Save API call goes here...
-    const newOwner: TableDetail['owner'] =
-      owner !== currentUser
-        ? {
-            id: owner,
-            type: listOwners.find((item) => item.value === owner)?.type as
-              | 'user'
-              | 'team',
-          }
-        : undefined;
+  const getDeleteEntityWidget = () => {
+    return allowDelete && entityId && entityName && entityType ? (
+      <div className="tw-mt-1" data-testid="danger-zone">
+        <DeleteWidget
+          afterDeleteAction={afterDeleteAction}
+          allowSoftDelete={allowSoftDelete}
+          deletEntityMessage={deletEntityMessage}
+          entityId={entityId}
+          entityName={entityName}
+          entityType={entityType}
+          hasPermission={isAdminUser || isAuthDisabled}
+          isAdminUser={isAdminUser}
+          isRecursiveDelete={isRecursiveDelete}
+        />
+      </div>
+    ) : null;
+  };
+
+  const getTierCards = () => {
+    return (
+      <div className="tw-flex tw-flex-col tw-mb-7" data-testid="cards">
+        {tierData.map((card, i) => (
+          <NonAdminAction
+            html={
+              <Fragment>
+                <p>You need to be owner to perform this action</p>
+                <p>Claim ownership from above </p>
+              </Fragment>
+            }
+            isOwner={hasEditAccess || Boolean(owner && !currentUser)}
+            key={i}
+            permission={Operation.EditTags}
+            position="left">
+            <CardListItem
+              card={card}
+              className={classNames(
+                'tw-mb-0 tw-shadow',
+                {
+                  'tw-rounded-t-md': i === 0,
+                },
+                {
+                  'tw-rounded-b-md ': i === tierData.length - 1,
+                }
+              )}
+              isActive={activeTier === card.id}
+              isSelected={card.id === currentTier}
+              tierStatus={statusTier}
+              onCardSelect={handleCardSelection}
+              onSave={handleTierSave}
+            />
+          </NonAdminAction>
+        ))}
+      </div>
+    );
+  };
+
+  const getTierWidget = () => {
     if (hideTier) {
-      if (newOwner) {
-        onSave(newOwner, '').catch(() => {
-          setInitialLoadingState();
-        });
-      } else {
-        setInitialLoadingState();
-      }
+      return null;
     } else {
-      const newTier = activeTier !== currentTier ? activeTier : undefined;
-      onSave(newOwner, newTier).catch(() => {
-        setInitialLoadingState();
-      });
+      return isLoadingTierData ? <Loader /> : getTierCards();
     }
   };
 
-  const handleCancel = () => {
-    setActiveTier(currentTier);
-    setOwner(currentUser);
+  const isJoinableActionAllowed = () => {
+    return (
+      isAdminUser ||
+      isAuthDisabled ||
+      userPermissions[Operation.TeamEditUsers] ||
+      !hasEditAccess
+    );
   };
 
   const getTierData = () => {
     setIsLoadingTierData(true);
-    getCategory('Tier').then((res: AxiosResponse) => {
-      if (res.data) {
-        const tierData = res.data.children.map(
-          (tier: { name: string; description: string }) => ({
-            id: `Tier.${tier.name}`,
-            title: tier.name,
-            description: tier.description.substring(
-              0,
-              tier.description.indexOf('\n\n')
-            ),
-            data: tier.description.substring(
-              tier.description.indexOf('\n\n') + 1
-            ),
-          })
+    getCategory('Tier')
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const tierData = res.data.children.map(
+            (tier: { name: string; description: string }) => ({
+              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+              title: tier.name,
+              description: tier.description.substring(
+                0,
+                tier.description.indexOf('\n\n')
+              ),
+              data: tier.description.substring(
+                tier.description.indexOf('\n\n') + 1
+              ),
+            })
+          );
+
+          setTierData(tierData);
+        } else {
+          setTierData([]);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-tiers-error']
         );
-
-        setTierData(tierData);
+      })
+      .finally(() => {
         setIsLoadingTierData(false);
-      } else {
-        setTierData([]);
-        setIsLoadingTierData(false);
-      }
-    });
+      });
   };
-
-  const ownerName = getOwnerById();
 
   useEffect(() => {
     if (!hideTier) {
       getTierData();
+    }
+    if (!hideOwner) {
+      getOwnerSearch();
     }
   }, []);
 
@@ -227,151 +339,73 @@ const ManageTab: FunctionComponent<Props> = ({
   }, [currentUser]);
 
   useEffect(() => {
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-    if (status === 'waiting') {
-      setStatus('success');
+    if (statusOwner === 'waiting') {
+      setStatusOwner('success');
       setTimeout(() => {
-        setStatus('initial');
-      }, 3000);
+        setInitialOwnerLoadingState();
+      }, 300);
     }
-  }, [currentTier, currentUser]);
+  }, [currentUser]);
 
   useEffect(() => {
-    setListOwners(getOwnerList());
+    if (statusTier === 'waiting') {
+      setStatusTier('success');
+      setTimeout(() => {
+        setInitialTierLoadingState();
+      }, 300);
+    }
+  }, [currentTier]);
+
+  useEffect(() => {
+    debounceOnSearch(searchText);
   }, [appState.users, appState.userDetails, appState.userTeams]);
+
+  useEffect(() => {
+    setTeamJoinable(isJoinable);
+  }, [isJoinable]);
+
+  useEffect(() => {
+    if (!listVisible) {
+      handleOwnerSearch('');
+    }
+  }, [listVisible]);
 
   return (
     <div
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator">
-        <span className="tw-mr-2">Owner:</span>
-        <span className="tw-relative">
-          <NonAdminAction
-            html={
-              <>
-                <p>You do not have permissions to update the owner.</p>
-              </>
+      <div
+        className={classNames('tw-mt-2 tw-pb-4', {
+          'tw-mb-3': !hideTier,
+        })}>
+        {!hideOwner && (
+          <OwnerWidget
+            allowTeamOwner={allowTeamOwner}
+            entityType={entityType}
+            handleIsJoinable={handleIsJoinable}
+            handleOwnerSelection={handleOwnerSelection}
+            handleSearchOwnerDropdown={handleOwnerSearch}
+            handleSelectOwnerDropdown={() =>
+              setListVisible((visible) => !visible)
             }
-            isOwner={hasEditAccess}
-            permission={Operation.UpdateOwner}
-            position="left">
-            <Button
-              className={classNames('tw-underline', {
-                'tw-opacity-40':
-                  !userPermissions[Operation.UpdateOwner] &&
-                  !isAuthDisabled &&
-                  !hasEditAccess,
-              })}
-              data-testid="owner-dropdown"
-              disabled={
-                !userPermissions[Operation.UpdateOwner] &&
-                !isAuthDisabled &&
-                !hasEditAccess
-              }
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setListVisible((visible) => !visible)}>
-              {ownerName ? (
-                <span
-                  className={classNames('tw-truncate', {
-                    'tw-w-52': ownerName.length > 32,
-                  })}
-                  title={ownerName}>
-                  {ownerName}
-                </span>
-              ) : (
-                'Select Owner'
-              )}
-              <SVGIcons
-                alt="edit"
-                className="tw-ml-1"
-                icon="icon-edit"
-                title="Edit"
-                width="12px"
-              />
-            </Button>
-          </NonAdminAction>
-          {listVisible && (
-            <DropDownList
-              showSearchBar
-              dropDownList={listOwners}
-              groupType="tab"
-              listGroups={getOwnerGroup()}
-              value={owner}
-              onSelect={handleOwnerSelection}
-            />
-          )}
-        </span>
-      </div>
-      {!hideTier &&
-        (isLoadingTierData ? (
-          <Loader />
-        ) : (
-          <div className="tw-flex tw-flex-col" data-testid="cards">
-            {tierData.map((card, i) => (
-              <NonAdminAction
-                html={
-                  <>
-                    <p>You need to be owner to perform this action</p>
-                    <p>Claim ownership from above </p>
-                  </>
-                }
-                isOwner={hasEditAccess || Boolean(owner && !currentUser)}
-                key={i}
-                permission={Operation.UpdateTags}
-                position="left">
-                <CardListItem
-                  card={card}
-                  isActive={activeTier === card.id}
-                  onSelect={handleCardSelection}
-                />
-              </NonAdminAction>
-            ))}
-          </div>
-        ))}
-      <div className="tw-mt-6 tw-text-right" data-testid="buttons">
-        <Button
-          size="regular"
-          theme="primary"
-          variant="text"
-          onClick={handleCancel}>
-          Discard
-        </Button>
-        {loading ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : status === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className="tw-w-16 tw-h-10"
-            data-testid="saveManageTab"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
+            hasEditAccess={hasEditAccess}
+            isAuthDisabled={isAuthDisabled}
+            isJoinableActionAllowed={isJoinableActionAllowed()}
+            isListLoading={isUserLoading}
+            listOwners={listOwners}
+            listVisible={listVisible}
+            manageSectionType={manageSectionType}
+            owner={owner || ({} as EntityReference)}
+            ownerName={currentUser?.displayName || currentUser?.name || ''}
+            ownerSearchText={searchText}
+            statusOwner={statusOwner}
+            teamJoinable={teamJoinable}
+          />
         )}
       </div>
+      {getTierWidget()}
+      {getDeleteEntityWidget()}
     </div>
   );
 };

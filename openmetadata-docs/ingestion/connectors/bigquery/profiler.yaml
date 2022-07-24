@@ -1,0 +1,32 @@
+source:
+  type: bigquery
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: BigQuery
+      enablePolicyTagImport: true
+      credentials:
+        gcsConfig:
+          type: <type>
+          projectId: <project ID>
+          privateKeyId: <private key ID>
+          privateKey: <private key>
+          clientEmail: <client email>
+          clientId: <client ID>
+          authUri: <auth URI>
+          tokenUri: <token URI>
+          authProviderX509CertUrl: <auth provider x509 certificate URL>
+          clientX509CertUrl: <client certificate URL>
+  sourceConfig:
+    config:
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

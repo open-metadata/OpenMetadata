@@ -1,0 +1,23 @@
+source:
+  type: redshift
+  serviceName: aws_redshift
+  serviceConnection:
+    config:
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      username: username
+      password: strong_password
+      database: dev
+      type: Redshift
+  sourceConfig:
+    config:
+      schemaFilterPattern:
+        excludes:
+        - information_schema.*
+        - '[\w]*event_vw.*'
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

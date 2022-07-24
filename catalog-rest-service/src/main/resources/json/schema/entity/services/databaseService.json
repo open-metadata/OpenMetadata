@@ -4,17 +4,22 @@
   "title": "Database Service",
   "description": "This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.DatabaseService",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.EntityInterface",
+    "org.openmetadata.catalog.ServiceEntityInterface"
+  ],
   "definitions": {
     "databaseServiceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "type": "string",
       "enum": [
         "BigQuery",
-        "MySQL",
+        "Mysql",
         "Redshift",
         "Snowflake",
         "Postgres",
-        "MSSQL",
+        "Mssql",
         "Hive",
         "Oracle",
         "Athena",
@@ -25,19 +30,24 @@
         "MariaDB",
         "Druid",
         "Db2",
-        "ClickHouse",
+        "Clickhouse",
         "Databricks",
         "DynamoDB",
         "AzureSQL",
         "SingleStore",
-        "SQLite"
+        "SQLite",
+        "DeltaLake",
+        "Salesforce",
+        "SampleData",
+        "PinotDB",
+        "Datalake"
       ],
       "javaEnums": [
         {
           "name": "BigQuery"
         },
         {
-          "name": "MySQL"
+          "name": "Mysql"
         },
         {
           "name": "Redshift"
@@ -49,7 +59,7 @@
           "name": "Postgres"
         },
         {
-          "name": "MSSQL"
+          "name": "Mssql"
         },
         {
           "name": "Oracle"
@@ -82,7 +92,7 @@
           "name": "Db2"
         },
         {
-          "name": "ClickHouse"
+          "name": "Clickhouse"
         },
         {
           "name": "Databricks"
@@ -98,37 +108,115 @@
         },
         {
           "name": "SQLite"
+        },
+        {
+          "name": "DeltaLake"
+        },
+        {
+          "name": "Salesforce"
+        },
+        {
+          "name": "SampleData"
+        },
+        {
+          "name": "PinotDB"
+        },
+        {
+          "name": "Datalake"
         }
       ]
     },
     "databaseConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.DatabaseConnection",
       "description": "Database Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
+      ],
       "properties": {
-        "username": {
-          "description": "username to connect  to the data source.",
-          "type": "string"
-        },
-        "password": {
-          "description": "password to connect  to the data source.",
-          "type": "string"
-        },
-        "hostPort": {
-          "description": "Host and port of the data source.",
-          "type": "string"
-        },
-        "database": {
-          "description": "Database of the data source.",
-          "type": "string"
-        },
-        "connectionOptions": {
-          "description": "Additional connection options that can be sent to service during the connection.",
-          "type": "object"
-        },
-        "connectionArguments": {
-          "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
-          "type": "object"
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/database/bigQueryConnection.json"
+            },
+            {
+              "$ref": "./connections/database/athenaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/azureSQLConnection.json"
+            },
+            {
+              "$ref": "./connections/database/clickhouseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/databricksConnection.json"
+            },
+            {
+              "$ref": "./connections/database/db2Connection.json"
+            },
+            {
+              "$ref": "./connections/database/deltaLakeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/druidConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dynamoDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/glueConnection.json"
+            },
+            {
+              "$ref": "./connections/database/hiveConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mariaDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mssqlConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mysqlConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sqliteConnection.json"
+            },
+            {
+              "$ref": "./connections/database/oracleConnection.json"
+            },
+            {
+              "$ref": "./connections/database/postgresConnection.json"
+            },
+            {
+              "$ref": "./connections/database/prestoConnection.json"
+            },
+            {
+              "$ref": "./connections/database/redshiftConnection.json"
+            },
+            {
+              "$ref": "./connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "./connections/database/singleStoreConnection.json"
+            },
+            {
+              "$ref": "./connections/database/snowflakeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/trinoConnection.json"
+            },
+            {
+              "$ref": "./connections/database/verticaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sampleDataConnection.json"
+            },
+            {
+              "$ref": "./connections/database/pinotDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/datalakeConnection.json"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -141,10 +229,11 @@
     },
     "name": {
       "description": "Name that identifies this database service.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this database service.",
@@ -156,13 +245,13 @@
     },
     "description": {
       "description": "Description of a database service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "databaseConnection": {
+    "connection": {
       "$ref": "#/definitions/databaseConnection"
     },
-    "airflowPipelines": {
-      "description": "References to airflow pipelines deployed for this database service.",
+    "pipelines": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "version": {
@@ -195,12 +284,6 @@
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "serviceType",
-    "href",
-    "databaseConnection"
-  ],
+  "required": ["id", "name", "serviceType"],
   "additionalProperties": false
 }

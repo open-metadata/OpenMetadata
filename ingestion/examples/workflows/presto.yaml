@@ -1,0 +1,21 @@
+source:
+  type: presto
+  serviceName: local_presto
+  serviceConnection:
+    config:
+      type: Presto
+      hostPort: localhost:8080
+      catalog: tpcds
+      username: admin
+      password: password
+      databaseSchema: tpcds
+  sourceConfig:
+    config:
+      generateSampleData: false
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

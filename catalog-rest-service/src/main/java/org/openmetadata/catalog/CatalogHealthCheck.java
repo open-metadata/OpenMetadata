@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog;
 
-import static org.openmetadata.catalog.resources.teams.UserResource.ALLOWED_FIELDS;
-
 import com.codahale.metrics.health.HealthCheck;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +20,11 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.UserRepository;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class CatalogHealthCheck extends HealthCheck {
   private final UserRepository userRepository;
-  private final EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, "profile");
 
   public CatalogHealthCheck(Jdbi jdbi) {
     super();
@@ -36,10 +33,10 @@ public class CatalogHealthCheck extends HealthCheck {
   }
 
   @Override
-  protected Result check() throws Exception {
+  protected Result check() {
     try {
       ListFilter filter = new ListFilter();
-      userRepository.listAfter(null, fields, filter, 1, null);
+      userRepository.listAfter(null, Fields.EMPTY_FIELDS, filter, 1, null);
       return Result.healthy();
     } catch (IOException e) {
       LOG.error("Health check error {}", e.getMessage());

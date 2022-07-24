@@ -42,8 +42,8 @@ import org.openmetadata.catalog.util.TestUtils;
 class PermissionsResourceTest extends CatalogApplicationTest {
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
-  private static final String DATA_STEWARD_USER_NAME = "puser-data-steward";
-  private static final String DATA_CONSUMER_USER_NAME = "puser-data-consumer";
+  private static final String DATA_STEWARD_USER_NAME = "user-data-steward";
+  private static final String DATA_CONSUMER_USER_NAME = "user-data-consumer";
 
   @BeforeAll
   static void setup() throws IOException {
@@ -51,7 +51,7 @@ class PermissionsResourceTest extends CatalogApplicationTest {
     UserResourceTest userResourceTest = new UserResourceTest();
 
     Role dataStewardRole =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     userResourceTest.createEntity(
         userResourceTest
             .createRequest(DATA_STEWARD_USER_NAME, "", "", null)
@@ -59,7 +59,7 @@ class PermissionsResourceTest extends CatalogApplicationTest {
         ADMIN_AUTH_HEADERS);
 
     Role dataConsumerRole =
-        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     userResourceTest.createEntity(
         userResourceTest
             .createRequest(DATA_CONSUMER_USER_NAME, "", "", null)
@@ -69,7 +69,7 @@ class PermissionsResourceTest extends CatalogApplicationTest {
 
   @ParameterizedTest
   @MethodSource("getPermissionsTestParams")
-  void get_permissiofns(String username, Map<MetadataOperation, Boolean> expectedOperations)
+  void get_permissions(String username, Map<MetadataOperation, Boolean> expectedOperations)
       throws HttpResponseException {
     WebTarget target = getResource("permissions");
     Map<String, String> authHeaders = SecurityUtil.authHeaders(username + "@open-metadata.org");
@@ -80,48 +80,32 @@ class PermissionsResourceTest extends CatalogApplicationTest {
   }
 
   private Stream<Arguments> getPermissionsTestParams() {
+    HashMap<MetadataOperation, Boolean> adminPermissions = new HashMap<>();
+    HashMap<MetadataOperation, Boolean> dataStewardPermissions = new HashMap<>();
+    HashMap<MetadataOperation, Boolean> dataConsumerPermissions = new HashMap<>();
+    for (MetadataOperation op : MetadataOperation.values()) {
+      adminPermissions.put(op, Boolean.TRUE);
+      dataStewardPermissions.put(op, Boolean.FALSE);
+      dataConsumerPermissions.put(op, Boolean.FALSE);
+    }
+
+    dataStewardPermissions.put(MetadataOperation.EDIT_DESCRIPTION, Boolean.TRUE);
+    dataStewardPermissions.put(MetadataOperation.EDIT_LINEAGE, Boolean.TRUE);
+    dataStewardPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
+    dataStewardPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
+    // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
+    dataStewardPermissions.put(MetadataOperation.TEAM_EDIT_USERS, Boolean.FALSE);
+
+    dataConsumerPermissions.put(MetadataOperation.EDIT_DESCRIPTION, Boolean.TRUE);
+    dataConsumerPermissions.put(MetadataOperation.EDIT_LINEAGE, Boolean.FALSE);
+    dataConsumerPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
+    dataConsumerPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
+    // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
+    dataConsumerPermissions.put(MetadataOperation.TEAM_EDIT_USERS, Boolean.FALSE);
+
     return Stream.of(
-        Arguments.of(
-            TestUtils.ADMIN_USER_NAME,
-            new HashMap<MetadataOperation, Boolean>() {
-              {
-                put(MetadataOperation.SuggestDescription, Boolean.TRUE);
-                put(MetadataOperation.SuggestTags, Boolean.TRUE);
-                put(MetadataOperation.UpdateDescription, Boolean.TRUE);
-                put(MetadataOperation.UpdateLineage, Boolean.TRUE);
-                put(MetadataOperation.UpdateOwner, Boolean.TRUE);
-                put(MetadataOperation.UpdateTags, Boolean.TRUE);
-                put(MetadataOperation.DecryptTokens, Boolean.TRUE);
-                put(MetadataOperation.UpdateTeam, Boolean.TRUE);
-              }
-            }),
-        Arguments.of(
-            DATA_STEWARD_USER_NAME,
-            new HashMap<MetadataOperation, Boolean>() {
-              {
-                put(MetadataOperation.UpdateDescription, Boolean.TRUE);
-                put(MetadataOperation.UpdateLineage, Boolean.TRUE);
-                put(MetadataOperation.UpdateOwner, Boolean.TRUE);
-                put(MetadataOperation.UpdateTags, Boolean.TRUE);
-                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
-                put(MetadataOperation.SuggestTags, Boolean.FALSE);
-                put(MetadataOperation.DecryptTokens, Boolean.FALSE);
-                put(MetadataOperation.UpdateTeam, Boolean.FALSE);
-              }
-            }),
-        Arguments.of(
-            DATA_CONSUMER_USER_NAME,
-            new HashMap<MetadataOperation, Boolean>() {
-              {
-                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
-                put(MetadataOperation.SuggestTags, Boolean.FALSE);
-                put(MetadataOperation.UpdateDescription, Boolean.TRUE);
-                put(MetadataOperation.UpdateLineage, Boolean.FALSE);
-                put(MetadataOperation.UpdateOwner, Boolean.TRUE);
-                put(MetadataOperation.UpdateTags, Boolean.TRUE);
-                put(MetadataOperation.DecryptTokens, Boolean.FALSE);
-                put(MetadataOperation.UpdateTeam, Boolean.FALSE);
-              }
-            }));
+        Arguments.of(TestUtils.ADMIN_USER_NAME, adminPermissions),
+        Arguments.of(DATA_STEWARD_USER_NAME, dataStewardPermissions),
+        Arguments.of(DATA_CONSUMER_USER_NAME, dataConsumerPermissions));
   }
 }

@@ -12,13 +12,11 @@
  */
 
 import React from 'react';
+import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import { Table } from '../../generated/entity/data/table';
 import { TableTest } from '../../generated/tests/tableTest';
-import {
-  ColumnTest,
-  TableTestDataType,
-} from '../../interface/dataQuality.interface';
+import { TableTestDataType } from '../../interface/dataQuality.interface';
 import ColumnTestForm from './Forms/ColumnTestForm';
 import TableTestForm from './Forms/TableTestForm';
 
@@ -29,7 +27,7 @@ type Props = {
   columnOptions: Table['columns'];
   tableTestCase: TableTest[];
   handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: ColumnTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
   onFormCancel: () => void;
   selectedColumn: string;
 };
@@ -60,7 +58,7 @@ const AddDataQualityTest = ({
       ) : (
         <ColumnTestForm
           column={columnOptions}
-          data={data as ColumnTest}
+          data={data as CreateColumnTest}
           handleAddColumnTestCase={handleAddColumnTestCase}
           isTableDeleted={isTableDeleted}
           selectedColumn={selectedColumn}

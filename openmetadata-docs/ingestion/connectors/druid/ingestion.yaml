@@ -1,0 +1,26 @@
+source:
+  type: druid
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Druid
+      username: "<username>"
+      password: "<password>"
+      hostPort: "<hostPort>"
+      database: "<database>"
+  sourceConfig:
+    config:
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      schemaFilterPattern: "<schema name regex list>"
+      tableFilterPattern: "<table name regex list>"
+      dbtConfigSource: "<configs for gcs, s3, local or file server to get the DBT
+        files"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"

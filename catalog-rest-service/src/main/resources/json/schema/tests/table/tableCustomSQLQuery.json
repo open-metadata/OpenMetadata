@@ -1,0 +1,17 @@
+{
+    "$id": "https://open-metadata.org/schema/tests/table/tableCustomSQLQuery.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "tableCustomSQLQuery",
+    "description": "This schema defines the test TableCustomSQLQuery. Test if a custom SQL returns 1 or 0 row.",
+    "type": "object",
+    "javaType": "org.openmetadata.catalog.tests.table.TableCustomSQLQuery",
+    "properties": {
+      "sqlExpression": {
+        "description": "SQL expression to run against the table",
+        "type": "string"
+      }
+    },
+    "required": ["sqlExpression"],
+    "additionalProperties": false
+  }
+  

@@ -25,10 +25,15 @@ import {
   getGlossaryTerms,
 } from '../axiosAPIs/glossaryAPI';
 import { searchData } from '../axiosAPIs/miscAPI';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../constants/char.constants';
+import { PRIMERY_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
+import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 import { getNameFromFQN } from './CommonUtils';
 
@@ -63,7 +68,7 @@ export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
 export const getGlossaryTermlist = (
   terms: Array<FormattedGlossaryTermData> = []
 ): Array<string> => {
-  return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
+  return terms.map((term: FormattedGlossaryTermData) => term.fqdn || '');
 };
 
 /**
@@ -104,11 +109,15 @@ export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
           title: getNameFromFQN(d.name),
           children: generateTreeData(d.children as ModifiedGlossaryData[]),
           data: d,
+          icon: ({ selected }) =>
+            FolderIcon(selected ? PRIMERY_COLOR : TEXT_BODY_COLOR),
         }
       : {
           key: (d as GlossaryTerm)?.fullyQualifiedName || d.name,
           title: getNameFromFQN(d.name),
           data: d,
+          icon: ({ selected }) =>
+            FileIcon(selected ? PRIMERY_COLOR : TEXT_BODY_COLOR),
         };
   });
 };
@@ -124,8 +133,8 @@ const createGlossaryTermNode = (
   leafFqn: string,
   name: string
 ): GlossaryTermTreeNode => {
-  const arrFQN = leafFqn.split(`${name}.`);
-  const childName = arrFQN[1]?.split('.')[0];
+  const arrFQN = leafFqn.split(`${name}${FQN_SEPARATOR_CHAR}`);
+  const childName = arrFQN[1]?.split(FQN_SEPARATOR_CHAR)[0];
 
   return !childName
     ? {
@@ -182,9 +191,9 @@ export const getSearchedGlossaryTermTree = (
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
-    const arrFQN = term.fqdn.split('.');
+    const arrFQN = term.fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
     const rootName = arrFQN[0];
-    termTree.push(createGlossaryTermNode(term.fqdn, rootName));
+    termTree.push(createGlossaryTermNode(term.fullyQualifiedName, rootName));
   }
   optimiseGlossaryTermTree(termTree);
 
@@ -235,8 +244,10 @@ export const getActionsList = () => {
  * @returns list of fqns
  */
 export const getHierarchicalKeysByFQN = (fqn: string) => {
-  const keys = fqn.split('.').reduce((prev, curr) => {
-    const currFqn = prev.length ? `${prev[prev.length - 1]}.${curr}` : curr;
+  const keys = fqn.split(FQN_SEPARATOR_CHAR).reduce((prev, curr) => {
+    const currFqn = prev.length
+      ? `${prev[prev.length - 1]}${FQN_SEPARATOR_CHAR}${curr}`
+      : curr;
 
     return [...prev, currFqn];
   }, [] as string[]);

@@ -1,0 +1,20 @@
+source:
+  type: db2
+  serviceName: local_db2
+  serviceConnection:
+    config:
+      type: Db2
+      username: openmetadata_user
+      password: openmetadata_password
+      hostPort: localhost:50000
+      databaseSchema: default
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

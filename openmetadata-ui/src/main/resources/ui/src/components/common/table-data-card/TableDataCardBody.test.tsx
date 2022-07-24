@@ -18,6 +18,13 @@ import TableDataCardBody from './TableDataCardBody';
 jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
+jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
+});
 
 describe('Test TableDataCardBody Component', () => {
   const extraInfo = [
@@ -25,6 +32,8 @@ describe('Test TableDataCardBody Component', () => {
     { key: 'Service', value: 'service' },
     { key: 'Usage', value: 'percentile' },
     { key: 'Tier', value: 'tier' },
+    { key: 'Database', value: 'ecommerce_db' },
+    { key: 'Schema', value: 'ecommerce_db' },
   ];
 
   const tags = ['tag 1', 'tag 2', 'tag 3', 'tag 4'];
@@ -66,5 +75,24 @@ describe('Test TableDataCardBody Component', () => {
     const extraInfoTest = queryByText(/extraInfoTest/i);
 
     expect(extraInfoTest).not.toBeInTheDocument();
+  });
+
+  it('Should render all the extra info', () => {
+    const { queryByText, getByTestId } = render(
+      <TableDataCardBody
+        description="test"
+        extraInfo={[...extraInfo, { key: 'undefined', value: undefined }]}
+      />
+    );
+
+    const extraInformations = queryByText(/undefined/i);
+
+    expect(extraInformations).not.toBeInTheDocument();
+
+    for (let index = 0; index < extraInfo.length; index++) {
+      const element = extraInfo[index];
+
+      expect(getByTestId(`${element.key}`)).toBeInTheDocument();
+    }
   });
 });

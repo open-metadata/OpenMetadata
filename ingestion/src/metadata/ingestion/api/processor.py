@@ -13,8 +13,11 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Generic, List
 
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 
@@ -36,21 +39,15 @@ class ProcessorStatus(Status):
 
 @dataclass
 class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
-    ctx: WorkflowContext
-
     @classmethod
     @abstractmethod
     def create(
-        cls,
-        config_dict: dict,
-        metadata_config_dict: dict,
-        ctx: WorkflowContext,
-        **kwargs
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection, **kwargs
     ) -> "Processor":
         pass
 
     @abstractmethod
-    def process(self, record: Entity) -> Entity:
+    def process(self, *args, **kwargs) -> Entity:
         pass
 
     @abstractmethod

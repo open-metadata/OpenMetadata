@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
+import { isString } from 'lodash';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -81,6 +83,8 @@ export const bytesToSize = (bytes: number) => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   if (bytes === 0) {
     return `${bytes} ${sizes[0]}`;
+  } else if (bytes < 0) {
+    return `N/A`;
   } else {
     const i = parseInt(
       Math.floor(Math.log(bytes) / Math.log(1024)).toString(),
@@ -92,4 +96,47 @@ export const bytesToSize = (bytes: number) => {
       return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
     }
   }
+};
+
+/**
+ * Checks the value and return error text
+ * @param value - The value to check
+ * @param fallbackText
+ * @returns Returns the error text
+ */
+export const getErrorText = (
+  value: AxiosError | string,
+  fallbackText: string
+): string => {
+  let errorText;
+  if (isString(value)) {
+    return value;
+  } else if (value) {
+    errorText = value.response?.data?.message;
+    if (!errorText) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorText = value.response?.data?.responseMessage;
+    }
+  }
+
+  // if error text is still empty, return the fallback text
+  return errorText || fallbackText;
+};
+
+/**
+ *
+ * @param fqn - Value to be encoded
+ * @returns - Encoded text string as a valid component of a Uniform Resource Identifier (URI).
+ */
+export const getEncodedFqn = (fqn: string) => {
+  return encodeURIComponent(fqn);
+};
+
+/**
+ *
+ * @param url - Url to be check
+ * @returns - True if url is external otherwise false
+ */
+export const isExternalUrl = (url = '') => {
+  return /^https?:\/\//.test(url);
 };

@@ -14,17 +14,13 @@
 package org.openmetadata.catalog.security;
 
 import java.security.Principal;
+import lombok.Getter;
 
 public class CatalogPrincipal implements Principal {
-  private final String name;
+  @Getter private final String name;
 
   public CatalogPrincipal(String name) {
     this.name = name;
-  }
-
-  @Override
-  public String getName() {
-    return name;
   }
 
   @Override

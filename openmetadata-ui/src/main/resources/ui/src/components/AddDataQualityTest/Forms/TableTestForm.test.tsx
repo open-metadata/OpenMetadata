@@ -5,7 +5,7 @@ import TableTestForm from './TableTestForm';
 
 const mockFunction = jest.fn();
 
-jest.mock('../../common/editor/MarkdownWithPreview', () => {
+jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
 });
 
@@ -25,8 +25,8 @@ describe('Test TableTestForm component', () => {
     const tableTestType = await findByTestId(container, 'tableTestType');
     const cancelButton = await findByTestId(container, 'cancel-test');
     const saveButton = await findByTestId(container, 'save-test');
-    const value = await findByTestId(container, 'value');
-    const frequency = await findByTestId(container, 'frequency');
+    const min = await findByTestId(container, 'min');
+    const max = await findByTestId(container, 'max');
     const description = await findByText(
       container,
       /MarkdownWithPreview component/i
@@ -34,9 +34,9 @@ describe('Test TableTestForm component', () => {
 
     expect(tableTestType).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(value).toBeInTheDocument();
+    expect(min).toBeInTheDocument();
+    expect(max).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
-    expect(frequency).toBeInTheDocument();
   });
 });

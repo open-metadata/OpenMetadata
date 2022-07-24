@@ -22,11 +22,14 @@ import { UserType } from '../../enums/user.enum';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
-import { getCountBadge } from '../../utils/CommonUtils';
+import { EntityReference } from '../../generated/type/entityReference';
+import { getCountBadge, getEntityName } from '../../utils/CommonUtils';
+import { getActiveUsers } from '../../utils/TeamUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
@@ -34,14 +37,21 @@ interface Props {
   teams: Array<Team>;
   roles: Array<Role>;
   allUsers: Array<User>;
+  deleteUser: (id: string) => void;
   updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   handleAddUserClick: () => void;
   isLoading: boolean;
 }
 
+interface DeleteUserInfo {
+  name: string;
+  id: string;
+}
+
 const UserList: FunctionComponent<Props> = ({
   allUsers = [],
   isLoading,
+  deleteUser,
   updateUser,
   handleAddUserClick,
   teams = [],
@@ -55,6 +65,7 @@ const UserList: FunctionComponent<Props> = ({
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [selectedUser, setSelectedUser] = useState<User>();
   const [searchText, setSearchText] = useState('');
+  const [deletingUser, setDeletingUser] = useState<DeleteUserInfo>();
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
@@ -158,6 +169,18 @@ const UserList: FunctionComponent<Props> = ({
 
       setSelectedUser(undefined);
     }
+  };
+
+  const handleDeleteUser = (id: string, name: string) => {
+    setDeletingUser({
+      name,
+      id,
+    });
+  };
+
+  const onConfirmDeleteUser = (id: string) => {
+    deleteUser(id);
+    setDeletingUser(undefined);
   };
 
   const handleTabChange = (tab: number) => {
@@ -287,7 +310,7 @@ const UserList: FunctionComponent<Props> = ({
                   </p>
                 </div>
                 {getCountBadge(
-                  team.users?.length || 0,
+                  getActiveUsers(team.users).length,
                   '',
                   isTeamBadgeActive(team.name)
                 )}
@@ -302,15 +325,15 @@ const UserList: FunctionComponent<Props> = ({
     let listUserData: Array<User> = [];
 
     switch (type) {
-      case UserType.ISADMIN:
+      case UserType.ADMINS:
         listUserData = admins;
 
         break;
-      case UserType.ISBOT:
+      case UserType.BOTS:
         listUserData = bots;
 
         break;
-      case UserType.ISUSER:
+      case UserType.USERS:
       default:
         listUserData = users;
 
@@ -324,7 +347,7 @@ const UserList: FunctionComponent<Props> = ({
           data-testid="user-card-container">
           {listUserData.map((user, index) => {
             const User = {
-              description: user.displayName || user.name || '',
+              displayName: getEntityName(user as unknown as EntityReference),
               name: user.name || '',
               id: user.id,
               email: user.email || '',
@@ -343,7 +366,11 @@ const UserList: FunctionComponent<Props> = ({
                 className="tw-cursor-pointer"
                 key={index}
                 onClick={() => selectUser(User.id)}>
-                <UserDataCard item={User} onClick={selectUser} />
+                <UserDataCard
+                  item={User}
+                  onClick={selectUser}
+                  onDelete={handleDeleteUser}
+                />
               </div>
             );
           })}
@@ -364,9 +391,9 @@ const UserList: FunctionComponent<Props> = ({
             ) : (
               <>
                 {getTabs()}
-                {currentTab === 1 && getUserCards(UserType.ISUSER)}
-                {currentTab === 2 && getUserCards(UserType.ISADMIN)}
-                {currentTab === 3 && getUserCards(UserType.ISBOT)}
+                {currentTab === 1 && getUserCards(UserType.USERS)}
+                {currentTab === 2 && getUserCards(UserType.ADMINS)}
+                {currentTab === 3 && getUserCards(UserType.BOTS)}
                 {!isUndefined(selectedUser) && (
                   <UserDetailsModal
                     header="Update user"
@@ -374,6 +401,18 @@ const UserList: FunctionComponent<Props> = ({
                     userData={selectedUser}
                     onCancel={() => setSelectedUser(undefined)}
                     onSave={handleSave}
+                  />
+                )}
+                {!isUndefined(deletingUser) && (
+                  <ConfirmationModal
+                    bodyText={`Are you sure you want to delete ${deletingUser.name}?`}
+                    cancelText="Cancel"
+                    confirmText="Confirm"
+                    header="Delete user"
+                    onCancel={() => setDeletingUser(undefined)}
+                    onConfirm={() => {
+                      onConfirmDeleteUser(deletingUser.id);
+                    }}
                   />
                 )}
               </>

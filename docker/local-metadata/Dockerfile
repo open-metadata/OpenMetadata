@@ -17,7 +17,7 @@ RUN  apk update \
   && apk upgrade \
   && apk add --update wget curl bash openjdk11 \
   && rm -rf /var/cache/apk/*
-COPY docker/metadata/openmetadata-start.sh docker/metadata/openmetadata.yaml ./
+COPY docker/metadata/openmetadata-start.sh ./
 COPY openmetadata-dist/target/openmetadata-*.tar.gz /
 RUN tar zxvf openmetadata-*.tar.gz && \
     rm openmetadata-*.tar.gz

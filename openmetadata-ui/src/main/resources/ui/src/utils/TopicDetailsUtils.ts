@@ -19,13 +19,23 @@ export const topicDetailsTabs = [
     path: 'schema',
   },
   {
-    name: 'Activity Feed',
+    name: 'Activity Feed & Tasks',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
+    name: 'Sample Data',
+    path: 'sample_data',
+    field: TabSpecificField.SAMPLE_DATA,
+  },
+  {
     name: 'Config',
     path: 'config',
+  },
+  {
+    name: 'Lineage',
+    path: 'lineage',
+    field: TabSpecificField.LINEAGE,
   },
   {
     name: 'Manage',
@@ -40,12 +50,20 @@ export const getCurrentTopicTab = (tab: string) => {
       currentTab = 2;
 
       break;
-    case 'config':
+    case 'sample_data':
       currentTab = 3;
 
       break;
-    case 'manage':
+    case 'config':
       currentTab = 4;
+
+      break;
+    case 'lineage':
+      currentTab = 5;
+
+      break;
+    case 'manage':
+      currentTab = 6;
 
       break;
 

@@ -12,43 +12,15 @@
 REST Auth & Client for Apache Superset
 """
 import json
-import logging
-from typing import Optional
 
-from pydantic import SecretStr
-
-from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
 )
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
-
-
-class SupersetConfig(ConfigModel):
-    """
-    Superset Configuration class
-
-    Attributes:
-        url (str):
-        username (Optional[str]):
-        password (Optional[str]):
-        service_name (str):
-        service_type (str):
-        provider (str):
-        options (dict):
-    """
-
-    url: str = "localhost:8088"
-    username: Optional[str] = None
-    password: Optional[SecretStr] = None
-    service_name: str
-    service_type: str = DashboardServiceType.Superset.value
-    provider: str = "db"
-    options: dict = {}
-    db_service_name: Optional[str] = None
+logger = ometa_logger()
 
 
 class SupersetAuthenticationProvider(AuthenticationProvider):
@@ -56,20 +28,23 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     Handle SuperSet Auth
     """
 
-    def __init__(self, config: SupersetConfig):
+    def __init__(self, config: WorkflowSource):
         self.config = config
+        self.service_connection = self.config
         client_config = ClientConfig(
-            base_url=config.url,
+            base_url=config.hostPort,
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
             allow_redirects=True,
         )
         self.client = REST(client_config)
+        self.generated_auth_token = None
+        self.expiry = None
         super().__init__()
 
     @classmethod
-    def create(cls, config: SupersetConfig):
+    def create(cls, config: WorkflowSource):
         return cls(config)
 
     def auth_token(self) -> str:
@@ -80,10 +55,10 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
 
     def _login_request(self) -> str:
         auth_request = {
-            "username": self.config.username,
-            "password": self.config.password.get_secret_value(),
+            "username": self.service_connection.username,
+            "password": self.service_connection.password.get_secret_value(),
             "refresh": True,
-            "provider": self.config.provider,
+            "provider": self.service_connection.provider,
         }
         return json.dumps(auth_request)
 
@@ -100,13 +75,13 @@ class SupersetAPIClient:
     client: REST
     _auth_provider: AuthenticationProvider
 
-    def __init__(self, config: SupersetConfig):
+    def __init__(self, config: WorkflowSource):
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
         client_config = ClientConfig(
-            base_url=config.url,
+            base_url=config.hostPort,
             api_version="api/v1",
-            auth_token=lambda: self._auth_provider.get_access_token(),
+            auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",
             allow_redirects=True,
         )
@@ -190,4 +165,17 @@ class SupersetAPIClient:
             requests.Response
         """
         response = self.client.get(f"/database/{database_id}")
+        return response
+
+    def fetch_menu(self):
+        """
+        Check Current User
+
+        Args:
+            No Arguments
+
+        Returns:
+            requests.Response
+        """
+        response = self.client.get("/menu/")
         return response

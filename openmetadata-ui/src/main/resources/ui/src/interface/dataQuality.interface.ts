@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { ColumnTestType } from '../enums/columnTest.enum';
-import { Column } from '../generated/entity/data/table';
+import {
+  Column,
+  ColumnTest,
+  ColumnTestType,
+} from '../generated/entity/data/table';
 import {
   EntityReference,
   TableTestType,
@@ -30,25 +33,6 @@ export interface TestCaseConfigType {
   missingValueMatch?: Array<string>;
   columnValuesToBeUnique?: boolean;
   columnValuesToBeNotNull?: boolean;
-}
-
-export interface Result {
-  executionTime: number;
-  testCaseStatus: string;
-  result: string;
-}
-
-export interface ColumnTest {
-  id?: string;
-  columnName: string;
-  description?: string;
-  executionFrequency?: TestCaseExecutionFrequency;
-  owner?: EntityReference;
-  results?: Result[];
-  testCase: {
-    columnTestType: ColumnTestType;
-    config?: TestCaseConfigType;
-  };
 }
 
 export type DatasetTestModeType = 'table' | 'column';

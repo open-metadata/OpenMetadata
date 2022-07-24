@@ -1,18 +1,29 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """
 Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
-import logging
+
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.client import REST, APIError
-from metadata.ingestion.ometa.utils import get_entity_type
+from metadata.ingestion.ometa.utils import get_entity_type, ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 
@@ -66,20 +77,20 @@ class OMetaLineageMixin(Generic[T]):
     def get_lineage_by_name(
         self,
         entity: Union[Type[T], str],
-        fqdn: str,
+        fqn: str,
         up_depth: int = 1,
         down_depth: int = 1,
     ) -> Optional[Dict[str, Any]]:
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
-        :param fqdn: Entity FQDN
+        :param fqn: Entity FQN
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
         return self._get_lineage(
             entity=entity,
-            path=f"name/{fqdn}",
+            path=f"name/{fqn}",
             up_depth=up_depth,
             down_depth=down_depth,
         )
@@ -94,7 +105,7 @@ class OMetaLineageMixin(Generic[T]):
         """
         Generic function to get entity data.
         :param entity: Type of the entity
-        :param path: URL suffix by FQDN or ID
+        :param path: URL suffix by FQN or ID
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """

@@ -13,12 +13,10 @@
 OpenMetadata Airflow Lineage Backend
 """
 import logging
+import traceback
 from typing import TYPE_CHECKING, Dict
 
-from airflow_provider_openmetadata.lineage.config import (
-    get_lineage_config,
-    get_metadata_config,
-)
+from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
 from airflow_provider_openmetadata.lineage.utils import (
     add_status,
     get_xlets,
@@ -42,8 +40,7 @@ def failure_callback(context: Dict[str, str]) -> None:
     """
     try:
         config = get_lineage_config()
-        metadata_config = get_metadata_config(config)
-        client = OpenMetadata(metadata_config)
+        metadata = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
 
@@ -54,17 +51,18 @@ def failure_callback(context: Dict[str, str]) -> None:
 
         # Get the pipeline created or updated during the lineage
         pipeline = parse_lineage(
-            config, context, operator, op_inlets, op_outlets, client
+            config, context, operator, op_inlets, op_outlets, metadata
         )
 
         add_status(
             operator=operator,
             pipeline=pipeline,
-            client=client,
+            metadata=metadata,
             context=context,
         )
 
     except Exception as exc:  # pylint: disable=broad-except
+        logging.error(traceback.format_exc())
         logging.error("Lineage Callback exception %s", exc)
 
 
@@ -79,28 +77,28 @@ def success_callback(context: Dict[str, str]) -> None:
     try:
 
         config = get_lineage_config()
-        metadata_config = get_metadata_config(config)
-        client = OpenMetadata(metadata_config)
+        metadata = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
         dag: "DAG" = context["dag"]
 
         operator.log.info("Updating pipeline status on success...")
 
-        airflow_service_entity = client.get_by_name(
-            entity=PipelineService, fqdn=config.airflow_service_name
+        airflow_service_entity: PipelineService = metadata.get_by_name(
+            entity=PipelineService, fqn=config.airflow_service_name
         )
-        pipeline: Pipeline = client.get_by_name(
+        pipeline: Pipeline = metadata.get_by_name(
             entity=Pipeline,
-            fqdn=f"{airflow_service_entity.name}.{dag.dag_id}",
+            fqn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
         )
 
         add_status(
             operator=operator,
             pipeline=pipeline,
-            client=client,
+            metadata=metadata,
             context=context,
         )
 
     except Exception as exc:  # pylint: disable=broad-except
+        logging.error(traceback.format_exc())
         logging.error("Lineage Callback exception %s", exc)

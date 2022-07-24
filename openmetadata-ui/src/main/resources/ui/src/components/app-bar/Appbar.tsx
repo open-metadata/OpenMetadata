@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -19,21 +19,36 @@ import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   getUserPath,
   navLinkSettings,
   ROUTES,
+  SOCKET_EVENTS,
+  TERM_ADMIN,
+  TERM_USER,
 } from '../../constants/constants';
-import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
+import {
+  urlGitbookDocs,
+  urlGithubRepo,
+  urlJoinSlack,
+} from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
-import { addToRecentSearched } from '../../utils/CommonUtils';
+import jsonData from '../../jsons/en';
+import {
+  addToRecentSearched,
+  getEntityName,
+  getNonDeletedTeams,
+} from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import Ellipses from '../common/Ellipses/Ellipses';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
+import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 
 const cookieStorage = new CookieStorage();
 
@@ -53,10 +68,12 @@ const Appbar: React.FC = (): JSX.Element => {
   });
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
-
   const [version, setVersion] = useState<string>('');
+
+  const { socket } = useWebSocketConnector();
+  const [hasNotification, setHasNotification] = useState(false);
 
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
@@ -70,21 +87,22 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       name: (
         <span>
-          <SVGIcons
-            alt="API icon"
-            className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-            icon={Icons.VERSION_BLACK}
-            width="12"
-          />{' '}
           <span className="tw-text-grey-muted">{`Version ${
             (version ? version : '?').split('-')[0]
           }`}</span>
         </span>
       ),
-      to: '',
+      to: urlGithubRepo,
+      isOpenNewTab: true,
       disabled: false,
-      icon: <></>,
-      isText: true,
+      icon: (
+        <SVGIcons
+          alt="Version icon"
+          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+          icon={Icons.VERSION_BLACK}
+          width="12"
+        />
+      ),
     },
     {
       name: `Docs`,
@@ -129,52 +147,84 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const getUsersRoles = (userRoleArr: string[], name: string) => {
+    return (
+      <div>
+        <div className="tw-text-grey-muted tw-text-xs">{name}</div>
+        {userRoleArr.map((userRole, i) => (
+          <Ellipses tooltip className="tw-font-medium" key={i}>
+            {userRole}
+          </Ellipses>
+        ))}
+        <hr className="tw-my-1.5" />
+      </div>
+    );
+  };
+
   const getUserName = () => {
     const currentUser = isAuthDisabled
-      ? appState.users[0]
+      ? appState.nonSecureUserDetails
       : appState.userDetails;
 
-    return currentUser?.displayName || currentUser?.name || 'User';
+    return currentUser?.displayName || currentUser?.name || TERM_USER;
   };
+
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          setHasNotification(true);
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
+      setHasNotification(false);
+    };
+  }, [socket]);
 
   const getUserData = () => {
     const currentUser = isAuthDisabled
-      ? appState.users[0]
+      ? appState.nonSecureUserDetails
       : appState.userDetails;
 
-    const name = currentUser?.displayName || currentUser?.name || 'User';
+    const name = currentUser?.displayName || currentUser?.name || TERM_USER;
 
-    const roles = currentUser?.roles;
+    const roles = currentUser?.roles?.map((r) => getEntityName(r)) || [];
+    const inheritedRoles =
+      currentUser?.inheritedRoles?.map((r) => getEntityName(r)) || [];
 
-    const teams = currentUser?.teams;
+    currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
+
+    const teams = getNonDeletedTeams(currentUser?.teams ?? []);
 
     return (
-      <div data-testid="greeting-text">
+      <div className="tw-max-w-xs" data-testid="greeting-text">
         <Link to={getUserPath(currentUser?.name as string)}>
           {' '}
-          <span className="tw-font-medium tw-cursor-pointer">{name}</span>
+          <Ellipses
+            tooltip
+            className="tw-font-medium tw-cursor-pointer"
+            rows={1}
+            style={{ color: '#7147E8' }}>
+            {name}
+          </Ellipses>
         </Link>
         <hr className="tw-my-1.5" />
-        {(roles?.length ?? 0) > 0 ? (
+        {roles.length > 0 ? getUsersRoles(roles, 'Roles') : null}
+        {inheritedRoles.length > 0
+          ? getUsersRoles(inheritedRoles, 'Inherited Roles')
+          : null}
+        {teams.length > 0 ? (
           <div>
-            <div className="tw-font-medium tw-text-xs">Roles</div>
-            {roles?.map((r, i) => (
-              <p className="tw-text-grey-muted" key={i}>
-                {r.displayName}
-              </p>
-            ))}
-            <hr className="tw-my-1.5" />
-          </div>
-        ) : null}
-        {(teams?.length ?? 0) > 0 ? (
-          <div>
-            <span className="tw-font-medium tw-text-xs">Teams</span>
-            {teams?.map((t, i) => (
-              <p key={i}>
-                <Link to={getTeamDetailsPath(t.name as string)}>
-                  {t.displayName}
+            <span className="tw-text-grey-muted tw-text-xs">Teams</span>
+            {teams.map((t, i) => (
+              <Ellipses tooltip className="tw-text-xs" key={i}>
+                <Link to={getTeamAndUserDetailsPath(t.name as string)}>
+                  {t.displayName || t.name}
                 </Link>
-              </p>
+              </Ellipses>
             ))}
             <hr className="tw-mt-1.5" />
           </div>
@@ -202,15 +252,16 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    history.push(
-      getExplorePathWithSearch(
+    history.push({
+      pathname: getExplorePathWithSearch(
         value,
         // this is for if user is searching from another page
         location.pathname.startsWith(ROUTES.EXPLORE)
           ? appState.explorePageTab
           : 'tables'
-      )
-    );
+      ),
+      search: location.search,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -222,6 +273,19 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const handleOnclick = () => {
     searchHandler(searchValue ?? '');
+  };
+
+  const fetchOMVersion = () => {
+    getVersion()
+      .then((res: AxiosResponse) => {
+        setVersion(res.data.version);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-version-error']
+        );
+      });
   };
 
   useEffect(() => {
@@ -237,14 +301,10 @@ const Appbar: React.FC = (): JSX.Element => {
 
   useEffect(() => {
     if (isAuthDisabled) {
-      getVersion().then((res: AxiosResponse) => {
-        setVersion(res.data.version);
-      });
+      fetchOMVersion();
     } else {
       if (!isEmpty(appState.userDetails)) {
-        getVersion().then((res: AxiosResponse) => {
-          setVersion(res.data.version);
-        });
+        fetchOMVersion();
       }
     }
   }, [appState.userDetails, isAuthDisabled]);
@@ -260,6 +320,7 @@ const Appbar: React.FC = (): JSX.Element => {
           handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
+          hasNotification={hasNotification}
           isFeatureModalOpen={isFeatureModalOpen}
           isSearchBoxOpen={isOpen}
           pathname={location.pathname}

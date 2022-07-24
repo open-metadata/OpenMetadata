@@ -28,7 +28,7 @@ class SetAllowedOperationAction implements Action {
   }
 
   @Override
-  public void execute(Facts facts) throws Exception {
+  public void execute(Facts facts) {
     if (Boolean.FALSE.equals(rule.getAllow())) {
       return;
     }

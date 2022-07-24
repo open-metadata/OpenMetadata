@@ -12,9 +12,15 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
+import {
+  Pipeline,
+  StatusType,
+  TaskStatus,
+} from '../generated/entity/data/pipeline';
+import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}`;
+${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}`;
 
 export const pipelineDetailsTabs = [
   {
@@ -22,7 +28,7 @@ export const pipelineDetailsTabs = [
     path: 'details',
   },
   {
-    name: 'Activity Feed',
+    name: 'Activity Feed & Tasks',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
@@ -63,4 +69,62 @@ export const getCurrentPipelineTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const getModifiedPipelineStatus = (
+  status: StatusType,
+  pipelineStatus: Pipeline['pipelineStatus'] = []
+) => {
+  const data = pipelineStatus
+    .map((statusValue) => {
+      return statusValue.taskStatus?.map((task) => ({
+        executionDate: statusValue.executionDate,
+        executionStatus: task.executionStatus,
+        name: task.name,
+      }));
+    })
+    .flat(1);
+
+  if (!status) {
+    return data;
+  } else {
+    return data.filter((d) => d?.executionStatus === status);
+  }
+};
+
+export const getFilteredPipelineStatus = (
+  status: StatusType,
+  pipelineStatus: Pipeline['pipelineStatus'] = []
+) => {
+  if (!status) {
+    return pipelineStatus;
+  } else {
+    return pipelineStatus.filter((d) => d?.executionStatus === status);
+  }
+};
+
+export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
+  return tasks.find((task) => task.name === taskName)?.executionStatus || '';
+};
+
+export const STATUS_OPTIONS = [
+  { value: StatusType.Successful, label: StatusType.Successful },
+  { value: StatusType.Failed, label: StatusType.Failed },
+  { value: StatusType.Pending, label: StatusType.Pending },
+];
+
+export const getStatusBadgeIcon = (status: StatusType) => {
+  switch (status) {
+    case StatusType.Successful:
+      return Icons.SUCCESS_BADGE;
+
+    case StatusType.Failed:
+      return Icons.FAIL_BADGE;
+
+    case StatusType.Pending:
+      return Icons.PENDING_BADGE;
+
+    default:
+      return '';
+  }
 };

@@ -15,6 +15,10 @@
 
 package org.openmetadata.catalog.elasticsearch;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.catalog.Entity.FIELD_USAGE_SUMMARY;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,20 +28,37 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.engine.DocumentMissingException;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.index.query.WildcardQueryBuilder;
+import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DatabaseSchema;
+import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.MlModelService;
+import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
@@ -48,6 +69,8 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -73,46 +96,74 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     for (ChangeEvent event : events.getData()) {
       try {
         String entityType = event.getEntityType();
-        UpdateRequest updateRequest = null;
         switch (entityType) {
           case Entity.TABLE:
-            updateRequest = updateTable(event);
+            updateTable(event);
             break;
           case Entity.DASHBOARD:
-            updateRequest = updateDashboard(event);
+            updateDashboard(event);
             break;
           case Entity.TOPIC:
-            updateRequest = updateTopic(event);
+            updateTopic(event);
             break;
           case Entity.PIPELINE:
-            updateRequest = updatePipeline(event);
+            updatePipeline(event);
             break;
           case Entity.USER:
-            updateRequest = updateUser(event);
+            updateUser(event);
             break;
           case Entity.TEAM:
-            updateRequest = updateTeam(event);
+            updateTeam(event);
             break;
           case Entity.GLOSSARY_TERM:
-            updateRequest = updateGlossaryTerm(event);
+            updateGlossaryTerm(event);
+            break;
+          case Entity.GLOSSARY:
+            updateGlossary(event);
+            break;
+          case Entity.DATABASE:
+            updateDatabase(event);
+            break;
+          case Entity.DATABASE_SCHEMA:
+            updateDatabaseSchema(event);
+            break;
+          case Entity.DASHBOARD_SERVICE:
+            updateDashboardService(event);
+            break;
+          case Entity.DATABASE_SERVICE:
+            updateDatabaseService(event);
+            break;
+          case Entity.MESSAGING_SERVICE:
+            updateMessagingService(event);
+            break;
+          case Entity.PIPELINE_SERVICE:
+            updatePipelineService(event);
+            break;
+          case Entity.MLMODEL_SERVICE:
+            updateMlModelService(event);
+            break;
+          case Entity.MLMODEL:
+            updateMlModel(event);
+            break;
+          case Entity.TAG:
+            updateTag(event);
+            break;
+          case Entity.TAG_CATEGORY:
+            updateTagCategory(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
         }
-        if (updateRequest != null) {
-          client.update(updateRequest, RequestOptions.DEFAULT);
-        }
+      } catch (DocumentMissingException ex) {
+        LOG.error("Missing Document", ex);
       } catch (ElasticsearchException e) {
         LOG.error("failed to update ES doc");
         LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.NOT_FOUND
-            || e.status() == RestStatus.GATEWAY_TIMEOUT
-            || e.status() == RestStatus.INTERNAL_SERVER_ERROR
-            || e.status() == RestStatus.REQUEST_TIMEOUT) {
+        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
           LOG.error("Error in publishing to ElasticSearch");
           throw new ElasticSearchRetriableException(e.getMessage());
         } else {
-          throw new EventPublisherException(e.getMessage());
+          LOG.error(e.getMessage(), e);
         }
       } catch (IOException ie) {
         throw new EventPublisherException(ie.getMessage());
@@ -126,7 +177,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 
-  private UpdateRequest applyChangeEvent(ChangeEvent event) {
+  private UpdateRequest applyChangeEvent(ChangeEvent event) throws JsonProcessingException {
     String entityType = event.getEntityType();
     ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
@@ -135,21 +186,10 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldAddParams = new HashMap<>();
-    ESChangeDescription esChangeDescription =
-        ESChangeDescription.builder()
-            .updatedAt(event.getTimestamp())
-            .updatedBy(event.getUserName())
-            .fieldsAdded(changeDescription.getFieldsAdded())
-            .fieldsUpdated(changeDescription.getFieldsUpdated())
-            .fieldsDeleted(changeDescription.getFieldsDeleted())
-            .build();
-    Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
-    fieldAddParams.put("change_description", esChangeDescriptionDoc);
-    fieldAddParams.put("last_updated_timestamp", event.getTimestamp());
-    scriptTxt.append("ctx._source.change_descriptions.add(params.change_description); ");
-    scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
+    fieldAddParams.put("updatedAt", event.getTimestamp());
+    scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
     for (FieldChange fieldChange : fieldsAdded) {
-      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
         List<String> newFollowers = new ArrayList<>();
@@ -162,13 +202,22 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
-      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
         for (EntityReference follower : entityReferences) {
           fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
         }
         scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
+      }
+    }
+
+    for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
+        @SuppressWarnings("unchecked")
+        UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
+        fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
+        scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
       }
     }
 
@@ -182,228 +231,389 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
-  private UpdateRequest updateTable(ChangeEvent event) throws IOException {
+  private void updateTable(ChangeEvent event) throws IOException {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    TableESIndex tableESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
-      Table table = (Table) event.getEntity();
-      tableESIndex = TableESIndex.builder(table, event.getEventType()).build();
-    }
+    TableIndex tableIndex;
+
     switch (event.getEventType()) {
       case ENTITY_CREATED:
-        String json = JsonUtils.pojoToJson(tableESIndex);
-        updateRequest.doc(json, XContentType.JSON);
+        tableIndex = new TableIndex((Table) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(tableIndex.buildESDoc()), XContentType.JSON);
         updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_UPDATED:
         if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
           updateRequest = applyChangeEvent(event);
         } else {
-          scriptedUpsert(tableESIndex, updateRequest);
+          tableIndex = new TableIndex((Table) event.getEntity());
+          scriptedUpsert(tableIndex.buildESDoc(), updateRequest);
         }
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_SOFT_DELETED:
         softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
-
-    return updateRequest;
   }
 
-  private UpdateRequest updateTopic(ChangeEvent event) throws IOException {
+  private void updateTopic(ChangeEvent event) throws IOException {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    TopicESIndex topicESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
-      Topic topic;
-      topic = (Topic) event.getEntity();
-      topicESIndex = TopicESIndex.builder(topic, event.getEventType()).build();
-    }
+    TopicIndex topicIndex;
+
     switch (event.getEventType()) {
       case ENTITY_CREATED:
-        String json = JsonUtils.pojoToJson(topicESIndex);
-        updateRequest.doc(json, XContentType.JSON);
+        topicIndex = new TopicIndex((Topic) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(topicIndex.buildESDoc()), XContentType.JSON);
         updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_UPDATED:
         if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
           updateRequest = applyChangeEvent(event);
         } else {
-          scriptedUpsert(topicESIndex, updateRequest);
+          topicIndex = new TopicIndex((Topic) event.getEntity());
+          scriptedUpsert(topicIndex.buildESDoc(), updateRequest);
         }
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_SOFT_DELETED:
         softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
-    return updateRequest;
   }
 
-  private UpdateRequest updateDashboard(ChangeEvent event) throws IOException {
-    DashboardESIndex dashboardESIndex = null;
+  private void updateDashboard(ChangeEvent event) throws IOException {
+    DashboardIndex dashboardIndex;
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
-      Dashboard dashboard = (Dashboard) event.getEntity();
-      dashboardESIndex = DashboardESIndex.builder(dashboard, event.getEventType()).build();
-    }
+
     switch (event.getEventType()) {
       case ENTITY_CREATED:
-        String json = JsonUtils.pojoToJson(dashboardESIndex);
-        updateRequest.doc(json, XContentType.JSON);
+        dashboardIndex = new DashboardIndex((Dashboard) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(dashboardIndex.buildESDoc()), XContentType.JSON);
         updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_UPDATED:
         if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
           updateRequest = applyChangeEvent(event);
         } else {
-          scriptedUpsert(dashboardESIndex, updateRequest);
+          dashboardIndex = new DashboardIndex((Dashboard) event.getEntity());
+          scriptedUpsert(dashboardIndex.buildESDoc(), updateRequest);
         }
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_SOFT_DELETED:
         softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
-    return updateRequest;
   }
 
-  private UpdateRequest updatePipeline(ChangeEvent event) throws IOException {
-    PipelineESIndex pipelineESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
-      Pipeline pipeline = (Pipeline) event.getEntity();
-      pipelineESIndex = PipelineESIndex.builder(pipeline, event.getEventType()).build();
-    }
+  private void updatePipeline(ChangeEvent event) throws IOException {
+    PipelineIndex pipelineIndex;
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, event.getEntityId().toString());
     switch (event.getEventType()) {
       case ENTITY_CREATED:
-        String json = JsonUtils.pojoToJson(pipelineESIndex);
-        updateRequest.doc(json, XContentType.JSON);
+        pipelineIndex = new PipelineIndex((Pipeline) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(pipelineIndex.buildESDoc()), XContentType.JSON);
         updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        pipelineIndex = new PipelineIndex((Pipeline) event.getEntity());
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          scriptedUpsert(pipelineIndex.buildESDoc(), updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateUser(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    UserIndex userIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        userIndex = new UserIndex((User) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(userIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        userIndex = new UserIndex((User) event.getEntity());
+        scriptedUserUpsert(userIndex.buildESDoc(), updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateTeam(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    TeamIndex teamIndex;
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        teamIndex = new TeamIndex((Team) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(teamIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        teamIndex = new TeamIndex((Team) event.getEntity());
+        scriptedTeamUpsert(teamIndex.buildESDoc(), updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateGlossaryTerm(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    GlossaryTermIndex glossaryTermIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        glossaryTermIndex = new GlossaryTermIndex((GlossaryTerm) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(glossaryTermIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        glossaryTermIndex = new GlossaryTermIndex((GlossaryTerm) event.getEntity());
+        scriptedUpsert(glossaryTermIndex.buildESDoc(), updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateGlossary(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      Glossary glossary = (Glossary) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      queryBuilder.must(new TermQueryBuilder("name", glossary.getName()));
+      request.setQuery(queryBuilder);
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updateMlModel(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    MlModelIndex mlModelIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        mlModelIndex = new MlModelIndex((MlModel) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(mlModelIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_UPDATED:
         if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
           updateRequest = applyChangeEvent(event);
         } else {
-          scriptedUpsert(pipelineESIndex, updateRequest);
+          mlModelIndex = new MlModelIndex((MlModel) event.getEntity());
+          scriptedUpsert(mlModelIndex.buildESDoc(), updateRequest);
         }
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_SOFT_DELETED:
         softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
-
-    return updateRequest;
   }
 
-  private UpdateRequest updateUser(ChangeEvent event) throws IOException {
+  private void updateTag(ChangeEvent event) throws IOException {
     UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    UserESIndex userESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
-      User user = (User) event.getEntity();
-      userESIndex = UserESIndex.builder(user).build();
-    }
+        new UpdateRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    TagIndex tagIndex;
+
     switch (event.getEventType()) {
       case ENTITY_CREATED:
-        String json = JsonUtils.pojoToJson(userESIndex);
-        updateRequest.doc(json, XContentType.JSON);
+        tagIndex = new TagIndex((Tag) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(tagIndex.buildESDoc()), XContentType.JSON);
         updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_UPDATED:
-        scriptedUserUpsert(userESIndex, updateRequest);
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          tagIndex = new TagIndex((Tag) event.getEntity());
+          scriptedUpsert(tagIndex.buildESDoc(), updateRequest);
+        }
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_SOFT_DELETED:
         softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
-
-    return updateRequest;
   }
 
-  private UpdateRequest updateTeam(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    TeamESIndex teamESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
-      Team team = (Team) event.getEntity();
-      teamESIndex = TeamESIndex.builder(team).build();
+  private void updateDatabase(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      Database database = (Database) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      queryBuilder.must(new TermQueryBuilder("database.name", database.getName()));
+      queryBuilder.must(new TermQueryBuilder("service.name", database.getService().getName()));
+      request.setQuery(queryBuilder);
+      deleteEntityFromElasticSearchByQuery(request);
     }
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        String json = JsonUtils.pojoToJson(teamESIndex);
-        updateRequest.doc(json, XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        break;
-      case ENTITY_UPDATED:
-        scriptedTeamUpsert(teamESIndex, updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteEntity(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        break;
-    }
-
-    return updateRequest;
   }
 
-  private UpdateRequest updateGlossaryTerm(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    GlossaryTermESIndex glossaryESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
-      GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
-      glossaryESIndex = GlossaryTermESIndex.builder(glossaryTerm, event.getEventType()).build();
+  private void updateDatabaseSchema(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      DatabaseSchema databaseSchema = (DatabaseSchema) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      queryBuilder.must(new TermQueryBuilder("databaseSchema.name", databaseSchema.getName()));
+      queryBuilder.must(new TermQueryBuilder("database.name", databaseSchema.getDatabase().getName()));
+      request.setQuery(queryBuilder);
+      deleteEntityFromElasticSearchByQuery(request);
     }
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        String json = JsonUtils.pojoToJson(glossaryESIndex);
-        updateRequest.doc(json, XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        break;
-      case ENTITY_UPDATED:
-        scriptedUpsert(glossaryESIndex, updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteEntity(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        break;
-    }
-
-    return updateRequest;
   }
 
-  private void scriptedUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'change_descriptions') "
-            + "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } "
-            + "else { ctx._source.put(k, params.get(k)) }}";
-    Map<String, Object> doc = JsonUtils.getMap(index);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
+  private void updateDatabaseService(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      DatabaseService databaseService = (DatabaseService) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
+      request.setQuery(new TermQueryBuilder("service.name", databaseService.getName()));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updatePipelineService(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      PipelineService pipelineService = (PipelineService) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName);
+      request.setQuery(new TermQueryBuilder("service.name", pipelineService.getName()));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updateMlModelService(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      MlModelService mlModelService = (MlModelService) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName);
+      request.setQuery(new TermQueryBuilder("service.name", mlModelService.getName()));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updateMessagingService(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      MessagingService messagingService = (MessagingService) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName);
+      request.setQuery(new TermQueryBuilder("service.name", messagingService.getName()));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updateDashboardService(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      DashboardService dashboardService = (DashboardService) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName);
+      request.setQuery(new TermQueryBuilder("service.name", dashboardService.getName()));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updateTagCategory(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      TagCategory tagCategory = (TagCategory) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
+      String fqnMatch = tagCategory.getName() + ".*";
+      request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void scriptedUpsert(Object doc, UpdateRequest updateRequest) {
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
     updateRequest.script(script);
     updateRequest.scriptedUpsert(true);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
   }
 
   private void scriptedUserUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'teams') "
-            + "{ ctx._source.teams.addAll(params.teams) } "
-            + "else if (k == 'roles') "
-            + " { ctx._source.roles.addAll(params.roles) }"
-            + "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt = "for (k in params.keySet()) {ctx._source.put(k, params.get(k)) }";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
@@ -411,12 +621,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void scriptedTeamUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'users') "
-            + "{ ctx._source.users.addAll(params.users) } "
-            + "else if (k == 'owns') "
-            + " { ctx._source.owns.addAll(params.owns) }"
-            + "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
@@ -427,6 +632,32 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     String scriptTxt = "ctx._source.deleted=true";
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
     updateRequest.script(script);
+  }
+
+  private void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
+    if (updateRequest != null) {
+      LOG.debug("Sending request to ElasticSearch");
+      LOG.debug(updateRequest.toString());
+      client.update(updateRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
+    if (deleteRequest != null) {
+      LOG.debug("Sending request to ElasticSearch");
+      LOG.debug(deleteRequest.toString());
+      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
+      client.delete(deleteRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
+    if (deleteRequest != null) {
+      LOG.debug("Sending request to ElasticSearch");
+      LOG.debug(deleteRequest.toString());
+      deleteRequest.setRefresh(true);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+    }
   }
 
   public void close() {

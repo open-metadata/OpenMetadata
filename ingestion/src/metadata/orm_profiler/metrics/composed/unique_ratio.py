@@ -12,6 +12,8 @@
 """
 Unique Ratio Composed Metric definition
 """
+# pylint: disable=duplicate-code
+
 from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
@@ -65,6 +67,6 @@ class UniqueRatio(ComposedMetric):
             # setting a global seed, and it is more interesting
             # to have a wider variety of results for the
             # profiler runs.
-            return min(res_unique / res_count, 100)
+            return min(res_unique / res_count, 1)
 
         return None

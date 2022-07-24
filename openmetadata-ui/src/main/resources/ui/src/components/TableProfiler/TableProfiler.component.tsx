@@ -15,15 +15,16 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { excludedMetrics } from '../../constants/profiler.constant';
-import { Table, TableProfile } from '../../generated/entity/data/table';
-import { useAuth } from '../../hooks/authHooks';
 import {
   ColumnTest,
-  DatasetTestModeType,
-} from '../../interface/dataQuality.interface';
+  Table,
+  TableProfile,
+} from '../../generated/entity/data/table';
+import { useAuth } from '../../hooks/authHooks';
+import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import { isColumnTestSupported } from '../../utils/EntityUtils';
 import { getRoundedValue } from '../../utils/ProfilerUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';

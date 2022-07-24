@@ -4,12 +4,12 @@
   "title": "GlossaryTerm",
   "description": "This schema defines te Glossary term entities.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.GlossaryTerm",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "name": {
       "description": "Name that identifies a glossary term.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "termReference": {
       "type": "object",
@@ -47,13 +47,11 @@
     },
     "description": {
       "description": "Description of the glossary term.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
@@ -110,7 +108,7 @@
       "type": "integer"
     },
     "tags": {
-      "description": "Tags for this glossary term.",
+      "description": "Tags associated with this glossary term. These tags captures relationship of a glossary term with a tag automatically. As an example a glossary term 'User.PhoneNumber' might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in a table, 'PII.Sensitive' label is also applied automatically due to Associated tag relationship.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -131,6 +129,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "glossary"],
+  "required": ["id", "name", "description", "glossary"],
   "additionalProperties": false
 }

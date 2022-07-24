@@ -19,6 +19,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -153,28 +155,8 @@ public class WebhookCallbackResource {
 
   /** Class to keep track of all the events received by a webhook endpoint */
   static class EventDetails {
-    long firstEventTime;
-    long latestEventTime;
-    ConcurrentLinkedQueue<ChangeEvent> events = new ConcurrentLinkedQueue<>();
-
-    public long getFirstEventTime() {
-      return firstEventTime;
-    }
-
-    public void setFirstEventTime(long firstEventTime) {
-      this.firstEventTime = firstEventTime;
-    }
-
-    public long getLatestEventTime() {
-      return latestEventTime;
-    }
-
-    public void setLatestEventTime(long latestEventTime) {
-      this.latestEventTime = latestEventTime;
-    }
-
-    public ConcurrentLinkedQueue<ChangeEvent> getEvents() {
-      return events;
-    }
+    @Getter @Setter long firstEventTime;
+    @Getter @Setter long latestEventTime;
+    @Getter ConcurrentLinkedQueue<ChangeEvent> events = new ConcurrentLinkedQueue<>();
   }
 }

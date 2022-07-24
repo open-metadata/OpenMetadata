@@ -13,6 +13,7 @@
 
 import { orderBy } from 'lodash';
 import { getTableDetails } from '../axiosAPIs/tableAPI';
+import { SearchIndex } from '../enums/search.enum';
 import { getRelativeTime } from './TimeUtils';
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
@@ -20,32 +21,30 @@ export const formatDataResponse = (hits) => {
   const formattedData = hits.map((hit) => {
     const newData = {};
     newData.index = hit._index;
-    newData.id =
-      hit._source.table_id ||
-      hit._source.topic_id ||
-      hit._source.dashboard_id ||
-      hit._source.pipeline_id ||
-      hit._source.pipeine_id;
+    newData.id = hit._source.id;
     newData.name = hit._source.name;
+    newData.displayName = hit._source.displayName;
     newData.description = hit._source.description;
-    newData.fullyQualifiedName = hit._source.fqdn;
-    newData.tableType = hit._source.table_type;
+    newData.fullyQualifiedName = hit._source.fullyQualifiedName;
+    newData.tableType = hit._source.tableType;
     newData.tags = hit._source.tags;
-    newData.dailyStats = hit._source.daily_stats;
-    newData.dailyPercentileRank = hit._source.daily_percentile_rank;
-    newData.weeklyStats = hit._source.weekly_stats;
-    newData.weeklyPercentileRank = hit._source.weekly_percentile_rank;
+    newData.dailyStats = hit._source.usageSummary?.dailyStats?.count;
+    newData.dailyPercentileRank =
+      hit._source.usageSummary?.dailyStats?.percentileRank;
+    newData.weeklyStats = hit._source.usageSummary?.weeklyStats?.count;
+    newData.weeklyPercentileRank =
+      hit._source.usageSummary?.weeklyStats?.percentileRank;
     newData.service = hit._source.service;
-    newData.serviceType = hit._source.service_type;
-    newData.tableEntity = hit._source.table_entity;
+    newData.serviceType = hit._source.serviceType;
     newData.tier = hit._source.tier;
     newData.owner = hit._source.owner;
     newData.highlight = hit.highlight;
 
-    newData.database = hit._source.database;
+    newData.database = hit._source.database?.name;
+    newData.databaseSchema = hit._source.databaseSchema?.name;
 
-    newData.entityType = hit._source.entity_type;
-    newData.changeDescriptions = hit._source.change_descriptions;
+    newData.entityType = hit._source.entityType;
+    newData.changeDescriptions = hit._source.changeDescriptions;
     newData.deleted = hit._source.deleted;
 
     return newData;
@@ -55,26 +54,53 @@ export const formatDataResponse = (hits) => {
 };
 
 export const formatUsersResponse = (hits) => {
-  const users = hits.map((d) => {
+  return hits.map((d) => {
     return {
       name: d._source.name,
-      displayName: d._source.display_name,
+      displayName: d._source.displayName,
       email: d._source.email,
-      type: d._source.entity_type,
-      id: d._source.user_id,
+      type: d._source.entityType,
+      id: d._source.id,
+      teams: d._source.teams,
     };
   });
+};
 
-  return users;
+export const formatTeamsResponse = (hits) => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName,
+      type: d._source.entityType,
+      id: d._source.id,
+      isJoinable: d._source.isJoinable,
+    };
+  });
+};
+
+export const formatTeamsAndUsersResponse = (hits) => {
+  const data = hits.reduce(
+    (prev, curr) => {
+      return curr._index === SearchIndex.TEAM
+        ? { ...prev, teams: [...prev.teams, curr] }
+        : { ...prev, users: [...prev.users, curr] };
+    },
+    { users: [], teams: [] }
+  );
+
+  const users = formatUsersResponse(data.users);
+  const teams = formatTeamsResponse(data.teams);
+
+  return { users, teams };
 };
 
 export const formatSearchGlossaryTermResponse = (hits) => {
   const term = hits.map((d) => {
     return {
       name: d._source.name,
-      displayName: d._source.display_name,
-      fqdn: d._source.fqdn,
-      type: d._source.entity_type,
+      displayName: d._source.displayName,
+      fqdn: d._source.fullyQualifiedName,
+      type: d._source.entityType || 'glossaryTerm',
       id: d._id,
     };
   });
@@ -227,7 +253,6 @@ export const getDateFromTimestamp = (ts) => {
 };
 
 export const getEntityByTypeAndId = (id, entityType) => {
-  // const {entityType, id} = entity;
   switch (entityType) {
     case 'Table': {
       return getTableDetails(id);

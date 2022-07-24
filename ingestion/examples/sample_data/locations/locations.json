@@ -1,20 +1,23 @@
 {
   "locations": [
     {
-      "name": "s3://bucket-a",
-      "displayName": "s3://bucket-a",
+      "name": "bucket_a",
+      "path": "s3://bucket-a",
+      "displayName": "Bucket A",
       "description": "Bucket A",
       "locationType": "Bucket"
     },
     {
-      "name": "s3://bucket-b",
-      "displayName": "s3://bucket-b",
+      "name": "bucket_b",
+      "path": "s3://bucket-b",
+      "displayName": "Bucket B",
       "description": "Bucket B",
       "locationType": "Bucket"
     },
     {
-      "name": "s3://bucket-a/user/hive/dwh",
-      "displayName": "s3://bucket-a/user/hive/dwh",
+      "name": "hive_dwh",
+      "path": "s3://bucket-a/user/hive/dwh",
+      "displayName": "Hive DWH",
       "description": "Bucket A prefix",
       "locationType": "Prefix"
     }

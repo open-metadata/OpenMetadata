@@ -9,15 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class FileSinkConfig(ConfigModel):
@@ -30,11 +32,10 @@ class FileSink(Sink[Entity]):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: FileSinkConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
-        super().__init__(ctx)
+
         self.config = config
         self.metadata_config = metadata_config
         self.report = SinkStatus()
@@ -45,12 +46,9 @@ class FileSink(Sink[Entity]):
         self.wrote_something = False
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = FileSinkConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:
 

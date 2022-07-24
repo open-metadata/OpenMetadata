@@ -14,72 +14,93 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import {
+  getDatabaseDetailsByFQN,
+  patchDatabaseDetails,
+} from '../../axiosAPIs/databaseAPI';
 import DatabaseDetails from './';
 
 const mockDatabase = {
-  id: '44d92cbd-65d3-4755-aaf9-b4bf01e0d822',
-  name: 'shopify',
-  fullyQualifiedName: 'bigquery.shopify',
-  description: 'This **mock** database contains tables related to',
-  href: 'http://localhost',
+  id: 'b705cc69-55fd-4338-aa45-86f34b655ae6',
+  type: 'database',
+  name: 'bigquery_gcp.ecommerce_db',
+  description:
+    'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+  deleted: false,
+  href: 'http://localhost:8585/api/v1/databases/b705cc69-55fd-4338-aa45-86f34b655ae6',
+
   service: {
-    id: '451ccbeb-24d4-490d-891c-d00b5f18a13b',
+    id: 'bc13e95f-83ac-458a-9528-f4ca26657568',
     type: 'databaseService',
-    name: 'bigquery',
-    description: 'BigQuery service used for shopify data',
-    href: 'http://localhost',
+    name: 'bigquery_gcp',
+    description: '',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/services/databaseServices/bc13e95f-83ac-458a-9528-f4ca26657568',
   },
 };
 
 const mockServiceData = {
-  id: '451ccbeb-24d4-490d-891c-d00b5f18a13b',
-  name: 'bigquery',
-  serviceType: 'BigQuery',
-  description: 'BigQuery service used for shopify data',
-  href: 'http://localhost',
+  id: 'bc13e95f-83ac-458a-9528-f4ca26657568',
+  type: 'databaseService',
+  name: 'bigquery_gcp',
+  description: '',
+  deleted: false,
+  href: 'http://localhost:8585/api/v1/services/databaseServices/bc13e95f-83ac-458a-9528-f4ca26657568',
   jdbc: { driverClass: 'jdbc', connectionUrl: 'jdbc://localhost' },
 };
 
-const mockTableData = {
+const mockSchemaData = {
   data: [
     {
-      id: 'b69fef11-3cbe-42fb-8303-9ac8e55629ba',
-      name: 'dim_address',
+      id: 'ed2c5f5e-e0d7-4b90-9efe-d50b3ecd645f',
+      name: 'shopify',
+      fullyQualifiedName: 'bigquery_gcp.ecommerce_db.shopify',
       description:
-        'This dimension table contains the billing and shipping addresses of customers',
-      href: 'http://localhost:8585/',
-      tableType: 'Regular',
-      fullyQualifiedName: 'bigquery.shopify.dim_address',
-      columns: [
-        {
-          name: 'address_id',
-          columnDataType: 'NUMERIC',
-          description: 'Unique identifier for the address.',
-          fullyQualifiedName: 'bigquery.shopify.dim_address.address_id',
-          tags: [],
-          columnConstraint: 'PRIMARY_KEY',
-          ordinalPosition: 1,
-        },
-      ],
-      usageSummary: {
-        dailyStats: { count: 100, percentileRank: 45 },
-        weeklyStats: { count: 100, percentileRank: 45 },
-        monthlyStats: { count: 100, percentileRank: 45 },
-        date: '2021-09-20',
+        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      version: 0.1,
+      updatedAt: 1649411380854,
+      updatedBy: 'anonymous',
+      href: 'http://localhost:8585/api/v1/databases/ed2c5f5e-e0d7-4b90-9efe-d50b3ecd645f',
+      service: {
+        id: 'bc13e95f-83ac-458a-9528-f4ca26657568',
+        type: 'databaseService',
+        name: 'bigquery_gcp',
+        description: '',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/services/databaseServices/bc13e95f-83ac-458a-9528-f4ca26657568',
       },
-      tags: [
-        {
-          labelType: 'Manual',
-          state: 'Confirmed',
-          tagFQN: 'PersonalData.Personal',
+      serviceType: 'BigQuery',
+      database: {
+        id: 'b705cc69-55fd-4338-aa45-86f34b655ae6',
+        type: 'database',
+        name: 'bigquery_gcp.ecommerce_db',
+        description:
+          'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/databases/b705cc69-55fd-4338-aa45-86f34b655ae6',
+      },
+      usageSummary: {
+        dailyStats: {
+          count: 0,
+          percentileRank: 0,
         },
-      ],
+        weeklyStats: {
+          count: 0,
+          percentileRank: 0,
+        },
+        monthlyStats: {
+          count: 0,
+          percentileRank: 0,
+        },
+        date: '2022-04-08',
+      },
+      deleted: false,
     },
   ],
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -120,7 +141,13 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
-  patchDatabaseDetails: jest.fn(),
+  patchDatabaseDetails: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
+
+  getDatabaseSchemas: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockSchemaData })),
 }));
 
 jest.mock('../../components/containers/PageContainer', () => {
@@ -135,12 +162,6 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
   getServiceById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockServiceData })),
-}));
-
-jest.mock('../../axiosAPIs/tableAPI', () => ({
-  getDatabaseTables: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockTableData })),
 }));
 
 jest.mock('../../utils/TableUtils', () => ({
@@ -165,6 +186,7 @@ jest.mock('../../utils/CommonUtils', () => ({
     .fn()
     .mockReturnValue('5d5ca778-8bee-4ea0-bcb6-b17d92f7ef96'),
   isEven: jest.fn().mockReturnValue(true),
+  getEntityName: jest.fn().mockReturnValue('entityname'),
 }));
 
 jest.mock('../../components/tags/tags', () => {
@@ -213,6 +235,34 @@ jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
+jest.mock(
+  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(
+        <p data-testid="entity-summary-details">
+          EntitySummaryDetails component
+        </p>
+      );
+  }
+);
+
+jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="delete-entity">DeleteWidgetModal component</p>
+    );
+});
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
+
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
     const { container } = render(<DatabaseDetails />, {
@@ -225,7 +275,10 @@ describe('Test DatabaseDetails page', () => {
       container,
       'description-container'
     );
-    const databaseTable = await findByTestId(container, 'database-tables');
+    const databaseTable = await findByTestId(
+      container,
+      'database-databaseSchemas'
+    );
 
     expect(pageContainer).toBeInTheDocument();
     expect(titleBreadcrumb).toBeInTheDocument();
@@ -237,7 +290,10 @@ describe('Test DatabaseDetails page', () => {
     const { container } = render(<DatabaseDetails />, {
       wrapper: MemoryRouter,
     });
-    const databaseTable = await findByTestId(container, 'database-tables');
+    const databaseTable = await findByTestId(
+      container,
+      'database-databaseSchemas'
+    );
     const tableHeader = await findByTestId(container, 'table-header');
     const headerName = await findByTestId(container, 'header-name');
     const headerDescription = await findByTestId(
@@ -246,8 +302,7 @@ describe('Test DatabaseDetails page', () => {
     );
     const headerOwner = await findByTestId(container, 'header-owner');
     const headerUsage = await findByTestId(container, 'header-usage');
-    const headerTags = await findByTestId(container, 'header-tags');
-    const tableColumn = await findByTestId(container, 'tabale-column');
+    const tableColumn = await findByTestId(container, 'table-column');
 
     expect(databaseTable).toBeInTheDocument();
     expect(tableHeader).toBeInTheDocument();
@@ -255,7 +310,56 @@ describe('Test DatabaseDetails page', () => {
     expect(headerDescription).toBeInTheDocument();
     expect(headerOwner).toBeInTheDocument();
     expect(headerUsage).toBeInTheDocument();
-    expect(headerTags).toBeInTheDocument();
     expect(tableColumn).toBeInTheDocument();
+  });
+
+  it('Should render error placeholder if getDatabase Details Api fails', async () => {
+    (getDatabaseDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: {
+            message: 'Error!',
+          },
+        },
+      })
+    );
+    const { container } = render(<DatabaseDetails />, {
+      wrapper: MemoryRouter,
+    });
+
+    const errorPlaceholder = await findByTestId(container, 'error');
+
+    expect(errorPlaceholder).toBeInTheDocument();
+  });
+
+  it('Should render database component if patchDatabaseDetails Api fails', async () => {
+    (patchDatabaseDetails as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: {
+            message: 'Error!',
+          },
+        },
+      })
+    );
+    const { container } = render(<DatabaseDetails />, {
+      wrapper: MemoryRouter,
+    });
+
+    const pageContainer = await findByTestId(container, 'page-container');
+    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+    const descriptionContainer = await findByTestId(
+      container,
+      'description-container'
+    );
+    const databaseTable = await findByTestId(
+      container,
+      'database-databaseSchemas'
+    );
+
+    expect(pageContainer).toBeInTheDocument();
+    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(descriptionContainer).toBeInTheDocument();
+    expect(databaseTable).toBeInTheDocument();
   });
 });

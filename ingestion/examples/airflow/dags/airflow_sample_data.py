@@ -9,9 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
 from datetime import timedelta
 
+import yaml
 from airflow import DAG
 
 try:
@@ -33,30 +33,26 @@ default_args = {
 }
 
 config = """
-{
-  "source": {
-    "type": "sample-data",
-    "config": {
-      "sample_data_folder": "./examples/sample_data"
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}
+source:
+  type: sample_data
+  serviceName: sample_data
+  serviceConnection:
+    config:
+      type: SampleData
+      sampleDataFolder: "./examples/sample_data"
+  sourceConfig: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 """
 
 
 def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
+    workflow_config = yaml.safe_load(config)
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
@@ -69,7 +65,7 @@ with DAG(
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     start_date=days_ago(1),
-    is_paused_upon_creation=False,
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(

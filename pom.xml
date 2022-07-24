@@ -17,27 +17,60 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.openmetadata</groupId>
+  <groupId>org.open-metadata</groupId>
   <artifactId>catalog</artifactId>
-  <version>0.9.1-SNAPSHOT</version>
+  <name>OpenMetadata-catalog</name>
+  <description>Openmetadata catalog</description>
+  <version>0.12.0-SNAPSHOT</version>
+  <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>common</module>
     <module>catalog-rest-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
+    <module>openmetadata-core</module>
+    <module>openmetadata-clients</module>
   </modules>
   <packaging>pom</packaging>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
   <scm>
     <connection>scm:git:git@github.com:Open-Metadata/OpenMetadata</connection>
     <developerConnection>scm:git:git@github.com:Open-Metadata/OpenMetadata</developerConnection>
     <url>scm:git:git@github.com:Open-Metadata/OpenMetadata</url>
   </scm>
 
+  <developers>
+    <developer>
+      <name>OpenMetadata</name>
+      <email>openmetadata@getcollate.io</email>
+      <organization>Get Collate</organization>
+      <organizationUrl>https://getcollate.io/</organizationUrl>
+    </developer>
+  </developers>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.3.1</mockito.version>
+    <mockito.version>4.6.1</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.13.2</jackson.version>
+    <jackson.version>2.13.3</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
@@ -53,32 +86,36 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.27.1</jdbi3.version>
+    <jdbi3.version>3.30.0</jdbi3.version>
     <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
-    <flyway.version>8.1.0</flyway.version>
-    <redshift-jdbc.version>2.1.0.4</redshift-jdbc.version>
+    <flyway.version>8.5.11</flyway.version>
+    <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
-    <mysql.connector.version>8.0.28</mysql.connector.version>
+    <mysql.connector.version>8.0.29</mysql.connector.version>
+    <postgres.connector.version>42.3.6</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
-    <lombok.version>1.18.22</lombok.version>
+    <lombok.version>1.18.24</lombok.version>
     <tomcat-jdbc.version>10.0.8</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
     <elasticsearch.version>7.17.1</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.1.13</openapiswagger.version>
+    <openapiswagger.version>2.2.0</openapiswagger.version>
     <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.13</httpclient.version>
-    <spring.version>5.3.16</spring.version>
+    <spring.version>5.3.20</spring.version>
     <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
-    <dropwizard-health.version>1.7.1</dropwizard-health.version>
+    <dropwizard-health.version>1.7.2</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
+    <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
+    <!--  upgrade only when we find how to import esnext modules in nodejs  -->
+    <antlr.version>4.10.1</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -90,10 +127,17 @@
     <sonar.language>java</sonar.language>
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-
+    <testng.version>7.6.0</testng.version>
+    <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
+    <json-schema-validator.version>1.0.70</json-schema-validator.version>
   </properties>
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-runtime</artifactId>
+        <version>${antlr.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
         <artifactId>jersey-bom</artifactId>
@@ -119,7 +163,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>${jackson.version}</version>
+        <version>2.13.3</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -152,6 +196,12 @@
             <artifactId>junit</artifactId>
           </exclusion>
         </exclusions>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.awaitility</groupId>
+        <artifactId>awaitility</artifactId>
+        <version>4.2.0</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -200,6 +250,16 @@
             <artifactId>protobuf-java</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-mysql</artifactId>
+        <version>9.0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgres.connector.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>
@@ -298,6 +358,16 @@
         <artifactId>spring-core</artifactId>
         <version>${spring.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-core</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-jdbi</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
+      </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
         <groupId>jakarta.xml.bind</groupId>
@@ -323,6 +393,18 @@
         <groupId>org.mockito</groupId>
         <artifactId>mockito-all</artifactId>
         <version>2.0.2-beta</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-inline</artifactId>
+        <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <version>${mockito.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -371,17 +453,17 @@
       <dependency>
           <groupId>org.apache.logging.log4j</groupId>
           <artifactId>log4j-core</artifactId>
-          <version>2.17.1</version>
+          <version>2.17.2</version>
       </dependency>
       <dependency>
           <groupId>org.apache.logging.log4j</groupId>
           <artifactId>log4j-api</artifactId>
-          <version>2.17.1</version>
+          <version>2.17.2</version>
       </dependency>
       <dependency>
         <groupId>com.wix</groupId>
         <artifactId>wix-embedded-mysql</artifactId>
-        <version>4.6.1</version>
+        <version>4.6.2</version>
         <scope>test</scope>
       </dependency>
       <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
@@ -395,7 +477,7 @@
       <dependency>
         <groupId>org.apache.johnzon</groupId>
         <artifactId>johnzon-core</artifactId>
-        <version>1.2.16</version>
+        <version>1.2.18</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -491,7 +573,6 @@
     </profile>
 
   </profiles>
-
   <reporting>
     <plugins>
       <plugin>
@@ -500,7 +581,7 @@
         <version>3.1.1</version>
       </plugin>
     </plugins>
-</reporting>
+  </reporting>
   <build>
     <pluginManagement>
       <plugins>
@@ -540,7 +621,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>9.3</version>
+              <version>10.3</version>
             </dependency>
           </dependencies>
         </plugin>
@@ -564,6 +645,49 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
           <version>${maven-jar-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>${maven-src-plugin.version}</version>
+          <executions>
+            <execution>
+              <id>attach-sources</id>
+              <goals>
+                <goal>jar-no-fork</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>2.10.3</version>
+          <configuration>
+            <additionalparam>-Xdoclint:none</additionalparam>
+          </configuration>
+          <executions>
+            <execution>
+              <id>attach-javadocs</id>
+              <goals>
+                <goal>jar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>1.5</version>
+          <executions>
+            <execution>
+              <id>sign-artifacts</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>sign</goal>
+              </goals>
+            </execution>
+          </executions>
         </plugin>
 
         <!-- Test plugins -->
@@ -635,12 +759,12 @@
       <plugin>
         <groupId>org.sonatype.plugins</groupId>
         <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.7</version>
+        <version>1.6.13</version>
         <extensions>true</extensions>
         <configuration>
           <serverId>ossrh</serverId>
-          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-          <autoReleaseAfterClose>false</autoReleaseAfterClose>
+          <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
         </configuration>
       </plugin>
       <plugin>

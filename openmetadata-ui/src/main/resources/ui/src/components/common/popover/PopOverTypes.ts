@@ -12,13 +12,14 @@
  */
 
 import React, { ReactNode } from 'react';
+import { TooltipProps } from 'react-tippy';
 
 export type Position = 'top' | 'left' | 'bottom' | 'right';
 export type Trigger = 'mouseenter' | 'focus' | 'click' | 'manual';
 export type Theme = 'dark' | 'light' | 'transparent';
 export type Size = 'small' | 'regular' | 'big';
 
-export type PopOverProp = {
+export interface PopOverProp extends TooltipProps {
   html?: React.ReactElement;
   title?: string;
   arrow?: boolean;
@@ -31,4 +32,4 @@ export type PopOverProp = {
   delay?: number;
   hideDelay?: number;
   sticky?: boolean;
-};
+}

@@ -12,9 +12,12 @@
 """
 Like Count Metric definition
 """
+# pylint: disable=duplicate-code
+
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.sum import SumFn
 
 
 class LikeCount(StaticMetric):
@@ -23,7 +26,12 @@ class LikeCount(StaticMetric):
 
     Given a column, and an expression, return the number of
     rows that match it
+
+    This Metric needs to be initialised passing the expression to check
+    add_props(expression="j%")(Metrics.LIKE_COUNT.value)
     """
+
+    expression: str
 
     @classmethod
     def name(cls):
@@ -39,6 +47,4 @@ class LikeCount(StaticMetric):
             raise AttributeError(
                 "Like Count requires an expression to be set: add_props(expression=...)(Metrics.LIKE_COUNT)"
             )
-        return func.sum(
-            case([(column(self.col.name).like(self.expression), 1)], else_=0)
-        )
+        return SumFn(case([(column(self.col.name).like(self.expression), 1)], else_=0))

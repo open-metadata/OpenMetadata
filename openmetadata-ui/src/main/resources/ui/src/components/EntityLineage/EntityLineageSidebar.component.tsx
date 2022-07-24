@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
+import { faGripVertical } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
-import { FlowElement } from 'react-flow-renderer';
+import { Node } from 'react-flow-renderer';
 import { entityData } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
-import { faGripVertical } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
   show: boolean;
-  newAddedNode?: FlowElement;
+  newAddedNode?: Node;
 }
 
 interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {

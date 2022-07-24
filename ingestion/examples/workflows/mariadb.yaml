@@ -1,0 +1,20 @@
+source:
+  type: mariadb
+  serviceName: local_mariadb
+  serviceConnection:
+    config:
+      type: MariaDB
+      username: openmetadata_user
+      password: openmetadata_password
+      databaseSchema: openmetadata_db
+      hostPort: localhost:3306
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

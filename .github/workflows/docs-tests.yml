@@ -1,0 +1,38 @@
+
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: docs-tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'openmetadata-docs/**'
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
+    paths:
+      - 'openmetadata-docs/**'
+
+concurrency: 
+  group: docs-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+jobs:
+  docs-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+
+    - name: Run Docs export
+      run: make docker-docs-validate

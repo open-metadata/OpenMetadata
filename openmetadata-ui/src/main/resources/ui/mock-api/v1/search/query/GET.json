@@ -1,0 +1,359 @@
+{
+    "took": 8,
+    "timed_out": false,
+    "_shards": {
+      "total": 4,
+      "successful": 4,
+      "skipped": 0,
+      "failed": 0
+    },
+    "hits": {
+      "total": {
+        "value": 2,
+        "relation": "eq"
+      },
+      "max_score": 2.4637282,
+      "hits": [
+        {
+          "_index": "table_search_index",
+          "_type": "_doc",
+          "_id": "07244140-402d-48e0-9b68-3a0f078d334b",
+          "_score": 2.4637282,
+          "_source": {
+            "name": "raw_product_catalog",
+            "fqdn": "bigquery_gcp.shopify.raw_product_catalog",
+            "service": "bigquery_gcp",
+            "deleted": false,
+            "suggest": [
+              {
+                "input": "bigquery_gcp.shopify.raw_product_catalog",
+                "weight": 5
+              },
+              {
+                "input": "raw_product_catalog",
+                "weight": 10
+              }
+            ],
+            "description": "This is a raw product catalog table contains the product listing, price, seller etc.. represented in our online DB.",
+            "tags": [
+              "Health care.Term 2",
+              "PII.Sensitive",
+              "PersonalData.Personal",
+              "User.Address"
+            ],
+            "followers": [],
+            "database": "shopify",
+            "display_name": "raw_product_catalog",
+            "service_type": "BigQuery",
+            "service_category": "databaseService",
+            "entity_type": "table",
+            "last_updated_timestamp": 1646948504918,
+            "change_descriptions": [
+              {
+                "updatedBy": "anonymous",
+                "updatedAt": 1646772061575,
+                "fieldsAdded": [],
+                "fieldsUpdated": [],
+                "fieldsDeleted": []
+              },
+              {
+                "updatedBy": "anonymous",
+                "fieldsAdded": [
+                  {
+                    "newValue": "[{\"tagFQN\":\"Health care.Term 2\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                    "name": "columns.platform.tags"
+                  }
+                ],
+                "fieldsUpdated": [],
+                "fieldsDeleted": [],
+                "updatedAt": 1646897095509
+              },
+              {
+                "updatedBy": "anonymous",
+                "fieldsAdded": [
+                  {
+                    "newValue": "[{\"tagFQN\":\"PII.Sensitive\",\"description\":\"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"PersonalData.Personal\",\"description\":\"Data that can be used to directly or indirectly identify a person.\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"User.Address\",\"source\":\"Tag\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                    "name": "columns.store_address.tags"
+                  }
+                ],
+                "fieldsUpdated": [],
+                "fieldsDeleted": [],
+                "updatedAt": 1646897119471
+              },
+              {
+                "updatedBy": "anonymous",
+                "fieldsAdded": [
+                  {
+                    "newValue": "[{\"tagFQN\":\"Health care.term1.COBRA\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                    "name": "columns.comments.tags"
+                  }
+                ],
+                "fieldsUpdated": [],
+                "fieldsDeleted": [],
+                "updatedAt": 1646898527281
+              },
+              {
+                "updatedBy": "anonymous",
+                "fieldsAdded": [
+                  {
+                    "newValue": "{\"id\":\"ea4851dc-76d5-4d00-bd87-39bee118f297\",\"type\":\"user\",\"name\":\"aaron_johnson0\",\"displayName\":\"Aaron Johnson\"}",
+                    "name": "owner"
+                  }
+                ],
+                "fieldsUpdated": [],
+                "fieldsDeleted": [],
+                "updatedAt": 1646948483587
+              },
+              {
+                "updatedBy": "anonymous",
+                "fieldsAdded": [],
+                "fieldsUpdated": [],
+                "fieldsDeleted": [
+                  {
+                    "name": "columns.comments.tags",
+                    "oldValue": "[{\"tagFQN\":\"Health care.term1.COBRA\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]"
+                  }
+                ],
+                "updatedAt": 1646948504918
+              }
+            ],
+            "table_id": "07244140-402d-48e0-9b68-3a0f078d334b",
+            "table_type": "Regular",
+            "column_names": [
+              "comments",
+              "products",
+              "platform",
+              "store_address",
+              "first_order_date",
+              "last_order_date"
+            ],
+            "column_descriptions": [
+              null,
+              null,
+              null,
+              null,
+              "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
+              "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01)."
+            ],
+            "owner": "ea4851dc-76d5-4d00-bd87-39bee118f297",
+            "weekly_stats": "7000",
+            "weekly_percentile_rank": "10",
+            "daily_stats": "1000",
+            "daily_percentile_rank": "7"
+          }
+        },
+        {
+            "_index": "table_search_index",
+            "_type": "_doc",
+            "_id": "07244140-402d-48e0-9b68-3a0f078d334b",
+            "_score": 2.4637282,
+            "_source": {
+              "name": "raw_customer",
+              "fqdn": "bigquery_gcp.shopify.raw_customer",
+              "service": "bigquery_gcp",
+              "deleted": false,
+              "suggest": [
+                {
+                  "input": "bigquery_gcp.shopify.raw_customer",
+                  "weight": 5
+                },
+                {
+                  "input": "raw_customer",
+                  "weight": 10
+                }
+              ],
+              "description": "This is a raw product catalog table contains the product listing, price, seller etc.. represented in our online DB.",
+              "tags": [
+                "Health care.Term 2",
+                "PII.Sensitive",
+                "PersonalData.Personal",
+                "User.Address"
+              ],
+              "followers": [],
+              "database": "shopify",
+              "display_name": "raw_customer",
+              "service_type": "BigQuery",
+              "service_category": "databaseService",
+              "entity_type": "table",
+              "last_updated_timestamp": 1646948504918,
+              "change_descriptions": [
+                {
+                  "updatedBy": "anonymous",
+                  "updatedAt": 1646772061575,
+                  "fieldsAdded": [],
+                  "fieldsUpdated": [],
+                  "fieldsDeleted": []
+                },
+                {
+                  "updatedBy": "anonymous",
+                  "fieldsAdded": [
+                    {
+                      "newValue": "[{\"tagFQN\":\"Health care.Term 2\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                      "name": "columns.platform.tags"
+                    }
+                  ],
+                  "fieldsUpdated": [],
+                  "fieldsDeleted": [],
+                  "updatedAt": 1646897095509
+                },
+                {
+                  "updatedBy": "anonymous",
+                  "fieldsAdded": [
+                    {
+                      "newValue": "[{\"tagFQN\":\"PII.Sensitive\",\"description\":\"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"PersonalData.Personal\",\"description\":\"Data that can be used to directly or indirectly identify a person.\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"User.Address\",\"source\":\"Tag\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                      "name": "columns.store_address.tags"
+                    }
+                  ],
+                  "fieldsUpdated": [],
+                  "fieldsDeleted": [],
+                  "updatedAt": 1646897119471
+                },
+                {
+                  "updatedBy": "anonymous",
+                  "fieldsAdded": [
+                    {
+                      "newValue": "[{\"tagFQN\":\"Health care.term1.COBRA\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                      "name": "columns.comments.tags"
+                    }
+                  ],
+                  "fieldsUpdated": [],
+                  "fieldsDeleted": [],
+                  "updatedAt": 1646898527281
+                },
+                {
+                  "updatedBy": "anonymous",
+                  "fieldsAdded": [
+                    {
+                      "newValue": "{\"id\":\"ea4851dc-76d5-4d00-bd87-39bee118f297\",\"type\":\"user\",\"name\":\"aaron_johnson0\",\"displayName\":\"Aaron Johnson\"}",
+                      "name": "owner"
+                    }
+                  ],
+                  "fieldsUpdated": [],
+                  "fieldsDeleted": [],
+                  "updatedAt": 1646948483587
+                },
+                {
+                  "updatedBy": "anonymous",
+                  "fieldsAdded": [],
+                  "fieldsUpdated": [],
+                  "fieldsDeleted": [
+                    {
+                      "name": "columns.comments.tags",
+                      "oldValue": "[{\"tagFQN\":\"Health care.term1.COBRA\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]"
+                    }
+                  ],
+                  "updatedAt": 1646948504918
+                }
+              ],
+              "table_id": "07244140-402d-48e0-9b68-3a0f078d334b",
+              "table_type": "Regular",
+              "column_names": [
+                "comments",
+                "products",
+                "platform",
+                "store_address",
+                "first_order_date",
+                "last_order_date"
+              ],
+              "column_descriptions": [
+                null,
+                null,
+                null,
+                null,
+                "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
+                "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01)."
+              ],
+              "owner": "ea4851dc-76d5-4d00-bd87-39bee118f297"
+            }
+          }
+      ]
+    },
+    "aggregations": {
+      "sterms#EntityType": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "dashboard",
+            "doc_count": 1
+          },
+          {
+            "key": "table",
+            "doc_count": 1
+          }
+        ]
+      },
+      "sterms#ServiceCategory": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "dashboardService",
+            "doc_count": 1
+          },
+          {
+            "key": "databaseService",
+            "doc_count": 1
+          }
+        ]
+      },
+      "sterms#Tier": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": []
+      },
+      "sterms#Service": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "BigQuery",
+            "doc_count": 1
+          },
+          {
+            "key": "Superset",
+            "doc_count": 1
+          }
+        ]
+      },
+      "sterms#Tags": {
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 0,
+        "buckets": [
+          {
+            "key": "Health care.Term 2",
+            "doc_count": 1
+          },
+          {
+            "key": "Health care.term 3.Term 4",
+            "doc_count": 1
+          },
+          {
+            "key": "PII.None",
+            "doc_count": 1
+          },
+          {
+            "key": "PII.Sensitive",
+            "doc_count": 1
+          },
+          {
+            "key": "PersonalData.Personal",
+            "doc_count": 1
+          },
+          {
+            "key": "PersonalData.SpecialCategory",
+            "doc_count": 1
+          },
+          {
+            "key": "User.Address",
+            "doc_count": 1
+          },
+          {
+            "key": "User.Biometric",
+            "doc_count": 1
+          }
+        ]
+      }
+    }
+  }
+  

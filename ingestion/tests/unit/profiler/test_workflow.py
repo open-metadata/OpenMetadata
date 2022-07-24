@@ -14,13 +14,21 @@ Validate workflow configs and filters
 """
 import uuid
 from copy import deepcopy
+from unittest.mock import patch
 
 import sqlalchemy as sqa
+from pytest import raises
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -30,72 +38,93 @@ from metadata.generated.schema.tests.table.tableRowCountToEqual import (
 )
 from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
-from metadata.orm_profiler.profiles.default import DefaultProfiler
-from metadata.orm_profiler.profiles.models import ProfilerDef
+from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.orm_profiler.profiler.models import ProfilerDef
 from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 config = {
-    "source": {"type": "sqlite", "config": {"service_name": "my_service"}},
+    "source": {
+        "type": "sqlite",
+        "serviceName": "my_service",
+        "serviceConnection": {"config": {"type": "SQLite"}},
+        "sourceConfig": {"config": {"type": "Profiler"}},
+    },
     "processor": {"type": "orm-profiler", "config": {}},
     "sink": {"type": "metadata-rest", "config": {}},
-    "metadata_server": {
-        "type": "metadata-server",
-        "config": {
-            "api_endpoint": "http://localhost:8585/api",
-            "auth_provider_type": "no-auth",
-        },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "no-auth",
+        }
     },
 }
 
-workflow = ProfilerWorkflow.create(config)
 
-
-def test_init_workflow():
+@patch.object(
+    ProfilerWorkflow,
+    "_validate_service_name",
+    return_value=True,
+)
+def test_init_workflow(mocked_method):
     """
     We can initialise the workflow from a config
     """
-    assert isinstance(workflow.source_config, SQLiteConfig)
-    assert isinstance(workflow.metadata_config, MetadataServerConfig)
+    workflow = ProfilerWorkflow.create(config)
+    mocked_method.assert_called()
+
+    assert isinstance(workflow.source_config, DatabaseServiceProfilerPipeline)
+    assert isinstance(workflow.metadata_config, OpenMetadataConnection)
+
+    workflow.create_processor(workflow.config.source.serviceConnection.__root__.config)
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)
     assert workflow.processor.config.profiler is None
     assert workflow.processor.config.test_suite is None
 
 
-def test_filter_entities():
+@patch.object(
+    ProfilerWorkflow,
+    "_validate_service_name",
+    return_value=True,
+)
+def test_filter_entities(mocked_method):
     """
     We can properly filter entities depending on the
     workflow configuration
     """
+    workflow = ProfilerWorkflow.create(config)
+    mocked_method.assert_called()
 
     service_name = "service"
-    db_reference1 = EntityReference(id=uuid.uuid4(), name="one_db", type="database")
-    db_reference2 = EntityReference(id=uuid.uuid4(), name="another_db", type="database")
+    schema_reference1 = EntityReference(
+        id=uuid.uuid4(), name="one_schema", type="databaseSchema"
+    )
+    schema_reference2 = EntityReference(
+        id=uuid.uuid4(), name="another_schema", type="databaseSchema"
+    )
 
     all_tables = [
         Table(
             id=uuid.uuid4(),
             name="table1",
-            database=db_reference1,
-            fullyQualifiedName=f"{service_name}.{db_reference1.name}.table1",
+            databaseSchema=schema_reference1,
+            fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table1",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         ),
         Table(
             id=uuid.uuid4(),
             name="table2",
-            database=db_reference1,
-            fullyQualifiedName=f"{service_name}.{db_reference1.name}.table2",
+            databaseSchema=schema_reference1,
+            fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table2",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         ),
         Table(
             id=uuid.uuid4(),
             name="table3",
-            database=db_reference2,
-            fullyQualifiedName=f"{service_name}.{db_reference2.name}.table3",
+            databaseSchema=schema_reference2,
+            fullyQualifiedName=f"{service_name}.db.{schema_reference2.name}.table3",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         ),
     ]
@@ -104,47 +133,40 @@ def test_filter_entities():
     assert len(list(workflow.filter_entities(all_tables))) == 3
 
     # We can exclude based on the schema name
-    exclude_filter_schema_config = deepcopy(config)
-    exclude_filter_schema_config["source"]["config"]["schema_filter_pattern"] = {
-        "excludes": ["one_db"]
+    exclude_config = deepcopy(config)
+    exclude_config["source"]["sourceConfig"]["config"]["fqnFilterPattern"] = {
+        "excludes": ["service*"]
     }
 
-    exclude_filter_schema_workflow = ProfilerWorkflow.create(
-        exclude_filter_schema_config
-    )
-    assert len(list(exclude_filter_schema_workflow.filter_entities(all_tables))) == 1
+    exclude_workflow = ProfilerWorkflow.create(exclude_config)
+    mocked_method.assert_called()
+    assert len(list(exclude_workflow.filter_entities(all_tables))) == 0
 
-    # We can include based on the schema name
-    include_filter_schema_config = deepcopy(config)
-    include_filter_schema_config["source"]["config"]["schema_filter_pattern"] = {
-        "includes": ["another_db"]
+    exclude_config = deepcopy(config)
+    exclude_config["source"]["sourceConfig"]["config"]["fqnFilterPattern"] = {
+        "excludes": ["service.db.another*"]
     }
 
-    include_filter_schema_workflow = ProfilerWorkflow.create(
-        include_filter_schema_config
-    )
-    assert len(list(include_filter_schema_workflow.filter_entities(all_tables))) == 1
+    exclude_workflow = ProfilerWorkflow.create(exclude_config)
+    mocked_method.assert_called()
+    assert len(list(exclude_workflow.filter_entities(all_tables))) == 2
 
-    # We can exclude based on the table name
-    exclude_filter_table_config = deepcopy(config)
-    exclude_filter_table_config["source"]["config"]["table_filter_pattern"] = {
-        "excludes": ["tab*"]
+    include_config = deepcopy(config)
+    include_config["source"]["sourceConfig"]["config"]["fqnFilterPattern"] = {
+        "includes": ["service*"]
     }
 
-    exclude_filter_table_workflow = ProfilerWorkflow.create(exclude_filter_table_config)
-    assert len(list(exclude_filter_table_workflow.filter_entities(all_tables))) == 0
-
-    # We can include based on the table name
-    include_filter_table_config = deepcopy(config)
-    include_filter_table_config["source"]["config"]["table_filter_pattern"] = {
-        "includes": ["table1"]
-    }
-
-    include_filter_table_workflow = ProfilerWorkflow.create(include_filter_table_config)
-    assert len(list(include_filter_table_workflow.filter_entities(all_tables))) == 1
+    include_workflow = ProfilerWorkflow.create(include_config)
+    mocked_method.assert_called()
+    assert len(list(include_workflow.filter_entities(all_tables))) == 3
 
 
-def test_profile_def():
+@patch.object(
+    ProfilerWorkflow,
+    "_validate_service_name",
+    return_value=True,
+)
+def test_profile_def(mocked_method):
     """
     Validate the definitions of the profile in the JSON
     """
@@ -155,6 +177,10 @@ def test_profile_def():
     }
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
+    mocked_method.assert_called()
+    profile_workflow.create_processor(
+        profile_workflow.config.source.serviceConnection.__root__.config
+    )
 
     profile_definition = ProfilerDef(
         name="my_profiler",
@@ -167,13 +193,22 @@ def test_profile_def():
     assert profile_workflow.processor.config.profiler == profile_definition
 
 
-def test_default_profile_def():
+@patch.object(
+    ProfilerWorkflow,
+    "_validate_service_name",
+    return_value=True,
+)
+def test_default_profile_def(mocked_method):
     """
     If no information is specified for the profiler, let's
     use the SimpleTableProfiler and SimpleProfiler
     """
 
     profile_workflow = ProfilerWorkflow.create(config)
+    mocked_method.assert_called()
+    profile_workflow.create_processor(
+        profile_workflow.config.source.serviceConnection.__root__.config
+    )
 
     assert isinstance(profile_workflow.processor, OrmProfilerProcessor)
     assert profile_workflow.processor.config.profiler is None
@@ -209,7 +244,12 @@ def test_default_profile_def():
     )
 
 
-def test_tests_def():
+@patch.object(
+    ProfilerWorkflow,
+    "_validate_service_name",
+    return_value=True,
+)
+def test_tests_def(mocked_method):
     """
     Validate the test case definition
     """
@@ -246,6 +286,10 @@ def test_tests_def():
     }
 
     test_workflow = ProfilerWorkflow.create(test_config)
+    mocked_method.assert_called()
+    test_workflow.create_processor(
+        test_workflow.config.source.serviceConnection.__root__.config
+    )
 
     assert isinstance(test_workflow.processor, OrmProfilerProcessor)
     suite = test_workflow.processor.config.test_suite
@@ -277,3 +321,11 @@ def test_tests_def():
     )
 
     assert suite == expected
+
+
+def test_service_name_validation_raised():
+    """Test the service name validation for the profiler
+    workflow is raised correctly
+    """
+    with raises(ValueError, match="Service name `.*` does not exist"):
+        ProfilerWorkflow.create(config)

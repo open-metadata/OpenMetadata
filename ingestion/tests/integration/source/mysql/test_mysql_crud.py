@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 def is_responsive(url):
@@ -66,7 +65,7 @@ def create_delete_database(client: OpenMetadata):
     data = {
         "databaseConnection": {"hostPort": "localhost"},
         "name": "temp_local_mysql",
-        "serviceType": "MySQL",
+        "serviceType": "Mysql",
         "description": "local mysql env",
     }
     create_mysql_service = CreateDatabaseServiceRequest(**data)

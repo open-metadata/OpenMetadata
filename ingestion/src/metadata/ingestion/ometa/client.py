@@ -12,7 +12,6 @@
 Python API REST wrapper and helpers
 """
 import datetime
-import logging
 import time
 from typing import Callable, List, Optional
 
@@ -21,8 +20,9 @@ from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class RetryException(Exception):
@@ -126,12 +126,19 @@ class REST:
 
     # pylint: disable=too-many-arguments
     def _request(
-        self, method, path, data=None, base_url: URL = None, api_version: str = None
+        self,
+        method,
+        path,
+        data=None,
+        base_url: URL = None,
+        api_version: str = None,
+        headers: dict = None,
     ):
+        if not headers:
+            headers = {"Content-type": "application/json"}
         base_url = base_url or self._base_url
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + "/" + version + path)
-        headers = {"Content-type": "application/json"}
         if (
             self.config.expires_in
             and datetime.datetime.utcnow().timestamp() >= self.config.expires_in
@@ -257,7 +264,12 @@ class REST:
         Returns:
             Response
         """
-        return self._request("PATCH", path, data)
+        return self._request(
+            method="PATCH",
+            path=path,
+            data=data,
+            headers={"Content-type": "application/json-patch+json"},
+        )
 
     def delete(self, path, data=None):
         """

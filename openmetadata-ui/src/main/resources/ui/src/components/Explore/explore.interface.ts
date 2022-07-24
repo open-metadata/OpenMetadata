@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchDataFunctionType, SearchResponse } from 'Models';
+import { FilterObject, SearchDataFunctionType, SearchResponse } from 'Models';
 
 export type UrlParams = {
   searchQuery: string;
@@ -24,6 +24,8 @@ export type ExploreSearchData = {
   resAggTier: SearchResponse;
   resAggTag: SearchResponse;
   resAggDatabase: SearchResponse;
+  resAggDatabaseSchema: SearchResponse;
+  resAggServiceName: SearchResponse;
 };
 
 export interface ExploreProps {
@@ -33,14 +35,20 @@ export interface ExploreProps {
     dashboard: number;
     pipeline: number;
     dbtModel: number;
+    mlModel: number;
   };
   searchText: string;
+  initialFilter?: FilterObject;
+  searchFilter?: FilterObject;
   sortValue: string;
   tab: string;
   error: string;
   searchQuery: string;
   showDeleted: boolean;
+  searchResult: ExploreSearchData | undefined;
+  isFilterSelected: boolean;
   fetchCount: () => void;
+  handleFilterChange: (data: FilterObject) => void;
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
   updateTableCount: (count: number) => void;
@@ -48,7 +56,12 @@ export interface ExploreProps {
   updateDashboardCount: (count: number) => void;
   updatePipelineCount: (count: number) => void;
   updateDbtModelCount: (count: number) => void;
+  updateMlModelCount: (count: number) => void;
   fetchData: (value: SearchDataFunctionType[]) => void;
   onShowDeleted: (checked: boolean) => void;
-  searchResult: ExploreSearchData | undefined;
+}
+
+export interface AdvanceField {
+  key: string;
+  value: string | undefined;
 }

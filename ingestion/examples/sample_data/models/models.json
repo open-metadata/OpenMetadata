@@ -4,7 +4,55 @@
       "displayName": "ETA Predictions",
       "description": "ETA Predictions Model",
       "algorithm": "Neural Network",
-      "dashboard": "sample_superset.eta_predictions_performance"
+      "dashboard": "sample_superset.eta_predictions_performance",
+      "mlStore": {
+        "storage": "s3://path-to-pickle",
+        "imageRepository": "https://docker.hub.com/image"
+      },
+      "server": "http://my-server.ai",
+      "mlFeatures": [
+        {
+          "name": "sales",
+          "dataType": "numerical",
+          "description": "Sales amount",
+          "featureSources": [
+            {
+              "name": "gross_sales",
+              "dataType": "integer",
+              "dataSource": "sample_data.ecommerce_db.shopify.fact_sale"
+            }
+          ]
+        },
+        {
+          "name": "persona",
+          "dataType": "categorical",
+          "description": "type of buyer",
+          "featureAlgorithm": "PCA",
+          "featureSources": [
+            {
+              "name": "membership",
+              "dataType": "string",
+              "dataSource": "sample_data.ecommerce_db.shopify.raw_customer"
+            },
+            {
+              "name": "platform",
+              "dataType": "string",
+              "dataSource": "sample_data.ecommerce_db.shopify.raw_customer"
+            }
+          ]
+        }
+      ],
+      "mlHyperParameters": [
+        {
+          "name": "regularisation",
+          "value": "0.5"
+        },
+        {
+          "name": "random",
+          "value": "hello"
+        }
+      ],
+      "target": "ETA_time"
     },
       {
       "name": "forecast_sales",

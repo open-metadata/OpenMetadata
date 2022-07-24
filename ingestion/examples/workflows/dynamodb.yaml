@@ -1,0 +1,25 @@
+source:
+  type: dynamodb
+  serviceName: local_dynamodb
+  serviceConnection:
+    config:
+      type: DynamoDB
+      awsConfig:
+        awsAccessKeyId: aws_access_key_id
+        awsSecretAccessKey: aws_secret_access_key
+        awsRegion: aws region
+        endPointURL: https://dynamodb.<region_name>.amazonaws.com
+      database: custom_database_name
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      tableFilterPattern:
+        includes:
+        - ''
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

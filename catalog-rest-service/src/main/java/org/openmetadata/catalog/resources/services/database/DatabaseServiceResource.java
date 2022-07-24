@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.database;
 
-import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,12 +20,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -47,51 +40,46 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
-import org.openmetadata.catalog.security.AuthorizationException;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 @Path("/v1/services/databaseServices")
 @Api(value = "Database service collection", tags = "Services -> Database service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseServices")
-public class DatabaseServiceResource extends EntityResource<DatabaseService, DatabaseServiceRepository> {
+public class DatabaseServiceResource
+    extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-
-  static final String FIELDS = "airflowPipeline,owner";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(DatabaseService.class);
-  private final Fernet fernet;
+  static final String FIELDS = "pipelines,owner";
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 
-  public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer);
-    this.fernet = Fernet.getInstance();
+  public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(DatabaseService.class, new DatabaseServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -105,8 +93,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   @GET
   @Operation(
+      operationId = "listDatabaseServices",
       summary = "List database services",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a list of database services.",
       responses = {
         @ApiResponse(
@@ -138,14 +127,12 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = getFields(fieldsParam);
     ResultList<DatabaseService> dbServices;
 
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-
+    ListFilter filter = new ListFilter(include);
     if (before != null) {
       dbServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
@@ -157,8 +144,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDatabaseServiceByID",
       summary = "Get a database service",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a database service by `id`.",
       responses = {
         @ApiResponse(
@@ -183,16 +171,17 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
-    DatabaseService service = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return decryptOrNullify(securityContext, service);
+      throws IOException {
+    DatabaseService databaseService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, databaseService);
   }
 
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getDatabaseServiceByFQN",
       summary = "Get database service by name",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a database service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -217,16 +206,17 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
-    DatabaseService service = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return decryptOrNullify(securityContext, service);
+      throws IOException {
+    DatabaseService databaseService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, databaseService);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDatabaseServiceVersion",
       summary = "List database service versions",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a list of all the versions of a database service identified by `id`",
       responses = {
         @ApiResponse(
@@ -238,7 +228,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     EntityHistory entityHistory = dao.listVersions(id);
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -259,8 +249,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDatabaseServiceVersion",
       summary = "Get a version of the database service",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a version of the database service by given `id`",
       responses = {
         @ApiResponse(
@@ -281,64 +272,63 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
-    return decryptOrNullify(securityContext, dao.getVersion(id, version));
+      throws IOException {
+    DatabaseService databaseService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, databaseService);
   }
 
   @POST
   @Operation(
+      operationId = "createDatabaseService",
       summary = "Create database service",
-      tags = "services",
+      tags = "databaseService",
       description = "Create a new database service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Database service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDatabaseService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DatabaseService service = getService(create, securityContext);
-    service = addHref(uriInfo, decryptOrNullify(securityContext, dao.create(uriInfo, service)));
-    return Response.created(service.getHref()).entity(service).build();
+      throws IOException {
+    DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @PUT
   @Operation(
-      summary = "Update a database service",
-      tags = "services",
-      description = "Update an existing database service identified by `id`.",
+      operationId = "createOrUpdateDatabaseService",
+      summary = "Update database service",
+      tags = "databaseService",
+      description = "Update an existing or create a new database service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Database service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDatabaseService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
-      throws IOException, ParseException {
-    DatabaseService service = getService(update, securityContext);
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(service));
-    PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, decryptOrNullify(securityContext, response.getEntity()));
-    return response.toResponse();
+      throws IOException {
+    DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDatabaseService",
       summary = "Delete a database service",
-      tags = "services",
+      tags = "databaseService",
       description =
           "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
       responses = {
@@ -352,47 +342,29 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<DatabaseService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    decryptOrNullify(securityContext, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private ResultList<DatabaseService> decryptOrNullify(
-      SecurityContext securityContext, ResultList<DatabaseService> databaseServices) {
-    Optional.ofNullable(databaseServices.getData())
-        .orElse(Collections.emptyList())
-        .forEach(databaseService -> decryptOrNullify(securityContext, databaseService));
-    return databaseServices;
-  }
-
-  private DatabaseService decryptOrNullify(SecurityContext securityContext, DatabaseService databaseService) {
-    try {
-      SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.DecryptTokens);
-    } catch (AuthorizationException e) {
-      return databaseService.withDatabaseConnection(null);
-    }
-    DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
-    if (databaseConnection != null
-        && databaseConnection.getPassword() != null
-        && isTokenized(databaseConnection.getPassword())) {
-      databaseConnection.setPassword(fernet.decrypt(databaseConnection.getPassword()));
-    }
-    return databaseService;
-  }
-
-  private DatabaseService getService(CreateDatabaseService create, SecurityContext securityContext) {
-    return new DatabaseService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private DatabaseService getService(CreateDatabaseService create, String user) {
+    return copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
-        .withDatabaseConnection(create.getDatabaseConnection())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withConnection(create.getConnection());
+  }
+
+  @Override
+  protected DatabaseService nullifyConnection(DatabaseService service) {
+    return service.withConnection(null);
+  }
+
+  @Override
+  protected String extractServiceType(DatabaseService service) {
+    return service.getServiceType().value();
   }
 }

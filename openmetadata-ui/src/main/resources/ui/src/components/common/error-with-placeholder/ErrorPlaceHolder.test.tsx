@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
+import { getByTestId, getByText, render } from '@testing-library/react';
 import React from 'react';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 describe('Test Error place holder Component', () => {
   it('Component should render', () => {
-    const { container } = render(<ErrorPlaceHolder />);
+    const { container } = render(
+      <ErrorPlaceHolder>
+        <p>Children1</p>
+      </ErrorPlaceHolder>
+    );
 
     expect(getByTestId(container, 'error')).toBeInTheDocument();
     expect(getByTestId(container, 'no-data-image')).toBeInTheDocument();
+    expect(getByText(container, 'Children1')).toBeInTheDocument();
   });
 });

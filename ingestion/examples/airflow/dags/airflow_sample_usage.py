@@ -36,17 +36,22 @@ config = """
 {
   "source": {
     "type": "sample-usage",
-    "config": {
-      "database": "warehouse",
-      "service_name": "bigquery_gcp",
-      "sample_data_folder": "./examples/sample_data"
-    }
+    "serviceName": "sample_data",
+    "serviceConnection": {
+      "config": {
+        "type": "SampleData",
+        "sampleDataFolder": "./examples/sample_data"
+      }
+    },
+    "sourceConfig": {
+        "config":{
+          "type": "DatabaseUsage"
+        }
+      }
   },
   "processor": {
     "type": "query-parser",
-    "config": {
-      "filter": ""
-    }
+    "config": {}
   },
   "stage": {
     "type": "table-usage",
@@ -54,21 +59,19 @@ config = """
       "filename": "/tmp/sample_usage"
     }
   },
-  "bulk_sink": {
+  "bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/sample_usage"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
-
 """
 
 
@@ -87,7 +90,7 @@ with DAG(
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     schedule_interval=timedelta(days=1),
     start_date=days_ago(1),
-    is_paused_upon_creation=False,
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(

@@ -14,7 +14,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import App from './App';
-import { AuthContext } from './auth-provider/AuthProvider';
+import { AuthContext } from './authentication/auth-provider/AuthProvider';
 
 const authContext = jest.fn();
 
@@ -22,7 +22,7 @@ jest.mock('./router/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('./auth-provider/AuthProvider', () => {
+jest.mock('./authentication/auth-provider/AuthProvider', () => {
   return {
     AuthProvider: jest
       .fn()

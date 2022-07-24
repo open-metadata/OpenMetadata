@@ -18,16 +18,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.SEPARATOR;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.Entity;
@@ -40,16 +42,31 @@ import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
-import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.DatabaseConnection;
+import org.openmetadata.catalog.security.credentials.AWSCredentials;
+import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.catalog.services.connections.database.BigQueryConnection;
+import org.openmetadata.catalog.services.connections.database.MysqlConnection;
+import org.openmetadata.catalog.services.connections.database.RedshiftConnection;
+import org.openmetadata.catalog.services.connections.database.SnowflakeConnection;
+import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.services.connections.mlModel.MlflowConnection;
+import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.catalog.services.connections.pipeline.GlueConnection;
+import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Tag;
+import org.openmetadata.catalog.type.MessagingConnection;
+import org.openmetadata.catalog.type.MlModelConnection;
+import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 
 @Slf4j
 public final class TestUtils {
@@ -66,8 +83,19 @@ public final class TestUtils {
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
 
-  public static final DatabaseConnection DATABASE_CONNECTION;
-  public static URI DASHBOARD_URL;
+  public static final DatabaseConnection MYSQL_DATABASE_CONNECTION;
+  public static final DatabaseConnection SNOWFLAKE_DATABASE_CONNECTION;
+  public static final DatabaseConnection BIGQUERY_DATABASE_CONNECTION;
+  public static final DatabaseConnection REDSHIFT_DATABASE_CONNECTION;
+
+  public static PipelineConnection AIRFLOW_CONNECTION;
+  public static PipelineConnection GLUE_CONNECTION;
+
+  public static MessagingConnection KAFKA_CONNECTION;
+  public static DashboardConnection SUPERSET_CONNECTION;
+
+  public static MlModelConnection MLFLOW_CONNECTION;
+
   public static URI PIPELINE_URL;
 
   public enum UpdateType {
@@ -78,26 +106,74 @@ public final class TestUtils {
   }
 
   static {
-    DATABASE_CONNECTION =
+    MYSQL_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withHostPort("localhost:1000")
-            .withUsername("user_name")
-            .withPassword("password")
-            .withDatabase("test");
+            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
+    REDSHIFT_DATABASE_CONNECTION =
+        new DatabaseConnection()
+            .withConfig(
+                new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
+    BIGQUERY_DATABASE_CONNECTION =
+        new DatabaseConnection().withConfig(new BigQueryConnection().withHostPort("localhost:1000"));
+    SNOWFLAKE_DATABASE_CONNECTION =
+        new DatabaseConnection()
+            .withConfig(new SnowflakeConnection().withUsername("snowflake").withPassword("snowflake"));
   }
 
   static {
     try {
-      DASHBOARD_URL = new URI("http://localhost:8088");
+      KAFKA_CONNECTION =
+          new MessagingConnection()
+              .withConfig(
+                  new KafkaConnection()
+                      .withBootstrapServers("localhost:9092")
+                      .withSchemaRegistryURL(new URI("http://localhost:8081")));
     } catch (URISyntaxException e) {
-      DASHBOARD_URL = null;
+      KAFKA_CONNECTION = null;
       e.printStackTrace();
     }
   }
 
   static {
     try {
+      SUPERSET_CONNECTION =
+          new DashboardConnection()
+              .withConfig(
+                  new SupersetConnection()
+                      .withHostPort(new URI("http://localhost:8080"))
+                      .withUsername("admin")
+                      .withPassword("admin"));
+    } catch (URISyntaxException e) {
+      SUPERSET_CONNECTION = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    MLFLOW_CONNECTION =
+        new MlModelConnection()
+            .withConfig(
+                new MlflowConnection()
+                    .withRegistryUri("http://localhost:8080")
+                    .withTrackingUri("http://localhost:5000"));
+  }
+
+  static {
+    try {
       PIPELINE_URL = new URI("http://localhost:8080");
+      AIRFLOW_CONNECTION =
+          new PipelineConnection()
+              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
+
+      GLUE_CONNECTION =
+          new PipelineConnection()
+              .withConfig(
+                  new GlueConnection()
+                      .withAwsConfig(
+                          new AWSCredentials()
+                              .withAwsAccessKeyId("ABCD")
+                              .withAwsSecretAccessKey("1234")
+                              .withAwsRegion("eu-west-2")));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();
@@ -155,13 +231,12 @@ public final class TestUtils {
   }
 
   public static void post(WebTarget target, Map<String, String> headers) throws HttpResponseException {
-    Response response = SecurityUtil.addHeaders(target, headers).post(null);
-    readResponse(response, Status.CREATED.getStatusCode());
+    post(target, null, headers);
   }
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers) throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    Entity<K> entity = (request == null) ? null : Entity.entity(request, MediaType.APPLICATION_JSON);
+    Response response = SecurityUtil.addHeaders(target, headers).post(entity);
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
@@ -214,24 +289,39 @@ public final class TestUtils {
   }
 
   public static void assertDeleted(List<EntityReference> list, Boolean expected) {
-    listOrEmpty(list).forEach(e -> expected.equals(e.getDeleted()));
+    listOrEmpty(list).forEach(e -> assertEquals(expected, e.getDeleted()));
   }
 
   public static void validateEntityReference(EntityReference ref) {
-    assertNotNull(ref.getId());
-    assertNotNull(ref.getHref());
-    assertNotNull(ref.getName());
-    assertNotNull(ref.getType());
+    assertNotNull(ref.getId(), invalidEntityReference(ref, "null Id"));
+    assertNotNull(ref.getHref(), invalidEntityReference(ref, "null href"));
+    assertNotNull(ref.getName(), invalidEntityReference(ref, "null name"));
+    assertNotNull(ref.getFullyQualifiedName(), invalidEntityReference(ref, "null fqn"));
+    assertNotNull(ref.getType(), invalidEntityReference(ref, "null type"));
     // Ensure data entities use fully qualified name
     if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
         .contains(ref.getType())) {
       // FullyQualifiedName has "." as separator
-      assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
+      assertTrue(
+          ref.getFullyQualifiedName().contains(SEPARATOR), "entity name is not fully qualified - " + ref.getName());
     }
   }
 
+  public static String invalidEntityReference(EntityReference ref, String message) {
+    return String.format("%s:%s %s", ref.getType(), ref.getId(), message);
+  }
+
   public static void validateEntityReferences(List<EntityReference> list) {
+    validateEntityReferences(list, false);
+  }
+
+  public static void validateEntityReferences(List<EntityReference> list, boolean expectedNotEmpty) {
+    if (expectedNotEmpty) {
+      assertNotNull(list);
+      assertListNotEmpty(list);
+    }
     listOrEmpty(list).forEach(TestUtils::validateEntityReference);
+    validateAlphabeticalOrdering(list, EntityUtil.compareEntityReference);
   }
 
   public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList) throws HttpResponseException {
@@ -239,30 +329,44 @@ public final class TestUtils {
       return;
     }
     actualList = listOrEmpty(actualList);
+    actualList.forEach(TestUtils::validateTagLabel);
+
     // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
     // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
+    List<TagLabel> updatedExpectedList = new ArrayList<>();
+    EntityUtil.mergeTags(updatedExpectedList, expectedList);
+
     for (TagLabel expected : expectedList) {
-      if (expected.getSource() != Source.TAG) {
-        continue; // TODO similar test for glossary
+      if (expected.getSource() == TagSource.GLOSSARY) {
+        GlossaryTerm glossaryTerm =
+            new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
+        List<TagLabel> derived = new ArrayList<>();
+        for (TagLabel tag : listOrEmpty(glossaryTerm.getTags())) {
+          Tag associatedTag = TagResourceTest.getTag(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
+          derived.add(
+              new TagLabel()
+                  .withTagFQN(tag.getTagFQN())
+                  .withState(expected.getState())
+                  .withDescription(associatedTag.getDescription())
+                  .withLabelType(TagLabel.LabelType.DERIVED));
+        }
+        EntityUtil.mergeTags(updatedExpectedList, derived);
       }
-      Tag tag = TagResourceTest.getTag(expected.getTagFQN(), ADMIN_AUTH_HEADERS);
-      List<TagLabel> derived = new ArrayList<>();
-      for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
-        Tag associatedTag = TagResourceTest.getTag(fqn, ADMIN_AUTH_HEADERS);
-        derived.add(
-            new TagLabel()
-                .withTagFQN(fqn)
-                .withState(expected.getState())
-                .withDescription(associatedTag.getDescription())
-                .withLabelType(TagLabel.LabelType.DERIVED));
-      }
-      updatedExpectedList.addAll(derived);
     }
-    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
     updatedExpectedList.sort(EntityUtil.compareTagLabel);
     actualList.sort(EntityUtil.compareTagLabel);
+    assertEquals(updatedExpectedList.size(), actualList.size());
     assertEquals(updatedExpectedList, actualList);
+  }
+
+  public static void validateTagLabel(TagLabel label) {
+    assertNotNull(label.getTagFQN(), label.getTagFQN());
+    assertNotNull(label.getDescription(), label.getTagFQN());
+    assertNotNull(label.getLabelType(), label.getTagFQN());
+    assertNotNull(label.getSource(), label.getTagFQN());
+    assertNotNull(label.getState(), label.getTagFQN());
+    // TODO
+    // assertNotNull(label.getHref());
   }
 
   public static void checkUserFollowing(
@@ -271,15 +375,6 @@ public final class TestUtils {
     // GET .../users/{userId} shows user as following table
     User user = new UserResourceTest().getEntity(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
-  }
-
-  public static String getPrincipal(Map<String, String> authHeaders) {
-    // Get username from the email address
-    if (authHeaders == null) {
-      return null;
-    }
-    String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
-    return principal == null ? null : principal.split("@")[0];
   }
 
   // TODO remove this
@@ -300,26 +395,32 @@ public final class TestUtils {
     if (expected == actual) { // Take care of both being null
       return;
     }
-    validateEntityReferences(actual);
     if (expected != null) {
+      actual = listOrEmpty(actual);
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
+    validateEntityReferences(actual);
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
-    boolean exists = false;
-    for (EntityReference ref : list) {
-      validateEntityReference(ref);
-      if (ref.getId().equals(id)) {
-        exists = true;
+    EntityReference ref = null;
+    for (EntityReference r : list) {
+      validateEntityReference(r);
+      if (r.getId().equals(id)) {
+        ref = r;
         break;
       }
     }
-    assertEquals(
-        expectedExistsInList, exists, "Entry exists in list - expected:" + expectedExistsInList + " actual:" + exists);
+    if (expectedExistsInList) {
+      assertNotNull(ref, "EntityReference does not exist for " + id);
+    } else {
+      if (ref != null) {
+        assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + id);
+      }
+    }
   }
 
   public static void assertListNull(Object... values) {
@@ -336,5 +437,29 @@ public final class TestUtils {
       Assertions.assertNotNull(value, "Object at index " + index + " is null");
       index++;
     }
+  }
+
+  public static void assertListNotEmpty(List<?>... values) {
+    int index = 0;
+    for (List<?> value : values) {
+      Assertions.assertFalse(value.isEmpty(), "List at index " + index + "is empty");
+      index++;
+    }
+  }
+
+  public static <T> boolean validateAlphabeticalOrdering(List<T> list, Comparator<T> comparator) {
+    Iterator<T> iterator = listOrEmpty(list).iterator();
+    if (!iterator.hasNext()) {
+      return true;
+    }
+    T prev = iterator.next();
+    while (iterator.hasNext()) {
+      T next = iterator.next();
+      if (comparator.compare(prev, next) > 0) {
+        return false;
+      }
+      prev = next;
+    }
+    return true;
   }
 }

@@ -36,12 +36,19 @@ describe('Test Searchbar Component', () => {
 
   it('Renders the user typed text when a change event is fired', () => {
     const onSearch = jest.fn();
-    const { container } = render(<Searchbar onSearch={onSearch} />);
+    const { container, getByText } = render(
+      <Searchbar showLoadingStatus label="Test Label" onSearch={onSearch} />
+    );
     const searchElement = getByTestId(container, 'searchbar');
 
     expect(searchElement.value).toBe('');
+    expect(getByText('Test Label')).toBeInTheDocument();
+
+    fireEvent.focus(searchElement);
 
     fireEvent.change(searchElement, { target: { value: 'Test Search' } });
+
+    fireEvent.blur(searchElement);
 
     expect(searchElement.value).toBe('Test Search');
   });

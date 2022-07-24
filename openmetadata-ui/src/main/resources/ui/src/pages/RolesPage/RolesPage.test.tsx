@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getRoles } from '../../axiosAPIs/rolesAPI';
 import {
   mockGetPolicyNoRuleData,
   mockGetPolicyWithRuleData,
@@ -30,9 +31,16 @@ jest.mock('../../axiosAPIs/rolesAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockGetRole })),
   updatePolicy: jest.fn(),
   updateRole: jest.fn(),
+  getPolicies: jest.fn().mockImplementation(() => {
+    return Promise.resolve({
+      data: {
+        data: [],
+      },
+    });
+  }),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -114,16 +122,16 @@ describe('Test RolesPage component', () => {
       'left-panel-content'
     );
     const leftPanelTitle = await findByTestId(container, 'left-panel-title');
-    const leftPanelAddRoleButton = await findByTestId(container, 'add-role');
+    const leftPanelAddRoleButton = await findByTestId(
+      container,
+      'add-new-role-button'
+    );
     const roleNames = await findAllByTestId(container, 'role-name-container');
 
     const roleContainer = await findByTestId(container, 'role-container');
     const header = await findByTestId(container, 'header');
     const headerTitle = await findByTestId(container, 'header-title');
-    const addNewRuleButton = await findByTestId(
-      container,
-      'add-new-rule-button'
-    );
+
     const tabs = await findByTestId(container, 'tabs');
     const description = await findByText(container, /Description component/i);
 
@@ -138,10 +146,9 @@ describe('Test RolesPage component', () => {
     expect(header).toBeInTheDocument();
     expect(headerTitle).toBeInTheDocument();
     expect(headerTitle.textContent).toBe(mockGetRole.data[0].displayName);
-    expect(addNewRuleButton).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(tabs.childElementCount).toBe(3);
-    expect(tabs.children[0].textContent).toBe('Policy');
+    expect(tabs.children[0].textContent).toBe('Policies');
     expect(tabs.children[1].textContent).toBe('Teams');
     expect(tabs.children[2].textContent).toBe('Users');
     expect(tabs.children[0]).toHaveClass('active');
@@ -194,7 +201,6 @@ describe('Test RolesPage component', () => {
     expect(tableHeading.map((heading) => heading.textContent)).toStrictEqual([
       'Operation',
       'Access',
-      'Enabled',
       'Action',
     ]);
 
@@ -209,8 +215,12 @@ describe('Test RolesPage component', () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
+    const roleNames = await findAllByTestId(container, 'role-name-container');
+    fireEvent.click(roleNames[1]);
 
-    const addRoleButton = await findByTestId(container, 'add-role');
+    expect(roleNames[1]).toHaveClass('activeCategory');
+
+    const addRoleButton = await findByTestId(container, 'add-new-role-button');
     const addNewRuleButton = await findByTestId(
       container,
       'add-new-rule-button'
@@ -224,5 +234,23 @@ describe('Test RolesPage component', () => {
     expect(
       await findByText(container, /AddRuleModal component/i)
     ).toBeInTheDocument();
+  });
+
+  it('Should render error placeholder if roles api fails', async () => {
+    (getRoles as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: { message: 'Error!' },
+        },
+      })
+    );
+
+    const { container } = render(<RolesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const errorPlaceholder = await findByTestId(container, 'error');
+
+    expect(errorPlaceholder).toBeInTheDocument();
   });
 });

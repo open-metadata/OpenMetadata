@@ -22,10 +22,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
-import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -53,12 +50,9 @@ import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/services/storageServices")
@@ -70,7 +64,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
 
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(StorageService.class);
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
@@ -94,8 +87,9 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
 
   @GET
   @Operation(
+      operationId = "listStorageService",
       summary = "List storage services",
-      tags = "services",
+      tags = "storageService",
       description =
           "Get a list of storage services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -132,17 +126,17 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+      throws IOException {
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getStorageServiceByID",
       summary = "Get a storage service",
-      tags = "services",
+      tags = "storageService",
       description = "Get a storage service by `id`.",
       responses = {
         @ApiResponse(
@@ -167,15 +161,16 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getStorageServiceByFQN",
       summary = "Get storage service by name",
-      tags = "services",
+      tags = "storageService",
       description = "Get a storage service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -200,15 +195,16 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllStorageServiceVersion",
       summary = "List storage service versions",
-      tags = "services",
+      tags = "storageService",
       description = "Get a list of all the versions of a storage service identified by `id`",
       responses = {
         @ApiResponse(
@@ -220,15 +216,16 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificStorageServiceVersion",
       summary = "Get a version of the storage service",
-      tags = "services",
+      tags = "storageService",
       description = "Get a version of the storage service by given `id`",
       responses = {
         @ApiResponse(
@@ -249,14 +246,15 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
   @POST
   @Operation(
+      operationId = "createStorageService",
       summary = "Create storage service",
-      tags = "services",
+      tags = "storageService",
       description = "Create a new storage service.",
       responses = {
         @ApiResponse(
@@ -268,17 +266,16 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    StorageService service = getService(create, securityContext);
-    service = addHref(uriInfo, dao.create(uriInfo, service));
-    return Response.created(service.getHref()).entity(service).build();
+      throws IOException {
+    StorageService service = getService(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, service, true);
   }
 
   @PUT
   @Operation(
-      summary = "Update a storage service",
-      tags = "services",
+      operationId = "createOrUpdateStorageService",
+      summary = "Update storage service",
+      tags = "storageService",
       description = "Update an existing storage service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -288,21 +285,19 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
                 @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
-      throws IOException, ParseException {
-    StorageService service = getService(update, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(service));
-    PutResponse<StorageService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    StorageService service = getService(update, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, service, true);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteStorageService",
       summary = "Delete a storage service",
-      tags = "services",
+      tags = "storageService",
       description = "Delete a storage services. If storages (and tables) belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -315,22 +310,17 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<StorageService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private StorageService getService(CreateStorageService create, SecurityContext securityContext) {
-    return new StorageService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withServiceType(create.getServiceType())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private StorageService getService(CreateStorageService create, String user) {
+    return copy(new StorageService(), create, user).withServiceType(create.getServiceType());
   }
 }

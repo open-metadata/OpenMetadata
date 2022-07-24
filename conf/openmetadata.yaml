@@ -87,12 +87,14 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: INFO
+  level: ${LOG_LEVEL:-DEBUG}
   loggers:
-    org.openmetadata.catalog.common: DEBUG
+    org.openmetadata.catalog.events: DEBUG
     io.swagger: ERROR
   appenders:
     - type: file
+      filterFactories:
+        - type: audit-exclude-filter-factory
       threshold: TRACE
       logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
       currentLogFilename: ./logs/openmetadata.log
@@ -100,35 +102,54 @@ logging:
       archivedFileCount: 7
       timeZone: UTC
       maxFileSize: 50MB
+    - type: file
+      filterFactories:
+        - type: audit-only-filter-factory
+      threshold: TRACE
+      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      currentLogFilename: ./logs/audit.log
+      archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
+      archivedFileCount: 25
+      timeZone: UTC
+      maxFileSize: 50MB
 
 database:
   # the name of the JDBC driver, mysql in our case
-  driverClass: com.mysql.cj.jdbc.Driver
+  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
   # the username and password
   user: ${MYSQL_USER:-openmetadata_user}
   password: ${MYSQL_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:mysql://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  url: jdbc:${DB_SCHEME:-mysql}://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "./bootstrap/sql/mysql"
+  path: "./bootstrap/sql"
 
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
-  adminPrincipals:
-    - ${AUTHORIZER_ADMIN_PRINCIPALS:-admin}
-  botPrincipals:
-    - ${AUTHORIZER_INGESTION_PRINCIPAL:-ingestion-bot}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
+  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
+  enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
-  publicKey: ${AUTHENTICATION_PUBLIC_KEY:-https://www.googleapis.com/oauth2/v3/certs}
+  # This will only be valid when provider type specified is customOidc
+  providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
+  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-""}
+  jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
+  keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
   host: ${ELASTICSEARCH_HOST:-localhost}
@@ -148,16 +169,41 @@ eventHandlerConfiguration:
     - "org.openmetadata.catalog.events.ChangeEventHandler"
 
 airflowConfiguration:
-  apiEndpoint: http://${AIRFLOW_HOST:-localhost}:${AIRFLOW_PORT:-8080}
+  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
-  authProvider: "no-auth"
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openmetadata"
+  authConfig:
+    azure:
+      clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
+      authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
+      scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
+      clientId:  ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
+    google:
+      secretKey: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
+      audience: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
+    okta:
+      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
+      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
+      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
+      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
+      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
+    auth0:
+      clientId: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET:-""}
+      domain: ${OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL:-""}
+    customOidc:
+      clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
+      tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+    openmetadata:
+      jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
 
 slackEventPublishers:
   - name: "slack events"
-    webhookUrl: "slackIncomingWebhook URL"
-    openMetadataUrl: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}
+    webhookUrl: ${SLACK_WEBHOOK_URL:-""}
+    openMetadataUrl: ${OPENMETADATA_SERVER_URL}
     filters:
       - eventType: "entityCreated"
         entities:
@@ -175,17 +221,30 @@ slackEventPublishers:
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
 fernetConfiguration:
-  fernetKey: ${FERNET_KEY:-no_encryption_at_rest}
+  fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
+
+secretsManagerConfiguration:
+  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws"
+#  secretsManager: aws
+#  parameters:
+#    region:
+#    accessKeyId:
+#    secretAccessKey:
 
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
   healthChecks:
-    - name: UserDatabaseCheck
+    - name: OpenMetadataServerHealthCheck
       critical: true
       schedule:
         checkInterval: 2500ms
         downtimeInterval: 10s
         failureAttempts: 2
         successAttempts: 1
+
+sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
+slackChat:
+  apiToken: ${SLACK_CHAT_API_TOKEN:-""}
+  botName: ${SLACK_CHAT_BOT_NAME:-""}
+  channels: ${SLACK_CHAT_CHANNELS:-[]}

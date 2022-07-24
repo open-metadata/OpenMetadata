@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -65,7 +67,7 @@ public final class DatabaseUtil {
 
   /** Validate Table partition */
   public static void validateTablePartition(List<Column> columns, TablePartition tablePartition) {
-    if (tablePartition == null || tablePartition.getColumns() == null || tablePartition.getColumns().isEmpty()) {
+    if (tablePartition == null || nullOrEmpty(tablePartition.getColumns())) {
       return;
     }
     List<String> columnNames = new ArrayList<>();
@@ -93,6 +95,7 @@ public final class DatabaseUtil {
       validateColumnDataLength(c);
       validateArrayColumn(c);
       validateStructColumn(c);
+      validatePrecisionAndScale(c);
     }
   }
 
@@ -161,6 +164,21 @@ public final class DatabaseUtil {
       if (!column.getDataTypeDisplay().startsWith("struct<")) {
         throw new IllegalArgumentException(
             "For column data type struct, dataTypeDisplay must be of type " + "struct<member fields>");
+      }
+    }
+  }
+
+  public static void validatePrecisionAndScale(Column column) {
+    if (column.getScale() == null && column.getPrecision() == null) {
+      return;
+    }
+    if (column.getScale() != null) {
+      if (column.getPrecision() == null) {
+        throw new IllegalArgumentException("Scale is set but precision is not set for the column " + column.getName());
+      }
+      if (column.getScale() > column.getPrecision()) {
+        throw new IllegalArgumentException(
+            "Scale can't be greater than the precision for the column " + column.getName());
       }
     }
   }

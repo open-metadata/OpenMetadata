@@ -12,13 +12,21 @@
  */
 
 import classNames from 'classnames';
-import { diffArrays, diffWordsWithSpace } from 'diff';
+import { ArrayChange, diffArrays, diffWordsWithSpace } from 'diff';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import Markdown from 'markdown-to-jsx';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
+// Markdown Parser and plugin imports
+import MarkdownParser from 'react-markdown';
 import { Link } from 'react-router-dom';
-import { DESCRIPTIONLENGTH, getTeamDetailsPath } from '../constants/constants';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  DESCRIPTIONLENGTH,
+  getTeamAndUserDetailsPath,
+} from '../constants/constants';
+import { EntityField } from '../constants/feed.constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
 import {
@@ -26,9 +34,10 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
-import { Paragraph, Span, UnOrderedList } from './MarkdownUtils';
+import { getEntityName } from './CommonUtils';
+import { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { isValidJSONString } from './StringsUtils';
-import { getEntityLink, getOwnerFromId } from './TableUtils';
+import { getEntityLink } from './TableUtils';
 
 /* eslint-disable */
 const parseMarkdown = (
@@ -37,49 +46,62 @@ const parseMarkdown = (
   _isNewLine: boolean
 ) => {
   return (
-    <Markdown
-      options={{
-        overrides: {
-          h1: {
-            component: Paragraph,
+    <Fragment>
+      <MarkdownParser
+        sourcePos
+        components={{
+          h1: 'p',
+          h2: 'p',
+          ul: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { ordered, ...rest } = props;
+
+            return (
+              <ul className={classNames('tw-ml-3', className)} {...rest}>
+                {children}
+              </ul>
+            );
           },
-          h2: {
-            component: Paragraph,
+          ol: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { ordered, ...rest } = props;
+
+            return (
+              <ol className="tw-ml-3" {...rest} style={{ listStyle: 'auto' }}>
+                {children}
+              </ol>
+            );
           },
-          h3: {
-            component: Paragraph,
+          code: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { inline, ...rest } = props;
+
+            return (
+              <code {...rest} className="tw-my">
+                {children}
+              </code>
+            );
           },
-          h4: {
-            component: Paragraph,
+          p: ({ children, ...props }) => {
+            return (
+              <p className={className} {...props}>
+                {children}
+              </p>
+            );
           },
-          h5: {
-            component: Paragraph,
+          span: ({ children, ...props }) => {
+            return (
+              <span className={className} {...props}>
+                {children}
+              </span>
+            );
           },
-          h6: {
-            component: Paragraph,
-          },
-          ul: {
-            component: UnOrderedList,
-            props: {
-              className: `${className} tw-ml-3`,
-            },
-          },
-          p: {
-            component: Paragraph,
-            props: {
-              className: `${className}`,
-            },
-          },
-          span: {
-            component: Span,
-            props: {
-              className: `${className}`,
-            },
-          },
-        },
-      }}>
-      {content}
-    </Markdown>
+        }}
+        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm]}>
+        {content}
+      </MarkdownParser>
+    </Fragment>
   );
 };
 
@@ -162,17 +184,16 @@ export const getTagsDiff = (
   oldTagList: Array<TagLabel>,
   newTagList: Array<TagLabel>
 ) => {
-  const tagDiff = diffArrays(oldTagList, newTagList);
+  const tagDiff = diffArrays<TagLabel, TagLabel>(oldTagList, newTagList);
   const result = tagDiff
-
-    .map((part: any) =>
+    .map((part: ArrayChange<TagLabel>) =>
       (part.value as Array<TagLabel>).map((tag) => ({
         ...tag,
         added: part.added,
         removed: part.removed,
       }))
     )
-    ?.flat(Infinity);
+    ?.flat(Infinity) as Array<TagLabelWithStatus>;
 
   return result;
 };
@@ -194,11 +215,11 @@ export const getPreposition = (type: ChangeType) => {
 };
 
 const getColumnName = (column: string) => {
-  const name = column.split('.');
+  const name = column.split(FQN_SEPARATOR_CHAR);
   const length = name.length;
   return name
     .slice(length > 1 ? 1 : 0, length > 1 ? length - 1 : length)
-    .join('.');
+    .join(FQN_SEPARATOR_CHAR);
 };
 
 const getLinkWithColumn = (column: string, eFqn: string, eType: string) => {
@@ -243,10 +264,6 @@ const getDescriptionElement = (fieldChange: FieldChange) => {
   );
 };
 
-const getOwnerName = (id: string) => {
-  return getOwnerFromId(id)?.displayName || getOwnerFromId(id)?.name || '';
-};
-
 export const feedSummaryFromatter = (
   fieldChange: FieldChange,
   type: ChangeType,
@@ -285,7 +302,7 @@ export const feedSummaryFromatter = (
         );
 
         break;
-      } else if (fieldChange?.name?.endsWith('description')) {
+      } else if (fieldChange?.name?.endsWith(EntityField.DESCRIPTION)) {
         summary = (
           <p key={uniqueId()}>
             {`${
@@ -305,7 +322,7 @@ export const feedSummaryFromatter = (
         );
 
         break;
-      } else if (fieldChange?.name === 'columns') {
+      } else if (fieldChange?.name === EntityField.COLUMNS) {
         const length = value?.length ?? 0;
         summary = (
           <p key={uniqueId()}>
@@ -348,7 +365,7 @@ export const feedSummaryFromatter = (
           ) : null}
           {tier ? (
             <p key={uniqueId()}>{`${type} tier ${
-              tier?.tagFQN?.split('.')[1]
+              tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1]
             }`}</p>
           ) : null}
         </div>
@@ -358,16 +375,14 @@ export const feedSummaryFromatter = (
     }
 
     case fieldChange?.name === 'owner': {
-      const ownerName =
-        getOwnerName(newValue?.id as string) ||
-        getOwnerName(value?.id as string);
+      const ownerName = getEntityName(newValue) || getEntityName(value);
       const ownerText =
         !isEmpty(oldValue) && !isEmpty(newValue) ? (
           <Fragment>
             {newValue?.type === 'team' ? (
               <Link
                 className="tw-pl-1"
-                to={getTeamDetailsPath(newValue?.name || '')}>
+                to={getTeamAndUserDetailsPath(newValue?.name || '')}>
                 <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (
@@ -381,7 +396,7 @@ export const feedSummaryFromatter = (
             {value?.type === 'team' ? (
               <Link
                 className="tw-pl-1"
-                to={getTeamDetailsPath(value?.name || '')}>
+                to={getTeamAndUserDetailsPath(value?.name || '')}>
                 <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (
@@ -405,7 +420,7 @@ export const feedSummaryFromatter = (
       break;
     }
 
-    case fieldChange?.name === 'description': {
+    case fieldChange?.name === EntityField.DESCRIPTION: {
       summary = (
         <p key={uniqueId()}>
           {`${
@@ -509,7 +524,7 @@ export const summaryFormatter = (fieldChange: FieldChange) => {
       ? fieldChange?.oldValue
       : '{}'
   );
-  if (fieldChange.name === 'columns') {
+  if (fieldChange.name === EntityField.COLUMNS) {
     return `columns ${value?.map((val: any) => val?.name).join(', ')}`;
   } else if (
     fieldChange.name === 'tags' ||

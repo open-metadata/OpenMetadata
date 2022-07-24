@@ -15,33 +15,34 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
-  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
+  static final String USER_PATCH_FIELDS = "profile,roles,teams,inheritedRoles,authenticationMechanism";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams";
 
   public UserRepository(CollectionDAO dao) {
     super(
@@ -55,88 +56,105 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityInterface<User> getEntityInterface(User entity) {
-    return new UserEntityInterface(entity);
+  public EntityReference getOriginalOwner(User entity) {
+    // For User entity, the entity and the owner are the same
+    return entity.getEntityReference();
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) throws IOException, ParseException {
-    // Get roles assigned to the user.
-    Set<UUID> roleIds = listOrEmpty(user.getRoles()).stream().map(EntityReference::getId).collect(Collectors.toSet());
-    // Get default role set up globally.
-    daoCollection.roleDAO().getDefaultRolesIds().forEach(roleIdStr -> roleIds.add(UUID.fromString(roleIdStr)));
-    // Get default roles from the teams that the user belongs to.
-    getTeamDefaultRoles(user).forEach(roleRef -> roleIds.add(roleRef.getId()));
-
-    // Assign roles.
-    List<EntityReference> rolesRef = new ArrayList<>(roleIds.size());
-    for (UUID roleId : roleIds) {
-      rolesRef.add(daoCollection.roleDAO().findEntityReferenceById(roleId));
-    }
-    rolesRef.sort(EntityUtil.compareEntityReference);
-    user.setRoles(rolesRef);
+  public void prepare(User user) throws IOException {
+    setFullyQualifiedName(user);
+    validateTeams(user.getTeams());
+    validateRoles(user.getRoles());
   }
 
-  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException, ParseException {
+  @Override
+  public void restorePatchAttributes(User original, User updated) {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated
+        .withId(original.getId())
+        .withName(original.getName())
+        .withInheritedRoles(original.getInheritedRoles())
+        .withAuthenticationMechanism(original.getAuthenticationMechanism());
+  }
+
+  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException {
     List<EntityReference> teamsRef = listOrEmpty(user.getTeams());
     List<EntityReference> defaultRoles = new ArrayList<>();
     for (EntityReference teamRef : teamsRef) {
-      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")));
-      if (team != null && team.getDefaultRoles() != null) {
+      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")), Include.NON_DELETED);
+      if (team.getDefaultRoles() != null) {
         defaultRoles.addAll(team.getDefaultRoles());
       }
     }
-    return defaultRoles;
+    return defaultRoles.stream().distinct().collect(Collectors.toList());
   }
 
   @Override
   public void storeEntity(User user, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> roles = user.getRoles();
+    List<EntityReference> inheritedRoles = user.getInheritedRoles();
     List<EntityReference> teams = user.getTeams();
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
-    user.withRoles(null).withTeams(null).withHref(null);
+    user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
 
     store(user.getId(), user, update);
 
     // Restore the relationships
-    user.withRoles(roles).withTeams(teams);
+    user.withRoles(roles).withTeams(teams).withInheritedRoles(inheritedRoles);
   }
 
   @Override
-  public void storeRelationships(User user) {
+  public void storeRelationships(User user) throws IOException {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
+    user.setInheritedRoles(getInheritedRoles(user));
   }
 
   @Override
-  public EntityUpdater getUpdater(User original, User updated, Operation operation) {
+  public UserUpdater getUpdater(User original, User updated, Operation operation) {
     return new UserUpdater(original, updated, operation);
   }
 
-  @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException, ParseException {
-    User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
-    return setFields(user, fields);
+  @Override
+  protected void postDelete(User entity) {
+    SubjectContext.invalidateKey(entity.getName());
   }
 
   @Override
-  public User setFields(User user, Fields fields) throws IOException, ParseException {
-
+  public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
-    user.setRoles(fields.contains("roles") ? getRoles(user) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
+    user.setRoles(fields.contains("roles") ? getRoles(user) : null);
+    user.setAuthenticationMechanism(
+        fields.contains("authenticationMechanism") ? user.getAuthenticationMechanism() : null);
+    return user.withInheritedRoles(fields.contains("roles") ? getInheritedRoles(user) : null);
+  }
 
-    return user;
+  public boolean isTeamJoinable(String teamId) throws IOException {
+    Team team = daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
+    return team.getIsJoinable();
+  }
+
+  /* Validate if the user is already part of the given team */
+  public void validateTeamAddition(String userId, String teamId) throws IOException {
+    User user = dao.findEntityById(UUID.fromString(userId));
+    List<EntityReference> teams = getTeams(user);
+    Optional<EntityReference> team = teams.stream().filter(t -> t.getId().equals(UUID.fromString(teamId))).findFirst();
+    if (team.isPresent()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.userAlreadyPartOfTeam(user.getName(), team.get().getDisplayName()));
+    }
   }
 
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
-    List<EntityReference> ownedEntities =
+    List<EntityRelationshipRecord> ownedEntities =
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
@@ -146,11 +164,11 @@ public class UserRepository extends EntityRepository<User> {
           daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal()));
     }
     // Populate details in entity reference
-    return EntityUtil.populateEntityReferences(ownedEntities);
+    return EntityUtil.getEntityReferences(ownedEntities);
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
-    return EntityUtil.populateEntityReferences(
+    return EntityUtil.getEntityReferences(
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal()));
   }
 
@@ -165,27 +183,32 @@ public class UserRepository extends EntityRepository<User> {
     return validatedRoles;
   }
 
-  public List<EntityReference> validateTeams(List<UUID> teamIds) throws IOException {
-    if (teamIds == null) {
-      return Collections.emptyList(); // Return an empty teams list
-    }
-    List<EntityReference> validatedTeams = new ArrayList<>();
-    for (UUID teamId : teamIds) {
-      validatedTeams.add(daoCollection.teamDAO().findEntityReferenceById(teamId));
-    }
-    return validatedTeams;
+  private List<EntityReference> getDefaultRole() throws IOException {
+    // TODO multiple default roleIds?
+    List<UUID> defaultRoleIds = toIds(daoCollection.roleDAO().getDefaultRolesIds());
+    List<EntityReference> refs = EntityUtil.toEntityReferences(defaultRoleIds, Entity.ROLE);
+    return EntityUtil.populateEntityReferences(refs);
   }
 
-  /* Add all the roles that user has been assigned, to User entity */
+  /* Add all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
+    List<EntityRelationshipRecord> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
+  }
+
+  /* Add all the roles that user has been assigned and inherited from the team to User entity */
+  private List<EntityReference> getInheritedRoles(User user) throws IOException {
+    List<EntityReference> roles = getDefaultRole();
+    roles.addAll(getTeamDefaultRoles(user));
+    return roles.stream().distinct().collect(Collectors.toList()); // Remove duplicates
   }
 
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<String> teamIds = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
-    return EntityUtil.populateEntityReferences(teamIds, Entity.TEAM);
+    List<EntityRelationshipRecord> records = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
+    List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
+    // return only the non-deleted teams
+    return teams.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
@@ -202,128 +225,6 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  public static class UserEntityInterface implements EntityInterface<User> {
-    private final User entity;
-
-    public UserEntityInterface(User entity) {
-      this.entity = entity;
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.USER)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
-    }
-
-    @Override
-    public User getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public User withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
@@ -332,22 +233,25 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateRoles(original.getEntity(), updated.getEntity());
-      updateTeams(original.getEntity(), updated.getEntity());
-      recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);
-      recordChange("timezone", original.getEntity().getTimezone(), updated.getEntity().getTimezone());
-      recordChange("isBot", original.getEntity().getIsBot(), updated.getEntity().getIsBot());
-      recordChange("isAdmin", original.getEntity().getIsAdmin(), updated.getEntity().getIsAdmin());
-      recordChange("email", original.getEntity().getEmail(), updated.getEntity().getEmail());
+      updateRoles(original, updated);
+      updateTeams(original, updated);
+      recordChange("profile", original.getProfile(), updated.getProfile(), true);
+      recordChange("timezone", original.getTimezone(), updated.getTimezone());
+      recordChange("isBot", original.getIsBot(), updated.getIsBot());
+      recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
+      recordChange("email", original.getEmail(), updated.getEmail());
+      // Add inherited roles to the entity after update
+      updated.setInheritedRoles(getInheritedRoles(updated));
+      updateAuthenticationMechanism(original, updated);
     }
 
-    private void updateRoles(User origUser, User updatedUser) throws IOException {
+    private void updateRoles(User original, User updated) throws IOException {
       // Remove roles from original and add roles from updated
-      deleteFrom(origUser.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
-      assignRoles(updatedUser, updatedUser.getRoles());
+      deleteFrom(original.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
+      assignRoles(updated, updated.getRoles());
 
-      List<EntityReference> origRoles = listOrEmpty(origUser.getRoles());
-      List<EntityReference> updatedRoles = listOrEmpty(updatedUser.getRoles());
+      List<EntityReference> origRoles = listOrEmpty(original.getRoles());
+      List<EntityReference> updatedRoles = listOrEmpty(updated.getRoles());
 
       origRoles.sort(EntityUtil.compareEntityReference);
       updatedRoles.sort(EntityUtil.compareEntityReference);
@@ -357,13 +261,13 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange("roles", origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
-    private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
+    private void updateTeams(User original, User updated) throws IOException {
       // Remove teams from original and add teams from updated
-      deleteTo(origUser.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
-      assignTeams(updatedUser, updatedUser.getTeams());
+      deleteTo(original.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
+      assignTeams(updated, updated.getTeams());
 
-      List<EntityReference> origTeams = listOrEmpty(origUser.getTeams());
-      List<EntityReference> updatedTeams = listOrEmpty(updatedUser.getTeams());
+      List<EntityReference> origTeams = listOrEmpty(original.getTeams());
+      List<EntityReference> updatedTeams = listOrEmpty(updated.getTeams());
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);
@@ -371,6 +275,27 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange("teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateAuthenticationMechanism(User original, User updated) throws IOException {
+      AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
+      AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
+      if (origAuthMechanism == null && updatedAuthMechanism != null) {
+        recordChange(
+            "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
+      } else if (origAuthMechanism != null
+          && updatedAuthMechanism != null
+          && origAuthMechanism.getConfig() != null
+          && updatedAuthMechanism.getConfig() != null) {
+        JWTAuthMechanism origJwtAuthMechanism =
+            JsonUtils.convertValue(origAuthMechanism.getConfig(), JWTAuthMechanism.class);
+        JWTAuthMechanism updatedJwtAuthMechanism =
+            JsonUtils.convertValue(updatedAuthMechanism.getConfig(), JWTAuthMechanism.class);
+        if (!origJwtAuthMechanism.getJWTToken().equals(updatedJwtAuthMechanism.getJWTToken())) {
+          recordChange(
+              "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
+        }
+      }
     }
   }
 }

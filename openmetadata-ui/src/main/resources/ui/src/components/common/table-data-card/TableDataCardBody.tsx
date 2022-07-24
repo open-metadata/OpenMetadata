@@ -14,10 +14,11 @@
 import { isNil, isString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import TagsViewer from '../../tags-viewer/tags-viewer';
+import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
@@ -33,12 +34,14 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 }: Props) => {
   const getTagValue = (tag: string | TagLabel): string | TagLabel => {
     if (isString(tag)) {
-      return tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag;
+      return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+        ? tag.split(FQN_SEPARATOR_CHAR)[1]
+        : tag;
     } else {
       return {
         ...tag,
-        tagFQN: tag.tagFQN.startsWith('Tier.Tier')
-          ? tag.tagFQN.split('.')[1]
+        tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+          ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
           : tag.tagFQN,
       };
     }
@@ -46,11 +49,14 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-4">
+      <div className="tw-mb-4 tw-flex tw-items-center tw-flex-wrap tw-text-xs">
         {extraInfo.map((info, i) =>
           !isNil(info.value) ? (
-            <span key={i}>
-              {getInfoElements(info)}
+            <span
+              className="tw-flex tw-items-center"
+              data-testid={info.key}
+              key={i}>
+              <EntitySummaryDetails data={info} />
               {i !== extraInfo.length - 1 && (
                 <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                   |

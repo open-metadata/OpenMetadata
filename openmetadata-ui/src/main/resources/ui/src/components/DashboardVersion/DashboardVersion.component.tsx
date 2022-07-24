@@ -16,6 +16,9 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/feed.constants';
+import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/dashboard';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { isEven } from '../../utils/CommonUtils';
@@ -25,8 +28,8 @@ import {
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
+import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import SVGIcons from '../../utils/SvgUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -67,7 +70,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
 
   const getDashboardDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =
@@ -89,21 +92,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
 
-    const oldOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.oldValue ??
-          ownerDiff?.deleted?.oldValue ??
-          ownerDiff?.updated?.oldValue ??
-          '{}'
-      )?.id
+    const oldOwner = JSON.parse(
+      ownerDiff?.added?.oldValue ??
+        ownerDiff?.deleted?.oldValue ??
+        ownerDiff?.updated?.oldValue ??
+        '{}'
     );
-    const newOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.newValue ??
-          ownerDiff?.deleted?.newValue ??
-          ownerDiff?.updated?.newValue ??
-          '{}'
-      )?.id
+    const newOwner = JSON.parse(
+      ownerDiff?.added?.newValue ??
+        ownerDiff?.deleted?.newValue ??
+        ownerDiff?.updated?.newValue ??
+        '{}'
     );
     const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
@@ -130,9 +129,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       {
         key: 'Owner',
         value:
-          !isUndefined(ownerDiff.added) ||
-          !isUndefined(ownerDiff.deleted) ||
-          !isUndefined(ownerDiff.updated)
+          !isUndefined(ownerDiff?.added) ||
+          !isUndefined(ownerDiff?.deleted) ||
+          !isUndefined(ownerDiff?.updated)
             ? getDiffValue(
                 oldOwner?.displayName || oldOwner?.name || '',
                 newOwner?.displayName || newOwner?.name || ''
@@ -140,17 +139,19 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',
         value:
           !isUndefined(newTier) || !isUndefined(oldTier)
             ? getDiffValue(
-                oldTier?.tagFQN?.split('.')[1] || '',
-                newTier?.tagFQN?.split('.')[1] || ''
+                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
+                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
               )
             : tier?.tagFQN
-            ? tier?.tagFQN.split('.')[1]
+            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
             : '',
       },
       {
@@ -181,13 +182,12 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         '[]'
     );
     const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
-      [];
+    const uniqueTags: Array<TagLabelWithStatus> = [];
 
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+    ].forEach((elem: TagLabelWithStatus) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
         uniqueTags.push(elem);
@@ -197,7 +197,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     return [
       ...uniqueTags.map((t) =>
         t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split('.')[1] }
+          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
           : t
       ),
     ];
@@ -214,11 +214,14 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       <div
         className={classNames(
           'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
-        )}>
+        )}
+        data-testid="dashboard-version-container">
         {isVersionLoading ? (
           <Loader />
         ) : (
-          <div className={classNames('version-data')}>
+          <div
+            className={classNames('version-data')}
+            data-testid="version-data">
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
@@ -273,7 +276,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                                     alt="external-link"
                                     className="tw-align-middle"
                                     icon="external-link"
-                                    width="12px"
+                                    width="16px"
                                   />
                                 </span>
                               </Link>

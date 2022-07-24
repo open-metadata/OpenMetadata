@@ -13,26 +13,22 @@
 
 package org.openmetadata.catalog.util;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.lang.reflect.Field;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
-import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.common.utils.CommonUtil;
-import org.reflections.ReflectionUtils;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
@@ -42,6 +38,10 @@ public final class RestUtil {
   public static final String ENTITY_NO_CHANGE = "entityNoChange";
   public static final String ENTITY_SOFT_DELETED = "entitySoftDeleted";
   public static final String ENTITY_DELETED = "entityDeleted";
+  public static final String DELETED_USER_NAME = "DeletedUser";
+  public static final String DELETED_USER_DISPLAY = "User was deleted";
+  public static final String DELETED_TEAM_NAME = "DeletedTeam";
+  public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
 
   public static final DateFormat DATE_TIME_FORMAT;
@@ -65,66 +65,39 @@ public final class RestUtil {
     return s;
   }
 
-  public static URI getHref(UriInfo uriInfo, String collectionPath, UUID id) {
-    collectionPath = removeSlashes(collectionPath);
-    try {
-      String uriPath = uriInfo.getBaseUri() + collectionPath + "/" + id;
-      return URI.create(uriPath);
-    } catch (Exception e) {
-      throw new IllegalArgumentException(e);
-    }
-  }
-
   public static URI getHref(UriInfo uriInfo, String collectionPath) {
     collectionPath = removeSlashes(collectionPath);
     String uriPath = uriInfo.getBaseUri() + collectionPath;
     return URI.create(uriPath);
   }
 
-  public static URI getHref(UriInfo uriInfo, String collectionPath, String resourcePath) {
-    collectionPath = removeSlashes(collectionPath);
-    resourcePath = removeSlashes(resourcePath);
-    try {
-      String uriPath = uriInfo.getBaseUri() + collectionPath + "/" + resourcePath;
-      return URI.create(uriPath);
-    } catch (Exception e) {
-      throw new IllegalArgumentException(e);
-    }
-  }
-
   public static URI getHref(URI parent, String child) {
+    child = removeSlashes(child);
+    child = replaceSpaces(child);
     return URI.create(parent.toString() + "/" + child);
   }
 
-  /** Get list of attributes for an entity based on JsonProperty annotation */
-  public static <T> List<String> getAttributes(Class<T> clz) {
-    List<String> attributes = new ArrayList<>();
-    for (Field field : ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
-      // Attributes are fields that are not of entity type
-      if (!field.getType().getName().contains(".entity.")) {
-        attributes.add(field.getName());
-      }
-    }
-    return attributes;
+  public static String replaceSpaces(String s) {
+    s = s.replaceAll(" ", "%20");
+    return s;
   }
 
-  /** Get list of relationships for an entity based on JsonProperty annotation */
-  public static <T> List<String> getRelationships(Class<T> clz) {
-    List<String> relationships = new ArrayList<>();
-    for (Field field : ReflectionUtils.getFields(clz, ReflectionUtils.withAnnotation(JsonProperty.class))) {
-      // Relationships are fields that are of entity type
-      if (field.getType().getName().contains(".entity.")) {
-        relationships.add(field.getName());
-      }
-    }
-    return relationships;
+  public static URI getHref(UriInfo uriInfo, String collectionPath, String resourcePath) {
+    collectionPath = removeSlashes(collectionPath);
+    resourcePath = removeSlashes(resourcePath);
+    URI uri = getHref(uriInfo, collectionPath);
+    return getHref(uri, resourcePath);
+  }
+
+  public static URI getHref(UriInfo uriInfo, String collectionPath, UUID id) {
+    return getHref(uriInfo, collectionPath, id.toString());
   }
 
   public static int compareDates(String date1, String date2) throws ParseException {
     return DATE_FORMAT.parse(date1).compareTo(DATE_FORMAT.parse(date2));
   }
 
-  public static String today(int offsetDays) throws ParseException {
+  public static String today(int offsetDays) {
     Date date = CommonUtil.getDateByOffset(new Date(), offsetDays);
     return DATE_FORMAT.format(date);
   }
@@ -144,9 +117,9 @@ public final class RestUtil {
   }
 
   public static class PutResponse<T> {
-    private T entity;
+    @Getter private T entity;
     private ChangeEvent changeEvent;
-    private final Response.Status status;
+    @Getter private final Response.Status status;
     private final String changeType;
 
     /**
@@ -164,10 +137,6 @@ public final class RestUtil {
       this.changeEvent = changeEvent;
       this.status = status;
       this.changeType = changeType;
-    }
-
-    public T getEntity() {
-      return entity;
     }
 
     public Response toResponse() {
@@ -210,10 +179,6 @@ public final class RestUtil {
     private final T entity;
     private final String changeType;
 
-    /**
-     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
-     * a new entity
-     */
     public DeleteResponse(T entity, String changeType) {
       this.entity = entity;
       this.changeType = changeType;

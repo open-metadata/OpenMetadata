@@ -55,15 +55,19 @@ const ReviewerModal = ({
 
   const querySearch = () => {
     setIsLoading(true);
-    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER).then(
-      (res: SearchResponse) => {
+    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER)
+      .then((res: SearchResponse) => {
         const data = getSearchedReviewers(
           formatUsersResponse(res.data.hits.hits)
         );
         setOptions(data);
+      })
+      .catch(() => {
+        setOptions([]);
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    );
+      });
   };
 
   const suggestionSearch = (searchText = '') => {
@@ -71,7 +75,7 @@ const ReviewerModal = ({
     getSuggestions(searchText, SearchIndex.USER)
       .then((res: AxiosResponse) => {
         const data = formatUsersResponse(
-          res.data.suggest['table-suggest'][0].options
+          res.data.suggest['metadata-suggest'][0].options
         );
         setOptions(data);
       })
@@ -112,9 +116,11 @@ const ReviewerModal = ({
         isIconVisible
         item={{
           name: d.name,
-          description: d.displayName,
+          displayName: d.displayName || d.name,
+          email: d.email,
           id: d.id,
           isChecked: isIncludeInOptions(d.id),
+          type: d.type,
         }}
         key={d.id}
         onSelect={selectionHandler}

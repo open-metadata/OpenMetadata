@@ -14,15 +14,17 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
-import { EntityTags, TableDetail } from 'Models';
+import { EntityTags } from 'Models';
 import React, { Fragment } from 'react';
-import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getCustomEntityPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getEditWebhookPath,
-  getGlossaryPath,
+  getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -35,8 +37,9 @@ import { Column, DataType } from '../generated/entity/data/table';
 import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
 import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
+import { getGlossaryPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
-import SVGIcons from './SvgUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
@@ -74,7 +77,7 @@ export const getTierFromTableTags = (
 ): EntityTags['tagFQN'] => {
   const tierTag = tags.find(
     (item) =>
-      item.tagFQN.startsWith('Tier.Tier') &&
+      item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
       !isNaN(parseInt(item.tagFQN.substring(9).trim()))
   );
 
@@ -84,7 +87,7 @@ export const getTierFromTableTags = (
 export const getTierTags = (tags: Array<TagLabel>) => {
   const tierTag = tags.find(
     (item) =>
-      item.tagFQN.startsWith('Tier.Tier') &&
+      item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
       !isNaN(parseInt(item.tagFQN.substring(9).trim()))
   );
 
@@ -96,7 +99,7 @@ export const getTagsWithoutTier = (
 ): Array<EntityTags> => {
   return tags.filter(
     (item) =>
-      !item.tagFQN.startsWith('Tier.Tier') ||
+      !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
       isNaN(parseInt(item.tagFQN.substring(9).trim()))
   );
 };
@@ -104,7 +107,8 @@ export const getTagsWithoutTier = (
 export const getTierFromSearchTableTags = (tags: Array<string>): string => {
   const tierTag = tags.find(
     (item) =>
-      item.startsWith('Tier.Tier') && !isNaN(parseInt(item.substring(9).trim()))
+      item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
+      !isNaN(parseInt(item.substring(9).trim()))
   );
 
   return tierTag || '';
@@ -115,42 +119,9 @@ export const getSearchTableTagsWithoutTier = (
 ): Array<string> => {
   return tags.filter(
     (item) =>
-      !item.startsWith('Tier.Tier') || isNaN(parseInt(item.substring(9).trim()))
+      !item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
+      isNaN(parseInt(item.substring(9).trim()))
   );
-};
-
-export const getOwnerFromId = (
-  id?: string
-): TableDetail['owner'] | undefined => {
-  let retVal: TableDetail['owner'];
-  if (id) {
-    const user = AppState.users.find((item) => item.id === id);
-    if (user) {
-      retVal = {
-        name: user.displayName || user.name,
-        id: user.id,
-        type: 'user',
-      };
-    } else {
-      const team = AppState.userTeams.find((item) => item.id === id);
-      if (team) {
-        retVal = {
-          name: team.name,
-          displayName: team.displayName || team.name,
-          id: team.id,
-          type: 'team',
-        };
-      }
-    }
-  }
-
-  return retVal;
-};
-
-export const getFollowerDetail = (id: string) => {
-  const follower = AppState.users.find((user) => user.id === id);
-
-  return follower;
 };
 
 export const getConstraintIcon = (constraint = '', className = '') => {
@@ -159,21 +130,28 @@ export const getConstraintIcon = (constraint = '', className = '') => {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = 'Primary key';
-        icon = 'key';
+        icon = Icons.KEY;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = 'Unique';
-        icon = 'unique';
+        icon = Icons.UNIQUE;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = 'Not null';
-        icon = 'not-null';
+        icon = Icons.NOT_NULL;
+      }
+
+      break;
+    case ConstraintTypes.FOREIGN_KEY:
+      {
+        title = 'Foreign key';
+        icon = Icons.FOREGIN_KEY;
       }
 
       break;
@@ -183,12 +161,12 @@ export const getConstraintIcon = (constraint = '', className = '') => {
 
   return (
     <PopOver
-      className={classNames('tw-absolute tw-left-2', className)}
+      className={classNames('tw-absolute tw-left-1', className)}
       position="bottom"
       size="small"
       title={title}
       trigger="mouseenter">
-      <SVGIcons alt={title} icon={icon} width="12px" />
+      <SVGIcons alt={title} icon={icon} width="16px" />
     </PopOver>
   );
 };
@@ -197,6 +175,8 @@ export const getEntityLink = (
   indexType: string,
   fullyQualifiedName: string
 ) => {
+  // encode the FQN for entities that can have "/" in their names
+  fullyQualifiedName = encodeURIComponent(fullyQualifiedName);
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
@@ -213,9 +193,12 @@ export const getEntityLink = (
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
 
+    case EntityType.DATABASE_SCHEMA:
+      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
-      return getGlossaryPath();
+      return getGlossaryPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
@@ -225,6 +208,13 @@ export const getEntityLink = (
 
     case EntityType.WEBHOOK:
       return getEditWebhookPath(fullyQualifiedName);
+
+    case EntityType.TYPE:
+      return getCustomEntityPath(fullyQualifiedName);
+
+    case EntityType.MLMODEL:
+    case SearchIndex.MLMODEL:
+      return getMlModelPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -245,6 +235,11 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
       icon = 'dashboard-grey';
+
+      break;
+    case SearchIndex.MLMODEL:
+    case EntityType.MLMODEL:
+      icon = 'mlmodel-grey';
 
       break;
     case SearchIndex.PIPELINE:
@@ -274,12 +269,10 @@ export const makeRow = (column: Column) => {
 export const makeData = (
   columns: ModifiedTableColumn[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
-  const data = columns.map((column) => ({
+  return columns.map((column) => ({
     ...makeRow(column),
     subRows: column.children ? makeData(column.children) : undefined,
   }));
-
-  return data;
 };
 
 export const getDataTypeString = (dataType: string): string => {
@@ -303,6 +296,7 @@ export const getDataTypeString = (dataType: string): string => {
     case DataType.Bigint:
     case DataType.Numeric:
     case DataType.Tinyint:
+    case DataType.Decimal:
       return PrimaryTableDataTypes.NUMERIC;
     case DataType.Boolean:
     case DataType.Enum:
@@ -346,10 +340,10 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
                       icon="check-square"
                     />
                   </div>
-                  <p>{`${passingTests.length} tests`}</p>
+                  <>{`${passingTests.length} tests`}</>
                 </div>
               ) : (
-                <p>{`${tableTestLength} tests`}</p>
+                <>{`${tableTestLength} tests`}</>
               )}
             </Fragment>
           )}

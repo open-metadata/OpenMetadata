@@ -19,7 +19,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import Metric
-from metadata.orm_profiler.profiles.core import Profiler
+from metadata.orm_profiler.profiler.core import Profiler
 
 
 def run_col_metric(

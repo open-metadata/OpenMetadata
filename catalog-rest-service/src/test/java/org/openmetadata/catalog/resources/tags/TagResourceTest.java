@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -29,11 +30,12 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,12 +45,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.tags.CreateTag;
+import org.openmetadata.catalog.api.tags.CreateTagCategory;
+import org.openmetadata.catalog.api.tags.CreateTagCategory.TagCategoryType;
+import org.openmetadata.catalog.entity.tags.Tag;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResource.CategoryList;
-import org.openmetadata.catalog.type.CreateTag;
-import org.openmetadata.catalog.type.CreateTagCategory;
-import org.openmetadata.catalog.type.CreateTagCategory.TagCategoryType;
-import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -56,11 +63,43 @@ import org.openmetadata.catalog.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagResourceTest extends CatalogApplicationTest {
-  public static String BASE_URL;
+  public static String TAGS_URL;
+  public static TagCategory USER_TAG_CATEGORY;
+  public static Tag ADDRESS_TAG;
 
   @BeforeAll
-  public static void setup() {
-    BASE_URL = "http://localhost:" + APP.getLocalPort() + "/api/v1/tags";
+  public static void setup() throws HttpResponseException, JsonProcessingException {
+    new TagResourceTest().setupTags();
+  }
+
+  public void setupTags() throws HttpResponseException {
+    TAGS_URL = "http://localhost:" + APP.getLocalPort() + "/api/v1/tags";
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    EntityResourceTest.PERSONAL_DATA_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PersonalData", "Personal"));
+    EntityResourceTest.PII_SENSITIVE_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PII", "Sensitive"));
+    EntityResourceTest.TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
+    EntityResourceTest.TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
+
+    CreateTagCategory create =
+        new CreateTagCategory()
+            .withName("User")
+            .withDescription("description")
+            .withCategoryType(TagCategoryType.Descriptive);
+    USER_TAG_CATEGORY = tagResourceTest.createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
+
+    List<String> associatedTags = new ArrayList<>();
+    associatedTags.add(EntityResourceTest.PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    associatedTags.add(EntityResourceTest.PII_SENSITIVE_TAG_LABEL.getTagFQN());
+
+    CreateTag createTag =
+        new CreateTag().withName("Address").withDescription("description").withAssociatedTags(associatedTags);
+    ADDRESS_TAG = tagResourceTest.createPrimaryTag(USER_TAG_CATEGORY.getName(), createTag, ADMIN_AUTH_HEADERS);
+
+    EntityResourceTest.USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
+  }
+
+  private TagLabel getTagLabel(String tagName) throws HttpResponseException {
+    return EntityUtil.getTagLabel(TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS));
   }
 
   @Test
@@ -70,8 +109,8 @@ public class TagResourceTest extends CatalogApplicationTest {
     CategoryList list = listCategories();
 
     // Ensure category list has all the tag categories initialized from tags files in the resource path
-    List<String> files = TagResource.getTagDefinitions();
-    assertEquals(files.size(), list.getData().size());
+    List<String> jsonData = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");
+    assertEquals(jsonData.size() + 1, list.getData().size()); // +1 for USER_TAG_CATEGORY created in this test
 
     // Validate list of tag categories returned in GET
     for (TagCategory category : list.getData()) {
@@ -83,8 +122,8 @@ public class TagResourceTest extends CatalogApplicationTest {
   @Test
   void get_category_200() throws HttpResponseException {
     // GET .../tags/{category} to get a category
-    TagCategory category = getCategory("User", TEST_AUTH_HEADERS);
-    assertEquals("User", category.getName());
+    TagCategory category = getCategory(USER_TAG_CATEGORY.getName(), TEST_AUTH_HEADERS);
+    assertEquals(USER_TAG_CATEGORY.getName(), category.getName());
     validate(category);
   }
 
@@ -93,22 +132,24 @@ public class TagResourceTest extends CatalogApplicationTest {
     // GET .../tags/{nonExistentCategory} returns 404
     String nonExistent = "nonExistent";
     assertResponse(
-        () -> getCategory(nonExistent, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound("TagCategory", nonExistent));
+        () -> getCategory(nonExistent, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG_CATEGORY, nonExistent));
   }
 
   @Test
   void get_validTag_200() throws HttpResponseException {
     // GET .../tags/{category}/{tag} returns requested tag
-    Tag tag = getTag("User.Address", ADMIN_AUTH_HEADERS);
-    String parentURI = BASE_URL + "/User";
+    Tag tag = getTag(FullyQualifiedName.build(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName()), ADMIN_AUTH_HEADERS);
+    String parentURI = TAGS_URL + "/" + USER_TAG_CATEGORY.getName();
     validateHRef(parentURI, tag);
   }
 
   @Test
   void get_nonExistentTag_404() {
     // GET .../tags/{category}/{nonExistent} returns 404 Not found
-    String tagFQN = "User.NonExistent";
-    assertResponse(() -> getTag(tagFQN, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound("Tag", tagFQN));
+    String tagFQN = FullyQualifiedName.build(USER_TAG_CATEGORY.getName(), "NonExistent");
+    assertResponse(() -> getTag(tagFQN, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TAG, tagFQN));
   }
 
   @Test
@@ -116,23 +157,98 @@ public class TagResourceTest extends CatalogApplicationTest {
     // POST .../tags/{allReadyExistingCategory} returns 4xx
     CreateTagCategory create =
         new CreateTagCategory()
-            .withName("User")
+            .withName(USER_TAG_CATEGORY.getName())
             .withDescription("description")
             .withCategoryType(TagCategoryType.Descriptive);
     assertResponse(() -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
   }
 
   @Test
-  void post_validTagCategory_as_admin_201(TestInfo test) throws HttpResponseException {
+  void post_delete_validTagCategory_as_admin_201(TestInfo test) throws HttpResponseException {
     // POST .../tags/{newCategory} returns 201
-    String categoryName = test.getDisplayName().substring(0, 10); // Form a unique category name based on the test name
+    String categoryName = test.getDisplayName().substring(0, 20); // Form a unique category name based on the test name
     CreateTagCategory create =
         new CreateTagCategory()
             .withName(categoryName)
             .withDescription("description")
             .withCategoryType(TagCategoryType.Descriptive);
-    TagCategory newCategory = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
-    assertEquals(0, newCategory.getChildren().size());
+    TagCategory category = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
+    assertEquals(0, category.getChildren().size());
+
+    CreateTag createTag = new CreateTag().withName("PrimaryTag").withDescription("description");
+    Tag primaryTag = createPrimaryTag(category.getName(), createTag, ADMIN_AUTH_HEADERS);
+
+    // POST .../tags/{category}/{primaryTag}/{secondaryTag} to create secondary tag
+    createTag = new CreateTag().withName("SecondaryTag").withDescription("description");
+    Tag secondaryTag = createSecondaryTag(category.getName(), "PrimaryTag", createTag, ADMIN_AUTH_HEADERS);
+
+    // Now delete Tag category and ensure the tag category and tags under it are all deleted
+    deleteCategory(category, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getTag(primaryTag.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, primaryTag.getFullyQualifiedName()));
+    assertResponse(
+        () -> getTag(secondaryTag.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, secondaryTag.getFullyQualifiedName()));
+  }
+
+  @Test
+  void post_delete_validTags_as_admin_201(TestInfo test) throws HttpResponseException {
+    // Create tag category
+    String categoryName = test.getDisplayName().substring(0, 20);
+    CreateTagCategory create =
+        new CreateTagCategory()
+            .withName(categoryName)
+            .withDescription("description")
+            .withCategoryType(TagCategoryType.Descriptive);
+    TagCategory category = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
+    assertEquals(0, category.getChildren().size());
+
+    // Create primaryTag
+    CreateTag createTag = new CreateTag().withName("PrimaryTag").withDescription("description");
+    Tag primaryTag = createPrimaryTag(category.getName(), createTag, ADMIN_AUTH_HEADERS);
+
+    // Create secondaryTag1
+    createTag = new CreateTag().withName("SecondaryTag1").withDescription("description");
+    Tag secondaryTag1 = createSecondaryTag(category.getName(), "PrimaryTag", createTag, ADMIN_AUTH_HEADERS);
+
+    // Create secondaryTag2
+    createTag = new CreateTag().withName("SecondaryTag2").withDescription("description");
+    Tag secondaryTag2 = createSecondaryTag(category.getName(), "PrimaryTag", createTag, ADMIN_AUTH_HEADERS);
+
+    // Delete and verify secondaryTag2 is deleted
+    deleteTag(category.getName(), secondaryTag2, ADMIN_AUTH_HEADERS);
+
+    // Delete primaryTag and ensure secondaryTag1 under it is deleted
+    deleteTag(category.getName(), primaryTag, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getTag(secondaryTag1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, secondaryTag1.getFullyQualifiedName()));
+  }
+
+  public final TagCategory deleteCategory(TagCategory category, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("tags/" + category.getId());
+    TagCategory deletedCategory = TestUtils.delete(target, TagCategory.class, authHeaders);
+    assertResponse(
+        () -> getCategory(category.getName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG_CATEGORY, category.getName()));
+    return deletedCategory;
+  }
+
+  public final Tag deleteTag(String categoryName, Tag tag, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("tags/" + categoryName + "/" + tag.getId());
+    Tag deletedTag = TestUtils.delete(target, Tag.class, authHeaders);
+    assertResponse(
+        () -> getTag(tag.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, tag.getFullyQualifiedName()));
+    return deletedTag;
   }
 
   @Test
@@ -157,19 +273,19 @@ public class TagResourceTest extends CatalogApplicationTest {
     // Long name
     create.withName(TestUtils.LONG_ENTITY_NAME).withCategoryType(TagCategoryType.Descriptive);
     assertResponseContains(
-        () -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name size must be between 2 and 25");
+        () -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name size must be between 2 and 64");
   }
 
   @Order(1)
   @Test
-  void post_validTags_200() throws HttpResponseException, JsonProcessingException {
+  void post_validTags_200() throws HttpResponseException {
     // POST .../tags/{category}/{primaryTag} to create primary tag
-    TagCategory category = getCategory("User", authHeaders("test@open-meatadata.org"));
+    TagCategory category = getCategory(USER_TAG_CATEGORY.getName(), authHeaders("test@open-meatadata.org"));
     CreateTag create = new CreateTag().withName("PrimaryTag").withDescription("description");
     createPrimaryTag(category.getName(), create, ADMIN_AUTH_HEADERS);
-    TagCategory returnedCategory = getCategory("User", TEST_AUTH_HEADERS);
+    TagCategory returnedCategory = getCategory(USER_TAG_CATEGORY.getName(), TEST_AUTH_HEADERS);
 
-    // Ensure the tag category "User" has one more additional tag to account for newly created tag
+    // Ensure the tag category has one more additional tag to account for newly created tag
     assertEquals(category.getChildren().size() + 1, returnedCategory.getChildren().size());
 
     // POST .../tags/{category}/{primaryTag}/{secondaryTag} to create secondary tag
@@ -182,24 +298,28 @@ public class TagResourceTest extends CatalogApplicationTest {
     // Missing description in POST primary tag
     CreateTag create = new CreateTag().withName("noDescription").withDescription(null);
     assertResponseContains(
-        () -> createPrimaryTag("User", create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
+        () -> createPrimaryTag(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "description must not be null");
 
     // Missing description in POST secondary tag
     assertResponseContains(
-        () -> createSecondaryTag("User", "Address", create, ADMIN_AUTH_HEADERS),
+        () -> createSecondaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "description must not be null");
 
     // Long primary tag name
     create.withDescription("description").withName(TestUtils.LONG_ENTITY_NAME);
     assertResponseContains(
-        () -> createPrimaryTag("User", create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name size must be between 2 and 25");
+        () -> createPrimaryTag(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "name size must be between 2 and 64");
 
     // Long secondary tag name
     assertResponseContains(
-        () -> createSecondaryTag("User", "Address", create, ADMIN_AUTH_HEADERS),
+        () -> createSecondaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 2 and 25");
+        "name size must be between 2 and 64");
   }
 
   @Test
@@ -210,28 +330,28 @@ public class TagResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> createPrimaryTag(nonExistent, create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound("TagCategory", nonExistent));
+        entityNotFound(Entity.TAG_CATEGORY, nonExistent));
 
     // POST .../tags/{user}/{nonExistent}/tag where primaryTag does not exist
     assertResponse(
-        () -> createSecondaryTag("User", nonExistent, create, ADMIN_AUTH_HEADERS),
+        () -> createSecondaryTag(USER_TAG_CATEGORY.getName(), nonExistent, create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound("Tag", nonExistent));
+        entityNotFound(Entity.TAG, FullyQualifiedName.build(USER_TAG_CATEGORY.getName(), nonExistent)));
   }
 
   @Test
-  void put_tagCategory_200(TestInfo test) throws HttpResponseException {
-    // PUT .../tags/{user} update the user tags
+  void put_tagCategory_200(TestInfo test) {
+    // Update an existing tag category
     String newCategoryName = test.getDisplayName().substring(0, 10);
     CreateTagCategory create =
         new CreateTagCategory()
             .withName(newCategoryName)
             .withDescription("updatedDescription")
             .withCategoryType(TagCategoryType.Descriptive);
-    updateCategory("User", create, ADMIN_AUTH_HEADERS);
+    updateCategory(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS);
 
     // Revert tag category back
-    create.withName("User").withCategoryType(TagCategoryType.Classification);
+    create.withName(USER_TAG_CATEGORY.getName()).withCategoryType(TagCategoryType.Classification);
     updateCategory(newCategoryName, create, ADMIN_AUTH_HEADERS);
   }
 
@@ -245,34 +365,34 @@ public class TagResourceTest extends CatalogApplicationTest {
             .withDescription(null)
             .withCategoryType(TagCategoryType.Descriptive);
     assertResponseContains(
-        () -> updateCategory("User", create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
+        () -> updateCategory(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "description must not be null");
 
     // Long primary tag name
     create.withDescription("description").withName(TestUtils.LONG_ENTITY_NAME);
     assertResponseContains(
-        () -> updateCategory("User", create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name size must be between 2 and 25");
+        () -> updateCategory(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "name size must be between 2 and 64");
   }
 
   @Test
-  void put_primaryTag_200() throws HttpResponseException, JsonProcessingException {
-    // PUT .../tags/{user}/{address} update the tag
-    CreateTag create = new CreateTag().withName("AddressUpdated").withDescription("updatedDescription");
-    updatePrimaryTag("User", "Address", create, ADMIN_AUTH_HEADERS);
-
-    // Revert to old tag name user.address from user.addressUpdated
-    create.withName("Address");
-    updatePrimaryTag("User", "AddressUpdated", create, ADMIN_AUTH_HEADERS);
+  void put_primaryTag_200() throws HttpResponseException {
+    // Update the tag name from User.Address to User.AddressUpdated
+    CreateTag create = new CreateTag().withName("Address").withDescription("updateDescription");
+    updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
-  void put_secondaryTag_200() throws HttpResponseException, JsonProcessingException {
-    // PUT .../tags/{user}/{primaryTag}/{secondaryTag} update the tag
+  void put_secondaryTag_200() throws HttpResponseException {
+    // Update the secondary tag name from User.PrimaryTag.SecondaryTag to User.PrimaryTag.SecondaryTag1
     CreateTag create = new CreateTag().withName("SecondaryTag1").withDescription("description");
-    updateSecondaryTag("User", "PrimaryTag", "SecondaryTag", create, ADMIN_AUTH_HEADERS);
+    updateSecondaryTag(USER_TAG_CATEGORY.getName(), "PrimaryTag", "SecondaryTag", create, ADMIN_AUTH_HEADERS);
 
-    // Revert to old tag name user.primaryTag.secondaryTag from user.primaryTag.secondaryTag1
-    create.withName("SecondaryTag");
-    updateSecondaryTag("User", "PrimaryTag", "SecondaryTag1", create, ADMIN_AUTH_HEADERS);
+    // Revert the secondary tag name from User.PrimaryTag.SecondaryTag1 back to User.PrimaryTag.SecondaryTag
+    create.withName("tag11");
+    updateSecondaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), "SecondaryTag1", create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -280,33 +400,37 @@ public class TagResourceTest extends CatalogApplicationTest {
     // Primary tag with missing description
     CreateTag create = new CreateTag().withName("AddressUpdated").withDescription(null);
     assertResponseContains(
-        () -> updatePrimaryTag("User", "Address", create, ADMIN_AUTH_HEADERS),
+        () -> updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "description must not be null");
 
-    // Secondar tag with missing description
+    // Secondary tag with missing description
     assertResponseContains(
-        () -> updateSecondaryTag("User", "Address", "Secondary", create, ADMIN_AUTH_HEADERS),
+        () ->
+            updateSecondaryTag(
+                USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), "Secondary", create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "description must not be null");
 
     // Long primary tag name
     create.withDescription("description").withName(TestUtils.LONG_ENTITY_NAME);
     assertResponseContains(
-        () -> updatePrimaryTag("User", "Address", create, ADMIN_AUTH_HEADERS),
+        () -> updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 2 and 25");
+        "name size must be between 2 and 64");
 
     // Long secondary tag name
     assertResponseContains(
-        () -> updateSecondaryTag("User", "Address", "Secondary", create, ADMIN_AUTH_HEADERS),
+        () ->
+            updateSecondaryTag(
+                USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), "Secondary", create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 2 and 25");
+        "name size must be between 2 and 64");
   }
 
   private TagCategory createAndCheckCategory(CreateTagCategory create, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags");
     TagCategory tagCategory = TestUtils.post(target, create, TagCategory.class, authHeaders);
     TagCategory category =
@@ -318,21 +442,15 @@ public class TagResourceTest extends CatalogApplicationTest {
     return category;
   }
 
-  private void createPrimaryTag(String category, CreateTag create, Map<String, String> authHeaders)
-      throws HttpResponseException, JsonProcessingException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+  private Tag createPrimaryTag(String category, CreateTag create, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags/" + category);
 
     // Ensure POST returns the primary tag as expected
     Tag returnedTag = TestUtils.post(target, create, Tag.class, authHeaders);
     assertEquals(0.1, returnedTag.getVersion());
-    validate(
-        target.getUri().toString(),
-        returnedTag,
-        create.getName(),
-        create.getDescription(),
-        create.getAssociatedTags(),
-        updatedBy);
+    validate(target.getUri().toString(), returnedTag, create.getName(), create.getDescription(), updatedBy);
 
     // Ensure GET returns the primary tag as expected
     validate(
@@ -340,25 +458,19 @@ public class TagResourceTest extends CatalogApplicationTest {
         getTag(returnedTag.getFullyQualifiedName(), authHeaders),
         create.getName(),
         create.getDescription(),
-        create.getAssociatedTags(),
         updatedBy);
+    return returnedTag;
   }
 
-  private void createSecondaryTag(String category, String primaryTag, CreateTag create, Map<String, String> authHeaders)
-      throws HttpResponseException, JsonProcessingException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+  private Tag createSecondaryTag(String category, String primaryTag, CreateTag create, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags/" + category + "/" + primaryTag);
 
     // Ensure POST returns the secondary tag as expected
     Tag returnedTag = TestUtils.post(target, create, Tag.class, authHeaders);
     assertEquals(0.1, returnedTag.getVersion());
-    validate(
-        target.getUri().toString(),
-        returnedTag,
-        create.getName(),
-        create.getDescription(),
-        create.getAssociatedTags(),
-        updatedBy);
+    validate(target.getUri().toString(), returnedTag, create.getName(), create.getDescription(), updatedBy);
 
     // Ensure GET returns the primary tag as expected
     validate(
@@ -366,13 +478,13 @@ public class TagResourceTest extends CatalogApplicationTest {
         getTag(returnedTag.getFullyQualifiedName(), authHeaders),
         create.getName(),
         create.getDescription(),
-        create.getAssociatedTags(),
         updatedBy);
+    return returnedTag;
   }
 
-  private void updateCategory(String category, CreateTagCategory update, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+  @SneakyThrows
+  private void updateCategory(String category, CreateTagCategory update, Map<String, String> authHeaders) {
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags/" + category);
 
     // Ensure PUT returns the updated tag category
@@ -385,14 +497,14 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   private void updatePrimaryTag(String category, String primaryTag, CreateTag update, Map<String, String> authHeaders)
-      throws HttpResponseException, JsonProcessingException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+      throws HttpResponseException {
+    String updatedBy = getPrincipalName(authHeaders);
     String parentHref = getResource("tags/" + category).getUri().toString();
     WebTarget target = getResource("tags/" + category + "/" + primaryTag);
 
     // Ensure PUT returns the updated primary tag
     Tag returnedTag = TestUtils.put(target, update, Tag.class, Status.OK, authHeaders);
-    validate(parentHref, returnedTag, update.getName(), update.getDescription(), update.getAssociatedTags(), updatedBy);
+    validate(parentHref, returnedTag, update.getName(), update.getDescription(), updatedBy);
 
     // Ensure GET returns the updated primary tag
     validate(
@@ -400,20 +512,19 @@ public class TagResourceTest extends CatalogApplicationTest {
         getTag(returnedTag.getFullyQualifiedName(), authHeaders),
         update.getName(),
         update.getDescription(),
-        update.getAssociatedTags(),
         updatedBy);
   }
 
   private void updateSecondaryTag(
       String category, String primaryTag, String secondaryTag, CreateTag update, Map<String, String> authHeaders)
-      throws HttpResponseException, JsonProcessingException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+      throws HttpResponseException {
+    String updatedBy = getPrincipalName(authHeaders);
     String parentHref = getResource("tags/" + category + "/" + primaryTag).getUri().toString();
     WebTarget target = getResource("tags/" + category + "/" + primaryTag + "/" + secondaryTag);
 
     // Ensure PUT returns the updated secondary tag
-    Tag returnedTag = TestUtils.put(target, update, Tag.class, Status.OK, authHeaders);
-    validate(parentHref, returnedTag, update.getName(), update.getDescription(), update.getAssociatedTags(), updatedBy);
+    Tag returnedTag = TestUtils.put(target, update, Tag.class, Status.CREATED, authHeaders);
+    validate(parentHref, returnedTag, update.getName(), update.getDescription(), updatedBy);
 
     // Ensure GET returns the updated primary tag
     validate(
@@ -421,7 +532,6 @@ public class TagResourceTest extends CatalogApplicationTest {
         getTag(returnedTag.getFullyQualifiedName(), authHeaders),
         update.getName(),
         update.getDescription(),
-        update.getAssociatedTags(),
         updatedBy);
   }
 
@@ -446,7 +556,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   public static Tag getTag(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    String[] split = fqn.split("\\.");
+    String[] split = FullyQualifiedName.split(fqn);
     WebTarget target;
     if (split.length == 1) {
       target = getResource("tags/" + split[0]);
@@ -477,28 +587,20 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   private void validate(TagCategory category) {
     assertNotNull(category.getName());
-    assertEquals(URI.create(BASE_URL + "/" + category.getName()), category.getHref());
+    assertEquals(URI.create(TAGS_URL + "/" + category.getName()), category.getHref());
     for (Tag tag : listOrEmpty(category.getChildren())) {
       validateHRef(category.getHref().toString(), tag);
     }
   }
 
+  @SneakyThrows
   private void validate(
-      String parentURI,
-      Tag actual,
-      String expectedName,
-      String expectedDescription,
-      List<String> expectedAssociatedTags,
-      String expectedUpdatedBy)
-      throws JsonProcessingException {
+      String parentURI, Tag actual, String expectedName, String expectedDescription, String expectedUpdatedBy) {
     LOG.info("Actual tag {}", JsonUtils.pojoToJson(actual));
     validateHRef(parentURI, actual);
     assertEquals(expectedName, actual.getName());
     assertEquals(expectedDescription, actual.getDescription());
     assertEquals(expectedUpdatedBy, actual.getUpdatedBy());
-    Collections.sort(expectedAssociatedTags);
-    Collections.sort(actual.getAssociatedTags());
-    assertEquals(expectedAssociatedTags, actual.getAssociatedTags());
   }
 
   /** Ensure the href in the children tags is correct */

@@ -4,6 +4,11 @@
   "title": "Messaging Service",
   "description": "This schema defines the Messaging Service entity, such as Kafka and Pulsar.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.MessagingService",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.EntityInterface",
+    "org.openmetadata.catalog.ServiceEntityInterface"
+  ],
   "definitions": {
     "messagingServiceType": {
       "description": "Type of messaging service - Kafka or Pulsar.",
@@ -25,6 +30,27 @@
         "type": "string"
       },
       "default": null
+    },
+    "messagingConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.MessagingConnection",
+      "description": "Dashboard Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/messaging/kafkaConnection.json"
+            },
+            {
+              "$ref": "./connections/messaging/pulsarConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -34,10 +60,11 @@
     },
     "name": {
       "description": "Name that identifies this messaging service.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "serviceType": {
       "description": "Type of messaging service such as Kafka or Pulsar...",
@@ -45,11 +72,18 @@
     },
     "description": {
       "description": "Description of a messaging service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "displayName": {
       "description": "Display Name that identifies this messaging service. It could be title or label from the source services.",
       "type": "string"
+    },
+    "connection": {
+      "$ref": "#/definitions/messagingConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this messaging service to extract topic configs and schemas.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -62,19 +96,6 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
-    },
-    "brokers": {
-      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "$ref": "#/definitions/brokers"
-    },
-    "schemaRegistry": {
-      "description": "Schema registry URL.",
-      "type": "string",
-      "format": "uri"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs.",
-      "$ref": "../../type/schedule.json"
     },
     "owner": {
       "description": "Owner of this messaging service.",
@@ -94,6 +115,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "brokers"],
+  "required": ["id", "name", "serviceType"],
   "additionalProperties": false
 }

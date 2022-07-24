@@ -1,0 +1,21 @@
+{
+    "$id": "https://open-metadata.org/schema/tests/column/columnValueMinToBeBetween.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "columnValueMinToBeBetween",
+    "description": "This schema defines the test ColumnValueMinToBeBetween. Test the minimum value in a col is within a range.",
+    "type": "object",
+    "javaType": "org.openmetadata.catalog.tests.column.ColumnValueMinToBeBetween",
+    "properties": {
+      "minValueForMinInCol": {
+        "description": "Expected minimum value in the column to be greater or equal than",
+        "type": "integer"
+      },
+      "maxValueForMinInCol": {
+        "description": "Expect minimum value in the column to be lower or equal than",
+        "type": "integer"
+      }
+    },
+    "anyOf": [{ "required": ["minValueForMinInCol"] }, { "required": ["maxValueForMinInCol"] }],
+    "additionalProperties": false
+  }
+  

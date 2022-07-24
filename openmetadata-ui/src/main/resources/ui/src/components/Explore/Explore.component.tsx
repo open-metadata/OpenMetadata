@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
+import {
+  faSortAmountDownAlt,
+  faSortAmountUpAlt,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
   AggregationType,
   Bucket,
   FilterObject,
-  FormatedTableData,
+  FormattedTableData,
   SearchResponse,
 } from 'Models';
 import React, {
@@ -31,13 +37,11 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
   getExplorePathWithSearch,
   PAGE_SIZE,
   ROUTES,
-  tableSortingFields,
   visibleFilters,
 } from '../../constants/constants';
 import {
@@ -45,10 +49,12 @@ import {
   getAggrWithDefaultValue,
   getCurrentIndex,
   getCurrentTab,
-  getQueryParam,
+  INITIAL_FILTERS,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
+  tableSortingFields,
   tabsInfo,
+  UPDATABLE_AGGREGATION,
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -60,24 +66,24 @@ import {
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
-import PageLayout from '../containers/PageLayout';
-import { ExploreProps } from './explore.interface';
-import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import AdvancedFields from '../AdvancedSearch/AdvancedFields';
+import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { AdvanceField, ExploreProps } from './explore.interface';
+import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
+  initialFilter,
+  searchFilter,
   tab,
   searchQuery,
   searchResult,
   sortValue,
   error,
   fetchCount,
+  handleFilterChange,
   handlePathChange,
   handleSearchText,
   fetchData,
@@ -87,54 +93,97 @@ const Explore: React.FC<ExploreProps> = ({
   updateTopicCount,
   updateDashboardCount,
   updatePipelineCount,
+  isFilterSelected,
+  updateMlModelCount,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
   const filterObject: FilterObject = {
-    ...{ tags: [], service: [], tier: [], database: [] },
-    ...getQueryParam(location.search),
+    ...INITIAL_FILTERS,
+    ...initialFilter,
   };
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
-  const [filters, setFilters] = useState<FilterObject>(filterObject);
+  const [data, setData] = useState<Array<FormattedTableData>>([]);
+  const [filters, setFilters] = useState<FilterObject>({
+    ...filterObject,
+    ...searchFilter,
+  });
+
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
   const [searchTag, setSearchTag] = useState<string>(location.search);
-
-  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
-  const [fieldList, setFieldList] =
-    useState<Array<{ name: string; value: string }>>(tableSortingFields);
+
   const [isEntityLoading, setIsEntityLoading] = useState(true);
   const [isFilterSet, setIsFilterSet] = useState<boolean>(
-    !isEmpty(getQueryParam(location.search))
+    !isEmpty(initialFilter)
   );
   const [connectionError] = useState(error.includes('Connection refused'));
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
+  const [fieldList, setFieldList] =
+    useState<Array<{ name: string; value: string }>>(tableSortingFields);
+
+  const [selectedAdvancedFields, setSelectedAdvancedField] = useState<
+    Array<AdvanceField>
+  >([]);
+  const [isInitialFilterSet, setIsInitialFilterSet] = useState<boolean>(
+    !isEmpty(initialFilter)
+  );
+
+  const onAdvancedFieldSelect = (value: string) => {
+    const flag = selectedAdvancedFields.some((field) => field.key === value);
+    if (!flag) {
+      setSelectedAdvancedField((pre) => [
+        ...pre,
+        { key: value, value: undefined },
+      ]);
+    }
+  };
+  const onAdvancedFieldRemove = (value: string) => {
+    setSelectedAdvancedField((pre) =>
+      pre.filter((field) => field.key !== value)
+    );
+  };
+
+  const onAdvancedFieldClear = () => {
+    setSelectedAdvancedField([]);
+  };
+
+  const onAdvancedFieldValueSelect = (field: AdvanceField) => {
+    setSelectedAdvancedField((pre) => {
+      return pre.map((preField) => {
+        if (preField.key === field.key) {
+          return field;
+        } else {
+          return preField;
+        }
+      });
+    });
+  };
 
   const handleSelectedFilter = (
     checked: boolean,
     selectedFilter: string,
     type: keyof typeof filterObject
   ) => {
+    let filterData;
     if (checked) {
-      setFilters((prevState) => {
-        const filterType = prevState[type];
-        if (filterType.includes(selectedFilter)) {
-          return { ...prevState };
-        }
+      const filterType = filters[type];
+      if (filterType.includes(selectedFilter)) {
+        filterData = { ...filters };
+      } else {
         setIsFilterSet(true);
 
-        return {
-          ...prevState,
-          [type]: [...prevState[type], selectedFilter],
+        filterData = {
+          ...filters,
+          [type]: [...filters[type], selectedFilter],
         };
-      });
+      }
     } else {
       if (searchTag.includes(selectedFilter)) {
         setSearchTag('');
@@ -142,13 +191,17 @@ const Explore: React.FC<ExploreProps> = ({
       const filter = filters[type];
       const index = filter.indexOf(selectedFilter);
       filter.splice(index, 1);
-      setFilters((prevState) => {
-        const selectedFilterCount = getFilterCount(prevState);
-        setIsFilterSet(selectedFilterCount >= 1);
+      const selectedFilterCount = getFilterCount(filters);
+      setIsFilterSet(selectedFilterCount >= 1);
 
-        return { ...prevState, [type]: filter };
-      });
+      filterData = { ...filters, [type]: filter };
     }
+
+    handleFilterChange(filterData);
+  };
+
+  const handleFieldDropDown = (value: string) => {
+    setSortField(value);
   };
 
   const handleShowDeleted = (checked: boolean) => {
@@ -156,23 +209,21 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const onClearFilterHandler = (type: string[], isForceClear = false) => {
-    setFilters((prevFilters) => {
-      const updatedFilter = type.reduce((filterObj, type) => {
-        return { ...filterObj, [type]: [] };
-      }, {});
-      const queryParamFilters = getQueryParam(location.search);
-      setIsFilterSet(false);
+    setSelectedAdvancedField([]);
+    const updatedFilter = type.reduce((filterObj, type) => {
+      return { ...filterObj, [type]: [] };
+    }, {});
+    const queryParamFilters = initialFilter;
+    setIsFilterSet(false);
 
-      return {
-        ...prevFilters,
-        ...updatedFilter,
-        ...(isForceClear ? {} : queryParamFilters),
-      };
+    handleFilterChange({
+      ...updatedFilter,
+      ...(isForceClear ? {} : queryParamFilters),
     });
   };
 
-  const paginate = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
+  const paginate = (pageNumber: string | number) => {
+    setCurrentPage(pageNumber as number);
   };
 
   const updateAggregationCount = useCallback(
@@ -181,21 +232,25 @@ const Explore: React.FC<ExploreProps> = ({
       for (const newAgg of newAggregations) {
         for (const oldAgg of oldAggs) {
           if (newAgg.title === oldAgg.title) {
-            const buckets = cloneDeep(oldAgg.buckets)
-              .map((item) => {
-                // eslint-disable-next-line @typescript-eslint/camelcase
-                return { ...item, doc_count: 0 };
-              })
-              .concat(newAgg.buckets);
-            const bucketHashmap = buckets.reduce((obj, item) => {
-              obj[item.key]
-                ? // eslint-disable-next-line @typescript-eslint/camelcase
-                  (obj[item.key].doc_count += item.doc_count)
-                : (obj[item.key] = { ...item });
+            if (UPDATABLE_AGGREGATION.includes(newAgg.title)) {
+              const buckets = cloneDeep(oldAgg.buckets)
+                .map((item) => {
+                  // eslint-disable-next-line @typescript-eslint/camelcase
+                  return { ...item, doc_count: 0 };
+                })
+                .concat(newAgg.buckets);
+              const bucketHashmap = buckets.reduce((obj, item) => {
+                obj[item.key]
+                  ? // eslint-disable-next-line @typescript-eslint/camelcase
+                    (obj[item.key].doc_count += item.doc_count)
+                  : (obj[item.key] = { ...item });
 
-              return obj;
-            }, {} as { [key: string]: Bucket });
-            oldAgg.buckets = Object.values(bucketHashmap);
+                return obj;
+              }, {} as { [key: string]: Bucket });
+              oldAgg.buckets = Object.values(bucketHashmap);
+            } else {
+              oldAgg.buckets = newAgg.buckets;
+            }
           }
         }
       }
@@ -231,6 +286,10 @@ const Explore: React.FC<ExploreProps> = ({
         break;
       case SearchIndex.PIPELINE:
         updatePipelineCount(count);
+
+        break;
+      case SearchIndex.MLMODEL:
+        updateMlModelCount(count);
 
         break;
       default:
@@ -286,6 +345,24 @@ const Explore: React.FC<ExploreProps> = ({
         sortOrder: sortOrder,
         searchIndex: searchIndex,
       },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: ZERO_SIZE,
+        filters: getFilterString(filters, ['databaseschema']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: ZERO_SIZE,
+        filters: getFilterString(filters, ['servicename']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
     ];
 
     fetchData(fetchParams);
@@ -303,46 +380,28 @@ const Explore: React.FC<ExploreProps> = ({
     return facetFilters;
   };
 
-  const handleFieldDropDown = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    setSortField(value || sortField);
-    setFieldListVisible(false);
-  };
   const handleOrder = (value: string) => {
     setSortOrder(value);
   };
 
   const getSortingElements = () => {
     return (
-      <div className="tw-flex tw-gap-2">
-        <div className="tw-mt-4">
-          <span className="tw-mr-2">Sort by:</span>
-          <span className="tw-relative">
-            <Button
-              className="focus:tw-no-underline"
-              data-testid="sortBy"
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setFieldListVisible((visible) => !visible)}>
-              {fieldList.find((field) => field.value === sortField)?.name ||
-                'Relevance'}
-              <DropDownIcon />
-            </Button>
-            {fieldListVisible && (
-              <DropDownList
-                dropDownList={fieldList}
-                value={sortField}
-                onSelect={handleFieldDropDown}
-              />
-            )}
-          </span>
-        </div>
-        <div className="tw-mt-2 tw-flex tw-gap-2">
+      <div className="tw-flex">
+        <AdvancedSearchDropDown
+          index={searchIndex}
+          selectedItems={selectedAdvancedFields}
+          onSelect={onAdvancedFieldSelect}
+        />
+
+        <SortingDropDown
+          fieldList={fieldList}
+          handleFieldDropDown={handleFieldDropDown}
+          sortField={sortField}
+        />
+
+        <div className="tw-flex">
           {sortOrder === 'asc' ? (
-            <button onClick={() => handleOrder('desc')}>
+            <button className="tw-mt-2" onClick={() => handleOrder('desc')}>
               <FontAwesomeIcon
                 className="tw-text-base tw-text-primary"
                 data-testid="last-updated"
@@ -350,7 +409,7 @@ const Explore: React.FC<ExploreProps> = ({
               />
             </button>
           ) : (
-            <button onClick={() => handleOrder('asc')}>
+            <button className="tw-mt-2" onClick={() => handleOrder('asc')}>
               <FontAwesomeIcon
                 className="tw-text-base tw-text-primary"
                 data-testid="last-updated"
@@ -381,12 +440,16 @@ const Explore: React.FC<ExploreProps> = ({
         return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
+      case SearchIndex.MLMODEL:
+        return getCountBadge(tabCounts.mlModel, className, isActive);
       default:
         return getCountBadge();
     }
   };
   const onTabChange = (selectedTab: number) => {
     if (tabsInfo[selectedTab - 1].path !== tab) {
+      setIsEntityLoading(true);
+      setData([]);
       handlePathChange(tabsInfo[selectedTab - 1].path);
       resetFilters();
       history.push({
@@ -400,13 +463,13 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const getTabs = () => {
     return (
-      <div className="tw-mb-5 tw-px-6 centered-layout">
+      <div className="tw-mb-5 centered-layout">
         <nav
           className={classNames(
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
           )}>
           <div className="tw-flex">
-            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+            {/* <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
               <Button
                 className={classNames('tw-underline tw-mt-5', {
                   'tw-invisible': !getFilterCount(filters),
@@ -417,20 +480,20 @@ const Explore: React.FC<ExploreProps> = ({
                 onClick={() => resetFilters(true)}>
                 Clear All
               </Button>
-            </div>
+            </div> */}
             <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
-                  className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
+                  className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
                     tabDetail.tab
                   )}`}
-                  data-testid="tab"
+                  data-testid={`${lowerCase(tabDetail.label)}-tab`}
                   key={index}
                   onClick={() => {
                     onTabChange(tabDetail.tab);
                   }}>
                   {tabDetail.label}
-                  <span className="tw-pl-2">
+                  <span className="tw-pl-1">
                     {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
                   </span>
                 </button>
@@ -445,9 +508,24 @@ const Explore: React.FC<ExploreProps> = ({
 
   const getData = () => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = !isFilterSet;
+      if (isInitialFilterSet) {
+        forceSetAgg.current = isInitialFilterSet;
+      } else {
+        forceSetAgg.current = !isFilterSet;
+      }
       fetchTableData();
     }
+  };
+
+  const handleAdvancedSearch = (advancedFields: AdvanceField[]) => {
+    const advancedFilterObject: FilterObject = {};
+    advancedFields.forEach((field) => {
+      if (field.value) {
+        advancedFilterObject[field.key] = [field.value];
+      }
+    });
+
+    handleFilterChange(advancedFilterObject);
   };
 
   useEffect(() => {
@@ -456,21 +534,26 @@ const Explore: React.FC<ExploreProps> = ({
   }, [searchQuery]);
 
   useEffect(() => {
-    setFilters(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
-    setSortField(
-      searchQuery
-        ? tabsInfo[getCurrentTab(tab) - 1].sortField
-        : INITIAL_SORT_FIELD
-    );
+    // if search text is there then set sortfield as ''(Relevance)
+    setSortField(searchText ? '' : tabsInfo[getCurrentTab(tab) - 1].sortField);
     setSortOrder(INITIAL_SORT_ORDER);
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
     if (!isMounting.current) {
       fetchCount();
+      handleFilterChange(filterObject);
     }
   }, [tab]);
+
+  useEffect(() => {
+    setFilters({
+      ...filterObject,
+      ...initialFilter,
+      ...searchFilter,
+    });
+  }, [initialFilter, searchFilter]);
 
   useEffect(() => {
     if (getFilterString(filters)) {
@@ -481,7 +564,6 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
-      resetFilters();
       fetchTableData();
     }
   }, [searchText, searchIndex, showDeleted]);
@@ -498,6 +580,7 @@ const Explore: React.FC<ExploreProps> = ({
               )
             : getAggregationListFromQS(location.search)
         );
+        setIsInitialFilterSet(false);
       } else {
         const aggServiceType = getAggregationList(
           searchResult.resAggServiceType.data.aggregations,
@@ -515,12 +598,22 @@ const Explore: React.FC<ExploreProps> = ({
           searchResult.resAggDatabase.data.aggregations,
           'database'
         );
+        const aggDatabaseSchema = getAggregationList(
+          searchResult.resAggDatabaseSchema.data.aggregations,
+          'databaseschema'
+        );
+        const aggServiceName = getAggregationList(
+          searchResult.resAggServiceName.data.aggregations,
+          'servicename'
+        );
 
         updateAggregationCount([
           ...aggServiceType,
           ...aggTier,
           ...aggTag,
           ...aggDatabase,
+          ...aggDatabaseSchema,
+          ...aggServiceName,
         ]);
       }
       setIsEntityLoading(false);
@@ -539,6 +632,36 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [filters]);
 
+  /**
+   * on index change clear the filters
+   */
+  useEffect(() => {
+    if (!isMounting.current) {
+      setSelectedAdvancedField([]);
+    }
+  }, [searchIndex]);
+
+  /**
+   * if search query is there then make sortfield as empty (Relevance)
+   * otherwise change it to INITIAL_SORT_FIELD (last_updated)
+   */
+  useEffect(() => {
+    if (searchText) {
+      setSortField('');
+    } else {
+      setSortField(INITIAL_SORT_FIELD);
+    }
+  }, [searchText]);
+
+  /**
+   * on advance field change call handleAdvancedSearch methdod
+   */
+  useEffect(() => {
+    if (!isMounting.current) {
+      handleAdvancedSearch(selectedAdvancedFields);
+    }
+  }, [selectedAdvancedFields]);
+
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -546,40 +669,74 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        {!error && (
-          <FacetFilter
-            aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
-            filters={getFacetedFilter()}
-            showDeletedOnly={showDeleted}
-            onSelectDeleted={handleShowDeleted}
-            onSelectHandler={handleSelectedFilter}
-          />
-        )}
-      </>
+      <div className="tw-h-full">
+        <Card
+          data-testid="data-summary-container"
+          style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
+          <Fragment>
+            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+              <Button
+                className={classNames('tw-underline tw-pb-4')}
+                disabled={!getFilterCount(filters)}
+                size="custom"
+                theme="primary"
+                variant="link"
+                onClick={() => resetFilters(true)}>
+                Clear All
+              </Button>
+            </div>
+            <div className="tw-filter-seperator" />
+            {!error && (
+              <FacetFilter
+                aggregations={getAggrWithDefaultValue(
+                  aggregations,
+                  visibleFilters
+                )}
+                filters={getFacetedFilter()}
+                showDeletedOnly={showDeleted}
+                onSelectDeleted={handleShowDeleted}
+                onSelectHandler={handleSelectedFilter}
+              />
+            )}
+          </Fragment>
+        </Card>
+      </div>
     );
   };
 
+  const advanceFieldCheck =
+    !connectionError && Boolean(selectedAdvancedFields.length);
+
   return (
     <Fragment>
-      {!connectionError && getTabs()}
-      <PageLayout
-        leftPanel={Boolean(!error) && fetchLeftPanel()}
-        rightPanel={Boolean(!error) && <></>}>
+      <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
-          <SearchedData
-            showResultCount
-            currentPage={currentPage}
-            data={data}
-            isLoading={
-              !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-            }
-            paginate={paginate}
-            searchText={searchText}
-            totalValue={totalNumberOfValue}
-          />
+          <>
+            {!connectionError && getTabs()}
+            {advanceFieldCheck && (
+              <AdvancedFields
+                fields={selectedAdvancedFields}
+                index={searchIndex}
+                onClear={onAdvancedFieldClear}
+                onFieldRemove={onAdvancedFieldRemove}
+                onFieldValueSelect={onAdvancedFieldValueSelect}
+              />
+            )}
+            <SearchedData
+              showResultCount
+              currentPage={currentPage}
+              data={data}
+              isFilterSelected={isFilterSelected}
+              isLoading={
+                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+              }
+              paginate={paginate}
+              searchText={searchText}
+              totalValue={totalNumberOfValue}
+            />
+          </>
         )}
       </PageLayout>
     </Fragment>

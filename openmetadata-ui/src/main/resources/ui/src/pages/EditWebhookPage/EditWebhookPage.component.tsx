@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   deleteWebhook,
   getWebhookByName,
@@ -29,14 +29,14 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [webhookData, setWebhookData] = useState<Webhook>();
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -46,13 +46,14 @@ const EditWebhookPage: FunctionComponent = () => {
     setIsLoading(true);
     getWebhookByName(webhookName)
       .then((res) => {
-        setWebhookData(res.data);
+        if (res.data) {
+          setWebhookData(res.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
       })
       .finally(() => setIsLoading(false));
   };
@@ -69,18 +70,19 @@ const EditWebhookPage: FunctionComponent = () => {
     setStatus('waiting');
     const { name, secretKey } = webhookData || data;
     updateWebhook({ ...data, name, secretKey })
-      .then(() => {
-        setStatus('success');
-        setTimeout(() => {
-          setStatus('initial');
-          goToWebhooks();
-        }, 500);
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setStatus('success');
+          setTimeout(() => {
+            setStatus('initial');
+            goToWebhooks();
+          }, 500);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
         setStatus('initial');
       });
   };
@@ -88,15 +90,16 @@ const EditWebhookPage: FunctionComponent = () => {
   const handleDelete = (id: string) => {
     setDeleteStatus('waiting');
     deleteWebhook(id)
-      .then(() => {
-        setDeleteStatus('initial');
-        goToWebhooks();
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setDeleteStatus('initial');
+          goToWebhooks();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
         setDeleteStatus('initial');
       });
   };
@@ -107,21 +110,23 @@ const EditWebhookPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      {!isLoading ? (
-        <AddWebhook
-          allowAccess={isAdminUser || isAuthDisabled}
-          data={webhookData}
-          deleteState={deleteStatus}
-          header="Edit Webhook"
-          mode={FormSubmitType.EDIT}
-          saveState={status}
-          onCancel={handleCancel}
-          onDelete={handleDelete}
-          onSave={handleSave}
-        />
-      ) : (
-        <Loader />
-      )}
+      <div className="tw-self-center">
+        {!isLoading ? (
+          <AddWebhook
+            allowAccess={isAdminUser || isAuthDisabled}
+            data={webhookData}
+            deleteState={deleteStatus}
+            header="Edit Webhook"
+            mode={FormSubmitType.EDIT}
+            saveState={status}
+            onCancel={handleCancel}
+            onDelete={handleDelete}
+            onSave={handleSave}
+          />
+        ) : (
+          <Loader />
+        )}
+      </div>
     </PageContainerV1>
   );
 };

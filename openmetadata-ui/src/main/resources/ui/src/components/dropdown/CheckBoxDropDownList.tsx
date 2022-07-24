@@ -12,7 +12,7 @@
  */
 
 import React, { Fragment } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { useAuth } from '../../hooks/authHooks';
 import { DropDownListItem, DropDownListProp } from './types';
 

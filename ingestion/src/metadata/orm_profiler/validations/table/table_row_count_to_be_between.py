@@ -12,6 +12,8 @@
 """
 TableRowCountToBeBetween validation implementation
 """
+# pylint: disable=duplicate-code
+
 from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import TableProfile
@@ -19,9 +21,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
     TableRowCountToBeBetween,
 )
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 def table_row_count_to_be_between(

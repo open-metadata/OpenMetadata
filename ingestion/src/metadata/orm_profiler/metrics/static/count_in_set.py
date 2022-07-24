@@ -12,13 +12,17 @@
 """
 CountInSet Metric definition
 """
+# pylint: disable=duplicate-code
+
+from typing import List
 
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.orm_profiler.utils import logger
+from metadata.orm_profiler.orm.functions.sum import SumFn
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class CountInSet(StaticMetric):
@@ -26,7 +30,13 @@ class CountInSet(StaticMetric):
     COUNT_IN_SET Metric
 
     Given a column, return the count of values in a given set.
+
+    This Metric needs to be initialised passing the values to look for
+    the count:
+    add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
     """
+
+    values: List[str]
 
     @classmethod
     def name(cls):
@@ -45,9 +55,8 @@ class CountInSet(StaticMetric):
 
         try:
             set_values = set(self.values)
-            return func.sum(case([(column(self.col.name).in_(set_values), 1)], else_=0))
+            return SumFn(case([(column(self.col.name).in_(set_values), 1)], else_=0))
 
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Error trying to run countInSet for {self.col.name} - {err}")
-            print(err)
             return None

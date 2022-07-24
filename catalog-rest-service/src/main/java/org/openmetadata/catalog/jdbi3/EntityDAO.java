@@ -14,23 +14,29 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
-public interface EntityDAO<T> {
+public interface EntityDAO<T extends EntityInterface> {
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
 
@@ -38,13 +44,19 @@ public interface EntityDAO<T> {
 
   String getNameColumn();
 
-  EntityReference getEntityReference(T entity);
+  default boolean supportsSoftDelete() {
+    return true;
+  }
 
   /** Common queries for all entities implemented here. Do not override. */
-  @SqlUpdate("INSERT INTO <table> (json) VALUES (:json)")
+  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json)", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json :: jsonb)", connectionType = POSTGRES)
   void insert(@Define("table") String table, @Bind("json") String json);
 
-  @SqlUpdate("UPDATE <table> SET  json = :json WHERE id = :id")
+  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json WHERE id = :id", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE <table> SET  json = (:json :: jsonb) WHERE id = :id",
+      connectionType = POSTGRES)
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
@@ -64,9 +76,9 @@ public interface EntityDAO<T> {
       "SELECT json FROM ("
           + "SELECT <nameColumn>, json FROM <table> <cond> AND "
           + "<nameColumn> < :before "
-          + // Pagination by chart fullyQualifiedName
+          + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
           "ORDER BY <nameColumn> DESC "
-          + // Pagination ordering by chart fullyQualifiedName
+          + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
           "LIMIT :limit"
           + ") last_rows_subquery ORDER BY <nameColumn>")
   List<String> listBefore(
@@ -88,11 +100,14 @@ public interface EntityDAO<T> {
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
 
+  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumn> = :fqn)")
+  boolean existsByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqn") String fqn);
+
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @Bind("id") String id);
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(T entity) throws JsonProcessingException {
+  default void insert(EntityInterface entity) throws JsonProcessingException {
     insert(getTableName(), JsonUtils.pojoToJson(entity));
   }
 
@@ -101,65 +116,63 @@ public interface EntityDAO<T> {
   }
 
   default String getCondition(Include include) {
+    if (!supportsSoftDelete()) {
+      return "";
+    }
+
     if (include == null || include == Include.NON_DELETED) {
-      return "AND deleted = false";
+      return "AND deleted = FALSE";
     }
     if (include == Include.DELETED) {
-      return " AND deleted = true";
+      return " AND deleted = TRUE";
     }
     return "";
   }
 
   default T findEntityById(UUID id, Include include) throws IOException {
-    Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id.toString(), getCondition(include));
-    T entity = null;
-    if (json != null) {
-      entity = JsonUtils.readValue(json, clz);
-    }
-    if (entity == null) {
-      String entityType = Entity.getEntityTypeFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
-    return entity;
+    return jsonToEntity(findById(getTableName(), id.toString(), getCondition(include)), id.toString());
   }
 
   default T findEntityById(UUID id) throws IOException {
     return findEntityById(id, Include.NON_DELETED);
   }
 
-  default T findEntityByName(String fqn) throws IOException {
+  default T findEntityByName(String fqn) {
     return findEntityByName(fqn, Include.NON_DELETED);
   }
 
-  default T findEntityByName(String fqn, Include include) throws IOException {
+  @SneakyThrows
+  default T findEntityByName(String fqn, Include include) {
+    return jsonToEntity(findByName(getTableName(), getNameColumn(), fqn, getCondition(include)), fqn);
+  }
+
+  default T jsonToEntity(String json, String identity) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));
     }
     return entity;
   }
 
   default EntityReference findEntityReferenceById(UUID id) throws IOException {
-    return getEntityReference(findEntityById(id));
+    return findEntityById(id).getEntityReference();
   }
 
-  default EntityReference findEntityReferenceByName(String fqn) throws IOException {
-    return getEntityReference(findEntityByName(fqn));
+  default EntityReference findEntityReferenceByName(String fqn) {
+    return findEntityByName(fqn).getEntityReference();
   }
 
   default EntityReference findEntityReferenceById(UUID id, Include include) throws IOException {
-    return getEntityReference(findEntityById(id, include));
+    return findEntityById(id, include).getEntityReference();
   }
 
-  default EntityReference findEntityReferenceByName(String fqn, Include include) throws IOException {
-    return getEntityReference(findEntityByName(fqn, include));
+  default EntityReference findEntityReferenceByName(String fqn, Include include) {
+    return findEntityByName(fqn, include).getEntityReference();
   }
 
   default String findJsonById(String id, Include include) {
@@ -175,16 +188,29 @@ public interface EntityDAO<T> {
   }
 
   default List<String> listBefore(ListFilter filter, int limit, String before) {
-
+    // Quoted name is stored in fullyQualifiedName column and not in the name column
+    before = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(before) : before;
     return listBefore(getTableName(), getNameColumn(), filter.getCondition(), limit, before);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, String after) {
+    // Quoted name is stored in fullyQualifiedName column and not in the name column
+    after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
     return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
   }
 
-  default boolean exists(UUID id) {
-    return exists(getTableName(), id.toString());
+  default void exists(UUID id) {
+    if (!exists(getTableName(), id.toString())) {
+      String entityType = Entity.getEntityTypeFromClass(getEntityClass());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+  }
+
+  default void existsByName(String fqn) {
+    if (!existsByName(getTableName(), getNameColumn(), fqn)) {
+      String entityType = Entity.getEntityTypeFromClass(getEntityClass());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+    }
   }
 
   default int delete(String id) {

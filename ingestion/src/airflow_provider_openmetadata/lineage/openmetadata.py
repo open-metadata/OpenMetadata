@@ -18,9 +18,9 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from airflow.lineage.backend import LineageBackend
 
-from airflow_provider_openmetadata.lineage.config import (
+from airflow_provider_openmetadata.lineage.config.loader import (
+    AirflowLineageConfig,
     get_lineage_config,
-    get_metadata_config,
 )
 from airflow_provider_openmetadata.lineage.utils import get_xlets, parse_lineage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -58,8 +58,8 @@ class OpenMetadataLineageBackend(LineageBackend):
         _ = get_lineage_config()
 
     # pylint: disable=protected-access
+    @staticmethod  # needed for Airflow 1.10.x
     def send_lineage(
-        self,
         operator: "BaseOperator",
         inlets: Optional[List] = None,
         outlets: Optional[List] = None,
@@ -78,14 +78,13 @@ class OpenMetadataLineageBackend(LineageBackend):
         """
 
         try:
-            config = get_lineage_config()
-            metadata_config = get_metadata_config(config)
-            client = OpenMetadata(metadata_config)
+            config: AirflowLineageConfig = get_lineage_config()
+            metadata = OpenMetadata(config.metadata_config)
 
             op_inlets = get_xlets(operator, "_inlets")
             op_outlets = get_xlets(operator, "_outlets")
 
-            parse_lineage(config, context, operator, op_inlets, op_outlets, client)
+            parse_lineage(config, context, operator, op_inlets, op_outlets, metadata)
         except Exception as exc:  # pylint: disable=broad-except
             operator.log.error(traceback.format_exc())
             operator.log.error(exc)

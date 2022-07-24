@@ -23,7 +23,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
   private int currentBackoffTime = BACKOFF_NORMAL;
   private final List<ChangeEvent> batch = new ArrayList<>();
   private final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
-  private int batchSize = 10;
+  private final int batchSize;
 
   protected AbstractEventPublisher(int batchSize, List<EventFilter> filters) {
     filters.forEach(f -> filter.put(f.getEventType(), f.getEntities()));
@@ -57,7 +57,9 @@ public abstract class AbstractEventPublisher implements EventPublisher {
       LOG.error("Failed to publish event {} due to {}, will try again in {} ms", changeEvent, ex, currentBackoffTime);
       Thread.sleep(currentBackoffTime);
     } catch (Exception e) {
-      LOG.error("Failed to publish event {}", changeEvent);
+      LOG.error(
+          "Failed to publish event type {} for entity {}", changeEvent.getEventType(), changeEvent.getEntityType());
+      LOG.error(e.getMessage(), e);
     }
   }
 

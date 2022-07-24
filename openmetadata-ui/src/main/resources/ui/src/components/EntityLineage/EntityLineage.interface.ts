@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { Edge as FlowEdge, Node } from 'react-flow-renderer';
+import { Column } from '../../generated/entity/data/table';
 import {
   EntityLineage,
   EntityReference,
@@ -20,6 +22,7 @@ import {
 export interface SelectedNode {
   name: string;
   type: string;
+  fqn: string;
   displayName?: string;
   id?: string;
   entityId: string;
@@ -31,6 +34,7 @@ export interface EntityLineageProp {
   entityLineage: EntityLineage;
   deleted?: boolean;
   isOwner?: boolean;
+  isLoading?: boolean;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
@@ -63,10 +67,22 @@ export interface CustomEdgeData {
   target: string;
   sourceType: string;
   targetType: string;
+  isColumnLineage: boolean;
+  sourceHandle: string;
+  targetHandle: string;
 }
 
 export interface SelectedEdge {
   id: string;
   source: EntityReference;
   target: EntityReference;
+  data?: CustomEdgeData;
 }
+
+export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
+
+export type CustomeElement = { node: Node[]; edge: FlowEdge[] };
+export type CustomeFlow = Node | FlowEdge;
+export type ModifiedColumn = Column & {
+  type: string;
+};

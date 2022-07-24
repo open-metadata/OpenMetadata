@@ -1,0 +1,31 @@
+source:
+  type: powerbi
+  serviceName: local_power11
+  serviceConnection:
+    config:
+      clientId: client_id
+      clientSecret: client_secret
+      tenantId: tenant_id
+      scope:
+        - https://analysis.windows.net/powerbi/api/.default
+      type: PowerBI
+  sourceConfig:
+    config:
+      chartFilterPattern:
+        includes:
+          - Gross Margin %
+          - Total Defect*
+          - "Number"
+        excludes:
+          - Total Revenue
+      dashboardFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

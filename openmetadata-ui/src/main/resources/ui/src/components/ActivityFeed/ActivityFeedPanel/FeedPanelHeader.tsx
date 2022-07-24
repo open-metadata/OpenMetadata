@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import React, { FC } from 'react';
+import { getEntityFieldDisplay } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
@@ -31,7 +32,9 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
           <span data-testid="header-noun">
             {noun ? noun : 'Conversation'} on{' '}
           </span>
-          <span className="tw-heading">{entityField}</span>
+          <span className="tw-heading">
+            {getEntityFieldDisplay(entityField)}
+          </span>
         </p>
         <div className="tw-flex">
           {onShowNewConversation ? (

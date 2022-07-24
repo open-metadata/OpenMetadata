@@ -4,14 +4,20 @@
   "title": "CreateTagRequest",
   "description": "Create tag API request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.CreateTag",
+  "javaType": "org.openmetadata.catalog.api.tags.CreateTag",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
+
   "properties": {
     "name": {
       "$ref": "../../entity/tags/tagCategory.json#/definitions/tagName"
     },
+    "displayName": {
+      "description": "Display Name that identifies this tag.",
+      "type": "string"
+    },
     "description": {
       "description": "Unique name of the tag category",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "associatedTags": {
       "description": "Fully qualified names of tags associated with this tag",

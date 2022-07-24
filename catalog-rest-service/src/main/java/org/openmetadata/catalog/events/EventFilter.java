@@ -13,10 +13,7 @@
 
 package org.openmetadata.catalog.events;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
@@ -43,7 +40,8 @@ public class EventFilter implements ContainerResponseFilter {
 
   private void registerEventHandlers(CatalogApplicationConfig config, Jdbi jdbi) {
     try {
-      Set<String> eventHandlerClassNames = config.getEventHandlerConfiguration().getEventHandlerClassNames();
+      Set<String> eventHandlerClassNames =
+          new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
       for (String eventHandlerClassName : eventHandlerClassNames) {
         EventHandler eventHandler =
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();

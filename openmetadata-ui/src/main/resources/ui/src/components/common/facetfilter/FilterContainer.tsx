@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import PopOver from '../popover/PopOver';
 import { FilterContainerProp } from './FacetTypes';
@@ -26,8 +27,8 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   isDisabled = false,
 }: FilterContainerProp) => {
   const getFilterName = (name = '') => {
-    const formattedName = name.startsWith('Tier.Tier')
-      ? name.split('.')[1]
+    const formattedName = name.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      ? name.split(FQN_SEPARATOR_CHAR)[1]
       : name;
 
     return (
@@ -39,7 +40,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
 
   return (
     <label
-      className="filter-group tw-justify-between tw-mb-2 tw-cursor-pointer"
+      className="filter-group tw-justify-between tw-mb-2.5 tw-cursor-pointer"
       data-testid={`filter-container-${name}`}>
       <div className="tw-flex">
         <input
@@ -57,7 +58,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
         />
         <div
           className={classNames(
-            'filters-title tw-w-40 tw-truncate custom-checkbox-label',
+            'filters-title tw-w-32 tw-truncate custom-checkbox-label',
             { 'tw-text-grey-muted': isDisabled }
           )}
           data-testid="checkbox-label">

@@ -15,13 +15,12 @@ import {
   findAllByTestId,
   findByTestId,
   findByText,
-  fireEvent,
   render,
 } from '@testing-library/react';
 import React from 'react';
 import ManageTab from './ManageTab.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -33,18 +32,35 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockReturnValue({
+    isAdminUser: true,
+    userPermissions: {
+      UpdateTeam: true,
+    },
+  }),
+}));
+
+jest.mock('../common/toggle-switch/ToggleSwitchV1', () => {
+  return jest.fn().mockImplementation(() => <p>ToggleSwitchV1.Component</p>);
+});
+
+jest.mock('../common/DeleteWidget/DeleteWidget', () => {
+  return jest.fn().mockImplementation(() => <p>DeleteWidget.Component</p>);
+});
+
 const mockTierData = {
   children: [
     {
-      fullyQualifiedName: 'Tier.Tier1',
+      fullyQualifiedName: 'Tier:Tier1',
       description: 'description for card 1',
     },
     {
-      fullyQualifiedName: 'Tier.Tier2',
+      fullyQualifiedName: 'Tier:Tier2',
       description: 'description for card 2',
     },
     {
-      fullyQualifiedName: 'Tier.Tier3',
+      fullyQualifiedName: 'Tier:Tier3',
       description: 'description for card 3',
     },
   ],
@@ -52,7 +68,7 @@ const mockTierData = {
 
 const mockFunction = jest.fn().mockImplementation(() => Promise.resolve());
 
-jest.mock('../card-list/CardListItem/CardWithListItems', () => {
+jest.mock('../cardlist/CardListItem/CardWithListItem', () => {
   return jest.fn().mockReturnValue(<p data-testid="card">CardWithListItems</p>);
 });
 
@@ -83,39 +99,35 @@ describe('Test Manage tab Component', () => {
     expect(card.length).toBe(3);
   });
 
-  it('there should be 2 buttons', async () => {
+  it('Should render switch if isJoinable is present', async () => {
     const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
+      <ManageTab hasEditAccess isJoinable onSave={mockFunction} />
     );
-    const buttons = await findByTestId(container, 'buttons');
 
-    expect(buttons.childElementCount).toBe(2);
+    const isJoinableSwitch = await findByText(
+      container,
+      'ToggleSwitchV1.Component'
+    );
+
+    expect(isJoinableSwitch).toBeInTheDocument();
   });
 
-  it('Onclick of save, onSave function also called', async () => {
+  it('Should render danger zone if allowDelete, entityId, entityName and entityType is present', async () => {
     const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
-    );
-    const card = await findAllByTestId(container, 'card');
-
-    fireEvent.click(
-      card[1],
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
+      <ManageTab
+        allowDelete
+        hasEditAccess
+        entityId="testid"
+        entityName="testEntity"
+        entityType="testType"
+        onSave={mockFunction}
+      />
     );
 
-    const save = await findByText(container, /Save/i);
+    const dangerZone = await findByTestId(container, 'danger-zone');
+    const DeleteWidget = await findByText(container, 'DeleteWidget.Component');
 
-    fireEvent.click(
-      save,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockFunction).toBeCalledTimes(1);
+    expect(dangerZone).toBeInTheDocument();
+    expect(DeleteWidget).toBeInTheDocument();
   });
 });

@@ -24,8 +24,17 @@
 
 .profile-image svg,
 .profile-image img {
-  border-radius: 50%;
   display: inline-block;
+}
+
+.profile-image.circle svg,
+.profile-image.circle img {
+  border-radius: 50%;
+}
+
+.profile-image.square svg,
+.profile-image.square img {
+  border-radius: 4px;
 }
 
 .teams-dropdown {
@@ -672,6 +681,15 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
+.asset-card-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-height: 21px;
+  max-height: 42px;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 
 blockquote {
   border-left: 5px solid #f1f1f1;
@@ -704,6 +722,7 @@ body .list-option.rdw-option-active {
 }
 .diff-removed {
   color: #008376;
+  color: grey;
   text-decoration: line-through;
   width: fit-content;
 }

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
-import { ColumnTestType } from '../../../enums/columnTest.enum';
+import { ColumnTestType } from '../../../generated/entity/data/table';
 import {
   TableTestType,
   TestCaseStatus,
@@ -219,7 +219,7 @@ const DataQualityTable = ({
             deleteSelection.data?.testCase?.columnTestType ||
             deleteSelection.data?.testCase?.tableTestType
           } permanently? This action cannot be reverted.`}
-          cancelText="Discard"
+          cancelText="Cancel"
           confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
           confirmText={
             deleteSelection.state === 'waiting' ? (

@@ -23,18 +23,18 @@ import { EntityReference as UserTeams } from '../../generated/entity/teams/user'
 import jsonData from '../../jsons/en';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
 import { Field } from '../Field/Field';
 import Loader from '../Loader/Loader';
+import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
 
 const CreateUser = ({
   allowAccess,
   roles,
-  teams,
   saveState = 'initial',
   onCancel,
   onSave,
@@ -42,6 +42,7 @@ const CreateUser = ({
   const markdownRef = useRef<EditorContentRef>();
   const [description] = useState<string>('');
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBot, setIsBot] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string | undefined>>(
@@ -52,6 +53,7 @@ const CreateUser = ({
   );
   const [showErrorMsg, setShowErrorMsg] = useState({
     email: false,
+    displayName: false,
     validEmail: false,
   });
 
@@ -77,6 +79,12 @@ const CreateUser = ({
 
         break;
 
+      case 'displayName':
+        setDisplayName(value);
+        setShowErrorMsg({ ...showErrorMsg, displayName: false });
+
+        break;
+
       default:
         break;
     }
@@ -93,7 +101,7 @@ const CreateUser = ({
     return [
       ...data.map((option) => {
         return {
-          name: option.displayName || '',
+          name: option.displayName || option.name || '',
           value: option.id,
         };
       }),
@@ -106,24 +114,6 @@ const CreateUser = ({
    */
   const selectedRolesHandler = (id?: string) => {
     setSelectedRoles((prevState: Array<string | undefined>) => {
-      if (prevState.includes(id as string)) {
-        const selectedRole = [...prevState];
-        const index = selectedRole.indexOf(id as string);
-        selectedRole.splice(index, 1);
-
-        return selectedRole;
-      } else {
-        return [...prevState, id];
-      }
-    });
-  };
-
-  /**
-   * Dropdown option selector.
-   * @param id of selected option from dropdown.
-   */
-  const selectedTeamsHandler = (id?: string) => {
-    setSelectedTeams((prevState: Array<string | undefined>) => {
       if (prevState.includes(id as string)) {
         const selectedRole = [...prevState];
         const index = selectedRole.indexOf(id as string);
@@ -166,6 +156,7 @@ const CreateUser = ({
       const userProfile: CreateUserSchema = {
         description: markdownRef.current?.getEditorContent() || undefined,
         name: email.split('@')[0],
+        displayName,
         roles: validRole.length ? validRole : undefined,
         teams: validTeam.length ? validTeam : undefined,
         email: email,
@@ -223,10 +214,10 @@ const CreateUser = ({
       <h6 className="tw-heading tw-text-base">Create User</h6>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
-          {requiredField('Email:')}
+          {requiredField('Email')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="email"
           id="email"
           name="email"
@@ -243,32 +234,39 @@ const CreateUser = ({
           : null}
       </Field>
       <Field>
-        <label className="tw-block tw-form-label tw-mb-0" htmlFor="description">
-          Description:
+        <label className="tw-block tw-form-label tw-mb-0" htmlFor="displayName">
+          Display Name
         </label>
-        <MarkdownWithPreview ref={markdownRef} value={description} />
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-0">Teams:</label>
-        <DropDown
-          className={classNames('tw-bg-white', {
-            'tw-bg-gray-100 tw-cursor-not-allowed': teams.length === 0,
-          })}
-          dropDownList={getDropdownOptions(teams) as DropDownListItem[]}
-          label="Teams"
-          selectedItems={selectedTeams as Array<string>}
-          type="checkbox"
-          onSelect={(_e, value) => selectedTeamsHandler(value)}
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="displayName"
+          id="displayName"
+          name="displayName"
+          placeholder="displayName"
+          type="text"
+          value={displayName}
+          onChange={handleValidation}
         />
       </Field>
       <Field>
+        <label className="tw-block tw-form-label tw-mb-0" htmlFor="description">
+          Description
+        </label>
+        <RichTextEditor initialValue={description} ref={markdownRef} />
+      </Field>
+      <Field>
+        <label className="tw-block tw-form-label tw-mb-0">Teams</label>
+        <TeamsSelectable onSelectionChange={setSelectedTeams} />
+      </Field>
+      <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
-          Roles:
+          Roles
         </label>
         <DropDown
           className={classNames('tw-bg-white', {
             'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
           })}
+          dataTestId="roles-dropdown"
           dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
           label="Roles"
           selectedItems={selectedRoles as Array<string>}
@@ -314,7 +312,7 @@ const CreateUser = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          Discard
+          Cancel
         </Button>
         {getSaveButton()}
       </Field>

@@ -28,6 +28,7 @@ const TreeView = forwardRef(
       treeData,
       selectedKeys,
       expandedKeys,
+      className,
       defaultExpandAll = false,
       showIcon = true,
       handleClick,
@@ -103,16 +104,19 @@ const TreeView = forwardRef(
     return (
       <div>
         <RcTree
-          className={classNames({
-            //  This class will show switcher element
-            'show-switcher': !showIcon,
-          })}
+          className={classNames(
+            {
+              //  This class will show switcher element
+              'show-switcher': showIcon,
+            },
+            className
+          )}
           defaultExpandAll={defaultExpandAll}
           expandedKeys={expandedKeys}
-          icon={getIcon}
           ref={treeRef}
           selectedKeys={selectedKeys}
           showIcon={showIcon}
+          switcherIcon={getIcon}
           treeData={treeData}
           onClick={onClick}
           onExpand={handleExpand}

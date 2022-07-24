@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button, Typography } from 'antd';
 import { RecentlySearchedData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -19,9 +20,10 @@ import {
   getRecentlySearchedData,
   removeRecentSearchTerm,
 } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import PopOver from '../common/popover/PopOver';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+const { Text } = Typography;
 
 const RecentSearchedTerms: FunctionComponent = () => {
   const [recentlySearchedTerms, setRecentlySearchTerms] = useState<
@@ -39,28 +41,30 @@ const RecentSearchedTerms: FunctionComponent = () => {
 
   return (
     <>
-      <h6 className="tw-heading tw-mb-3" data-testid="filter-heading">
+      <Text className="tw-font-semibold" type="secondary">
         Recent Search Terms
-      </h6>
+      </Text>
       {recentlySearchedTerms.length ? (
         recentlySearchedTerms.map((item, index) => {
           return (
             <div
-              className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-group"
+              className="tw-flex tw-items-center tw-justify-between tw-group"
               data-testid={`Recently-Search-${item.term}`}
               key={index}>
               <div className="tw-flex">
-                <FontAwesomeIcon
-                  className="tw-text-grey-muted tw-pr-2 tw-self-center"
-                  icon="search"
+                <SVGIcons
+                  alt="search"
+                  className="tw-h-4 tw-w-4 tw-self-center"
+                  icon={Icons.SEARCHV1}
                 />
                 <div className="tw-flex tw-justify-between">
                   <Link
                     className="tw-font-medium"
                     to={getExplorePathWithSearch(item.term)}>
-                    <button
+                    <Button
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                      data-testid="recently-searched">
+                      data-testid={`search-term-${item.term}`}
+                      type="text">
                       {item.term.length > 20 ? (
                         <PopOver
                           html={
@@ -76,17 +80,18 @@ const RecentSearchedTerms: FunctionComponent = () => {
                       ) : (
                         item.term
                       )}
-                    </button>
+                    </Button>
                   </Link>
-                  <button
+                  <Button
                     className="tw-opacity-0 group-hover:tw-opacity-100 tw-ml-2"
+                    type="text"
                     onClick={() => onRemove(item.term)}>
                     <SVGIcons
                       alt="delete"
                       icon="icon-times-circle"
                       width="12"
                     />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

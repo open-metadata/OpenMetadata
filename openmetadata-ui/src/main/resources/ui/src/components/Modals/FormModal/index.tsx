@@ -24,6 +24,7 @@ type FormModalProp = {
   header: string;
   initialData: FormData;
   errorData?: FormErrorData;
+  isSaveButtonDisabled?: boolean;
 };
 type FormRef = {
   fetchMarkDownData: () => string;
@@ -36,6 +37,7 @@ const FormModal = ({
   header,
   initialData,
   errorData,
+  isSaveButtonDisabled,
 }: FormModalProp) => {
   const formRef = useRef<FormRef>();
   const [data, setData] = useState<FormData>(initialData);
@@ -81,6 +83,7 @@ const FormModal = ({
             </Button>
             <Button
               data-testid="saveButton"
+              disabled={isSaveButtonDisabled}
               size="regular"
               theme="primary"
               type="submit"

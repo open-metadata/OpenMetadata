@@ -1,0 +1,9 @@
+{
+  "id": null,
+  "name": "shopify",
+  "description": "This **mock** database contains schema related to shopify sales and orders with related dimension tables.",
+  "service": {
+    "id": "b946d870-03b2-4d33-a075-13665a7a76b9",
+    "type": "BIGQUERY"
+  }
+}

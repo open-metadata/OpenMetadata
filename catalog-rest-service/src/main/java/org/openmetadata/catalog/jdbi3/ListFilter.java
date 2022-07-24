@@ -1,10 +1,24 @@
 package org.openmetadata.catalog.jdbi3;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.type.Include;
 
 public class ListFilter {
-  Map<String, String> queryParams = new HashMap<>();
+  private final Include include;
+  private final Map<String, String> queryParams = new HashMap<>();
+
+  public ListFilter() {
+    this(Include.NON_DELETED);
+  }
+
+  public ListFilter(Include include) {
+    this.include = include;
+  }
 
   public ListFilter addQueryParam(String name, String value) {
     queryParams.put(name, value);
@@ -12,6 +26,9 @@ public class ListFilter {
   }
 
   public String getQueryParam(String name) {
+    if (name.equals("include")) {
+      return include.value();
+    }
     return queryParams.get(name);
   }
 
@@ -24,40 +41,72 @@ public class ListFilter {
     condition = addCondition(condition, getDatabaseCondition(tableName));
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
-    return condition.isEmpty() ? "WHERE true" : "WHERE " + condition;
+    condition = addCondition(condition, getCategoryCondition(tableName));
+    condition = addCondition(condition, getWebhookCondition(tableName));
+    return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
   public String getIncludeCondition(String tableName) {
-    String include = queryParams.get("include");
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == null || include.equals("non-deleted")) {
-      return columnName + " = false";
+    if (include == Include.NON_DELETED) {
+      return columnName + " = FALSE";
     }
-    if (include.equals("deleted")) {
-      return columnName + " = true";
+    if (include == Include.DELETED) {
+      return columnName + " = TRUE";
     }
     return "";
   }
 
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
-    return database == null ? "" : getFqnPrefixCondition(tableName, database);
+    return database == null ? "" : getFqnPrefixCondition(tableName, escape(database));
   }
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
-    return service == null ? "" : getFqnPrefixCondition(tableName, service);
+    return service == null ? "" : getFqnPrefixCondition(tableName, escape(service));
   }
 
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
-    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
+    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, escape(parentFqn));
+  }
+
+  public String getCategoryCondition(String tableName) {
+    String category = queryParams.get("category");
+    return category == null ? "" : getCategoryPrefixCondition(tableName, escape(category));
+  }
+
+  public String getWebhookCondition(String tableName) {
+    String webhookStatus = queryParams.get("status");
+    return webhookStatus == null ? "" : getStatusPrefixCondition(tableName, escape(webhookStatus));
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fullyQualifiedName LIKE '%s.%%'", fqnPrefix)
-        : String.format("%s.fullyQualifiedName LIKE '%s.%%'", tableName, fqnPrefix);
+        ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
+        : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
+  }
+
+  private String getCategoryPrefixCondition(String tableName, String category) {
+    return tableName == null
+        ? String.format("category LIKE '%s%s%%'", category, "")
+        : String.format("%s.category LIKE '%s%s%%'", tableName, category, "");
+  }
+
+  private String getStatusPrefixCondition(String tableName, String statusPrefix) {
+    if (!statusPrefix.isEmpty()) {
+      List<String> statusList = new ArrayList<>(Arrays.asList(statusPrefix.split(",")));
+      List<String> condition = new ArrayList<>();
+      for (String s : statusList) {
+        String format = "\"" + s + "\"";
+        condition.add(format);
+      }
+      return "status in (" + String.join(",", condition) + ")";
+    }
+    return tableName == null
+        ? String.format("status LIKE '%s%s%%'", statusPrefix, "")
+        : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
   }
 
   private String addCondition(String condition1, String condition2) {
@@ -68,5 +117,9 @@ public class ListFilter {
       return condition1;
     }
     return condition1 + " AND " + condition2;
+  }
+
+  private String escape(String name) {
+    return name.replace("'", "''");
   }
 }

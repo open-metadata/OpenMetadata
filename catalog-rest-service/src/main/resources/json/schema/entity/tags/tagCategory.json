@@ -5,12 +5,13 @@
   "description": "This schema defines the Tag Category entity. A Tag Category contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.TagCategory",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "tagName": {
       "description": "Name of the tag.",
       "type": "string",
       "minLength": 2,
-      "maxLength": 25
+      "maxLength": 64
     },
     "tagCategoryType": {
       "description": "Type of tag category.",
@@ -28,11 +29,20 @@
       ]
     },
     "tag": {
-      "javaType": "org.openmetadata.catalog.type.Tag",
+      "javaType": "org.openmetadata.catalog.entity.tags.Tag",
+      "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
       "properties": {
+        "id": {
+          "description": "Unique identifier of this entity instance.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
         "name": {
           "description": "Name of the tag.",
           "$ref": "#/definitions/tagName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this tag category.",
+          "type": "string"
         },
         "fullyQualifiedName": {
           "description": "Unique name of the tag of format Category.PrimaryTag.SecondaryTag.",
@@ -40,7 +50,7 @@
         },
         "description": {
           "description": "Unique name of the tag category.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "version": {
           "description": "Metadata version of the entity.",
@@ -72,12 +82,9 @@
           "type": "boolean",
           "default": false
         },
-        "associatedTags": {
-          "description": "Fully qualified names of tags associated with this tag. Associated tags captures relationship of one tag to another automatically. As an example a tag 'User.PhoneNumber' might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in a table, 'PII.Sensitive' label is also applied automatically due to Associated tag relationship.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "changeDescription": {
+          "description": "Change that lead to this version of the entity.",
+          "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
         },
         "children": {
           "description": "Tags under this tag group or empty for tags at the leaf level.",
@@ -92,8 +99,16 @@
     }
   },
   "properties": {
+    "id": {
+      "description": "Unique identifier of this entity instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
     "name": {
       "$ref": "#/definitions/tagName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this tag category.",
@@ -101,7 +116,7 @@
     },
     "description": {
       "description": "Description of the tag category.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

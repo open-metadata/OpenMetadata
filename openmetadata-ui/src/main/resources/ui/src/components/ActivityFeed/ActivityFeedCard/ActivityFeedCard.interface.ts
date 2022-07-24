@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { Post } from 'Models';
 import { HTMLAttributes } from 'react';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  Post,
+  TaskDetails,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { ReactionType } from '../../../generated/type/reaction';
+import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 
 export interface ConfirmState {
   state: boolean;
@@ -21,6 +28,7 @@ export interface ConfirmState {
 }
 export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   feed: Post;
+  feedType: ThreadType;
   entityLink?: string;
   repliedUsers?: Array<string>;
   replies?: number;
@@ -28,25 +36,31 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   threadId?: string;
   lastReplyTimeStamp?: number;
   isFooterVisible?: boolean;
+  isThread?: boolean;
+  taskDetails?: TaskDetails;
   onThreadSelect?: (id: string) => void;
   onConfirmation?: (data: ConfirmState) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
+  onReply?: () => void;
 }
 export interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'isEntityFeed'> {
+    Pick<ActivityFeedCardProp, 'isEntityFeed' | 'feedType' | 'taskDetails'> {
   createdBy: string;
-  timeStamp: number;
+  timeStamp?: number;
   entityType: string;
   entityFQN: string;
   entityField: string;
 }
 export interface FeedBodyProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'onConfirmation'> {
+    Pick<ActivityFeedCardProp, 'isThread'> {
   message: string;
-  postId?: string;
-  threadId?: string;
-  isAuthor: boolean;
+  reactions: Post['reactions'];
+  onReactionSelect: (
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => void;
 }
 export interface FeedFooterProp
   extends HTMLAttributes<HTMLDivElement>,

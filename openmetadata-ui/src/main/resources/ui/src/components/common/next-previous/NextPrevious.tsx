@@ -11,19 +11,76 @@
  *  limitations under the License.
  */
 
-import { Paging } from 'Models';
-import React from 'react';
-import { CursorType } from '../../../enums/pagination.enum';
-import { Button } from '../../buttons/Button/Button';
 import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { FC, useEffect, useState } from 'react';
+import { CursorType } from '../../../enums/pagination.enum';
+import { Paging } from '../../../generated/type/paging';
+import { Button } from '../../buttons/Button/Button';
 
-type Prop = {
+interface Prop {
   paging: Paging;
-  pagingHandler: (value: string) => void;
+  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
+  totalCount: number;
+  pageSize: number;
+  currentPage: number;
+  isNumberBased?: boolean;
+}
+
+const computeTotalPages = (pSize: number, total: number) => {
+  return Math.ceil(total / pSize);
 };
 
-const NextPrevious = ({ paging, pagingHandler }: Prop) => {
+const NextPrevious: FC<Prop> = ({
+  paging,
+  pagingHandler,
+  totalCount,
+  pageSize,
+  isNumberBased = false,
+  currentPage,
+}: Prop) => {
+  const [activePage, setActivePage] = useState(1);
+
+  const onNextHandler = () => {
+    setActivePage(activePage + 1);
+    if (isNumberBased) {
+      pagingHandler(activePage + 1);
+    } else {
+      pagingHandler(CursorType.AFTER, activePage + 1);
+    }
+  };
+
+  const onPreviousHandler = () => {
+    setActivePage(activePage - 1);
+    if (isNumberBased) {
+      pagingHandler(activePage - 1);
+    } else {
+      pagingHandler(CursorType.BEFORE, activePage - 1);
+    }
+  };
+
+  const computePrevDisableState = () => {
+    if (isNumberBased) {
+      return activePage === 1;
+    } else {
+      return paging.before ? false : true;
+    }
+  };
+
+  const computeNextDisableState = () => {
+    if (isNumberBased) {
+      const totalPages = computeTotalPages(pageSize, totalCount);
+
+      return activePage === totalPages;
+    } else {
+      return paging.after ? false : true;
+    }
+  };
+
+  useEffect(() => {
+    setActivePage(currentPage);
+  }, [currentPage]);
+
   return (
     <div
       className="tw-my-4 tw-flex tw-justify-center tw-items-center tw-gap-2"
@@ -31,25 +88,31 @@ const NextPrevious = ({ paging, pagingHandler }: Prop) => {
       <Button
         className="tw-rounded tw-w-24  tw-px-3 tw-py-1.5 tw-text-sm"
         data-testid="previous"
-        disabled={paging.before ? false : true}
+        disabled={computePrevDisableState()}
         size="custom"
         theme="primary"
         variant="outlined"
-        onClick={() => pagingHandler(CursorType.BEFORE)}>
+        onClick={onPreviousHandler}>
         <FontAwesomeIcon
           className="tw-text-sm tw-align-middle tw-pr-1.5"
           icon={faArrowLeft}
         />{' '}
         <span>Previous</span>
       </Button>
+      <span
+        className="tw-px-2"
+        data-testid="page-indicator">{`${activePage}/${computeTotalPages(
+        pageSize,
+        totalCount
+      )} Page`}</span>
       <Button
         className="tw-rounded tw-w-24 tw-px-3 tw-py-1.5 tw-text-sm"
         data-testid="next"
-        disabled={paging.after ? false : true}
+        disabled={computeNextDisableState()}
         size="custom"
         theme="primary"
         variant="outlined"
-        onClick={() => pagingHandler(CursorType.AFTER)}>
+        onClick={onNextHandler}>
         <span> Next</span>{' '}
         <FontAwesomeIcon
           className="tw-text-sm tw-align-middle tw-pl-1.5"

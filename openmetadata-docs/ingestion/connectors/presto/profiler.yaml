@@ -1,0 +1,25 @@
+source:
+  type: presto
+  serviceName: local_presto
+  serviceConnection:
+    config:
+      type: Presto
+      scheme: presto
+      username: admin
+      password: password
+      hostPort: localhost:8080
+      catalog: tpcds
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

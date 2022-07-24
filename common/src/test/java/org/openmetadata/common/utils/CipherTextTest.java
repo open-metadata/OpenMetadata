@@ -19,7 +19,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import org.junit.jupiter.api.Test;
 
-public class CipherTextTest {
+class CipherTextTest {
   @Test
   void encryptDecryptTest() throws GeneralSecurityException, UnsupportedEncodingException {
     CipherText cipherText = CipherText.instance();

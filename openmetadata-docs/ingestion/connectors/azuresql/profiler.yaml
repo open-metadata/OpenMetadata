@@ -1,0 +1,25 @@
+source:
+  type: azuresql
+  serviceName: azuresql
+  serviceConnection:
+    config:
+      type: AzureSQL
+      hostPort: hostPort
+      database: database_name
+      username: username
+      password: password
+      driver: ODBC Driver 17 for SQL Server
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

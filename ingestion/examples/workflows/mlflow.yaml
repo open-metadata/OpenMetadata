@@ -1,0 +1,19 @@
+source:
+  type: mlflow
+  serviceName: local_mlflow
+  serviceConnection:
+    config:
+      type: Mlflow
+      trackingUri: http://localhost:5000
+      registryUri: mysql+pymysql://mlflow:password@localhost:3307/experiments
+  sourceConfig:
+    config:
+      type: MlModelMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: "DEBUG"
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

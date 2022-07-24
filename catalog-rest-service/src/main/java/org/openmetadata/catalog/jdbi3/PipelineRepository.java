@@ -13,15 +13,16 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,22 +35,19 @@ import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.PipelineStatus;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
-import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.ALLOWED_FIELDS, "owner,tags,tasks");
-  private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.ALLOWED_FIELDS, "owner,tags,tasks");
+  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks";
+  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks";
 
   public PipelineRepository(CollectionDAO dao) {
     super(
@@ -62,31 +60,25 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PIPELINE_UPDATE_FIELDS);
   }
 
-  public static String getFQN(Pipeline pipeline) {
-    return (pipeline != null && pipeline.getService() != null)
-        ? (pipeline.getService().getName() + "." + pipeline.getName())
-        : null;
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Pipeline pipeline) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner());
+  @Override
+  public void setFullyQualifiedName(Pipeline pipeline) {
+    pipeline.setFullyQualifiedName(FullyQualifiedName.add(pipeline.getService().getName(), pipeline.getName()));
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException, ParseException {
+  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
-    pipeline.setService(getService(pipeline));
+    pipeline.setService(getContainer(pipeline.getId()));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
     pipeline.setStartDate(pipeline.getStartDate());
     pipeline.setConcurrency(pipeline.getConcurrency());
     pipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(pipeline) : null);
-    pipeline.setFollowers(fields.contains("followers") ? getFollowers(pipeline) : null);
+    pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     if (!fields.contains("tasks")) {
       pipeline.withTasks(null);
     }
     pipeline.setPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
-    pipeline.setTags(fields.contains("tags") ? getTags(pipeline.getFullyQualifiedName()) : null);
+    pipeline.setTags(fields.contains(FIELD_TAGS) ? getTags(pipeline.getFullyQualifiedName()) : null);
     return pipeline;
   }
 
@@ -102,7 +94,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException, ParseException {
+  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
     Map<Long, PipelineStatus> storedMapStatus = new HashMap<>();
@@ -153,17 +145,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityInterface<Pipeline> getEntityInterface(Pipeline entity) {
-    return new PipelineEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(Pipeline pipeline) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(pipeline));
-    EntityUtil.escapeReservedChars(pipeline.getTasks());
     populateService(pipeline);
-    pipeline.setFullyQualifiedName(getFQN(pipeline));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
+    setFullyQualifiedName(pipeline);
+    populateOwner(pipeline.getOwner()); // Validate owner
     pipeline.setTags(addDerivedTags(pipeline.getTags()));
   }
 
@@ -189,7 +174,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
 
     // Add owner relationship
-    setOwner(pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    storeOwner(pipeline, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);
@@ -200,13 +185,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return new PipelineUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(Pipeline pipeline) throws IOException {
-    return getContainer(pipeline.getId(), Entity.PIPELINE);
-  }
-
   private void populateService(Pipeline pipeline) throws IOException {
     PipelineService service = getService(pipeline.getService().getId(), pipeline.getService().getType());
-    pipeline.setService(new PipelineServiceEntityInterface(service).getEntityReference());
+    pipeline.setService(service.getEntityReference());
     pipeline.setServiceType(service.getServiceType());
   }
 
@@ -218,159 +199,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE, PIPELINE_SERVICE));
   }
 
-  public static class PipelineEntityInterface implements EntityInterface<Pipeline> {
-    private final Pipeline entity;
-
-    public PipelineEntityInterface(Pipeline entity) {
-      this.entity = entity;
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null
-          ? entity.getFullyQualifiedName()
-          : PipelineRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.PIPELINE)
-          .withDeleted(isDeleted());
-    }
-
-    @Override
-    public Pipeline getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Pipeline withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
     public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
@@ -379,16 +207,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Pipeline origPipeline = original.getEntity();
-      Pipeline updatedPipeline = updated.getEntity();
-      updateTasks(origPipeline, updatedPipeline);
-      recordChange("pipelineUrl", origPipeline.getPipelineUrl(), updatedPipeline.getPipelineUrl());
-      recordChange("concurrency", origPipeline.getConcurrency(), updatedPipeline.getConcurrency());
-      recordChange("pipelineLocation", origPipeline.getPipelineLocation(), updatedPipeline.getPipelineLocation());
-      recordChange("startDate", origPipeline.getStartDate(), updatedPipeline.getStartDate());
+      updateTasks(original, updated);
+      recordChange("pipelineUrl", original.getPipelineUrl(), updated.getPipelineUrl());
+      recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
+      recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
     }
 
-    private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
+    private void updateTasks(Pipeline original, Pipeline updated) throws JsonProcessingException {
       // While the Airflow lineage only gets executed for one Task at a time, we will consider the
       // client Task information as the source of truth. This means that at each update, we will
       // expect to receive all the tasks known until that point.
@@ -400,26 +225,31 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // The API will only take care of marking tasks as added/updated/deleted based on the original
       // and incoming changes.
 
-      List<Task> updatedTasks = listOrEmpty(updatedPipeline.getTasks());
-      List<Task> origTasks = listOrEmpty(origPipeline.getTasks());
+      List<Task> updatedTasks = listOrEmpty(updated.getTasks());
+      List<Task> origTasks = listOrEmpty(original.getTasks());
 
-      List<Task> added = new ArrayList<>();
-      List<Task> deleted = new ArrayList<>();
-      recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
-
+      boolean newTasks = false;
       // Update the task descriptions
-      for (Task updated : updatedTasks) {
-        Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updated)).findAny().orElse(null);
-        if (stored == null || updated == null) { // New task added
+      for (Task updatedTask : updatedTasks) {
+        Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
+        if (stored == null || updatedTask == null) { // New task added
+          newTasks = true;
           continue;
         }
+        updateTaskDescription(stored, updatedTask);
+      }
 
-        updateTaskDescription(stored, updated);
+      boolean removedTasks = updatedTasks.size() < origTasks.size();
+
+      if (newTasks || removedTasks) {
+        List<Task> added = new ArrayList<>();
+        List<Task> deleted = new ArrayList<>();
+        recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
       }
     }
 
     private void updateTaskDescription(Task origTask, Task updatedTask) throws JsonProcessingException {
-      if (operation.isPut() && origTask.getDescription() != null && !origTask.getDescription().isEmpty()) {
+      if (operation.isPut() && !nullOrEmpty(origTask.getDescription())) {
         // Update description only when stored is empty to retain user authored descriptions
         updatedTask.setDescription(origTask.getDescription());
         return;

@@ -1,0 +1,4 @@
+query,database_name,schema_name,user_name,start_time,end_time,aborted
+select * from sales;,default,information_schema,root,2011-10-05 14:48:00,2011-10-05 14:48:01,TRUE
+select * from marketing;,default,information_schema,root,2011-10-05 14:48:00,2011-10-05 14:48:01,FALSE
+insert into marketing select * from sales;,default,information_schema,root,2011-10-05 14:48:00,2011-10-05 14:48:01,TRUE

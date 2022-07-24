@@ -1,0 +1,28 @@
+source:
+  type: mysql
+  serviceName: local_mysql_test
+  serviceConnection:
+    config:
+      type: Mysql
+      username: openmetadata_user
+      password: openmetadata_password
+      database: openmetadata_db
+      hostPort: localhost:3306
+      connectionOptions: {}
+      connectionArguments: {}
+  sourceConfig:
+    config:
+      enableDataProfiler: false
+      schemaFilterPattern:
+        excludes:
+        - mysql.*
+        - information_schema.*
+        - performance_schema.*
+        - sys.*
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

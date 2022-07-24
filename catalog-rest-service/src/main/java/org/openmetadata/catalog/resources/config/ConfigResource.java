@@ -23,9 +23,14 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.sandbox.SandboxConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.jwt.JWKSResponse;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -33,16 +38,19 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 @Collection(name = "config")
 public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
+  private final JWTTokenGenerator jwtTokenGenerator;
 
   public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
     this.catalogApplicationConfig = catalogApplicationConfig;
+    this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
   }
 
   @GET
   @Path(("/auth"))
   @Operation(
+      operationId = "getAuthConfiguration",
       summary = "Get auth configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -63,8 +71,9 @@ public class ConfigResource {
   @GET
   @Path(("/authorizer"))
   @Operation(
+      operationId = "getAuthorizerConfig",
       summary = "Get authorizer configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -80,5 +89,88 @@ public class ConfigResource {
       authorizerConfiguration = catalogApplicationConfig.getAuthorizerConfiguration();
     }
     return authorizerConfiguration;
+  }
+
+  @GET
+  @Path(("/sandbox"))
+  @Operation(
+      operationId = "getSandboxConfiguration",
+      summary = "Get sandbox mode",
+      tags = "config",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sandbox mode",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = SandboxConfiguration.class)))
+      })
+  public SandboxConfiguration getSandboxMode() {
+    SandboxConfiguration sandboxConfiguration = new SandboxConfiguration();
+    if (catalogApplicationConfig.isSandboxModeEnabled()) {
+      sandboxConfiguration.setSandboxModeEnabled(true);
+    }
+    return sandboxConfiguration;
+  }
+
+  @GET
+  @Path(("/slackChat"))
+  @Operation(
+      operationId = "getSlackChatConfiguration",
+      summary = "Get Slack Chat Configuration",
+      tags = "config",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Get Slack Chat Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackChatConfiguration.class)))
+      })
+  public SlackChatConfiguration getSlackChatConfiguration() {
+    SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
+    if (catalogApplicationConfig.getSlackChatConfiguration() != null) {
+      slackChatConfiguration = catalogApplicationConfig.getSlackChatConfiguration();
+    }
+    return slackChatConfiguration;
+  }
+
+  @GET
+  @Path(("/airflow"))
+  @Operation(
+      operationId = "getAirflowConfiguration",
+      summary = "Get airflow configuration",
+      tags = "config",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Airflow configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AirflowConfigurationForAPI.class)))
+      })
+  public AirflowConfigurationForAPI getAirflowConfig() {
+    AirflowConfigurationForAPI airflowConfigurationForAPI = new AirflowConfigurationForAPI();
+    if (catalogApplicationConfig.getAirflowConfiguration() != null) {
+      airflowConfigurationForAPI.setApiEndpoint(catalogApplicationConfig.getAirflowConfiguration().getApiEndpoint());
+    }
+    return airflowConfigurationForAPI;
+  }
+
+  @GET
+  @Path(("/jwks"))
+  @Operation(
+      operationId = "getJWKSResponse",
+      summary = "Get JWKS public key",
+      tags = "config",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "JWKS public key",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWKSResponse.class)))
+      })
+  public JWKSResponse getJWKSResponse() {
+    return jwtTokenGenerator.getJWKSResponse();
   }
 }

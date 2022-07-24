@@ -11,30 +11,41 @@
  *  limitations under the License.
  */
 
-import {
-  EntityCounts,
-  EntityThread,
-  FormatedTableData,
-  SearchDataFunctionType,
-  SearchResponse,
-} from 'Models';
+import { FormattedTableData, SearchDataFunctionType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface MyDataProps {
+  activityFeeds?: Thread[] | undefined;
+  onRefreshFeeds?: () => void;
   error: string;
-  ingestionCount: number;
   countServices: number;
+  countTables: number;
+  countTopics: number;
+  countTeams: number;
+  countUsers: number;
+  countMlModal: number;
+  countDashboards: number;
+  followedDataCount: number;
+  pendingTaskCount: number;
+  ownedDataCount: number;
+  countPipelines: number;
   userDetails?: User;
-  searchResult: SearchResponse | undefined;
-  ownedData: Array<FormatedTableData>;
-  followedData: Array<FormatedTableData>;
-  feedData: EntityThread[];
-  feedFilter: FeedFilter;
-  feedFilterHandler: (v: FeedFilter) => void;
+  ownedData: Array<FormattedTableData>;
+  followedData: Array<FormattedTableData>;
+  feedData: Thread[];
+  paging: Paging;
+  isFeedLoading: boolean;
+  fetchFeedHandler: (
+    filterType: FeedFilter,
+    after?: string,
+    threadType?: ThreadType
+  ) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
-  entityCounts: EntityCounts;
-  isFeedLoading?: boolean;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

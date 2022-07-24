@@ -13,17 +13,29 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Generic, Iterable, List
 
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
+
+
+class InvalidSourceException(Exception):
+    """
+    The source config is not getting the expected
+    service connection
+    """
 
 
 @dataclass
 class SourceStatus(Status):
     records = 0
 
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    filtered: List[str] = field(default_factory=list)
 
     def scanned(self, record: Any) -> None:
         self.records += 1
@@ -34,15 +46,15 @@ class SourceStatus(Status):
     def failure(self, key: str, reason: str) -> None:
         self.failures.append({key: reason})
 
+    def filter(self, key: str, reason: str) -> None:
+        self.filtered.append({key: reason})
 
-@dataclass  # type: ignore[misc]
+
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
-    ctx: WorkflowContext
-
     @classmethod
     @abstractmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection
     ) -> "Source":
         pass
 
@@ -56,4 +68,8 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
 
     @abstractmethod
     def get_status(self) -> SourceStatus:
+        pass
+
+    @abstractmethod
+    def test_connection(self) -> None:
         pass

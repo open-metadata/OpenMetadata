@@ -13,29 +13,42 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { isString, isUndefined, startCase, uniqueId } from 'lodash';
+import {
+  isNil,
+  isString,
+  isUndefined,
+  startCase,
+  uniqBy,
+  uniqueId,
+} from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import { TableType } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
+import './TableDataCard.style.css';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
   name: string;
-  owner?: string;
+  owner?: EntityReference;
   description?: string;
   tableType?: TableType;
   id?: string;
   tier?: string | TagLabel;
   usage?: number;
+  service?: string;
   serviceType?: string;
   fullyQualifiedName: string;
   tags?: string[] | TagLabel[];
@@ -45,12 +58,12 @@ type Props = {
     value: number;
   }[];
   database?: string;
+  databaseSchema?: string;
   deleted?: boolean;
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
-  name,
-  owner = '',
+  owner,
   description,
   id,
   tier = '',
@@ -60,23 +73,29 @@ const TableDataCard: FunctionComponent<Props> = ({
   tags,
   indexType,
   matches,
-  database,
   tableType,
   deleted = false,
+  name,
+  database,
+  databaseSchema,
 }: Props) => {
   const location = useLocation();
   const history = useHistory();
   const getTier = () => {
     if (tier) {
-      return isString(tier) ? tier : tier.tagFQN.split('.')[1];
+      return isString(tier) ? tier : tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
     }
 
     return '';
   };
 
   const OtherDetails: Array<ExtraInfo> = [
-    { key: 'Owner', value: owner },
-    // { key: 'Service', value: serviceType },
+    {
+      key: 'Owner',
+      value: getEntityName(owner),
+      avatarWidth: '16',
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+    },
     { key: 'Tier', value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
@@ -95,20 +114,14 @@ const TableDataCard: FunctionComponent<Props> = ({
       showLabel: true,
     });
   }
-  if (database) {
-    OtherDetails.push({
-      key: 'Database',
-      value: database,
-      showLabel: true,
-    });
-  }
+
   const getAssetTags = () => {
     const assetTags = [...(tags as Array<TagLabel>)];
     if (tier && !isUndefined(tier)) {
       assetTags.unshift(tier as TagLabel);
     }
 
-    return [...new Set(assetTags)];
+    return [...uniqBy(assetTags, 'tagFQN')];
   };
 
   const handleLinkClick = () => {
@@ -119,26 +132,41 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
+  const getTableMetaInfo = () => {
+    if (!isNil(database) && !isNil(databaseSchema)) {
+      return (
+        <span
+          className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+          data-testid="database-schema">{`${database}${FQN_SEPARATOR_CHAR}${databaseSchema}`}</span>
+      );
+    } else {
+      return null;
+    }
+  };
+
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
       data-testid="table-data-card"
       id={id}>
       <div>
+        {getTableMetaInfo()}
         <div className="tw-flex tw-items-center">
           <img
             alt=""
-            className="tw-inline tw-h-5 tw-w-5"
+            className="tw-inline tw-h-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-            <button
-              className="tw-text-grey-body tw-font-medium"
-              data-testid="table-link"
-              id={`${id}Title`}
-              onClick={handleLinkClick}>
-              {stringToHTML(name)}
-            </button>
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
+            <Link to={getEntityLink(indexType, fullyQualifiedName)}>
+              <button
+                className="tw-text-grey-body tw-font-semibold"
+                data-testid="table-link"
+                id={`${id}Title`}
+                onClick={handleLinkClick}>
+                {stringToHTML(name)}
+              </button>
+            </Link>
           </h6>
           {deleted && (
             <>

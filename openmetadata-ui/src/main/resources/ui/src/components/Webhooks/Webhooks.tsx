@@ -11,19 +11,22 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isNil, startCase } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  PAGE_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
-import { getDocButton } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { WebhooksProps } from './Webhooks.interface';
 
 const statuses = [
@@ -57,6 +60,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
   onClickWebhook,
   onPageChange,
   onStatusFilter,
+  currentPage,
 }: WebhooksProps) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
   const [filteredData, setFilteredData] = useState<Array<Webhook>>(data);
@@ -83,56 +87,57 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <h6 className="tw-heading tw-text-base">Webhooks</h6>
-        <div className="tw-flex tw-justify-between tw-flex-col">
-          <h6 className="tw-heading tw-mb-0" data-testid="filter-heading">
-            Status
-          </h6>
-          <div className="tw-flex tw-mt-2" />
-        </div>
-        <div
-          className="sidebar-my-data-holder"
-          data-testid="filter-containers-1">
-          {statuses.map((statusType, index) => (
-            <div
-              className="filter-group tw-justify-between tw-mb-3"
-              data-testid={`status-type-${statusType.value}`}
-              key={index}>
-              <div className="tw-flex">
-                <input
-                  checked={selectedStatus.includes(statusType.value)}
-                  className="tw-mr-1 custom-checkbox"
-                  data-testid="checkbox"
-                  type="checkbox"
-                  onChange={() => {
-                    handleStatusSelection(statusType.value);
-                  }}
-                />
-                <div
-                  className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                  data-testid="checkbox-label">
-                  <div className="tw-ml-1">{statusType.name}</div>
+      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
+        <>
+          <h6 className="tw-heading tw-text-base">Webhooks</h6>
+          <div className="tw-flex tw-justify-between tw-flex-col">
+            <h6 className="tw-heading tw-mb-0" data-testid="filter-heading">
+              Status
+            </h6>
+            <div className="tw-flex tw-mt-2" />
+          </div>
+          <div
+            className="sidebar-my-data-holder"
+            data-testid="filter-containers-1">
+            {statuses.map((statusType, index) => (
+              <div
+                className="filter-group tw-justify-between tw-mb-3"
+                data-testid={`status-type-${statusType.value}`}
+                key={index}>
+                <div className="tw-flex">
+                  <input
+                    checked={selectedStatus.includes(statusType.value)}
+                    className="tw-mr-1 custom-checkbox"
+                    data-testid="checkbox"
+                    type="checkbox"
+                    onChange={() => {
+                      handleStatusSelection(statusType.value);
+                    }}
+                  />
+                  <div
+                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
+                    data-testid="checkbox-label">
+                    <div className="tw-ml-1">{statusType.name}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </>
+            ))}
+          </div>
+        </>
+      </Card>
     );
   };
 
   const fetchRightPanel = () => {
     return (
-      <>
-        <div className="tw-mb-5 tw-mt-11">
+      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
+        <div className="tw-my-2">
           The webhook allows external services to be notified of the metadata
           change events happening in your organization through APIs. Register
           callback URLs with webhook integration to receive metadata event
           notifications. You can add, list, update, and delete webhooks.
         </div>
-        {getDocButton('Webhooks Guide', '', 'webhook-doc')}
-      </>
+      </Card>
     );
   };
 
@@ -165,7 +170,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
 
   return data.length ? (
     <PageLayout leftPanel={fetchLeftPanel()} rightPanel={fetchRightPanel()}>
-      <div>
+      <div style={{ padding: '14px' }}>
         {filteredData.length ? (
           <>
             <div className="tw-flex tw-justify-end tw-items-center">
@@ -197,7 +202,13 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
               </div>
             ))}
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious paging={paging} pagingHandler={onPageChange} />
+              <NextPrevious
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={paging}
+                pagingHandler={onPageChange}
+                totalCount={paging.total}
+              />
             )}
           </>
         ) : (

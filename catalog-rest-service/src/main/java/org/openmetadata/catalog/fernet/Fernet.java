@@ -14,8 +14,8 @@
 package org.openmetadata.catalog.fernet;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.FERNET_KEY_NULL;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.isAlreadyTokenized;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.isNotTokenized;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.FIELD_ALREADY_TOKENIZED;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.FIELD_NOT_TOKENIZED;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.macasaet.fernet.Key;
@@ -61,11 +61,6 @@ public class Fernet {
   }
 
   @VisibleForTesting
-  public Fernet(String fernetKey) {
-    this.setFernetKey(fernetKey);
-  }
-
-  @VisibleForTesting
   public void setFernetKey(String fernetKey) {
     if (fernetKey != null) {
       // convert base64 to base64url
@@ -75,18 +70,13 @@ public class Fernet {
     }
   }
 
-  @VisibleForTesting
-  public String getFernetKey() {
-    return this.fernetKey;
-  }
-
   public boolean isKeyDefined() {
     return fernetKey != null;
   }
 
   public String encrypt(@NonNull String secret) {
     if (secret.startsWith(FERNET_PREFIX)) {
-      throw new IllegalArgumentException(isAlreadyTokenized());
+      throw new IllegalArgumentException(FIELD_ALREADY_TOKENIZED);
     }
     if (isKeyDefined()) {
       Key key = new Key(fernetKey.split(",")[0]);
@@ -96,7 +86,7 @@ public class Fernet {
   }
 
   public static boolean isTokenized(String tokenized) {
-    return tokenized.startsWith(FERNET_PREFIX);
+    return tokenized != null && tokenized.startsWith(FERNET_PREFIX);
   }
 
   public String decrypt(String tokenized) {
@@ -109,17 +99,6 @@ public class Fernet {
       List<Key> keys = Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
       return token.validateAndDecrypt(keys, validator);
     }
-    throw new IllegalArgumentException(isNotTokenized());
-  }
-
-  public static String decryptIfTokenized(String tokenized) {
-    if (tokenized == null) {
-      return null;
-    }
-    Fernet fernet = Fernet.getInstance();
-    if (fernet.isKeyDefined() && isTokenized(tokenized)) {
-      return fernet.decrypt(tokenized);
-    }
-    return tokenized;
+    throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
   }
 }

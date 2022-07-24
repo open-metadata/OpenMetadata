@@ -4,23 +4,26 @@
   "title": "CreateDatabaseServiceRequest",
   "description": "Create Database service entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.services.CreateDatabaseService",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
 
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this database service.",
+      "type": "string"
     },
     "description": {
       "description": "Description of Database entity.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
     },
-    "databaseConnection": {
+    "connection": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseConnection"
     },
     "owner": {
@@ -28,6 +31,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "databaseConnection"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }

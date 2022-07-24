@@ -11,30 +11,43 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
-import Avatar from '../../components/common/avatar/Avatar';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import Ellipses from '../../components/common/Ellipses/Ellipses';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import { AssetsType } from '../../enums/entity.enum';
+import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
+import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
-type Props = {
-  item: { description: string; name: string; id?: string };
+interface Props {
+  item: {
+    fqn: string;
+    type: string;
+    displayName: string;
+    id?: string;
+    name?: string;
+  };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isDataset?: boolean;
   isCheckBoxes?: boolean;
+  isOwner?: boolean;
+  onTitleClick?: (value: string) => void;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
-};
+}
 
 const UserCard = ({
   item,
@@ -42,21 +55,34 @@ const UserCard = ({
   isIconVisible = false,
   isDataset = false,
   isCheckBoxes = false,
+  isOwner = false,
+  onTitleClick,
   onSelect,
   onRemove,
 }: Props) => {
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const getArrForPartialName = (
-    type: string
-  ): Array<'service' | 'database' | 'table' | 'column'> => {
+
+  /**
+   * prepare asset displayname and return it
+   * @param type - asset type
+   * @param fqn - asset fqn
+   * @returns - displayname
+   */
+  const getAssetDisplayName = (type: string, fqn: string) => {
     switch (type) {
       case AssetsType.TABLE:
-        return ['database', 'table'];
-      case AssetsType.TOPIC:
+        return getPartialNameFromTableFQN(fqn, [
+          FqnPart.Database,
+          FqnPart.Schema,
+          FqnPart.Table,
+        ]);
+
       case AssetsType.DASHBOARD:
+      case AssetsType.PIPELINE:
+      case AssetsType.TOPIC:
       default:
-        return ['service', 'database', 'table'];
+        return getPartialNameFromFQN(fqn, ['service', 'database']);
     }
   };
 
@@ -108,6 +134,10 @@ const UserCard = ({
         link = getEntityLink(SearchIndex.DASHBOARD, fqn);
 
         break;
+      case AssetsType.MLMODEL:
+        link = getEntityLink(SearchIndex.MLMODEL, fqn);
+
+        break;
       case AssetsType.TABLE:
       default:
         link = getEntityLink(SearchIndex.TABLE, fqn);
@@ -116,10 +146,10 @@ const UserCard = ({
     }
 
     return (
-      <Link data-testid="dataset-link" to={link}>
-        <button className="tw-font-medium tw-text-grey-body tw-break-all">
-          {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
-        </button>
+      <Link className="tw-no-underline" data-testid="dataset-link" to={link}>
+        <span className="tw-font-medium tw-text-grey-body tw-break-all tw-text-left">
+          {getAssetDisplayName(type, fqn)}
+        </span>
       </Link>
     );
   };
@@ -131,80 +161,95 @@ const UserCard = ({
         { 'tw-py-5 tw-items-center': isDataset }
       )}
       data-testid="user-card-container">
-      <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
+      <div
+        className={`tw-flex ${
+          isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1 tw-items-center'
+        }`}>
         {isIconVisible && !isDataset ? (
-          <Avatar name={item.description} />
+          <ProfilePicture
+            displayName={item.displayName || item.name}
+            id={item.id || ''}
+            name={item.name || ''}
+          />
         ) : (
-          <>{getDatasetIcon(item.name)}</>
+          <Fragment>{getDatasetIcon(item.type)}</Fragment>
         )}
 
         <div
-          className={classNames('tw-flex tw-justify-center tw-flex-col', {
-            'tw-pl-2': !isDataset,
-          })}
+          className={classNames(
+            'tw-flex tw-justify-center tw-flex-col',
+            isDataset ? 'asset-card-text tw-pl-1' : 'tw-pl-2'
+          )}
           data-testid="data-container">
           {isDataset ? (
-            <>{getDatasetTitle(item.name, item.description)}</>
+            <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
           ) : (
-            <>
-              <p
+            <Fragment>
+              <span
                 className={classNames(
                   'tw-font-normal',
-                  isActionVisible ? 'tw-truncate tw-w-32' : null
+                  isActionVisible ? 'tw-w-32' : 'tw-w-52',
+                  {
+                    'tw-cursor-pointer hover:tw-underline':
+                      Boolean(onTitleClick),
+                  }
                 )}
-                title={item.description}>
-                {item.description}
-              </p>
-              {item.name && (
-                <p
+                title={item.displayName}
+                onClick={() => {
+                  onTitleClick?.(item.fqn);
+                }}>
+                <Ellipses tooltip>{item.displayName}</Ellipses>
+              </span>
+              {item.name && item.name !== item.displayName && (
+                <span
                   className={classNames(
-                    isActionVisible ? 'tw-truncate tw-w-32' : null
+                    isActionVisible ? 'tw-w-32' : 'tw-w-52'
                   )}
                   title={isIconVisible ? item.name : capitalize(item.name)}>
-                  {isIconVisible ? item.name : capitalize(item.name)}
-                </p>
+                  <Ellipses tooltip>
+                    {isIconVisible ? item.name : capitalize(item.name)}
+                  </Ellipses>
+                </span>
               )}
-            </>
+            </Fragment>
           )}
         </div>
       </div>
-      {isActionVisible && (
-        <div className="tw-flex-none">
-          {isCheckBoxes ? (
-            <input
-              className="tw-p-1 custom-checkbox"
-              data-testid="checkboxAddUser"
-              type="checkbox"
-              onChange={() => {
-                onSelect?.(item.id as string);
-              }}
-            />
-          ) : (
+      {isActionVisible &&
+        (isCheckBoxes ? (
+          <input
+            className="tw-p-1 custom-checkbox tw-self-center"
+            data-testid="checkboxAddUser"
+            type="checkbox"
+            onChange={() => {
+              onSelect?.(item.id as string);
+            }}
+          />
+        ) : (
+          <div className="tw-flex-none">
             <NonAdminAction
               html={<>You do not have permission to update the team.</>}
-              permission={Operation.UpdateTeam}
+              isOwner={isOwner}
+              permission={Operation.TeamEditUsers}
               position="bottom">
               <span
                 className={classNames('tw-h-8 tw-rounded tw-mb-3', {
                   'tw-opacity-40':
                     !isAdminUser &&
                     !isAuthDisabled &&
-                    !userPermissions[Operation.UpdateTeam],
+                    !isOwner &&
+                    !userPermissions[Operation.TeamEditUsers],
                 })}
                 data-testid="remove"
                 onClick={() => onRemove?.(item.id as string)}>
-                <SVGIcons
-                  alt="delete"
-                  className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-                  icon="icon-delete"
-                  title="Remove"
-                  width="12px"
+                <FontAwesomeIcon
+                  className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
+                  icon="remove"
                 />
               </span>
             </NonAdminAction>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
     </div>
   );
 };

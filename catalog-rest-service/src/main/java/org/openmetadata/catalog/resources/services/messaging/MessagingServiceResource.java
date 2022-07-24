@@ -22,10 +22,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
-import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -51,14 +49,14 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MessagingConnection;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/services/messagingServices")
@@ -66,11 +64,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices")
-public class MessagingServiceResource extends EntityResource<MessagingService, MessagingServiceRepository> {
+public class MessagingServiceResource
+    extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
 
   public static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(MessagingService.class);
 
   @Override
   public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
@@ -79,8 +77,8 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
     return service;
   }
 
-  public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MessagingService.class, new MessagingServiceRepository(dao), authorizer);
+  public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(MessagingService.class, new MessagingServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
@@ -94,8 +92,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
 
   @GET
   @Operation(
+      operationId = "listMessagingService",
       summary = "List messaging services",
-      tags = "services",
+      tags = "MessagingService",
       description =
           "Get a list of messaging services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -132,17 +131,19 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException, GeneralSecurityException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+      throws IOException {
+    ListFilter filter = new ListFilter(include);
+    ResultList<MessagingService> messagingServices =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return addHref(uriInfo, decryptOrNullify(securityContext, messagingServices));
   }
 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getMessagingServiceByID",
       summary = "Get a messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a messaging service by `id`.",
       responses = {
         @ApiResponse(
@@ -167,15 +168,17 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+      throws IOException {
+    MessagingService messagingService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, messagingService);
   }
 
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getMessagingServiceByFQN",
       summary = "Get messaging service by name",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a messaging service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -200,15 +203,17 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+      throws IOException {
+    MessagingService messagingService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, messagingService);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllMessagingServiceVersion",
       summary = "List messaging service versions",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a list of all the versions of a messaging service identified by `id`",
       responses = {
         @ApiResponse(
@@ -220,15 +225,30 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
-    return dao.listVersions(id);
+      throws IOException {
+    EntityHistory entityHistory = dao.listVersions(id);
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    MessagingService messagingService = JsonUtils.readValue((String) json, MessagingService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, messagingService));
+                  } catch (IOException e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificMessagingServiceVersion",
       summary = "Get a version of the messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a version of the messaging service by given `id`",
       responses = {
         @ApiResponse(
@@ -249,68 +269,67 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
-    return dao.getVersion(id, version);
+      throws IOException {
+    MessagingService messagingService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, messagingService);
   }
 
   @POST
   @Operation(
+      operationId = "createMessagingService",
       summary = "Create a messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Create a new messaging service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateMessagingService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    MessagingService service = getService(create, securityContext);
-    service = addHref(uriInfo, dao.create(uriInfo, service));
-    return Response.created(service.getHref()).entity(service).build();
+      throws IOException {
+    MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
+    Response response = create(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (MessagingService) response.getEntity());
+    return response;
   }
 
   @PUT
   @Operation(
-      summary = "Update a messaging service",
-      tags = "services",
+      operationId = "createOrUpdateMessagingService",
+      summary = "Update messaging service",
+      tags = "MessagingService",
       description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateMessagingService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id,
       @Valid CreateMessagingService update)
-      throws IOException, ParseException {
-    MessagingService service = getService(update, securityContext);
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(service));
-    PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    decryptOrNullify(securityContext, (MessagingService) response.getEntity());
+    return response;
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteMessagingService",
       summary = "Delete a messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -323,25 +342,29 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<MessagingService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {
-    return new MessagingService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withServiceType(create.getServiceType())
-        .withBrokers(create.getBrokers())
-        .withSchemaRegistry(create.getSchemaRegistry())
-        .withIngestionSchedule(create.getIngestionSchedule())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private MessagingService getService(CreateMessagingService create, String user) {
+    return copy(new MessagingService(), create, user)
+        .withConnection(create.getConnection())
+        .withServiceType(create.getServiceType());
+  }
+
+  @Override
+  protected MessagingService nullifyConnection(MessagingService service) {
+    return service.withConnection(null);
+  }
+
+  @Override
+  protected String extractServiceType(MessagingService service) {
+    return service.getServiceType().value();
   }
 }

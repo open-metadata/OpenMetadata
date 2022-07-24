@@ -21,6 +21,18 @@
             },
             {
               "$ref": "./table/tableColumnCountToEqual.json"
+            },
+            {
+              "$ref": "./table/tableColumnCountToBeBetween.json"
+            },
+            {
+              "$ref": "./table/tableColumnNameToExist.json"
+            },
+            {
+              "$ref": "./table/tableColumnToMatchSet.json"
+            },
+            {
+              "$ref": "./table/tableCustomSQLQuery.json"
             }
           ]
         },
@@ -28,7 +40,11 @@
           "enum": [
             "tableRowCountToEqual",
             "tableRowCountToBeBetween",
-            "tableColumnCountToEqual"
+            "tableColumnCountToEqual",
+            "tableColumnCountToBeBetween",
+            "tableColumnToMatchSet",
+            "tableColumnNameToExist",
+            "tableCustomSQLQuery"
           ]
         }
       },
@@ -42,13 +58,11 @@
     },
     "name": {
       "description": "Name that identifies this test case.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of the testcase.",
-      "type": "string"
+      "$ref": "../type/basic.json#/definitions/markdown"
     },
     "testCase": {
       "$ref": "#/definitions/tableTestCase"

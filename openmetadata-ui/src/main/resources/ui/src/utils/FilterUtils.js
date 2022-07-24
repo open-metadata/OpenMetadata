@@ -11,6 +11,30 @@
  *  limitations under the License.
  */
 
+import { isEqual } from 'lodash';
+import {
+  initialFilterQS,
+  searchFilterQS,
+} from '../constants/explore.constants';
+
+const prepareModifiedKey = (key, restrictKeyModification = false) => {
+  if (!restrictKeyModification) {
+    if (key === 'service') {
+      return 'serviceType';
+    } else if (key === 'databaseschema') {
+      return 'databaseSchema.name';
+    } else if (key === 'database') {
+      return 'database.name';
+    } else if (key === 'servicename') {
+      return 'service.name';
+    } else if (key === 'tier' || key === 'tags') {
+      return `${key}.tagFQN`;
+    } else {
+      return key;
+    }
+  }
+};
+
 export const getFilterString = (
   filters,
   excludeFilters = [],
@@ -24,8 +48,7 @@ export const getFilterString = (
     const modifiedFilter = [];
     const filter = filters[key];
     filter.forEach((value) => {
-      const modifiedKey =
-        !restrictKeyModification && key === 'service' ? 'service type' : key;
+      const modifiedKey = prepareModifiedKey(key, restrictKeyModification);
       const modifiedValue = key === 'tags' ? `"${value}"` : value;
       modifiedFilter.push(
         `${modifiedKey.split(' ').join('_')}:${modifiedValue}`
@@ -48,4 +71,36 @@ export const getFilterCount = (filterData) => {
 
 export const getFilterKey = (key) => {
   return key === 'service_type' ? 'service' : key;
+};
+
+/**
+ * Check for filters and return the filters in query param format
+ * @param filters - filter object
+ * @returns query param format
+ */
+export const prepareQueryParams = (filters, initFilters = {}) => {
+  const urlSearchParams = new URLSearchParams();
+  const filterSearchParams = new URLSearchParams();
+  const initFilterSearchParams = new URLSearchParams();
+  const filterEntries = Object.entries(filters);
+  const initFilterKeys = Object.keys(initFilters);
+
+  for (const [key, value] of filterEntries) {
+    if (value?.length) {
+      if (initFilterKeys.includes(key) && isEqual(initFilters[key], value)) {
+        initFilterSearchParams.set(key, value.join(','));
+      } else {
+        filterSearchParams.set(key, value.join(','));
+      }
+    }
+  }
+
+  if (initFilterSearchParams.toString()) {
+    urlSearchParams.set(initialFilterQS, initFilterSearchParams);
+  }
+  if (filterSearchParams.toString()) {
+    urlSearchParams.set(searchFilterQS, filterSearchParams);
+  }
+
+  return urlSearchParams.toString();
 };

@@ -1,0 +1,7 @@
+Table:
+  rdbms_table:
+    db: rdbms_db
+    column: rdbms_column
+Topic:
+- kafka_topic
+- kafka_topic_2

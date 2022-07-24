@@ -23,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -56,14 +54,12 @@ import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/locations")
@@ -95,11 +91,11 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     }
   }
 
-  static final String FIELDS = "owner,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Location.class);
+  static final String FIELDS = "owner,followers,tags,path";
 
   @GET
   @Operation(
+      operationId = "listLocations",
       summary = "List locations",
       tags = "locations",
       description =
@@ -143,15 +139,15 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+      throws IOException {
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllLocationVersion",
       summary = "List location versions",
       tags = "locations",
       description = "Get a list of all the versions of a location identified by `id`",
@@ -165,13 +161,14 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getLocationByID",
       summary = "Get a location",
       tags = "locations",
       description = "Get a location by `id`.",
@@ -197,13 +194,14 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
   @Path("prefixes/{fqn}")
   @Operation(
+      operationId = "listLocationPrefixes",
       summary = "List locations that are prefixes",
       tags = "locations",
       description =
@@ -241,9 +239,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
@@ -257,6 +255,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getLocationByFQN",
       summary = "Get a location by name",
       tags = "locations",
       description = "Get a location by fully qualified name.",
@@ -286,13 +285,41 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+  }
+
+  @GET
+  @Path("/association/{id}")
+  @Operation(
+      operationId = "getEntityByLocation",
+      summary = "Get a table associated with location",
+      tags = "locations",
+      description = "Get a table associated with location by given `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "location",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+        @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
+      })
+  public List<EntityReference> getTableFromLocation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "location version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version)
+      throws IOException {
+    return dao.getEntityDetails(id);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificLocationVersion",
       summary = "Get a version of the location",
       tags = "locations",
       description = "Get a version of the location by given `id`",
@@ -314,12 +341,13 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
   @POST
   @Operation(
+      operationId = "createLocation",
       summary = "Create a location",
       tags = "locations",
       description = "Create a location under an existing `service`.",
@@ -332,15 +360,14 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Location location = getLocation(securityContext, create);
-    location = addHref(uriInfo, dao.create(uriInfo, location));
-    return Response.created(location.getHref()).entity(location).build();
+      throws IOException {
+    Location location = getLocation(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, location, true);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateLocation",
       summary = "Create or update location",
       tags = "locations",
       description = "Create a location, it it does not exist or update an existing location.",
@@ -353,17 +380,15 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
-      throws IOException, ParseException {
-    Location location = getLocation(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(location));
-    PutResponse<Location> response = dao.createOrUpdate(uriInfo, validateNewLocation(location));
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    Location location = getLocation(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, location, true);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchLocation",
       summary = "Update a location",
       tags = "locations",
       description = "Update an existing location using JsonPatch.",
@@ -382,25 +407,14 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Location location = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(location).getEntityReference(),
-        dao.getOwnerReference(location),
-        patch);
-
-    PatchResponse<Location> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteLocation",
       summary = "Delete a location",
       tags = "locations",
       description = "Delete a location by `id`.",
@@ -411,21 +425,27 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Location> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollower",
       summary = "Add a follower",
       tags = "locations",
       description = "Add a user identified by `userId` as followed of this location",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
       })
   public Response addFollower(
@@ -442,9 +462,16 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "deleteFollower",
       summary = "Remove a follower",
       tags = "locations",
-      description = "Remove the user identified `userId` as a follower of the location.")
+      description = "Remove the user identified `userId` as a follower of the location.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+      })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -463,16 +490,11 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return location;
   }
 
-  private Location getLocation(SecurityContext securityContext, CreateLocation create) {
-    return new Location()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private Location getLocation(CreateLocation create, String user) {
+    return copy(new Location(), create, user)
+        .withPath(create.getPath())
         .withService(create.getService())
         .withLocationType(create.getLocationType())
-        .withTags(create.getTags())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withOwner(create.getOwner())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

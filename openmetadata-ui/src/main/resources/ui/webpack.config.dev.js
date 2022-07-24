@@ -27,7 +27,14 @@ module.exports = {
   mode: 'development',
 
   // Input configuration
-  entry: ['@babel/polyfill', path.join(__dirname, 'src/index.js')],
+  entry: [
+    '@babel/polyfill',
+    // Runtime code for hot module replacement
+    'webpack/hot/dev-server.js',
+    // Dev server client for web socket transport, hot and live reload logic
+    'webpack-dev-server/client/index.js?hot=true&live-reload=true',
+    path.join(__dirname, 'src/index.js'),
+  ],
 
   // Output configuration
   output: {
@@ -51,6 +58,15 @@ module.exports = {
           },
         },
       },
+      // .mjs files to be handled
+      {
+        test: /\.m?js/,
+        include: path.resolve(__dirname, 'node_modules/kleur'),
+        resolve: {
+          fullySpecified: false,
+        },
+      },
+
       // .ts and .tsx files to be handled by ts-loader
       {
         test: /\.(ts|tsx)$/,
@@ -83,9 +99,31 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/react-draft-wysiwyg'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/rc-tree'),
+          path.resolve(__dirname, 'node_modules/react-toastify'),
+          path.resolve(__dirname, 'node_modules/quill-emoji'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
+      },
+      // .less files to be handled by sass-loader
+      {
+        test: /\.less$/,
+        use: [
+          {
+            loader: 'style-loader',
+          },
+          {
+            loader: 'css-loader', // translates CSS into CommonJS
+          },
+          {
+            loader: 'less-loader', // compiles Less to CSS
+            options: {
+              lessOptions: {
+                javascriptEnabled: true,
+              },
+            },
+          },
+        ],
       },
       // .svg files to be handled by @svgr/webpack
       {
@@ -108,6 +146,7 @@ module.exports = {
         include: [
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/slick-carousel'),
+          path.resolve(__dirname, 'node_modules/quill-emoji'),
         ], // Just the source code
       },
       // Font files to be handled by file-loader
@@ -138,6 +177,7 @@ module.exports = {
       http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
+      fs: false,
     },
   },
 
@@ -198,13 +238,17 @@ module.exports = {
       process: 'process/browser',
       Buffer: ['buffer', 'Buffer'],
     }),
+    // Plugin for hot module replacement
+    new webpack.HotModuleReplacementPlugin(),
   ],
 
   // webpack-dev-server
   devServer: {
     contentBase: outputPath,
     compress: true,
+    hot: true,
     port: 3000,
+    open: true,
     // Route all requests to index.html so that app gets to handle all copy pasted deep links
     historyApiFallback: {
       disableDotRule: true,

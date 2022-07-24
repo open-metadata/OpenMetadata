@@ -26,13 +26,17 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   listGroups = [],
   horzPosRight,
   searchString = '',
+  controlledSearchStr,
   showSearchBar = false,
+  showEmptyList = false,
   value,
+  onSearchTextChange,
   onSelect,
   groupType = 'label',
   domPosition,
   className = '',
   widthClass = 'tw-w-52',
+  getTotalCountForGroup,
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
   const isMounted = useRef<boolean>(false);
@@ -59,7 +63,23 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   };
 
   const handleListSearch = (text: string) => {
-    setSearchText(text || '');
+    if (!onSearchTextChange) {
+      setSearchText(text || '');
+    } else {
+      onSearchTextChange(text || '');
+    }
+  };
+
+  const getEmptyTextElement = (): JSX.Element => {
+    return (
+      <div
+        className="tw-text-grey-muted tw-px-4 tw-py-2"
+        data-testid="empty-list">
+        <p className={widthClass}>
+          {searchText ? 'No match found' : 'No data available'}
+        </p>
+      </div>
+    );
   };
 
   const getSearchedListByGroup = (
@@ -70,12 +90,23 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     });
   };
 
+  const getGroupCount = (groupName?: string): number => {
+    let count = 0;
+    if (controlledSearchStr === '' && getTotalCountForGroup && groupName) {
+      count = getTotalCountForGroup(groupName);
+    } else {
+      count = getSearchedListByGroup(groupName)?.length;
+    }
+
+    return count;
+  };
+
   const getDropDownElement = (item: DropDownListItem, index: number) => {
     return (
       <div
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover tw-cursor-pointer',
+          'tw-text-gray-700 tw-flex tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover tw-cursor-pointer',
           !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null,
           {
             'tw-cursor-not-allowed': item.disabled,
@@ -86,6 +117,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         key={index}
         role="menuitem"
         onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
+        {item.icon}
+        {/* Spacer if icon is there */}
+        {item.icon && <span className="tw-p-1" />}
         <p
           className={classNames('tw-truncate', widthClass)}
           title={item.name as string}>
@@ -93,6 +127,77 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         </p>
       </div>
     );
+  };
+
+  const getListElements = (): JSX.Element => {
+    const results = getSearchedListByGroup();
+
+    if (!results.length && showEmptyList && !listGroups.length) {
+      return getEmptyTextElement();
+    }
+
+    return (
+      <>
+        {results.map((item: DropDownListItem, index: number) =>
+          getDropDownElement(item, index)
+        )}
+      </>
+    );
+  };
+
+  const getListElementsByLabels = (groupName: string) => {
+    const results = getSearchedListByGroup(groupName);
+    const groupLabel = (
+      <span className="tw-flex tw-my-1 tw-text-grey-muted">
+        <hr className="tw-mt-2 tw-w-full" />
+        <span className="tw-text-xs tw-px-0.5">{groupName}</span>{' '}
+        <hr className="tw-mt-2 tw-w-full" />
+      </span>
+    );
+
+    if (!results.length && showEmptyList) {
+      return (
+        <>
+          {groupLabel}
+          {getEmptyTextElement()}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {results.length > 0 && groupLabel}
+        {results.map((item: DropDownListItem, index: number) =>
+          getDropDownElement(item, index)
+        )}
+      </>
+    );
+  };
+
+  const getListElementsByTab = (groupTab: string) => {
+    const results = getSearchedListByGroup(groupTab);
+
+    if (!results.length && showEmptyList) {
+      return getEmptyTextElement();
+    }
+
+    return (
+      <>
+        {results.map((item: DropDownListItem, index: number) =>
+          getDropDownElement(item, index)
+        )}
+      </>
+    );
+  };
+
+  const getListElementsByGroup = () => {
+    if (groupType === 'label') {
+      return listGroups.map((grp, index) => {
+        return <div key={index}>{getListElementsByLabels(grp)}</div>;
+      });
+    } else {
+      return getListElementsByTab(listGroups[activeTab - 1]);
+    }
   };
 
   useEffect(() => {
@@ -138,7 +243,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   return (
     <>
-      {searchedList.length > 0 && (
+      {(searchedList.length > 0 || showEmptyList) && (
         <>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0"
@@ -159,83 +264,54 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             data-testid="dropdown-list"
             role="menu"
             style={dropDownPosition}>
-            {isLoading ? (
-              <div className={widthClass}>
-                <Loader />
-              </div>
-            ) : (
-              <>
-                {showSearchBar && (
-                  <div className="has-search tw-p-4 tw-pb-2">
-                    <input
-                      className="tw-form-inputs tw-px-3 tw-py-1"
-                      data-testid="searchInputText"
-                      placeholder="Search..."
-                      type="text"
-                      onChange={(e) => {
-                        handleListSearch(e.target.value);
-                      }}
-                    />
-                  </div>
-                )}
-                {groupType === 'tab' && (
-                  <div className="tw-flex tw-justify-between tw-border-b tw-border-separator tw-mb-1">
-                    {listGroups.map((grp, index) => {
-                      return (
-                        <button
-                          className={getTabClasses(index + 1, activeTab)}
-                          data-testid="tab"
-                          key={index}
-                          onClick={() => setActiveTab(index + 1)}>
-                          {grp}
-                          {getCountBadge(
-                            getSearchedListByGroup(grp).length,
-                            '',
-                            activeTab === index + 1
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+            <>
+              {showSearchBar && (
+                <div className="has-search tw-p-4 tw-pb-2">
+                  <input
+                    className="tw-form-inputs tw-form-inputs-padding"
+                    data-testid="searchInputText"
+                    placeholder="Search..."
+                    type="text"
+                    value={controlledSearchStr}
+                    onChange={(e) => {
+                      handleListSearch(e.target.value);
+                    }}
+                  />
+                </div>
+              )}
+              {groupType === 'tab' && (
+                <div className="tw-flex tw-justify-between tw-border-b tw-border-separator tw-mb-1">
+                  {listGroups.map((grp, index) => {
+                    return (
+                      <button
+                        className={getTabClasses(index + 1, activeTab)}
+                        data-testid="dropdown-tab"
+                        key={index}
+                        onClick={() => setActiveTab(index + 1)}>
+                        {grp}
+                        {getCountBadge(
+                          getGroupCount(grp),
+                          '',
+                          activeTab === index + 1
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {isLoading ? (
+                <div className={classNames('tw-mx-4 tw-my-2', widthClass)}>
+                  <Loader />
+                </div>
+              ) : (
                 <div
                   className="tw-py-1 tw-max-h-60 tw-overflow-y-auto"
                   role="none">
-                  {getSearchedListByGroup().map(
-                    (item: DropDownListItem, index: number) =>
-                      getDropDownElement(item, index)
-                  )}
-                  {groupType === 'label' ? (
-                    listGroups.map((grp, index) => {
-                      return (
-                        <div key={index}>
-                          {getSearchedListByGroup(grp).length > 0 && (
-                            <span className="tw-flex tw-my-1 tw-text-grey-muted">
-                              <hr className="tw-mt-2 tw-w-full " />
-                              <span className="tw-text-xs tw-px-0.5">
-                                {grp}
-                              </span>{' '}
-                              <hr className="tw-mt-2 tw-w-full" />
-                            </span>
-                          )}
-                          {getSearchedListByGroup(grp).map(
-                            (item: DropDownListItem, index: number) =>
-                              getDropDownElement(item, index)
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <>
-                      {getSearchedListByGroup(listGroups[activeTab - 1]).map(
-                        (item: DropDownListItem, index: number) =>
-                          getDropDownElement(item, index)
-                      )}
-                    </>
-                  )}
+                  {getListElements()}
+                  {getListElementsByGroup()}
                 </div>
-              </>
-            )}
+              )}
+            </>
           </div>
         </>
       )}

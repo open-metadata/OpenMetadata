@@ -53,8 +53,9 @@ public class VersionResource {
 
   @GET
   @Operation(
+      operationId = "getCatalogVersion",
       summary = "Get version of metadata service",
-      tags = "general",
+      tags = "catalog",
       description = "Get the build version of OpenMetadata service and build timestamp.")
   public CatalogVersion getCatalogVersion() {
     return CATALOG_VERSION;

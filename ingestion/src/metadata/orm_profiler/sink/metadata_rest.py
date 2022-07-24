@@ -13,35 +13,41 @@
 OpenMetadata REST Sink implementation for the ORM Profiler results
 """
 import traceback
+from typing import Optional
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.orm_profiler.api.models import ProfilerResponse
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: str = None
+    api_endpoint: Optional[str] = None
 
 
 class MetadataRestSink(Sink[Entity]):
+    """
+    Metadata Sink sending the profiler
+    and tests results to the OM API
+    """
 
     config: MetadataRestSinkConfig
     status: SinkStatus
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: MetadataRestSinkConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = SinkStatus()
@@ -49,12 +55,9 @@ class MetadataRestSink(Sink[Entity]):
         self.metadata = OpenMetadata(self.metadata_config)
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def get_status(self) -> SinkStatus:
         return self.status
@@ -69,10 +72,21 @@ class MetadataRestSink(Sink[Entity]):
             )
 
             if record.record_tests:
-                if record.record_tests.profile_sample:
+                if record.profile.profileQuery and record.profile.profileSample:
+                    self.metadata.update_profile_query(
+                        fqn=record.table.fullyQualifiedName.__root__,
+                        profileQuery=record.profile.profileQuery,
+                        profileSample=record.profile.profileSample,
+                    )
+                if record.profile.profileSample and not record.profile.profileQuery:
                     self.metadata.update_profile_sample(
-                        fqdn=record.table.fullyQualifiedName,
-                        profile_sample=record.record_tests.profile_sample,
+                        fqn=record.table.fullyQualifiedName.__root__,
+                        profile_sample=record.profile.profileSample,
+                    )
+                if record.profile.profileQuery and not record.profile.profileSample:
+                    self.metadata.update_profile_query(
+                        fqn=record.table.fullyQualifiedName.__root__,
+                        profileQuery=record.profile.profileQuery,
                     )
                 for table_test in record.record_tests.table_tests:
                     self.metadata.add_table_test(
@@ -82,14 +96,21 @@ class MetadataRestSink(Sink[Entity]):
                 for col_test in record.record_tests.column_tests:
                     self.metadata.add_column_test(table=record.table, col_test=col_test)
 
+            if record.sample_data:
+                self.metadata.ingest_table_sample_data(
+                    table=record.table, sample_data=record.sample_data
+                )
+
             logger.info(
-                f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName}"
+                f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName.__root__}"
             )
-            self.status.records_written(f"Table: {record.table.fullyQualifiedName}")
+            self.status.records_written(
+                f"Table: {record.table.fullyQualifiedName.__root__}"
+            )
 
         except APIError as err:
             logger.error(
-                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName} - {err}"
+                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__} - {err}"
             )
-            logger.debug(traceback.print_exc())
-            self.status.failure(f"Table: {record.table.fullyQualifiedName}")
+            logger.debug(traceback.format_exc())
+            self.status.failure(f"Table: {record.table.fullyQualifiedName.__root__}")

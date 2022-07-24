@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources.lineage;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -46,15 +48,16 @@ import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.type.ColumnLineage;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntitiesEdge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.LineageDetails;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -76,6 +79,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
     }
   }
 
+  @Order(1)
   @Test
   void put_delete_lineage_withAuthorizer(TestInfo test) throws HttpResponseException {
     // Random user cannot update lineage.
@@ -87,7 +91,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
     // User with Data Steward role. Data Steward role has a default policy to allow update for lineage.
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role dataStewardRole =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     User userWithDataStewardRole =
         userResourceTest.createEntity(
             userResourceTest
@@ -108,18 +112,21 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
     if (shouldThrowException) {
       assertResponse(
-          () -> addEdge(TABLES.get(1), TABLES.get(2), authHeaders), FORBIDDEN, noPermission(userName, "UpdateLineage"));
+          () -> addEdge(TABLES.get(1), TABLES.get(2), null, authHeaders),
+          FORBIDDEN,
+          noPermission(userName, "EditLineage"));
       assertResponse(
           () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders),
           FORBIDDEN,
-          noPermission(userName, "UpdateLineage"));
+          noPermission(userName, "EditLineage"));
       return;
     }
 
-    addEdge(TABLES.get(1), TABLES.get(2), authHeaders(userName + "@open-metadata.org"));
+    addEdge(TABLES.get(1), TABLES.get(2), null, authHeaders(userName + "@open-metadata.org"));
     deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders(userName + "@open-metadata.org"));
   }
 
+  @Order(2)
   @Test
   void put_delete_lineage_200() throws HttpResponseException {
     // Add lineage table4-->table5
@@ -159,24 +166,54 @@ public class LineageResourceTest extends CatalogApplicationTest {
       getEdge(TABLES.get(6), TABLES.get(7))
     };
 
-    // GET lineage by id
-    EntityLineage lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 3, 3, ADMIN_AUTH_HEADERS);
-    assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
-
-    // GET lineage by fqn
-    lineage = getLineageByName(Entity.TABLE, TABLES.get(4).getFullyQualifiedName(), 3, 3, ADMIN_AUTH_HEADERS);
-    assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
+    // GET lineage by id and fqn and ensure it is correct
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        3,
+        3,
+        expectedUpstreamEdges,
+        expectedDownstreamEdges);
 
     // Test table4 partial lineage with various upstream and downstream depths
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 0, 0, ADMIN_AUTH_HEADERS);
-    assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 0), Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 1, 1, ADMIN_AUTH_HEADERS);
-    assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 3), Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, ADMIN_AUTH_HEADERS);
-    assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 4), Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
+    // First upstream and downstream depth of 0
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        0,
+        0,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 0),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
+    // Upstream and downstream depth of 1
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        1,
+        1,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
+    // Upstream and downstream depth of 2
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        2,
+        2,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 4),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
+
+    // Upstream and downstream depth as null to test for default value of 1
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        null,
+        null,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
 
     //
     // Delete all the lineage edges
@@ -192,28 +229,85 @@ public class LineageResourceTest extends CatalogApplicationTest {
     deleteEdge(TABLES.get(4), TABLES.get(8));
     deleteEdge(TABLES.get(5), TABLES.get(6));
     deleteEdge(TABLES.get(6), TABLES.get(7));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, ADMIN_AUTH_HEADERS);
-    assertTrue(lineage.getUpstreamEdges().isEmpty());
-    assertTrue(lineage.getDownstreamEdges().isEmpty());
+
+    // Ensure upstream and downstream lineage is empty
+    assertLineage(
+        Entity.TABLE, TABLES.get(4).getId(), TABLES.get(4).getFullyQualifiedName(), 2, 2, new Edge[0], new Edge[0]);
+  }
+
+  @Order(3)
+  @Test
+  void put_lineageWithDetails() throws HttpResponseException {
+    // Add column lineage table1.c1 -> table2.c1
+    LineageDetails details = new LineageDetails();
+    String t1c1FQN = TABLES.get(0).getColumns().get(0).getFullyQualifiedName();
+    String t1c2FQN = TABLES.get(0).getColumns().get(1).getFullyQualifiedName();
+    String t1c3FQN = TABLES.get(0).getColumns().get(2).getFullyQualifiedName();
+    String t2c1FQN = TABLES.get(1).getColumns().get(0).getFullyQualifiedName();
+    String t2c2FQN = TABLES.get(1).getColumns().get(1).getFullyQualifiedName();
+    String t2c3FQN = TABLES.get(1).getColumns().get(2).getFullyQualifiedName();
+    String t3c1FQN = TABLES.get(2).getColumns().get(0).getFullyQualifiedName();
+    String t3c2FQN = TABLES.get(2).getColumns().get(1).getFullyQualifiedName();
+    String t3c3FQN = TABLES.get(2).getColumns().get(2).getFullyQualifiedName();
+
+    details.getColumnsLineage().add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn(t2c1FQN));
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
+
+    // Add invalid column lineage (from column or to column are invalid)
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of("invalidColumn")).withToColumn(t2c1FQN));
+    assertResponse(
+        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid fully qualified column name invalidColumn");
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
+    assertResponse(
+        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid fully qualified column name invalidColumn");
+
+    // Add column level lineage with multiple fromColumns (t1c1 + t3c1) to t2c1
+    details.getColumnsLineage().clear();
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN, t3c1FQN)).withToColumn(t2c1FQN));
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
+
+    // Finally, add detailed column level lineage
+    details.getColumnsLineage().clear();
+    List<ColumnLineage> lineage = details.getColumnsLineage();
+    lineage.add(new ColumnLineage().withFromColumns(List.of(t1c1FQN, t3c1FQN)).withToColumn(t2c1FQN));
+    lineage.add(new ColumnLineage().withFromColumns(List.of(t1c2FQN, t3c2FQN)).withToColumn(t2c2FQN));
+    lineage.add(new ColumnLineage().withFromColumns(List.of(t1c3FQN, t3c3FQN)).withToColumn(t2c3FQN));
+
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
   }
 
   public Edge getEdge(Table from, Table to) {
-    return getEdge(from.getId(), to.getId());
+    return getEdge(from.getId(), to.getId(), null);
   }
 
-  public static Edge getEdge(UUID from, UUID to) {
-    return new Edge().withFromEntity(from).withToEntity(to);
+  public static Edge getEdge(UUID from, UUID to, LineageDetails details) {
+    return new Edge().withFromEntity(from).withToEntity(to).withLineageDetails(details);
   }
 
   public void addEdge(Table from, Table to) throws HttpResponseException {
-    addEdge(from, to, ADMIN_AUTH_HEADERS);
+    addEdge(from, to, null, ADMIN_AUTH_HEADERS);
   }
 
-  private void addEdge(Table from, Table to, Map<String, String> authHeaders) throws HttpResponseException {
+  private void addEdge(Table from, Table to, LineageDetails details, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    if (details != null) {
+      details.setSqlQuery("select *;");
+    }
     EntitiesEdge edge =
         new EntitiesEdge()
-            .withFromEntity(new TableEntityInterface(from).getEntityReference())
-            .withToEntity(new TableEntityInterface(to).getEntityReference());
+            .withFromEntity(from.getEntityReference())
+            .withToEntity(to.getEntityReference())
+            .withLineageDetails(details);
     AddLineage addLineage = new AddLineage().withEdge(edge);
     addLineageAndCheck(addLineage, authHeaders);
   }
@@ -224,9 +318,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
   private void deleteEdge(Table from, Table to, Map<String, String> authHeaders) throws HttpResponseException {
     EntitiesEdge edge =
-        new EntitiesEdge()
-            .withFromEntity(new TableEntityInterface(from).getEntityReference())
-            .withToEntity(new TableEntityInterface(to).getEntityReference());
+        new EntitiesEdge().withFromEntity(from.getEntityReference()).withToEntity(to.getEntityReference());
     deleteLineageAndCheck(edge, authHeaders);
   }
 
@@ -262,13 +354,13 @@ public class LineageResourceTest extends CatalogApplicationTest {
       throws HttpResponseException {
     EntityReference from = addLineage.getEdge().getFromEntity();
     EntityReference to = addLineage.getEdge().getToEntity();
-    Edge expectedEdge = getEdge(from.getId(), to.getId());
+    Edge expectedEdge = getEdge(from.getId(), to.getId(), addLineage.getEdge().getLineageDetails());
 
-    // Check fromEntity ---> toEntity downstream edge is returned
+    // Check fromEntity ---> toEntity downstream edge of 'from' is returned
     EntityLineage lineage = getLineage(from.getType(), from.getId(), 0, 1, authHeaders);
     assertEdge(lineage, expectedEdge, true);
 
-    // Check fromEntity ---> toEntity upstream edge is returned
+    // Check fromEntity ---> toEntity upstream edge 'to' is returned
     lineage = getLineage(to.getType(), to.getId(), 1, 0, authHeaders);
     assertEdge(lineage, expectedEdge, false);
   }
@@ -277,7 +369,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
       throws HttpResponseException {
     EntityReference from = deletedEdge.getFromEntity();
     EntityReference to = deletedEdge.getToEntity();
-    Edge expectedEdge = getEdge(from.getId(), to.getId());
+    Edge expectedEdge = getEdge(from.getId(), to.getId(), deletedEdge.getLineageDetails());
 
     // Check fromEntity ---> toEntity downstream edge is returned
     EntityLineage lineage = getLineage(from.getType(), from.getId(), 0, 1, authHeaders);
@@ -311,6 +403,25 @@ public class LineageResourceTest extends CatalogApplicationTest {
     if (lineage.getNodes().size() != 0) {
       assertEquals((int) ids.stream().distinct().count(), lineage.getNodes().size() + 1);
     }
+  }
+
+  public static void assertLineage(
+      String entityType,
+      UUID id,
+      String fqn,
+      Integer upstreamDepth,
+      Integer downstreamDepth,
+      Edge[] expectedUpstreamEdges,
+      Edge[] expectedDownstreamEdges)
+      throws HttpResponseException {
+    EntityLineage lineageById = getLineage(entityType, id, upstreamDepth, downstreamDepth, ADMIN_AUTH_HEADERS);
+    assertEdges(lineageById, expectedUpstreamEdges, expectedDownstreamEdges);
+
+    EntityLineage lineageByName = getLineageByName(entityType, fqn, upstreamDepth, downstreamDepth, ADMIN_AUTH_HEADERS);
+    assertEdges(lineageByName, expectedUpstreamEdges, expectedDownstreamEdges);
+
+    // Finally, ensure lineage by Id matches lineage by name
+    assertEquals(lineageById, lineageByName);
   }
 
   public static EntityLineage getLineage(

@@ -16,7 +16,8 @@ from unittest import TestCase
 
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.type import basic
-from metadata.ingestion.ometa.utils import format_name, get_entity_type, uuid_to_str
+from metadata.ingestion.ometa.utils import format_name, get_entity_type, model_str
+from metadata.utils.connections import render_query_header
 
 
 class OMetaUtilsTest(TestCase):
@@ -37,13 +38,26 @@ class OMetaUtilsTest(TestCase):
         self.assertEqual(get_entity_type("hello"), "hello")
         self.assertEqual(get_entity_type(MlModel), "mlmodel")
 
-    def test_uuid_to_str(self):
+    def test_model_str(self):
         """
         Return Uuid as str
         """
 
-        self.assertEqual(uuid_to_str("random"), "random")
+        self.assertEqual(model_str("random"), "random")
         self.assertEqual(
-            uuid_to_str(basic.Uuid(__root__="9fc58e81-7412-4023-a298-59f2494aab9d")),
+            model_str(basic.Uuid(__root__="9fc58e81-7412-4023-a298-59f2494aab9d")),
             "9fc58e81-7412-4023-a298-59f2494aab9d",
+        )
+
+        self.assertEqual(
+            model_str(basic.EntityName(__root__="EntityName")), "EntityName"
+        )
+        self.assertEqual(
+            model_str(basic.FullyQualifiedEntityName(__root__="FQDN")), "FQDN"
+        )
+
+    def test_render_query_headers_builds_the_right_string(self) -> None:
+        assert (
+            render_query_header("0.0.1")
+            == '/* {"app": "OpenMetadata", "version": "0.0.1"} */'
         )

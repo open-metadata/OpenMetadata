@@ -18,7 +18,6 @@ import React, { Fragment, useEffect, useRef, useState } from 'react';
 import {
   CreateTableTest,
   TableTestType,
-  TestCaseExecutionFrequency,
 } from '../../../generated/api/tests/createTableTest';
 import { TableTest } from '../../../generated/tests/tableTest';
 import {
@@ -27,7 +26,8 @@ import {
   requiredField,
 } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 
 type Props = {
   data?: TableTest;
@@ -68,10 +68,19 @@ const TableTestForm = ({
   const [value, setValue] = useState<number | undefined>(
     data?.testCase.config?.value || data?.testCase.config?.columnCount
   );
-  const [frequency, setFrequency] = useState<TestCaseExecutionFrequency>(
-    data?.executionFrequency
-      ? data.executionFrequency
-      : TestCaseExecutionFrequency.Daily
+  const [columnName, setcolumnName] = useState<string | undefined>(
+    data?.testCase?.config?.columnName
+  );
+  const [columnNameSet, setcolumnNameSet] = useState<string | undefined>(
+    data?.testCase?.config?.columnNames
+  );
+  const [sqlExpression, setSqlExpression] = useState<string | undefined>(
+    data?.testCase?.config?.sqlExpression
+  );
+  const [columnNameSetOrdered, setcolumnNameSetOrdered] = useState<boolean>(
+    data?.testCase?.config?.ordered !== undefined
+      ? data?.testCase?.config?.ordered
+      : false
   );
   const [isShowError, setIsShowError] = useState({
     minOrMax: false,
@@ -79,6 +88,10 @@ const TableTestForm = ({
     minMaxValue: false,
     allTestAdded: false,
     tableTest: false,
+    columnName: false,
+    columnNameSet: false,
+    columnNameSetOrdered: false,
+    sqlExpression: false,
   });
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>();
 
@@ -106,19 +119,34 @@ const TableTestForm = ({
 
   const validateForm = () => {
     const errMsg = cloneDeep(isShowError);
-
-    const isTableRowCountToBeBetweenTest =
-      tableTest === TableTestType.TableRowCountToBeBetween;
-
     errMsg.tableTest = isEmpty(tableTest);
 
-    if (isTableRowCountToBeBetweenTest) {
-      errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
-      if (!isUndefined(minValue) && !isUndefined(maxValue)) {
-        errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
-      }
-    } else {
-      errMsg.values = isEmpty(value);
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+      case TableTestType.TableColumnCountToBeBetween:
+        errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
+        if (!isUndefined(minValue) && !isUndefined(maxValue)) {
+          errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
+        }
+
+        break;
+      case TableTestType.TableColumnNameToExist:
+        errMsg.columnName = isEmpty(columnName);
+
+        break;
+
+      case TableTestType.TableColumnToMatchSet:
+        errMsg.columnNameSet = isEmpty(columnNameSet);
+
+        break;
+
+      case TableTestType.TableCustomSQLQuery:
+        errMsg.sqlExpression = isEmpty(sqlExpression);
+
+        break;
+
+      default:
+        errMsg.values = isEmpty(value);
     }
 
     setIsShowError(errMsg);
@@ -134,6 +162,23 @@ const TableTestForm = ({
           minValue: isEmpty(minValue) ? undefined : minValue,
         };
 
+      case TableTestType.TableColumnCountToBeBetween:
+        return {
+          minColValue: isEmpty(minValue) ? undefined : minValue,
+          maxColValue: isEmpty(maxValue) ? undefined : maxValue,
+        };
+
+      case TableTestType.TableColumnNameToExist:
+        return {
+          columnName: isEmpty(columnName) ? undefined : columnName,
+        };
+
+      case TableTestType.TableColumnToMatchSet:
+        return {
+          columnNames: isEmpty(columnNameSet) ? undefined : columnNameSet,
+          ordered: columnNameSetOrdered,
+        };
+
       case TableTestType.TableColumnCountToEqual:
         return {
           columnCount: isEmpty(value) ? undefined : value,
@@ -142,6 +187,11 @@ const TableTestForm = ({
       case TableTestType.TableRowCountToEqual:
         return {
           value: isEmpty(value) ? undefined : value,
+        };
+
+      case TableTestType.TableCustomSQLQuery:
+        return {
+          sqlExpression: isEmpty(sqlExpression) ? undefined : sqlExpression,
         };
 
       default:
@@ -153,7 +203,6 @@ const TableTestForm = ({
     if (validateForm()) {
       const createTest: CreateTableTest = {
         description: markdownRef.current?.getEditorContent() || undefined,
-        executionFrequency: frequency,
         testCase: {
           config: getConfigValue(),
           tableTestType: tableTest,
@@ -203,8 +252,22 @@ const TableTestForm = ({
 
         break;
 
-      case 'frequency':
-        setFrequency(value as TestCaseExecutionFrequency);
+      case 'column-name':
+        setcolumnName(value as unknown as string);
+        errorMsg.columnName = false;
+
+        break;
+
+      case 'column-name-set':
+        setcolumnNameSet(value as unknown as string);
+        errorMsg.columnNameSet = false;
+        errorMsg.columnNameSetOrdered = false;
+
+        break;
+
+      case 'sql-expression':
+        setSqlExpression(value as unknown as string);
+        errorMsg.sqlExpression = false;
 
         break;
 
@@ -222,7 +285,7 @@ const TableTestForm = ({
           {requiredField('Value:')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="value"
           id="value"
           name="value"
@@ -236,6 +299,76 @@ const TableTestForm = ({
     );
   };
 
+  const getSQLTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="value">
+          {requiredField('SQL Expression:')}
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="sql-expression"
+          id="sql-expression"
+          name="sql-expression"
+          placeholder="SELECT * FROM dual"
+          type="text"
+          value={sqlExpression}
+          onChange={handleValidation}
+        />
+      </Field>
+    );
+  };
+
+  const getValueColTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="column-name">
+          Column Name
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="column-name"
+          id="column-name"
+          name="column-name"
+          placeholder="col1"
+          type="text"
+          value={columnName}
+          onChange={handleValidation}
+        />
+        {isShowError.columnName && errorMsg('Value is required.')}
+      </Field>
+    );
+  };
+
+  const getValueColSetTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="column-name-set">
+          Column Names
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding tw-mb-4"
+          data-testid="column-name-set"
+          id="column-name-set"
+          name="column-name-set"
+          placeholder="col1, col2, col3"
+          type="text"
+          value={columnNameSet}
+          onChange={handleValidation}
+        />
+        <div className="tw-flex tw-gap-1">
+          <label>Match Column Input Order</label>
+          <ToggleSwitchV1
+            checked={columnNameSetOrdered}
+            handleCheck={() => setcolumnNameSetOrdered((pre) => !pre)}
+            testId="enable-ordered-column-names"
+          />
+        </div>
+        {isShowError.columnNameSet && errorMsg('Value is required.')}
+      </Field>
+    );
+  };
+
   const getMinMaxField = () => {
     return (
       <Fragment>
@@ -245,7 +378,7 @@ const TableTestForm = ({
               Min:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="min"
               id="min"
               name="min"
@@ -260,7 +393,7 @@ const TableTestForm = ({
               Max:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="max"
               id="max"
               name="max"
@@ -278,6 +411,22 @@ const TableTestForm = ({
     );
   };
 
+  const getTableTestConfig = () => {
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+      case TableTestType.TableColumnCountToBeBetween:
+        return getMinMaxField();
+      case TableTestType.TableColumnNameToExist:
+        return getValueColTextField();
+      case TableTestType.TableColumnToMatchSet:
+        return getValueColSetTextField();
+      case TableTestType.TableCustomSQLQuery:
+        return getSQLTextField();
+      default:
+        return getValueField();
+    }
+  };
+
   return (
     <Fragment>
       <p className="tw-font-medium tw-px-4">
@@ -291,7 +440,7 @@ const TableTestForm = ({
               {requiredField('Test Type:')}
             </label>
             <select
-              className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+              className={classNames('tw-form-inputs tw-form-inputs-padding', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
               data-testid="tableTestType"
@@ -319,37 +468,14 @@ const TableTestForm = ({
               htmlFor="description">
               Description:
             </label>
-            <MarkdownWithPreview
+            <RichTextEditor
               data-testid="description"
+              initialValue={description}
               ref={markdownRef}
-              value={description}
             />
           </Field>
 
-          <Field>
-            {tableTest === TableTestType.TableRowCountToBeBetween
-              ? getMinMaxField()
-              : getValueField()}
-          </Field>
-
-          <Field>
-            <label className="tw-block tw-form-label" htmlFor="frequency">
-              Frequency of Test Run:
-            </label>
-            <select
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="frequency"
-              id="frequency"
-              name="frequency"
-              value={frequency}
-              onChange={handleValidation}>
-              {Object.values(TestCaseExecutionFrequency).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <Field>{getTableTestConfig()}</Field>
         </div>
         <Field className="tw-flex tw-justify-end">
           <Button
@@ -358,7 +484,7 @@ const TableTestForm = ({
             theme="primary"
             variant="text"
             onClick={onFormCancel}>
-            Discard
+            Cancel
           </Button>
           <Button
             className="tw-w-16 tw-h-10"

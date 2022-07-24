@@ -12,12 +12,13 @@
 """
 ColumnValuesToBeNotNull validation implementation
 """
+# pylint: disable=duplicate-code
 
 from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import inspect
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
@@ -26,19 +27,18 @@ from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
 )
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.utils import logger
-from metadata.orm_profiler.validations.utils import run_col_metric
+from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 def column_values_to_match_regex(
     test_case: ColumnValuesToMatchRegex,
     col_profile: ColumnProfile,
     execution_date: datetime,
-    session: Optional[Session] = None,
+    runner: QueryRunner = None,
     table: Optional[DeclarativeMeta] = None,
-    profile_sample: Optional[float] = None,
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -63,17 +63,19 @@ def column_values_to_match_regex(
         )
 
     try:
-
-        like_count_res = run_col_metric(
-            metric=like_count,
-            session=session,
-            table=table,
-            column=col_profile.name,
-            profile_sample=profile_sample,
+        col = next(
+            (col for col in inspect(table).c if col.name == col_profile.name),
+            None,
         )
+        if col is None:
+            raise ValueError(
+                f"Cannot find the configured column {col_profile.name} for ColumnValuesToBeNotInSet"
+            )
+        like_count_dict = dict(runner.select_first_from_sample(like_count(col).fn()))
+        print(like_count_dict)
+        like_count_res = like_count_dict.get(Metrics.LIKE_COUNT.name)
 
     except Exception as err:  # pylint: disable=broad-except
-        session.rollback()
         msg = f"Error computing ColumnValuesToMatchRegex for {col_profile.name} - {err}"
         logger.error(msg)
         return TestCaseResult(
@@ -87,7 +89,7 @@ def column_values_to_match_regex(
         if col_profile.valuesCount == like_count_res
         else TestCaseStatus.Failed
     )
-    result = f"Found likeCount={like_count_res} & valuesCount={col_profile.valuesCount}. They should be equal."
+    result = f"Found {like_count_res} value(s) matching regex pattern vs {int(col_profile.valuesCount)} value(s) in the column."
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result

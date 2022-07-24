@@ -17,6 +17,10 @@ clean_env37:
 install:  ## Install the ingestion module to the current environment
 	python -m pip install ingestion/
 
+.PHONY: install_apis
+install_apis:  ## Install the REST APIs module to the current environment
+	python -m pip install openmetadata-airflow-apis/
+
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
 	python -m pip install "ingestion[test]/"
@@ -28,7 +32,6 @@ install_dev:  ## Install the ingestion module with dev dependencies
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
 	python -m pip install "ingestion[all]/"
-
 
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
@@ -42,39 +45,46 @@ lint: ## Run pylint on the Python sources to analyze the codebase
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
-	pycln ingestion/ --extend-exclude $(PY_SOURCE)/metadata/generated
-	isort ingestion/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --profile black --multi-line 3
-	black ingestion/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	pycln ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	isort ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
+	black ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
-	pycln ingestion/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
-	isort --check-only ingestion/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
-	black --check --diff ingestion/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
+	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
+	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
 
 ## Ingestion models generation
 .PHONY: generate
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
-	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated
+	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated --set-default-enum-member
+	$(MAKE) py_antlr
 	$(MAKE) install
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results-unit.xml ingestion/tests/unit
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
 
-.PHONY: coverage
-coverage:  ## Run all Python tests and generate the coverage report
+.PHONY: run_python_tests
+run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	coverage xml -i -o ingestion/coverage.xml
+	coverage report --rcfile ingestion/.coveragerc || true
+
+.PHONY: coverage
+coverage:  ## Run all Python tests and generate the coverage XML report
+	$(MAKE) run_python_tests
+	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
@@ -82,9 +92,21 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
 		-e SONAR_LOGIN=$(token) \
-		-v ${PWD}:/usr/src \
+		-v ${PWD}/ingestion:/usr/src \
 		sonarsource/sonar-scanner-cli \
-		-Dproject.settings=ingestion/sonar-project.properties
+		-Dproject.settings=sonar-project.properties
+
+.PHONY: run_apis_tests
+run_apis_tests:  ## Run the openmetadata airflow apis tests
+	coverage erase
+	coverage run --rcfile openmetadata-airflow-apis/.coveragerc -a --branch -m pytest --junitxml=openmetadata-airflow-apis/junit/test-results.xml openmetadata-airflow-apis/tests
+	coverage report --rcfile openmetadata-airflow-apis/.coveragerc
+
+.PHONY: coverage_apis
+coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
+	$(MAKE) run_apis_tests
+	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
 ## Ingestion publish
 .PHONY: publish
@@ -141,6 +163,7 @@ core_generate:  ## Generate the pydantic models from the JSON Schemas to the ing
 	mkdir -p ingestion-core/src/metadata/generated; \
 	. ingestion-core/venv/bin/activate; \
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
+	$(MAKE) core_py_antlr
 
 .PHONY: core_bump_version_dev
 core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To be used when schemas are updated
@@ -157,3 +180,30 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 		python setup.py install sdist bdist_wheel; \
 		twine check dist/*; \
 		twine upload -r testpypi dist/*
+
+.PHONY: core_py_antlr
+core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
+	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: py_antlr
+py_antlr:  ## Generate the Python code for parsing FQNs
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: install_antlr_cli
+install_antlr_cli:  ## Install antlr CLI locally
+	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
+	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
+	chmod 755 /usr/local/bin/antlr4
+
+
+.PHONY: docker-docs
+docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest
+
+.PHONY: docker-docs-validate
+docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest -c 'npm run export'
+
+.PHONY: docker-docs-local
+docker-docs-local:  ## Runs the OM docs in docker with a local image
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local

@@ -1,0 +1,2 @@
+hostPort: http://localhost:8585
+apiVersion: {{ env('API_VERSION') }}

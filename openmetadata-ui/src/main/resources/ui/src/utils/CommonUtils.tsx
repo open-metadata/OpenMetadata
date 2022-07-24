@@ -11,34 +11,45 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isNull, isUndefined } from 'lodash';
 import {
+  EntityFieldThreadCount,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
+import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
+  SUPPORTED_DOMAIN_TYPES,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
-import { TabSpecificField } from '../enums/entity.enum';
-import { Ownership } from '../enums/mydata.enum';
 import {
-  EntityReference as UserTeams,
-  User,
-} from '../generated/entity/teams/user';
+  UrlEntityCharRegEx,
+  validEmailRegEx,
+} from '../constants/regex.constants';
+import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
+import { Ownership } from '../enums/mydata.enum';
+import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
+import { EntityReference, User } from '../generated/entity/teams/user';
+import jsonData from '../jsons/en';
+import { getEntityFeedLink, getTitleCase } from './EntityUtils';
+import Fqn from './Fqn';
+import { getExplorePathWithInitFilters } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
+import { TASK_ENTITIES } from './TasksUtils';
+import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = (
   key: string,
@@ -65,9 +76,9 @@ export const isEven = (value: number): boolean => {
 };
 
 export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
-  const arrColFQN = columnFQN.split('.');
+  const arrColFQN = columnFQN.split(FQN_SEPARATOR_CHAR);
 
-  return arrColFQN.slice(0, arrColFQN.length - 1).join('.');
+  return arrColFQN.slice(0, arrColFQN.length - 1).join(FQN_SEPARATOR_CHAR);
 };
 
 export const getPartialNameFromFQN = (
@@ -75,7 +86,7 @@ export const getPartialNameFromFQN = (
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
   joinSeperator = '/'
 ): string => {
-  const arrFqn = fqn.split('.');
+  const arrFqn = Fqn.split(fqn);
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {
@@ -90,6 +101,44 @@ export const getPartialNameFromFQN = (
   }
 
   return arrPartialName.join(joinSeperator);
+};
+
+export const getPartialNameFromTableFQN = (
+  fqn: string,
+  fqnParts: Array<FqnPart> = [],
+  joinSeparator = '/'
+): string => {
+  if (!fqn) {
+    return '';
+  }
+  const splitFqn = Fqn.split(fqn);
+  // if nested column is requested, then ignore all the other
+  // parts and just return the nested column name
+  if (fqnParts.includes(FqnPart.NestedColumn)) {
+    // Remove the first 4 parts (service, database, schema, table)
+
+    return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
+  }
+  const arrPartialName = [];
+  if (splitFqn.length > 0) {
+    if (fqnParts.includes(FqnPart.Service)) {
+      arrPartialName.push(splitFqn[0]);
+    }
+    if (fqnParts.includes(FqnPart.Database) && splitFqn.length > 1) {
+      arrPartialName.push(splitFqn[1]);
+    }
+    if (fqnParts.includes(FqnPart.Schema) && splitFqn.length > 2) {
+      arrPartialName.push(splitFqn[2]);
+    }
+    if (fqnParts.includes(FqnPart.Table) && splitFqn.length > 3) {
+      arrPartialName.push(splitFqn[3]);
+    }
+    if (fqnParts.includes(FqnPart.Column) && splitFqn.length > 4) {
+      arrPartialName.push(splitFqn[4]);
+    }
+  }
+
+  return arrPartialName.join(joinSeparator);
 };
 
 export const getCurrentUserId = (): string => {
@@ -113,31 +162,20 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
         count > 1 ? noun : noun.slice(0, noun.length - 1)
       }`;
     } else {
-      return `${countString} ${noun}${count !== 1 ? suffix : ''}`;
+      return `${countString} ${noun}${count > 1 ? suffix : ''}`;
     }
   }
 };
 
-export const getUserTeams = (): Array<UserTeams> => {
-  let retVal: Array<UserTeams>;
-  if (AppState.userDetails.teams) {
-    retVal = AppState.userDetails.teams.map((item) => {
-      const team = AppState.userTeams.find((obj) => obj.id === item.id);
-
-      return { ...item, displayName: team?.displayName };
-    });
-  } else {
-    retVal = AppState.userTeams;
-  }
-
-  return retVal || [];
-};
-
 export const hasEditAccess = (type: string, id: string) => {
+  const loggedInUser = AppState.getCurrentUserDetails();
   if (type === 'user') {
-    return id === getCurrentUserId();
+    return id === loggedInUser?.id;
   } else {
-    return getUserTeams().some((team) => team.id === id);
+    return Boolean(
+      loggedInUser?.teams?.length &&
+        loggedInUser?.teams?.some((team) => team.id === id)
+    );
   }
 };
 
@@ -162,11 +200,13 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count">{count}</span>
+      <span data-testid="filter-count" title={count.toString()}>
+        {count}
+      </span>
     </span>
   );
 };
@@ -291,16 +331,27 @@ export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
 
 export const getOwnerIds = (
   filter: Ownership,
-  userDetails: User
+  userDetails: User,
+  nonSecureUserDetails: User
 ): Array<string> => {
-  if (filter === Ownership.OWNER && userDetails.teams) {
-    const userTeams = !isEmpty(userDetails)
-      ? userDetails.teams.map((team) => team.id)
-      : [];
-
-    return [...userTeams, getCurrentUserId()];
+  if (filter === Ownership.OWNER) {
+    if (!isEmpty(userDetails)) {
+      return [
+        ...(userDetails.teams?.map((team) => team.id) || []),
+        userDetails.id,
+      ];
+    } else {
+      if (!isEmpty(nonSecureUserDetails)) {
+        return [
+          ...(nonSecureUserDetails.teams?.map((team) => team.id) || []),
+          nonSecureUserDetails.id,
+        ];
+      } else {
+        return [];
+      }
+    }
   } else {
-    return [getCurrentUserId()];
+    return [userDetails.id || nonSecureUserDetails.id];
   }
 };
 
@@ -377,10 +428,6 @@ export const getServiceLogo = (
   return null;
 };
 
-export const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
-};
-
 export const getSvgArrow = (isActive: boolean) => {
   return isActive ? (
     <SVGIcons alt="arrow-down" icon={Icons.ARROW_DOWN_PRIMARY} />
@@ -389,7 +436,7 @@ export const getSvgArrow = (isActive: boolean) => {
   );
 };
 
-export const isValidUrl = (href: string) => {
+export const isValidUrl = (href?: string) => {
   if (!href) {
     return false;
   }
@@ -400,6 +447,20 @@ export const isValidUrl = (href: string) => {
   } catch {
     return false;
   }
+};
+
+/**
+ *
+ * @param email - email address string
+ * @returns - True|False
+ */
+export const isValidEmail = (email?: string) => {
+  let isValid = false;
+  if (email && email.match(validEmailRegEx)) {
+    isValid = true;
+  }
+
+  return isValid;
 };
 
 export const getFields = (defaultFields: string, tabSpecificField: string) => {
@@ -473,7 +534,7 @@ export const getDocButton = (label: string, url: string, dataTestId = '') => {
 };
 
 export const getNameFromFQN = (fqn: string): string => {
-  const arr = fqn.split('.');
+  const arr = fqn.split(FQN_SEPARATOR_CHAR);
 
   return arr[arr.length - 1];
 };
@@ -497,4 +558,163 @@ export const getRandomColor = (name: string) => {
 
 export const isUrlFriendlyName = (value: string) => {
   return !UrlEntityCharRegEx.test(value);
+};
+
+/**
+ * Take teams data and filter out the non deleted teams
+ * @param teams - teams array
+ * @returns - non deleted team
+ */
+export const getNonDeletedTeams = (teams: EntityReference[]) => {
+  return teams.filter((t) => !t.deleted);
+};
+
+/**
+ * prepare label for given entity type and fqn
+ * @param type - entity type
+ * @param fqn - entity fqn
+ * @param withQuotes - boolean value
+ * @returns - label for entity
+ */
+export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
+  let label = '';
+  if (type === EntityType.TABLE) {
+    label = getPartialNameFromTableFQN(fqn, [FqnPart.Table]);
+  } else {
+    label = getPartialNameFromFQN(fqn, ['database']);
+  }
+
+  if (withQuotes) {
+    return label;
+  } else {
+    return label.replace(/(^"|"$)/g, '');
+  }
+};
+
+/**
+ * Check if entity is deleted and return with "(Deactivated) text"
+ * @param value - entity name
+ * @param isDeleted - boolean
+ * @returns - entity placeholder
+ */
+export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
+  if (isDeleted) {
+    return `${value} (Deactivated)`;
+  } else {
+    return value;
+  }
+};
+
+/**
+ * Take entity reference as input and return name for entity
+ * @param entity - entity reference
+ * @returns - entity name
+ */
+export const getEntityName = (entity?: EntityReference) => {
+  return entity?.displayName || entity?.name || '';
+};
+
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return `Permanently deleting this ${getTitleCase(
+      entity
+    )} will remove its metadata, as well as the metadata of ${dependents} from OpenMetadata permanently.`;
+  } else {
+    return `Permanently deleting this ${getTitleCase(
+      entity
+    )} will remove its metadata from OpenMetadata permanently.`;
+  }
+};
+
+export const getExploreLinkByFilter = (
+  filter: Ownership,
+  userDetails: User,
+  nonSecureUserDetails: User
+) => {
+  return getExplorePathWithInitFilters(
+    '',
+    undefined,
+    `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
+  );
+};
+
+export const replaceSpaceWith_ = (text: string) => {
+  return text.replace(/\s/g, '_');
+};
+
+export const getFeedCounts = (
+  entityType: string,
+  entityFQN: string,
+  conversationCallback: (
+    value: React.SetStateAction<EntityFieldThreadCount[]>
+  ) => void,
+  taskCallback: (value: React.SetStateAction<EntityFieldThreadCount[]>) => void,
+  entityCallback: (value: React.SetStateAction<number>) => void
+) => {
+  // To get conversation count
+  getFeedCount(
+    getEntityFeedLink(entityType, entityFQN),
+    ThreadType.Conversation
+  )
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        conversationCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
+
+  // To get open tasks count
+  getFeedCount(
+    getEntityFeedLink(entityType, entityFQN),
+    ThreadType.Task,
+    ThreadTaskStatus.Open
+  )
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        taskCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
+
+  // To get all thread count (task + conversation)
+  getFeedCount(getEntityFeedLink(entityType, entityFQN))
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        entityCallback(res.data.totalCount);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
+};
+
+/**
+ *
+ * @param entityType type of the entity
+ * @returns true if entity type exists in TASK_ENTITIES otherwise false
+ */
+export const isTaskSupported = (entityType: EntityType) =>
+  TASK_ENTITIES.includes(entityType);
+
+export const isAllowedHost = () => {
+  return SUPPORTED_DOMAIN_TYPES.includes(window.location.host);
 };

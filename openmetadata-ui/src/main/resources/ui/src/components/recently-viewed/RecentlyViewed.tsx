@@ -11,46 +11,52 @@
  *  limitations under the License.
  */
 
-import { FormatedTableData } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
-import { getRecentlyViewedData } from '../../utils/CommonUtils';
-import EntityList from '../EntityList/EntityList';
+import { FormattedTableData } from 'Models';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
+import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 
 const RecentlyViewed: FunctionComponent = () => {
   const recentlyViewedData = getRecentlyViewedData();
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
+  const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [isLoading, setIsloading] = useState<boolean>(false);
 
-  useEffect(() => {
+  const prepareData = () => {
     if (recentlyViewedData.length) {
       setIsloading(true);
-      const formatedData = recentlyViewedData.map((data) => {
-        return {
-          serviceType: data.serviceType,
-          name: data.displayName || data.fqn.split('.').pop(),
-          fullyQualifiedName: data.fqn,
-          index: data.entityType,
-        };
-      });
-      setData(formatedData as unknown as FormatedTableData[]);
+      const formattedData = recentlyViewedData
+        .map((item) => {
+          return {
+            serviceType: item.serviceType,
+            name: item.displayName || prepareLabel(item.entityType, item.fqn),
+            fullyQualifiedName: item.fqn,
+            index: item.entityType,
+          };
+        })
+        .filter((item) => item.name);
+      setData(formattedData as unknown as FormattedTableData[]);
       setIsloading(false);
     }
+  };
+
+  useEffect(() => {
+    prepareData();
   }, []);
 
   return (
-    <>
+    <Fragment>
       {isLoading ? (
         <Loader />
       ) : (
-        <EntityList
+        <EntityListWithAntd
           entityList={data}
-          headerText="Recent Views"
+          headerTextLabel="Recent Views"
           noDataPlaceholder={<>No recently viewed data.</>}
           testIDText="Recently Viewed"
         />
       )}
-    </>
+    </Fragment>
   );
 };
 

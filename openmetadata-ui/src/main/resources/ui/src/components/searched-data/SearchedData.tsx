@@ -11,34 +11,35 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
-import { FormatedTableData } from 'Models';
+import { isUndefined } from 'lodash';
+import { FormattedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
+import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { TableType } from '../../generated/entity/data/table';
+import { Paging } from '../../generated/type/paging';
 import { pluralize } from '../../utils/CommonUtils';
-import {
-  getOwnerFromId,
-  getTierFromSearchTableTags,
-} from '../../utils/TableUtils';
+import { getTierFromSearchTableTags } from '../../utils/TableUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
+import NextPrevious from '../common/next-previous/NextPrevious';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
-import Pagination from '../Pagination';
 type SearchedDataProp = {
   children?: ReactNode;
-  data: Array<FormatedTableData>;
+  data: Array<FormattedTableData>;
   currentPage: number;
   isLoading?: boolean;
-  paginate: (value: number) => void;
+  paginate: (value: string | number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   showResultCount?: boolean;
   searchText?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
+  isFilterSelected: boolean;
 };
 
 const ASSETS_NAME = [
@@ -59,6 +60,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   showOnlyChildren = false,
   searchText,
   totalValue,
+  isFilterSelected,
 }: SearchedDataProp) => {
   const highlightSearchResult = () => {
     return data.map((table, index) => {
@@ -77,18 +79,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 
       let name = table.name;
       if (!isUndefined(table.highlight)) {
-        const [assetName] = Object.keys(table.highlight).filter((name) =>
-          ASSETS_NAME.includes(name)
-        );
-        name = !isEmpty(
-          table.highlight?.[assetName as keyof FormatedTableData['highlight']]
-        )
-          ? (
-              table.highlight?.[
-                assetName as keyof FormatedTableData['highlight']
-              ] as string[]
-            ).join(' ')
-          : name;
+        name = table.highlight?.name?.join(' ') || name;
       }
 
       const matches = table.highlight
@@ -116,6 +107,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
         <div className="tw-mb-3" key={index}>
           <TableDataCard
             database={table.database}
+            databaseSchema={table.databaseSchema}
             deleted={table.deleted}
             description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
@@ -123,20 +115,36 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             indexType={table.index}
             matches={matches}
             name={name}
-            owner={getOwnerFromId(table.owner)?.name}
+            owner={table.owner}
+            service={table.service}
             serviceType={table.serviceType || '--'}
             tableType={table.tableType as TableType}
             tags={table.tags}
             tier={
-              (table.tier || getTierFromSearchTableTags(table.tags))?.split(
-                '.'
-              )[1]
+              (
+                table.tier?.tagFQN ||
+                getTierFromSearchTableTags(
+                  (table.tags || []).map((tag) => tag.tagFQN)
+                )
+              )?.split(FQN_SEPARATOR_CHAR)[1]
             }
             usage={table.weeklyPercentileRank}
           />
         </div>
       );
     });
+  };
+
+  const ResultCount = () => {
+    if (showResultCount && (isFilterSelected || searchText)) {
+      if (MAX_RESULT_HITS === totalValue) {
+        return <div className="tw-mb-1">{`About ${totalValue} results`}</div>;
+      } else {
+        return <div className="tw-mb-1">{pluralize(totalValue, 'result')}</div>;
+      }
+    } else {
+      return null;
+    }
   };
 
   return (
@@ -150,22 +158,20 @@ const SearchedData: React.FC<SearchedDataProp> = ({
               {children}
               {!showOnlyChildren ? (
                 <>
-                  {showResultCount && searchText ? (
-                    <div className="tw-mb-1">
-                      {pluralize(totalValue, 'result')}
-                    </div>
-                  ) : null}
+                  <ResultCount />
                   {data.length > 0 ? (
                     <div
                       className="tw-grid tw-grid-rows-1 tw-grid-cols-1"
                       data-testid="search-results">
                       {highlightSearchResult()}
                       {totalValue > PAGE_SIZE && data.length > 0 && (
-                        <Pagination
+                        <NextPrevious
+                          isNumberBased
                           currentPage={currentPage}
-                          paginate={paginate}
-                          sizePerPage={PAGE_SIZE}
-                          totalNumberOfValues={totalValue}
+                          pageSize={PAGE_SIZE}
+                          paging={{} as Paging}
+                          pagingHandler={paginate}
+                          totalCount={totalValue}
                         />
                       )}
                     </div>

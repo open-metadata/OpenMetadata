@@ -24,10 +24,12 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
         <hr
           className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0"
           data-testid="separator"
+          style={{ borderBottomWidth: '0.5px' }}
         />
+
         {relativeDay ? (
           <span
-            className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-grey-muted tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium"
+            className="tw-bg-separator tw-px-4 tw-py-px tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium"
             data-testid="relativeday">
             {relativeDay}
           </span>

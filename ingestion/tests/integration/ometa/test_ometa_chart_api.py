@@ -21,13 +21,19 @@ from metadata.generated.schema.api.services.createDashboardService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
     DashboardService,
     DashboardServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OMetaChartTest(TestCase):
@@ -38,7 +44,7 @@ class OMetaChartTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -50,8 +56,10 @@ class OMetaChartTest(TestCase):
 
     service = CreateDashboardServiceRequest(
         name="test-service-chart",
-        serviceType=DashboardServiceType.Superset,
-        dashboardUrl="https://localhost:1000",
+        serviceType=DashboardServiceType.Looker,
+        connection=DashboardConnection(
+            config=LookerConnection(hostPort="http://hostPort", username="username")
+        ),
     )
     service_type = "dashboardService"
 
@@ -60,6 +68,7 @@ class OMetaChartTest(TestCase):
         """
         Prepare ingredients
         """
+        print("are we coming here")
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
         cls.entity = Chart(
@@ -79,21 +88,18 @@ class OMetaChartTest(TestCase):
         """
         Clean up
         """
-        _id = str(
-            cls.metadata.get_by_name(
-                entity=Chart, fqdn="test-service-chart.test"
-            ).id.__root__
-        )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DashboardService, fqdn="test-service-chart"
+                entity=DashboardService, fqn="test-service-chart"
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Chart, entity_id=_id)
         cls.metadata.delete(
-            entity=DashboardService, entity_id=service_id, recursive=True
+            entity=DashboardService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):
@@ -133,7 +139,7 @@ class OMetaChartTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Chart, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -146,7 +152,7 @@ class OMetaChartTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Chart, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Chart, entity_id=res_name.id)
@@ -177,7 +183,7 @@ class OMetaChartTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Chart, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -206,7 +212,7 @@ class OMetaChartTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Chart, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -222,7 +228,7 @@ class OMetaChartTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Chart, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=Chart, entity_id=res_name.id.__root__, version=0.1
@@ -238,7 +244,7 @@ class OMetaChartTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=Chart, fqdn=res.fullyQualifiedName
+            entity=Chart, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id

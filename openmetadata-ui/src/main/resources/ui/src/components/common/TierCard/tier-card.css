@@ -1,0 +1,6 @@
+.tier-card {
+  width: 760px;
+  border: 1px solid #dde3ea;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+  border-radius: 4px !important;
+}

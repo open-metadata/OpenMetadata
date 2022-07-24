@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/slackChatConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SlackChatConfiguration",
+  "description": "This schema defines the Slack Chat Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.slackChat.SlackChatConfiguration",
+  "properties": {
+    "apiToken": {
+      "description": "Api Token",
+      "type": "string"
+    },
+    "botName": {
+      "description": "Bot Name",
+      "type": "string"
+    },
+    "channels": {
+      "description": "Slack Chat Channels",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    }
+  },
+  "required": ["apiToken", "botName", "channels"],
+  "additionalProperties": false
+}

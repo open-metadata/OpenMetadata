@@ -12,66 +12,83 @@
  */
 
 import classNames from 'classnames';
-import React, { CSSProperties, Fragment } from 'react';
-import { Handle, HandleProps, Position } from 'react-flow-renderer';
+import { isEmpty } from 'lodash';
+import React, { CSSProperties, Fragment, useEffect } from 'react';
+import {
+  Handle,
+  HandleProps,
+  NodeProps,
+  Position,
+  useUpdateNodeInternals,
+} from 'react-flow-renderer';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
+import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
+import { ModifiedColumn } from './EntityLineage.interface';
 
-const handleStyles = {
+const handleStyles: CSSProperties = {
   width: '8px',
   height: '8px',
   borderRadius: '50%',
   position: 'absolute',
-  top: 10,
+  top: 15,
 };
 
 const getHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
-  isNewNode = false
+  isNewNode = false,
+  id?: string
 ) => {
-  if (nodeType === 'output') {
+  if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
-      <Handle
-        isConnectable={isConnectable}
-        position={Position.Left}
-        style={{ ...handleStyles, left: '-14px' } as CSSProperties}
-        type="target"
-      />
+      <Fragment>
+        <Handle
+          id={id}
+          isConnectable={isConnectable}
+          position={Position.Left}
+          style={handleStyles}
+          type="target"
+        />
+      </Fragment>
     );
-  } else if (nodeType === 'input') {
+  } else if (nodeType === EntityLineageNodeType.INPUT) {
     return (
-      <Handle
-        isConnectable={isConnectable}
-        position={Position.Right}
-        style={{ ...handleStyles, right: '-14px' } as CSSProperties}
-        type="source"
-      />
+      <Fragment>
+        <Handle
+          id={id}
+          isConnectable={isConnectable}
+          position={Position.Right}
+          style={handleStyles}
+          type="source"
+        />
+      </Fragment>
     );
+  } else if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
+    return null;
   } else {
     return (
       <Fragment>
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={
-            {
-              ...handleStyles,
-              left: '-14px',
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
+          style={{
+            ...handleStyles,
+
+            top: isNewNode ? 13 : handleStyles.top,
+          }}
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Right}
-          style={
-            {
-              ...handleStyles,
-              right: '-14px',
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
+          style={{
+            ...handleStyles,
+
+            top: isNewNode ? 13 : handleStyles.top,
+          }}
           type="source"
         />
       </Fragment>
@@ -79,45 +96,66 @@ const getHandle = (
   }
 };
 
-/* eslint-disable-next-line */
-const CustomNode = (props: any) => {
+const CustomNode = (props: NodeProps) => {
+  const updateNodeInternals = useUpdateNodeInternals();
+  const { data, type, isConnectable, selected, id } = props;
   /* eslint-disable-next-line */
-  const { data, type, isConnectable } = props;
-  /* eslint-disable-next-line */
-  const { label, columns, isNewNode } = data;
+  const {
+    label,
+    columns,
+    isNewNode,
+    removeNodeHandler,
+    isEditMode,
+    isExpanded,
+  } = data;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [isEditMode, isExpanded]);
 
   return (
-    <div className="tw-relative nowheel ">
-      {getHandle(type, isConnectable, isNewNode)}
+    <div className="nowheel">
       {/* Node label could be simple text or reactNode */}
-      <div className={classNames('tw-px-2')} data-testid="node-label">
-        {label}
+      <div
+        className="tw--mx-2 tw--my-0.5 tw-px-2 tw-bg-primary-lite tw-relative tw-border tw-border-primary-hover tw-rounded-md"
+        data-testid="node-label">
+        {getHandle(type, isConnectable, isNewNode)}
+        {label}{' '}
+        {selected && isEditMode
+          ? getNodeRemoveButton(() => {
+              removeNodeHandler?.(props);
+            })
+          : null}
       </div>
 
-      {columns?.length ? (
-        <hr className="tw-my-2 tw--mx-3" data-testid="label-separator" />
-      ) : null}
-      <section
-        className={classNames('tw--mx-3 tw-px-3', {
-          'tw-h-36 tw-overflow-y-auto': columns?.length,
-        })}
-        id="table-columns">
-        <div className="tw-flex tw-flex-col tw-gap-y-1 tw-relative">
-          {columns?.map(
-            (c: { name: string; constraint: string }, i: number) => (
-              <Fragment key={i}>
-                <div
-                  className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
-                  data-testid="column"
-                  key={c.name}>
-                  {getConstraintIcon(c.constraint, 'tw-')}
-                  {c.name}
-                </div>
-              </Fragment>
-            )
-          )}
+      {isExpanded && (
+        <div
+          className={classNames('tw-bg-border-lite-60 tw-border', {
+            'tw-py-3': !isEmpty(columns),
+          })}>
+          <section className={classNames('tw-px-3')} id="table-columns">
+            <div className="tw-flex tw-flex-col tw-gap-y-1 tw-relative">
+              {(Object.values(columns || {}) as ModifiedColumn[])?.map(
+                (c, i) => (
+                  <div
+                    className="tw-p-1 tw-rounded tw-border tw-text-grey-body tw-relative tw-bg-white"
+                    data-testid="column"
+                    key={i}>
+                    {getHandle(
+                      c.type,
+                      isConnectable,
+                      isNewNode,
+                      c.fullyQualifiedName
+                    )}
+                    {getConstraintIcon(c.constraint, 'tw-')}
+                    <p className="tw-m-0">{c.name}</p>
+                  </div>
+                )
+              )}
+            </div>
+          </section>
         </div>
-      </section>
+      )}
     </div>
   );
 };

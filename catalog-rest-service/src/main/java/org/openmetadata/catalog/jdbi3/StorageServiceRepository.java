@@ -17,18 +17,13 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 import java.io.IOException;
-import java.net.URI;
-import java.text.ParseException;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
-  private static final Fields UPDATE_FIELDS = new Fields(StorageServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
 
   public StorageServiceRepository(CollectionDAO dao) {
     super(
@@ -37,23 +32,20 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         StorageService.class,
         dao.storageServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override
-  public StorageService setFields(StorageService entity, Fields fields) throws IOException, ParseException {
+  public StorageService setFields(StorageService entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 
   @Override
-  public EntityInterface<StorageService> getEntityInterface(StorageService entity) {
-    return new StorageServiceRepository.StorageServiceEntityInterface(entity);
-  }
-
-  @Override
-  public void prepare(StorageService entity) throws IOException, ParseException {
+  public void prepare(StorageService entity) throws IOException {
+    setFullyQualifiedName(entity);
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
   }
@@ -75,137 +67,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   @Override
   public void storeRelationships(StorageService entity) {
     // Add owner relationship
-    setOwner(entity, entity.getOwner());
-  }
-
-  public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
-    private final StorageService entity;
-
-    public StorageServiceEntityInterface(StorageService entity) {
-      this.entity = entity;
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.STORAGE_SERVICE)
-          .withDeleted(isDeleted());
-    }
-
-    @Override
-    public StorageService getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public StorageService withHref(URI href) {
-      return entity.withHref(href);
-    }
+    storeOwner(entity, entity.getOwner());
   }
 }

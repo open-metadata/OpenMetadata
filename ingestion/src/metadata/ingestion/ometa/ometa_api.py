@@ -15,16 +15,25 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 
-import logging
-import urllib
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+
+from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
+from metadata.utils.secrets_manager import get_secrets_manager
+
+try:
+    from typing import get_args
+except ImportError:
+    from typing_compat import get_args
 
 from pydantic import BaseModel
+from requests.utils import quote
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.location import Location
@@ -35,9 +44,13 @@ from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
@@ -45,27 +58,29 @@ from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
+from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
+from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
-from metadata.ingestion.ometa.openmetadata_rest import (
-    Auth0AuthenticationProvider,
-    AzureAuthenticationProvider,
-    GoogleAuthenticationProvider,
-    MetadataServerConfig,
-    NoOpAuthenticationProvider,
-    OktaAuthenticationProvider,
+from metadata.ingestion.ometa.provider_registry import (
+    InvalidAuthProviderException,
+    auth_provider_registry,
 )
-from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str
+from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
@@ -111,9 +126,15 @@ class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
+    OMetaTopicMixin,
     OMetaVersionMixin,
     OMetaTagMixin,
     GlossaryMixin,
+    OMetaServiceMixin,
+    ESMixin,
+    OMetaServerMixin,
+    OMetaDashboardMixin,
+    OMetaPatchMixin,
     Generic[T, C],
 ):
     """
@@ -134,37 +155,37 @@ class OpenMetadata(
     policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
+    tags_path = "tags"
 
-    def __init__(self, config: MetadataServerConfig, raw_data: bool = False):
+    def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
-        if self.config.auth_provider_type == "google":
-            self._auth_provider: AuthenticationProvider = (
-                GoogleAuthenticationProvider.create(self.config)
+
+        # Load the auth provider init from the registry
+        auth_provider_fn = auth_provider_registry.registry.get(
+            self.config.authProvider.value
+        )
+        if not auth_provider_fn:
+            raise InvalidAuthProviderException(
+                f"Cannot find {self.config.authProvider.value} in {auth_provider_registry.registry}"
             )
-        elif self.config.auth_provider_type == "okta":
-            self._auth_provider: AuthenticationProvider = (
-                OktaAuthenticationProvider.create(self.config)
-            )
-        elif self.config.auth_provider_type == "auth0":
-            self._auth_provider: AuthenticationProvider = (
-                Auth0AuthenticationProvider.create(self.config)
-            )
-        elif self.config.auth_provider_type == "azure":
-            self._auth_provider: AuthenticationProvider = (
-                AzureAuthenticationProvider.create(self.config)
-            )
-        else:
-            self._auth_provider: AuthenticationProvider = (
-                NoOpAuthenticationProvider.create(self.config)
-            )
+
+        self._auth_provider = auth_provider_fn(self.config)
+
+        # Load the secrets' manager client
+        self.secrets_manager_client = get_secrets_manager(
+            config.secretsManagerProvider, config.secretsManagerCredentials
+        )
+
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.api_endpoint,
-            api_version=self.config.api_version,
+            base_url=self.config.hostPort,
+            api_version=self.config.apiVersion,
             auth_header="Authorization",
-            auth_token=lambda: self._auth_provider.get_access_token(),
+            auth_token=self._auth_provider.get_access_token,
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
+        if self.config.enableVersionValidation:
+            self.validate_versions()
 
     def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """
@@ -200,6 +221,14 @@ class OpenMetadata(
             return "/databases"
 
         if issubclass(
+            entity,
+            get_args(
+                Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)]
+            ),
+        ):
+            return "/databaseSchemas"
+
+        if issubclass(
             entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
         ):
             return "/pipelines"
@@ -233,13 +262,28 @@ class OpenMetadata(
         if issubclass(entity, Report):
             return "/reports"
 
-        if issubclass(entity, (Tag, TagCategory)):
+        if issubclass(
+            entity,
+            get_args(
+                Union[
+                    Tag,
+                    self.get_create_entity_type(Tag),
+                    TagCategory,
+                    self.get_create_entity_type(TagCategory),
+                ]
+            ),
+        ):
             return "/tags"
 
-        if issubclass(entity, Glossary):
+        if issubclass(
+            entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
+        ):
             return "/glossaries"
 
-        if issubclass(entity, GlossaryTerm):
+        if issubclass(
+            entity,
+            get_args(Union[GlossaryTerm, self.get_create_entity_type(GlossaryTerm)]),
+        ):
             return "/glossaryTerms"
 
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
@@ -292,6 +336,14 @@ class OpenMetadata(
         ):
             return "/services/storageServices"
 
+        if issubclass(
+            entity,
+            get_args(
+                Union[MlModelService, self.get_create_entity_type(MlModelService)]
+            ),
+        ):
+            return "/services/mlmodelServices"
+
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"
         )
@@ -307,6 +359,9 @@ class OpenMetadata(
 
         if "service" in entity.__name__.lower():
             return self.services_path
+
+        if "tag" in entity.__name__.lower():
+            return self.tags_path
 
         if (
             "user" in entity.__name__.lower()
@@ -336,22 +391,37 @@ class OpenMetadata(
         )
         return create_class
 
+    @staticmethod
+    def update_file_name(create: Type[C], file_name: str) -> str:
+        """
+        Update the filename for services and schemas
+        """
+        if "service" in create.__name__.lower():
+            return file_name.replace("service", "Service")
+
+        if "schema" in create.__name__.lower():
+            return file_name.replace("schema", "Schema")
+
+        return file_name
+
     def get_entity_from_create(self, create: Type[C]) -> Type[T]:
         """
         Inversely, import the Entity type based on the create Entity class
         """
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
-        file_name = class_name.lower()
+        file_name = (
+            class_name.lower()
+            .replace("glossaryterm", "glossaryTerm")
+            .replace("tagcategory", "tagCategory")
+        )
 
         class_path = ".".join(
             [
                 self.class_root,
                 self.entity_path,
                 self.get_module_path(create),
-                file_name.replace("service", "Service")
-                if "service" in create.__name__.lower()
-                else file_name,
+                self.update_file_name(create, file_name),
             ]
         )
 
@@ -378,7 +448,9 @@ class OpenMetadata(
                 f"PUT operations need a CrateEntity, not {entity}"
             )
 
-        resp = self.client.put(self.get_suffix(entity), data=data.json())
+        resp = self.client.put(
+            self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)
+        )
         if not resp:
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
@@ -386,13 +458,20 @@ class OpenMetadata(
         return entity_class(**resp)
 
     def get_by_name(
-        self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        fqn: Union[str, FullyQualifiedEntityName],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{fqdn}", fields=fields)
+        return self._get(
+            entity=entity,
+            path=f"name/{quote(model_str(fqn), safe='')}",
+            fields=fields,
+        )
 
     def get_by_id(
         self,
@@ -404,7 +483,7 @@ class OpenMetadata(
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=uuid_to_str(entity_id), fields=fields)
+        return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -412,7 +491,7 @@ class OpenMetadata(
         """
         Generic GET operation for an entity
         :param entity: Entity Class
-        :param path: URL suffix by FQDN or ID
+        :param path: URL suffix by FQN or ID
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
@@ -425,7 +504,7 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             if err.status_code == 404:
-                logger.info(
+                logger.debug(
                     "GET %s for %s. HTTP %s - %s",
                     entity.__name__,
                     path,
@@ -445,26 +524,26 @@ class OpenMetadata(
             return None
 
     def get_entity_reference(
-        self, entity: Type[T], fqdn: str
+        self, entity: Type[T], fqn: str
     ) -> Optional[EntityReference]:
         """
         Helper method to obtain an EntityReference from
-        a FQDN and the Entity class.
+        a FQN and the Entity class.
         :param entity: Entity Class
-        :param fqdn: Entity instance FQDN
+        :param fqn: Entity instance FQN
         :return: EntityReference or None
         """
-        instance = self.get_by_name(entity, fqdn)
+        instance = self.get_by_name(entity, fqn)
         if instance:
             return EntityReference(
                 id=instance.id,
                 type=get_entity_type(entity),
-                name=instance.fullyQualifiedName,
+                name=model_str(instance.fullyQualifiedName),
                 description=instance.description,
                 href=instance.href,
             )
 
-        logger.error("Cannot find the Entity %s", fqdn)
+        logger.error("Cannot find the Entity %s", fqn)
         return None
 
     # pylint: disable=too-many-arguments,dangerous-default-value
@@ -473,7 +552,7 @@ class OpenMetadata(
         entity: Type[T],
         fields: Optional[List[str]] = None,
         after: str = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
         """
@@ -484,9 +563,8 @@ class OpenMetadata(
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
-        url_params = f"&{urllib.parse.urlencode(params)}" if params else ""
         resp = self.client.get(
-            f"{suffix}{url_limit}{url_after}{url_fields}{url_params}"
+            path=f"{suffix}{url_limit}{url_after}{url_fields}", data=params
         )
 
         if self._use_raw_data:
@@ -497,6 +575,39 @@ class OpenMetadata(
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
 
+    def list_all_entities(
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        limit: int = 1000,
+        params: Optional[Dict[str, str]] = None,
+    ) -> Iterable[T]:
+        """
+        Utility method that paginates over all EntityLists
+        to return a generator to fetch entities
+        :param entity: Entity Type, such as Table
+        :param fields: Extra fields to return
+        :param limit: Number of entities in each pagination
+        :param params: Extra parameters, e.g., {"service": "serviceName"} to filter
+        :return: Generator that will be yielding all Entities
+        """
+
+        # First batch of Entities
+        entity_list = self.list_entities(
+            entity=entity, fields=fields, limit=limit, params=params
+        )
+        for elem in entity_list.entities:
+            yield elem
+
+        after = entity_list.after
+        while after:
+            entity_list = self.list_entities(
+                entity=entity, fields=fields, limit=limit, params=params, after=after
+            )
+            for elem in entity_list.entities:
+                yield elem
+            after = entity_list.after
+
     def list_versions(
         self, entity_id: Union[str, basic.Uuid], entity: Type[T]
     ) -> EntityVersionHistory:
@@ -505,7 +616,7 @@ class OpenMetadata(
         """
 
         suffix = self.get_suffix(entity)
-        path = f"/{uuid_to_str(entity_id)}/versions"
+        path = f"/{model_str(entity_id)}/versions"
         resp = self.client.get(f"{suffix}{path}")
 
         if self._use_raw_data:
@@ -528,6 +639,7 @@ class OpenMetadata(
         entity: Type[T],
         entity_id: Union[str, basic.Uuid],
         recursive: bool = False,
+        hard_delete: bool = False,
     ) -> None:
         """
         API call to delete an entity from entity ID
@@ -538,8 +650,9 @@ class OpenMetadata(
         Returns
             None
         """
-        url = f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}"
-        url += f"?recursive=true" if recursive else ""
+        url = f"{self.get_suffix(entity)}/{model_str(entity_id)}"
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
@@ -559,9 +672,10 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run endpoint health-check. Return `true` if OK
+        Run version api call. Return `true` if response is not None
         """
-        return self.client.get("/health-check")["status"] == "healthy"
+        raw_version = self.client.get("/version")["version"]
+        return raw_version is not None
 
     def close(self):
         """

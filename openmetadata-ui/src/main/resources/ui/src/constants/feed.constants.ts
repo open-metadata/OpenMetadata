@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-export const EntityRegExPattern = /<#E\/([^<>]+?)\/([^<>]+?)\/([^<>]+?)>/;
+export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)::([^<>]+?)>/;
 
 export const EntityRegEx = new RegExp(EntityRegExPattern);
 
 export const mentionRegEx = /\[@(.+?)?\]\((.+?)?\)/g;
 export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
 export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
-export const entityLinkRegEx = /<#E\/([^<>]+?)\/([^<>]+?)>/g;
-export const entityRegex = /<#E\/([^<>]+?)\/([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
+export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
+export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
 export const entityUrlMap = {
-  team: 'teams',
+  team: 'teams-and-users',
   user: 'users',
 };
 
@@ -46,3 +46,31 @@ export const onErrorText = 'Error while deleting message';
 
 export const onUpdatedConversastionError =
   'Error while getting updated conversation';
+
+export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_]*$/;
+export const MENTION_DENOTATION_CHARS = ['@', '#'];
+
+export const TOOLBAR_ITEMS = [
+  ['bold', 'italic', 'strike'],
+  ['blockquote', 'code-block'],
+  [{ list: 'ordered' }, { list: 'bullet' }],
+  ['link'],
+  ['insertMention', 'insertRef', 'emoji'],
+];
+
+export enum TaskOperation {
+  RESOLVE = 'resolve',
+  REJECT = 'close',
+}
+
+export enum PanelTab {
+  TASKS = 'tasks',
+  CONVERSATIONS = 'conversations',
+}
+
+export enum EntityField {
+  DESCRIPTION = 'description',
+  COLUMNS = 'columns',
+  TAGS = 'tags',
+  TASKS = 'tasks',
+}

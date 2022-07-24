@@ -31,7 +31,7 @@ type Props = {
 
 const FeaturesCarousel = ({ data }: Props) => {
   const [isDataChange, setIsDataChange] = useState(false);
-  const sliderRef = useRef<typeof Slider | null>(null);
+  const sliderRef = useRef<Slider | null>(null);
 
   const settings = {
     dots: true,

@@ -24,7 +24,7 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(() => ({ search: '', pathname: '/explore' })),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -80,15 +80,19 @@ const mockSearchResult = {
   resAggTier: mockResponse as unknown as SearchResponse,
   resAggTag: mockResponse as unknown as SearchResponse,
   resAggDatabase: mockResponse as unknown as SearchResponse,
+  resAggDatabaseSchema: mockResponse as unknown as SearchResponse,
+  resAggServiceName: mockResponse as unknown as SearchResponse,
 };
 
 describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <Explore
+        isFilterSelected
         error=""
         fetchCount={mockFunction}
         fetchData={mockFunction}
+        handleFilterChange={mockFunction}
         handlePathChange={mockFunction}
         handleSearchText={mockFunction}
         searchQuery=""
@@ -103,9 +107,11 @@ describe('Test Explore component', () => {
           dashboard: 8,
           pipeline: 5,
           dbtModel: 7,
+          mlModel: 2,
         }}
         updateDashboardCount={mockFunction}
         updateDbtModelCount={mockFunction}
+        updateMlModelCount={mockFunction}
         updatePipelineCount={mockFunction}
         updateTableCount={mockFunction}
         updateTopicCount={mockFunction}
@@ -118,11 +124,11 @@ describe('Test Explore component', () => {
     const pageContainer = await findByTestId(container, 'PageLayout');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, 'tab');
+    const tabs = await findAllByTestId(container, /tab/i);
 
     expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs.length).toBe(4);
+    expect(tabs.length).toBe(5);
   });
 });

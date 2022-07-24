@@ -14,52 +14,50 @@
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
 } from 'Models';
-import { ColumnTestType } from '../../enums/columnTest.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
-  EntityReference,
+  ColumnTestType,
   Table,
   TableData,
   TableJoins,
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
-
-export interface DatasetOwner extends EntityReference {
-  displayName?: string;
-}
 
 export interface DatasetDetailsProps {
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   version?: string;
+  entityId?: string;
   joins: TableJoins;
   tableType: TableType;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
-  users: Array<User>;
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
   dataModel?: Table['dataModel'];
   activeTab: number;
-  owner: DatasetOwner;
+  owner: EntityReference;
   description: string;
   tableProfile: Table['tableProfile'];
   tableQueries: Table['tableQueries'];
@@ -67,10 +65,10 @@ export interface DatasetDetailsProps {
   tier: TagLabel;
   sampleData: TableData;
   entityLineage: EntityLineage;
-  followers: Array<User>;
+  followers: Array<EntityReference>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  entityThread: EntityThread[];
+  entityThread: Thread[];
   deleted?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
@@ -78,10 +76,12 @@ export interface DatasetDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  entityFieldTaskCount: EntityFieldThreadCount[];
   testMode: DatasetTestModeType;
   tableTestCase: TableTest[];
   showTestForm: boolean;
   selectedColumn: string;
+  paging: Paging;
   qualityTestFormHandler: (
     tabValue: number,
     testMode?: DatasetTestModeType,
@@ -105,11 +105,18 @@ export interface DatasetDetailsProps {
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
   handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: ColumnTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
   handleRemoveColumnTest: (
     columnName: string,
     testType: ColumnTestType
   ) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
+  fetchFeedHandler: (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => void;
+  handleExtentionUpdate: (updatedTable: Table) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

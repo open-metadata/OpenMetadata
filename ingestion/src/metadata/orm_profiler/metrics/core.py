@@ -123,6 +123,15 @@ class Metric(ABC):
         """
         return True
 
+    @classmethod
+    def is_window_metric(cls) -> bool:
+        """
+        Marks the metric as a window metric.
+
+        By default, assume it is not a window metric
+        """
+        return False
+
     @property
     def metric_type(self):
         """
@@ -139,7 +148,7 @@ class Metric(ABC):
         return self.col.type.python_type if self.col else None
 
 
-MetricType = TypeVar("MetricType", bound=Metric)
+TMetric = TypeVar("TMetric", bound=Metric)
 
 
 class StaticMetric(Metric, ABC):

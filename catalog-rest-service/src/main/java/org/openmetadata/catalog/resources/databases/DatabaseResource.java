@@ -23,10 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -56,13 +53,9 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/databases")
@@ -75,7 +68,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
-    Entity.withHref(uriInfo, db.getTables());
+    Entity.withHref(uriInfo, db.getDatabaseSchemas());
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
@@ -95,11 +88,11 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     }
   }
 
-  static final String FIELDS = "owner,tables,usageSummary,location";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Database.class);
+  static final String FIELDS = "owner,databaseSchemas,usageSummary,location";
 
   @GET
   @Operation(
+      operationId = "listDatabases",
       summary = "List databases",
       tags = "databases",
       description =
@@ -143,15 +136,15 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+      throws IOException {
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDatabaseVersion",
       summary = "List database versions",
       tags = "databases",
       description = "Get a list of all the versions of a database identified by `id`",
@@ -165,13 +158,14 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "database Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDatabaseByID",
       summary = "Get a database",
       tags = "databases",
       description = "Get a database by `id`.",
@@ -197,13 +191,14 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getDatabaseByFQN",
       summary = "Get a database by name",
       tags = "databases",
       description = "Get a database by fully qualified name.",
@@ -229,13 +224,14 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the database",
       tags = "databases",
       description = "Get a version of the database by given `id`",
@@ -257,12 +253,13 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
   @POST
   @Operation(
+      operationId = "createDatabase",
       summary = "Create a database",
       tags = "databases",
       description = "Create a database under an existing `service`.",
@@ -270,28 +267,26 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The database",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabase.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Database database = getDatabase(securityContext, create);
-    database = addHref(uriInfo, dao.create(uriInfo, database));
-    return Response.created(database.getHref()).entity(database).build();
+      throws IOException {
+    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, database, true);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchDatabase",
       summary = "Update a database",
       tags = "databases",
       description = "Update an existing database using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -304,24 +299,13 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Database database = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(database).getEntityReference(),
-        dao.getOriginalOwner(database),
-        patch);
-
-    PatchResponse<Database> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDatabase",
       summary = "Create or update database",
       tags = "databases",
       description = "Create a database, if it does not exist or update an existing database.",
@@ -329,35 +313,36 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The updated database ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabase.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException, ParseException {
-    Database database = getDatabase(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(database));
-    PutResponse<Database> response = dao.createOrUpdate(uriInfo, database);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, database, true);
   }
 
   @DELETE
   @Path("/{id}/location")
-  @Operation(summary = "Remove the location", tags = "databases", description = "Remove the location")
+  @Operation(
+      operationId = "deleteLocation",
+      summary = "Remove the location",
+      tags = "databases",
+      description = "Remove the location")
   public Database deleteLocation(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, "location");
+      throws IOException {
     dao.deleteLocation(id);
-    Database database = dao.get(uriInfo, id, fields);
+    Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     return addHref(uriInfo, database);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDatabase",
       summary = "Delete a database",
       tags = "databases",
       description = "Delete a database by `id`. Database can only be deleted if it has no tables.",
@@ -372,21 +357,16 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Database> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {
-    return new Database()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withService(create.getService())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private Database getDatabase(CreateDatabase create, String user) {
+    return copy(new Database(), create, user).withService(create.getService());
   }
 }

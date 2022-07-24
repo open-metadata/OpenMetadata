@@ -40,7 +40,7 @@ from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
-from metadata.orm_profiler.validations.core import validate
+from metadata.orm_profiler.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 
@@ -54,7 +54,7 @@ def test_table_row_count_to_equal():
         rowCount=100,
     )
 
-    res_ok = validate(
+    res_ok = validation_enum_registry.registry["tableRowCountToEqual"](
         TableRowCountToEqual(value=100),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
@@ -65,7 +65,7 @@ def test_table_row_count_to_equal():
         result="Found 100.0 rows vs. the expected 100",
     )
 
-    res_ko = validate(
+    res_ko = validation_enum_registry.registry["tableRowCountToEqual"](
         TableRowCountToEqual(value=50),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
@@ -81,7 +81,7 @@ def test_table_row_count_to_equal():
         profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
     )
 
-    res_aborted = validate(
+    res_aborted = validation_enum_registry.registry["tableRowCountToEqual"](
         TableRowCountToEqual(value=100),
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
@@ -103,7 +103,7 @@ def test_table_row_count_to_be_between():
         rowCount=100,
     )
 
-    res_ok = validate(
+    res_ok = validation_enum_registry.registry["tableRowCountToBeBetween"](
         TableRowCountToBeBetween(minValue=20, maxValue=120),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
@@ -114,7 +114,7 @@ def test_table_row_count_to_be_between():
         result="Found 100.0 rows vs. the expected range [20, 120].",
     )
 
-    res_ko = validate(
+    res_ko = validation_enum_registry.registry["tableRowCountToBeBetween"](
         TableRowCountToBeBetween(minValue=120, maxValue=200),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
@@ -130,7 +130,7 @@ def test_table_row_count_to_be_between():
         profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
     )
 
-    res_aborted = validate(
+    res_aborted = validation_enum_registry.registry["tableRowCountToBeBetween"](
         TableRowCountToBeBetween(minValue=120, maxValue=200),
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
@@ -145,14 +145,14 @@ def test_table_row_count_to_be_between():
 
 def test_table_column_count_to_equal():
     """
-    Check TableRowCountToEqual
+    Check TableColumnCountToEqual
     """
     table_profile = TableProfile(
         profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
         columnCount=5,
     )
 
-    res_ok = validate(
+    res_ok = validation_enum_registry.registry["tableColumnCountToEqual"](
         TableColumnCountToEqual(columnCount=5),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
@@ -163,7 +163,7 @@ def test_table_column_count_to_equal():
         result="Found 5.0 columns vs. the expected 5",
     )
 
-    res_ko = validate(
+    res_ko = validation_enum_registry.registry["tableColumnCountToEqual"](
         TableColumnCountToEqual(columnCount=20),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
@@ -179,7 +179,7 @@ def test_table_column_count_to_equal():
         profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
     )
 
-    res_aborted = validate(
+    res_aborted = validation_enum_registry.registry["tableColumnCountToEqual"](
         TableColumnCountToEqual(columnCount=5),
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
@@ -202,7 +202,7 @@ def test_column_values_to_be_between():
         max=3,
     )
 
-    res_ok = validate(
+    res_ok = validation_enum_registry.registry["columnValuesToBeBetween"](
         ColumnValuesToBeBetween(
             minValue=0,
             maxValue=3,
@@ -216,7 +216,7 @@ def test_column_values_to_be_between():
         result="Found min=1.0, max=3.0 vs. the expected min=0, max=3.",
     )
 
-    res_ko = validate(
+    res_ko = validation_enum_registry.registry["columnValuesToBeBetween"](
         ColumnValuesToBeBetween(
             minValue=0,
             maxValue=2,
@@ -235,7 +235,7 @@ def test_column_values_to_be_between():
         min=1,
     )
 
-    res_aborted = validate(
+    res_aborted = validation_enum_registry.registry["columnValuesToBeBetween"](
         ColumnValuesToBeBetween(
             minValue=0,
             maxValue=3,
@@ -264,7 +264,7 @@ def test_column_values_to_be_unique():
         uniqueCount=10,
     )
 
-    res_ok = validate(
+    res_ok = validation_enum_registry.registry["columnValuesToBeUnique"](
         ColumnValuesToBeUnique(),
         col_profile=column_profile,
         execution_date=EXECUTION_DATE,
@@ -283,7 +283,7 @@ def test_column_values_to_be_unique():
         uniqueCount=5,
     )
 
-    res_ko = validate(
+    res_ko = validation_enum_registry.registry["columnValuesToBeUnique"](
         ColumnValuesToBeUnique(),
         col_profile=column_profile_ko,
         execution_date=EXECUTION_DATE,
@@ -300,7 +300,7 @@ def test_column_values_to_be_unique():
 
     column_profile_aborted = ColumnProfile()
 
-    res_aborted = validate(
+    res_aborted = validation_enum_registry.registry["columnValuesToBeUnique"](
         ColumnValuesToBeUnique(),
         col_profile=column_profile_aborted,
         execution_date=EXECUTION_DATE,
@@ -325,7 +325,7 @@ def test_column_values_to_be_not_null():
         nullCount=0,
     )
 
-    res_ok = validate(
+    res_ok = validation_enum_registry.registry["columnValuesToBeNotNull"](
         ColumnValuesToBeNotNull(),
         col_profile=column_profile,
         execution_date=EXECUTION_DATE,
@@ -340,7 +340,7 @@ def test_column_values_to_be_not_null():
         nullCount=10,
     )
 
-    res_ko = validate(
+    res_ko = validation_enum_registry.registry["columnValuesToBeNotNull"](
         ColumnValuesToBeNotNull(),
         col_profile=column_profile_ko,
         execution_date=EXECUTION_DATE,
@@ -354,7 +354,7 @@ def test_column_values_to_be_not_null():
 
     column_profile_aborted = ColumnProfile()
 
-    res_aborted = validate(
+    res_aborted = validation_enum_registry.registry["columnValuesToBeNotNull"](
         ColumnValuesToBeNotNull(),
         col_profile=column_profile_aborted,
         execution_date=EXECUTION_DATE,
@@ -378,7 +378,7 @@ def test_column_value_length_to_be_between():
         maxLength=16,
     )
 
-    res_ok = validate(
+    res_ok = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
         ColumnValueLengthsToBeBetween(minLength=2, maxLength=20),
         col_profile=col_profile,
         execution_date=EXECUTION_DATE,
@@ -389,7 +389,7 @@ def test_column_value_length_to_be_between():
         result="Found minLength=4.0, maxLength=16.0 vs. the expected minLength=2, maxLength=20.",
     )
 
-    res_ko = validate(
+    res_ko = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
         ColumnValueLengthsToBeBetween(minLength=10, maxLength=20),
         col_profile=col_profile,
         execution_date=EXECUTION_DATE,
@@ -403,7 +403,7 @@ def test_column_value_length_to_be_between():
 
     col_profile_aborted = ColumnProfile(minLength=4)
 
-    res_aborted = validate(
+    res_aborted = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
         ColumnValueLengthsToBeBetween(minLength=2, maxLength=20),
         col_profile=col_profile_aborted,
         execution_date=EXECUTION_DATE,

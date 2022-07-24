@@ -1,0 +1,37 @@
+source:
+  type: snowflake-usage
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Snowflake
+      username: "<username>"
+      password: "<password>"
+      database: "<database>"
+      warehouse: "<warehouse>"
+      hostPort: account.region.service.snowflakecomputing.com
+      account: "<acount>"
+      privateKey: "<privateKey>"
+      snowflakePrivatekeyPassphrase: "<passphrase>"
+      scheme: "<scheme>"
+      role: "<role>"
+  sourceConfig:
+    config:
+      queryLogDuration: "<query log duration integer>"
+      stageFileLocation: "<path to store the stage file>"
+      resultLimit: "<query log limit integer>"
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: "/tmp/snowflake_usage"
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: "/tmp/snowflake_usage"
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"

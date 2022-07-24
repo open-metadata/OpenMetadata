@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize } from 'lodash';
-import { FormatedTableData } from 'Models';
+import { FormattedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
+import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -30,17 +35,43 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
+  const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
+
+  const getSuggestionLabel = (fqn: string, type: string, name: string) => {
+    if (type === EntityType.TABLE) {
+      const database = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
+      const schema = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
+
+      return database && schema
+        ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
+        : name;
+    } else {
+      return name;
+    }
+  };
 
   useEffect(() => {
     getSuggestions(
       searchValue,
       SearchIndex[entityType as keyof typeof SearchIndex]
-    ).then((res: AxiosResponse) => {
-      setData(formatDataResponse(res.data.suggest['table-suggest'][0].options));
-    });
+    )
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setData(
+            formatDataResponse(res.data.suggest['metadata-suggest'][0].options)
+          );
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-suggestions-error']
+        );
+      });
   }, [searchValue]);
 
   useEffect(() => {
@@ -50,7 +81,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   return (
     <div>
       <input
-        className="tw-form-inputs tw-px-3 tw-py-1 tw-w-full"
+        className="tw-form-inputs tw-form-inputs-padding tw-w-full"
         placeholder={`Search for ${capitalize(entityType)}s...`}
         type="search"
         value={searchValue}
@@ -61,7 +92,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           aria-labelledby="menu-button"
           aria-orientation="vertical"
           className="tw-origin-top-right tw-absolute tw-z-20
-          tw-w-full tw-mt-1 tw-rounded-md tw-shadow-lg
+          tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg
         tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
           role="menu">
           {data.map((entity) => (
@@ -74,20 +105,23 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   setIsOpen(false);
                   onSelectHandler?.({
                     description: entity.description,
-                    displayName: entity.name,
+                    displayName: entity.displayName,
                     id: entity.id,
                     type: entity.entityType as string,
-                    name: entity.fullyQualifiedName,
+                    name: entity.name,
+                    fullyQualifiedName: entity.fullyQualifiedName,
                   });
                 }}>
                 <img
                   alt={entity.serviceType}
-                  className="tw-inline tw-h-4 tw-w-4 tw-mr-2"
+                  className="tw-inline tw-h-4 tw-mr-2"
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
-                {entity.database
-                  ? `${entity.database}.${entity.name}`
-                  : entity.name}
+                {getSuggestionLabel(
+                  entity.fullyQualifiedName,
+                  entity.entityType as string,
+                  entity.name
+                )}
               </span>
             </div>
           ))}

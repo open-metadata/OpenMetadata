@@ -1,0 +1,27 @@
+---
+source:
+  type: presto
+  serviceName: local_presto
+  serviceConnection:
+    config:
+      type: Presto
+      scheme: presto
+      username: admin
+      password: password
+      hostPort: localhost:8080
+      catalog: tpcds
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    type: OpenMetadata
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

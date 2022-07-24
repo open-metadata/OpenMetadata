@@ -20,13 +20,13 @@
 }
 .ingestion-rounder {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border: 3px solid #d9ceee;
   background: white;
   border-radius: 50%;
   margin-top: 0.15rem;
-  z-index: 100;
+  z-index: 1;
 }
 .ingestion-rounder.active {
   border-color: #7147e8;
@@ -38,7 +38,7 @@
 .ingestion-rounder.completed::after {
   content: '\2713';
   display: block;
-  margin-top: -5px;
+  margin-top: -4px;
   font-weight: 900;
   color: #7147e8;
 }
@@ -68,4 +68,31 @@
 .edit-ingestion-line {
   width: 65%;
   left: 100px;
+}
+
+.add-service-line {
+  width: 67%;
+  left: 108px;
+}
+
+.add-ingestion-line {
+  width: 68%;
+  left: 90px;
+}
+
+.ingestion-deploy-line {
+  top: 29px;
+  bottom: 0;
+  position: absolute;
+  width: 100%;
+  height: 4px;
+}
+
+.ingestion-deploy-rounder {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  margin-top: 0.15rem;
+  z-index: 1;
 }

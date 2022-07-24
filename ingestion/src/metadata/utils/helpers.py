@@ -8,13 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import logging
-import traceback
+import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -24,23 +21,46 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceRequest,
-)
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.entityReference import (
+    EntityReference,
+    EntityReferenceList,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
+from metadata.utils.logger import utils_logger
 
-logger = logging.getLogger(__name__)
+logger = utils_logger()
+
+om_chart_type_dict = {
+    "line": ChartType.Line,
+    "big_number": ChartType.Line,
+    "big_number_total": ChartType.Line,
+    "dual_line": ChartType.Line,
+    "line_multi": ChartType.Line,
+    "table": ChartType.Table,
+    "dist_bar": ChartType.Bar,
+    "bar": ChartType.Bar,
+    "box_plot": ChartType.BoxPlot,
+    "boxplot": ChartType.BoxPlot,
+    "histogram": ChartType.Histogram,
+    "treemap": ChartType.Area,
+    "area": ChartType.Area,
+    "pie": ChartType.Pie,
+    "text": ChartType.Text,
+    "scatter": ChartType.Scatter,
+}
 
 
 def get_start_and_end(duration):
@@ -48,7 +68,8 @@ def get_start_and_end(duration):
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = (today + timedelta(3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    # Add one day to make sure we are handling today's queries
+    end = (today + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
@@ -61,61 +82,82 @@ def snake_to_camel(s):
 
 
 def get_database_service_or_create(
-    config, metadata_config, service_name=None
+    config: WorkflowSource, metadata_config, service_name=None
 ) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
-    config.service_name = service_name if service_name else config.service_name
-    service = metadata.get_by_name(entity=DatabaseService, fqdn=config.service_name)
-    if service:
-        return service
-    else:
+    if not service_name:
+        service_name = config.serviceName
+    service: DatabaseService = metadata.get_by_name(
+        entity=DatabaseService, fqn=service_name
+    )
+    if not service:
+        config_dict = config.dict()
+        service_connection_config = config_dict.get("serviceConnection").get("config")
         password = (
-            config.password.get_secret_value()
-            if hasattr(config, "password") and config.password
+            service_connection_config.get("password").get_secret_value()
+            if service_connection_config and service_connection_config.get("password")
             else None
         )
-        service = {
-            "databaseConnection": {
-                "hostPort": config.host_port if hasattr(config, "host_port") else None,
-                "username": config.username if hasattr(config, "username") else None,
-                "password": password,
-                "database": config.database if hasattr(config, "database") else None,
-                "connectionOptions": config.options
-                if hasattr(config, "options")
-                else None,
-                "connectionArguments": config.connect_args
-                if hasattr(config, "connect_args")
-                else None,
+
+        # Use a JSON to dynamically parse the pydantic model
+        # based on the serviceType
+        # TODO revisit me
+        service_json = {
+            "connection": {
+                "config": {
+                    "hostPort": service_connection_config.get("hostPort")
+                    if service_connection_config
+                    else None,
+                    "username": service_connection_config.get("username")
+                    if service_connection_config
+                    else None,
+                    "password": password,
+                    "database": service_connection_config.get("database")
+                    if service_connection_config
+                    else None,
+                    "connectionOptions": service_connection_config.get(
+                        "connectionOptions"
+                    )
+                    if service_connection_config
+                    else None,
+                    "connectionArguments": service_connection_config.get(
+                        "connectionArguments"
+                    )
+                    if service_connection_config
+                    else None,
+                }
             },
-            "name": config.service_name,
+            "name": service_name,
             "description": "",
-            "serviceType": config.get_service_type(),
+            "serviceType": service_connection_config.get("type").value
+            if service_connection_config
+            else None,
         }
-        logger.info(f"Creating DatabaseService instance for {config.service_name}")
-        created_service = metadata.create_or_update(
-            CreateDatabaseServiceRequest(**service)
+
+        created_service: DatabaseService = metadata.create_or_update(
+            CreateDatabaseServiceRequest(**service_json)
         )
+        logger.info(f"Creating DatabaseService instance for {service_name}")
         return created_service
+    return service
 
 
 def get_messaging_service_or_create(
     service_name: str,
     message_service_type: str,
-    schema_registry_url: str,
-    brokers: List[str],
+    config: dict,
     metadata_config,
 ) -> MessagingService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=MessagingService, fqdn=service_name)
+    service: MessagingService = metadata.get_by_name(
+        entity=MessagingService, fqn=service_name
+    )
     if service is not None:
         return service
     else:
         created_service = metadata.create_or_update(
             CreateMessagingServiceRequest(
-                name=service_name,
-                serviceType=message_service_type,
-                brokers=brokers,
-                schemaRegistry=schema_registry_url,
+                name=service_name, serviceType=message_service_type, connection=config
             )
         )
         return created_service
@@ -124,43 +166,32 @@ def get_messaging_service_or_create(
 def get_dashboard_service_or_create(
     service_name: str,
     dashboard_service_type: str,
-    username: str,
-    password: str,
-    dashboard_url: str,
+    config: dict,
     metadata_config,
 ) -> DashboardService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DashboardService, fqdn=service_name)
+    service: DashboardService = metadata.get_by_name(
+        entity=DashboardService, fqn=service_name
+    )
     if service is not None:
         return service
     else:
+        dashboard_config = {"config": config}
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
                 name=service_name,
                 serviceType=dashboard_service_type,
-                username=username,
-                password=password,
-                dashboardUrl=dashboard_url,
+                connection=dashboard_config,
             )
-        )
-        return created_service
-
-
-def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreatePipelineServiceRequest(**service_json)
         )
         return created_service
 
 
 def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=StorageService, fqdn=service_json["name"])
+    service: StorageService = metadata.get_by_name(
+        entity=StorageService, fqn=service_json["name"]
+    )
     if service is not None:
         return service
     else:
@@ -170,77 +201,19 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
         return created_service
 
 
-def get_database_service_or_create_v2(service_json, metadata_config) -> DatabaseService:
-    metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateDatabaseServiceRequest(**service_json)
-        )
-    return created_service
-
-
 def datetime_to_ts(date: datetime) -> int:
     """
-    Convert a given date to a timestamp as an Int
+    Convert a given date to a timestamp as an Int in milliseconds
     """
-    return int(date.timestamp())
+    return int(date.timestamp() * 1_000)
 
 
-def create_lineage(from_table, to_table, query_info, metadata):
-    try:
-        from_fqdn = f"{query_info.get('service_name')}.{_get_formmated_table_name(str(from_table))}"
-        from_entity: Table = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
-        to_fqdn = f"{query_info.get('service_name')}.{_get_formmated_table_name(str(to_table))}"
-        to_entity: Table = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
-        if not from_entity or not to_entity:
-            return None
-
-        lineage = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=from_entity.id.__root__,
-                    type=query_info["from_type"],
-                ),
-                toEntity=EntityReference(
-                    id=to_entity.id.__root__,
-                    type=query_info["to_type"],
-                ),
-            )
-        )
-
-        created_lineage = metadata.add_lineage(lineage)
-        logger.info(f"Successfully added Lineage {created_lineage}")
-
-    except Exception as err:
-        logger.debug(traceback.print_exc())
-        logger.error(err)
-
-
-def _get_formmated_table_name(table_name):
-    return table_name.replace("[", "").replace("]", "")
-
-
-def ingest_lineage(query_info, metadata_config):
-    from sqllineage.runner import LineageRunner
-
-    try:
-        result = LineageRunner(query_info["sql"])
-        metadata = OpenMetadata(metadata_config)
-        for intermediate_table in result.intermediate_tables:
-            for source_table in result.source_tables:
-                create_lineage(source_table, intermediate_table, query_info, metadata)
-            for target_table in result.target_tables:
-                create_lineage(intermediate_table, target_table, query_info, metadata)
-
-        if not result.intermediate_tables:
-            for target_table in result.target_tables:
-                for source_table in result.source_tables:
-                    create_lineage(source_table, target_table, query_info, metadata)
-    except Exception as err:
-        logger.error(str(err))
+def get_formatted_entity_name(name: str) -> Optional[str]:
+    return (
+        name.replace("[", "").replace("]", "").replace("<default>.", "")
+        if name
+        else None
+    )
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
@@ -251,3 +224,59 @@ def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     rows = alchemy_helper.execute_query()
     for row in rows:
         yield row
+
+
+def replace_special_with(raw: str, replacement: str) -> str:
+    """
+    Replace special characters in a string by a hyphen
+    :param raw: raw string to clean
+    :param replacement: string used to replace
+    :return: clean string
+    """
+    return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
+
+
+def get_standard_chart_type(raw_chart_type: str) -> str:
+    """
+    Get standard chart type supported by OpenMetadata based on raw chart type input
+    :param raw_chart_type: raw chart type to be standardize
+    :return: standard chart type
+    """
+    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+
+
+def get_chart_entities_from_id(
+    chart_ids: List[str], metadata: OpenMetadata, service_name: str
+) -> List[EntityReferenceList]:
+    entities = []
+    for id in chart_ids:
+        chart: Chart = metadata.get_by_name(
+            entity=Chart,
+            fqn=fqn.build(
+                metadata, Chart, chart_name=str(id), service_name=service_name
+            ),
+        )
+        if chart:
+            entity = EntityReference(id=chart.id, type="chart")
+            entities.append(entity)
+    return entities
+
+
+def find_in_list(element: Any, container: Iterable[Any]) -> Optional[Any]:
+    """
+    If the element is in the container, return it.
+    Otherwise, return None
+    :param element: to find
+    :param container: container with element
+    :return: element or None
+    """
+    return next(iter([elem for elem in container if elem == element]), None)
+
+
+def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
+    """
+    If the column exists in the table, return it
+    """
+    return next(
+        (col for col in table.columns if col.name.__root__ == column_name), None
+    )

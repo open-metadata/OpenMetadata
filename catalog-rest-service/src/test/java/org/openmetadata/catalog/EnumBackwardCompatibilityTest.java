@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.type.TagLabel.State;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 
 /**
  * Enum ordinal number is stored in the database. New enums must be added at the end to ensure backward compatibility
@@ -33,7 +33,8 @@ class EnumBackwardCompatibilityTest {
   /** */
   @Test
   void testRelationshipEnumBackwardCompatible() {
-    assertEquals(17, Relationship.values().length);
+    assertEquals(18, Relationship.values().length);
+    assertEquals(17, Relationship.REACTED_TO.ordinal());
     assertEquals(16, Relationship.REVIEWS.ordinal());
   }
 
@@ -63,7 +64,7 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagSourceEnumBackwardCompatible() {
-    assertEquals(0, Source.TAG.ordinal());
-    assertEquals(1, Source.GLOSSARY.ordinal());
+    assertEquals(0, TagSource.TAG.ordinal());
+    assertEquals(1, TagSource.GLOSSARY.ordinal());
   }
 }

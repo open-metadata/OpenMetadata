@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addWebhook } from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -23,13 +23,13 @@ import { ROUTES } from '../../constants/constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddWebhookPage: FunctionComponent = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const showToast = useToastContext();
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToWebhooks = () => {
@@ -43,32 +43,35 @@ const AddWebhookPage: FunctionComponent = () => {
   const handleSave = (data: CreateWebhook) => {
     setStatus('waiting');
     addWebhook(data)
-      .then(() => {
-        setStatus('success');
-        setTimeout(() => {
-          setStatus('initial');
-          goToWebhooks();
-        }, 500);
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setStatus('success');
+          setTimeout(() => {
+            setStatus('initial');
+            goToWebhooks();
+          }, 500);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
         setStatus('initial');
       });
   };
 
   return (
     <PageContainerV1>
-      <AddWebhook
-        allowAccess={isAdminUser || isAuthDisabled}
-        header="Add Webhook"
-        mode={FormSubmitType.ADD}
-        saveState={status}
-        onCancel={handleCancel}
-        onSave={handleSave}
-      />
+      <div className="tw-self-center">
+        <AddWebhook
+          allowAccess={isAdminUser || isAuthDisabled}
+          header="Add Webhook"
+          mode={FormSubmitType.ADD}
+          saveState={status}
+          onCancel={handleCancel}
+          onSave={handleSave}
+        />
+      </div>
     </PageContainerV1>
   );
 };

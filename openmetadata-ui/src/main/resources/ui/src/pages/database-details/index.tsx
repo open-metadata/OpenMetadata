@@ -13,20 +13,23 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
-import { isNil } from 'lodash';
+import { compare, Operation } from 'fast-json-patch';
+import { isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityThread,
-  ExtraInfo,
-  Paging,
-} from 'Models';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { EntityFieldThreadCount, ExtraInfo } from 'Models';
+import React, {
+  Fragment,
+  FunctionComponent,
+  RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
   getDatabaseDetailsByFQN,
+  getDatabaseSchemas,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
 import {
@@ -35,10 +38,11 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
-import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
+import { getAllTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
+import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -49,74 +53,85 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
-import TagsViewer from '../../components/tags-viewer/tags-viewer';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
-  getExplorePathWithSearch,
+  getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
-  getTableDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import {
-  onConfirmText,
-  onErrorText,
-  onUpdatedConversastionError,
-} from '../../constants/feed.constants';
+import { EntityField } from '../../constants/feed.constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
-import { Table } from '../../generated/entity/data/table';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
-import useToastContext from '../../hooks/useToastContext';
+import { Paging } from '../../generated/type/paging';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import jsonData from '../../jsons/en';
 import {
-  getEntityMissingError,
+  getEntityDeleteMessage,
+  getEntityName,
   hasEditAccess,
   isEven,
+  pluralize,
 } from '../../utils/CommonUtils';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
-import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
   getUpdatedThread,
+  updateThreadData,
 } from '../../utils/FeedUtils';
+import {
+  getExplorePathWithInitFilters,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
+import { getErrorText } from '../../utils/StringsUtils';
+import { getUsagePercentile } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
-  // User Id for getting followers
-  const [slashedTableName, setSlashedTableName] = useState<
+  const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const showToast = useToastContext();
   const { databaseFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
-  const [tableData, setTableData] = useState<Array<Table>>([]);
+  const [schemaData, setSchemaData] = useState<Array<DatabaseSchema>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
-    databaseFQN.split('.').slice(-1).pop() || ''
+    databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
   );
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
-  const [tablePaging, setTablePaging] = useState<Paging>(pagingObject);
+  const [databaseSchemaPaging, setSchemaPaging] =
+    useState<Paging>(pagingObject);
+  const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
+    useState<number>(0);
   const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(
     getCurrentDatabaseDetailsTab(tab)
   );
-  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState('');
 
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -126,20 +141,23 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const history = useHistory();
   const isMounting = useRef(true);
 
   const tabs = [
     {
-      name: 'Tables',
+      name: 'Schemas',
       icon: {
-        alt: 'tables',
-        name: 'table-grey',
-        title: 'Tables',
-        selectedName: 'table',
+        alt: 'schemas',
+        name: 'schema-grey',
+        title: 'Schemas',
+        selectedName: 'schemas',
       },
-      count: tableInstanceCount,
+      count: databaseSchemaInstanceCount,
       isProtected: false,
       position: 1,
     },
@@ -173,7 +191,7 @@ const DatabaseDetails: FunctionComponent = () => {
       key: 'Owner',
       value:
         database?.owner?.type === 'team'
-          ? getTeamDetailsPath(
+          ? getTeamAndUserDetailsPath(
               database?.owner?.displayName || database?.owner?.name || ''
             )
           : database?.owner?.displayName || database?.owner?.name || '',
@@ -181,37 +199,43 @@ const DatabaseDetails: FunctionComponent = () => {
         database?.owner?.displayName || database?.owner?.name || '',
       isLink: database?.owner?.type === 'team',
       openInNewTab: false,
+      profileName:
+        database?.owner?.type === OwnerType.USER
+          ? database?.owner?.name
+          : undefined,
     },
   ];
 
-  const fetchDatabaseTables = (paging?: string) => {
+  const fetchDatabaseSchemas = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
-      getDatabaseTables(databaseFQN, paging, [
-        'owner',
-        'tags',
-        'columns',
-        'usageSummary',
-      ])
+      getDatabaseSchemas(databaseFQN, pagingObj, ['owner', 'usageSummary'])
         .then((res: AxiosResponse) => {
           if (res.data.data) {
-            setTableData(res.data.data);
-            setTablePaging(res.data.paging);
-            setTableInstanceCount(res.data.paging.total);
+            setSchemaData(res.data.data);
+            setSchemaPaging(res.data.paging);
+            setSchemaInstanceCount(res.data.paging.total);
           } else {
-            setTableData([]);
-            setTablePaging(pagingObject);
+            setSchemaData([]);
+            setSchemaPaging(pagingObject);
+
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
           resolve();
         })
-        .catch(() => {
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-database-schemas-error']
+          );
+
           reject();
         });
     });
   };
 
-  const fetchDatabaseTablesAndDBTModels = () => {
+  const fetchDatabaseSchemasAndDBTModels = () => {
     setIsLoading(true);
-    Promise.allSettled([fetchDatabaseTables()]).finally(() => {
+    Promise.allSettled([fetchDatabaseSchemas()]).finally(() => {
       setIsLoading(false);
     });
   };
@@ -234,57 +258,68 @@ const DatabaseDetails: FunctionComponent = () => {
   const getEntityFeedCount = () => {
     getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
       .then((res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-        setEntityFieldThreadCount(res.data.counts);
+        if (res.data) {
+          setFeedCount(res.data.totalCount);
+          setEntityFieldThreadCount(res.data.counts);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching feed count',
-        });
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
       });
   };
 
   const getDetailsByFQN = () => {
     getDatabaseDetailsByFQN(databaseFQN, ['owner'])
       .then((res: AxiosResponse) => {
-        const { description, id, name, service, serviceType } = res.data;
-        setDatabase(res.data);
-        setDescription(description);
-        setDatabaseId(id);
-        setDatabaseName(name);
+        if (res.data) {
+          const { description, id, name, service, serviceType } = res.data;
+          setDatabase(res.data);
+          setDescription(description);
+          setDatabaseId(id);
+          setDatabaseName(name);
 
-        setServiceType(serviceType);
+          setServiceType(serviceType);
 
-        setSlashedTableName([
-          {
-            name: service.name,
-            url: service.name
-              ? getServiceDetailsPath(
-                  service.name,
-                  ServiceCategory.DATABASE_SERVICES
-                )
-              : '',
-            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-          },
-          {
-            name: name,
-            url: '',
-            activeTitle: true,
-          },
-        ]);
-        fetchDatabaseTablesAndDBTModels();
+          setSlashedDatabaseName([
+            {
+              name: startCase(ServiceCategory.DATABASE_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+            },
+            {
+              name: service.name,
+              url: service.name
+                ? getServiceDetailsPath(
+                    service.name,
+                    ServiceCategory.DATABASE_SERVICES
+                  )
+                : '',
+              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+            },
+            {
+              name: getEntityName(res.data),
+              url: '',
+              activeTitle: true,
+            },
+          ]);
+          fetchDatabaseSchemasAndDBTModels();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        if (err.response?.status === 404) {
-          setIsError(true);
-        } else {
-          const errMsg = err.message || 'Error while fetching database details';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
-        }
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-database-details-error']
+        );
+        setError(errMsg);
+        showErrorToast(errMsg);
+      })
+      .finally(() => {
         setIsLoading(false);
       });
   };
@@ -314,19 +349,23 @@ const DatabaseDetails: FunctionComponent = () => {
         description: updatedHTML,
       };
       saveUpdatedDatabaseData(updatedDatabaseDetails)
-        .then(() => {
-          setDatabase(updatedDatabaseDetails);
-          setDescription(updatedHTML);
-          setIsEdit(false);
-          getEntityFeedCount();
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            setDatabase(updatedDatabaseDetails);
+            setDescription(updatedHTML);
+            getEntityFeedCount();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
-          const errMsg =
-            err.response?.data.message || 'Error while updating description';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-database-error']
+          );
+        })
+        .finally(() => {
+          setIsEdit(false);
         });
     }
   };
@@ -348,51 +387,65 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const tablePagingHandler = (cursorType: string) => {
+  const databaseSchemaPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
-      tablePaging[cursorType as keyof typeof tablePaging]
+      databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
     setIsLoading(true);
-    fetchDatabaseTables(pagingString).finally(() => {
+    fetchDatabaseSchemas(pagingString).finally(() => {
       setIsLoading(false);
     });
+    setCurrentPage(activePage ?? 1);
   };
 
   const handleUpdateOwner = (owner: Database['owner']) => {
     const updatedData = {
       ...database,
-      owner,
+      owner: { ...database?.owner, ...owner },
     };
 
     return new Promise<void>((_, reject) => {
       saveUpdatedDatabaseData(updatedData as Database)
         .then((res: AxiosResponse) => {
-          setDatabase(res.data);
-          reject();
+          if (res.data) {
+            setDatabase(res.data);
+            reject();
+          } else {
+            reject();
+
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-database-error']
+          );
           reject();
-          const msg = err.response?.data.message;
-          showToast({
-            variant: 'error',
-            body: msg ?? `Error while updating owner for ${databaseFQN}`,
-          });
         });
     });
   };
 
-  const fetchActivityFeed = () => {
+  const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN), after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
-        setEntityThread(data);
+        const { data, paging: pagingObj } = res.data;
+        if (data) {
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching entity feeds',
-        });
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -417,31 +470,33 @@ const DatabaseDetails: FunctionComponent = () => {
               }
             });
           });
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while posting feed',
-        });
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
       });
   };
 
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res: AxiosResponse) => {
-        setEntityThread((pre) => [...pre, res.data]);
-        getEntityFeedCount();
-        showToast({
-          variant: 'success',
-          body: 'Conversation created successfully',
-        });
+        if (res.data) {
+          setEntityThread((pre) => [...pre, res.data]);
+          getEntityFeedCount();
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while creating the conversation',
-        });
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
       });
   };
 
@@ -450,48 +505,112 @@ const DatabaseDetails: FunctionComponent = () => {
       .then(() => {
         getUpdatedThread(threadId)
           .then((data) => {
-            setEntityThread((pre) => {
-              return pre.map((thread) => {
-                if (thread.id === data.id) {
-                  return {
-                    ...thread,
-                    posts: data.posts.slice(-3),
-                    postsCount: data.postsCount,
-                  };
-                } else {
-                  return thread;
-                }
+            if (data) {
+              setEntityThread((pre) => {
+                return pre.map((thread) => {
+                  if (thread.id === data.id) {
+                    return {
+                      ...thread,
+                      posts: data.posts && data.posts.slice(-3),
+                      postsCount: data.postsCount,
+                    };
+                  } else {
+                    return thread;
+                  }
+                });
               });
-            });
+            } else {
+              showErrorToast(
+                jsonData['api-error-messages']['unexpected-server-response']
+              );
+            }
           })
           .catch((error) => {
-            const message = error?.message;
-            showToast({
-              variant: 'error',
-              body: message ?? onUpdatedConversastionError,
-            });
+            showErrorToast(
+              error,
+              jsonData['api-error-messages']['fetch-updated-conversation-error']
+            );
           });
-
-        showToast({
-          variant: 'success',
-          body: onConfirmText,
-        });
       })
-      .catch((error) => {
-        const message = error?.message;
-        showToast({ variant: 'error', body: message ?? onErrorText });
+      .catch((error: AxiosError) => {
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['delete-message-error']
+        );
       });
   };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
+  const fetchTablesCount = () => {
+    // limit=0 will fetch empty data list with total count
+    getAllTables('', 0, databaseFQN)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setTableInstanceCount(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setTableInstanceCount(0);
+      });
+  };
+
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreFeed = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isFeedLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isFeedLoading) {
+      fetchActivityFeed(pagingObj.after);
+    }
+  };
+
+  const getDeleteEntityMessage = () => {
+    if (!databaseSchemaInstanceCount && !tableInstanceCount) {
+      return;
+    }
+
+    const counts = [];
+    if (databaseSchemaInstanceCount) {
+      counts.push(pluralize(databaseSchemaInstanceCount, 'Schema'));
+    }
+    if (tableInstanceCount) {
+      counts.push(pluralize(tableInstanceCount, 'Table'));
+    }
+
+    return getEntityDeleteMessage('Database', counts.join(' and '));
+  };
+
   useEffect(() => {
     getEntityFeedCount();
+    fetchTablesCount();
   }, []);
 
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
-        `${getExplorePathWithSearch(
-          appState.inPageSearchText
-        )}?database=${databaseName}&service_type=${serviceType}`
+        getExplorePathWithInitFilters(
+          appState.inPageSearchText,
+          undefined,
+          `database=${databaseName}&service_type=${serviceType}`
+        )
       );
     }
   }, [appState.inPageSearchText]);
@@ -509,8 +628,14 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
+    } else {
+      setEntityThread([]);
     }
   }, [tab]);
+
+  useEffect(() => {
+    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
+  }, [isInView, paging, isentityThreadLoading]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -522,21 +647,22 @@ const DatabaseDetails: FunctionComponent = () => {
     <>
       {isLoading ? (
         <Loader />
-      ) : isError ? (
+      ) : error ? (
         <ErrorPlaceHolder>
-          {getEntityMissingError('database', databaseFQN)}
+          <p data-testid="error-message">{error}</p>
         </ErrorPlaceHolder>
       ) : (
         <PageContainer>
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="page-container">
-            <TitleBreadcrumb titleLinks={slashedTableName} />
+            <TitleBreadcrumb titleLinks={slashedDatabaseName} />
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
-                  {getInfoElements(info)}
+                  <EntitySummaryDetails data={info} />
+
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                     <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                       |
@@ -551,7 +677,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 blurWithBodyBG
                 description={description}
                 entityFieldThreads={getEntityFieldThreadCounts(
-                  'description',
+                  EntityField.DESCRIPTION,
                   entityFieldThreadCount
                 )}
                 entityFqn={databaseFQN}
@@ -574,16 +700,16 @@ const DatabaseDetails: FunctionComponent = () => {
               />
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
-                  <>
+                  <Fragment>
                     <table
                       className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-tables">
+                      data-testid="database-databaseSchemas">
                       <thead data-testid="table-header">
                         <tr className="tableHead-row">
                           <th
                             className="tableHead-cell"
                             data-testid="header-name">
-                            Table Name
+                            Schema Name
                           </th>
                           <th
                             className="tableHead-cell"
@@ -600,39 +726,34 @@ const DatabaseDetails: FunctionComponent = () => {
                             data-testid="header-usage">
                             Usage
                           </th>
-                          <th
-                            className="tableHead-cell tw-w-60"
-                            data-testid="header-tags">
-                            Tags
-                          </th>
                         </tr>
                       </thead>
                       <tbody className="tableBody">
-                        {tableData.length > 0 ? (
-                          tableData.map((table, index) => (
+                        {schemaData.length > 0 ? (
+                          schemaData.map((schema, index) => (
                             <tr
                               className={classNames(
                                 'tableBody-row',
                                 !isEven(index + 1) ? 'odd-row' : null
                               )}
-                              data-testid="tabale-column"
+                              data-testid="table-column"
                               key={index}>
                               <td className="tableBody-cell">
                                 <Link
                                   to={
-                                    table.fullyQualifiedName
-                                      ? getTableDetailsPath(
-                                          table.fullyQualifiedName
+                                    schema.fullyQualifiedName
+                                      ? getDatabaseSchemaDetailsPath(
+                                          schema.fullyQualifiedName
                                         )
                                       : ''
                                   }>
-                                  {table.name}
+                                  {schema.name}
                                 </Link>
                               </td>
                               <td className="tableBody-cell">
-                                {table.description?.trim() ? (
+                                {schema.description?.trim() ? (
                                   <RichTextEditorPreviewer
-                                    markdown={table.description}
+                                    markdown={schema.description}
                                   />
                                 ) : (
                                   <span className="tw-no-description">
@@ -641,31 +762,15 @@ const DatabaseDetails: FunctionComponent = () => {
                                 )}
                               </td>
                               <td className="tableBody-cell">
-                                <p>
-                                  {getOwnerFromId(table?.owner?.id)
-                                    ?.displayName ||
-                                    getOwnerFromId(table?.owner?.id)?.name ||
-                                    '--'}
-                                </p>
+                                <p>{getEntityName(schema?.owner) || '--'}</p>
                               </td>
                               <td className="tableBody-cell">
                                 <p>
                                   {getUsagePercentile(
-                                    table.usageSummary?.weeklyStats
+                                    schema.usageSummary?.weeklyStats
                                       ?.percentileRank || 0
                                   )}
                                 </p>
-                              </td>
-                              <td className="tableBody-cell">
-                                <TagsViewer
-                                  sizeCap={-1}
-                                  tags={(table.tags || []).map((tag) => ({
-                                    ...tag,
-                                    tagFQN: tag.tagFQN?.startsWith('Tier.Tier')
-                                      ? tag.tagFQN.split('.')[1]
-                                      : tag.tagFQN,
-                                  }))}
-                                />
                               </td>
                             </tr>
                           ))
@@ -681,44 +786,63 @@ const DatabaseDetails: FunctionComponent = () => {
                       </tbody>
                     </table>
                     {Boolean(
-                      !isNil(tablePaging.after) || !isNil(tablePaging.before)
+                      !isNil(databaseSchemaPaging.after) ||
+                        !isNil(databaseSchemaPaging.before)
                     ) && (
                       <NextPrevious
-                        paging={tablePaging}
-                        pagingHandler={tablePagingHandler}
+                        currentPage={currentPage}
+                        pageSize={PAGE_SIZE}
+                        paging={databaseSchemaPaging}
+                        pagingHandler={databaseSchemaPagingHandler}
+                        totalCount={databaseSchemaPaging.total}
                       />
                     )}
-                  </>
+                  </Fragment>
                 )}
                 {activeTab === 2 && (
                   <div
-                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                     id="activityfeed">
                     <div />
                     <ActivityFeedList
+                      hideFeedFilter
+                      hideThreadFilter
                       isEntityFeed
                       withSidePanel
                       className=""
                       deletePostHandler={deletePostHandler}
                       entityName={databaseName}
                       feedList={entityThread}
-                      isLoading={isentityThreadLoading}
                       postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
                     />
                     <div />
                   </div>
                 )}
                 {activeTab === 3 && (
                   <ManageTabComponent
+                    allowDelete
                     hideTier
-                    currentUser={database?.owner?.id}
+                    isRecursiveDelete
+                    currentUser={database?.owner}
+                    deletEntityMessage={getDeleteEntityMessage()}
+                    entityId={database?.id}
+                    entityName={database?.name}
+                    entityType={EntityType.DATABASE}
                     hasEditAccess={hasEditAccess(
                       database?.owner?.type || '',
                       database?.owner?.id || ''
                     )}
+                    manageSectionType={EntityType.DATABASE}
                     onSave={handleUpdateOwner}
                   />
                 )}
+                <div
+                  data-testid="observer-element"
+                  id="observer-element"
+                  ref={elementRef as RefObject<HTMLDivElement>}>
+                  {getLoader()}
+                </div>
               </div>
             </div>
             {threadLink ? (
@@ -728,6 +852,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
+                updateThreadHandler={updateThreadHandler}
                 onCancel={onThreadPanelClose}
               />
             ) : null}

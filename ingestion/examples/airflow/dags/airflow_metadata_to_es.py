@@ -34,13 +34,19 @@ default_args = {
 config = """
 {
   "source": {
-    "type": "metadata",
-    "config": {
-      "include_tables": "true",
-      "include_topics": "true",
-      "include_dashboards": "true",
-      "limit_records": 10
-    }
+    "type": "metadata_elasticsearch",
+    "serviceName": "openMetadata",
+    "serviceConnection": {
+      "config":{
+        "type":"MetadataES",
+        "includeTables": "true",
+        "includeUsers": "true",
+        "includeTopics": "true",
+        "includeDashboards": "true",
+        "limitRecords": 10
+      } 
+    },
+    "sourceConfig":{"config":{}}
   },
   "sink": {
     "type": "elasticsearch",
@@ -52,11 +58,10 @@ config = """
       "es_port": 9200
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
@@ -77,7 +82,7 @@ with DAG(
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     start_date=days_ago(1),
-    is_paused_upon_creation=False,
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(

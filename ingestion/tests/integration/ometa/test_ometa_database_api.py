@@ -21,6 +21,12 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -28,7 +34,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OMetaDatabaseTest(TestCase):
@@ -39,7 +44,7 @@ class OMetaDatabaseTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -51,8 +56,14 @@ class OMetaDatabaseTest(TestCase):
 
     service = CreateDatabaseServiceRequest(
         name="test-service-db",
-        serviceType=DatabaseServiceType.MySQL,
-        databaseConnection=DatabaseConnection(hostPort="localhost:1000"),
+        serviceType=DatabaseServiceType.Mysql,
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                password="password",
+                hostPort="http://localhost:1234",
+            )
+        ),
     )
 
     @classmethod
@@ -79,21 +90,17 @@ class OMetaDatabaseTest(TestCase):
         """
         Clean up
         """
-        db_id = str(
-            cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service-db.test-db"
-            ).id.__root__
-        )
-
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service-db"
+                entity=DatabaseService, fqn="test-service-db"
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Database, entity_id=db_id, recursive=True)
         cls.metadata.delete(
-            entity=DatabaseService, entity_id=service_id, recursive=True
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):
@@ -133,7 +140,7 @@ class OMetaDatabaseTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -146,7 +153,7 @@ class OMetaDatabaseTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Database, entity_id=res_name.id)
@@ -177,7 +184,7 @@ class OMetaDatabaseTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -208,7 +215,7 @@ class OMetaDatabaseTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -224,7 +231,7 @@ class OMetaDatabaseTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=Database, entity_id=res_name.id.__root__, version=0.1
@@ -240,7 +247,7 @@ class OMetaDatabaseTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=Database, fqdn=res.fullyQualifiedName
+            entity=Database, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id

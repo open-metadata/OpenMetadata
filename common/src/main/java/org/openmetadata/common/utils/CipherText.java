@@ -13,7 +13,6 @@
 
 package org.openmetadata.common.utils;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
@@ -22,7 +21,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Random;
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -31,7 +32,7 @@ public final class CipherText {
   private static CipherText instance = null;
   private static SecretKeySpec secretKey;
 
-  private CipherText() throws NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
+  private CipherText() throws NoSuchAlgorithmException {
     // Generate random set of bytes to be used as secret key
     byte[] bytes = new byte[16];
     new Random().nextBytes(bytes);
@@ -41,14 +42,16 @@ public final class CipherText {
     secretKey = new SecretKeySpec(Arrays.copyOf(bytes, 16), "AES");
   }
 
-  public static CipherText instance() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+  public static CipherText instance() throws NoSuchAlgorithmException {
     if (instance == null) {
       instance = new CipherText();
     }
     return instance;
   }
 
-  public String encrypt(String strToEncrypt) throws GeneralSecurityException, UnsupportedEncodingException {
+  public String encrypt(String strToEncrypt)
+      throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException,
+          BadPaddingException {
     if (strToEncrypt == null) {
       return null;
     }

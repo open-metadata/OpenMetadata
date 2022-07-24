@@ -13,7 +13,7 @@
 
 import React, { FunctionComponent } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getGlossaryTermsPath } from '../../../constants/constants';
+import { getGlossaryTermsPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import Avatar from '../avatar/Avatar';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -53,7 +53,7 @@ const GlossaryDataCard: FunctionComponent<Props> = ({
       <div className="tw-mb-3 tw-flex tw-items-center">
         {owner && (
           <div className="tw-inline-block tw-mr-2">
-            <Avatar name={owner} textClass="tw-text-xs" width="22" />
+            <Avatar name={owner} textClass="tw-text-xs" width="20" />
           </div>
         )}
         <span className="tw-text-grey-muted">{owner || 'No owner'}</span>

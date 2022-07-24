@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { isUndefined } from 'lodash';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
@@ -26,7 +29,8 @@ export const searchData: Function = (
   sortField: string,
   sortOrder: string,
   searchIndex: string,
-  onlyDeleted = false
+  onlyDeleted = false,
+  trackTotalHits = false
 ): Promise<AxiosResponse> => {
   return APIClient.get(
     `/search/query?${getSearchAPIQuery(
@@ -37,7 +41,8 @@ export const searchData: Function = (
       sortField,
       sortOrder,
       searchIndex,
-      onlyDeleted
+      onlyDeleted,
+      trackTotalHits
     )}`
   );
 };
@@ -55,21 +60,30 @@ export const fetchAuthenticationConfig: Function =
     return APIClient.get('/config/auth');
   };
 
-export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get('/config/authorizer');
+export const fetchSandboxConfig = (): Promise<AxiosResponse> => {
+  return APIClient.get('/config/sandbox');
+};
+
+export const fetchSlackConfig = (): Promise<AxiosResponse> => {
+  return APIClient.get('/config/slackChat');
+};
+
+export const fetchAirflowConfig = (): Promise<AxiosResponse> => {
+  return APIClient.get('/config/airflow');
 };
 
 export const getSuggestions: Function = (
   queryString: string,
   searchIndex?: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/suggest?q=${queryString}&index=${
+  const params = {
+    q: queryString,
+    index:
       searchIndex ??
-      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}`
-    }
-    `
-  );
+      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`,
+  };
+
+  return APIClient.get(`/search/suggest`, { params });
 };
 
 export const getVersion: Function = () => {
@@ -96,20 +110,136 @@ export const getLoggedInUserPermissions: Function =
     return APIClient.get('/permissions');
   };
 
-export const getInitialUsers: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=*&from=0&size=5&index=user_search_index`
-  );
+export const getInitialEntity = (
+  index: SearchIndex,
+  params = {} as AxiosRequestConfig
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/query`, {
+    params: {
+      q: WILD_CARD_CHAR,
+      from: 0,
+      size: 5,
+      index,
+      ...params,
+    },
+  });
 };
+
+export const getSuggestedUsers = (term: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.USER}`);
+};
+
+export const getSuggestedTeams = (term: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.TEAM}`);
+};
+
 export const getUserSuggestions: Function = (
   term: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/suggest?q=${term}&index=${SearchIndex.USER},${SearchIndex.TEAM}`
+  const params = {
+    q: term,
+    index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
+  };
+
+  return APIClient.get(`/search/suggest`, { params });
+};
+
+export const getTeamsByQuery = async (params: {
+  q: string;
+  from?: number;
+  size?: number;
+  isJoinable?: boolean;
+}) => {
+  const response = await APIClient.get(`/search/query`, {
+    params: { index: SearchIndex.TEAM, ...params },
+  });
+
+  return response.data;
+};
+
+export const getTagSuggestions: Function = (
+  term: string
+): Promise<AxiosResponse> => {
+  const params = {
+    q: term,
+    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
+  };
+
+  return APIClient.get(`/search/suggest`, { params });
+};
+
+export const getSearchedUsers = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(queryString, from, size, '', '', '', SearchIndex.USER);
+};
+
+export const getSearchedTeams = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
+};
+
+export const getSearchedUsersAndTeams = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(
+    queryString,
+    from,
+    size,
+    '',
+    '',
+    '',
+    `${SearchIndex.USER},${SearchIndex.TEAM}`
   );
 };
-export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
-  );
+
+export const deleteEntity: Function = (
+  entityType: string,
+  entityId: string,
+  isRecursive: boolean,
+  isSoftDelete = false
+): Promise<AxiosResponse> => {
+  let path = '';
+
+  if (isSoftDelete) {
+    path = getURLWithQueryFields(`/${entityType}/${entityId}`);
+  } else {
+    const searchParams = new URLSearchParams({ hardDelete: `true` });
+    if (!isUndefined(isRecursive)) {
+      searchParams.set('recursive', `${isRecursive}`);
+    }
+    path = getURLWithQueryFields(
+      `/${entityType}/${entityId}`,
+      '',
+      `${searchParams.toString()}`
+    );
+  }
+
+  return APIClient.delete(path);
+};
+
+export const getAdvancedFieldOptions = (
+  q: string,
+  index: string,
+  field: string | undefined
+): Promise<AxiosResponse> => {
+  const params = { index, field, q };
+
+  return APIClient.get(`/search/suggest`, { params });
+};
+
+export const getEntityCount = (
+  path: string,
+  database?: string
+): Promise<AxiosResponse> => {
+  const params = { database, limit: 0 };
+
+  return APIClient.get(`/${path}`, { params });
 };

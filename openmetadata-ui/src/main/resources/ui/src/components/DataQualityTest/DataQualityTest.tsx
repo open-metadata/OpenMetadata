@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { ColumnTestType } from '../../enums/columnTest.enum';
+import { ColumnTestType } from '../../generated/entity/data/table';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -107,14 +107,14 @@ const DataQualityTest = ({
                   <DropdownIcon
                     style={{
                       transform: 'rotate(180deg)',
-                      marginTop: '1px',
+                      marginTop: '2px',
                       color: '#fff',
                     }}
                   />
                 ) : (
                   <DropdownIcon
                     style={{
-                      marginTop: '1px',
+                      marginTop: '2px',
                       color: '#fff',
                     }}
                   />

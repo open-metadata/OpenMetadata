@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,8 +31,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.jwt.JWKSKey;
+import org.openmetadata.catalog.security.jwt.JWKSResponse;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 import org.openmetadata.catalog.util.TestUtils;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -53,13 +58,55 @@ class ConfigResourceTest extends CatalogApplicationTest {
   void get_auth_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("auth");
     AuthenticationConfiguration auth = TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthenticationConfiguration().toString(), auth.toString());
+    assertEquals(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
+    assertEquals(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
+    assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
+    assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
+    assertEquals(config.getAuthenticationConfiguration().getJwtPrincipalClaims(), auth.getJwtPrincipalClaims());
+    assertEquals(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
   }
 
   @Test
   void get_authorizer_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("authorizer");
     AuthorizerConfiguration auth = TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthorizerConfiguration().toString(), auth.toString());
+    assertEquals(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
+    assertEquals(config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
+    assertEquals(config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
+    assertEquals(config.getAuthorizerConfiguration().getBotPrincipals(), auth.getBotPrincipals());
+    assertEquals(config.getAuthorizerConfiguration().getContainerRequestFilter(), auth.getContainerRequestFilter());
+    assertEquals(
+        config.getAuthorizerConfiguration().getEnableSecureSocketConnection(), auth.getEnableSecureSocketConnection());
+    assertEquals(config.getAuthorizerConfiguration().getEnforcePrincipalDomain(), auth.getEnforcePrincipalDomain());
+  }
+
+  @Test
+  void get_airflow_configs_200_OK() throws IOException {
+    WebTarget target = getConfigResource("airflow");
+    AirflowConfigurationForAPI auth = TestUtils.get(target, AirflowConfigurationForAPI.class, TEST_AUTH_HEADERS);
+    assertEquals(config.getAirflowConfiguration().getApiEndpoint(), auth.getApiEndpoint());
+  }
+
+  @Test
+  void get_slack_chat_configs_200_OK() throws IOException {
+    WebTarget target = getConfigResource("slackChat");
+    SlackChatConfiguration slackChatConfiguration =
+        TestUtils.get(target, SlackChatConfiguration.class, TEST_AUTH_HEADERS);
+    assertEquals(config.getSlackChatConfiguration().getApiToken(), slackChatConfiguration.getApiToken());
+    assertEquals(config.getSlackChatConfiguration().getBotName(), slackChatConfiguration.getBotName());
+  }
+
+  @Test
+  void get_jwks_configs_200_OK() throws IOException {
+    WebTarget target = getConfigResource("jwks");
+    JWKSResponse auth = TestUtils.get(target, JWKSResponse.class, TEST_AUTH_HEADERS);
+    assertNotNull(auth);
+    assertEquals(1, auth.getJwsKeys().size());
+    JWKSKey jwksKey = auth.getJwsKeys().get(0);
+    assertEquals("RS256", jwksKey.getAlg());
+    assertEquals("sig", jwksKey.getUse());
+    assertEquals("RSA", jwksKey.getKty());
+    assertNotNull(jwksKey.getN());
+    assertNotNull(jwksKey.getE());
   }
 }

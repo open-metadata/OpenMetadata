@@ -13,6 +13,23 @@
 
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
+  export interface EntityReference {
+    deleted?: boolean;
+
+    description?: string;
+
+    displayName?: string;
+
+    fullyQualifiedName?: string;
+
+    href?: string;
+
+    id: string;
+
+    name?: string;
+
+    type: string;
+  }
 
   export type Match = {
     params: {
@@ -184,12 +201,19 @@ declare module 'Models' {
     href: string;
   };
 
-  export type FormatedTableData = {
+  export type SlackChatConfig = {
+    apiToken: string;
+    botName: string;
+    channels: string[];
+  };
+
+  export type FormattedTableData = {
     id: string;
     name: string;
+    displayName: string;
     description: string;
     fullyQualifiedName: string;
-    owner: string;
+    owner: EntityReference;
     tableType?: string;
     tags: string[] | TagLabel[];
     dailyStats?: number;
@@ -201,10 +225,12 @@ declare module 'Models' {
     tier: string | TagLabel;
     highlight?: {
       description: string[];
-      table_name: string[];
+      name: string[];
     };
     index: string;
+    type?: string;
     database?: string;
+    databaseSchema?: string;
     deleted?: boolean;
     entityType?: string;
   };
@@ -217,13 +243,26 @@ declare module 'Models' {
     id: string;
   };
 
+  export type FormattedTeamsData = {
+    name: string;
+    displayName: string;
+    type: string;
+    id: string;
+  };
+
   export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;
-    fqdn: string;
+    fullyQualifiedName: string;
+    fqdn?: string;
     type: string;
     id: string;
     description?: string;
+  };
+
+  export type SearchedUsersAndTeams = {
+    users: FormattedUsersData[];
+    teams: FormattedTeamsData[];
   };
 
   export type TagOption = {
@@ -236,9 +275,9 @@ declare module 'Models' {
     description: string;
     display_name: string;
     entity_type: string;
-    fqdn: string;
+    fullyQualifiedName: string;
     glossary_id: string;
-    glossary_name: string;
+    glossary: { name: string };
     last_updated_timestamp: number;
     name: string;
   }
@@ -253,7 +292,7 @@ declare module 'Models' {
   }
 
   export interface GlossaryTermAssets {
-    data: FormatedTableData[];
+    data: FormattedTableData[];
     total: number;
     currPage: number;
   }
@@ -324,7 +363,7 @@ declare module 'Models' {
     _type?: string;
     _id?: string;
     _score?: number;
-    _source: FormatedTableData;
+    _source: FormattedTableData;
   };
 
   export type SearchResponse = {
@@ -366,7 +405,8 @@ declare module 'Models' {
     | 'databaseServices'
     | 'messagingServices'
     | 'dashboardServices'
-    | 'pipelineServices';
+    | 'pipelineServices'
+    | 'mlmodelServices';
 
   export type SampleData = {
     columns: Array<string>;
@@ -474,15 +514,8 @@ declare module 'Models' {
     placeholderText?: string;
     openInNewTab?: boolean;
     showLabel?: boolean;
-  };
-
-  export type TourSteps = {
-    content?: string | React.ReactNode;
-    actionType?: string;
-    position?: string | number[];
-    selector?: string;
-    userTypeText?: string;
-    waitTimer?: number;
+    avatarWidth?: string;
+    profileName?: string;
   };
 
   export interface FormErrorData {
@@ -537,40 +570,17 @@ declare module 'Models' {
   };
 
   export interface UserPermissions {
-    UpdateOwner: boolean;
-    UpdateDescription: boolean;
-    SuggestDescription: boolean;
-    UpdateLineage: boolean;
-    SuggestTags: boolean;
-    UpdateTags: boolean;
-    UpdateTeam: boolean;
+    EditOwner: boolean;
+    EditDescription: boolean;
+    EditLineage: boolean;
+    EditTags: boolean;
+    TeamEditUsers: boolean;
   }
   export interface EditorContentRef {
     getEditorContent: () => string;
   }
 
   // Feed interfaces and types
-  export interface EntityThread {
-    id: string;
-    href: string;
-    threadTs: number;
-    about: string;
-    createdBy: string;
-    updatedAt: number;
-    updatedBy: string;
-    resolved: boolean;
-    message: string;
-    postsCount: number;
-    posts: Post[];
-  }
-
-  export interface Post {
-    message: string;
-    postTs: number;
-    from: string;
-    id: string;
-  }
-
   export interface EntityFieldThreadCount {
     count: number;
     entityLink: string;
@@ -581,5 +591,17 @@ declare module 'Models' {
     entityLink: string;
     count: number;
     entityField: string;
+  }
+
+  export type ImageShape = 'circle' | 'square';
+
+  export interface SelectableOption {
+    readonly label: string;
+    readonly value: string;
+  }
+
+  export interface ScrollHandle {
+    left: boolean;
+    right: boolean;
   }
 }

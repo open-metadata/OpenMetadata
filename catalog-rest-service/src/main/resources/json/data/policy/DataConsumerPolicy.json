@@ -1,0 +1,28 @@
+{
+  "name": "DataConsumerPolicy",
+  "displayName": "Data Consumer Policy",
+  "fullyQualifiedName": "DataConsumerPolicy",
+  "description": "Policy for Data Consumer to perform operations on metadata entities",
+  "policyType": "AccessControl",
+  "enabled": true,
+  "rules": [
+    {
+      "name": "DataConsumerPolicy-editDescription",
+      "operation": "EditDescription",
+      "allow": true,
+      "priority": 1000
+    },
+    {
+      "name": "DataConsumerPolicy-editOwner",
+      "operation": "EditOwner",
+      "allow": true,
+      "priority": 1000
+    },
+    {
+      "name": "DataConsumerPolicy-editTags",
+      "operation": "EditTags",
+      "allow": true,
+      "priority": 1000
+    }
+  ]
+}

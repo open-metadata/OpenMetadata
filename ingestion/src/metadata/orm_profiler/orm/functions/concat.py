@@ -12,17 +12,17 @@
 """
 Define Concat function
 """
+# Keep SQA docs style defining custom constructs
+# pylint: disable=consider-using-f-string,duplicate-code
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.orm_profiler.metrics.core import CACHE
 from metadata.orm_profiler.orm.registry import Dialects
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class ConcatFn(FunctionElement):
@@ -38,10 +38,6 @@ def _(element, compiler, **kw):
 @compiles(ConcatFn, Dialects.SQLite)
 @compiles(ConcatFn, Dialects.Vertica)
 def _(element, compiler, **kw):
-    """
-    This actually returns the squared STD, but as
-    it is only required for tests we can live with it.
-    """
 
     if len(element.clauses) < 2:
         raise ValueError("We need to concat at least two elements")

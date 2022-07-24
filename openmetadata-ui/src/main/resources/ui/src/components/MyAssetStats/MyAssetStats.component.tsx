@@ -11,26 +11,31 @@
  *  limitations under the License.
  */
 
+import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
-import { observer } from 'mobx-react';
-import { EntityCounts } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import AppState from '../../AppState';
 import {
   getExplorePathWithSearch,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   ROUTES,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { UserType } from '../../enums/user.enum';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
 
 type Props = {
+  countDashboards: number;
+  countPipelines: number;
   countServices: number;
-  ingestionCount: number;
-  entityCounts: EntityCounts;
+  countMlModal: number;
+  countTables: number;
+  countTopics: number;
+  countTeams: number;
+  countUsers: number;
 };
 type Summary = {
   icon: string;
@@ -42,11 +47,15 @@ type Summary = {
 };
 
 const MyAssetStats: FunctionComponent<Props> = ({
+  countDashboards,
+  countPipelines,
+  countMlModal,
   countServices,
-  entityCounts,
-  ingestionCount,
+  countTables,
+  countTopics,
+  countTeams,
+  countUsers,
 }: Props) => {
-  const { users, userTeams } = AppState;
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
 
   const getSummarydata = () => {
@@ -54,30 +63,37 @@ const MyAssetStats: FunctionComponent<Props> = ({
       tables: {
         icon: Icons.TABLE_GREY,
         data: 'Tables',
-        count: entityCounts.tableCount,
+        count: countTables,
         link: getExplorePathWithSearch(undefined, 'tables'),
         dataTestId: 'tables',
       },
       topics: {
         icon: Icons.TOPIC_GREY,
         data: 'Topics',
-        count: entityCounts.topicCount,
+        count: countTopics,
         link: getExplorePathWithSearch(undefined, 'topics'),
         dataTestId: 'topics',
       },
       dashboards: {
         icon: Icons.DASHBOARD_GREY,
         data: 'Dashboards',
-        count: entityCounts.dashboardCount,
+        count: countDashboards,
         link: getExplorePathWithSearch(undefined, 'dashboards'),
         dataTestId: 'dashboards',
       },
       pipelines: {
         icon: Icons.PIPELINE_GREY,
         data: 'Pipelines',
-        count: entityCounts.pipelineCount,
+        count: countPipelines,
         link: getExplorePathWithSearch(undefined, 'pipelines'),
         dataTestId: 'pipelines',
+      },
+      mlModal: {
+        icon: Icons.MLMODAL,
+        data: 'ML Models',
+        count: countMlModal,
+        link: getExplorePathWithSearch(undefined, 'mlmodels'),
+        dataTestId: 'mlmodels',
       },
       service: {
         icon: Icons.SERVICE,
@@ -86,25 +102,19 @@ const MyAssetStats: FunctionComponent<Props> = ({
         link: ROUTES.SERVICES,
         dataTestId: 'service',
       },
-      ingestion: {
-        icon: Icons.INGESTION,
-        data: 'Ingestion',
-        count: ingestionCount,
-        dataTestId: 'ingestion',
-      },
       user: {
         icon: Icons.USERS,
         data: 'Users',
-        count: users.length,
-        link: ROUTES.USER_LIST,
+        count: countUsers,
+        link: getTeamAndUserDetailsPath(UserType.USERS),
         dataTestId: 'user',
         adminOnly: true,
       },
       teams: {
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
-        count: userTeams.length,
-        link: getTeamDetailsPath(),
+        count: countTeams,
+        link: getTeamAndUserDetailsPath(),
         dataTestId: 'terms',
       },
     };
@@ -112,57 +122,63 @@ const MyAssetStats: FunctionComponent<Props> = ({
 
   useEffect(() => {
     setdataSummary(getSummarydata());
-  }, [userTeams, users, countServices]);
+  }, []);
 
   return (
-    <div
-      className="tw-mb-3"
-      data-testid="data-summary-container"
-      id="assetStatsCount">
-      {Object.values(dataSummary).map((data, index) => (
-        <div
-          className="tw-flex tw-items-center tw-justify-between tw-mb-2"
-          data-testid={`${data.dataTestId}-summary`}
-          key={index}>
-          <div className="tw-flex">
-            <SVGIcons
-              alt="icon"
-              className="tw-h-4 tw-w-4 tw-self-center"
-              icon={data.icon}
-            />
-            {data.link ? (
-              data.adminOnly ? (
-                <NonAdminAction
-                  position="bottom"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+    <div className="ant-entity-card">
+      <Card
+        data-testid="data-summary-container"
+        id="assetStatsCount"
+        style={leftPanelAntCardStyle}>
+        {Object.values(dataSummary).map((data, index) => (
+          <div
+            className="tw-flex tw-items-center tw-justify-between"
+            data-testid={`${data.dataTestId}-summary`}
+            key={index}>
+            <div className="tw-flex">
+              <SVGIcons
+                alt="icon"
+                className="tw-h-4 tw-w-4 tw-self-center"
+                icon={data.icon}
+              />
+              {data.link ? (
+                data.adminOnly ? (
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Link
+                      className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
+                      data-testid={data.dataTestId}
+                      to={data.link}>
+                      <Button
+                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                        type="text">
+                        {data.data}
+                      </Button>
+                    </Link>
+                  </NonAdminAction>
+                ) : (
                   <Link
-                    className="tw-font-medium tw-pl-2"
+                    className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
                     data-testid={data.dataTestId}
                     to={data.link}>
-                    <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      type="text">
                       {data.data}
-                    </button>
+                    </Button>
                   </Link>
-                </NonAdminAction>
+                )
               ) : (
-                <Link
-                  className="tw-font-medium tw-pl-2"
-                  data-testid={data.dataTestId}
-                  to={data.link}>
-                  <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
-                    {data.data}
-                  </button>
-                </Link>
-              )
-            ) : (
-              <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
-            )}
+                <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
+              )}
+            </div>
+            {!isNil(data.count) && getCountBadge(data.count, '', false)}
           </div>
-          {!isNil(data.count) && getCountBadge(data.count, '', false)}
-        </div>
-      ))}
+        ))}
+      </Card>
     </div>
   );
 };
 
-export default observer(MyAssetStats);
+export default MyAssetStats;

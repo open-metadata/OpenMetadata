@@ -15,10 +15,15 @@ package org.openmetadata.catalog.exception;
 
 import java.security.Principal;
 import java.util.UUID;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
+import org.openmetadata.catalog.entity.teams.Team;
 
 public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
   public static final String FERNET_KEY_NULL = "Fernet key is null";
+  public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
+  public static final String FIELD_ALREADY_TOKENIZED = "Field is already tokenized";
+  public static final String INVALID_ENTITY_LINK = "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
 
   private CatalogExceptionMessage() {}
 
@@ -38,6 +43,10 @@ public final class CatalogExceptionMessage {
     return String.format("%s attribute %s can't be modified", entityType, attribute);
   }
 
+  public static String invalidName(String name) {
+    return String.format("Invalid name %s", name);
+  }
+
   public static String invalidField(String field) {
     return String.format("Invalid field name %s", field);
   }
@@ -46,12 +55,16 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
-  public static String fieldIsNull(String field) {
-    return String.format("Field %s is null", field);
+  public static String entityTypeNotSupported(String entityType) {
+    return String.format("Entity type %s not supported", entityType);
   }
 
-  public static String deactivatedUser(UUID id) {
-    return String.format("User %s is deactivated", id);
+  public static String deletedUser(UUID id) {
+    return String.format("User %s is deleted", id);
+  }
+
+  public static String userAlreadyPartOfTeam(String userName, String teamName) {
+    return String.format("User '%s' is already part of the team '%s'", userName, teamName);
   }
 
   public static String invalidColumnFQN(String fqn) {
@@ -64,18 +77,6 @@ public final class CatalogExceptionMessage {
 
   public static String invalidServiceEntity(String serviceType, String entityType, String expected) {
     return String.format("Invalid service type `%s` for %s. Expected %s.", serviceType, entityType, expected);
-  }
-
-  public static String invalidEntityLink() {
-    return "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
-  }
-
-  public static String isNotTokenized() {
-    return "The field is not tokenized";
-  }
-
-  public static String isAlreadyTokenized() {
-    return "The field is already tokenized";
   }
 
   public static String glossaryTermMismatch(String parentId, String glossaryId) {
@@ -105,5 +106,51 @@ public final class CatalogExceptionMessage {
 
   public static String noPermission(String name, String operation) {
     return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions to %s", name, operation);
+  }
+
+  public static String invalidPolicyOperationNull(String rule, String policy) {
+    return String.format("Found invalid rule %s within policy %s. Please ensure operation is non-null", rule, policy);
+  }
+
+  public static String invalidPolicyDuplicateOperation(String operation, String policy) {
+    return String.format(
+        "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
+        operation, policy);
+  }
+
+  public static String entityIsNotEmpty(String entityType) {
+    return String.format("%s is not empty", entityType);
+  }
+
+  public static String invalidEntity(String entity) {
+    return String.format("Invalid entity %s", entity);
+  }
+
+  public static String unknownCustomField(String fieldName) {
+    return String.format("Unknown custom field %s", fieldName);
+  }
+
+  public static String jsonValidationError(String fieldName, String validationMessages) {
+    return String.format("Custom field %s has invalid JSON %s", fieldName, validationMessages);
+  }
+
+  public static String invalidParent(Team parent, String child, TeamType childType) {
+    return String.format(
+        "Team %s of type %s can't be of parent of team %s of type %s",
+        parent.getName(), parent.getTeamType(), child, childType);
+  }
+
+  public static String invalidChild(String parent, TeamType parentType, Team child) {
+    return String.format(
+        "Team %s of type %s can't have child team %s of type %s",
+        parent, parentType, child.getName(), child.getTeamType());
+  }
+
+  public static String unexpectedParent() {
+    return "Team of type Organization can't have a parent team";
+  }
+
+  public static String invalidParentCount(int validParentCount, TeamType teamType) {
+    return String.format("Team of type %s can have only %s parents", teamType, validParentCount);
   }
 }

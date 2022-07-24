@@ -1,9 +1,19 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """
 Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
-import logging
+import traceback
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -18,10 +28,14 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
-from metadata.ingestion.models.table_queries import TableUsageRequest
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.lru_cache import LRUCache
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
+
+LRU_CACHE_SIZE = 4096
 
 
 class OMetaTableMixin:
@@ -54,11 +68,30 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param sample_data: Data to add
         """
-        resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
-            data=sample_data.json(),
-        )
-        return TableData(**resp["sampleData"])
+        resp = None
+        try:
+            resp = self.client.put(
+                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+                data=sample_data.json(),
+            )
+        except Exception as err:
+            logger.error(
+                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+
+        if resp:
+            try:
+                return TableData(**resp["sampleData"])
+            except UnicodeError as err:
+                logger.error(
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__} - {err}"
+                )
+                logger.debug(traceback.format_exc())
+            except Exception as err:
+                logger.error(
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__} - {err}"
+                )
 
     def ingest_table_profile_data(
         self, table: Table, table_profile: List[TableProfile]
@@ -98,15 +131,17 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_queries: SqlQuery to add
         """
+        seen_queries = LRUCache(LRU_CACHE_SIZE)
         for query in table_queries:
-            self.client.put(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                data=query.json(),
-            )
-        return None
+            if query.query not in seen_queries:
+                self.client.put(
+                    f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
+                    data=query.json(),
+                )
+                seen_queries.put(query.query, None)
 
     def publish_table_usage(
-        self, table: Table, table_usage_request: TableUsageRequest
+        self, table: Table, table_usage_request: UsageRequest
     ) -> None:
         """
         POST usage details for a Table
@@ -114,7 +149,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_usage_request: Usage data to add
         """
-        resp = self.client.post(
+        resp = self.client.put(
             f"/usage/table/{table.id.__root__}", data=table_usage_request.json()
         )
         logger.debug("published table usage %s", resp)
@@ -128,6 +163,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_join_request: Join data to add
         """
+
         logger.info("table join request %s", table_join_request.json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/joins",
@@ -177,18 +213,16 @@ class OMetaTableMixin:
 
         return self._add_tests(table=table, test=col_test, path="columnTest")
 
-    def update_profile_sample(
-        self, fqdn: str, profile_sample: float
-    ) -> Optional[Table]:
+    def update_profile_sample(self, fqn: str, profile_sample: float) -> Optional[Table]:
         """
         Update the profileSample property of a Table, given
-        its FQDN.
+        its FQN.
 
-        :param fqdn: Table FQDN
+        :param fqn: Table FQN
         :param profile_sample: new profile sample to set
         :return: Updated table
         """
-        table = self.get_by_name(entity=Table, fqdn=fqdn)
+        table = self.get_by_name(entity=Table, fqn=fqn)
         if table:
             updated = CreateTableRequest(
                 name=table.name,
@@ -198,9 +232,36 @@ class OMetaTableMixin:
                 tableConstraints=table.tableConstraints,
                 profileSample=profile_sample,  # Updated!
                 owner=table.owner,
-                database=table.database,
+                databaseSchema=table.databaseSchema,
                 tags=table.tags,
                 viewDefinition=table.viewDefinition,
+            )
+            return self.create_or_update(updated)
+
+        return None
+
+    def update_profile_query(self, fqn: str, **kwargs) -> Optional[Table]:
+        """
+        Update the profileQuery property of a Table, given
+        its FQN.
+
+        :param fqn: Table FQN
+        :param profile_sample: new profile sample to set
+        :return: Updated table
+        """
+        table = self.get_by_name(entity=Table, fqn=fqn)
+        if table:
+            updated = CreateTableRequest(
+                name=table.name,
+                description=table.description,
+                tableType=table.tableType,
+                columns=table.columns,
+                tableConstraints=table.tableConstraints,
+                owner=table.owner,
+                databaseSchema=table.databaseSchema,
+                tags=table.tags,
+                viewDefinition=table.viewDefinition,
+                **kwargs,
             )
             return self.create_or_update(updated)
 

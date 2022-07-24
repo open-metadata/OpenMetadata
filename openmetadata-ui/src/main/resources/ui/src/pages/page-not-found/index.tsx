@@ -13,33 +13,47 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import notFoundImage from '../../assets/img/404-image.png';
+import notFoundNumber from '../../assets/svg/404-number.svg';
 import { Button } from '../../components/buttons/Button/Button';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainer from '../../components/containers/PageContainer';
+import { ROUTES } from '../../constants/constants';
 
 const PageNotFound = () => {
   return (
-    <PageContainer>
-      <div
-        className="tw-flex tw-flex-col tw-place-items-center tw-mt-24"
-        data-testid="no-page-found">
-        <ErrorPlaceHolder />
-        <div
-          className="tw-flex tw-mt-3 tw-justify-around"
-          data-testid="route-links">
-          <Link className="tw-mr-2" to="/">
-            <Button size="regular" theme="primary" variant="contained">
-              Go to Home
-            </Button>
-          </Link>
-          <Link className="tw-mr-2" to="/explore">
-            <Button size="regular" theme="primary" variant="contained">
-              Explore
-            </Button>
-          </Link>
+    <div
+      className="page-not-found-container tw-relative"
+      data-testid="no-page-found">
+      <div className="tw-flex-center tw-hw-full tw-absolute tw-inset-0">
+        <img alt="not found" src={notFoundNumber} />
+      </div>
+      <div className="tw-flex tw-hw-full tw-absolute tw-inset-0">
+        <div className="tw-hw-full tw-flex-center">
+          <div className="tw-text-center">
+            <h4 className="tw-font-bold tw-text-3xl tw-text-grey-muted">
+              Page Not Found
+            </h4>
+            <p className="tw-text-lg tw-text-grey-muted-muted">
+              The page you are looking for is not available
+            </p>
+            <div className="tw-text-center tw-mt-16" data-testid="route-links">
+              <Link to={ROUTES.HOME}>
+                <Button className="tw-mr-5" theme="primary">
+                  Go To Homepage
+                </Button>
+              </Link>
+              <Link to={ROUTES.EXPLORE}>
+                <Button className="tw-opacity-40" theme="primary">
+                  Explore
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="tw-hw-full tw-flex-center">
+          <img alt="not found" src={notFoundImage} />
         </div>
       </div>
-    </PageContainer>
+    </div>
   );
 };
 

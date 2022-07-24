@@ -1,0 +1,23 @@
+source:
+  type: mariadb
+  serviceName: local_mariadb
+  serviceConnection:
+    config:
+      type: MariaDB
+      username: openmetadata_user
+      password: openmetadata_password
+      hostPort: localhost:5432
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

@@ -22,20 +22,16 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Facts;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 
 @Slf4j
 @Builder(setterPrefix = "with")
 class AttributeBasedFacts {
-
-  private User user;
   private MetadataOperation operation;
-  private Object entity; // Entity can be null in some cases, where the operation may not be on a specific entity.
+  private EntityInterface entity; // Entity can be null when the operation may not be on a specific entity.
   private boolean checkOperation;
 
   // Do not allow anything external or the builder itself change the value of facts.
@@ -43,12 +39,11 @@ class AttributeBasedFacts {
   private final Facts facts = new Facts();
 
   /**
-   * Creates {@link Facts} with the operation, user (subject) and entity (object) attributes so that it is recognizable
-   * by {@link org.jeasy.rules.api.RulesEngine}
+   * Creates {@link Facts} with the operation, and entity (object) attributes so that it is recognizable by {@link
+   * org.jeasy.rules.api.RulesEngine}
    */
   public Facts getFacts() {
     // Facts to be taken into consideration by RuleCondition.
-    facts.put(CommonFields.USER_ROLES, getUserRoles(user));
     facts.put(CommonFields.ENTITY_TAGS, getEntityTags(entity));
     facts.put(CommonFields.ENTITY_TYPE, getEntityType(entity));
     if (checkOperation) {
@@ -71,18 +66,13 @@ class AttributeBasedFacts {
     return new ArrayList<>(facts.get(CommonFields.ALLOWED_OPERATIONS));
   }
 
-  private List<String> getUserRoles(User user) {
-    return user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toList());
-  }
-
-  private List<String> getEntityTags(Object entity) {
+  private List<String> getEntityTags(EntityInterface entity) {
     if (entity == null) {
       return Collections.emptyList();
     }
     List<TagLabel> entityTags = null;
     try {
-      EntityInterface<?> entityInterface = Entity.getEntityInterface(entity);
-      entityTags = entityInterface.getTags();
+      entityTags = entity.getTags();
     } catch (EntityNotFoundException e) {
       LOG.warn("could not obtain tags for the given entity {} - exception: {}", entity, e.toString());
     }

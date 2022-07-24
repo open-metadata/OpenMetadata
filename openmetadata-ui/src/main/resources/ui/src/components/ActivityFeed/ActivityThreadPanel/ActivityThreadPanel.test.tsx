@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import {
+  findAllByText,
+  findByTestId,
+  findByText,
+  render,
+} from '@testing-library/react';
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThreadPanel from './ActivityThreadPanel';
 
@@ -23,6 +29,7 @@ const mockActivityThreadPanelProp = {
   postFeedHandler: jest.fn(),
   createThread: jest.fn(),
   deletePostHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../../../axiosAPIs/feedsAPI', () => ({
@@ -48,18 +55,48 @@ jest.mock('./ActivityThreadList', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadList</p>);
 });
 
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
+
 describe('Test ActivityThreadPanel Component', () => {
+  beforeAll(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
+      return element;
+    });
+  });
+
   it('Check if it has all child elements', async () => {
     const { container } = render(
       <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
       { wrapper: MemoryRouter }
     );
     const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
-    const panelHeader = await findByText(container, /FeedPanelHeader/i);
-    const panelThreadList = await findByText(container, /ActivityThreadList/i);
+
+    const panelThreadList = await findAllByText(
+      container,
+      /ActivityThreadList/i
+    );
 
     expect(panelOverlay).toBeInTheDocument();
-    expect(panelHeader).toBeInTheDocument();
-    expect(panelThreadList).toBeInTheDocument();
+    expect(panelThreadList).toHaveLength(1);
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+      { wrapper: MemoryRouter }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });

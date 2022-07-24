@@ -23,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -56,13 +54,8 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/dashboards")
@@ -98,11 +91,11 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   static final String FIELDS = "owner,charts,followers,tags,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Dashboard.class);
 
   @GET
   @Valid
   @Operation(
+      operationId = "listDashboards",
       summary = "List Dashboards",
       tags = "dashboards",
       description =
@@ -146,15 +139,15 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+      throws IOException {
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDashboardVersion",
       summary = "List dashboard versions",
       tags = "dashboards",
       description = "Get a list of all the versions of a dashboard identified by `id`",
@@ -168,13 +161,14 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDashboardByID",
       summary = "Get a dashboard",
       tags = "dashboards",
       description = "Get a dashboard by `id`.",
@@ -200,13 +194,14 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getDashboardByFQN",
       summary = "Get a dashboard by name",
       tags = "dashboards",
       description = "Get a dashboard by fully qualified name.",
@@ -232,13 +227,14 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDashboardVersion",
       summary = "Get a version of the dashboard",
       tags = "dashboards",
       description = "Get a version of the dashboard by given `id`",
@@ -260,12 +256,13 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
   @POST
   @Operation(
+      operationId = "createDashboard",
       summary = "Create a dashboard",
       tags = "dashboards",
       description = "Create a new dashboard.",
@@ -273,22 +270,20 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDashboard.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Dashboard dashboard = getDashboard(securityContext, create);
-    dashboard = addHref(uriInfo, dao.create(uriInfo, dashboard));
-    return Response.created(dashboard.getHref()).entity(dashboard).build();
+      throws IOException {
+    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, dashboard, true);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchDashboard",
       summary = "Update a Dashboard",
       tags = "dashboards",
       description = "Update an existing dashboard using JsonPatch.",
@@ -307,24 +302,13 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Dashboard dashboard = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(dashboard).getEntityReference(),
-        dao.getOwnerReference(dashboard),
-        patch);
-
-    PatchResponse<Dashboard> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDashboard",
       summary = "Create or update a dashboard",
       tags = "dashboards",
       description = "Create a new dashboard, if it does not exist or update an existing dashboard.",
@@ -332,23 +316,20 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDashboard.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
-      throws IOException, ParseException {
-    Dashboard dashboard = getDashboard(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(dashboard));
-    PutResponse<Dashboard> response = dao.createOrUpdate(uriInfo, dashboard);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, dashboard, true);
   }
 
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollowerToDashboard",
       summary = "Add a follower",
       tags = "dashboards",
       description = "Add a user identified by `userId` as follower of this dashboard",
@@ -370,6 +351,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "removeFollowerFromDashboard",
       summary = "Remove a follower",
       tags = "dashboards",
       description = "Remove the user identified `userId` as a follower of the dashboard.")
@@ -389,6 +371,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDashboard",
       summary = "Delete a Dashboard",
       tags = "dashboards",
       description = "Delete a dashboard by `id`.",
@@ -396,25 +379,23 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Dashboard> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Dashboard getDashboard(SecurityContext securityContext, CreateDashboard create) {
-    return new Dashboard()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+  private Dashboard getDashboard(CreateDashboard create, String user) {
+    return copy(new Dashboard(), create, user)
         .withService(create.getService())
         .withCharts(create.getCharts())
         .withDashboardUrl(create.getDashboardUrl())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

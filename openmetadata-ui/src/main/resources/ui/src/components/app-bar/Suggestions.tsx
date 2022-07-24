@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import jsonData from '../../jsons/en';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 type SuggestionProp = {
   searchText: string;
@@ -28,8 +32,8 @@ type SuggestionProp = {
 };
 
 type CommonSource = {
-  fqdn: string;
-  service_type: string;
+  fullyQualifiedName: string;
+  serviceType: string;
   name: string;
 };
 
@@ -53,9 +57,18 @@ type PipelineSource = {
   pipeline_name: string;
 } & CommonSource;
 
+type MlModelSource = {
+  ml_model_id: string;
+  mlmodel_name: string;
+} & CommonSource;
+
 type Option = {
   _index: string;
-  _source: TableSource & DashboardSource & TopicSource & PipelineSource;
+  _source: TableSource &
+    DashboardSource &
+    TopicSource &
+    PipelineSource &
+    MlModelSource;
 };
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
@@ -69,6 +82,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [pipelineSuggestions, setPipelineSuggestions] = useState<
     PipelineSource[]
   >([]);
+  const [mlModelSuggestions, setMlModelSuggestions] = useState<MlModelSource[]>(
+    []
+  );
   const isMounting = useRef(true);
 
   const setSuggestions = (options: Array<Option>) => {
@@ -92,6 +108,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         .filter((option) => option._index === SearchIndex.PIPELINE)
         .map((option) => option._source)
     );
+    setMlModelSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.MLMODEL)
+        .map((option) => option._source)
+    );
   };
 
   const getGroupLabel = (index: string) => {
@@ -113,6 +134,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         icon = Icons.PIPELINE_GREY;
 
         break;
+      case SearchIndex.MLMODEL:
+        label = 'ML Models';
+        // TODO: Change this to mlmodel icon
+        icon = Icons.SERVICE;
+
+        break;
       case SearchIndex.TABLE:
       default:
         label = 'Tables';
@@ -122,9 +149,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     }
 
     return (
-      <div className="tw-flex tw-items-center">
+      <div className="tw-flex tw-items-center tw-my-2">
         <SVGIcons alt="icon" className="tw-h-4 tw-w-4 tw-ml-2" icon={icon} />
-        <p className="tw-px-2 tw-py-2 tw-text-grey-muted tw-text-xs">{label}</p>
+        <p className="tw-px-2 tw-text-grey-muted tw-text-xs tw-h-4 tw-mb-0">
+          {label}
+        </p>
       </div>
     );
   };
@@ -135,10 +164,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     name: string,
     index: string
   ) => {
-    const database =
-      index === SearchIndex.TABLE
-        ? getPartialNameFromFQN(fqdn, ['database'])
-        : undefined;
+    let database;
+    let schema;
+    if (index === SearchIndex.TABLE) {
+      database = getPartialNameFromTableFQN(fqdn, [FqnPart.Database]);
+      schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
+    }
 
     return (
       <div
@@ -146,7 +177,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         key={fqdn}>
         <img
           alt={serviceType}
-          className="tw-inline tw-h-4 tw-w-4 tw-ml-2"
+          className="tw-inline tw-h-4 tw-ml-2"
           src={serviceTypeLogo(serviceType)}
         />
         <Link
@@ -155,7 +186,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           id={fqdn.replace(/\./g, '')}
           to={getEntityLink(index, fqdn)}
           onClick={() => setIsOpen(false)}>
-          {database ? `${database}.${name}` : name}
+          {database && schema
+            ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
+            : name}
         </Link>
       </div>
     );
@@ -169,12 +202,10 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.TABLE)}
 
             {tableSuggestions.map((suggestion: TableSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fqdn,
+                fullyQualifiedName,
                 serviceType,
                 name,
                 SearchIndex.TABLE
@@ -187,12 +218,10 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.TOPIC)}
 
             {topicSuggestions.map((suggestion: TopicSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fqdn,
+                fullyQualifiedName,
                 serviceType,
                 name,
                 SearchIndex.TOPIC
@@ -205,12 +234,10 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.DASHBOARD)}
 
             {dashboardSuggestions.map((suggestion: DashboardSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fqdn,
+                fullyQualifiedName,
                 serviceType,
                 name,
                 SearchIndex.DASHBOARD
@@ -223,15 +250,29 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.PIPELINE)}
 
             {pipelineSuggestions.map((suggestion: PipelineSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fqdn,
+                fullyQualifiedName,
                 serviceType,
                 name,
                 SearchIndex.PIPELINE
+              );
+            })}
+          </>
+        )}
+        {mlModelSuggestions.length > 0 && (
+          <>
+            {getGroupLabel(SearchIndex.MLMODEL)}
+
+            {mlModelSuggestions.map((suggestion: MlModelSource) => {
+              const { fullyQualifiedName, name, serviceType } = suggestion;
+
+              return getSuggestionElement(
+                fullyQualifiedName,
+                serviceType,
+                name,
+                SearchIndex.MLMODEL
               );
             })}
           </>
@@ -242,17 +283,26 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
   useEffect(() => {
     if (!isMounting.current) {
-      getSuggestions(searchText).then((res: AxiosResponse) => {
-        if (res.data) {
-          setOptions(res.data.suggest['table-suggest'][0].options);
-          setSuggestions(res.data.suggest['table-suggest'][0].options);
-          setIsOpen(true);
-        }
-      });
+      getSuggestions(searchText)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            setOptions(res.data.suggest['metadata-suggest'][0].options);
+            setSuggestions(res.data.suggest['metadata-suggest'][0].options);
+            setIsOpen(true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-suggestions-error']
+          );
+        });
     }
   }, [searchText]);
 
-  // alwyas Keep this useEffect at the end...
+  // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
   }, []);
@@ -263,6 +313,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         <>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "
+            data-testid="suggestion-overlay"
             onClick={() => setIsOpen(false)}
           />
           <div

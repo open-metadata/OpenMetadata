@@ -16,7 +16,7 @@ import { isNil } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
 import { LIST_SIZE } from '../../constants/constants';
-import { Source } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import PopOver from '../common/popover/PopOver';
 import Tags from '../tags/tags';
 import { TagsViewerProps } from './tags-viewer.interface';
@@ -24,6 +24,8 @@ import { TagsViewerProps } from './tags-viewer.interface';
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
+  type = 'label',
+  showStartWith = true,
 }: TagsViewerProps) => {
   const getTagsElement = (tag: EntityTags, index?: number) => {
     const otherProps: Record<string, string | number> = {};
@@ -37,10 +39,10 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           { 'diff-added tw-mx-1': tag?.added },
           { 'diff-removed': tag?.removed }
         )}
-        showOnlyName={tag.source === Source.Glossary}
-        startWith="#"
+        showOnlyName={tag.source === TagSource.Glossary}
+        startWith={showStartWith ? '#' : undefined}
         tag={tag}
-        type="label"
+        type={type}
         {...otherProps}
       />
     );

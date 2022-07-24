@@ -12,20 +12,9 @@
  */
 
 import axios from 'axios';
-import { oidcTokenKey } from '../constants/constants';
 
 const axiosClient = axios.create({
   baseURL: '/api/v1',
-});
-
-axiosClient.interceptors.request.use(function (config) {
-  // const token = cookieStorage.getItem(oidcTokenKey);
-  const token = localStorage.getItem(oidcTokenKey);
-  if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return config;
 });
 
 export default axiosClient;

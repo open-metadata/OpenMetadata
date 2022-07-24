@@ -1,0 +1,17 @@
+source:
+  type: kafka
+  config:
+    service_name: local_kafka
+    bootstrap_servers: 192.168.1.32:9092
+    schema_registry_url: http://192.168.1.32:8081
+    filter_pattern:
+      excludes:
+      - _confluent.*
+sink:
+  type: metadata-rest
+  config: {}
+metadata_server:
+  type: metadata-server
+  config:
+    api_endpoint: http://localhost:8585/api
+    auth_provider_type: no-auth

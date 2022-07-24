@@ -14,15 +14,15 @@ Histogram Metric definition
 """
 from typing import Optional
 
-from sqlalchemy import and_, column, func
+from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import QueryMetric
 from metadata.orm_profiler.orm.functions.concat import ConcatFn
 from metadata.orm_profiler.orm.registry import is_quantifiable
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class Histogram(QueryMetric):
@@ -67,13 +67,15 @@ class Histogram(QueryMetric):
             ((func.max(col) - func.min(col)) / float(num_bins - 1)).label("step"),
         ).select_from(sample)
 
-        step = dict(bins.first())["step"]
+        raw_step = dict(bins.first())["step"]
 
-        if not step:  # step == 0 or None for empty tables
+        if not raw_step:  # step == 0 or None for empty tables
             logger.debug(
                 f"MIN({col.name}) == MAX({col.name}) or EMPTY table. Aborting histogram computation."
             )
             return None
+
+        step = float(raw_step)
 
         ranges = session.query(
             sample,
@@ -84,19 +86,20 @@ class Histogram(QueryMetric):
 
         hist = (
             session.query(
-                ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
-                    "boundaries"
-                ),
+                ConcatFn(
+                    str(ranges_cte.c.bin_floor), " to ", str(ranges_cte.c.bin_ceil)
+                ).label("boundaries"),
                 func.count().label("frequencies"),
             )
+            .select_from(ranges_cte)
             .group_by(
                 ranges_cte.c.bin_floor,
                 ranges_cte.c.bin_ceil,
-                ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
-                    "boundaries"
-                ),
+                ConcatFn(
+                    str(ranges_cte.c.bin_floor), " to ", str(ranges_cte.c.bin_ceil)
+                ).label("boundaries"),
             )
-            .order_by(ranges_cte.c.bin_floor)
+            .order_by("boundaries")
         )
 
         return hist

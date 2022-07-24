@@ -12,18 +12,17 @@
 """
 Population Standard deviation Metric definition
 """
+# Keep SQA docs style defining custom constructs
+# pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.registry import Dialects, is_quantifiable
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class StdDevFn(FunctionElement):
@@ -50,6 +49,15 @@ def _(element, compiler, **kw):
 
     proc = compiler.process(element.clauses, **kw)
     return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
+
+
+@compiles(StdDevFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Returns stdv for clickhouse database and handle empty tables.
+    If table is empty, clickhouse returns NaN.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return "if(isNaN(stddevPop(%s)), null, stddevPop(%s))" % ((proc,) * 2)
 
 
 class StdDev(StaticMetric):

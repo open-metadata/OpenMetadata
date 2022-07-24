@@ -1,0 +1,53 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/modeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModeConnection",
+  "description": "Mode Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.dashboard.ModeConnection",
+  "definitions": {
+    "modeType": {
+      "description": "Mode service type",
+      "type": "string",
+      "enum": ["Mode"],
+      "default": "Mode"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/modeType",
+      "default": "Mode"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "URL for the mode instance.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://app.mode.com"
+    },
+    "accessToken": {
+      "title": "Access Token",
+      "description": "Access Token for Mode Dashboard",
+      "type": "string"
+    },
+    "accessTokenPassword": {
+      "title": "Access Token Password",
+      "description": "Access Token Password for Mode Dashboard",
+      "type": "string",
+      "format": "password"
+    },
+    "workspaceName": {
+      "title": "Workspace Name",
+      "description": "Mode Workspace Name",
+      "type": "string"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["accessToken", "accessTokenPassword", "workspaceName"]
+}

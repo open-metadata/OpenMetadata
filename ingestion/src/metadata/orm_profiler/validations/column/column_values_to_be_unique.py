@@ -12,6 +12,7 @@
 """
 ColumnValuesToBeUnique validation implementation
 """
+# pylint: disable=duplicate-code
 
 from datetime import datetime
 
@@ -20,9 +21,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
 )
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 def column_values_to_be_unique(
@@ -58,7 +59,7 @@ def column_values_to_be_unique(
     )
     result = (
         f"Found valuesCount={col_profile.valuesCount} vs. uniqueCount={col_profile.uniqueCount}."
-        + f" Both counts should be equal for column values to be unique."
+        + " Both counts should be equal for column values to be unique."
     )
 
     return TestCaseResult(

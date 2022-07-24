@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -43,14 +44,18 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityLineage;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.TagLabel;
 
 @Path("/v1/lineage")
 @Api(value = "Lineage resource", tags = "Lineage resource")
@@ -70,6 +75,7 @@ public class LineageResource {
   @Valid
   @Path("/{entity}/{id}")
   @Operation(
+      operationId = "getLineage",
       summary = "Get lineage",
       tags = "lineage",
       description = "Get lineage details for an entity identified by `id`.",
@@ -90,13 +96,19 @@ public class LineageResource {
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
           String id,
-      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)") @QueryParam("upstreamDepth")
+      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @DefaultValue("1")
+          @Min(0)
+          @Max(3)
+          @QueryParam("upstreamDepth")
           int upstreamDepth,
-      @Parameter(description = "Downstream depth of lineage (default=1, min=0, max=3)") @QueryParam("downstreamDepth")
+      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @DefaultValue("1")
+          @Min(0)
+          @Max(3)
+          @QueryParam("downstreamDepth")
           int downStreamDepth)
       throws IOException {
-    upstreamDepth = Math.min(Math.max(upstreamDepth, 0), 3);
-    downStreamDepth = Math.min(Math.max(downStreamDepth, 0), 3);
     return addHref(uriInfo, dao.get(entity, id, upstreamDepth, downStreamDepth));
   }
 
@@ -104,6 +116,7 @@ public class LineageResource {
   @Valid
   @Path("/{entity}/name/{fqn}")
   @Operation(
+      operationId = "getLineageByFQN",
       summary = "Get lineage by name",
       tags = "lineage",
       description = "Get lineage details for an entity identified by fully qualified name.",
@@ -146,6 +159,7 @@ public class LineageResource {
 
   @PUT
   @Operation(
+      operationId = "addLineageEdge",
       summary = "Add a lineage edge",
       tags = "lineage",
       description = "Add a lineage edge with from entity as upstream node and to entity as downstream node.",
@@ -156,8 +170,11 @@ public class LineageResource {
   public Response addLineage(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
       throws IOException {
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.UpdateLineage);
-
+    authorizer.authorize(
+        securityContext,
+        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext(),
+        true);
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -165,6 +182,7 @@ public class LineageResource {
   @DELETE
   @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
   @Operation(
+      operationId = "deleteLineageEdge",
       summary = "Delete a lineage edge",
       tags = "lineage",
       description = "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
@@ -192,7 +210,11 @@ public class LineageResource {
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("toId")
           String toId)
       throws IOException {
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.UpdateLineage);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext(),
+        true);
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
@@ -208,4 +230,21 @@ public class LineageResource {
     Entity.withHref(uriInfo, lineage.getNodes());
     return lineage;
   }
+
+  class LineageResourceContext implements ResourceContextInterface {
+    @Override
+    public EntityReference getOwner() throws IOException {
+      return null;
+    }
+
+    @Override
+    public List<TagLabel> getTags() throws IOException {
+      return null;
+    }
+
+    @Override
+    public EntityInterface getEntity() throws IOException {
+      return null;
+    }
+  };
 }

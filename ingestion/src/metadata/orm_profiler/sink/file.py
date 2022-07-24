@@ -15,12 +15,12 @@ Profiler File Sink
 from pathlib import Path
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.orm_profiler.api.models import ProfilerResponse
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class FileSinkConfig(ConfigModel):
@@ -28,15 +28,19 @@ class FileSinkConfig(ConfigModel):
 
 
 class FileSink(Sink[Entity]):
+    """
+    Helper sink to save profiler
+    results in a file for analysis
+    """
+
     config: FileSinkConfig
     report: SinkStatus
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: FileSinkConfig,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.report = SinkStatus()
 
@@ -45,28 +49,28 @@ class FileSink(Sink[Entity]):
         # Build the path if it does not exist
         if not fpath.parent.is_dir():
             Path(self.config.filename).mkdir(parents=True, exist_ok=True)
-        self.file = fpath.open("w")
+        self.file = fpath.open("w", encoding="utf-8")
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, _, ctx: WorkflowContext):
+    def create(cls, config_dict: dict, _):
         config = FileSinkConfig.parse_obj(config_dict)
-        return cls(ctx, config)
+        return cls(config)
 
     def write_record(self, record: ProfilerResponse) -> None:
 
         if self.wrote_something:
             self.file.write("\n")
 
-        self.file.write(f"Profile for: {record.table.fullyQualifiedName}\n")
+        self.file.write(f"Profile for: {record.table.fullyQualifiedName.__root__}\n")
         self.file.write(f"{record.profile.json()}\n")
 
         if record.record_tests:
-            self.file.write(f"\nTest results:\n")
+            self.file.write("\nTest results:\n")
             self.file.write(f"{record.record_tests.json()}\n")
 
         self.wrote_something = True
-        self.report.records_written(record.table.fullyQualifiedName)
+        self.report.records_written(record.table.fullyQualifiedName.__root__)
 
     def get_status(self):
         return self.report

@@ -63,7 +63,12 @@
     // Trailing comments allowed beyond maximum line length
     "max-len": [
       "error",
-      { "code": 200, "comments": 100, "ignoreTrailingComments": true }
+      {
+        "code": 200,
+        "comments": 120,
+        "ignoreTrailingComments": true,
+        "tabWidth": 2
+      }
     ],
 
     // Require PascalCase for user-defined JSX components

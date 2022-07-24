@@ -5,6 +5,7 @@
   "description": "This schema defines webhook for receiving events from OpenMetadata.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.Webhook",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique ID associated with a webhook subscription.",
@@ -12,9 +13,11 @@
     },
     "name": {
       "description": "Unique name of the application receiving webhook events.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this webhook.",
@@ -22,7 +25,7 @@
     },
     "description": {
       "description": "Description of the application.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",
@@ -81,6 +84,7 @@
     "failureDetails": {
       "description": "Failure details are set only when `status` is not `success`.",
       "type": "object",
+      "javaType": "org.openmetadata.catalog.type.FailureDetails",
       "properties": {
         "lastSuccessfulAt": {
           "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
@@ -112,11 +116,6 @@
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
-    },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
     }
   },
   "required": ["id", "name", "endpoint", "eventFilters"],

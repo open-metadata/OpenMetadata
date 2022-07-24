@@ -42,10 +42,13 @@ export type DropDownListProp = {
   horzPosRight?: boolean;
   listGroups?: Array<string>;
   searchString?: string;
+  controlledSearchStr?: string;
+  onSearchTextChange?: (text: string) => void;
   selectedItems?: Array<string>;
   disabledItems?: Array<string>;
   hiddenItems?: Array<string>;
   showSearchBar?: boolean;
+  showEmptyList?: boolean;
   value?: string;
   onSelect?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,
@@ -56,6 +59,7 @@ export type DropDownListProp = {
   domPosition?: DOMRect;
   isLoading?: boolean;
   widthClass?: string;
+  getTotalCountForGroup?: (groupName: string) => number;
 };
 
 export type DropDownProp = {
@@ -66,4 +70,5 @@ export type DropDownProp = {
   icon?: React.ReactElement | string;
   isLableVisible?: boolean;
   isDropDownIconVisible?: boolean;
+  dataTestId?: string;
 } & DropDownListProp;

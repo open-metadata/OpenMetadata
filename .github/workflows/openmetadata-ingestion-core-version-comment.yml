@@ -20,6 +20,9 @@ on:
     paths:
     - 'catalog-rest-service/src/main/resources/json/schema/**'
 
+concurrency: 
+  group: openmetadata-ingestion-core-version-comment-${{ github.head_ref }}
+  cancel-in-progress: true
 jobs:
   py-ingestion-core-comment:
     runs-on: ubuntu-latest

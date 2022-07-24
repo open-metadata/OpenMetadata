@@ -24,10 +24,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -47,6 +44,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -56,15 +55,12 @@ import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 @Path("/v1/teams")
 @Api(value = "Teams collection", tags = "Teams collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -86,6 +82,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     super(Team.class, new TeamRepository(dao), authorizer);
   }
 
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    dao.initOrganization("organization");
+  }
+
   public static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
     TeamList() {}
@@ -95,12 +96,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     }
   }
 
-  static final String FIELDS = "owner,profile,users,owns,defaultRoles";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Team.class);
+  static final String FIELDS = "owner,profile,users,owns,defaultRoles,parents,children";
 
   @GET
   @Valid
   @Operation(
+      operationId = "listTeams",
       summary = "List teams",
       tags = "teams",
       description =
@@ -139,15 +140,15 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+      throws IOException {
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllTeamVersion",
       summary = "List team versions",
       tags = "teams",
       description = "Get a list of all the versions of a team identified by `id`",
@@ -161,7 +162,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -169,6 +170,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
+      operationId = "getTeamByID",
       summary = "Get a team",
       tags = "teams",
       description = "Get a team by `id`.",
@@ -194,7 +196,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -202,6 +204,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
+      operationId = "getTeamByFQN",
       summary = "Get a team by name",
       tags = "teams",
       description = "Get a team by `name`.",
@@ -227,13 +230,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificRoleVersion",
       summary = "Get a version of the team",
       tags = "teams",
       description = "Get a version of the team by given `id`",
@@ -255,12 +259,13 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
   @POST
   @Operation(
+      operationId = "createTeam",
       summary = "Create a team",
       tags = "teams",
       description = "Create a new team.",
@@ -268,43 +273,39 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Team team = getTeam(ct, securityContext);
-    addHref(uriInfo, dao.create(uriInfo, team));
-    return Response.created(team.getHref()).entity(team).build();
+      throws IOException {
+    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, team, true);
   }
 
   @PUT
   @Operation(
-      summary = "Create or Update a team",
+      operationId = "createOrUpdateTeam",
+      summary = "Update team",
       tags = "teams",
       description = "Create or Update a team.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The team ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createOrUpdateTeam(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
-      throws IOException, ParseException {
-    Team team = getTeam(ct, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(team));
-    RestUtil.PutResponse<Team> response = dao.createOrUpdate(uriInfo, team);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
+    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, team, true);
   }
 
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
+      operationId = "patchTeam",
       summary = "Update a team",
       tags = "teams",
       description = "Update an existing team with JsonPatch.",
@@ -322,24 +323,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Team team = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(team).getEntityReference(),
-        dao.getOriginalOwner(team),
-        patch);
-    PatchResponse<Team> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteTeam",
       summary = "Delete a team",
       tags = "teams",
       description = "Delete a team by given `id`.",
@@ -347,25 +338,26 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Team> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Team getTeam(CreateTeam ct, SecurityContext securityContext) {
-    return new Team()
-        .withId(UUID.randomUUID())
-        .withName(ct.getName())
-        .withDescription(ct.getDescription())
-        .withDisplayName(ct.getDisplayName())
+  private Team getTeam(CreateTeam ct, String user) {
+    return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
-        .withOwner(ct.getOwner())
         .withIsJoinable(ct.getIsJoinable())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
-        .withUsers(dao.getEntityReferences(ct.getUsers()))
-        .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()));
+        .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))
+        .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
+        .withTeamType(ct.getTeamType())
+        .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
+        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM));
   }
 }

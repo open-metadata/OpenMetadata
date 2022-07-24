@@ -15,9 +15,10 @@ package org.openmetadata.catalog.exception;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 
 public abstract class WebServiceException extends RuntimeException {
-  private final transient Response response;
+  @Getter private final transient Response response;
 
   protected WebServiceException(Response.Status status, String msg) {
     super(msg);
@@ -41,20 +42,12 @@ public abstract class WebServiceException extends RuntimeException {
     return new ErrorResponse(msg);
   }
 
-  public Response getResponse() {
-    return response;
-  }
-
   private static class ErrorResponse {
     /** Response message. */
-    private final String responseMessage;
+    @Getter private final String responseMessage;
 
     ErrorResponse(String responseMessage) {
       this.responseMessage = responseMessage;
-    }
-
-    public String getResponseMessage() {
-      return responseMessage;
     }
   }
 }

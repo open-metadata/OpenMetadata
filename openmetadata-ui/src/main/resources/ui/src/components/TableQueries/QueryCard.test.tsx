@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  getByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import QueryCard from './QueryCard';
@@ -34,17 +40,54 @@ jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 
+jest.mock('../buttons/CopyToClipboardButton/CopyToClipboardButton', () => {
+  return jest.fn().mockReturnValue(<>CopyToClipboardButton</>);
+});
+
 describe('Test QueryCard Component', () => {
   it('Check if QueryCard has all child elements', async () => {
     const { container } = render(<QueryCard query={mockQueryData} />, {
       wrapper: MemoryRouter,
     });
-    const queryHeader = await findByTestId(container, 'query-header');
+    const queryHeader = getByTestId(container, 'query-header');
     const query = await findByText(container, /SchemaEditor/i);
-    const copyQueryButton = await findByTestId(container, 'copy-query');
+    const copyQueryButton = await findByText(
+      container,
+      /CopyToClipboardButton/i
+    );
+
+    const expandButton = await findByTestId(
+      container,
+      'expand-collapse-button'
+    );
 
     expect(queryHeader).toBeInTheDocument();
     expect(query).toBeInTheDocument();
     expect(copyQueryButton).toBeInTheDocument();
+    expect(expandButton).toBeInTheDocument();
+  });
+
+  it('Should not render header if user is undefined', async () => {
+    const { container } = render(
+      <QueryCard query={{ ...mockQueryData, user: undefined }} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const queryHeader = queryByTestId(container, 'query-header');
+
+    expect(queryHeader).not.toBeInTheDocument();
+  });
+
+  it('Should not render header if duration is undefined', async () => {
+    const { container } = render(
+      <QueryCard query={{ ...mockQueryData, duration: undefined }} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const queryHeader = queryByTestId(container, 'query-header');
+
+    expect(queryHeader).not.toBeInTheDocument();
   });
 });

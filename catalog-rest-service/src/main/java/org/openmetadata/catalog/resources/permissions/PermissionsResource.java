@@ -29,7 +29,6 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.Permissions;
-import org.openmetadata.catalog.security.SecurityUtil;
 
 @Path("/v1/permissions")
 @Api(value = "Get permissions")
@@ -45,8 +44,8 @@ public class PermissionsResource {
 
   @GET
   @Operation(
-      summary = "Retrieves permissions for logged in user",
-      tags = "general",
+      summary = "Get permissions for logged in user",
+      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -54,6 +53,6 @@ public class PermissionsResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Permissions.class)))
       })
   public Permissions getPermissions(@Context SecurityContext securityContext) {
-    return new Permissions(authorizer.listPermissions(SecurityUtil.getAuthenticationContext(securityContext), null));
+    return new Permissions(authorizer.listPermissions(securityContext, null));
   }
 }

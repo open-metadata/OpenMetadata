@@ -26,6 +26,7 @@ jest.mock('../../GlossaryReferences/GlossaryReferences', () => {
 jest.mock('lodash', () => ({
   isEqual: jest.fn().mockReturnValue(false),
   cloneDeep: jest.fn().mockReturnValue(mockRefs),
+  isEmpty: jest.fn().mockReturnValue(true),
 }));
 
 describe('Test Ingestion modal component', () => {

@@ -13,10 +13,11 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -24,259 +25,171 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.RoleRepository;
-import org.openmetadata.catalog.jdbi3.TeamRepository;
-import org.openmetadata.catalog.jdbi3.UserRepository;
-import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
-
   private Set<String> adminUsers;
   private Set<String> botUsers;
-
+  private Set<String> testUsers;
   private String principalDomain;
-  private UserRepository userRepository;
-
-  private PolicyEvaluator policyEvaluator;
-  private static final String FIELDS_PARAM = "roles,teams";
 
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
+    this.testUsers = new HashSet<>(config.getTestPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
-    this.userRepository = new UserRepository(collectionDAO);
-    // RoleRepository and TeamRepository needs to be instantiated for Entity.DAO_MAP to populated.
-    // As we create default admin/bots we need to have RoleRepository and TeamRepository available in DAO_MAP.
-    // This needs to be handled better in future releases.
-    RoleRepository roleRepository = new RoleRepository(collectionDAO);
-    TeamRepository teamRepository = new TeamRepository(collectionDAO);
-    mayBeAddAdminUsers();
-    mayBeAddBotUsers();
-    this.policyEvaluator = PolicyEvaluator.getInstance();
+    initializeUsers();
   }
 
-  private void mayBeAddAdminUsers() {
+  private void initializeUsers() {
     LOG.debug("Checking user entries for admin users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
+    String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
     for (String adminUser : adminUsers) {
-      try {
-        User user = userRepository.getByName(null, adminUser, fields);
-        if (user != null && (user.getIsAdmin() == null || !user.getIsAdmin())) {
-          user.setIsAdmin(true);
-        }
-        addOrUpdateUser(user);
-      } catch (EntityNotFoundException ex) {
-        User user =
-            new User()
-                .withId(UUID.randomUUID())
-                .withName(adminUser)
-                .withEmail(adminUser + "@" + principalDomain)
-                .withIsAdmin(true)
-                .withUpdatedBy(adminUser)
-                .withUpdatedAt(System.currentTimeMillis());
-        addOrUpdateUser(user);
-      } catch (IOException | ParseException e) {
-        LOG.error("Failed to create admin user {}", adminUser, e);
-      }
+      User user = user(adminUser, domain, adminUser).withIsAdmin(true);
+      addOrUpdateUser(user);
     }
-  }
 
-  private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     for (String botUser : botUsers) {
-      try {
-        User user = userRepository.getByName(null, botUser, fields);
-        if (user != null && (user.getIsBot() == null || !user.getIsBot())) {
-          user.setIsBot(true);
-        }
-        addOrUpdateUser(user);
-      } catch (EntityNotFoundException ex) {
-        User user =
-            new User()
-                .withId(UUID.randomUUID())
-                .withName(botUser)
-                .withEmail(botUser + "@" + principalDomain)
-                .withIsBot(true)
-                .withUpdatedBy(botUser)
-                .withUpdatedAt(System.currentTimeMillis());
-        addOrUpdateUser(user);
-      } catch (IOException | ParseException e) {
-        LOG.error("Failed to create admin user {}", botUser, e);
-      }
+      User user = user(botUser, domain, botUser).withIsBot(true);
+      addOrUpdateUser(user);
+    }
+
+    LOG.debug("Checking user entries for test users");
+    for (String testUser : testUsers) {
+      User user = user(testUser, domain, testUser);
+      addOrUpdateUser(user);
     }
   }
 
-  @Override
-  public boolean hasPermissions(AuthenticationContext ctx, EntityReference owner) {
-    validateAuthenticationContext(ctx);
-    // Since we have roles and operations. An Admin could enable updateDescription, tags, ownership permissions to
-    // a role and assign that to the users who can update the entities. With this we can look at the owner as a strict
-    // requirement to manage entities. So if owner is null we will not allow users to update entities. They can get a
-    // role that allows them to update the entity.
-    if (owner == null) {
-      return false;
-    }
-    try {
-      User user = getUserFromAuthenticationContext(ctx);
-      return isOwnedByUser(user, owner);
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
-      return false;
-    }
+  private User user(String name, String domain, String updatedBy) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withEmail(name + "@" + domain)
+        .withUpdatedBy(updatedBy)
+        .withUpdatedAt(System.currentTimeMillis());
   }
 
   @Override
-  public boolean hasPermissions(
-      AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
-    validateAuthenticationContext(ctx);
-    try {
-      User user = getUserFromAuthenticationContext(ctx);
-      if (entityReference == null) {
-        // In some cases there is no specific entity being acted upon. Eg: Lineage.
-        return policyEvaluator.hasPermission(user, null, operation);
-      }
+  public List<MetadataOperation> listPermissions(
+      SecurityContext securityContext, ResourceContextInterface resourceContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
 
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
-      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
-
-      if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
-        // Entity is owned by the user.
-        return true;
-      }
-      return policyEvaluator.hasPermission(user, entity, operation);
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
-      return false;
-    }
-  }
-
-  @Override
-  public List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference) {
-    validateAuthenticationContext(ctx);
-
-    if (isAdmin(ctx) || isBot(ctx)) {
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
       // Admins and bots have permissions to do all operations.
       return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
     }
 
     try {
-      User user = getUserFromAuthenticationContext(ctx);
-      if (entityReference == null) {
-        return policyEvaluator.getAllowedOperations(user, null);
+      List<EntityReference> allRoles = subjectContext.getAllRoles();
+      if (resourceContext == null) {
+        return RoleEvaluator.getInstance().getAllowedOperations(allRoles, null);
       }
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
-      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
-      if (owner == null || isOwnedByUser(user, owner)) {
+      EntityReference owner = resourceContext.getOwner();
+      if (owner == null || subjectContext.isOwner(owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
         return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
       }
-      return policyEvaluator.getAllowedOperations(user, entity);
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
+      return RoleEvaluator.getInstance().getAllowedOperations(allRoles, resourceContext.getEntity());
+    } catch (IOException | EntityNotFoundException ex) {
       return Collections.emptyList();
     }
   }
 
-  /** Checks if the user is same as owner or part of the team that is the owner. */
-  private boolean isOwnedByUser(User user, EntityReference owner) {
-    if (owner.getType().equals(Entity.USER) && owner.getName().equals(user.getName())) {
-      // Owner is same as user.
-      return true;
-    }
-    if (owner.getType().equals(Entity.TEAM)) {
-      for (EntityReference userTeam : user.getTeams()) {
-        if (userTeam.getName().equals(owner.getName())) {
-          // Owner is a team, and the user is part of this team.
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
   @Override
-  public boolean isAdmin(AuthenticationContext ctx) {
-    validateAuthenticationContext(ctx);
-    String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
+  public boolean isOwner(SecurityContext securityContext, EntityReference owner) {
+    if (owner == null) {
+      return false;
+    }
     try {
-      User user = userRepository.getByName(null, userName, fields);
-      if (user.getIsAdmin() == null) {
-        return false;
-      }
-      return user.getIsAdmin();
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
+      SubjectContext subjectContext = getSubjectContext(securityContext);
+      return subjectContext.isOwner(owner);
+    } catch (EntityNotFoundException ex) {
       return false;
     }
   }
 
   @Override
-  public boolean isBot(AuthenticationContext ctx) {
-    validateAuthenticationContext(ctx);
-    String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
-    try {
-      User user = userRepository.getByName(null, userName, fields);
-      if (user.getIsBot() == null) {
-        return false;
-      }
-      return user.getIsBot();
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
-      return false;
+  public void authorize(
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext,
+      boolean allowBots)
+      throws IOException {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+      return;
     }
+
+    if (subjectContext.isOwner(resourceContext.getOwner())) {
+      return;
+    }
+
+    // TODO view is currently allowed for everyone
+    if (operationContext.getOperations().size() == 1
+        && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
+      return;
+    }
+    List<MetadataOperation> metadataOperations = operationContext.getOperations();
+
+    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
+    if (metadataOperations.isEmpty()) {
+      throw new AuthorizationException(noPermission(securityContext.getUserPrincipal()));
+    }
+    for (MetadataOperation operation : metadataOperations) {
+      if (!RoleEvaluator.getInstance()
+          .hasPermissions(subjectContext.getAllRoles(), resourceContext.getEntity(), operation)) {
+        throw new AuthorizationException(noPermission(securityContext.getUserPrincipal(), operation.value()));
+      }
+    }
+    return;
   }
 
   @Override
-  public boolean isOwner(AuthenticationContext ctx, EntityReference owner) {
-    validateAuthenticationContext(ctx);
-    String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
-    try {
-      User user = userRepository.getByName(null, userName, fields);
-      if (owner == null) {
-        return false;
-      }
-      return isOwnedByUser(user, owner);
-    } catch (IOException | EntityNotFoundException | ParseException ex) {
-      return false;
+  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
+      return;
     }
-  }
-
-  private void validateAuthenticationContext(AuthenticationContext ctx) {
-    if (ctx == null || ctx.getPrincipal() == null) {
-      throw new AuthenticationException("No principal in AuthenticationContext");
-    }
-  }
-
-  private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
-    String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
-    return userRepository.getByName(null, userName, fields);
+    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal()));
   }
 
   private void addOrUpdateUser(User user) {
+    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added user entry: {}", addedUser);
-    } catch (IOException | ParseException exception) {
+    } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("User entry: {} already exists.", user);
     }
+  }
+
+  private SubjectContext getSubjectContext(SecurityContext securityContext) {
+    if (securityContext == null || securityContext.getUserPrincipal() == null) {
+      throw new AuthenticationException("No principal in security context");
+    }
+    return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
   }
 }

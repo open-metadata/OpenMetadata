@@ -17,30 +17,28 @@ import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { createUser } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
-import { ROUTES } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { UserType } from '../../enums/user.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const CreateUserPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const showToast = useToastContext();
   const history = useHistory();
 
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const [teams, setTeams] = useState<Array<UserTeams>>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToUserListPage = () => {
-    history.push(ROUTES.USER_LIST);
+    history.push(getTeamAndUserDetailsPath(UserType.USERS));
   };
 
   const handleCancel = () => {
@@ -48,24 +46,15 @@ const CreateUserPage = () => {
   };
 
   /**
-   * Creates toast notification for error.
-   * @param errMessage Error message
-   */
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  /**
    * Handles error if any, while creating new user.
-   * @param errorMessage Error message
+   * @param error AxiosError or error message
+   * @param fallbackText fallback error message
    */
-  const handleSaveFailure = (errorMessage = '') => {
-    handleShowErrorToast(
-      errorMessage || jsonData['api-error-messages']['create-user-error']
-    );
+  const handleSaveFailure = (
+    error: AxiosError | string,
+    fallbackText?: string
+  ) => {
+    showErrorToast(error, fallbackText);
     setStatus('initial');
   };
 
@@ -84,31 +73,34 @@ const CreateUserPage = () => {
             goToUserListPage();
           }, 500);
         } else {
-          handleSaveFailure();
+          handleSaveFailure(
+            jsonData['api-error-messages']['create-user-error']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        handleSaveFailure(err.response?.data?.message);
+        handleSaveFailure(
+          err,
+          jsonData['api-error-messages']['create-user-error']
+        );
       });
   };
 
   useEffect(() => {
     setRoles(AppState.userRoles);
   }, [AppState.userRoles]);
-  useEffect(() => {
-    setTeams(AppState.userTeams);
-  }, [AppState.userTeams]);
 
   return (
     <PageContainerV1>
-      <CreateUserComponent
-        allowAccess={isAdminUser || isAuthDisabled}
-        roles={roles}
-        saveState={status}
-        teams={teams}
-        onCancel={handleCancel}
-        onSave={handleAddUserSave}
-      />
+      <div className="tw-self-center">
+        <CreateUserComponent
+          allowAccess={isAdminUser || isAuthDisabled}
+          roles={roles}
+          saveState={status}
+          onCancel={handleCancel}
+          onSave={handleAddUserSave}
+        />
+      </div>
     </PageContainerV1>
   );
 };

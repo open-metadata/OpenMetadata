@@ -45,9 +45,6 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
-import org.openmetadata.catalog.jdbi3.MlModelRepository;
-import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
@@ -61,13 +58,12 @@ import org.openmetadata.catalog.type.MlFeatureDataType;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.MlStore;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlModel> {
+class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlModel> {
 
   public static final String ALGORITHM = "regression";
   public static Dashboard DASHBOARD;
@@ -114,14 +110,14 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     DASHBOARD =
         dashboardResourceTest.createEntity(
             dashboardResourceTest.createRequest(test).withCharts(null), ADMIN_AUTH_HEADERS);
-    DASHBOARD_REFERENCE = new DashboardEntityInterface(DASHBOARD).getEntityReference();
+    DASHBOARD_REFERENCE = DASHBOARD.getEntityReference();
 
     CreateTable createTable =
-        new CreateTable().withName("myTable").withDatabase(DATABASE_REFERENCE).withColumns(COLUMNS);
+        new CreateTable().withName("myTable").withDatabaseSchema(DATABASE_SCHEMA_REFERENCE).withColumns(COLUMNS);
 
     TableResourceTest tableResourceTest = new TableResourceTest();
     TABLE = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
-    TABLE_REFERENCE = new TableEntityInterface(TABLE).getEntityReference();
+    TABLE_REFERENCE = TABLE.getEntityReference();
   }
 
   @Test
@@ -238,7 +234,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
 
   @Test
   void put_MlModelAddMlFeatures_200(TestInfo test) throws IOException {
-    CreateMlModel request = new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM);
+    CreateMlModel request =
+        new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM).withService(MLFLOW_REFERENCE);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(ML_FEATURES));
@@ -315,7 +312,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
 
   @Test
   void put_MlModelAddMlHyperParams_200(TestInfo test) throws IOException {
-    CreateMlModel request = new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM);
+    CreateMlModel request =
+        new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM).withService(MLFLOW_REFERENCE);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("mlHyperParameters").withNewValue(ML_HYPERPARAMS));
@@ -348,9 +346,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
-  /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
+  public MlModel validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
     // .../models?fields=owner
     String fields = "";
     model =
@@ -366,32 +363,25 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         byName
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(
-        model.getOwner(), model.getDashboard(), model.getFollowers(), model.getTags(), model.getUsageSummary());
+    assertListNotNull(model.getDashboard(), model.getUsageSummary());
+    // Checks for other owner, tags, and followers is done in the base class
+    return model;
   }
 
   @Override
-  public CreateMlModel createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateMlModel createRequest(String name) {
     return new CreateMlModel()
         .withName(name)
         .withAlgorithm(ALGORITHM)
         .withMlFeatures(ML_FEATURES)
         .withMlHyperParameters(ML_HYPERPARAMS)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner)
-        .withDashboard(DASHBOARD_REFERENCE);
+        .withDashboard(DASHBOARD_REFERENCE)
+        .withService(MLFLOW_REFERENCE);
   }
 
   @Override
   public void compareEntities(MlModel expected, MlModel updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
-
     // Entity specific validations
     assertEquals(expected.getAlgorithm(), updated.getAlgorithm());
     assertEquals(expected.getDashboard(), updated.getDashboard());
@@ -403,11 +393,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
 
     TestUtils.validateTags(expected.getTags(), updated.getTags());
     TestUtils.validateEntityReferences(updated.getFollowers());
-  }
-
-  @Override
-  public EntityInterface<MlModel> getEntityInterface(MlModel entity) {
-    return new MlModelRepository.MlModelEntityInterface(entity);
   }
 
   final BiConsumer<MlFeature, MlFeature> assertMlFeature =
@@ -450,13 +435,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   @Override
   public void validateCreatedEntity(MlModel createdEntity, CreateMlModel createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(createdEntity),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
-
-    // Entity specific validations
     assertEquals(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
     assertEquals(createRequest.getDashboard(), createdEntity.getDashboard());
     assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);

@@ -26,8 +26,8 @@ import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.type.ChangeEvent;
 
-@Slf4j
 /** Change event PubSub built based on LMAX Disruptor. */
+@Slf4j
 public class EventPubSub {
   private static Disruptor<ChangeEventHolder> disruptor;
   private static ExecutorService executor;

@@ -10,8 +10,8 @@
 #  limitations under the License.
 
 import json
-import logging
 import ssl
+import sys
 import traceback
 from datetime import datetime
 from typing import List, Optional
@@ -23,46 +23,81 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type import entityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
-    ChangeDescription,
     DashboardESDocument,
+    ESEntityReference,
     GlossaryTermESDocument,
+    MlModelESDocument,
     PipelineESDocument,
     TableESDocument,
+    TagESDocument,
     TeamESDocument,
     TopicESDocument,
     UserESDocument,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.sink.elasticsearch_constants import (
+from metadata.ingestion.sink.elasticsearch_mapping.dashboard_search_index_mapping import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.glossary_term_search_index_mapping import (
     GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.mlmodel_search_index_mapping import (
+    MLMODEL_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.pipeline_search_index_mapping import (
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.table_search_index_mapping import (
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.tag_search_index_mapping import (
+    TAG_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.team_search_index_mapping import (
     TEAM_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.topic_search_index_mapping import (
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.user_search_index_mapping import (
     USER_ELASTICSEARCH_INDEX_MAPPING,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 def epoch_ms(dt: datetime):
     return int(dt.timestamp() * 1000)
+
+
+def get_es_entity_ref(entity_ref: EntityReference) -> ESEntityReference:
+    return ESEntityReference(
+        id=str(entity_ref.id.__root__),
+        name=entity_ref.name,
+        displayName=entity_ref.displayName if entity_ref.displayName else "",
+        description=entity_ref.description.__root__ if entity_ref.description else "",
+        type=entity_ref.type,
+        fullyQualifiedName=entity_ref.fullyQualifiedName,
+        deleted=entity_ref.deleted,
+        href=entity_ref.href.__root__,
+    )
 
 
 class ElasticSearchConfig(ConfigModel):
@@ -76,7 +111,9 @@ class ElasticSearchConfig(ConfigModel):
     index_pipelines: Optional[bool] = True
     index_users: Optional[bool] = True
     index_teams: Optional[bool] = True
+    index_mlmodels: Optional[bool] = True
     index_glossary_terms: Optional[bool] = True
+    index_tags: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
@@ -84,11 +121,14 @@ class ElasticSearchConfig(ConfigModel):
     user_index_name: str = "user_search_index"
     team_index_name: str = "team_search_index"
     glossary_term_index_name: str = "glossary_search_index"
+    mlmodel_index_name: str = "mlmodel_search_index"
+    tag_index_name: str = "tag_search_index"
     scheme: str = "http"
     use_ssl: bool = False
     verify_certs: bool = False
     timeout: int = 30
     ca_certs: Optional[str] = None
+    recreate_indexes: Optional[bool] = False
 
 
 class ElasticsearchSink(Sink[Entity]):
@@ -97,23 +137,19 @@ class ElasticsearchSink(Sink[Entity]):
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = ElasticSearchConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: ElasticSearchConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ) -> None:
 
         self.config = config
         self.metadata_config = metadata_config
-        self.ctx = ctx
+
         self.status = SinkStatus()
         self.metadata = OpenMetadata(self.metadata_config)
         self.elasticsearch_doc_type = "_doc"
@@ -173,12 +209,27 @@ class ElasticsearchSink(Sink[Entity]):
                 GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
             )
 
+        if self.config.index_mlmodels:
+            self._check_or_create_index(
+                self.config.mlmodel_index_name,
+                MLMODEL_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
+        if self.config.index_tags:
+            self._check_or_create_index(
+                self.config.tag_index_name,
+                TAG_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
     def _check_or_create_index(self, index_name: str, es_mapping: str):
         """
         Retrieve all indices that currently have {elasticsearch_alias} alias
-        :return: list of elasticsearch indices
+        :return: list of elasticsearch_mapping indices
         """
-        if self.elasticsearch_client.indices.exists(index_name):
+        if (
+            self.elasticsearch_client.indices.exists(index_name)
+            and not self.config.recreate_indexes
+        ):
             mapping = self.elasticsearch_client.indices.get_mapping()
             if not mapping[index_name]["mappings"]:
                 logger.debug(
@@ -199,6 +250,10 @@ class ElasticsearchSink(Sink[Entity]):
                 + "The index doesn't exist for a newly created ES. It's OK on first run."
             )
             # create new index with mapping
+            if self.elasticsearch_client.indices.exists(index=index_name):
+                self.elasticsearch_client.indices.delete(
+                    index=index_name, request_timeout=self.config.timeout
+                )
             self.elasticsearch_client.indices.create(
                 index=index_name, body=es_mapping, request_timeout=self.config.timeout
             )
@@ -209,7 +264,7 @@ class ElasticsearchSink(Sink[Entity]):
                 table_doc = self._create_table_es_doc(record)
                 self.elasticsearch_client.index(
                     index=self.config.table_index_name,
-                    id=str(table_doc.table_id),
+                    id=str(table_doc.id),
                     body=table_doc.json(),
                     request_timeout=self.config.timeout,
                 )
@@ -217,7 +272,7 @@ class ElasticsearchSink(Sink[Entity]):
                 topic_doc = self._create_topic_es_doc(record)
                 self.elasticsearch_client.index(
                     index=self.config.topic_index_name,
-                    id=str(topic_doc.topic_id),
+                    id=str(topic_doc.id),
                     body=topic_doc.json(),
                     request_timeout=self.config.timeout,
                 )
@@ -225,7 +280,7 @@ class ElasticsearchSink(Sink[Entity]):
                 dashboard_doc = self._create_dashboard_es_doc(record)
                 self.elasticsearch_client.index(
                     index=self.config.dashboard_index_name,
-                    id=str(dashboard_doc.dashboard_id),
+                    id=str(dashboard_doc.id),
                     body=dashboard_doc.json(),
                     request_timeout=self.config.timeout,
                 )
@@ -233,17 +288,16 @@ class ElasticsearchSink(Sink[Entity]):
                 pipeline_doc = self._create_pipeline_es_doc(record)
                 self.elasticsearch_client.index(
                     index=self.config.pipeline_index_name,
-                    id=str(pipeline_doc.pipeline_id),
+                    id=str(pipeline_doc.id),
                     body=pipeline_doc.json(),
                     request_timeout=self.config.timeout,
                 )
 
             if isinstance(record, User):
                 user_doc = self._create_user_es_doc(record)
-                print(user_doc.json())
                 self.elasticsearch_client.index(
                     index=self.config.user_index_name,
-                    id=str(user_doc.user_id),
+                    id=str(user_doc.id),
                     body=user_doc.json(),
                     request_timeout=self.config.timeout,
                 )
@@ -252,7 +306,7 @@ class ElasticsearchSink(Sink[Entity]):
                 team_doc = self._create_team_es_doc(record)
                 self.elasticsearch_client.index(
                     index=self.config.team_index_name,
-                    id=str(team_doc.team_id),
+                    id=str(team_doc.id),
                     body=team_doc.json(),
                     request_timeout=self.config.timeout,
                 )
@@ -261,100 +315,117 @@ class ElasticsearchSink(Sink[Entity]):
                 glossary_term_doc = self._create_glossary_term_es_doc(record)
                 self.elasticsearch_client.index(
                     index=self.config.glossary_term_index_name,
-                    id=str(glossary_term_doc.glossary_term_id),
+                    id=str(glossary_term_doc.id),
                     body=glossary_term_doc.json(),
                     request_timeout=self.config.timeout,
                 )
 
-            if hasattr(record.name, "__root__"):
-                self.status.records_written(record.name.__root__)
-            else:
-                self.status.records_written(record.name)
+            if isinstance(record, MlModel):
+                ml_model_doc = self._create_ml_model_es_doc(record)
+                self.elasticsearch_client.index(
+                    index=self.config.mlmodel_index_name,
+                    id=str(ml_model_doc.id),
+                    body=ml_model_doc.json(),
+                    request_timeout=self.config.timeout,
+                )
+
+            if isinstance(record, TagCategory):
+                tag_docs = self._create_tag_es_doc(record)
+                for tag_doc in tag_docs:
+                    self.elasticsearch_client.index(
+                        index=self.config.tag_index_name,
+                        id=str(tag_doc.id),
+                        body=tag_doc.json(),
+                        request_timeout=self.config.timeout,
+                    )
+                    self.status.records_written(tag_doc.name)
+
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
+            logger.debug(sys.exc_info()[2])
 
     def _create_table_es_doc(self, table: Table):
-        fqdn = table.fullyQualifiedName
-        database = table.database.name
+        table_fqn = table.fullyQualifiedName.__root__
         table_name = table.name
         suggest = [
-            {"input": [fqdn], "weight": 5},
+            {"input": [table_fqn], "weight": 5},
             {"input": [table_name], "weight": 10},
         ]
+        column_suggest = []
+        schema_suggest = []
+        database_suggest = []
+        service_suggest = []
+        tags = []
+        tier = None
         column_names = []
         column_descriptions = []
-        tags = set()
 
-        timestamp = table.updatedAt.__root__
-        tier = None
         for table_tag in table.tags:
             if "Tier" in table_tag.tagFQN.__root__:
-                tier = table_tag.tagFQN.__root__
+                tier = table_tag
             else:
-                tags.add(table_tag.tagFQN.__root__)
-        self._parse_columns(
-            table.columns, None, column_names, column_descriptions, tags
-        )
+                tags.append(table_tag)
 
         database_entity = self.metadata.get_by_id(
             entity=Database, entity_id=str(table.database.id.__root__)
         )
-        service_entity = self.metadata.get_by_id(
-            entity=DatabaseService, entity_id=str(database_entity.service.id.__root__)
+        database_schema_entity = self.metadata.get_by_id(
+            entity=DatabaseSchema, entity_id=str(table.databaseSchema.id.__root__)
         )
-        table_owner = str(table.owner.id.__root__) if table.owner is not None else ""
+        service_suggest.append({"input": [table.service.name], "weight": 5})
+        database_suggest.append({"input": [database_entity.name.__root__], "weight": 5})
+        schema_suggest.append(
+            {"input": [database_schema_entity.name.__root__], "weight": 5}
+        )
+        self._parse_columns(
+            table.columns, None, column_names, column_descriptions, tags
+        )
+        for column in column_names:
+            column_suggest.append({"input": [column], "weight": 5})
+
         table_followers = []
         if table.followers:
             for follower in table.followers.__root__:
                 table_followers.append(str(follower.id.__root__))
-        table_type = None
-        if hasattr(table.tableType, "name"):
-            table_type = table.tableType.name
 
-        change_descriptions = self._get_change_descriptions(Table, table.id.__root__)
         table_doc = TableESDocument(
-            table_id=str(table.id.__root__),
-            deleted=table.deleted,
-            database=str(database_entity.name.__root__),
-            service=service_entity.name,
-            service_type=service_entity.serviceType.name,
-            service_category="databaseService",
+            id=str(table.id.__root__),
             name=table.name.__root__,
+            displayName=table.displayName if table.displayName else table.name.__root__,
+            fullyQualifiedName=table.fullyQualifiedName.__root__,
+            version=table.version.__root__,
+            updatedAt=table.updatedAt.__root__,
+            updatedBy=table.updatedBy,
+            href=table.href.__root__,
+            columns=table.columns,
+            databaseSchema=table.databaseSchema,
+            database=table.database,
+            service=table.service,
+            owner=table.owner,
+            location=table.location,
+            usageSummary=table.usageSummary,
+            deleted=table.deleted,
+            serviceType=str(table.serviceType.name),
             suggest=suggest,
-            description=table.description,
-            table_type=table_type,
-            last_updated_timestamp=timestamp,
-            column_names=column_names,
-            column_descriptions=column_descriptions,
-            monthly_stats=table.usageSummary.monthlyStats.count,
-            monthly_percentile_rank=table.usageSummary.monthlyStats.percentileRank,
-            weekly_stats=table.usageSummary.weeklyStats.count,
-            weekly_percentile_rank=table.usageSummary.weeklyStats.percentileRank,
-            daily_stats=table.usageSummary.dailyStats.count,
-            daily_percentile_rank=table.usageSummary.dailyStats.percentileRank,
+            service_suggest=service_suggest,
+            database_suggest=database_suggest,
+            schema_suggest=schema_suggest,
+            column_suggest=column_suggest,
+            description=table.description.__root__ if table.description else "",
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
-            owner=table_owner,
             followers=table_followers,
-            change_descriptions=change_descriptions,
         )
         return table_doc
 
     def _create_topic_es_doc(self, topic: Topic):
-        fqdn = topic.fullyQualifiedName
-        topic_name = topic.name
+        service_suggest = []
         suggest = [
-            {"input": [fqdn], "weight": 5},
-            {"input": [topic_name], "weight": 10},
+            {"input": [topic.name], "weight": 5},
+            {"input": [topic.fullyQualifiedName.__root__], "weight": 10},
         ]
-        tags = set()
-        timestamp = topic.updatedAt.__root__
-        service_entity = self.metadata.get_by_id(
-            entity=MessagingService, entity_id=str(topic.service.id.__root__)
-        )
-        topic_owner = str(topic.owner.id.__root__) if topic.owner is not None else ""
+        tags = []
         topic_followers = []
         if topic.followers:
             for follower in topic.followers.__root__:
@@ -362,41 +433,46 @@ class ElasticsearchSink(Sink[Entity]):
         tier = None
         for topic_tag in topic.tags:
             if "Tier" in topic_tag.tagFQN.__root__:
-                tier = topic_tag.tagFQN.__root__
+                tier = topic_tag
             else:
-                tags.add(topic_tag.tagFQN.__root__)
-        change_descriptions = self._get_change_descriptions(Topic, topic.id.__root__)
+                tags.append(topic_tag)
+        service_suggest.append({"input": [topic.service.name], "weight": 5})
         topic_doc = TopicESDocument(
-            topic_id=str(topic.id.__root__),
-            deleted=topic.deleted,
-            service=service_entity.name,
-            service_type=service_entity.serviceType.name,
-            service_category="messagingService",
+            id=str(topic.id.__root__),
             name=topic.name.__root__,
+            displayName=topic.displayName if topic.displayName else topic.name.__root__,
+            description=topic.description.__root__ if topic.description else "",
+            fullyQualifiedName=topic.fullyQualifiedName.__root__,
+            version=topic.version.__root__,
+            updatedAt=topic.updatedAt.__root__,
+            updatedBy=topic.updatedBy,
+            href=topic.href.__root__,
+            deleted=topic.deleted,
+            service=topic.service,
+            serviceType=str(topic.serviceType.name),
+            schemaText=topic.schemaText,
+            schemaType=str(topic.schemaType.name),
+            cleanupPolicies=[str(policy.name) for policy in topic.cleanupPolicies],
+            replicationFactor=topic.replicationFactor,
+            maximumMessageSize=topic.maximumMessageSize,
+            retentionSize=topic.retentionSize,
             suggest=suggest,
-            description=topic.description,
-            last_updated_timestamp=timestamp,
+            service_suggest=service_suggest,
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
-            owner=topic_owner,
+            owner=topic.owner,
             followers=topic_followers,
-            change_descriptions=change_descriptions,
         )
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
-        fqdn = dashboard.fullyQualifiedName
-        dashboard_name = dashboard.name
-        suggest = [{"input": [dashboard.displayName], "weight": 10}]
-        tags = set()
-        timestamp = dashboard.updatedAt.__root__
-        service_entity = self.metadata.get_by_id(
-            entity=DashboardService, entity_id=str(dashboard.service.id.__root__)
-        )
-        dashboard_owner = (
-            str(dashboard.owner.id.__root__) if dashboard.owner is not None else ""
-        )
+        suggest = [
+            {"input": [dashboard.fullyQualifiedName.__root__], "weight": 10},
+            {"input": [dashboard.displayName], "weight": 5},
+        ]
+        service_suggest = []
+        chart_suggest = []
+        tags = []
         dashboard_followers = []
         if dashboard.followers:
             for follower in dashboard.followers.__root__:
@@ -404,61 +480,53 @@ class ElasticsearchSink(Sink[Entity]):
         tier = None
         for dashboard_tag in dashboard.tags:
             if "Tier" in dashboard_tag.tagFQN.__root__:
-                tier = dashboard_tag.tagFQN.__root__
+                tier = dashboard_tag
             else:
-                tags.add(dashboard_tag.tagFQN.__root__)
-        charts: List[Chart] = self._get_charts(dashboard.charts)
-        chart_names = []
-        chart_descriptions = []
-        for chart in charts:
-            chart_names.append(chart.displayName)
-            if chart.description is not None:
-                chart_descriptions.append(chart.description)
-            if len(chart.tags) > 0:
-                for col_tag in chart.tags:
-                    tags.add(col_tag.tagFQN.__root__)
-        change_descriptions = self._get_change_descriptions(
-            Dashboard, dashboard.id.__root__
-        )
+                tags.append(dashboard_tag)
+
+        for chart in dashboard.charts:
+            chart_suggest.append({"input": [chart.displayName], "weight": 5})
+
+        service_suggest.append({"input": [dashboard.service.name], "weight": 5})
+
         dashboard_doc = DashboardESDocument(
-            dashboard_id=str(dashboard.id.__root__),
+            id=str(dashboard.id.__root__),
+            name=dashboard.displayName
+            if dashboard.displayName
+            else dashboard.name.__root__,
+            displayName=dashboard.displayName if dashboard.displayName else "",
+            description=dashboard.description.__root__ if dashboard.description else "",
+            fullyQualifiedName=dashboard.fullyQualifiedName.__root__,
+            version=dashboard.version.__root__,
+            updatedAt=dashboard.updatedAt.__root__,
+            updatedBy=dashboard.updatedBy,
+            dashboardUrl=dashboard.dashboardUrl,
+            charts=dashboard.charts,
+            href=dashboard.href.__root__,
             deleted=dashboard.deleted,
-            service=service_entity.name,
-            service_type=service_entity.serviceType.name,
-            service_category="dashboardService",
-            name=dashboard.displayName,
-            chart_names=chart_names,
-            chart_descriptions=chart_descriptions,
-            suggest=suggest,
-            description=dashboard.description,
-            last_updated_timestamp=timestamp,
+            service=dashboard.service,
+            serviceType=str(dashboard.serviceType.name),
+            usageSummary=dashboard.usageSummary,
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
-            owner=dashboard_owner,
+            owner=dashboard.owner,
             followers=dashboard_followers,
-            monthly_stats=dashboard.usageSummary.monthlyStats.count,
-            monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
-            weekly_stats=dashboard.usageSummary.weeklyStats.count,
-            weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
-            daily_stats=dashboard.usageSummary.dailyStats.count,
-            daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
-            change_descriptions=change_descriptions,
+            suggest=suggest,
+            chart_suggest=chart_suggest,
+            service_suggest=service_suggest,
         )
 
         return dashboard_doc
 
     def _create_pipeline_es_doc(self, pipeline: Pipeline):
-        fqdn = pipeline.fullyQualifiedName
-        suggest = [{"input": [pipeline.displayName], "weight": 10}]
-        tags = set()
-        timestamp = pipeline.updatedAt.__root__
-        service_entity = self.metadata.get_by_id(
-            entity=PipelineService, entity_id=str(pipeline.service.id.__root__)
-        )
-        pipeline_owner = (
-            str(pipeline.owner.id.__root__) if pipeline.owner is not None else ""
-        )
+        suggest = [
+            {"input": [pipeline.fullyQualifiedName.__root__], "weight": 10},
+            {"input": [pipeline.displayName], "weight": 5},
+        ]
+        service_suggest = []
+        task_suggest = []
+        tags = []
+        service_suggest.append({"input": [pipeline.service.name], "weight": 5})
         pipeline_followers = []
         if pipeline.followers:
             for follower in pipeline.followers.__root__:
@@ -466,43 +534,102 @@ class ElasticsearchSink(Sink[Entity]):
         tier = None
         for pipeline_tag in pipeline.tags:
             if "Tier" in pipeline_tag.tagFQN.__root__:
-                tier = pipeline_tag.tagFQN.__root__
+                tier = pipeline_tag
             else:
-                tags.add(pipeline_tag.tagFQN.__root__)
-        tasks: List[Task] = pipeline.tasks
-        task_names = []
-        task_descriptions = []
-        for task in tasks:
-            task_names.append(task.displayName)
-            if task.description is not None:
-                task_descriptions.append(task.description)
+                tags.append(pipeline_tag)
+
+        for task in pipeline.tasks:
+            task_suggest.append({"input": [task.displayName], "weight": 5})
             if tags in task and len(task.tags) > 0:
-                for col_tag in task.tags:
-                    tags.add(col_tag.tagFQN)
-        change_descriptions = self._get_change_descriptions(
-            Pipeline, pipeline.id.__root__
-        )
+                tags.extend(task.tags)
+
         pipeline_doc = PipelineESDocument(
-            pipeline_id=str(pipeline.id.__root__),
+            id=str(pipeline.id.__root__),
+            name=pipeline.name.__root__,
+            displayName=pipeline.displayName
+            if pipeline.displayName
+            else pipeline.name.__root__,
+            description=pipeline.description.__root__ if pipeline.description else "",
+            fullyQualifiedName=pipeline.fullyQualifiedName.__root__,
+            version=pipeline.version.__root__,
+            updatedAt=pipeline.updatedAt.__root__,
+            updatedBy=pipeline.updatedBy,
+            pipelineUrl=pipeline.pipelineUrl,
+            tasks=pipeline.tasks,
+            href=pipeline.href.__root__,
             deleted=pipeline.deleted,
-            service=service_entity.name,
-            service_type=service_entity.serviceType.name,
-            service_category="pipelineService",
-            name=pipeline.displayName,
-            task_names=task_names,
-            task_descriptions=task_descriptions,
+            service=pipeline.service,
+            serviceType=str(pipeline.serviceType.name),
             suggest=suggest,
-            description=pipeline.description,
-            last_updated_timestamp=timestamp,
+            task_suggest=task_suggest,
+            service_suggest=service_suggest,
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
-            owner=pipeline_owner,
+            owner=pipeline.owner,
             followers=pipeline_followers,
-            change_descriptions=change_descriptions,
         )
 
         return pipeline_doc
+
+    def _create_ml_model_es_doc(self, ml_model: MlModel):
+        suggest = [{"input": [ml_model.displayName], "weight": 10}]
+        tags = []
+        ml_model_followers = []
+        if ml_model.followers:
+            for follower in ml_model.followers.__root__:
+                ml_model_followers.append(str(follower.id.__root__))
+        tier = None
+        for ml_model_tag in ml_model.tags:
+            if "Tier" in ml_model_tag.tagFQN.__root__:
+                tier = ml_model_tag
+            else:
+                tags.append(ml_model_tag)
+
+        service_entity = ESEntityReference(
+            id=str(ml_model.service.id.__root__),
+            name=ml_model.service.name,
+            displayName=ml_model.service.displayName
+            if ml_model.service.displayName
+            else "",
+            description=ml_model.service.description.__root__
+            if ml_model.service.description
+            else "",
+            type=ml_model.service.type,
+            fullyQualifiedName=ml_model.service.fullyQualifiedName,
+            deleted=ml_model.service.deleted,
+            href=ml_model.service.href.__root__,
+        )
+
+        ml_model_doc = MlModelESDocument(
+            id=str(ml_model.id.__root__),
+            name=ml_model.name.__root__,
+            displayName=ml_model.displayName
+            if ml_model.displayName
+            else ml_model.name.__root__,
+            description=ml_model.description.__root__ if ml_model.description else "",
+            fullyQualifiedName=ml_model.fullyQualifiedName.__root__,
+            version=ml_model.version.__root__,
+            updatedAt=ml_model.updatedAt.__root__,
+            updatedBy=ml_model.updatedBy,
+            href=ml_model.href.__root__,
+            deleted=ml_model.deleted,
+            algorithm=ml_model.algorithm if ml_model.algorithm else "",
+            mlFeatures=ml_model.mlFeatures,
+            mlHyperParameters=ml_model.mlHyperParameters,
+            target=ml_model.target.__root__ if ml_model.target else "",
+            dashboard=ml_model.dashboard,
+            mlStore=ml_model.mlStore,
+            server=ml_model.server.__root__ if ml_model.server else "",
+            usageSummary=ml_model.usageSummary,
+            suggest=suggest,
+            tier=tier,
+            tags=list(tags),
+            owner=ml_model.owner,
+            followers=ml_model_followers,
+            service=service_entity,
+        )
+
+        return ml_model_doc
 
     def _create_user_es_doc(self, user: User):
         display_name = user.displayName if user.displayName else user.name.__root__
@@ -510,27 +637,23 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [display_name], "weight": 5},
             {"input": [user.name], "weight": 10},
         ]
-        timestamp = user.updatedAt.__root__
-        teams = []
-        roles = []
-        if user.teams:
-            for team in user.teams.__root__:
-                teams.append(str(team.id.__root__))
-
-        if user.roles:
-            for role in user.roles.__root__:
-                roles.append(str(role.id.__root__))
-
         user_doc = UserESDocument(
-            user_id=str(user.id.__root__),
-            deleted=user.deleted,
+            id=str(user.id.__root__),
             name=user.name.__root__,
-            display_name=display_name,
+            displayName=user.displayName if user.displayName else user.name.__root__,
+            description=user.description.__root__ if user.description else "",
+            fullyQualifiedName=user.fullyQualifiedName.__root__,
+            version=user.version.__root__,
+            updatedAt=user.updatedAt.__root__,
+            updatedBy=user.updatedBy,
+            href=user.href.__root__,
+            deleted=user.deleted,
             email=user.email.__root__,
+            isAdmin=user.isAdmin if user.isAdmin else False,
+            teams=user.teams if user.teams else [],
+            roles=user.roles if user.roles else [],
+            inheritedRoles=user.inheritedRoles if user.inheritedRoles else [],
             suggest=suggest,
-            last_updated_timestamp=timestamp,
-            teams=list(teams),
-            roles=list(roles),
         )
 
         return user_doc
@@ -540,26 +663,21 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [team.displayName], "weight": 5},
             {"input": [team.name], "weight": 10},
         ]
-        timestamp = team.updatedAt.__root__
-        users = []
-        owns = []
-        if team.users:
-            for user in team.users.__root__:
-                users.append(str(team.id.__root__))
-
-        if team.owns:
-            for own in team.owns.__root__:
-                owns.append(str(own.id.__root__))
-
         team_doc = TeamESDocument(
-            team_id=str(team.id.__root__),
-            deleted=team.deleted,
+            id=str(team.id.__root__),
             name=team.name.__root__,
-            display_name=team.displayName,
+            displayName=team.displayName if team.displayName else team.name.__root__,
+            description=team.description.__root__ if team.description else "",
+            fullyQualifiedName=team.fullyQualifiedName.__root__,
+            version=team.version.__root__,
+            updatedAt=team.updatedAt.__root__,
+            updatedBy=team.updatedBy,
+            href=team.href.__root__,
+            deleted=team.deleted,
             suggest=suggest,
-            last_updated_timestamp=timestamp,
-            users=list(users),
-            owns=list(owns),
+            users=team.users if team.users else [],
+            defaultRoles=team.defaultRoles if team.defaultRoles else [],
+            isJoinable=team.isJoinable,
         )
 
         return team_doc
@@ -569,33 +687,59 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [glossary_term.displayName], "weight": 5},
             {"input": [glossary_term.name], "weight": 10},
         ]
-        timestamp = glossary_term.updatedAt.__root__
-        description = glossary_term.description if glossary_term.description else ""
         glossary_term_doc = GlossaryTermESDocument(
-            glossary_term_id=str(glossary_term.id.__root__),
-            deleted=glossary_term.deleted,
-            name=glossary_term.name.__root__,
-            display_name=glossary_term.displayName,
-            fqdn=glossary_term.fullyQualifiedName,
-            description=description,
-            glossary_id=str(glossary_term.glossary.id.__root__),
-            glossary_name=glossary_term.glossary.name,
+            id=str(glossary_term.id.__root__),
+            name=str(glossary_term.name.__root__),
+            displayName=glossary_term.displayName
+            if glossary_term.displayName
+            else glossary_term.name.__root__,
+            description=glossary_term.description.__root__
+            if glossary_term.description
+            else "",
+            fullyQualifiedName=glossary_term.fullyQualifiedName.__root__,
+            version=glossary_term.version.__root__,
+            updatedAt=glossary_term.updatedAt.__root__,
+            updatedBy=glossary_term.updatedBy,
+            href=glossary_term.href.__root__,
+            synonyms=[str(synonym.__root__) for synonym in glossary_term.synonyms],
+            glossary=glossary_term.glossary,
+            children=glossary_term.children if glossary_term.children else [],
+            relatedTerms=glossary_term.relatedTerms
+            if glossary_term.relatedTerms
+            else [],
+            reviewers=glossary_term.reviewers if glossary_term.reviewers else [],
+            usageCount=glossary_term.usageCount,
+            tags=glossary_term.tags if glossary_term.tags else [],
             status=glossary_term.status.name,
             suggest=suggest,
-            last_updated_timestamp=timestamp,
+            deleted=glossary_term.deleted,
         )
 
         return glossary_term_doc
 
-    def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
-        charts = []
-        if chart_refs:
-            for chart_ref in chart_refs:
-                chart = self.metadata.get_by_id(
-                    entity=Chart, entity_id=str(chart_ref.id.__root__), fields=["tags"]
-                )
-                charts.append(chart)
-        return charts
+    def _create_tag_es_doc(self, tag_category: TagCategory):
+        tag_docs = []
+        for tag in tag_category.children:
+            suggest = [
+                {"input": [tag.name.__root__], "weight": 5},
+                {"input": [tag.fullyQualifiedName], "weight": 10},
+            ]
+            tag_doc = TagESDocument(
+                id=str(tag.id.__root__),
+                name=str(tag.name.__root__),
+                description=tag.description.__root__ if tag.description else "",
+                suggest=suggest,
+                fullyQualifiedName=tag.fullyQualifiedName,
+                version=tag.version.__root__,
+                updatedAt=tag.updatedAt.__root__,
+                updatedBy=tag.updatedBy,
+                href=tag.href.__root__,
+                deleted=tag.deleted,
+                deprecated=tag.deprecated,
+            )
+            tag_docs.append(tag_doc)
+
+        return tag_docs
 
     def _parse_columns(
         self,
@@ -608,16 +752,16 @@ class ElasticsearchSink(Sink[Entity]):
         for column in columns:
             col_name = (
                 parent_column + "." + column.name.__root__
-                if parent_column is not None
+                if parent_column
                 else column.name.__root__
             )
             column_names.append(col_name)
-            if column.description is not None:
-                column_descriptions.append(column.description)
+            if column.description:
+                column_descriptions.append(column.description.__root__)
             if len(column.tags) > 0:
                 for col_tag in column.tags:
-                    tags.add(col_tag.tagFQN.__root__)
-            if column.children is not None:
+                    tags.append(col_tag)
+            if column.children:
                 self._parse_columns(
                     column.children,
                     column.name.__root__,
@@ -625,31 +769,6 @@ class ElasticsearchSink(Sink[Entity]):
                     column_descriptions,
                     tags,
                 )
-
-    def _get_change_descriptions(self, entity_type, entity_id):
-        try:
-            entity_versions = self.metadata.list_versions(entity_id, entity_type)
-            change_descriptions = []
-            for version in entity_versions.versions:
-                version_json = json.loads(version)
-                updatedAt = version_json["updatedAt"]
-                change_description = ChangeDescription(
-                    updatedBy=version_json["updatedBy"], updatedAt=updatedAt
-                )
-                if "changeDescription" in version_json:
-                    change_description.fieldsAdded = version_json["changeDescription"][
-                        "fieldsAdded"
-                    ]
-                    change_description.fieldsDeleted = version_json[
-                        "changeDescription"
-                    ]["fieldsDeleted"]
-                    change_description.fieldsUpdated = version_json[
-                        "changeDescription"
-                    ]["fieldsUpdated"]
-                change_descriptions.append(change_description)
-            return change_descriptions
-        except Exception as err:
-            logger.error(repr(err))
 
     def get_status(self):
         return self.status

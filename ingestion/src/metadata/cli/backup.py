@@ -12,7 +12,6 @@
 """
 Backup utility for the metadata CLI
 """
-import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -20,8 +19,9 @@ from typing import List, Optional, Tuple
 
 import click
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+from metadata.utils.logger import cli_logger
+
+logger = cli_logger()
 
 
 def get_output(output: Optional[str] = None) -> Path:

@@ -13,136 +13,20 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import java.security.Principal;
-import java.util.List;
 import java.util.Map;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.SecurityContext;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.util.JsonPatchUtils;
 
 public final class SecurityUtil {
+  public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
+
   private SecurityUtil() {}
 
-  public static void checkAdminRole(Authorizer authorizer, SecurityContext securityContext) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)) {
-      throw new AuthorizationException(notAdmin(principal));
-    }
-  }
-
-  public static Boolean isAdminOrBotRole(Authorizer authorizer, SecurityContext securityContext) {
-    try {
-      checkAdminOrBotRole(authorizer, securityContext);
-      return true;
-    } catch (AuthorizationException e) {
-      return false;
-    }
-  }
-
-  public static void checkAdminOrBotRole(Authorizer authorizer, SecurityContext securityContext) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx) && !authorizer.isBot(authenticationCtx)) {
-      throw new AuthorizationException(notAdmin(principal));
-    }
-  }
-
-  public static void checkAdminOrBotOrOwner(
-      Authorizer authorizer, SecurityContext securityContext, EntityReference ownerReference) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)
-        && !authorizer.isBot(authenticationCtx)
-        && !authorizer.isOwner(authenticationCtx, ownerReference)) {
-      throw new AuthorizationException(noPermission(principal));
-    }
-  }
-
-  public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)
-        && !authorizer.isBot(authenticationCtx)
-        && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
-      throw new AuthorizationException(noPermission(principal));
-    }
-  }
-
-  /** This helper function checks if user has permission to perform the given metadata operation. */
-  public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      EntityReference entityReference,
-      MetadataOperation metadataOperation) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-
-    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
-      return;
-    }
-
-    if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-      throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
-    }
-  }
-
-  /**
-   * Most REST API requests should yield a single metadata operation. There are cases where the JSON patch request may
-   * yield multiple metadata operations. This helper function checks if user has permission to perform the given set of
-   * metadata operations that can be derived from JSON patch.
-   */
-  public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      EntityReference entityReference,
-      EntityReference ownerReference,
-      JsonPatch patch) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-
-    if (authorizer.isAdmin(authenticationCtx)
-        || authorizer.isBot(authenticationCtx)
-        || authorizer.hasPermissions(authenticationCtx, ownerReference)) {
-      return;
-    }
-
-    List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
-
-    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
-    if (metadataOperations.isEmpty()) {
-      throw new AuthorizationException(noPermission(principal));
-    }
-    for (MetadataOperation metadataOperation : metadataOperations) {
-      if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-        throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
-      }
-    }
-  }
-
-  public static String getUserName(AuthenticationContext context) {
-    return context.getPrincipal() == null ? null : context.getPrincipal().getName().split("[/@]")[0];
-  }
-
-  public static AuthenticationContext getAuthenticationContext(SecurityContext securityContext) {
-    Principal principal = securityContext.getUserPrincipal();
-    return SecurityUtil.getAuthenticationContext(principal);
-  }
-
-  private static AuthenticationContext getAuthenticationContext(Principal principal) {
-    AuthenticationContext context = new AuthenticationContext();
-    context.setPrincipal(principal);
-    return context;
+  public static String getUserName(Principal principal) {
+    return principal == null ? null : principal.getName().split("[/@]")[0];
   }
 
   public static Map<String, String> authHeaders(String username) {

@@ -3,13 +3,13 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Role",
   "description": "This schema defines the Role entity. A Role has access to zero or more data assets.",
+  "javaType": "org.openmetadata.catalog.entity.teams.Role",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "type": "object",
   "definitions": {
     "roleName": {
       "description": "A unique name for the role.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     }
   },
   "properties": {
@@ -19,13 +19,17 @@
     "name": {
       "$ref": "#/definitions/roleName"
     },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "displayName": {
       "description": "Name used for display purposes. Example 'Data Consumer'.",
       "type": "string"
     },
     "description": {
       "description": "Description of the role.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -52,21 +56,21 @@
       "type": "boolean",
       "default": false
     },
-    "policy": {
-      "description": "Policy that is attached to this role.",
-      "$ref": "../../type/entityReference.json"
-    },
-    "users": {
-      "description": "Users that have this role assigned.",
+    "policies": {
+      "description": "Policies that is attached to this role.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "defaultRole": {
-      "description": "If `true`, this role is set as default role and will be assigned to all users.",
+      "description": "If `true`, this role is set as default system role and will be inherited by all the users.",
       "type": "boolean",
       "default": false
     },
+    "users": {
+      "description": "Users that have this role assigned to them.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "teams": {
-      "description": "Teams that have this role assigned.",
+      "description": "Teams that have this role assigned to them.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useState } from 'react';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
 import { errorMsg, isValidUrl } from '../../../utils/CommonUtils';
@@ -32,7 +32,14 @@ const GlossaryReferenceModal = ({
   header,
 }: RelatedTermsModalProp) => {
   const [references, setReferences] = useState<TermReference[]>(
-    cloneDeep(referenceList) || []
+    isEmpty(referenceList)
+      ? [
+          {
+            endpoint: '',
+            name: '',
+          },
+        ]
+      : cloneDeep(referenceList || [])
   );
   const [errMsg, setErrMsg] = useState<string>();
 

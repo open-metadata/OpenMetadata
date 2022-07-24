@@ -46,9 +46,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
   const [access, setAccess] = useState<RuleAccess>(
     initialData.allow ? RuleAccess.ALLOW : RuleAccess.DENY
   );
-  const [isEnabled, setIsEnabled] = useState<boolean>(
-    Boolean(initialData.enabled)
-  );
   const onChangeHandler = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -70,7 +67,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
     const rule = {
       ...data,
       allow: access === RuleAccess.ALLOW,
-      enabled: isEnabled,
     };
     onSave(rule);
     onChange?.(rule);
@@ -107,15 +103,15 @@ const AddRuleModal: FC<AddRuleProps> = ({
                   value={data.operation}
                   onChange={onChangeHandler}>
                   <option value="">Select Operation</option>
-                  <option value={Operation.UpdateDescription}>
-                    Update Description
+                  <option value={Operation.EditDescription}>
+                    Edit Description
                   </option>
-                  <option value={Operation.UpdateLineage}>
-                    Update Lineage
+                  <option value={Operation.EditLineage}>Edit Lineage</option>
+                  <option value={Operation.EditOwner}>Edit Owner</option>
+                  <option value={Operation.EditTags}>Edit Tags</option>
+                  <option value={Operation.TeamEditUsers}>
+                    Edit Team Users
                   </option>
-                  <option value={Operation.UpdateOwner}>Update Owner</option>
-                  <option value={Operation.UpdateTags}>Update Tags</option>
-                  <option value={Operation.UpdateTeam}>Update Teams</option>
                 </select>
                 {errorData?.operation && errorMsg(errorData.operation)}
               </div>
@@ -135,18 +131,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
                 <option value={RuleAccess.ALLOW}>ALLOW</option>
                 <option value={RuleAccess.DENY}>DENY</option>
               </select>
-            </div>
-            <div className="tw-flex tw-items-center">
-              <label>Enable</label>
-              <div
-                className={classNames(
-                  'toggle-switch tw-ml-4',
-                  isEnabled ? 'open' : null
-                )}
-                data-testid="rule-switch"
-                onClick={() => setIsEnabled((pre) => !pre)}>
-                <div className="switch" />
-              </div>
             </div>
           </div>
           <div className="tw-modal-footer" data-testid="cta-container">

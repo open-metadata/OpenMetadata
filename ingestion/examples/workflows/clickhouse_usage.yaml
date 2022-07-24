@@ -1,0 +1,28 @@
+source:
+  type: clickhouse_usage
+  serviceName: local_clickhouse
+  serviceConnection:
+    config:
+      type: Clickhouse
+      username: default
+      password: ''
+      hostPort: localhost:8123
+      databaseSchema: default
+  sourceConfig:
+    config:
+      queryLogDuration: '1'
+processor:
+  type: query-parser
+  config: {}
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/clickhouse_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/clickhouse_usage
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

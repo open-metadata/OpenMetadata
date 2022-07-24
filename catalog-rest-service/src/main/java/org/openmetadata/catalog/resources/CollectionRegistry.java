@@ -22,7 +22,7 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.EntityRelationshipRepository;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
@@ -50,7 +50,7 @@ public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
 
   /** Map of collection endpoint path to collection details */
-  private final Map<String, CollectionDetails> collectionMap = new HashMap<>();
+  private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
 
   /** Resources used only for testing */
   private final List<Object> testResources = new ArrayList<>();
@@ -91,9 +91,13 @@ public final class CollectionRegistry {
   private void loadCollectionDescriptors() {
     // Load collection classes marked with @Collection annotation
     List<CollectionDetails> collections = getCollections();
-    for (CollectionDetails collection : collections) {
-      CollectionInfo collectionInfo = collection.cd.getCollection();
-      collectionMap.put(collectionInfo.getHref().getPath(), collection);
+    for (int i = 0; i < 10; i++) { // Ordering @Collection order 0 to 9
+      for (CollectionDetails collection : collections) {
+        if (collection.order == i) {
+          CollectionInfo collectionInfo = collection.cd.getCollection();
+          collectionMap.put(collectionInfo.getHref().getPath(), collection);
+        }
+      }
     }
 
     // Now add collections to their parents
@@ -118,7 +122,11 @@ public final class CollectionRegistry {
 
   /** Register resources from CollectionRegistry */
   public void registerResources(
-      Jdbi jdbi, Environment environment, CatalogApplicationConfig config, Authorizer authorizer) {
+      Jdbi jdbi,
+      Environment environment,
+      CatalogApplicationConfig config,
+      Authorizer authorizer,
+      SecretsManager secretsManager) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -126,9 +134,9 @@ public final class CollectionRegistry {
       try {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
         Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-        Object resource = createResource(daoObject, resourceClass, config, authorizer);
+        Object resource = createResource(daoObject, resourceClass, config, authorizer, secretsManager);
         environment.jersey().register(resource);
-        LOG.info("Registering {}", resourceClass);
+        LOG.info("Registering {} with order {}", resourceClass, details.order);
       } catch (Exception ex) {
         LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
       }
@@ -140,14 +148,6 @@ public final class CollectionRegistry {
           LOG.info("Registering test resource {}", object);
           environment.jersey().register(object);
         });
-
-    // All entities from seed data under resources are created as part of createResource calls above.
-    // Initialize relationships from seed data after all resources have been created.
-    try {
-      new EntityRelationshipRepository(jdbi.onDemand(CollectionDAO.class)).initSeedDataFromResources();
-    } catch (Exception ex) {
-      LOG.warn("Failed to register relationships from seed data: {}", ex.getMessage());
-    }
   }
 
   /** Get collection details based on annotations in Resource classes */
@@ -155,6 +155,7 @@ public final class CollectionRegistry {
     String href;
     String doc;
     String name;
+    int order = 0;
     href = null;
     doc = null;
     name = null;
@@ -168,11 +169,12 @@ public final class CollectionRegistry {
       } else if (a instanceof Collection) {
         // Use @Collection annotation to get initialization information for the class
         name = ((Collection) a).name();
+        order = ((Collection) a).order();
       }
     }
     CollectionDescriptor cd = new CollectionDescriptor();
     cd.setCollection(new CollectionInfo().withName(name).withDocumentation(doc).withHref(URI.create(href)));
-    return new CollectionDetails(cd, cl.getCanonicalName());
+    return new CollectionDetails(cd, cl.getCanonicalName(), order);
   }
 
   /** Compile a list of REST collection based on Resource classes marked with {@code Collection} annotation */
@@ -191,7 +193,11 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject, String resourceClass, CatalogApplicationConfig config, Authorizer authorizer)
+      CollectionDAO daoObject,
+      String resourceClass,
+      CatalogApplicationConfig config,
+      Authorizer authorizer,
+      SecretsManager secretsManager)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     Object resource;
@@ -202,9 +208,15 @@ public final class CollectionRegistry {
       resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
     } catch (NoSuchMethodException e) {
       try {
-        resource = clz.getDeclaredConstructor(CatalogApplicationConfig.class).newInstance(config);
+        resource =
+            clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, SecretsManager.class)
+                .newInstance(daoObject, authorizer, secretsManager);
       } catch (NoSuchMethodException ex) {
-        resource = Class.forName(resourceClass).getConstructor().newInstance();
+        try {
+          resource = clz.getDeclaredConstructor(CatalogApplicationConfig.class).newInstance(config);
+        } catch (NoSuchMethodException exc) {
+          resource = Class.forName(resourceClass).getConstructor().newInstance();
+        }
       }
     }
 
@@ -219,13 +231,15 @@ public final class CollectionRegistry {
   }
 
   public static class CollectionDetails {
+    private final int order;
     private final String resourceClass;
     private final CollectionDescriptor cd;
     private final List<CollectionDescriptor> childCollections = new ArrayList<>();
 
-    CollectionDetails(CollectionDescriptor cd, String resourceClass) {
+    CollectionDetails(CollectionDescriptor cd, String resourceClass, int order) {
       this.cd = cd;
       this.resourceClass = resourceClass;
+      this.order = order;
     }
 
     public void addChildCollection(CollectionDetails child) {

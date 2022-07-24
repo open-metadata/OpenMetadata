@@ -13,40 +13,45 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { updateUserDetail } from '../../axiosAPIs/userAPI';
+import { deleteUser, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import UserList from '../../components/UserList/UserList';
 import { ROUTES } from '../../constants/constants';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
-import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserListPage = () => {
-  const showToast = useToastContext();
   const history = useHistory();
 
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [allUsers, setAllUsers] = useState<Array<User>>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [allUsers, setAllUsers] = useState<Array<User>>();
 
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users'])
       .then((res: AxiosResponse) => {
-        setTeams(res.data.data);
+        if (res.data) {
+          setTeams(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'No teams available!',
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-teams-error']
+        );
       })
       .finally(() => {
         setIsLoading(false);
@@ -63,15 +68,43 @@ const UserListPage = () => {
   const updateUser = (id: string, data: Operation[], updatedUser: User) => {
     setIsLoading(true);
     updateUserDetail(id, data)
-      .then(() => {
-        setAllUsers(
-          allUsers.map((user) => {
-            if (user.id === id) {
-              return updatedUser;
-            }
+      .then((res) => {
+        if (res.data) {
+          setAllUsers(
+            (allUsers || []).map((user) => {
+              if (user.id === id) {
+                return updatedUser;
+              }
 
-            return user;
-          })
+              return user;
+            })
+          );
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-user-error']
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  const handleDeleteUser = (id: string) => {
+    setIsLoading(true);
+    deleteUser(id)
+      .then(() => {
+        AppState.updateUsers((allUsers || []).filter((item) => item.id !== id));
+        fetchTeams();
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['delete-user-error']
         );
       })
       .finally(() => {
@@ -80,7 +113,11 @@ const UserListPage = () => {
   };
 
   useEffect(() => {
-    setAllUsers(AppState.users);
+    if (AppState.users.length) {
+      setAllUsers(AppState.users);
+    } else {
+      setAllUsers(undefined);
+    }
   }, [AppState.users]);
   useEffect(() => {
     setRoles(AppState.userRoles);
@@ -93,9 +130,10 @@ const UserListPage = () => {
   return (
     <PageContainerV1>
       <UserList
-        allUsers={allUsers}
+        allUsers={allUsers || []}
+        deleteUser={handleDeleteUser}
         handleAddUserClick={handleAddUserClick}
-        isLoading={isLoading}
+        isLoading={isLoading || isNil(allUsers)}
         roles={roles}
         teams={teams}
         updateUser={updateUser}

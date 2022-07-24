@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { act } from 'react-test-renderer';
 import NonAdminAction from './NonAdminAction';
 
 const mockAuth = {
@@ -27,7 +28,7 @@ jest.mock('../../../hooks/authHooks', () => ({
   useAuth: jest.fn(() => mockAuth),
 }));
 
-jest.mock('../../../auth-provider/AuthProvider', () => {
+jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -66,13 +67,23 @@ describe('Test AddUsersModal component', () => {
     mockAuth.userPermissions.UpdateOwner = false;
 
     const { container } = render(
-      <NonAdminAction title="test popup" trigger="click">
+      <NonAdminAction
+        className=""
+        isOwner={false}
+        position="top"
+        title="test popup"
+        trigger="click">
         <button data-testid="test-button">test</button>
       </NonAdminAction>
     );
 
     const popover = await findByTestId(container, 'popover');
+    const testButton = await findByTestId(container, 'test-button');
 
     expect(popover).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(testButton);
+    });
   });
 });

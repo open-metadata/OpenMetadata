@@ -16,16 +16,12 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -35,15 +31,14 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
+import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.services.connections.messaging.PulsarConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.type.MessagingConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -51,7 +46,7 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 @Slf4j
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
 
-  public static List<String> KAFKA_BROKERS = List.of("192.168.1.1:0");
+  public static String KAFKA_BROKERS = "192.168.1.1:0";
   public static URI SCHEMA_REGISTRY_URL;
 
   static {
@@ -70,8 +65,28 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         "services/messagingServices",
         MessagingServiceResource.FIELDS);
     supportsPatch = false;
-    supportsDots = false;
     supportsAuthorizedMetadataOperations = false;
+  }
+
+  public void setupMessagingServices() throws HttpResponseException {
+    // Create Kafka messaging service
+    MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
+    CreateMessagingService createMessaging =
+        new CreateMessagingService()
+            .withName("kafka")
+            .withServiceType(MessagingServiceType.Kafka)
+            .withConnection(TestUtils.KAFKA_CONNECTION);
+    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    KAFKA_REFERENCE = messagingService.getEntityReference();
+
+    // Create Pulsar messaging service
+    createMessaging
+        .withName("pulsar")
+        .withServiceType(MessagingServiceType.Pulsar)
+        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
+
+    messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    PULSAR_REFERENCE = messagingService.getEntityReference();
   }
 
   @Test
@@ -84,80 +99,26 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
     // Create messaging with mandatory brokers field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withBrokers(null), ADMIN_AUTH_HEADERS),
+        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[brokers must not be null]");
+        "[connection must not be null]");
   }
 
   @Test
-  void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
+  void post_validService_as_admin_200_ok(TestInfo test) throws IOException, URISyntaxException {
     // Create messaging service with different optional fields
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-    createAndCheckEntity(createRequest(test, 3).withIngestionSchedule(null), authHeaders);
-  }
-
-  @Test
-  void post_invalidIngestionSchedule_4xx(TestInfo test) {
-    // No jdbc connection set
-    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
-    CreateMessagingService create = createRequest(test).withIngestionSchedule(schedule);
-
-    // Invalid format
-    create.withIngestionSchedule(schedule.withRepeatFrequency("INVALID"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
-
-    // Duration that contains years, months and seconds are not allowed
-    create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
-  }
-
-  @Test
-  void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
-    Schedule schedule = new Schedule().withStartDate(new Date());
-    schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
-    createAndCheckEntity(createRequest(test, 1).withIngestionSchedule(schedule), ADMIN_AUTH_HEADERS);
-
-    schedule.withRepeatFrequency("PT1H49M");
-    createAndCheckEntity(createRequest(test, 2).withIngestionSchedule(schedule), ADMIN_AUTH_HEADERS);
-
-    schedule.withRepeatFrequency("P1DT1H49M");
-    createAndCheckEntity(createRequest(test, 3).withIngestionSchedule(schedule), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
-    // No jdbc connection set
-    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
-    CreateMessagingService create = createRequest(test).withIngestionSchedule(schedule);
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M")); // Repeat every 0 seconds
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency is too short and must be more than 60 minutes");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M")); // Repeat every 50 minutes 59 seconds
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency is too short and must be more than 60 minutes");
+    createAndCheckEntity(
+        createRequest(test, 3)
+            .withConnection(
+                new MessagingConnection()
+                    .withConfig(
+                        new KafkaConnection()
+                            .withBootstrapServers("localhost:9092")
+                            .withSchemaRegistryURL(new URI("localhost:8081")))),
+        authHeaders);
   }
 
   @Test
@@ -166,81 +127,80 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         createAndCheckEntity(
             createRequest(test)
                 .withDescription(null)
-                .withIngestionSchedule(null)
-                .withBrokers(KAFKA_BROKERS)
-                .withSchemaRegistry(SCHEMA_REGISTRY_URL),
+                .withConnection(
+                    new MessagingConnection()
+                        .withConfig(
+                            new KafkaConnection()
+                                .withBootstrapServers("localhost:9092")
+                                .withSchemaRegistryURL(new URI("localhost:8081")))),
             ADMIN_AUTH_HEADERS);
 
+    MessagingConnection messagingConnection =
+        new MessagingConnection()
+            .withConfig(
+                new KafkaConnection()
+                    .withBootstrapServers("localhost:9092")
+                    .withSchemaRegistryURL(new URI("localhost:8081")));
     // Update messaging description and ingestion service that are null
-    CreateMessagingService update = createRequest(test).withDescription("description1").withIngestionSchedule(null);
+    CreateMessagingService update =
+        createRequest(test).withDescription("description1").withConnection(messagingConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
-    // Update ingestion schedule
-    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
+    // Update connection
+    MessagingConnection messagingConnection1 =
+        new MessagingConnection()
+            .withConfig(
+                new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
     change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
-    update.withIngestionSchedule(schedule);
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-
-    // Update description and ingestion schedule again
-    Schedule schedule1 = new Schedule().withStartDate(new Date()).withRepeatFrequency("PT1H");
-    update.withIngestionSchedule(schedule1);
-    change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("ingestionSchedule").withOldValue(schedule).withNewValue(schedule1));
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-
-    // update broker list and schema registry
-    List<String> updatedBrokers = List.of("localhost:0");
-    URI updatedSchemaRegistry = new URI("http://localhost:9000");
-    update.withBrokers(updatedBrokers).withSchemaRegistry(updatedSchemaRegistry);
-
-    change = getChangeDescription(service.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("brokers").withOldValue(KAFKA_BROKERS));
-    change.getFieldsAdded().add(new FieldChange().withName("brokers").withNewValue(updatedBrokers));
     change
         .getFieldsUpdated()
         .add(
             new FieldChange()
-                .withName("schemaRegistry")
-                .withOldValue(SCHEMA_REGISTRY_URL)
-                .withNewValue(updatedSchemaRegistry));
+                .withName("connection")
+                .withNewValue(messagingConnection1)
+                .withOldValue(messagingConnection));
+    update.withConnection(messagingConnection1);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
+    // Update description and connection
+    MessagingConnection messagingConnection2 =
+        new MessagingConnection()
+            .withConfig(
+                new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
+    update.withConnection(messagingConnection1);
+    change = getChangeDescription(service.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange()
+                .withName("connection")
+                .withOldValue(messagingConnection1)
+                .withNewValue(messagingConnection2));
+    update.setConnection(messagingConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
   @Override
-  public CreateMessagingService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateMessagingService createRequest(String name) {
     return new CreateMessagingService()
         .withName(name)
         .withServiceType(MessagingServiceType.Kafka)
-        .withBrokers(KAFKA_BROKERS)
-        .withSchemaRegistry(SCHEMA_REGISTRY_URL)
-        //            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
-        .withDescription(description)
-        .withOwner(owner)
-        .withIngestionSchedule(null);
+        .withConnection(
+            new MessagingConnection()
+                .withConfig(
+                    new KafkaConnection()
+                        .withBootstrapServers(KAFKA_BROKERS)
+                        .withSchemaRegistryURL(SCHEMA_REGISTRY_URL)));
   }
 
   @Override
   public void validateCreatedEntity(
       MessagingService service, CreateMessagingService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(service),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
-    Schedule expectedIngestion = createRequest.getIngestionSchedule();
-    if (expectedIngestion != null) {
-      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
-      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
-    }
-    assertTrue(createRequest.getBrokers().containsAll(service.getBrokers()));
-    assertEquals(createRequest.getSchemaRegistry(), service.getSchemaRegistry());
+    MessagingConnection expectedMessagingConnection = createRequest.getConnection();
+    MessagingConnection actualMessagingConnection = service.getConnection();
+    validateConnection(expectedMessagingConnection, actualMessagingConnection, service.getServiceType());
   }
 
   @Override
@@ -249,49 +209,55 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public EntityInterface<MessagingService> getEntityInterface(MessagingService entity) {
-    return new MessagingServiceEntityInterface(entity);
-  }
-
-  @Override
-  public void validateGetWithDifferentFields(MessagingService service, boolean byName) throws HttpResponseException {
+  public MessagingService validateGetWithDifferentFields(MessagingService service, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(service.getOwner());
+    // Checks for other owner, tags, and followers is done in the base class
+    return service;
   }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    switch (fieldName) {
-      case "ingestionSchedule":
-        Schedule expectedSchedule = (Schedule) expected;
-        Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
-        assertEquals(expectedSchedule, actualSchedule);
-        break;
-      case "brokers":
-        @SuppressWarnings("unchecked")
-        List<String> expectedBrokers = (List<String>) expected;
-        List<String> actualBrokers = JsonUtils.readObjects((String) actual, String.class);
-        assertEquals(expectedBrokers, actualBrokers);
-        break;
-      case "schemaRegistry":
-        URI expectedUri = (URI) expected;
-        URI actualUri = URI.create((String) actual);
-        assertEquals(expectedUri, actualUri);
-        break;
-      default:
-        super.assertCommonFieldChange(fieldName, expected, actual);
-        break;
+    if ("connection".equals(fieldName)) {
+      MessagingConnection expectedConnection = (MessagingConnection) expected;
+      MessagingConnection actualConnection = JsonUtils.readValue((String) actual, MessagingConnection.class);
+      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class));
+      assertEquals(expectedConnection, actualConnection);
+    } else {
+      super.assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
+
+  private void validateConnection(
+      MessagingConnection expectedConnection,
+      MessagingConnection actualConnection,
+      MessagingServiceType messagingServiceType) {
+    if (expectedConnection != null
+        && actualConnection != null
+        && expectedConnection.getConfig() != null
+        && actualConnection.getConfig() != null) {
+      if (messagingServiceType == MessagingServiceType.Kafka) {
+        KafkaConnection expectedKafkaConnection = (KafkaConnection) expectedConnection.getConfig();
+        KafkaConnection actualKafkaConnection;
+        if (actualConnection.getConfig() instanceof KafkaConnection) {
+          actualKafkaConnection = (KafkaConnection) actualConnection.getConfig();
+        } else {
+          actualKafkaConnection = JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class);
+        }
+        assertEquals(expectedKafkaConnection.getBootstrapServers(), actualKafkaConnection.getBootstrapServers());
+        assertEquals(expectedKafkaConnection.getSchemaRegistryURL(), actualKafkaConnection.getSchemaRegistryURL());
+      }
     }
   }
 }

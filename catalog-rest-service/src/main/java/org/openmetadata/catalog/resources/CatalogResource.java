@@ -59,8 +59,9 @@ public class CatalogResource {
 
   @GET
   @Operation(
+      operationId = "listCollections",
       summary = "List all collections",
-      tags = "general",
+      tags = "catalog",
       description =
           "List all the collections supported by OpenMetadata. This list provides all the collections "
               + "and resource REST endpoints.",
@@ -68,8 +69,7 @@ public class CatalogResource {
         @ApiResponse(
             responseCode = "200",
             description = "All collections",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CollectionDescriptor.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CollectionList.class)))
       })
   public CollectionList getCollections(@Context UriInfo uriInfo) {
     return getCollectionList(uriInfo);

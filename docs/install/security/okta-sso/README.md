@@ -1,2 +1,0 @@
-# Okta SSO
-

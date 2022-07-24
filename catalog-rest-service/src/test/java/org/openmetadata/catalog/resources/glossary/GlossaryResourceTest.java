@@ -17,8 +17,8 @@
 package org.openmetadata.catalog.resources.glossary;
 
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+import static org.openmetadata.catalog.util.TestUtils.validateTagLabel;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -32,12 +32,13 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateGlossary;
+import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.entity.data.Glossary;
-import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -46,12 +47,45 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
   public GlossaryResourceTest() {
     super(Entity.GLOSSARY, Glossary.class, GlossaryResource.GlossaryList.class, "glossaries", GlossaryResource.FIELDS);
-    supportsDots = false;
   }
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
+    supportsEmptyDescription = false;
+  }
+
+  public void setupGlossaries() throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
+    GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY1_REF = GLOSSARY1.getEntityReference();
+
+    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
+    GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY2_REF = GLOSSARY2.getEntityReference();
+
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    CreateGlossaryTerm createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("g1t1", "", "", null)
+            .withRelatedTerms(null)
+            .withGlossary(GLOSSARY1_REF)
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+    GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
+    GLOSSARY1_TERM1_LABEL = EntityUtil.getTagLabel(GLOSSARY1_TERM1);
+    validateTagLabel(GLOSSARY1_TERM1_LABEL);
+
+    createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("g2t1", "", "", null)
+            .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
+            .withGlossary(GLOSSARY2_REF);
+    GLOSSARY2_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY2_TERM1_REF = GLOSSARY2_TERM1.getEntityReference();
+    GLOSSARY2_TERM1_LABEL = EntityUtil.getTagLabel(GLOSSARY2_TERM1);
+    validateTagLabel(GLOSSARY2_TERM1_LABEL);
   }
 
   @Test
@@ -82,49 +116,27 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public CreateGlossary createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateGlossary()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+  public CreateGlossary createRequest(String name) {
+    return new CreateGlossary().withName(name);
   }
 
   @Override
   public void validateCreatedEntity(
       Glossary createdEntity, CreateGlossary createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(createdEntity),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
-
-    // Entity specific validation
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
   }
 
   @Override
   public void compareEntities(Glossary expected, Glossary patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
-
     // Entity specific validation
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.assertEntityReferenceList(expected.getReviewers(), patched.getReviewers());
   }
 
   @Override
-  public GlossaryEntityInterface getEntityInterface(Glossary entity) {
-    return new GlossaryEntityInterface(entity);
-  }
-
-  @Override
-  public void validateGetWithDifferentFields(Glossary entity, boolean byName) throws HttpResponseException {
+  public Glossary validateGetWithDifferentFields(Glossary entity, boolean byName) throws HttpResponseException {
     String fields = "";
     entity =
         byName
@@ -137,7 +149,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         byName
             ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getTags());
+    // Checks for other owner, tags, and followers is done in the base class
+    return entity;
   }
 
   @Override
@@ -149,7 +162,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
       List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedRefs, actualRefs);
+      assertEntityReferences(expectedRefs, actualRefs);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

@@ -42,7 +42,6 @@ public final class ElasticSearchClientUtils {
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
               httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-              // httpAsyncClientBuilder.setSSLHostnameVerifier((s, sslSession) -> true);
               if (sslContext != null) {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }

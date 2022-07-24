@@ -12,8 +12,4 @@ public class ElasticSearchRetriableException extends RetriableException {
   public ElasticSearchRetriableException(String message) {
     super(message);
   }
-
-  public ElasticSearchRetriableException(Throwable cause) {
-    super(cause);
-  }
 }

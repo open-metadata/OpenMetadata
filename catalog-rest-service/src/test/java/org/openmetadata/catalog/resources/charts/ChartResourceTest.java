@@ -33,14 +33,11 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
@@ -52,18 +49,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
-  }
-
-  @Test
-  void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateChart create = createRequest(test).withService(SUPERSET_REFERENCE);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    Chart chart = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = SUPERSET_REFERENCE.getName() + "." + chart.getName();
-    assertEquals(expectedFQN, chart.getFullyQualifiedName());
   }
 
   @Test
@@ -84,12 +69,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List charts by filtering on service name and ensure right charts in the response
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("service", service.getName());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", service.getName());
       ResultList<Chart> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Chart chart : list.getData()) {
         assertEquals(service.getName(), chart.getService().getName());
@@ -97,14 +78,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     }
   }
 
-  @Test
-  void delete_nonEmptyChart_4xx() {
-    // TODO
-  }
-
-  /** Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
+  public Chart validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     String fields = "";
     chart =
         byName
@@ -120,18 +95,13 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
             ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
-    assertListNotNull(chart.getOwner(), chart.getFollowers(), chart.getTags());
+    // Checks for other owner, tags, and followers is done in the base class
+    return chart;
   }
 
   @Override
-  public CreateChart createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateChart()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner)
-        .withService(getContainer())
-        .withChartType(ChartType.Area);
+  public CreateChart createRequest(String name) {
+    return new CreateChart().withName(name).withService(getContainer()).withChartType(ChartType.Area);
   }
 
   @Override
@@ -140,29 +110,19 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
+  public EntityReference getContainer(Chart entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(chart),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
     assertNotNull(chart.getServiceType());
-    assertService(createRequest.getService(), chart.getService());
+    assertReference(createRequest.getService(), chart.getService());
   }
 
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
-    assertService(expected.getService(), patched.getService());
-  }
-
-  @Override
-  public EntityInterface<Chart> getEntityInterface(Chart chart) {
-    return new ChartEntityInterface(chart);
+    assertReference(expected.getService(), patched.getService());
   }
 
   @Override

@@ -21,8 +21,9 @@ import {
 import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { ROUTES } from '../constants/constants';
+import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
-import { isDev } from '../utils/EnvironmentUtils';
+import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
@@ -30,26 +31,36 @@ export const getOidcExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 24 * 1000);
 };
 
+export const getRedirectUri = (callbackUrl: string) => {
+  return isDev()
+    ? 'http://localhost:3000/callback'
+    : !isNil(callbackUrl)
+    ? callbackUrl
+    : `${window.location.origin}/callback`;
+};
+
+export const getSilentRedirectUri = () => {
+  return isDev()
+    ? 'http://localhost:3000/silent-callback'
+    : `${window.location.origin}/silent-callback`;
+};
+
 export const getUserManagerConfig = (
   authClient: Record<string, string> = {}
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority, clientId, callbackUrl } = authClient;
+  const { authority, clientId, callbackUrl, responseType, scope } = authClient;
 
   return {
     authority,
-    automaticSilentRenew: true,
     // eslint-disable-next-line @typescript-eslint/camelcase
     client_id: clientId,
     // eslint-disable-next-line @typescript-eslint/camelcase
-    response_type: 'id_token',
+    response_type: responseType,
     // eslint-disable-next-line @typescript-eslint/camelcase
-    redirect_uri: isDev()
-      ? 'http://localhost:3000/callback'
-      : !isNil(callbackUrl)
-      ? callbackUrl
-      : `${window.location.origin}/callback`,
-    scope: 'openid email profile',
-    // userStore: new WebStorageStateStore({ store: cookieStorage }),
+    redirect_uri: getRedirectUri(callbackUrl),
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    silent_redirect_uri: getSilentRedirectUri(),
+    scope,
     userStore: new WebStorageStateStore({ store: localStorage }),
   };
 };
@@ -57,20 +68,17 @@ export const getUserManagerConfig = (
 export const getAuthConfig = (
   authClient: Record<string, string> = {}
 ): Record<string, string | boolean> => {
-  const { authority, clientId, callbackUrl, provider } = authClient;
+  const { authority, clientId, callbackUrl, provider, providerName } =
+    authClient;
   let config = {};
-
+  const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
     case AuthTypes.OKTA:
       {
         config = {
           clientId,
           issuer: authority,
-          redirectUri: isDev()
-            ? 'http://localhost:3000/callback'
-            : !isNil(callbackUrl)
-            ? callbackUrl
-            : `${window.location.origin}/callback`,
+          redirectUri,
           scopes: ['openid', 'profile', 'email', 'offline_access'],
           pkce: true,
           provider,
@@ -78,32 +86,63 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.GOOGLE:
+    case AuthTypes.CUSTOM_OIDC:
       {
-        // config = {
-        //   clientId,
-        //   provider,
-        // };
         config = {
           authority,
           clientId,
-          callbackUrl,
+          callbackUrl: redirectUri,
           provider,
+          providerName,
+          scope: 'openid email profile',
+          responseType: 'id_token',
         };
       }
 
       break;
+    case AuthTypes.GOOGLE:
+      {
+        config = {
+          authority,
+          clientId,
+          callbackUrl: redirectUri,
+          provider,
+          scope: 'openid email profile',
+          responseType: 'id_token',
+        };
+      }
+
+      break;
+    case AuthTypes.AWS_COGNITO:
+      {
+        config = {
+          authority,
+          clientId,
+          callbackUrl: redirectUri,
+          provider,
+          scope: 'openid email profile',
+          responseType: 'code',
+        };
+      }
+
+      break;
+    case AuthTypes.AUTH0: {
+      config = {
+        authority,
+        clientId,
+        callbackUrl: redirectUri,
+        provider,
+      };
+
+      break;
+    }
     case AuthTypes.AZURE:
       {
         config = {
           auth: {
             authority,
             clientId,
-            redirectUri: isDev()
-              ? 'http://localhost:3000/callback'
-              : !isNil(callbackUrl)
-              ? callbackUrl
-              : `${window.location.origin}/callback`,
+            redirectUri,
             postLogoutRedirectUri: '/',
           },
           cache: {
@@ -133,10 +172,11 @@ export const msalGraphConfig = {
 };
 
 export const getNameFromEmail = (email: string) => {
-  if (email?.match(/^\S+@\S+\.\S+$/)) {
+  if (email?.match(validEmailRegEx)) {
     return email.split('@')[0];
   } else {
-    return '';
+    // if the string does not conform to email format return the string
+    return email;
   }
 };
 
@@ -150,4 +190,8 @@ export const isProtectedRoute = (pathname: string) => {
 
 export const isTourRoute = (pathname: string) => {
   return pathname === ROUTES.TOUR;
+};
+
+export const getUrlPathnameExpiry = () => {
+  return new Date(Date.now() + 60 * 60 * 1000);
 };

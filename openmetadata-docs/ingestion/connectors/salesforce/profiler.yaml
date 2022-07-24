@@ -1,0 +1,25 @@
+source:
+  type: salesforce
+  serviceName: local_salesforce
+  serviceConnection:
+    config:
+      type: Salesforce
+      username: username
+      password: password
+      securityToken: securityToken
+      scheme: salesforce
+      sobjectName: sobjectName
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

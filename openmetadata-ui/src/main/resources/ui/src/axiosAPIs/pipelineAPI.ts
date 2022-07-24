@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isNil } from 'lodash';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -41,6 +42,26 @@ export const getPipelines: Function = (
     `/pipelines`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
+
+  return APIClient.get(url);
+};
+
+export const getAllPipelines = (
+  paging: string,
+  arrQueryFields: string,
+  limit?: number
+): Promise<AxiosResponse> => {
+  const searchParams = new URLSearchParams();
+
+  if (!isNil(limit)) {
+    searchParams.set('limit', `${limit}`);
+  }
+
+  const url = getURLWithQueryFields(
+    `/pipelines`,
+    arrQueryFields,
+    `${searchParams.toString()}${paging ? `&${paging}` : ''}`
+  );
 
   return APIClient.get(url);
 };

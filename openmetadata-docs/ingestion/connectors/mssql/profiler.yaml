@@ -1,0 +1,25 @@
+source:
+  type: mssql
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Mssql
+      scheme: mssql+pytds
+      username: "<username>"
+      password: "<password>"
+      hostPort: "<hostPort>"
+      database: "<database>"
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: "<table FQN filtering regex>"
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"

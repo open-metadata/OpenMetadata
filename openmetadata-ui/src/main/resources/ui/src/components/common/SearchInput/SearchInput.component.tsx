@@ -92,7 +92,7 @@ const SearchInput = ({
           />
         )}
         <input
-          className="tw-form-inputs-bottom-border tw-relative tw-px-3 tw-py-1 tw-pr-8"
+          className="tw-form-inputs-bottom-border tw-relative tw-form-inputs-padding tw-pr-8"
           data-testid="searchbar"
           placeholder={placeholder}
           type="text"

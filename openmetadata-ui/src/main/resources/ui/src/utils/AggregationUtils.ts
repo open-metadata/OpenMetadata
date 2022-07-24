@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { capitalize, lowerCase } from 'lodash';
+import { capitalize, toLower } from 'lodash';
 import { AggregationType, Sterm } from 'Models';
 import { getQueryParam } from '../constants/explore.constants';
 import { getFilterKey } from './FilterUtils';
@@ -24,10 +24,7 @@ export const getAggregationList = (
   const aggregationList: Array<AggregationType> = [];
   aggrEntriesArr.forEach((aggr) => {
     const aggrTitle = aggr[0].substring(aggr[0].indexOf('#') + 1);
-    if (
-      !aggregationType ||
-      lowerCase(aggrTitle) === lowerCase(aggregationType)
-    ) {
+    if (!aggregationType || toLower(aggrTitle) === toLower(aggregationType)) {
       aggregationList.push({
         title: aggrTitle,
         buckets: aggr[1].buckets,

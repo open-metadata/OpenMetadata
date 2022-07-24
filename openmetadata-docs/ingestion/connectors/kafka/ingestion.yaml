@@ -1,0 +1,23 @@
+source:
+  type: kafka
+  serviceName: local_kafka
+  serviceConnection:
+    config:
+      type: Kafka
+      bootstrapServers: localhost:9092
+      schemaRegistryURL: http://localhost:8081
+      consumerConfig: {}
+      schemaRegistryConfig: {}
+  sourceConfig:
+    config:
+      topicFilterPattern:
+        excludes:
+        - _confluent.*
+      generateSampleData: true
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

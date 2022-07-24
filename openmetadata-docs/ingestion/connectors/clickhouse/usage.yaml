@@ -1,0 +1,30 @@
+source:
+  type: clickhouse-usage
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Clickhouse
+      username: "<username>"
+      password: "<password>"
+      hostPort: "<hostPort>"
+  sourceConfig:
+    config:
+      queryLogDuration: "<query log duration integer>"
+      stageFileLocation: "<path to store the stage file>"
+      resultLimit: "<query log limit integer>"
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: "/tmp/clickhouse_usage"
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: "/tmp/clickhouse_usage"
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"

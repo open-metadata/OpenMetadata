@@ -3,6 +3,7 @@ version: '3'
 services:
   mlflow-db:
     container_name: mlflow-db
+    platform: linux/x86_64
     image: mysql
     restart: always
     command: --port=3307
@@ -13,8 +14,10 @@ services:
       - MYSQL_USER=mlflow
       - MYSQL_PASSWORD=password
       - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_HOST=0.0.0.0
     volumes:
-      - ./db:/var/lib/mysql
+      # - ./db:/var/lib/mysql
+      - ./mysqldata:/var/lib/mysql:rw,delegated
     cap_add:
       - SYS_NICE # to remove "mbind: Operation not permitted" warning (https://stackoverflow.com/questions/55559386/how-to-fix-mbind-operation-not-permitted-in-mysql-error-log)
 

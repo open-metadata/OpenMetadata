@@ -5,6 +5,7 @@
   "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.MlModel",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "featureType": {
       "javaType": "org.openmetadata.catalog.type.MlFeatureDataType",
@@ -35,32 +36,6 @@
         "boolean"
       ]
     },
-    "featureName": {
-      "description": "Local name (not fully qualified name) of the ML Feature.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
-    },
-    "featureSourceName": {
-      "description": "Local name (not fully qualified name) of a ML Feature source.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
-    },
-    "fullyQualifiedFeatureSourceName": {
-      "description": "Fully qualified name of the ML Feature Source that includes `serviceName.[databaseName].tableName/fileName/apiName.columnName[.nestedColumnName]`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
-    },
-    "fullyQualifiedFeatureName": {
-      "description": "Fully qualified name of the ML Feature that includes `modelName.featureName`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
-    },
     "featureSource": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MlFeatureSource",
@@ -68,7 +43,7 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "$ref": "#/definitions/featureSourceName"
+          "$ref": "../../type/basic.json#/definitions/entityName"
         },
         "dataType": {
           "description": "Data type of the source (int, date etc.).",
@@ -76,10 +51,10 @@
         },
         "description": {
           "description": "Description of the feature source.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedFeatureSourceName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "dataSource": {
           "description": "Description of the Data Source (e.g., a Table).",
@@ -102,7 +77,7 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "$ref": "#/definitions/featureName"
+          "$ref": "../../type/basic.json#/definitions/entityName"
         },
         "dataType": {
           "description": "Data type of the column (numerical vs. categorical).",
@@ -110,10 +85,10 @@
         },
         "description": {
           "description": "Description of the ML Feature.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedFeatureName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "featureSources": {
           "description": "Columns used to create the ML Feature.",
@@ -153,7 +128,7 @@
         },
         "description": {
           "description": "Description of the Hyper Parameter.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         }
       }
     },
@@ -181,15 +156,11 @@
     },
     "name": {
       "description": "Name that identifies this ML Model.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies an ML Model.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this ML Model.",
@@ -197,7 +168,7 @@
     },
     "description": {
       "description": "Description of the ML Model, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model.",
@@ -221,7 +192,7 @@
     },
     "target": {
       "description": "For supervised ML Models, the value to estimate.",
-      "$ref": "#/definitions/featureName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "dashboard": {
       "description": "Performance Dashboard URL to track metric evolution.",
@@ -272,6 +243,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "service": {
+      "description": "Link to service where this pipeline is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this pipeline is hosted in.",
+      "$ref": "../services/mlmodelService.json#/definitions/mlModelServiceType"
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
@@ -282,6 +261,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "algorithm"],
+  "required": ["id", "name", "algorithm", "service"],
   "additionalProperties": false
 }

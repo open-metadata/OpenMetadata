@@ -1,26 +1,29 @@
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
+import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const showToast = useToastContext();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<LoadingState>('initial');
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
 
   const goToGlossary = (name = '') => {
     history.push(getGlossaryPath(name));
@@ -30,17 +33,11 @@ const AddGlossaryPage: FunctionComponent = () => {
     goToGlossary();
   };
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleSaveFailure = (errorMessage = '') => {
-    handleShowErrorToast(
-      errorMessage || jsonData['api-error-messages']['add-glossary-error']
-    );
+  const handleSaveFailure = (
+    error: AxiosError | string,
+    fallbackText?: string
+  ) => {
+    showErrorToast(error, fallbackText);
     setStatus('initial');
   };
 
@@ -55,11 +52,16 @@ const AddGlossaryPage: FunctionComponent = () => {
             goToGlossary(res.data.name);
           }, 500);
         } else {
-          handleSaveFailure();
+          handleSaveFailure(
+            jsonData['api-error-messages']['add-glossary-error']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        handleSaveFailure(err.response?.data?.message);
+        handleSaveFailure(
+          err,
+          jsonData['api-error-messages']['add-glossary-error']
+        );
       });
   };
 
@@ -70,34 +72,46 @@ const AddGlossaryPage: FunctionComponent = () => {
         if (res.data) {
           setTagList(getTaglist(res.data));
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['fetch-tags-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['fetch-tags-error']);
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-tags-error']
-        );
+        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
       })
       .finally(() => {
         setIsTagLoading(false);
       });
   };
 
+  useEffect(() => {
+    setSlashedBreadcrumb([
+      {
+        name: 'Glossary',
+        url: getGlossaryPath(),
+      },
+      {
+        name: 'Add Glossary',
+        url: '',
+        activeTitle: true,
+      },
+    ]);
+  }, []);
+
   return (
     <PageContainerV1>
-      <AddGlossary
-        allowAccess={isAdminUser || isAuthDisabled}
-        fetchTags={fetchTags}
-        header="Add Glossary"
-        isTagLoading={isTagLoading}
-        saveState={status}
-        tagList={tagList}
-        onCancel={handleCancel}
-        onSave={onSave}
-      />
+      <div className="tw-self-center">
+        <AddGlossary
+          allowAccess={isAdminUser || isAuthDisabled}
+          fetchTags={fetchTags}
+          header="Add Glossary"
+          isTagLoading={isTagLoading}
+          saveState={status}
+          slashedBreadcrumb={slashedBreadcrumb}
+          tagList={tagList}
+          onCancel={handleCancel}
+          onSave={onSave}
+        />
+      </div>
     </PageContainerV1>
   );
 };

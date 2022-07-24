@@ -29,7 +29,6 @@ import org.openmetadata.catalog.resources.CatalogResource.CollectionList;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.type.CollectionDescriptor;
-import org.openmetadata.catalog.type.CollectionInfo;
 
 @Path("/v1/services")
 @Api(value = "Services collection", tags = "Services collection")
@@ -48,6 +47,7 @@ public class ServiceResource {
 
   @GET
   @Operation(
+      operationId = "listServiceCollection",
       summary = "List service collections",
       tags = "services",
       description = "Get a list of resources under service collection.",
@@ -55,7 +55,7 @@ public class ServiceResource {
         @ApiResponse(
             responseCode = "200",
             description = "List of serviceCollections",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CollectionInfo.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CollectionList.class)))
       })
   public CollectionList getCollections(@Context UriInfo uriInfo) {
     return getServiceList(uriInfo);

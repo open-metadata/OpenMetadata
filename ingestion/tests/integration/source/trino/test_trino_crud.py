@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 def is_responsive(url):
@@ -163,7 +162,7 @@ def test_read_tables(trino_service):
 
 
 def test_check_table():
-    is_responsive("http://localhost:8585/api/v1/health-check")
+    is_responsive("http://localhost:8586/healthcheck")
     metadata_config = MetadataServerConfig.parse_obj(
         {"api_endpoint": "http://localhost:8585/api", "auth_provider_type": "no-auth"}
     )

@@ -14,9 +14,10 @@ Custom types' registry for easy access
 without having an import mess
 """
 import sqlalchemy
-from sqlalchemy import Integer, Numeric
+from sqlalchemy import Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
+from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
 from metadata.orm_profiler.orm.types.uuid import UUIDString
 from metadata.orm_profiler.registry import TypeRegistry
@@ -34,7 +35,7 @@ class Dialects(Enum):
     and profiling data.
     """
 
-    Hive = b"hive"
+    Hive = b"hive"  # Hive requires bytes
     Postgres = "postgresql"
     BigQuery = "bigquery"
     MySQL = "mysql"
@@ -42,9 +43,9 @@ class Dialects(Enum):
     Snowflake = "snowflake"
     MSSQL = "mssql"
     Oracle = "oracle"
-    Athena = "athena"
+    Athena = "awsathena"
     Presto = "presto"
-    Trino = "Trino"
+    Trino = "trino"
     Vertica = "vertica"
     Glue = "glue"
     MariaDB = "mariadb"
@@ -66,6 +67,11 @@ NOT_COMPUTE = {
     sqlalchemy.types.NullType,
     sqlalchemy.ARRAY,
     sqlalchemy.JSON,
+    sqa_types.SQAMap,
+    sqa_types.SQAStruct,
+    sqa_types.SQASet,
+    sqa_types.SQAUnion,
+    sqa_types.SQASGeography,
 }
 
 
@@ -83,6 +89,17 @@ def is_numeric(_type) -> bool:
     Check if sqlalchemy _type is derived from Numeric
     """
     return issubclass(_type.__class__, Numeric)
+
+
+def is_date_time(_type) -> bool:
+    """
+    Check if sqlalchemy _type is derived from Date, Time or DateTime Type
+    """
+    return (
+        issubclass(_type.__class__, Date)
+        or issubclass(_type.__class__, Time)
+        or issubclass(_type.__class__, DateTime)
+    )
 
 
 def is_quantifiable(_type) -> bool:

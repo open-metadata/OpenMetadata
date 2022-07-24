@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/column/columnValuesToNotMatchRegex.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "columnValuesToNotMatchRegex",
+  "description": "This schema defines the test ColumnValuesToNotMatchRegex. Test the values in a column to not match a given regular expression. ",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToNotMatchRegex",
+  "properties": {
+    "forbiddenRegex": {
+      "description": "The regular expression the column entries should not match.",
+      "type": "string"
+    }
+  },
+  "required": ["forbiddenRegex"],
+  "additionalProperties": false
+}

@@ -15,6 +15,10 @@ import classNames from 'classnames';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/feed.constants';
+import { FqnPart } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import {
   ChangeDescription,
   Column,
@@ -22,14 +26,14 @@ import {
   Table,
 } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
+import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -57,7 +61,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   );
 
   const getChangeColName = (name: string | undefined) => {
-    return name?.split('.')?.slice(-2, -1)[0];
+    return name?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
   };
 
   const isEndsWithField = (name: string | undefined, checkWith: string) => {
@@ -67,21 +71,17 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
 
-    const oldOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.oldValue ??
-          ownerDiff?.deleted?.oldValue ??
-          ownerDiff?.updated?.oldValue ??
-          '{}'
-      )?.id
+    const oldOwner = JSON.parse(
+      ownerDiff?.added?.oldValue ??
+        ownerDiff?.deleted?.oldValue ??
+        ownerDiff?.updated?.oldValue ??
+        '{}'
     );
-    const newOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.newValue ??
-          ownerDiff?.deleted?.newValue ??
-          ownerDiff?.updated?.newValue ??
-          '{}'
-      )?.id
+    const newOwner = JSON.parse(
+      ownerDiff?.added?.newValue ??
+        ownerDiff?.deleted?.newValue ??
+        ownerDiff?.updated?.newValue ??
+        '{}'
     );
     const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
@@ -118,17 +118,19 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',
         value:
           !isUndefined(newTier) || !isUndefined(oldTier)
             ? getDiffValue(
-                oldTier?.tagFQN?.split('.')[1] || '',
-                newTier?.tagFQN?.split('.')[1] || ''
+                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
+                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
               )
             : tier?.tagFQN
-            ? tier?.tagFQN.split('.')[1]
+            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
             : '',
       },
     ];
@@ -138,7 +140,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const getTableDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =
@@ -159,7 +161,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const updatedColumns = (): Table['columns'] => {
     const colList = cloneDeep(currentVersionData.columns);
-    const columnsDiff = getDiffByFieldName('columns', changeDescription);
+    const columnsDiff = getDiffByFieldName(
+      EntityField.COLUMNS,
+      changeDescription
+    );
     const changedColName = getChangeColName(
       columnsDiff?.added?.name ??
         columnsDiff?.deleted?.name ??
@@ -171,7 +176,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
           columnsDiff?.updated?.name,
-        'description'
+        EntityField.DESCRIPTION
       )
     ) {
       const oldDescription =
@@ -225,12 +230,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, changedColName)) {
             const flag: { [x: string]: boolean } = {};
-            const uniqueTags: Array<
-              TagLabel & { added: boolean; removed: boolean }
-            > = [];
+            const uniqueTags: Array<TagLabelWithStatus> = [];
             const tagsDiff = getTagsDiff(oldTags, newTags);
-            [...tagsDiff, ...(i.tags as Array<TagLabel>)].forEach(
-              (elem: TagLabel & { added: boolean; removed: boolean }) => {
+            [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+              (elem: TagLabelWithStatus) => {
                 if (!flag[elem.tagFQN as string]) {
                   flag[elem.tagFQN as string] = true;
                   uniqueTags.push(elem);
@@ -249,7 +252,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       return colList ?? [];
     } else {
       const columnsDiff = getDiffByFieldName(
-        'columns',
+        EntityField.COLUMNS,
         changeDescription,
         true
       );
@@ -328,13 +331,12 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         '[]'
     );
     const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
-      [];
+    const uniqueTags: Array<TagLabelWithStatus> = [];
 
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+    ].forEach((elem: TagLabelWithStatus) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
         uniqueTags.push(elem);
@@ -344,7 +346,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     return [
       ...uniqueTags.map((t) =>
         t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split('.')[1] }
+          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
           : t
       ),
     ];
@@ -406,13 +408,14 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                   <div className="tw-col-span-full">
                     <SchemaTab
                       isReadOnly
-                      columnName={getPartialNameFromFQN(
+                      columnName={getPartialNameFromTableFQN(
                         datasetFQN,
-                        ['column'],
-                        '.'
+                        [FqnPart.Column],
+                        FQN_SEPARATOR_CHAR
                       )}
                       columns={updatedColumns()}
                       joins={currentVersionData.joins as ColumnJoins[]}
+                      tableConstraints={[]}
                     />
                   </div>
                 </div>

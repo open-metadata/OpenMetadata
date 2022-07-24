@@ -92,7 +92,7 @@ describe('Test AddUsersModal component', () => {
         onSave={mockSave}
       />
     );
-    const discard = await findByText(container, /Discard/i);
+    const discard = await findByText(container, /Cancel/i);
     fireEvent.click(discard);
 
     expect(mockCancel).toBeCalledTimes(1);

@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import UserCard from './UserCard';
 
 const mockItem = {
-  description: 'description1',
-  name: 'name1',
+  displayName: 'description1',
+  fqn: 'service.database.databaseSchema.table',
   id: 'id1',
+  type: 'table',
 };
 
 const mockRemove = jest.fn();
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -36,8 +37,10 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
-jest.mock('../../components/common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p data-testid="avatar">Avatar</p>);
+jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>);
 });
 
 jest.mock('../../utils/SvgUtils', () => {
@@ -59,7 +62,7 @@ describe('Test userCard component', () => {
     });
 
     const cardContainer = await findByTestId(container, 'user-card-container');
-    const avatar = await findByTestId(container, 'avatar');
+    const avatar = await findByTestId(container, 'profile-picture');
 
     expect(avatar).toBeInTheDocument();
     expect(cardContainer).toBeInTheDocument();
@@ -99,5 +102,27 @@ describe('Test userCard component', () => {
 
     expect(svgIcon).toBeInTheDocument();
     expect(datasetLink).toBeInTheDocument();
+    expect(datasetLink).toHaveTextContent('database/databaseSchema/table');
+  });
+
+  it('If isOwner is passed it should allow delete action', async () => {
+    const { container } = render(
+      <UserCard
+        isActionVisible
+        isOwner
+        item={mockItem}
+        onRemove={mockRemove}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const remove = await findByTestId(container, 'remove');
+
+    fireEvent.click(remove);
+
+    expect(remove).toBeInTheDocument();
+    expect(mockRemove).toBeCalled();
   });
 });

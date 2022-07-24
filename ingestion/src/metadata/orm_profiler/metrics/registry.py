@@ -25,6 +25,7 @@ from metadata.orm_profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
 from metadata.orm_profiler.metrics.composed.unique_ratio import UniqueRatio
 from metadata.orm_profiler.metrics.static.column_count import ColumnCount
+from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.count import Count
 from metadata.orm_profiler.metrics.static.count_in_set import CountInSet
 from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
@@ -36,11 +37,13 @@ from metadata.orm_profiler.metrics.static.max_length import MaxLength
 from metadata.orm_profiler.metrics.static.mean import Mean
 from metadata.orm_profiler.metrics.static.min import Min
 from metadata.orm_profiler.metrics.static.min_length import MinLength
+from metadata.orm_profiler.metrics.static.not_like_count import NotLikeCount
 from metadata.orm_profiler.metrics.static.null_count import NullCount
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+from metadata.orm_profiler.metrics.window.median import Median
 from metadata.orm_profiler.registry import MetricRegistry
 
 
@@ -53,6 +56,7 @@ class Metrics(MetricRegistry):
 
     # Static Metrics
     MEAN = Mean
+    MEDIAN = Median
     COUNT = Count
     COUNT_IN_SET = CountInSet
     COLUMN_COUNT = ColumnCount
@@ -61,6 +65,7 @@ class Metrics(MetricRegistry):
     HISTOGRAM = Histogram
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount
+    NOT_LIKE_COUNT = NotLikeCount
     MAX = Max
     MAX_LENGTH = MaxLength
     MIN = Min
@@ -71,6 +76,7 @@ class Metrics(MetricRegistry):
     SUM = Sum
     UNIQUE_COUNT = UniqueCount
     UNIQUE_RATIO = UniqueRatio
+    COLUMN_NAMES = ColumnNames
 
     # Composed Metrics
     DUPLICATE_COUNT = DuplicateCount

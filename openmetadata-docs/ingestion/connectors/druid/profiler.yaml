@@ -1,0 +1,24 @@
+source:
+  type: druid
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Druid
+      username: "<username>"
+      password: "<password>"
+      hostPort: "<hostPort>"
+      database: "<database>"
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: "<table FQN filtering regex>"
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"

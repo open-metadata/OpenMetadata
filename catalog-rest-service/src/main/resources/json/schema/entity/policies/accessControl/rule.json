@@ -11,24 +11,27 @@
       "description": "This schema defines all possible operations on metadata of data entities.",
       "type": "string",
       "enum": [
-        "SuggestDescription",
-        "SuggestTags",
-        "UpdateDescription",
-        "UpdateOwner",
-        "UpdateTags",
-        "UpdateLineage",
-        "DecryptTokens",
-        "UpdateTeam"
-      ],
-      "javaEnums": [
-        { "name": "SuggestDescription" },
-        { "name": "SuggestTags" },
-        { "name": "UpdateDescription" },
-        { "name": "UpdateOwner" },
-        { "name": "UpdateTags" },
-        { "name": "UpdateLineage" },
-        { "name": "DecryptTokens" },
-        { "name": "UpdateTeam" }
+        "Create",
+        "Delete",
+        "ViewAll",
+        "ViewUsage",
+        "ViewTests",
+        "TableViewQueries",
+        "TableViewDataProfile",
+        "TableViewSampleData",
+        "EditAll",
+        "EditDescription",
+        "EditTags",
+        "EditOwner",
+        "EditTier",
+        "EditCustomFields",
+        "EditLineage",
+        "EditReviewers",
+        "EditTests",
+        "TableEditQueries",
+        "TableEditDataProfile",
+        "TableEditSampleData",
+        "TeamEditUsers"
       ]
     }
   },
@@ -36,6 +39,10 @@
     "name": {
       "description": "Name for this Rule.",
       "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "entityTypeAttr": {
       "description": "Entity type that the rule should match on.",
@@ -45,11 +52,6 @@
     "entityTagAttr": {
       "description": "Entity tag that the rule should match on.",
       "$ref": "../../../type/tagLabel.json#/definitions/tagFQN",
-      "default": null
-    },
-    "userRoleAttr": {
-      "description": "Role of the user that the rule should match on.",
-      "$ref": "../../teams/role.json#/definitions/roleName",
       "default": null
     },
     "operation": {
@@ -67,12 +69,14 @@
       "type": "integer",
       "default": 250000
     },
-    "enabled": {
-      "description": "Is the rule enabled.",
+    "deleted": {
+      "description": "Is the rule soft-deleted.",
       "type": "boolean",
-      "default": true
+      "default": false
     }
   },
-  "required": ["name"],
+  "required": [
+    "name"
+  ],
   "additionalProperties": false
 }

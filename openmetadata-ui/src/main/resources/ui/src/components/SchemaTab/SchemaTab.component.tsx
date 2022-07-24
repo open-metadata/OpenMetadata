@@ -19,6 +19,7 @@ import {
   Table,
   TableData,
 } from '../../generated/entity/data/table';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import Searchbar from '../common/searchbar/Searchbar';
 import EntityTable from '../EntityTable/EntityTable.component';
 
@@ -26,13 +27,15 @@ type Props = {
   owner?: Table['owner'];
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
-  sampleData?: TableData;
   columnName: string;
+  tableConstraints: Table['tableConstraints'];
+  sampleData?: TableData;
   hasEditAccess?: boolean;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string) => void;
+  entityFieldTasks?: EntityFieldThreads[];
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
   onUpdate?: (columns: Table['columns']) => void;
 };
@@ -49,6 +52,8 @@ const SchemaTab: FunctionComponent<Props> = ({
   onEntityFieldSelect,
   isReadOnly = false,
   entityFqn,
+  tableConstraints,
+  entityFieldTasks,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -73,6 +78,7 @@ const SchemaTab: FunctionComponent<Props> = ({
           <div className="col-sm-12">
             <EntityTable
               columnName={columnName}
+              entityFieldTasks={entityFieldTasks}
               entityFieldThreads={entityFieldThreads}
               entityFqn={entityFqn}
               hasEditAccess={Boolean(hasEditAccess)}
@@ -81,6 +87,7 @@ const SchemaTab: FunctionComponent<Props> = ({
               owner={owner}
               searchText={lowerCase(searchText)}
               tableColumns={columns}
+              tableConstraints={tableConstraints}
               onEntityFieldSelect={onEntityFieldSelect}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onUpdate}

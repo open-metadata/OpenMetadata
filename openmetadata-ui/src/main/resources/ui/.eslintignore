@@ -29,3 +29,10 @@ mock-api/
 **/*.config.js
 **/*.config.dev.js
 **/*.config.prod.js
+
+# antlr
+src/antlr/generated/
+
+# cypress
+**/*.spec.js
+cypress/

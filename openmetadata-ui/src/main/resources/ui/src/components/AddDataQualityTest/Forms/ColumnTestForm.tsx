@@ -16,13 +16,9 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
-import { ColumnTestType } from '../../../enums/columnTest.enum';
-import { TestCaseExecutionFrequency } from '../../../generated/api/tests/createTableTest';
-import { Table } from '../../../generated/entity/data/table';
-import {
-  ColumnTest,
-  ModifiedTableColumn,
-} from '../../../interface/dataQuality.interface';
+import { CreateColumnTest } from '../../../generated/api/tests/createColumnTest';
+import { ColumnTestType, Table } from '../../../generated/entity/data/table';
+import { ModifiedTableColumn } from '../../../interface/dataQuality.interface';
 import {
   errorMsg,
   getCurrentUserId,
@@ -35,14 +31,14 @@ import {
 import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 
 type Props = {
-  data?: ColumnTest;
+  data?: CreateColumnTest;
   selectedColumn: string;
   isTableDeleted?: boolean;
   column: ModifiedTableColumn[];
-  handleAddColumnTestCase: (data: ColumnTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
   onFormCancel: () => void;
 };
 
@@ -79,12 +75,14 @@ const ColumnTestForm = ({
     data?.testCase?.config?.maxValue
   );
 
-  const [frequency, setFrequency] = useState<TestCaseExecutionFrequency>(
-    data?.executionFrequency || TestCaseExecutionFrequency.Daily
-  );
   const [forbiddenValues, setForbiddenValues] = useState<(string | number)[]>(
     data?.testCase?.config?.forbiddenValues || ['']
   );
+
+  const [allowedValues, setAllowedValues] = useState<(string | number)[]>(
+    data?.testCase?.config?.allowedValues || ['']
+  );
+
   const [isShowError, setIsShowError] = useState({
     testName: false,
     columnName: false,
@@ -92,6 +90,7 @@ const ColumnTestForm = ({
     minOrMax: false,
     missingCountValue: false,
     values: false,
+    inSetValues: false,
     minMaxValue: false,
     allTestAdded: false,
     notSupported: false,
@@ -99,7 +98,7 @@ const ColumnTestForm = ({
 
   const [columnName, setColumnName] = useState(data?.columnName || '');
   const [missingValueMatch, setMissingValueMatch] = useState<string[]>(
-    data?.testCase?.config?.missingValueMatch || ['']
+    (data?.testCase?.config?.missingValueMatch as Array<string>) || ['']
   );
   const [missingCountValue, setMissingCountValue] = useState<
     number | undefined
@@ -123,6 +122,23 @@ const ColumnTestForm = ({
     const newFormValues = [...forbiddenValues];
     newFormValues[i] = value;
     setForbiddenValues(newFormValues);
+    setIsShowError({ ...isShowError, values: false });
+  };
+
+  const addInSetValueFields = () => {
+    setAllowedValues([...allowedValues, '']);
+  };
+
+  const removeInSetValueFields = (i: number) => {
+    const newFormValues = [...allowedValues];
+    newFormValues.splice(i, 1);
+    setAllowedValues(newFormValues);
+  };
+
+  const handleInSetValueFieldsChange = (i: number, value: string) => {
+    const newFormValues = [...allowedValues];
+    newFormValues[i] = value;
+    setAllowedValues(newFormValues);
     setIsShowError({ ...isShowError, values: false });
   };
 
@@ -153,7 +169,7 @@ const ColumnTestForm = ({
       const selectedColumn = column.find((d) => d.name === name);
       const existingTests =
         selectedColumn?.columnTests?.map(
-          (d: ColumnTest) => d.testCase.columnTestType
+          (d: CreateColumnTest) => d.testCase.columnTestType
         ) || [];
       if (existingTests.length) {
         const newTest = filteredColumnTestOption(
@@ -199,8 +215,14 @@ const ColumnTestForm = ({
     errMsg.testName = isEmpty(columnTest);
 
     switch (columnTest) {
-      case ColumnTestType.columnValueLengthsToBeBetween:
-      case ColumnTestType.columnValuesToBeBetween:
+      case ColumnTestType.ColumnValueLengthsToBeBetween:
+      case ColumnTestType.ColumnValuesToBeBetween:
+      case ColumnTestType.ColumnValueMaxToBeBetween:
+      case ColumnTestType.ColumnValueMinToBeBetween:
+      case ColumnTestType.ColumnValuesSumToBeBetween:
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+      case ColumnTestType.ColumnValueMedianToBeBetween:
         errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
         if (!isUndefined(minValue) && !isUndefined(maxValue)) {
           errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
@@ -208,19 +230,27 @@ const ColumnTestForm = ({
 
         break;
 
-      case ColumnTestType.columnValuesMissingCountToBeEqual:
+      case ColumnTestType.ColumnValuesMissingCountToBeEqual:
         errMsg.missingCountValue = isEmpty(missingCountValue);
 
         break;
 
-      case ColumnTestType.columnValuesToBeNotInSet: {
+      case ColumnTestType.ColumnValuesToBeNotInSet: {
         const actualValues = forbiddenValues.filter((v) => !isEmpty(v));
         errMsg.values = actualValues.length < 1;
 
         break;
       }
 
-      case ColumnTestType.columnValuesToMatchRegex:
+      case ColumnTestType.ColumnValuesToBeInSet: {
+        const actualValues = allowedValues.filter((v) => !isEmpty(v));
+        errMsg.inSetValues = actualValues.length < 1;
+
+        break;
+      }
+
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
+      case ColumnTestType.ColumnValuesToMatchRegex:
         errMsg.regex = isEmpty(regex);
 
         break;
@@ -233,18 +263,52 @@ const ColumnTestForm = ({
 
   const getTestConfi = () => {
     switch (columnTest) {
-      case ColumnTestType.columnValueLengthsToBeBetween:
+      case ColumnTestType.ColumnValueLengthsToBeBetween:
         return {
           minLength: !isEmpty(minValue) ? minValue : undefined,
           maxLength: !isEmpty(maxValue) ? maxValue : undefined,
         };
-      case ColumnTestType.columnValuesToBeBetween:
+      case ColumnTestType.ColumnValuesToBeBetween:
         return {
           minValue: !isEmpty(minValue) ? minValue : undefined,
           maxValue: !isEmpty(maxValue) ? maxValue : undefined,
         };
 
-      case ColumnTestType.columnValuesMissingCountToBeEqual: {
+      case ColumnTestType.ColumnValueMaxToBeBetween:
+        return {
+          minValueForMaxInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMaxInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
+      case ColumnTestType.ColumnValueMinToBeBetween:
+        return {
+          minValueForMinInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMinInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
+      case ColumnTestType.ColumnValuesSumToBeBetween:
+        return {
+          minValueForColSum: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForColSum: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
+      case ColumnTestType.ColumnValueMedianToBeBetween:
+        return {
+          minValueForMedianInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMedianInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+        return {
+          minValueForMeanInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMeanInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+        return {
+          minValueForStdDevInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForStdDevInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
+      case ColumnTestType.ColumnValuesMissingCountToBeEqual: {
         const filterMatchValue = missingValueMatch.filter(
           (value) => !isEmpty(value)
         );
@@ -256,21 +320,31 @@ const ColumnTestForm = ({
             : undefined,
         };
       }
-      case ColumnTestType.columnValuesToBeNotInSet:
+      case ColumnTestType.ColumnValuesToBeNotInSet:
         return {
           forbiddenValues: forbiddenValues.filter((v) => !isEmpty(v)),
         };
 
-      case ColumnTestType.columnValuesToMatchRegex:
+      case ColumnTestType.ColumnValuesToBeInSet:
+        return {
+          allowedValues: allowedValues.filter((v) => !isEmpty(v)),
+        };
+
+      case ColumnTestType.ColumnValuesToMatchRegex:
         return {
           regex: regex,
         };
 
-      case ColumnTestType.columnValuesToBeNotNull:
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
+        return {
+          forbiddenRegex: regex,
+        };
+
+      case ColumnTestType.ColumnValuesToBeNotNull:
         return {
           columnValuesToBeNotNull: true,
         };
-      case ColumnTestType.columnValuesToBeUnique:
+      case ColumnTestType.ColumnValuesToBeUnique:
         return {
           columnValuesToBeUnique: true,
         };
@@ -281,10 +355,9 @@ const ColumnTestForm = ({
 
   const handleSave = () => {
     if (validateForm()) {
-      const columnTestObj: ColumnTest = {
+      const columnTestObj: CreateColumnTest = {
         columnName: columnName,
         description: markdownRef.current?.getEditorContent() || undefined,
-        executionFrequency: frequency,
         testCase: {
           config: getTestConfi(),
           columnTestType: columnTest,
@@ -315,12 +388,14 @@ const ColumnTestForm = ({
         isAcceptedTypeIsString.current =
           columnDataType === 'varchar' || columnDataType === 'boolean';
         setForbiddenValues(['']);
+        setAllowedValues(['']);
         setColumnTest(value as ColumnTestType);
         errorMsg.columnName = false;
         errorMsg.regex = false;
         errorMsg.minOrMax = false;
         errorMsg.missingCountValue = false;
         errorMsg.values = false;
+        errorMsg.inSetValues = false;
         errorMsg.minMaxValue = false;
         errorMsg.testName = false;
 
@@ -342,11 +417,6 @@ const ColumnTestForm = ({
         break;
       }
 
-      case 'frequency':
-        setFrequency(value as TestCaseExecutionFrequency);
-
-        break;
-
       case 'columnName': {
         const selectedColumn = column.find((d) => d.name === value);
         const columnDataType = getDataTypeString(
@@ -355,6 +425,7 @@ const ColumnTestForm = ({
         isAcceptedTypeIsString.current =
           columnDataType === 'varchar' || columnDataType === 'boolean';
         setForbiddenValues(['']);
+        setAllowedValues(['']);
         setColumnName(value);
         handleTestTypeOptionChange(value);
         errorMsg.allTestAdded =
@@ -395,7 +466,7 @@ const ColumnTestForm = ({
               Min:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="min"
               id="min"
               name="min"
@@ -410,7 +481,7 @@ const ColumnTestForm = ({
               Max:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="max"
               id="max"
               name="max"
@@ -436,7 +507,7 @@ const ColumnTestForm = ({
             {requiredField('Count:')}
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="missingCountValue"
             id="missingCountValue"
             name="missingCountValue"
@@ -467,7 +538,7 @@ const ColumnTestForm = ({
               <div className="tw-w-11/12">
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`value-key-${i}`}
                     name="key"
                     placeholder="Missing value to be match"
@@ -487,7 +558,7 @@ const ColumnTestForm = ({
                   alt="delete"
                   icon="icon-delete"
                   title="Delete"
-                  width="12px"
+                  width="16px"
                 />
               </button>
             </div>
@@ -504,7 +575,7 @@ const ColumnTestForm = ({
           {requiredField('Regex:')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="regex"
           id="regex"
           name="regex"
@@ -537,7 +608,7 @@ const ColumnTestForm = ({
             <div className="tw-w-11/12">
               <Field>
                 <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-form-inputs-padding"
                   id={`option-key-${i}`}
                   name="key"
                   placeholder="Values not to be in the set"
@@ -557,7 +628,60 @@ const ColumnTestForm = ({
                 alt="delete"
                 icon="icon-delete"
                 title="Delete"
-                width="12px"
+                width="16px"
+              />
+            </button>
+          </div>
+        ))}
+
+        {isShowError.values && errorMsg('Value is required.')}
+      </div>
+    );
+  };
+
+  const getColumnValuesToBeInSetField = () => {
+    return (
+      <div data-testid="in-set-field">
+        <div className="tw-flex tw-items-center tw-mt-6">
+          <p className="w-form-label tw-mr-3">{requiredField('Values')}</p>
+          <Button
+            className="tw-h-5 tw-px-2"
+            size="x-small"
+            theme="primary"
+            variant="contained"
+            onClick={addInSetValueFields}>
+            <FontAwesomeIcon icon="plus" />
+          </Button>
+        </div>
+
+        {allowedValues.map((value, i) => (
+          <div className="tw-flex tw-items-center" key={i}>
+            <div className="tw-w-11/12">
+              <Field>
+                <input
+                  className="tw-form-inputs tw-form-inputs-padding"
+                  id={`option-key-${i}`}
+                  name="key"
+                  placeholder="Values to be in the set"
+                  type={isAcceptedTypeIsString.current ? 'text' : 'number'}
+                  value={value}
+                  onChange={(e) =>
+                    handleInSetValueFieldsChange(i, e.target.value)
+                  }
+                />
+              </Field>
+            </div>
+            <button
+              className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
+              onClick={(e) => {
+                removeInSetValueFields(i);
+                e.preventDefault();
+              }}>
+              <SVGIcons
+                alt="delete"
+                icon="icon-delete"
+                title="Delete"
+                width="16px"
               />
             </button>
           </div>
@@ -570,21 +694,31 @@ const ColumnTestForm = ({
 
   const getColumnTestConfig = () => {
     switch (columnTest) {
-      case ColumnTestType.columnValueLengthsToBeBetween:
-      case ColumnTestType.columnValuesToBeBetween:
+      case ColumnTestType.ColumnValueLengthsToBeBetween:
+      case ColumnTestType.ColumnValuesToBeBetween:
+      case ColumnTestType.ColumnValueMaxToBeBetween:
+      case ColumnTestType.ColumnValueMinToBeBetween:
+      case ColumnTestType.ColumnValuesSumToBeBetween:
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+      case ColumnTestType.ColumnValueMedianToBeBetween:
         return getMinMaxField();
 
-      case ColumnTestType.columnValuesMissingCountToBeEqual:
+      case ColumnTestType.ColumnValuesMissingCountToBeEqual:
         return getMissingCountToBeEqualFields();
 
-      case ColumnTestType.columnValuesToBeNotInSet:
+      case ColumnTestType.ColumnValuesToBeNotInSet:
         return getColumnValuesToBeNotInSetField();
 
-      case ColumnTestType.columnValuesToMatchRegex:
+      case ColumnTestType.ColumnValuesToBeInSet:
+        return getColumnValuesToBeInSetField();
+
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
+      case ColumnTestType.ColumnValuesToMatchRegex:
         return getColumnValuesToMatchRegexFields();
 
-      case ColumnTestType.columnValuesToBeNotNull:
-      case ColumnTestType.columnValuesToBeUnique:
+      case ColumnTestType.ColumnValuesToBeNotNull:
+      case ColumnTestType.ColumnValuesToBeUnique:
       default:
         return <></>;
     }
@@ -602,7 +736,7 @@ const ColumnTestForm = ({
               {requiredField('Column Name:')}
             </label>
             <select
-              className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+              className={classNames('tw-form-inputs tw-form-inputs-padding', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
               data-testid="columnName"
@@ -630,7 +764,7 @@ const ColumnTestForm = ({
               {requiredField('Test Type:')}
             </label>
             <select
-              className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+              className={classNames('tw-form-inputs tw-form-inputs-padding', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
               data-testid="columTestType"
@@ -657,33 +791,14 @@ const ColumnTestForm = ({
               htmlFor="description">
               Description:
             </label>
-            <MarkdownWithPreview
+            <RichTextEditor
               data-testid="description"
+              initialValue={description}
               ref={markdownRef}
-              value={description}
             />
           </Field>
 
           {getColumnTestConfig()}
-
-          <Field>
-            <label className="tw-block tw-form-label" htmlFor="frequency">
-              Frequency of Test Run:
-            </label>
-            <select
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="frequency"
-              id="frequency"
-              name="frequency"
-              value={frequency}
-              onChange={handleValidation}>
-              {Object.values(TestCaseExecutionFrequency).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </Field>
         </div>
         <Field>
           <Field className="tw-flex tw-justify-end">
@@ -693,7 +808,7 @@ const ColumnTestForm = ({
               theme="primary"
               variant="text"
               onClick={onFormCancel}>
-              Discard
+              Cancel
             </Button>
             <Button
               className="tw-w-16 tw-h-10"

@@ -25,30 +25,35 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.utils.engines import create_and_bind_session
+from metadata.utils.connections import create_and_bind_session
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared"
 
 ingestion_config = {
     "source": {
         "type": "sqlite",
-        "config": {
-            "service_name": "test_sqlite",
-            "database": sqlite_shared,  # We need this to share the session
-            "data_profiler_enabled": True,
+        "serviceName": "test_sqlite",
+        "serviceConnection": {
+            "config": {
+                "type": "SQLite",
+                "databaseMode": sqlite_shared,
+                "database": "main",
+            }
         },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
-    "metadata_server": {
-        "type": "metadata-server",
-        "config": {
-            "api_endpoint": "http://localhost:8585/api",
-            "auth_provider_type": "no-auth",
-        },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+        }
     },
 }
 
@@ -74,7 +79,7 @@ class ProfilerWorkflowTest(TestCase):
     )
     session = create_and_bind_session(engine)
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     @classmethod
@@ -98,15 +103,34 @@ class ProfilerWorkflowTest(TestCase):
         ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """
+        Clean up
+        """
+
+        service_id = str(
+            cls.metadata.get_by_name(
+                entity=DatabaseService, fqn="test_sqlite"
+            ).id.__root__
+        )
+
+        cls.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
+        )
+
     def test_ingestion(self):
         """
         Validate that the ingestion ran correctly
         """
 
         table_entity: Table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.users"
+            entity=Table, fqn="test_sqlite.main.main.users"
         )
-        assert table_entity.fullyQualifiedName == "test_sqlite.main.users"
+        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.main.users"
 
     def test_profiler_workflow(self):
         """
@@ -114,18 +138,20 @@ class ProfilerWorkflowTest(TestCase):
         on top of the Users table
         """
         workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update({"type": "Profiler"})
         workflow_config["processor"] = {
             "type": "orm-profiler",
             "config": {
                 "profiler": {
                     "name": "my_profiler",
+                    "timeout_seconds": 60,
                     "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
                 },
                 "test_suite": {
                     "name": "My Test Suite",
                     "tests": [
                         {
-                            "table": "test_sqlite.main.users",  # FQDN
+                            "table": "test_sqlite.main.main.users",  # FQDN
                             "profile_sample": 75,
                             "table_tests": [
                                 {
@@ -166,7 +192,7 @@ class ProfilerWorkflowTest(TestCase):
 
         # The profileSample should have been updated
         table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.users", fields=["profileSample"]
+            entity=Table, fqn="test_sqlite.main.main.users", fields=["profileSample"]
         )
         assert table.profileSample == 75.0
 

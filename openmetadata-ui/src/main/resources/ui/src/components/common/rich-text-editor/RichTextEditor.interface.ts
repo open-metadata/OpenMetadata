@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactNode } from 'react';
+import { HTMLAttributes, ReactNode } from 'react';
 
 export type editorRef = ReactNode | HTMLElement | string;
 export enum Format {
@@ -26,3 +26,30 @@ export type EditorProp = {
   readonly?: boolean;
   customOptions?: ReactNode[];
 };
+
+export interface PreviewerProp {
+  markdown: string;
+  className?: string;
+  blurClasses?: string;
+  maxHtClass?: string;
+  maxLen?: number;
+  enableSeeMoreVariant?: boolean;
+}
+
+export type PreviewStyle = 'tab' | 'vertical';
+
+export type EditorType = 'markdown' | 'wysiwyg';
+
+export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
+  initialValue: string;
+  placeHolder?: string;
+  previewStyle?: PreviewStyle;
+  editorType?: EditorType;
+  previewHighlight?: boolean;
+  extendedAutolinks?: boolean;
+  hideModeSwitch?: boolean;
+  useCommandShortcut?: boolean;
+  readonly?: boolean;
+  height?: string;
+  onTextChange?: (value: string) => void;
+}

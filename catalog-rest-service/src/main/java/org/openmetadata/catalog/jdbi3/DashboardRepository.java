@@ -13,36 +13,32 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final Fields DASHBOARD_UPDATE_FIELDS =
-      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
-  private static final Fields DASHBOARD_PATCH_FIELDS =
-      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
+  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts";
+  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts";
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -55,30 +51,18 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_UPDATE_FIELDS);
   }
 
-  public static String getFQN(Dashboard dashboard) {
-    return (dashboard != null && dashboard.getService() != null)
-        ? (dashboard.getService().getName() + "." + dashboard.getName())
-        : null;
+  @Override
+  public void setFullyQualifiedName(Dashboard dashboard) {
+    dashboard.setFullyQualifiedName(FullyQualifiedName.add(dashboard.getService().getName(), dashboard.getName()));
   }
 
   @Override
-  public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
-    return new DashboardEntityInterface(entity);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner());
-  }
-
-  @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException, ParseException {
-    dashboard.setDisplayName(dashboard.getDisplayName());
-    dashboard.setService(getService(dashboard));
+  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
+    dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setOwner(fields.contains(FIELD_OWNER) ? getOwner(dashboard) : null);
-    dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);
+    dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
-    dashboard.setTags(fields.contains("tags") ? getTags(dashboard.getFullyQualifiedName()) : null);
+    dashboard.setTags(fields.contains(FIELD_TAGS) ? getTags(dashboard.getFullyQualifiedName()) : null);
     dashboard.setUsageSummary(
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
@@ -93,17 +77,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withId(original.getId())
         .withFullyQualifiedName(original.getFullyQualifiedName())
         .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
-  }
-
-  private EntityReference getService(Dashboard dashboard) throws IOException {
-    return getContainer(dashboard.getId(), Entity.DASHBOARD);
+        .withService(original.getService());
   }
 
   private void populateService(Dashboard dashboard) throws IOException {
     DashboardService service = getService(dashboard.getService().getId(), dashboard.getService().getType());
-    dashboard.setService(new DashboardServiceEntityInterface(service).getEntityReference());
+    dashboard.setService(service.getEntityReference());
     dashboard.setServiceType(service.getServiceType());
   }
 
@@ -125,10 +104,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(dashboard));
     populateService(dashboard);
-    dashboard.setFullyQualifiedName(getFQN(dashboard));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
+    setFullyQualifiedName(dashboard);
+    populateOwner(dashboard.getOwner()); // Validate owner
     dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
@@ -160,7 +138,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
     // Add owner relationship
-    setOwner(dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
+    storeOwner(dashboard, dashboard.getOwner());
 
     // Add tag to dashboard relationship
     applyTags(dashboard);
@@ -175,7 +153,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard == null) {
       return null;
     }
-    List<String> chartIds = findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
+    List<EntityRelationshipRecord> chartIds =
+        findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
     return EntityUtil.populateEntityReferences(chartIds, Entity.CHART);
   }
 
@@ -196,176 +175,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return chartRefs.isEmpty() ? null : chartRefs;
   }
 
-  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater)
-      throws JsonProcessingException {
-    // Remove all charts associated with this dashboard
-    deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
-
-    // Add relationship from dashboard to chart
-    if (updated.getCharts() != null) {
-      for (EntityReference chart : updated.getCharts()) {
-        addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
-      }
-    }
-    List<UUID> origChartIds = EntityUtil.getIDList(original.getCharts());
-    List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getCharts());
-    updater.recordChange("charts", origChartIds, updatedChartIds);
-  }
-
-  public static class DashboardEntityInterface implements EntityInterface<Dashboard> {
-    private final Dashboard entity;
-
-    public DashboardEntityInterface(Dashboard entity) {
-      this.entity = entity;
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null
-          ? entity.getFullyQualifiedName()
-          : DashboardRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DASHBOARD)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
-    }
-
-    @Override
-    public Dashboard getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Dashboard withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class DashboardUpdater extends EntityUpdater {
     public DashboardUpdater(Dashboard original, Dashboard updated, Operation operation) {
@@ -382,8 +191,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
 
       // Add relationship from dashboard to chart
-      List<EntityReference> updatedCharts = listOrEmpty(updated.getEntity().getCharts());
-      List<EntityReference> origCharts = listOrEmpty(original.getEntity().getCharts());
+      List<EntityReference> updatedCharts = listOrEmpty(updated.getCharts());
+      List<EntityReference> origCharts = listOrEmpty(original.getCharts());
       for (EntityReference chart : updatedCharts) {
         addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
       }

@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { isNil, isUndefined } from 'lodash';
 import { UserProfile } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateUser } from '../generated/api/teams/createUser';
@@ -22,11 +23,31 @@ import APIClient from './index';
 
 export const getUsers = (
   arrQueryFields?: string,
-  limit?: number
+  limit?: number,
+  team?: { [key: string]: string },
+  isAdmin?: boolean,
+  isBot?: boolean
 ): Promise<AxiosResponse> => {
+  let qParam = '';
+  if (!isUndefined(team)) {
+    const paramArr = Object.entries(team);
+    qParam = paramArr.reduce((pre, curr, index) => {
+      return (
+        pre + `${curr[0]}=${curr[1]}${index !== paramArr.length - 1 ? '&' : ''}`
+      );
+    }, '');
+  }
+  if (!isUndefined(isAdmin)) {
+    qParam = `${qParam}&isAdmin=${isAdmin}`;
+  }
+  if (!isUndefined(isBot)) {
+    qParam = `${qParam}&isBot=${isBot}`;
+  }
   const url =
-    `${getURLWithQueryFields('/users', arrQueryFields)}` +
-    (limit ? `${arrQueryFields?.length ? '&' : '?'}limit=${limit}` : '');
+    `${getURLWithQueryFields('/users', arrQueryFields, qParam)}` +
+    (!isNil(limit)
+      ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
+      : '');
 
   return APIClient.get(url);
 };
@@ -47,6 +68,15 @@ export const getUserByName = (
   arrQueryFields?: string
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields('/users/name/' + name, arrQueryFields);
+
+  return APIClient.get(url);
+};
+
+export const getUserById = (
+  id: string,
+  arrQueryFields?: string
+): Promise<AxiosResponse> => {
+  const url = getURLWithQueryFields(`/users/${id}`, arrQueryFields);
 
   return APIClient.get(url);
 };
@@ -85,19 +115,13 @@ export const updateUserTeam: Function = (
   return APIClient.post(`/users/${id}/teams`, options);
 };
 
-export const getUserById: Function = (id: string): Promise<AxiosResponse> => {
-  return APIClient.get(`/users/${id}`);
-};
-
 export const createUser = (
   userDetails: Record<string, string | Array<string> | UserProfile> | CreateUser
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/users`, userDetails);
 };
 
-export const updateUser = (
-  data: Pick<User, 'email' | 'name' | 'displayName' | 'profile' | 'isAdmin'>
-): Promise<AxiosResponse> => {
+export const updateUser = (data: User): Promise<AxiosResponse> => {
   return APIClient.put('/users', data);
 };
 
@@ -105,4 +129,32 @@ export const getUserCounts = () => {
   return APIClient.get(
     `/search/query?q=*&from=0&size=0&index=${SearchIndex.USER}`
   );
+};
+
+export const deleteUser = (id: string) => {
+  return APIClient.delete(`/users/${id}`);
+};
+
+export const getUserToken: Function = (id: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/users/token/${id}`);
+};
+
+export const generateUserToken: Function = (
+  id: string,
+  expiry: string
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+  const payload = {
+    JWTTokenExpiry: expiry,
+  };
+
+  return APIClient.put(`/users/generateToken/${id}`, payload, configOptions);
+};
+
+export const revokeUserToken: Function = (
+  id: string
+): Promise<AxiosResponse> => {
+  return APIClient.put(`/users/revokeToken/${id}`);
 };

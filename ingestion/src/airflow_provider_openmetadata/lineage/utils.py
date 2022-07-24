@@ -14,11 +14,11 @@ OpenMetadata Airflow Lineage Backend
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from airflow.configuration import conf
 
-from airflow_provider_openmetadata.lineage.config import OpenMetadataLineageConfig
+from airflow_provider_openmetadata.lineage.config.loader import AirflowLineageConfig
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
@@ -32,7 +32,14 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
     PipelineService,
     PipelineServiceType,
 )
@@ -70,31 +77,59 @@ def is_airflow_version_1() -> bool:
         return True
 
 
+def parse_v1_xlets(xlet: dict) -> Optional[List[str]]:
+    """
+    Parse airflow xlets for V1
+    :param xlet: airflow v1 xlet dict
+    :return: table list or None
+    """
+    if isinstance(xlet, dict):
+        tables = xlet.get("tables")
+        if tables and isinstance(tables, list):
+            return tables
+
+    return None
+
+
+def parse_xlets(xlet: List[dict]) -> Optional[List[str]]:
+    """
+    Parse airflow xlets for V1
+    :param xlet: airflow v2 xlet dict
+    :return: table list or None
+    """
+    if len(xlet) and isinstance(xlet[0], dict):
+        tables = xlet[0].get("tables")
+        if tables and isinstance(tables, list):
+            return tables
+
+    return None
+
+
 def get_xlets(
     operator: "BaseOperator", xlet_mode: str = "_inlets"
-) -> Union[Optional[List[str]], Any]:
+) -> Optional[List[str]]:
     """
     Given an Airflow DAG Task, obtain the tables
     set in inlets or outlets.
 
     We expect xlets to have the following structure:
-    [{'tables': ['FQDN']}]
+    [{'tables': ['FQN']}]
 
     :param operator: task to get xlets from
     :param xlet_mode: get inlet or outlet
-    :return: list of tables FQDN
+    :return: list of tables FQN
     """
     xlet = getattr(operator, xlet_mode)
     if is_airflow_version_1():
-        return xlet
+        tables = parse_v1_xlets(xlet)
 
-    if len(xlet) and isinstance(xlet[0], dict):
-        tables = xlet[0].get("tables")
-        if isinstance(tables, list) and len(tables):
-            return tables
+    else:
+        tables = parse_xlets(xlet)
 
-    operator.log.info(f"Not finding proper {xlet_mode} in task {operator.task_id}")
-    return None
+    if not tables:
+        operator.log.info(f"Not finding proper {xlet_mode} in task {operator.task_id}")
+
+    return tables
 
 
 def create_or_update_pipeline(  # pylint: disable=too-many-locals
@@ -102,7 +137,7 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
     operator: "BaseOperator",
     dag: "DAG",
     airflow_service_entity: PipelineService,
-    client: OpenMetadata,
+    metadata: OpenMetadata,
 ) -> Pipeline:
     """
     Prepare the upsert of pipeline entity with the given task
@@ -117,15 +152,12 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
     :param operator: task being examined by lineage
     :param dag: airflow dag
     :param airflow_service_entity: PipelineService
-    :param client: OpenMetadata API client
+    :param metadata: OpenMetadata API client
     :return: PipelineEntity
     """
-    pipeline_service_url = conf.get("webserver", "base_url")
-    dag_url = f"{pipeline_service_url}/tree?dag_id={dag.dag_id}"
-    task_url = (
-        f"{pipeline_service_url}/taskinstance/list/"
-        + f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={operator.task_id}"
-    )
+    dag_url = f"/tree?dag_id={dag.dag_id}"
+    task_url = f"/taskinstance/list/?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={operator.task_id}"
+
     dag_start_date = dag.start_date.isoformat() if dag.start_date else None
     task_start_date = (
         task_instance.start_date.isoformat() if task_instance.start_date else None
@@ -152,11 +184,11 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
 
     # Check if the pipeline already exists
     operator.log.info(
-        f"Checking if the pipeline {airflow_service_entity.name}.{dag.dag_id} exists. If not, we will create it."
+        f"Checking if the pipeline {airflow_service_entity.name.__root__}.{dag.dag_id} exists. If not, we will create it."
     )
-    current_pipeline: Pipeline = client.get_by_name(
+    current_pipeline: Pipeline = metadata.get_by_name(
         entity=Pipeline,
-        fqdn=f"{airflow_service_entity.name}.{dag.dag_id}",
+        fqn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
         fields=["tasks"],
     )
 
@@ -178,16 +210,16 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
         owner=current_pipeline.owner if current_pipeline else None,
         tags=current_pipeline.tags if current_pipeline else None,
     )
-    pipeline = client.create_or_update(pipeline_request)
+    pipeline: Pipeline = metadata.create_or_update(pipeline_request)
 
     # Add the task we are processing in the lineage backend
     operator.log.info("Adding tasks to pipeline...")
-    updated_pipeline = client.add_task_to_pipeline(pipeline, task)
+    updated_pipeline = metadata.add_task_to_pipeline(pipeline, task)
 
     # Clean pipeline
     try:
         operator.log.info("Cleaning pipeline tasks...")
-        updated_pipeline = client.clean_pipeline_tasks(updated_pipeline, dag.task_ids)
+        updated_pipeline = metadata.clean_pipeline_tasks(updated_pipeline, dag.task_ids)
     except Exception as exc:  # pylint: disable=broad-except
         operator.log.warning(f"Error cleaning pipeline tasks {exc}")
 
@@ -224,7 +256,7 @@ def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):
 def add_status(
     operator: "BaseOperator",
     pipeline: Pipeline,
-    client: OpenMetadata,
+    metadata: OpenMetadata,
     context: Dict,
 ) -> None:
     """
@@ -241,7 +273,7 @@ def add_status(
 
     # Check if we already have a pipelineStatus for
     # our execution_date that we should update
-    pipeline_status: List[PipelineStatus] = client.get_by_id(
+    pipeline_status: List[PipelineStatus] = metadata.get_by_id(
         entity=Pipeline, entity_id=pipeline.id, fields=["pipelineStatus"]
     ).pipelineStatus
 
@@ -260,7 +292,10 @@ def add_status(
     updated_task_status = [
         TaskStatus(
             name=task_instance.task_id,
-            executionStatus=_STATUS_MAP.get(context["task_instance"].state),
+            executionStatus=_STATUS_MAP.get(task_instance.state),
+            startTime=datetime_to_ts(task_instance.start_date),
+            endTime=datetime_to_ts(task_instance.end_date),
+            logLink=task_instance.log_url,
         ),
         *task_status,
     ]
@@ -275,17 +310,17 @@ def add_status(
     )
 
     operator.log.info(f"Added status to DAG {updated_status}")
-    client.add_pipeline_status(pipeline=pipeline, status=updated_status)
+    metadata.add_pipeline_status(pipeline=pipeline, status=updated_status)
 
 
 # pylint: disable=too-many-arguments,too-many-locals
 def parse_lineage(
-    config: OpenMetadataLineageConfig,
+    config: AirflowLineageConfig,
     context: Dict,
     operator: "BaseOperator",
     inlets: List,
     outlets: List,
-    client: OpenMetadata,
+    metadata: OpenMetadata,
 ) -> Optional[Pipeline]:
     """
     Main logic to extract properties from DAG and the
@@ -297,7 +332,7 @@ def parse_lineage(
     :param operator: task being executed
     :param inlets: list of upstream tables
     :param outlets: list of downstream tables
-    :param client: OpenMetadata client
+    :param metadata: OpenMetadata client
     """
     operator.log.info("Parsing Lineage for OpenMetadata")
 
@@ -307,19 +342,19 @@ def parse_lineage(
     try:
 
         airflow_service_entity = get_or_create_pipeline_service(
-            operator, client, config
+            operator, metadata, config
         )
         pipeline = create_or_update_pipeline(
             task_instance=task_instance,
             operator=operator,
             dag=dag,
             airflow_service_entity=airflow_service_entity,
-            client=client,
+            metadata=metadata,
         )
 
         operator.log.info("Parsing Lineage")
         for table in inlets if inlets else []:
-            table_entity = client.get_by_name(entity=Table, fqdn=table)
+            table_entity = metadata.get_by_name(entity=Table, fqn=table)
             operator.log.debug(f"from entity {table_entity}")
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
@@ -328,10 +363,10 @@ def parse_lineage(
                 )
             )
             operator.log.debug(f"From lineage {lineage}")
-            client.add_lineage(lineage)
+            metadata.add_lineage(lineage)
 
         for table in outlets if outlets else []:
-            table_entity = client.get_by_name(entity=Table, fqdn=table)
+            table_entity = metadata.get_by_name(entity=Table, fqn=table)
             operator.log.debug(f"To entity {table_entity}")
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
@@ -340,7 +375,7 @@ def parse_lineage(
                 )
             )
             operator.log.debug(f"To lineage {lineage}")
-            client.add_lineage(lineage)
+            metadata.add_lineage(lineage)
 
         return pipeline
 
@@ -354,29 +389,34 @@ def parse_lineage(
 
 
 def get_or_create_pipeline_service(
-    operator: "BaseOperator", client: OpenMetadata, config: OpenMetadataLineageConfig
+    operator: "BaseOperator", metadata: OpenMetadata, config: AirflowLineageConfig
 ) -> PipelineService:
     """
     Check if we already have the airflow instance as a PipelineService,
     otherwise create it.
 
     :param operator: task from which we extract the lineage
-    :param client: OpenMetadata API wrapper
+    :param metadata: OpenMetadata API wrapper
     :param config: lineage config
     :return: PipelineService
     """
     operator.log.info("Get Airflow Service ID")
-    airflow_service_entity = client.get_by_name(
-        entity=PipelineService, fqdn=config.airflow_service_name
+    airflow_service_entity = metadata.get_by_name(
+        entity=PipelineService, fqn=config.airflow_service_name
     )
 
     if airflow_service_entity is None:
         pipeline_service = CreatePipelineServiceRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
-            pipelineUrl=conf.get("webserver", "base_url"),
+            connection=PipelineConnection(
+                config=AirflowConnection(
+                    hostPort=conf.get("webserver", "base_url"),
+                    connection=BackendConnection(),
+                ),
+            ),
         )
-        airflow_service_entity = client.create_or_update(pipeline_service)
+        airflow_service_entity = metadata.create_or_update(pipeline_service)
         operator.log.info("Created airflow service entity {}", airflow_service_entity)
 
     return airflow_service_entity

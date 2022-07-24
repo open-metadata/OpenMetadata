@@ -17,9 +17,10 @@ import { getOwnerIds } from './CommonUtils';
 
 export const getMyDataFilters = (
   filter: Ownership,
-  userDetails: User
+  userDetails: User,
+  nonSecureUserDetails: User
 ): string => {
-  return `(${getOwnerIds(filter, userDetails)
+  return `(${getOwnerIds(filter, userDetails, nonSecureUserDetails)
     .map((id) => `${filter}:${id}`)
     .join(' OR ')})`;
 };

@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import {
+  faChevronLeft,
+  faChevronRight,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, {
@@ -23,20 +28,19 @@ import React, {
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
+import { RowData } from './RowData';
 
-export type SampleColumns = { name: string; dataType: string };
+export interface SampleColumns {
+  name: string;
+  dataType: string;
+}
 
-type Props = {
+interface Props {
   sampleData?: {
     columns?: Array<SampleColumns>;
     rows?: TableData['rows'];
   };
-};
+}
 
 const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   const tableRef = useRef<HTMLDivElement>(null);
@@ -70,6 +74,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   return (
     <div
       className="tw-relative tw-flex tw-justify-between"
+      data-testid="sample-data"
       onScrollCapture={() => {
         setScrollOffSet(tableRef.current?.scrollLeft ?? 0);
       }}>
@@ -132,7 +137,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                           className="tableBody-cell"
                           data-testid="cell"
                           key={index}>
-                          {data ? data.toString() : '--'}
+                          <RowData data={data} />
                         </td>
                       );
                     })}

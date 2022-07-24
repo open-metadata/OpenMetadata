@@ -1,0 +1,21 @@
+source:
+  type: salesforce
+  serviceName: local_salesforce
+  serviceConnection:
+    config:
+      type: Salesforce
+      username: username
+      password: password
+      securityToken: securityToken
+      scheme: salesforce
+      sobjectName: sobjectName
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

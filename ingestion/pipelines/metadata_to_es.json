@@ -1,28 +1,26 @@
 {
   "source": {
-    "type": "metadata",
-    "config": {
-      "include_tables": "true",
-      "include_topics": "true",
-      "include_dashboards": "true",
-      "limit_records": 10
-    }
+    "type": "metadata_elasticsearch",
+    "serviceName": "openMetadata",
+    "serviceConnection": {
+      "config":{
+        "type":"MetadataES"
+      }
+    },
+    "sourceConfig":{"config":{}}
   },
   "sink": {
     "type": "elasticsearch",
     "config": {
-      "index_tables": "true",
-      "index_topics": "true",
-      "index_dashboards": "true",
       "es_host": "localhost",
-      "es_port": 9200
+      "es_port": 9200,
+      "recreate_indexes": true
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
