@@ -26,6 +26,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
+
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -34,6 +36,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
+@Slf4j
 public class SubjectContext {
   // Cache used for caching subject context for a user
   private static final LoadingCache<String, SubjectContext> CACHE =
@@ -98,7 +101,7 @@ public class SubjectContext {
     @Override
     public SubjectContext load(@CheckForNull String userName) throws IOException {
       User user = USER_REPOSITORY.getByName(null, userName, SUBJECT_FIELDS);
-      user.getRoles().forEach(r -> System.out.println("User " + user.getRoles() + " role " + r));
+      user.getRoles().forEach(r -> LOG.debug("User " + user.getRoles() + " role " + r));
       return new SubjectContext(user);
     }
   }
