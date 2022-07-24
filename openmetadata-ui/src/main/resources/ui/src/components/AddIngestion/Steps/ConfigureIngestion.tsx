@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isNil, cloneDeep } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { Fragment, useRef } from 'react';
+import React, { Fragment, useRef, useState } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getSeparator } from '../../../utils/CommonUtils';
+import { getSeparator, errorMsg } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -56,6 +56,7 @@ const ConfigureIngestion = ({
   stageFileLocation,
   resultLimit,
   enableDebugLog,
+  profileSample,
   handleEnableDebugLog,
   getExcludeValue,
   getIncludeValue,
@@ -69,6 +70,7 @@ const ConfigureIngestion = ({
   handleIngestSampleData,
   handleDatasetServiceName,
   handleQueryLogDuration,
+  handleProfileSample,
   handleStageFileLocation,
   handleResultLimit,
   onCancel,
@@ -109,6 +111,47 @@ const ConfigureIngestion = ({
         <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
         {getSeparator('')}
       </Field>
+    );
+  };
+
+  const [profileSampleError, setProfileSampleError] = useState({
+    profileSample: false,
+  });
+
+  const handleProfileSampleValidation = (profileSampleValue: number) => {
+    const errMsg = cloneDeep(profileSampleError);
+    if (profileSampleValue < 0 || profileSampleValue > 100) {
+      errMsg.profileSample = true;
+    } else {
+      errMsg.profileSample = false;
+    }
+    setProfileSampleError(errMsg);
+    handleProfileSample(profileSampleValue);
+  };
+
+  const getProfileSample = () => {
+    return (
+      <div>
+        <label>Profile Sample</label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          Sample percentage to use when computing table profile. Should be
+          between 0 and 100.
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
+          data-testid="profileSample"
+          id="profileSample"
+          name="profileSample"
+          placeholder="75"
+          type="number"
+          value={profileSample}
+          onChange={(e) =>
+            handleProfileSampleValidation(parseInt(e.target.value))
+          }
+        />
+        {profileSampleError.profileSample &&
+          errorMsg('Value must be between 0 and 100.')}
+      </div>
     );
   };
 
@@ -458,6 +501,8 @@ const ConfigureIngestion = ({
           </Field>
         </div>
         <div>{getProfilerFilterPatternField()}</div>
+        {getSeparator('')}
+        {getProfileSample()}
         {getSeparator('')}
         {getIngestSampleToggle(
           'Ingest Sample Data',
