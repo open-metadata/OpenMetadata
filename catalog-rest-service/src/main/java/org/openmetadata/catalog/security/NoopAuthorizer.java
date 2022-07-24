@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
@@ -25,6 +26,8 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -38,36 +41,23 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean hasPermissions(AuthenticationContext ctx, EntityReference entityOwnership) {
-    return true;
-  }
-
-  @Override
-  public boolean hasPermissions(
-      AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
-    return true;
-  }
-
-  @Override
-  public List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference) {
+  public List<MetadataOperation> listPermissions(
+      SecurityContext securityContext, ResourceContextInterface resourceContext) {
     // Return all operations.
     return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
   }
 
   @Override
-  public boolean isAdmin(AuthenticationContext ctx) {
+  public boolean isOwner(SecurityContext securityContext, EntityReference entityReference) {
     return true;
   }
 
   @Override
-  public boolean isBot(AuthenticationContext ctx) {
-    return true;
-  }
-
-  @Override
-  public boolean isOwner(AuthenticationContext ctx, EntityReference entityReference) {
-    return true;
-  }
+  public void authorize(
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext,
+      boolean allowBots) {}
 
   private void addAnonymousUser() {
     String username = "anonymous";
@@ -98,4 +88,7 @@ public class NoopAuthorizer implements Authorizer {
       LOG.debug("Anonymous user entry: {} already exists.", user);
     }
   }
+
+  @Override
+  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {}
 }

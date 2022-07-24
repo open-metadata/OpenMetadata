@@ -17,6 +17,7 @@ Like Count Metric definition
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.sum import SumFn
 
 
 class NotLikeCount(StaticMetric):
@@ -46,6 +47,6 @@ class NotLikeCount(StaticMetric):
             raise AttributeError(
                 "Not Like Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_LIKE_COUNT)"
             )
-        return func.sum(
+        return SumFn(
             case([(column(self.col.name).not_like(self.expression), 0)], else_=1)
         )

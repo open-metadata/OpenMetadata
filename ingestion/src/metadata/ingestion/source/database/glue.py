@@ -243,40 +243,6 @@ class GlueSource(Source[Entity]):
 
         return None
 
-    def get_downstream_tasks(self, task_unique_id, tasks):
-        downstream_tasks = []
-        for edges in tasks["Edges"]:
-            if (
-                edges["SourceId"] == task_unique_id
-                and edges["DestinationId"] in self.task_id_mapping.values()
-            ):
-                downstream_tasks.append(
-                    list(self.task_id_mapping.keys())[
-                        list(self.task_id_mapping.values()).index(
-                            edges["DestinationId"]
-                        )
-                    ][:128]
-                )
-        return downstream_tasks
-
-    def get_tasks(self, tasks):
-        task_list = []
-        for task in tasks["Graph"]["Nodes"]:
-            task_name = task["Name"][:128]
-            self.task_id_mapping[task_name] = task["UniqueId"]
-        for task in tasks["Graph"]["Nodes"]:
-            task_list.append(
-                Task(
-                    name=task["Name"],
-                    displayName=task["Name"],
-                    taskType=task["Type"],
-                    downstreamTasks=self.get_downstream_tasks(
-                        task["UniqueId"], tasks["Graph"]
-                    ),
-                )
-            )
-        return task_list
-
     def close(self):
         pass
 

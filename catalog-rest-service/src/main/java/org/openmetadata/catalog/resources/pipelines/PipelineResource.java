@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,7 +55,6 @@ import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
@@ -285,7 +280,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, pipeline, ADMIN | BOT);
+    return create(uriInfo, securityContext, pipeline, true);
   }
 
   @PATCH
@@ -331,7 +326,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
     Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, pipeline, true);
   }
 
   @PUT
@@ -354,7 +349,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
-    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    authorizer.authorizeAdmin(securityContext, true);
     Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
     return addHref(uriInfo, pipeline);
   }
@@ -430,7 +425,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
   private Pipeline getPipeline(CreatePipeline create, String user) {

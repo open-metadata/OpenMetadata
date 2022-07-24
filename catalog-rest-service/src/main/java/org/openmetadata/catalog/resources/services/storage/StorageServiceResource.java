@@ -14,9 +14,6 @@
 package org.openmetadata.catalog.resources.services.storage;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -271,7 +268,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
       throws IOException {
     StorageService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    return create(uriInfo, securityContext, service, true);
   }
 
   @PUT
@@ -292,7 +289,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException {
     StorageService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, service, true);
   }
 
   @DELETE
@@ -320,7 +317,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private StorageService getService(CreateStorageService create, String user) {
