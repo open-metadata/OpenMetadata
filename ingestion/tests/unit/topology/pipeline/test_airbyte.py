@@ -39,7 +39,9 @@ from metadata.ingestion.source.pipeline.airbyte import (
     AirbyteSource,
 )
 
-mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
+mock_file_path = (
+    Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
+)
 with open(mock_file_path) as file:
     mock_data: dict = json.load(file)
 
