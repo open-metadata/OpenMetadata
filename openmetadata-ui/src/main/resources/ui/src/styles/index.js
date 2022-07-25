@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import 'tailwindcss/tailwind.css';
+import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
+import './antd-master.less';
 import './fonts.css';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
 import './tailwind.css';
-import './antd-master.less';
 import './temp.css';
 import './x-custom/code-mirror.css';
 import './x-custom/CronEditor.css';
