@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+
+const serviceType = 'Redshift';
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('RedShift Ingestion', () => {
   it('add and ingest data', () => {
@@ -38,9 +41,14 @@ describe('RedShift Ingestion', () => {
     };
 
     testServiceCreationAndIngestion(
-      'Redshift',
+      serviceType,
       connectionInput,
-      addIngestionInput
+      addIngestionInput,
+      serviceName,
     );
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService('Database', serviceName);
   });
 });

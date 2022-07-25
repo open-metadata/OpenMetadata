@@ -25,6 +25,13 @@
       "description": "Option to turn on/off generating sample data.",
       "type": "boolean",
       "default": true
+    },
+    "profileSample": {
+      "description": "Percentage of data used to execute the profiler for the whole workflow. This percentage will be applied to all tables in the workflow. Represented in the range (0, 100].",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100,
+      "default": null
     }
   },
   "additionalProperties": false

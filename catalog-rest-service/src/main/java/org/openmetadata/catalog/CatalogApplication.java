@@ -100,6 +100,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(catalogConfig.getSecretsManagerConfiguration());
 
+    secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
+
     SqlLogger sqlLogger =
         new SqlLogger() {
           @Override
