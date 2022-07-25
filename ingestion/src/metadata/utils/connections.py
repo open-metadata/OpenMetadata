@@ -20,9 +20,11 @@ from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
+import pkg_resources
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.event import listen
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
@@ -127,6 +129,17 @@ class SourceConnectionException(Exception):
     """
 
 
+def render_query_header(ometa_version: str) -> str:
+    header_obj = {"app": "OpenMetadata", "version": ometa_version}
+    return f"/* {json.dumps(header_obj)} */"
+
+
+def inject_query_header(conn, cursor, statement, parameters, context, executemany):
+    version = pkg_resources.require("openmetadata-ingestion")[0].version
+    statement_with_header = render_query_header(version) + "\n" + statement
+    return statement_with_header, parameters
+
+
 def create_generic_connection(connection, verbose: bool = False) -> Engine:
     """
     Generic Engine creation from connection object
@@ -141,6 +154,7 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
     )
+    listen(engine, "before_cursor_execute", inject_query_header, retval=True)
 
     return engine
 
@@ -271,6 +285,8 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
+        # Download delta-core jars when creating the SparkSession
+        .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
     )
     if connection.metastoreHostPort:
         builder.config(
@@ -278,7 +294,14 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
             f"thrift://{connection.metastoreHostPort}",
         )
     elif connection.metastoreFilePath:
-        builder.config("spark.sql.warehouse.dir", f"{connection.metastoreFilePath}")
+        # From https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell
+        # derby.system.home is the one in charge of the path for `metastore_db` dir and `derby.log`
+        # We can use this option to control testing, as well as to properly point to the right
+        # local database when ingesting data
+        builder.config(
+            "spark.driver.extraJavaOptions",
+            f"-Dderby.system.home={connection.metastoreFilePath}",
+        )
 
     if connection.connectionArguments:
         for key, value in connection.connectionArguments:
@@ -666,9 +689,11 @@ def _(connection: LookerConnection, verbose: bool = False):
     import looker_sdk
 
     if not os.environ.get("LOOKERSDK_CLIENT_ID"):
-        os.environ["LOOKERSDK_CLIENT_ID"] = connection.username
+        os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
     if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
-        os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.password.get_secret_value()
+        os.environ[
+            "LOOKERSDK_CLIENT_SECRET"
+        ] = connection.clientSecret.get_secret_value()
     if not os.environ.get("LOOKERSDK_BASE_URL"):
         os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
     client = looker_sdk.init40()

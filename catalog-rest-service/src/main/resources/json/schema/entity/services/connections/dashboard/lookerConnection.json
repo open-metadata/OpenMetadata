@@ -20,14 +20,14 @@
       "$ref": "#/definitions/lookerType",
       "default": "Looker"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username to connect to Looker. This user should have privileges to read all the metadata in Looker.",
+    "clientId": {
+      "title": "Client ID",
+      "description": "User's Client ID. This user should have privileges to read all the metadata in Looker.",
       "type": "string"
     },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Looker.",
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "User's Client Secret.",
       "type": "string",
       "format": "password"
     },
@@ -37,16 +37,11 @@
       "type": "string",
       "format": "uri"
     },
-    "env": {
-      "title": "Looker Environment",
-      "description": "Looker Environment",
-      "type": "string"
-    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": ["hostPort", "clientId", "clientSecret"]
 }

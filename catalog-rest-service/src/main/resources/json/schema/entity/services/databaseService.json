@@ -284,6 +284,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "connection"],
+  "required": ["id", "name", "serviceType"],
   "additionalProperties": false
 }

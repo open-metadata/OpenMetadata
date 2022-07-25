@@ -215,6 +215,10 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-maven-plugin</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+    </dependency>
     <!-- API, java.xml.bind module -->
     <dependency>
       <groupId>jakarta.xml.bind</groupId>

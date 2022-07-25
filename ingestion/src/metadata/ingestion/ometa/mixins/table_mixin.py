@@ -31,8 +31,11 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.lru_cache import LRUCache
 
 logger = ometa_logger()
+
+LRU_CACHE_SIZE = 4096
 
 
 class OMetaTableMixin:
@@ -128,11 +131,14 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_queries: SqlQuery to add
         """
+        seen_queries = LRUCache(LRU_CACHE_SIZE)
         for query in table_queries:
-            self.client.put(
-                f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                data=query.json(),
-            )
+            if query.query not in seen_queries:
+                self.client.put(
+                    f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
+                    data=query.json(),
+                )
+                seen_queries.put(query.query, None)
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
