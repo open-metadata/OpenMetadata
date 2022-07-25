@@ -20,28 +20,28 @@ ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 
 
-FROM airflow as apis
-WORKDIR /openmetadata-airflow-apis
-COPY openmetadata-airflow-apis /openmetadata-airflow-apis
+#FROM airflow as apis
+#WORKDIR /openmetadata-airflow-apis
+#COPY openmetadata-airflow-apis /openmetadata-airflow-apis
 
-RUN mkdir /om-airflow
-RUN mv /openmetadata-airflow-apis/src/plugins /om-airflow
+#RUN mkdir /om-airflow
+#RUN mv /openmetadata-airflow-apis/src/plugins /om-airflow
 
-RUN pip install "."
+#RUN pip install "."
 
-FROM apis as ingestion
+FROM airflow as ingestion
 WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install ".[airflow-container]"
 
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg
-RUN cp -r /om-airflow/plugins /airflow/plugins
-RUN cp -r /om-airflow/plugins/dag_templates /airflow/
-RUN mkdir -p /airflow/dag_generated_configs
+#RUN cp -r /om-airflow/plugins /airflow/plugins
+#RUN cp -r /om-airflow/plugins/dag_templates /airflow/
+#RUN mkdir -p /airflow/dag_generated_configs
 RUN chmod 755 ingestion_dependency.sh
 EXPOSE 8080
 CMD [ "./ingestion_dependency.sh" ]

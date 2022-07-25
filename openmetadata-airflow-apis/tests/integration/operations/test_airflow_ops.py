@@ -63,12 +63,12 @@ from airflow.operators.bash import BashOperator
 from airflow.utils import db, timezone
 from airflow.utils.state import DagRunState
 from airflow.utils.types import DagRunType
-from openmetadata.operations.delete import delete_dag_id
-from openmetadata.operations.deploy import DagDeployer
-from openmetadata.operations.kill_all import kill_all
-from openmetadata.operations.state import disable_dag, enable_dag
-from openmetadata.operations.status import status
-from openmetadata.operations.trigger import trigger
+from openmetadata_managed_apis.operations.delete import delete_dag_id
+from openmetadata_managed_apis.operations.deploy import DagDeployer
+from openmetadata_managed_apis.operations.kill_all import kill_all
+from openmetadata_managed_apis.operations.state import disable_dag, enable_dag
+from openmetadata_managed_apis.operations.status import status
+from openmetadata_managed_apis.operations.trigger import trigger
 
 
 class TestAirflowOps(TestCase):

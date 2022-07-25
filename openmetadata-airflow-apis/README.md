@@ -30,6 +30,12 @@ substitute AIRFLOW_HOME with your airflow installation home
 
 ## Deploy
 
+First, make sure that Airflow is properly installed with the latest version `2.3.3`. From the [docs](https://airflow.apache.org/docs/apache-airflow/stable/installation/installing-from-pypi.html):
+
+```
+pip install "apache-airflow[celery]==2.3.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+```
+
 1. Download the latest openmetadata-airflow-apis-plugin release from [here](https://github.com/open-metadata/OpenMetadata/releases)
 2. Untar it under {AIRFLOW_HOME} directory. This will create and setup a plugins directory under {AIRFLOW_HOME} .
 3. cp -r {AIRFLOW_HOME}/plugins/dag_templates {AIRFLOW_HOME}
