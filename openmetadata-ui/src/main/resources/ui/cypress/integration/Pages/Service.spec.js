@@ -23,10 +23,10 @@ const updateService = () => {
     .type(service.newDescription);
   cy.get('[data-testid="save"]').click();
   cy.get(
-    '[data-testid="description"] > [data-testid="viewer-container"] > p'
+    '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
   ).contains(service.newDescription);
   cy.get(':nth-child(1) > .link-title').click();
-  cy.get('[data-testid="viewer-container"] > p').contains(
+  cy.get('.toastui-editor-contents > p').contains(
     service.newDescription
   );
 };

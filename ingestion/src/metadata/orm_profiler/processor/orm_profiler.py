@@ -37,6 +37,8 @@ from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
+from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.core import Profiler
@@ -81,20 +83,18 @@ class OrmProfilerProcessor(Processor[Table]):
         self,
         config: ProfilerProcessorConfig,
         metadata_config: OpenMetadataConnection,
-        session: Session,
+        processor_interface: InterfaceProtocol,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = OrmProfilerStatus()
-        self.session = session
-
         self.report = {"tests": {}}
-
         self.execution_date = datetime.now()
 
         # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
+        self.processor_interface = processor_interface
 
     @classmethod
     def create(
@@ -109,13 +109,13 @@ class OrmProfilerProcessor(Processor[Table]):
 
         config = ProfilerProcessorConfig.parse_obj(config_dict)
 
-        session = kwargs.get("session")
-        if not session:
+        processor_interface = kwargs.get("processor_interface")
+        if not processor_interface:
             raise ValueError(
-                "Cannot initialise the ProfilerProcessor without an SQLAlchemy Session"
+                "Cannot initialise the ProfilerProcessor without processor interface object"
             )
 
-        return cls(config, metadata_config, session=session)
+        return cls(config, metadata_config, processor_interface=processor_interface)
 
     def get_table_profile_sample(self, table: Table) -> Optional[float]:
         """
@@ -149,7 +149,7 @@ class OrmProfilerProcessor(Processor[Table]):
         """
 
         if table.serviceType == DatabaseServiceType.BigQuery:
-            if is_partitioned(self.session, orm):
+            if is_partitioned(self.processor_interface.session, orm):
                 my_record_profile = (
                     self.get_record_test_def(table)
                     if self.config.test_suite and self.get_record_test_def(table)
@@ -164,7 +164,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 )
                 partition_details = {
                     "partition_field": my_record_profile.partition_field
-                    or get_partition_cols(self.session, orm),
+                    or get_partition_cols(self.processor_interface.session, orm),
                     "partition_start": start,
                     "partition_end": end,
                     "partition_values": my_record_profile.partition_values,
@@ -216,7 +216,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         if not self.config.profiler:
             return DefaultProfiler(
-                session=self.session,
+                profiler_interface=self.processor_interface,
                 table=orm,
                 profile_sample=profile_sample,
                 partition_details=self.get_partition_details(orm, table),
@@ -232,7 +232,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return Profiler(
             *metrics,
-            session=self.session,
+            profiler_interface=self.processor_interface,
             table=orm,
             profile_date=self.execution_date,
             profile_sample=profile_sample,
@@ -270,7 +270,7 @@ class OrmProfilerProcessor(Processor[Table]):
         Log test case results
         """
         self.status.tested(name)
-        if not result.testCaseStatus == TestCaseStatus.Success:
+        if result.testCaseStatus != TestCaseStatus.Success:
             self.status.failure(f"{name}: {result.result}")
 
     @staticmethod
@@ -312,16 +312,13 @@ class OrmProfilerProcessor(Processor[Table]):
             )
             return None
 
-        test_case_result: TestCaseResult = validation_enum_registry.registry[
-            test_case.tableTestType.value
-        ](
-            test_case.config,
+        test_case_result: TestCaseResult = self.processor_interface.run_table_test(
+            test_case=test_case,
             table_profile=profiler_results,
-            execution_date=self.execution_date,
-            session=self.session,
-            table=orm_table,
+            orm_table=orm_table,
             profile_sample=self.get_table_profile_sample(table),
         )
+
         self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
 
@@ -354,7 +351,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         # Check if we computed a profile for the required column
         col_profiler_res = next(
-            iter(
+            (
                 col_profiler
                 for col_profiler in profiler_results.columnProfile
                 if col_profiler.name == column
@@ -373,14 +370,10 @@ class OrmProfilerProcessor(Processor[Table]):
                 result=msg,
             )
 
-        test_case_result: TestCaseResult = validation_enum_registry.registry[
-            test_case.columnTestType.value
-        ](
-            test_case.config,
+        test_case_result: TestCaseResult = self.processor_interface.run_column_test(
+            test_case=test_case,
             col_profile=col_profiler_res,
-            execution_date=self.execution_date,
-            session=self.session,
-            table=orm_table,
+            orm_table=orm_table,
         )
         self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
@@ -443,7 +436,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :return: Test definition
         """
         my_record_tests = next(
-            iter(
+            (
                 test
                 for test in self.config.test_suite.tests
                 if test.table == table.fullyQualifiedName.__root__
@@ -564,16 +557,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :return: TableData
         """
         try:
-            sampler = Sampler(
-                session=self.session,
-                table=orm,
-                partition_details=self.get_partition_details(
-                    orm,
-                    table,
-                ),
-                profile_sample_query=self.get_profile_sample_query(table),
-            )
-            return sampler.fetch_sample_data()
+            return self.processor_interface.fetch_sample_data()
         except Exception as err:
             logger.error(
                 f"Could not obtain sample data from {orm.__tablename__} - {err}"
@@ -590,6 +574,17 @@ class OrmProfilerProcessor(Processor[Table]):
         # Convert entity to ORM. Fetch the db by ID to make sure we use the proper db name
 
         orm_table = ometa_to_orm(table=record, metadata=self.metadata)
+        self.processor_interface.create_sampler(
+            table=orm_table,
+            profile_sample=self.get_table_profile_sample(record),
+            partition_details=self.get_partition_details(orm_table, record),
+            profile_sample_query=self.get_profile_sample_query(record),
+        )
+        self.processor_interface.create_runner(
+            table=orm_table,
+            partition_details=self.get_partition_details(orm_table, record),
+            profile_sample_query=self.get_profile_sample_query(record),
+        )
 
         entity_profile = self.profile_entity(orm=orm_table, table=record)
 

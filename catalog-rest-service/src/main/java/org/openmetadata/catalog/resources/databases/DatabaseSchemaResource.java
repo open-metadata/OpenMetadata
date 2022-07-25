@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -282,7 +278,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
     DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, schema, ADMIN | BOT);
+    return create(uriInfo, securityContext, schema, true);
   }
 
   @PATCH
@@ -327,7 +323,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
     DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, schema, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, schema, true);
   }
 
   @DELETE
@@ -354,7 +350,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           boolean hardDelete,
       @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {

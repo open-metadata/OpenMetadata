@@ -161,6 +161,11 @@ class DatalakeSource(DatabaseServiceSource):
             database=EntityReference(id=self.context.database.id, type="database"),
         )
 
+    def _list_s3_objects(self, **kwargs) -> Iterable:
+        paginator = self.client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(**kwargs):
+            yield from page["Contents"]
+
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Handle table and views.
@@ -190,7 +195,7 @@ class DatalakeSource(DatabaseServiceSource):
                 kwargs = {"Bucket": bucket_name}
                 if prefix:
                     kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
-                for key in self.client.list_objects(**kwargs)["Contents"]:
+                for key in self._list_s3_objects(**kwargs):
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern, key["Key"]
                     ) or not self.check_valid_file_type(key["Key"]):

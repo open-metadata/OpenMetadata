@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -278,7 +274,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, database, ADMIN | BOT);
+    return create(uriInfo, securityContext, database, true);
   }
 
   @PATCH
@@ -323,7 +319,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, database, ADMIN | BOT | OWNER);
+    return createOrUpdate(uriInfo, securityContext, database, true);
   }
 
   @DELETE
@@ -367,7 +363,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           boolean hardDelete,
       @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private Database getDatabase(CreateDatabase create, String user) {

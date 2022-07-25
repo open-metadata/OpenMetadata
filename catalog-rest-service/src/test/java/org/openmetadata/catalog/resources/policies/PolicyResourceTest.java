@@ -187,7 +187,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Test
-  public void get_policyResources() throws HttpResponseException {
+  void get_policyResources() throws HttpResponseException {
     // Get list of policy resources and make sure it has all the entities and other resources
     List<String> resources = getPolicyResources(ADMIN_AUTH_HEADERS);
     List<String> entities = Entity.listEntities();

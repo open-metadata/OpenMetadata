@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+
+const serviceType = 'Superset';
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Superset Ingestion', () => {
   it('add and ingest data', () => {
@@ -37,10 +40,15 @@ describe('Superset Ingestion', () => {
     };
 
     testServiceCreationAndIngestion(
-      'Superset',
+      serviceType,
       connectionInput,
       addIngestionInput,
+      serviceName,
       'dashboard'
     );
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService('Dashboard', serviceName);
   });
 });

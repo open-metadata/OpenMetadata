@@ -119,7 +119,6 @@ jest.mock('../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
-  getInfoElements: jest.fn(),
 }));
 
 jest.mock('../../../utils/TableUtils', () => ({
@@ -148,6 +147,22 @@ jest.mock('../../tags-container/tags-container', () => {
 
 jest.mock('../../tags-viewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p data-testid="info-tags">TagViewer</p>);
+});
+
+jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
+    );
+});
+
+jest.mock('../DeleteWidget/DeleteWidgetModal', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="delete-entity">DeleteWidgetModal component</p>
+    );
 });
 
 jest.mock('../../tags/tags', () => {
@@ -432,4 +447,17 @@ describe('Test EntityPageInfo component', () => {
 
     expect(onThreadLinkSelect).toBeCalled();
   });
+});
+
+it('Should render delete widget modal', async () => {
+  const { getByTestId } = render(
+    <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
+    {
+      wrapper: MemoryRouter,
+    }
+  );
+  const tagWrapper = getByTestId('delete-entity');
+  fireEvent.click(tagWrapper);
+
+  expect(tagWrapper).toBeInTheDocument();
 });

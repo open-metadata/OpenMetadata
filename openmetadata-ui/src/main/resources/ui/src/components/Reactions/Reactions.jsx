@@ -51,7 +51,7 @@ const Reactions = ({ reactions, onReactionSelect }) => {
   const isReacted = (reactionType) => {
     return reactions.some(
       (reactionItem) =>
-        reactionItem.user.id === currentUser.id &&
+        reactionItem.user.id === currentUser?.id &&
         reactionType === reactionItem.reactionType
     );
   };

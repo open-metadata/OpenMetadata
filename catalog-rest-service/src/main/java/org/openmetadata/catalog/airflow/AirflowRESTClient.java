@@ -105,7 +105,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
       String triggerUrl = String.format(triggerEndPoint, serviceURL);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("workflow_name", pipelineName);
+      requestPayload.put("dag_id", pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response.body();
@@ -213,6 +213,25 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
     }
     throw new PipelineServiceClientException(String.format("Failed to test connection due to %s", response.body()));
+  }
+
+  @Override
+  public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
+    try {
+      String killEndPoint = "%s/rest_api/api?api=kill_all";
+      String killUrl = String.format(killEndPoint, serviceURL);
+      JSONObject requestPayload = new JSONObject();
+      requestPayload.put("dag_id", ingestionPipeline.getName());
+      response = post(killUrl, requestPayload.toString());
+      if (response.statusCode() == 200) {
+        return response;
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to kill running workflows", e.getMessage());
+    }
+    throw new PipelineServiceClientException(
+        String.format("Failed to kill running workflows due to %s", response.body()));
   }
 
   @Override

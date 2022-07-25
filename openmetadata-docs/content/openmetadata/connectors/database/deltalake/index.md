@@ -11,13 +11,16 @@ slug: /openmetadata/connectors/database/deltalake
 
 <h4>Connection Options</h4>
 
-- **Metastore Host Port**: Enter the Host & Port of Hive Metastore to establish a sparks session. Either of metastoreHostPort or metastoreFilePath is required.
-- **Metastore File Path**: Enter the file path to local Metastore incase sparks cluster is running locally. Either of metastoreHostPort or metastoreFilePath is required.
+- **Metastore Host Port**: Enter the Host & Port of Hive Metastore to configure the Spark Session. Either of `metastoreHostPort` or `metastoreFilePath` is required.
+- **Metastore File Path**: Enter the file path to local Metastore in case Spark cluster is running locally. Either of `metastoreHostPort` or `metastoreFilePath` is required.
 - **appName (Optional)**: Enter the app name of spark session.
-- **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to DeltaLake during the connection. These details must be added as Key-Value pairs.
-- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to DeltaLake during the connection. These details must be added as Key-Value pairs. 
-  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+- **Connection Arguments (Optional)**: Key-Value pairs that will be used to pass extra `config` elements to the Spark Session builder.
+
+We are internally running with `pyspark` 3.X and `delta-lake` 2.0.0. This means that we need to consider Spark configuration options for 3.X.
+
+- You can find all supported configurations [here](https://spark.apache.org/docs/latest/configuration.html)
+- If you need further information regarding the Hive metastore, you can find it [here](https://spark.apache.org/docs/3.0.0-preview/sql-data-sources-hive-tables.html),
+  and in The Internals of Spark SQL [book](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html).
 
 <IngestionScheduleAndDeploy />
 

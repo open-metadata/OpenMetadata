@@ -13,10 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.database;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,9 +20,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -49,16 +43,15 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.services.ServiceEntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
-import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -72,11 +65,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseServices")
-public class DatabaseServiceResource extends EntityResource<DatabaseService, DatabaseServiceRepository> {
+public class DatabaseServiceResource
+    extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
   static final String FIELDS = "pipelines,owner";
-
-  private final SecretsManager secretsManager;
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
@@ -87,8 +79,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   }
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(DatabaseService.class, new DatabaseServiceRepository(dao, secretsManager), authorizer);
-    this.secretsManager = secretsManager;
+    super(DatabaseService.class, new DatabaseServiceRepository(dao, secretsManager), authorizer, secretsManager);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -304,7 +295,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
     DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -327,7 +318,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, true);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -358,7 +349,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
   private DatabaseService getService(CreateDatabaseService create, String user) {
@@ -367,22 +358,13 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
         .withConnection(create.getConnection());
   }
 
-  private ResultList<DatabaseService> decryptOrNullify(
-      SecurityContext securityContext, ResultList<DatabaseService> databaseServices) {
-    Optional.ofNullable(databaseServices.getData())
-        .orElse(Collections.emptyList())
-        .forEach(databaseService -> decryptOrNullify(securityContext, databaseService));
-    return databaseServices;
+  @Override
+  protected DatabaseService nullifyConnection(DatabaseService service) {
+    return service.withConnection(null);
   }
 
-  private DatabaseService decryptOrNullify(SecurityContext securityContext, DatabaseService databaseService) {
-    try {
-      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    } catch (AuthorizationException e) {
-      return databaseService.withConnection(null);
-    }
-    secretsManager.encryptOrDecryptServiceConnection(
-        databaseService.getConnection(), databaseService.getServiceType().value(), databaseService.getName(), false);
-    return databaseService;
+  @Override
+  protected String extractServiceType(DatabaseService service) {
+    return service.getServiceType().value();
   }
 }
