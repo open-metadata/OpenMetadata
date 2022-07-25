@@ -12,6 +12,16 @@ The OpenMetadata SDK for Java libraries build on top of the underlying OpenMetad
 
 You can find the source code for the OpenMetadata libraries in the [GitHub repository](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-clients). As an open-source project, contributions are welcome!
 
+You can add the below Maven Dependency for OpenMetadata Java Client.
+
+```xml
+<dependency>
+  <groupId>org.open-metadata</groupId>
+  <artifactId>openmetadata-java-client</artifactId>
+  <version>0.11.1</version>
+</dependency>
+```
+
 
 ## Establish OpenMetadata Server Connection
 
@@ -47,7 +57,7 @@ To use Java Client with any authentication, you can use `NoOpAuthenticationProvi
     NoOpAuthenticationProvider noOpAuthenticationProvider = new NoOpAuthenticationProvider();
 ``` 
 
-Establish the [OpenMetadata Server Connection](#Establish OpenMetadata Server Connection) and provide the `noOpAuthenticationProvider` in the config.
+Establish the [OpenMetadata Server Connection](#establish-openmetadata-server-connection) and provide the `noOpAuthenticationProvider` in the config.
 
 ```java
     server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.NO_AUTH);
@@ -56,13 +66,13 @@ Establish the [OpenMetadata Server Connection](#Establish OpenMetadata Server Co
 ## Use Java Client with Authentication.
 
 The OpenMetadata Java SDK support several auth providers:
-* [Google](#Google)
-* [Okta](#Okta)
-* [Auth0](#Auth0)
-* [Azure](#Azure)
-* [OpenMetadata](#OpenMetadata)
+* [Google](#google)
+* [Okta](#okta)
+* [Auth0](#auth0)
+* [Azure](#azure)
+* [OpenMetadata](#openmetadata)
 
-Other than the above auth providers, OpenMetadata Java SDK also supports [Custom OIDC](#Custom OIDC).
+Other than the above auth providers, OpenMetadata Java SDK also supports [Custom OIDC](#custom-oidc).
 
 ### Google
 To set up Google as the auth provider. The following details are must:
@@ -74,7 +84,7 @@ To set up Google as the auth provider. The following details are must:
     ssoConfig.setSecretKey("{secret_key.json}");
 ```
 
-Provide the Google config while creating the [server connection](#Establish OpenMetadata Server Connection).
+Provide the Google config while creating the [server connection](#establish-openmetadata-server-connection).
 ```java
     server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.GOOGLE);
     server.setSecurityConfig(googleSSOClientConfig);
@@ -85,7 +95,7 @@ Provide the Google config while creating the [server connection](#Establish Open
 To set up Okta as the auth provider. The following details should be provided:
 * Client ID: Provide the client ID for the service application
 * Org URL: It is the same as the ISSUER_URL with v1/token. It is recommended to use a separate authorization server for different applications, rather than using the default authorization server.
-* Private Key: Use the Public/Private Key Pair that was generated while [Creating the Service Application](../../../content/deployment/security/okta/index.md#For a Test or Staging Instance:). When copy-pasting the keys ensure that there are no additional codes and that it is a JSON compatible string.
+* Private Key: Use the Public/Private Key Pair that was generated while [Creating the Service Application](../../../content/deployment/security/okta/index.md#step-1-generate-publicprivate-key-pair). When copy-pasting the keys ensure that there are no additional codes and that it is a JSON compatible string.
 * Email: Enter the email address
 * Scopes: Add the details of the scope created in the Authorization Server. Enter the name of the default scope created.
 
@@ -97,7 +107,7 @@ To set up Okta as the auth provider. The following details should be provided:
     oktaSSOClientConfig.setEmail("{email}");
     oktaSSOClientConfig.setScopes({scope_list});
 ```
-Provide the Okta config while creating the [server connection](#Establish OpenMetadata Server Connection).
+Provide the Okta config while creating the [server connection](#establish-openmetadata-server-connection).
 ```java
     server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.OKTA);
     server.setSecurityConfig(oktaSSOClientConfig);
@@ -116,7 +126,7 @@ To set up Auth0 as the auth provider. The following details should be provided:
     auth0SSOClientConfig.setSecretKey("{secret_key}");
     auth0SSOClientConfig.setDomain("{domain}");
 ```
-Provide the Auth0 config while creating the [server connection](#Establish OpenMetadata Server Connection).
+Provide the Auth0 config while creating the [server connection](#establish-openmetadata-server-connection).
 ```java
     server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.AUTH_0);
     server.setSecurityConfig(auth0SSOClientConfig);
@@ -136,7 +146,7 @@ To set up Azure as the auth provider. The following details should be provided:
     azureSSOClientConfig.setAuthority("{authority}");
     oktaSSOClientConfig.setScopes({scope_list});
 ```    
-Provide the Auth0 config while creating the [server connection](#Establish OpenMetadata Server Connection).
+Provide the Auth0 config while creating the [server connection](#establish-openmetadata-server-connection).
 ```java
     server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.AZURE);
     server.setSecurityConfig(azureSSOClientConfig);
@@ -150,7 +160,7 @@ To set up OpenMetadata as the auth provider. The following details should be pro
     OpenMetadataJWTClientConfig openMetadataJWTClientConfig = new OpenMetadataJWTClientConfig();
     openMetadataJWTClientConfig.setJwtToken("{jwt_token}");
 ```
-Provide the OpenMetadata config while creating the [server connection](#Establish OpenMetadata Server Connection).
+Provide the OpenMetadata config while creating the [server connection](#establish-openmetadata-server-connection).
 ```java
     server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.OPENMETADATA);
     server.setSecurityConfig(openMetadataJWTClientConfig);
@@ -169,14 +179,14 @@ To set up Custom auth provider. The following details should be provided:
     config.setTokenEndpoint("{token_endpoint}");
 ```
 
-Provide the OpenMetadata config while creating the [server connection](#Establish OpenMetadata Server Connection).
+Provide the OpenMetadata config while creating the [server connection](#establish-openmetadata-server-connection).
 ```java
     server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC);
     server.setSecurityConfig(customOIDCSSOClientConfig);
 ```
 
 ## How to Use APIs Using Java Client
-To use an API, you can do it using the [OpenMetadata Gateway](#Create OpenMetadata Gateway).
+To use an API, you can do it using the [OpenMetadata Gateway](#create-openmetadata-gateway).
 Using OpenMetadata Gateway, you will need to build the client by providing the `class` of the respected API.
 Below are some examples:
 ```java
