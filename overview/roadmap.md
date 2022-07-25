@@ -12,7 +12,7 @@ Please check our [Releases page](releases.md) to see all the features we shipped
 
 
 
-## 0.11.1 Release - July 21st, 2022
+## 0.12.0 Release - Aug 17th, 2022
 
 ### Access Control and Policies [#4199](https://github.com/open-metadata/OpenMetadata/issues/4199)
 
@@ -33,6 +33,9 @@ Please check our [Releases page](releases.md) to see all the features we shipped
 
 * Updated APIs to register to test cases from different platforms such as GE, Deequ etc..
 * Time-Series storage of profiler details and test case results
+* Improved UI to visualize the Data Profiler data&#x20;
+* Improved UI to add and visualize the data quality tests
+* Test Notifications
 
 ### Security
 
@@ -41,50 +44,134 @@ Please check our [Releases page](releases.md) to see all the features we shipped
 
 ### ML Features
 
-* support ML feature UI
 * Sagemake connector
 
-## Latest Release - 0.11.0 Release - Jun 30th, 2022
+### Site-Wide Settings
 
-#### Data Collaboration - Tasks and Emojis
+* Single, Centralized settings Page
+* Add Slack integrations via Settings page similar to Webhooks
+* Custom Attribute support for all entities
 
-Data Collaboration has been the prime focus of the 0.11 Release, the groundwork for which has been laid in the past several releases. In the 0.9 release, we introduced Activity Feeds, Conversation Threads, and the ability to request descriptions. In this release, we’ve added Tasks, as an extension to the ability to create conversations and post replies.\
-We are particularly excited about the ability to suggest tasks. This brings the collaboration to the next level where an organization can crowdsource the knowledge and continuously improve descriptions.
+### Connectors
 
-#### Column Level Lineage
+* Fivetran
+* Sagemaker
+* Mode
+* Redpanda
+* Prefect
 
-[#2931](https://github.com/open-metadata/OpenMetadata/issues/2931)\
-In OpenMetadata, we primarily compute column-level lineage through SQL query analysis. Lineage information is consolidated from various sources, such as ETL pipelines, DBT, query analysis, and so on. In the backend, we’ve added column-level lineage API support. The UI now supports exploring this rich column-level lineage for understanding the relationship between tables and performing impact analysis. While exploring the lineage, users can manually edit both the table and column level lineage to capture any information that is not automatically surfaced.
 
-#### Custom Properties
 
-The key goal of the OpenMetadata project is to define Open Metadata Standards to make metadata centralized, easily shareable, and make tool interoperability easier. We take a schema-first approach for strongly typed metadata types and entities modeled using JSON schema as follows:
+## 0.13.0 Release - Sept 28th, 2022
 
-OpenMetadata now supports adding new types and extending entities when organizations need to capture custom metadata. New types and custom fields can be added to entities either using API or in OpenMetadata UI. This extensibility is based on JSON schema and hence has all the benefits of strong typing, rich constraints, documentation, and automatic validation similar to the core OpenMetadata schemas.
+### Data Intelligence
 
-#### Advanced Search
+* Reports/Dashboards on how to your data is doing
+* Data Ownership/Description coverage
+* Weekly Notifications through Email to have better coverage
 
-Users can search by multiple parameters to narrow down the search results. Separate advanced search options are available for Tables, Topics, Dashboards, Pipelines, and ML Models. All these entities are searchable by common search options such as Owner, Tag, and Service.
+### Collaboration
 
-#### Glossary UI Updates
+* Badges for Users to recognize their contributions to improve Data
+* Teams Integration
+* Email notifications
+* Improvements Tasks & Activity Threads
+* Capture popularity based on thumbs up/thumbs down and number of followers
 
-The Glossary UI has been upgraded. However, the existing glossary functionality remains the same, with the ability to add Glossary, Terms, Tags, Descriptions, Reviewers etc... On the UI, the arrangement displaying the Summary, Related Terms, Synonyms, and References has been changed. The Reviewers are shown on the right panel with an option to add or remove existing reviewers.
+### Reverse Metadata
 
-#### Profiler and Data Quality Improvements
+* Support for propagating OpenMetadata description/tags to data sources such as snowflake, BigQuery, Redshift etc..
 
-Profiling data and communicating quality across the organization is core to OpenMetadata. While numerous tools exist, they are often isolated and require users to navigate multiple interfaces. In OpenMetadata, these tests and data profiles are displayed alongside your assets (tables, views) and allow you to get a 360-degree view of your data.
+### Lineage
 
-#### Great Expectations Integration
+* Support Spark Lineage
 
-While OpenMetadata allows you to set up and run data quality tests directly from the UI, we understand certain organizations already have their own data quality tool. That’s why we have developed a direct integration between Great Expectations and OpenMetadata. Using our `openmetadata-ingestion[great-expectations]` python submodule, you can now add custom actions to your Great Expectations checkpoints file that will automatically ingest your data quality test results into OpenMetadata at the end of your checkpoint file run.
+### Entities&#x20;
 
-#### ML Models
+* Add support json based documents
+* Support for ElasticSearch, MongoDB etc..
+* Parse and Expand Arrays of Structs
+* Report Entity&#x20;
+* Notebooks as an Entity
 
-In this release, we are happy to share the addition of ML Model Entities to the UI. This will allow users to describe, and share models and their features as any other data asset. The UI support also includes the ingestion through the UI from [MLflow](https://mlflow.org/). In future releases, we will add connectors to other popular ML platforms.\
-This is just the beginning. We want to learn about the use cases from the community and connect with people that want to help us shape the vision and roadmap. Do not hesitate to reach out!
+### Security
 
-#### Connectors
+* Domain based restriction and domain only view
+* Policy improvements based on community feedback
 
-In every release, OpenMetadata has maintained its focus on adding new connectors. In the 0.11 release, five new connectors have been added - [Airbyte](https://airbyte.com/), [Mode](https://mode.com/), [AWS Data Lake](https://aws.amazon.com/big-data/datalakes-and-analytics/what-is-a-data-lake/), [Google Cloud Data Lake](https://cloud.google.com/learn/what-is-a-data-lake#section-6), and [Apache Pinot](https://pinot.apache.org/).
+### Data Quality [#4652](https://github.com/open-metadata/OpenMetadata/issues/4652)
+
+* Custom SQL improvements, Allow users to validate the sql and run
+* Improvements to data profiler metrics
+* Performance improvements to data quality
+
+### Connectors
+
+* Qwik
+* DataStudio
+* Trino Usage
+* LookML
+* Dagster
+* One click migration from Amundsen and Atlas.
+
+
+
+## 0.14.0 Release - Nov 9th, 2022
+
+### Automation
+
+* Automation framework to listen change events to run automated workflows
+* Auto classifier automation
+
+### Data Intelligence
+
+* Tiering Report
+* Cost Analysis
+
+### Data Lake Improvements
+
+* Add all metadata into OpenMetadata
+
+### Data Observability&#x20;
+
+* Add support for Data Observability with Freshness metric
+* ML Support to understand the behavior of datasets and add metrics
+* Data SLAs
+
+### Entities
+
+* Add external API endpoints
+
+### Connectors
+
+* AWS kinesis
+* Kafka Connect
+* Microstrategy
+* Custom service integration - Users can integrate with their own service type
+
+## 1.0 Release - Dec 15th, 2022
+
+### Announcing 1.0 Release
+
+* OpenMetadata Graduating 1.0 Release with many of our foundational features shipped
+
+### Data Intelligence
+
+* Data Deletion Report
+
+### Data Observability - Incident Management
+
+* Identify the failure of pipelines
+* Idenity the dataset is failing through lineage
+* Trigger hard/soft alerts based on the ienage and impact.
+
+### Data Observability&#x20;
+
+* Add support for Data Observability with Freshness metric
+* ML Support to understand the behavior of datasets and add metrics
+
+### Entities
+
+* Add external API endpoints
 
 ##
