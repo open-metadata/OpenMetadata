@@ -35,6 +35,7 @@ import {
 } from '../../utils/RouterUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showSuccessToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -44,6 +45,7 @@ import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
+import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { IngestionProps } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
@@ -76,6 +78,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     name: '',
     state: '',
   });
+  const [isKillModalOpen, setIsKillModalOpen] = useState(false);
   const noConnectionMsg = `${serviceName} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.`;
 
   const handleSearchAction = (searchValue: string) => {
@@ -124,7 +127,10 @@ const Ingestion: React.FC<IngestionProps> = ({
     triggerIngestion(id, displayName)
       .then(() => {
         setCurrTriggerId({ id, state: 'success' });
-        setTimeout(() => setCurrTriggerId({ id: '', state: '' }), 1500);
+        setTimeout(() => {
+          setCurrTriggerId({ id: '', state: '' });
+          showSuccessToast('Pipeline triggered successfully');
+        }, 1500);
       })
       .catch(() => setCurrTriggerId({ id: '', state: '' }));
   };
@@ -537,6 +543,17 @@ const Ingestion: React.FC<IngestionProps> = ({
                           {separator}
                           <button
                             className="link-text"
+                            data-testid="kill"
+                            disabled={!isRequiredDetailsAvailable}
+                            onClick={() => {
+                              setIsKillModalOpen(true);
+                              setSelectedPipeline(ingestion);
+                            }}>
+                            Kill
+                          </button>
+                          {separator}
+                          <button
+                            className="link-text"
                             data-testid="logs"
                             disabled={!isRequiredDetailsAvailable}
                             onClick={() => {
@@ -557,6 +574,19 @@ const Ingestion: React.FC<IngestionProps> = ({
                             pipelineType={selectedPipeline.pipelineType}
                             onClose={() => {
                               setIsLogsModalOpen(false);
+                              setSelectedPipeline(undefined);
+                            }}
+                          />
+                        )}
+                      {isKillModalOpen &&
+                        selectedPipeline &&
+                        ingestion.id === selectedPipeline?.id && (
+                          <KillIngestionModal
+                            isModalOpen={isKillModalOpen}
+                            pipelinName={selectedPipeline.name}
+                            pipelineId={selectedPipeline.id as string}
+                            onClose={() => {
+                              setIsKillModalOpen(false);
                               setSelectedPipeline(undefined);
                             }}
                           />
