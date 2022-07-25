@@ -83,6 +83,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleIncludeTags: jest.fn(),
   handleIngestionName: jest.fn(),
   handleMarkDeletedTables: jest.fn(),
+  handleProfileSample: jest.fn(),
   handleQueryLogDuration: jest.fn(),
   handleResultLimit: jest.fn(),
   handleStageFileLocation: jest.fn(),
