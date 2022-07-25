@@ -14,6 +14,7 @@ Module containing the logic to retrieve all logs from the tasks of a last DAG ru
 import glob
 import gzip
 import os
+import base64
 from pathlib import Path
 
 from airflow.models import DagModel
@@ -61,9 +62,9 @@ def last_dag_logs(dag_id: str, compress: bool = True) -> Response:
                 [Path(sorted_logs[-1]).read_text()]
             )
 
-            # Return the response in bytes (if compress) without the b'...'
+            # Return the base64 encoding of the response, removing the b'...' trailers
             response[task_instance.task_id] = (
-                str(gzip.compress(bytes(log_res, "utf-8")))[2:-1]
+                str(base64.b64encode(gzip.compress(bytes(log_res, "utf-8"))))[2:-1]
                 if compress
                 else log_res
             )
