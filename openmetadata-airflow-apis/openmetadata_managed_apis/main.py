@@ -13,7 +13,7 @@ from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 from openmetadata_managed_apis.api import app
 from openmetadata_managed_apis.api.config import PLUGIN_NAME
-from openmetadata_managed_apis.api.view import RestApiView
+from openmetadata_managed_apis.views.rest_api import RestApiView
 
 # Creating View to be used by Plugin
 rest_api_view = {"category": "Admin", "name": "REST API Plugin", "view": RestApiView()}
@@ -22,10 +22,7 @@ rest_api_view = {"category": "Admin", "name": "REST API Plugin", "view": RestApi
 template_blueprint = Blueprint(
     "template_blueprint",
     __name__,
-    template_folder="plugins/templates",
-    # Maybe we can clean those 2
-    static_folder="static",
-    static_url_path="/static/",
+    template_folder="views/templates",
 )
 
 # Import REST API blueprint

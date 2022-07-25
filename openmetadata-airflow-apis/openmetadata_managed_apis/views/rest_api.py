@@ -31,7 +31,7 @@ class RestApiView(AppBuilderBaseView):
     @app_builder_expose("/")
     def list(self):
         return self.render_template(
-            "/rest_api_plugin/index.html",
+            "/rest_api/index.html",
             airflow_webserver_base_url=AIRFLOW_WEBSERVER_BASE_URL,
             rest_api_endpoint=REST_API_ENDPOINT,
             apis_metadata=APIS_METADATA,

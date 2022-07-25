@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import logging
+import pkgutil
 import traceback
 from pathlib import Path
 from typing import Dict
@@ -21,7 +22,7 @@ from jinja2 import Template
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,
-    DAG_RUNNER_TEMPLATE,
+    PLUGIN_NAME,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import clean_dag_id, import_path
@@ -77,8 +78,8 @@ class DagDeployer:
         dag_py_file = Path(AIRFLOW_DAGS_FOLDER) / f"{self.dag_id}.py"
 
         # Open the template and render
-        with open(DAG_RUNNER_TEMPLATE, "r") as f:
-            template = Template(f.read())
+        raw_template = str(pkgutil.get_data(PLUGIN_NAME, "resources/dag_runner.j2"))
+        template = Template(raw_template)
 
         rendered_dag = template.render(dag_runner_config)
 
