@@ -2,7 +2,7 @@
 
 ## Configure new Application
 
-* Login to [One Login](https://www.onelogin.com/) as an administrator and click on Applications&#x20;
+* Login to [OneLogin](https://www.onelogin.com) as an administrator and click on Applications
 
 ![Add App](<../../../.gitbook/assets/Screen Shot 2022-07-22 at 3.02.49 PM.png>)
 

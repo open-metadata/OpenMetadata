@@ -205,7 +205,7 @@
       * [Configure OpenMetadata Server using Docker](deploy/secure-openmetadata/google-sso-1/configure-openmetadata/configure-openmetadata-server-using-docker.md)
       * [Configure OpenMetadata Helm](deploy/secure-openmetadata/google-sso-1/configure-openmetadata/configure-openmetadata-helm.md)
     * [Configure Ingestion](deploy/secure-openmetadata/google-sso-1/configure-ingestion.md)
-  * [One Login](deploy/secure-openmetadata/one-login/README.md)
+  * [OneLogin](deploy/secure-openmetadata/one-login/README.md)
     * [Create Server Credentials](deploy/secure-openmetadata/one-login/create-server-credentials.md)
     * [Create Service Account](deploy/secure-openmetadata/one-login/create-service-account.md)
     * [Configure OpenMetadata](deploy/secure-openmetadata/one-login/configure-openmetadata/README.md)
