@@ -90,7 +90,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   }, [serviceType]);
 
   const config = !isNil(data)
-    ? ((data as DataService).connection.config as ConfigData)
+    ? ((data as DataService).connection?.config as ConfigData)
     : ({} as ConfigData);
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {

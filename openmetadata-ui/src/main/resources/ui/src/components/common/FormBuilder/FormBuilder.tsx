@@ -121,7 +121,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       })}
       formData={localFormData}
       ref={(form) => {
-        oForm = form;
+        oForm = form as Form<ConfigData>;
       }}
       schema={schema}
       uiSchema={uiSchema}
