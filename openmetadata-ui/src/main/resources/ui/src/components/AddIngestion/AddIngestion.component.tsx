@@ -170,6 +170,9 @@ const AddIngestion = ({
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
   );
+  const [profileSample, setProfileSample] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.profileSample
+  );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
       (data?.sourceConfig.config as ConfigClass)?.dashboardFilterPattern ??
@@ -470,6 +473,7 @@ const AddIngestion = ({
           ),
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
+          profileSample: profileSample,
         };
       }
       case PipelineType.Metadata:
@@ -627,6 +631,7 @@ const AddIngestion = ({
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
+            handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
@@ -639,6 +644,7 @@ const AddIngestion = ({
             markDeletedTables={markDeletedTables}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
+            profileSample={profileSample}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}
