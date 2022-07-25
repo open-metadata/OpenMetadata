@@ -45,8 +45,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.WebhookDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -57,6 +59,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/webhook")
@@ -66,6 +69,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "webhook")
 public class WebhookResource extends EntityResource<Webhook, WebhookRepository> {
   public static final String COLLECTION_PATH = "v1/webhook/";
+  private WebhookDAO webhookDAO;
 
   @Override
   public Webhook addHref(UriInfo uriInfo, Webhook entity) {
@@ -84,6 +88,18 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
     super(Webhook.class, new WebhookRepository(dao), authorizer);
+    webhookDAO = dao.webhookDAO();
+  }
+
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    try {
+      List<String> listAllWebhooks = webhookDAO.listAllWebhooks(webhookDAO.getTableName());
+      List<Webhook> webhookList = JsonUtils.readObjects(listAllWebhooks, Webhook.class);
+      webhookList.forEach(dao::addWebhookPublisher);
+    } catch (Exception ex) {
+      // Starting application should not fail
+    }
   }
 
   @GET
@@ -251,6 +267,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
     Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
+    webhook.setWebhookType(Webhook.WebhookType.slack);
     Response response = create(uriInfo, securityContext, webhook, false);
     dao.addWebhookPublisher(webhook);
     return response;
@@ -339,6 +356,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
         .withSecretKey(create.getSecretKey())
-        .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
+        .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED)
+        .withWebhookType(Webhook.WebhookType.fromValue(create.getWebhookType().value()));
   }
 }

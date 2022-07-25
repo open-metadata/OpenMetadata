@@ -1376,6 +1376,9 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+
+    @SqlQuery("SELECT json FROM <table>")
+    List<String> listAllWebhooks(@Define("table") String table);
   }
 
   interface TagCategoryDAO extends EntityDAO<TagCategory> {

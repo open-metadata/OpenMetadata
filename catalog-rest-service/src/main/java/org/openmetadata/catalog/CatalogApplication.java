@@ -146,6 +146,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
+    // start event hub before registering publishers
+    EventPubSub.start();
+
     registerResources(catalogConfig, environment, jdbi, secretsManager);
     RoleEvaluator.getInstance().load();
     PolicyEvaluator.getInstance().load();
@@ -153,8 +156,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
     environment.lifecycle().manage(new ManagedShutdown());
-    // start event hub before registering publishers
-    EventPubSub.start();
     // Register Event publishers
     registerEventPublisher(catalogConfig);
 

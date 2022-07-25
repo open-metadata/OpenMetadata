@@ -20,11 +20,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -69,12 +71,24 @@ public final class ChangeEventParser {
     SLACK
   }
 
-  public static SlackMessage buildSlackMessage(ChangeEvent event, String omdurl) {
+  public static String getEntityUrl(ChangeEvent event) {
+    EntityInterface entity = (EntityInterface) event.getEntity();
+    URI urlInstance = entity.getHref();
+    String fqn = event.getEntityFullyQualifiedName();
+    if (Objects.nonNull(urlInstance)) {
+      String scheme = urlInstance.getScheme();
+      String host = urlInstance.getHost();
+      return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
+    }
+    return urlInstance.toString();
+  }
+
+  public static SlackMessage buildSlackMessage(ChangeEvent event) {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
       String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText = String.format(headerTxt, event.getUserName(), omdurl);
+      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(event));
       slackMessage.setText(headerText);
     }
     Map<EntityLink, String> messages =
