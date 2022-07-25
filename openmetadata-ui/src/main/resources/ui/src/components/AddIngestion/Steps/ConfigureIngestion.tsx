@@ -118,7 +118,7 @@ const ConfigureIngestion = ({
 
   const handleProfileSampleValidation = (profileSampleValue: number) => {
     let errMsg;
-    if (profileSampleValue < 0 || profileSampleValue > 100) {
+    if (profileSampleValue < 0 || profileSampleValue > 99) {
       errMsg = true;
     } else {
       errMsg = false;
@@ -132,8 +132,8 @@ const ConfigureIngestion = ({
       <div>
         <label>Profile Sample</label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          Sample percentage to use when computing table profile. Should be
-          between 0 and 100.
+          This is an optional percentage used to compute the table profile. Should be
+          between 0 and 99.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding tw-w-24"
@@ -147,7 +147,7 @@ const ConfigureIngestion = ({
             handleProfileSampleValidation(parseInt(e.target.value))
           }
         />
-        {profileSampleError && errorMsg('Value must be between 0 and 100.')}
+        {profileSampleError && errorMsg('Value must be between 0 and 99.')}
       </div>
     );
   };
