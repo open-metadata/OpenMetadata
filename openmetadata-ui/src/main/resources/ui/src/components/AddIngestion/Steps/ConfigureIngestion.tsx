@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isNil, cloneDeep } from 'lodash';
+import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef, useState } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
@@ -114,16 +114,14 @@ const ConfigureIngestion = ({
     );
   };
 
-  const [profileSampleError, setProfileSampleError] = useState({
-    profileSample: false,
-  });
+  const [profileSampleError, setProfileSampleError] = useState(false);
 
   const handleProfileSampleValidation = (profileSampleValue: number) => {
-    const errMsg = cloneDeep(profileSampleError);
+    let errMsg;
     if (profileSampleValue < 0 || profileSampleValue > 100) {
-      errMsg.profileSample = true;
+      errMsg = true;
     } else {
-      errMsg.profileSample = false;
+      errMsg = false;
     }
     setProfileSampleError(errMsg);
     handleProfileSample(profileSampleValue);
@@ -149,8 +147,7 @@ const ConfigureIngestion = ({
             handleProfileSampleValidation(parseInt(e.target.value))
           }
         />
-        {profileSampleError.profileSample &&
-          errorMsg('Value must be between 0 and 100.')}
+        {profileSampleError && errorMsg('Value must be between 0 and 100.')}
       </div>
     );
   };
