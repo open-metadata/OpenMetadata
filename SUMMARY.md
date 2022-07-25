@@ -324,7 +324,7 @@
   * [OpenMetadata SDK](developer/openmetadata-sdk/README.md)
     * [Python](developer/openmetadata-sdk/python-api/README.md)
       * [Version Upgrades](developer/openmetadata-sdk/python-api/version-upgrades.md)
-    * [Java (Coming Soon)](developer/openmetadata-sdk/java-coming-soon.md)
+    * [Java (Coming Soon)](developer/openmetadata-sdk/java-sdk.md)
   * [Build a Connector](developer/build-a-connector/README.md)
     * [Source](developer/build-a-connector/source.md)
     * [Sink](developer/build-a-connector/sink.md)
