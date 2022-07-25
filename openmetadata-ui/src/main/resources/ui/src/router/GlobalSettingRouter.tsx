@@ -24,7 +24,7 @@ const WebhooksPageV1 = withSuspenseFallback(
 const GlobalSettingRouter = () => {
   return (
     <Switch>
-      <Route exact component={() => <h1>Team</h1>} path={getSettingPath()}>
+      <Route exact path={getSettingPath()}>
         <Redirect to={getSettingPath(GlobalSettingOptions.TEAMS)} />
       </Route>
       <Route

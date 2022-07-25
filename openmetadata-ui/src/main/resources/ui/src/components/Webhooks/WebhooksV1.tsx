@@ -52,23 +52,21 @@ const WebhooksV1: FC<WebhooksProps> = ({
       : data;
   };
 
-  const fetchRightPanel = useMemo(
-    () => () => {
-      return (
-        <Card
-          data-testid="data-summary-container"
-          style={leftPanelAntCardStyle}>
-          <div className="tw-my-2">
-            The webhook allows external services to be notified of the metadata
-            change events happening in your organization through APIs. Register
-            callback URLs with webhook integration to receive metadata event
-            notifications. You can add, list, update, and delete webhooks.
-          </div>
-        </Card>
-      );
-    },
-    []
-  );
+  const rightPanel = useMemo(() => {
+    return (
+      <Card
+        data-testid="data-summary-container"
+        size="small"
+        style={leftPanelAntCardStyle}>
+        <div className="tw-my-2">
+          The webhook allows external services to be notified of the metadata
+          change events happening in your organization through APIs. Register
+          callback URLs with webhook integration to receive metadata event
+          notifications. You can add, list, update, and delete webhooks.
+        </div>
+      </Card>
+    );
+  }, []);
 
   const fetchErrorPlaceHolder = useMemo(
     () => (message: string) => {
@@ -163,7 +161,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
           fetchErrorPlaceHolder('No webhooks found for applied filters')
         )}
       </div>
-      <div className="webhook-right-panel">{fetchRightPanel()}</div>
+      <div className="webhook-right-panel">{rightPanel}</div>
     </Space>
   );
 };
