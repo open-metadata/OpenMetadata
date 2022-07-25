@@ -54,7 +54,7 @@ base_requirements = {
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        "apache-airflow==2.1.4"
+        "apache-airflow==2.2.3"
     },  # Same as ingestion container. For development.
     "airflow-container": {
         "marshmallow-sqlalchemy>=0.26.0",

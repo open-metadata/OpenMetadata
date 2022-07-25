@@ -13,7 +13,7 @@ import os
 import pathlib
 from itertools import chain
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 PLUGIN_NAME = "openmetadata_managed_apis"
 PLUGIN_ROOT_FILE = "main"
@@ -24,10 +24,19 @@ CONFIG = HOME / PLUGIN_NAME / "config.py"
 
 
 def get_package_data():
-    extensions = ["js", "css", "html", "j2"]
+    """
+    Add templates and html files to the built
+    package for easier deployments
+    """
+    extensions = ["html", "j2"]
 
     files = list(
-        chain(*[glob.glob(f"{PLUGIN_NAME}/**/*.%s" % x, recursive=True) for x in extensions])
+        chain(
+            *[
+                glob.glob(f"{PLUGIN_NAME}/**/*.%s" % x, recursive=True)
+                for x in extensions
+            ]
+        )
     )
     return [x.split(os.sep, 1)[1] for x in files]
 

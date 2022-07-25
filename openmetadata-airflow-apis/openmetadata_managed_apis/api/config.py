@@ -32,3 +32,5 @@ AIRFLOW_DAGS_FOLDER = conf.get("core", "DAGS_FOLDER")
 DAG_RUNNER_TEMPLATE = conf.get("openmetadata_airflow_apis", "DAG_RUNNER_TEMPLATE")
 # Path to store the JSON configurations we receive via REST
 DAG_GENERATED_CONFIGS = conf.get("openmetadata_airflow_apis", "DAG_GENERATED_CONFIGS")
+
+MISSING_DAG_ID_EXCEPTION_MSG = "Missing dag_id argument in the request"

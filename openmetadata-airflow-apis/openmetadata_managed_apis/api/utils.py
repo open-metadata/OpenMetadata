@@ -12,10 +12,12 @@
 import importlib
 import logging
 import os
+import re
 import sys
 from typing import Optional
-import re
 
+from airflow import settings
+from airflow.models import DagBag
 from flask import request
 from flask_jwt_extended.view_decorators import jwt_required, verify_jwt_in_request
 from flask_login.utils import _get_user
@@ -76,3 +78,13 @@ def get_request_dag_id() -> Optional[str]:
     raw_dag_id = request.get_json().get("dag_id")
 
     return clean_dag_id(raw_dag_id)
+
+
+def get_dagbag():
+    """
+    Load the dagbag from Airflow settings
+    """
+    dagbag = DagBag(dag_folder=settings.DAGS_FOLDER, read_dags_from_db=True)
+    dagbag.collect_dags()
+    dagbag.collect_dags_from_db()
+    return dagbag

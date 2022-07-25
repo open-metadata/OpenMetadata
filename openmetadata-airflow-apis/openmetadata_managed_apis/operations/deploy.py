@@ -24,8 +24,7 @@ from openmetadata_managed_apis.api.config import (
     DAG_RUNNER_TEMPLATE,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import import_path
-from openmetadata_managed_apis.helpers import clean_dag_id
+from openmetadata_managed_apis.api.utils import clean_dag_id, import_path
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,

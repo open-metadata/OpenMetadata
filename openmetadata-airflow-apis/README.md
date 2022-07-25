@@ -33,7 +33,7 @@ substitute AIRFLOW_HOME with your airflow installation home
 First, make sure that Airflow is properly installed with the latest version `2.3.3`. From the [docs](https://airflow.apache.org/docs/apache-airflow/stable/installation/installing-from-pypi.html):
 
 ```
-pip install "apache-airflow[celery]==2.3.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+pip install "apache-airflow==2.3.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
 ```
 
 1. Download the latest openmetadata-airflow-apis-plugin release from [here](https://github.com/open-metadata/OpenMetadata/releases)

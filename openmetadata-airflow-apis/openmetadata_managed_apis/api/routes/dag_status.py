@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Trigger endpoint
+Health endpoint. Globally accessible
 """
 import logging
 import traceback
@@ -17,35 +17,32 @@ import traceback
 from airflow.api_connexion import security
 from airflow.security import permissions
 from airflow.www.app import csrf
-from flask import Response, request
+from flask import Response
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.config import MISSING_DAG_ID_EXCEPTION_MSG
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_request_arg, get_request_dag_id
-from openmetadata_managed_apis.operations.trigger import trigger
+from openmetadata_managed_apis.api.utils import get_arg_dag_id
+from openmetadata_managed_apis.operations.status import status
 
 
-@blueprint.route("/trigger", methods=["POST"])
+@blueprint.route("/status", methods=["GET"])
 @csrf.exempt
-@security.requires_access([(permissions.RESOURCE_TRIGGER, permissions.RESOURCE_DAG)])
-def trigger_dag() -> Response:
+@security.requires_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
+def dag_status() -> Response:
     """
-    Trigger a dag run
+    Check the status of a DAG runs
     """
-    dag_id = get_request_dag_id()
+    dag_id = get_arg_dag_id()
 
     if not dag_id:
         return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
     try:
-        run_id = get_request_arg(request, "run_id")
-        response = trigger(dag_id, run_id)
-
-        return response
+        return status(dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to trigger dag {dag_id}")
+        logging.info(f"Failed to get dag {dag_id} status")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Workflow {dag_id} has filed to trigger due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to get status for {dag_id} due to {exc} - {traceback.format_exc()}",
         )

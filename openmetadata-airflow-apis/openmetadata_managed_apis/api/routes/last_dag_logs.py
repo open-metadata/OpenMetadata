@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Trigger endpoint
+Health endpoint. Globally accessible
 """
 import logging
 import traceback
@@ -19,33 +19,31 @@ from airflow.security import permissions
 from airflow.www.app import csrf
 from flask import Response, request
 from openmetadata_managed_apis.api.app import blueprint
-from openmetadata_managed_apis.api.config import MISSING_DAG_ID_EXCEPTION_MSG
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_request_arg, get_request_dag_id
-from openmetadata_managed_apis.operations.trigger import trigger
+from openmetadata_managed_apis.api.utils import clean_dag_id
+from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
 
 
-@blueprint.route("/trigger", methods=["POST"])
+@blueprint.route("/last_dag_logs", methods=["GET"])
 @csrf.exempt
-@security.requires_access([(permissions.RESOURCE_TRIGGER, permissions.RESOURCE_DAG)])
-def trigger_dag() -> Response:
+@security.requires_access([(permissions.ACTION_CAN_DELETE, permissions.RESOURCE_DAG)])
+def last_logs(self) -> Response:
     """
-    Trigger a dag run
+    Retrieve all logs from the task instances of a last DAG run
     """
-    dag_id = get_request_dag_id()
+    raw_dag_id: str = self.get_request_arg(request, "dag_id")
 
-    if not dag_id:
-        return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
+    if not raw_dag_id:
+        ApiResponse.bad_request("Missing dag_id parameter in the request")
+
+    dag_id = clean_dag_id(raw_dag_id)
 
     try:
-        run_id = get_request_arg(request, "run_id")
-        response = trigger(dag_id, run_id)
-
-        return response
+        return last_dag_logs(dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to trigger dag {dag_id}")
+        logging.info(f"Failed to get last run logs for '{dag_id}'")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Workflow {dag_id} has filed to trigger due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
         )

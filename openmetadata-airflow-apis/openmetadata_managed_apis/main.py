@@ -13,10 +13,10 @@ from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 from openmetadata_managed_apis.api import app
 from openmetadata_managed_apis.api.config import PLUGIN_NAME
-from openmetadata_managed_apis.api.rest_api import REST_API
+from openmetadata_managed_apis.api.view import RestApiView
 
 # Creating View to be used by Plugin
-rest_api_view = {"category": "Admin", "name": "REST API Plugin", "view": REST_API()}
+rest_api_view = {"category": "Admin", "name": "REST API Plugin", "view": RestApiView()}
 
 # Creating template Blueprint
 template_blueprint = Blueprint(

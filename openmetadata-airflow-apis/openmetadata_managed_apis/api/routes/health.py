@@ -9,19 +9,26 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Register error handlers
+Health endpoint. Globally accessible
 """
+import traceback
 
-import logging
-
+from airflow.www.app import csrf
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
-from werkzeug.exceptions import HTTPException
 
 
-@blueprint.app_errorhandler(Exception)
-def handle_any_error(e):
-    logging.exception("Wild exception")
-    if isinstance(e, HTTPException):
-        return ApiResponse.error(e.code, repr(e))
-    return ApiResponse.server_error(repr(e))
+@blueprint.route("/health", methods=["GET"])
+@csrf.exempt
+def health():
+    """
+    /health endpoint to check Airflow REST status without auth
+    """
+
+    try:
+        return ApiResponse.success({"status": "healthy"})
+    except Exception as err:
+        return ApiResponse.error(
+            status=ApiResponse.STATUS_SERVER_ERROR,
+            error=f"Internal error obtaining REST status - {err} - {traceback.format_exc()}",
+        )

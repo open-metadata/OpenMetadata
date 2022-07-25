@@ -8,8 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import glob
-from os.path import join, dirname, basename, isfile
+from os.path import dirname
 from pathlib import Path
 
 from flask import Blueprint
@@ -18,14 +17,13 @@ from openmetadata_managed_apis.api.utils import import_path
 
 blueprint = Blueprint("airflow_api", __name__, url_prefix=REST_API_ENDPOINT)
 
-import_path
-
 routes = Path(dirname(__file__)) / "routes"
-modules = routes.glob("*.py")
-
-
-
-__all__ = [
-    basename(f)[:-3] for f in modules if isfile(f) and not f.endswith("__init__.py")
+modules = [
+    str(elem.absolute())
+    for elem in routes.glob("*.py")
+    if elem.is_file() and not elem.stem == "__init__"
 ]
 
+# Force import routes to load endpoints
+for file in modules:
+    import_path(file)

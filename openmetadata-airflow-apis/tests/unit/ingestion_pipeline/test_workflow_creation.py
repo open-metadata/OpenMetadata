@@ -17,9 +17,15 @@ import uuid
 from unittest import TestCase
 
 from openmetadata_managed_apis.api.utils import clean_dag_id
-from openmetadata_managed_apis.workflows.ingestion.metadata import build_metadata_workflow_config
-from openmetadata_managed_apis.workflows.ingestion.profiler import build_profiler_workflow_config
-from openmetadata_managed_apis.workflows.ingestion.usage import build_usage_workflow_config
+from openmetadata_managed_apis.workflows.ingestion.metadata import (
+    build_metadata_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.profiler import (
+    build_profiler_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.usage import (
+    build_usage_workflow_config,
+)
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
