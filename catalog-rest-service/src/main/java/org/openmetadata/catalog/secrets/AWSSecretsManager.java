@@ -1,8 +1,14 @@
 package org.openmetadata.catalog.secrets;
 
+import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.AWS;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
+import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.exception.SecretsManagerException;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -14,11 +20,14 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 public class AWSSecretsManager extends SecretsManager {
 
+  public static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
   private static AWSSecretsManager INSTANCE = null;
 
   private SecretsManagerClient secretsClient;
 
-  private AWSSecretsManager(SecretsManagerConfiguration config) {
+  private AWSSecretsManager(
+      OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider, SecretsManagerConfiguration config) {
+    super(secretsManagerProvider);
     if (config == null) {
       throw new SecretsManagerException("Secrets manager configuration is empty.");
     }
@@ -45,7 +54,7 @@ public class AWSSecretsManager extends SecretsManager {
       String connectionName,
       String connectionPackage,
       boolean encrypt) {
-    String secretName = buildSecretName(connectionPackage, connectionType, connectionName);
+    String secretName = buildSecretId(connectionPackage, connectionType, connectionName);
     try {
       if (encrypt) {
         String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
@@ -63,6 +72,53 @@ public class AWSSecretsManager extends SecretsManager {
     } catch (Exception e) {
       throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
     }
+  }
+
+  @Override
+  public AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration) {
+    OpenMetadataServerConnection.AuthProvider authProvider =
+        OpenMetadataServerConnection.AuthProvider.fromValue(airflowConfiguration.getAuthProvider());
+    AuthConfiguration authConfig = airflowConfiguration.getAuthConfig();
+    String authProviderJson = null;
+    try {
+      switch (authProvider) {
+        case GOOGLE:
+          authProviderJson = JsonUtils.pojoToJson(authConfig.getGoogle());
+          break;
+        case AUTH_0:
+          authProviderJson = JsonUtils.pojoToJson(authConfig.getAuth0());
+          break;
+        case OKTA:
+          authProviderJson = JsonUtils.pojoToJson(authConfig.getOkta());
+          break;
+        case AZURE:
+          authProviderJson = JsonUtils.pojoToJson(authConfig.getAzure());
+          break;
+        case CUSTOM_OIDC:
+          authProviderJson = JsonUtils.pojoToJson(authConfig.getCustomOidc());
+          break;
+        case OPENMETADATA:
+          authProviderJson = JsonUtils.pojoToJson(authConfig.getOpenmetadata());
+          break;
+        case NO_AUTH:
+          break;
+        default:
+          throw new IllegalArgumentException("OpenMetadata doesn't support auth provider type " + authProvider.value());
+      }
+    } catch (JsonProcessingException e) {
+      throw new SecretsManagerException("Error parsing to JSON the auth config :" + e.getMessage());
+    }
+    if (authProviderJson != null) {
+      upsertSecret(buildSecretId(AUTH_PROVIDER_SECRET_ID_SUFFIX, authProvider.value()), authProviderJson);
+    }
+    airflowConfiguration.setAuthConfig(null);
+    return airflowConfiguration;
+  }
+
+  @Override
+  protected Object decryptAuthProviderConfig(
+      OpenMetadataServerConnection.AuthProvider authProvider, AuthConfiguration authConfig) {
+    return null;
   }
 
   private void upsertSecret(String secretName, String password) {
@@ -107,7 +163,7 @@ public class AWSSecretsManager extends SecretsManager {
   }
 
   public static AWSSecretsManager getInstance(SecretsManagerConfiguration config) {
-    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(config);
+    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(AWS, config);
     return INSTANCE;
   }
 

@@ -1,10 +1,15 @@
 package org.openmetadata.catalog.secrets;
 
+import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.LOCAL;
+
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
+import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.fernet.Fernet;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class LocalSecretsManager extends SecretsManager {
@@ -13,7 +18,8 @@ public class LocalSecretsManager extends SecretsManager {
 
   private Fernet fernet;
 
-  private LocalSecretsManager() {
+  private LocalSecretsManager(OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider) {
+    super(secretsManagerProvider);
     this.fernet = Fernet.getInstance();
   }
 
@@ -40,6 +46,34 @@ public class LocalSecretsManager extends SecretsManager {
     }
   }
 
+  @Override
+  public AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration) {
+    return airflowConfiguration;
+  }
+
+  @Override
+  protected Object decryptAuthProviderConfig(
+      OpenMetadataServerConnection.AuthProvider authProvider, AuthConfiguration authConfig) {
+    switch (authProvider) {
+      case GOOGLE:
+        return authConfig.getGoogle();
+      case AUTH_0:
+        return authConfig.getAuth0();
+      case OKTA:
+        return authConfig.getOkta();
+      case AZURE:
+        return authConfig.getAzure();
+      case CUSTOM_OIDC:
+        return authConfig.getCustomOidc();
+      case OPENMETADATA:
+        return authConfig.getOpenmetadata();
+      case NO_AUTH:
+        return null;
+      default:
+        throw new IllegalArgumentException("OpenMetadata doesn't support auth provider type " + authProvider.value());
+    }
+  }
+
   private void encryptOrDecryptField(Object connConfig, String field, Class<?> clazz, boolean encrypt)
       throws InvocationTargetException, IllegalAccessException {
     try {
@@ -59,7 +93,7 @@ public class LocalSecretsManager extends SecretsManager {
   }
 
   public static LocalSecretsManager getInstance() {
-    if (INSTANCE == null) INSTANCE = new LocalSecretsManager();
+    if (INSTANCE == null) INSTANCE = new LocalSecretsManager(LOCAL);
     return INSTANCE;
   }
 
