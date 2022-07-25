@@ -6,6 +6,7 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
   void post_testDefinitionWithoutRequiredFields_4xx(TestInfo test) {
     // Test Platform is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withTestPlatform(null), ADMIN_AUTH_HEADERS),
+        () -> createEntity(createRequest(test).withTestPlatforms(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[testPlatform must not be null]");
 
@@ -47,7 +48,10 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
 
   @Override
   public CreateTestDefinition createRequest(String name) {
-    return new CreateTestDefinition().withName(name).withDescription(name).withTestPlatform(TestPlatform.OPEN_METADATA);
+    return new CreateTestDefinition()
+        .withName(name)
+        .withDescription(name)
+        .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
   }
 
   @Override
@@ -56,7 +60,7 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
       throws HttpResponseException {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
-    assertEquals(request.getTestPlatform(), createdEntity.getTestPlatform());
+    assertEquals(request.getTestPlatforms(), createdEntity.getTestPlatforms());
   }
 
   @Override
@@ -64,7 +68,7 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
       throws HttpResponseException {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDescription(), updated.getDescription());
-    assertEquals(expected.getTestPlatform(), updated.getTestPlatform());
+    assertEquals(expected.getTestPlatforms(), updated.getTestPlatforms());
   }
 
   @Override

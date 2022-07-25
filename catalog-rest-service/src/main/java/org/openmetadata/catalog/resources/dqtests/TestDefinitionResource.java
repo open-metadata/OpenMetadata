@@ -55,7 +55,7 @@ import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 @Path("/v1/tests/testDefinition")
-@Api(value = "Test Definition collection", tags = "Tags Definitions collection")
+@Api(value = "Test Definitions collection", tags = "Tags Definitions collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tests")
@@ -184,7 +184,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Path("/{id}")
   @Operation(
       summary = "Get a Test Definition",
-      tags = "testdefinitions",
+      tags = "TestDefinitions",
       description = "Get a Test Definition by `id`.",
       responses = {
         @ApiResponse(
@@ -281,7 +281,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "createTestDefinition",
       summary = "Create a Test Definition",
-      tags = "testdefinitions",
+      tags = "TestDefinitions",
       description = "Create a Test definition.",
       responses = {
         @ApiResponse(
@@ -303,7 +303,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "patchTestDefinition",
       summary = "Update a test definition",
-      tags = "testdefinitions",
+      tags = "TestDefinitions",
       description = "Update an existing topic using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -328,7 +328,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "createOrUpdateTestDefinition",
       summary = "Update test definition",
-      tags = "testdefinitions",
+      tags = "TestDefinitions",
       description = "Create a definition, it it does not exist or update an existing test definition.",
       responses = {
         @ApiResponse(
@@ -348,7 +348,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "deleteTestDefinition",
       summary = "Delete a test definition",
-      tags = "testdefinitions",
+      tags = "TestDefinitions",
       description = "Delete a test definition by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -369,7 +369,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
     return copy(new TestDefinition(), create, user)
         .withDescription(create.getDescription())
-        .withTestPlatform(create.getTestPlatform())
+        .withTestPlatforms(create.getTestPlatforms())
         .withDisplayName(create.getDisplayName())
         .withParameterDefinition(create.getParameterDefinition())
         .withParameterValues(create.getParameterValues())

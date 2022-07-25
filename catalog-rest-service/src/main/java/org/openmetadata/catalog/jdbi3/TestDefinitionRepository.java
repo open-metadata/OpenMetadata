@@ -59,7 +59,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("description", original.getDescription(), updated.getDescription());
-      recordChange("testPlatform", original.getTestPlatform(), updated.getTestPlatform());
+      recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
       recordChange("parameterDefinition", original.getParameterDefinition(), updated.getParameterDefinition());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
     }
