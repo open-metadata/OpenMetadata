@@ -83,7 +83,7 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.19.1</version>
+      <version>3.19.2</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->

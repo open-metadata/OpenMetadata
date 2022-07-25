@@ -1,10 +1,17 @@
 FROM python:3.9-slim as base
 ENV AIRFLOW_HOME=/airflow
 RUN apt-get update && \
-    apt-get install -y gcc libsasl2-modules libsasl2-dev curl build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget --no-install-recommends && \
+    apt-get install -y gcc libsasl2-modules libsasl2-dev build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget openssl --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 # RUN wget https://github.com/open-metadata/openmetadata-airflow-apis/releases/download/0.1/openmetadata-airflow-apis-plugin.tar.gz
 # RUN tar zxvf openmetadata-airflow-apis-plugin.tar.gz
+
+# Manually fix security vulnerability from curl
+#  -  https://security.snyk.io/vuln/SNYK-DEBIAN11-CURL-2936229
+# Add it back to the usual apt-get install once a fix for Debian is released
+RUN wget https://curl.se/download/curl-7.84.0.tar.gz && \
+    tar -xvf curl-7.84.0.tar.gz && cd curl-7.84.0 && \
+    ./configure --with-openssl && make && make install
 
 FROM base as airflow
 ENV AIRFLOW_VERSION=2.1.4
