@@ -8,14 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Any, Dict, Optional
 
 DAG_ID_DESCRIPTION = "The ID of the DAG."
 
 # TODO https://github.com/open-metadata/OpenMetadata/issues/6215
 APIS_METADATA = [
     {
-        "name": "deploy_dag",
+        "name": "deploy",
         "description": "Deploy a new DAG File to the DAGs directory",
         "http_method": "POST",
         "form_enctype": "multipart/form-data",
@@ -30,7 +29,7 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "trigger_dag",
+        "name": "trigger",
         "description": "Trigger a DAG",
         "http_method": "POST",
         "arguments": [],
@@ -56,7 +55,7 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "dag_status",
+        "name": "status",
         "description": "Get the status of a dag's latest runs",
         "http_method": "GET",
         "arguments": [
@@ -69,7 +68,7 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "delete_dag",
+        "name": "delete",
         "description": "Delete a DAG in the Web Server from Airflow database and filesystem",
         "http_method": "DELETE",
         "arguments": [
@@ -95,7 +94,7 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "enable_dag",
+        "name": "enable",
         "description": "Mark the DAG as enabled to run on the next schedule.",
         "http_method": "POST",
         "arguments": [],
@@ -109,7 +108,7 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "disable_dag",
+        "name": "disable",
         "description": "Mark the DAG as disabled. It will not run on the next schedule.",
         "http_method": "POST",
         "arguments": [],
@@ -123,7 +122,7 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "kill_all",
+        "name": "kill",
         "description": "Mark all not finished tasks of a DAG as failed to kill the execution",
         "http_method": "POST",
         "arguments": [],
@@ -137,11 +136,3 @@ APIS_METADATA = [
         ],
     },
 ]
-
-
-def get_metadata_api(name: str) -> Optional[Dict[str, Any]]:
-    """
-    Return the APIS_METADATA dict for a
-    given name
-    """
-    return next(iter(api for api in APIS_METADATA if api["name"] == name), None)
