@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -33,7 +35,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTestDefinition;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -44,6 +48,8 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -55,6 +61,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "tests")
 public class TestDefinitionResource extends EntityResource<TestDefinition, TestDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/tests/testDefinition";
+  private final TestDefinitionRepository daoTestDefinition;
 
   static final String FIELDS = "owner";
 
@@ -67,34 +74,29 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Inject
   public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
+    this.daoTestDefinition = new TestDefinitionRepository(dao);
   }
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    /* List<String> tagFiles = EntityUtil.getJsonDataResources(".*json/data/tests/.*\\.json$");
-    tagFiles.forEach(
-        tagFile -> {
+    List<String> testDefinitionFiles = EntityUtil.getJsonDataResources(".*json/data/tests/.*\\.json$");
+    testDefinitionFiles.forEach(
+        testDefinitionFile -> {
           try {
-            LOG.info("Loading tag definitions from file {}", tagFile);
-            String tagJson =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
-            tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
-            TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
+            LOG.info("Loading tag definitions from file {}", testDefinitionFile);
+            String testDefinitionJson =
+                IOUtil.toString(
+                    Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(testDefinitionFile)));
+            testDefinitionJson = testDefinitionJson.replace("<separator>", Entity.SEPARATOR);
+            TestDefinition testDefinition = JsonUtils.readValue(testDefinitionJson, TestDefinition.class);
             long now = System.currentTimeMillis();
-            tagCategory.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
-            tagCategory
-                .getChildren()
-                .forEach(
-                    t -> {
-                      t.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
-                      t.getChildren().forEach(c -> c.withUpdatedBy("admin").withUpdatedAt(now));
-                    });
-            daoCategory.initCategory(tagCategory);
+            testDefinition.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
+            daoTestDefinition.initSeedData(testDefinition);
           } catch (Exception e) {
-            LOG.warn("Failed to initialize the tag files {}", tagFile, e);
+            LOG.warn("Failed to initialize the test definition files {}", testDefinitionFile, e);
           }
-        });*/
+        });
   }
 
   public static class TestDefinitionList extends ResultList<TestDefinition> {

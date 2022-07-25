@@ -1,0 +1,16 @@
+{
+  "name": "tableCustomSQLQuery",
+  "displayName": "tableCustomSQLQuery",
+  "description": "This test defines the test TableCustomSQLQuery. Test if a custom SQL returns 1 or 0 row.",
+  "testPlatform": "OpenMetadata",
+  "parameterDefinition": [
+      {
+        "name": "sqlExpression",
+        "displayName": "SQLExpression",
+        "description": "SQL expression to run against the table",
+        "dataType": "string",
+        "required": "true"
+      }
+    ]
+  }
+  

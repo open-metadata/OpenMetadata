@@ -5,7 +5,7 @@
   "description": "TestDefinition is a test definition to capture data quality tests against data entities.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.tests.TestDefinition",
-  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
   "definitions": {
     "testPlatform": {
       "javaType": "org.openmetadata.catalog.tests.TestPlatform",
