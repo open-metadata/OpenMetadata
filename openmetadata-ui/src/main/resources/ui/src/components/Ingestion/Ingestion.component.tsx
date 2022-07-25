@@ -78,7 +78,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     name: '',
     state: '',
   });
-  const [isKillModalOpen, setIsKillModalOpen] = useState(false);
+  const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const noConnectionMsg = `${serviceName} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.`;
 
   const handleSearchAction = (searchValue: string) => {
