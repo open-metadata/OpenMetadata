@@ -132,8 +132,8 @@ const ConfigureIngestion = ({
       <div>
         <label>Profile Sample</label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          This is an optional percentage used to compute the table profile. Should be
-          between 0 and 99.
+          This is an optional percentage used to compute the table profile.
+          Should be between 0 and 99.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding tw-w-24"
