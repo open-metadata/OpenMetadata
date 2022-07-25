@@ -108,9 +108,8 @@ class AirflowRESTClientIntegrationTest {
 
     Map<String, MockResponse> pathResponses = new HashMap<>();
     pathResponses.put(
-        "/rest_api/api?api=last_dag_logs&dag_id=" + DAG_NAME,
+        "/api/v1/openmetadata/last_dag_logs&dag_id=" + DAG_NAME,
         new MockResponse(jsonResponse, "application/json", lastDagLogStatusCode));
-    pathResponses.put("/api/v1/security/login", new MockResponse("{}", "application/json", loginStatusCode));
 
     httpServerExtension.registerHandler(URI_TO_HANDLE_REQUEST, new JsonHandler(pathResponses));
   }

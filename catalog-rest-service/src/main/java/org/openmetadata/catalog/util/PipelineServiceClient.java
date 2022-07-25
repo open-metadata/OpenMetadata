@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.Map;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -31,7 +32,6 @@ public abstract class PipelineServiceClient {
   protected final String password;
   protected final HttpClient client;
   protected static final String AUTH_HEADER = "Authorization";
-  protected static final String AUTH_TOKEN = "Bearer %s";
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
 
@@ -54,21 +54,22 @@ public abstract class PipelineServiceClient {
     return post(endpoint, payload, true);
   }
 
+  public final String getBasicAuthenticationHeader(String username, String password) {
+    String valueToEncode = username + ":" + password;
+    return "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes());
+  }
+
   public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
       throws IOException, InterruptedException {
-    String authToken = authenticate ? authenticate() : null;
     HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder(URI.create(endpoint))
             .header(CONTENT_HEADER, CONTENT_TYPE)
             .POST(HttpRequest.BodyPublishers.ofString(payload));
     if (authenticate) {
-      requestBuilder.header(AUTH_HEADER, String.format(AUTH_TOKEN, authToken));
+      requestBuilder.header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
     }
     return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
   }
-
-  /* Authenticate with the service */
-  public abstract String authenticate();
 
   /* Check the status of pipeline service to ensure it is healthy */
   public abstract HttpResponse<String> getServiceStatus();
