@@ -2,7 +2,7 @@
     "name": "columnValuesSumToBeBetween",
     "displayName": "columnValuesSumToBeBetween",
     "description": "This schema defines the test ColumnValuesSumToBeBetween. Test the sum of the values of a col is within a range.",
-    "testPlatform": "OpenMetadata",
+    "testPlatform": ["OpenMetadata", "GreatExpectations"],
     "parameterDefinition": [
       {
         "name": "minValueForColSum",

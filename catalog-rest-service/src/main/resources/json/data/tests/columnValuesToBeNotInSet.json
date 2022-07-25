@@ -2,7 +2,7 @@
   "name": "columnValuesToBeNotInSet",
   "displayName": "columnValuesToBeNotInSet",
   "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
-  "testPlatform": "OpenMetadata",
+  "testPlatform": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
       "name": "forbiddenValues",

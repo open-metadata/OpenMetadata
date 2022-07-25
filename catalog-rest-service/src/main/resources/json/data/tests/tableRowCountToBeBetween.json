@@ -2,7 +2,7 @@
   "name": "TableRowCountToBeBetween",
   "displayName": "TableRowCountToBeBetween",
   "description": "This defines the test TableRowCountToBeBetween. Test the number of rows to between to two values.",
-  "testPlatform": "OpenMetadata",
+  "testPlatform": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
       "name": "minColValue",

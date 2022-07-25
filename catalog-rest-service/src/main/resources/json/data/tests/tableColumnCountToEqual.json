@@ -2,7 +2,7 @@
   "name": "TableColumnCountToEqual",
   "displayName": "TableColumnCountToEqual",
   "description": "This test defines the test TableColumnCountToEqual. Test the number of columns equal to a value.",
-  "testPlatform": "OpenMetadata",
+  "testPlatform": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
       "name": "columnCount",

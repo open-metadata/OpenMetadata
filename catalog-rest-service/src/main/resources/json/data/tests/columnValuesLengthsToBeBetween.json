@@ -2,7 +2,7 @@
   "name": "columnValueLengthsToBeBetween",
   "displayName": "columnValueLengthsToBeBetween",
   "description": "This schema defines the test ColumnValueLengthsToBeBetween. Test the value lengths in a column to be between minimum and maximum value. ",
-  "testPlatform": "OpenMetadata",
+  "testPlatform": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
       "name": "minLength",

@@ -2,7 +2,7 @@
     "name": "columnValueMaxToBeBetween",
     "displayName": "columnValueMaxToBeBetween",
     "description": "This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.",
-    "testPlatform": "OpenMetadata",
+    "testPlatform": ["OpenMetadata", "GreatExpectations"],
     "parameterDefinition": [
     {
       "name": "minValueForMaxInCol",

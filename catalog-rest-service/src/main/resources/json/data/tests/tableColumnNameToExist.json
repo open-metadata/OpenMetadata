@@ -2,7 +2,7 @@
     "name": "TableColumnNameToExist",
     "displayName": "TableColumnNameToExist",
     "description": "This test defines the test TableColumnNameToExist. Test the table columns exists in the table.",
-    "testPlatform": "OpenMetadata",
+    "testPlatform": ["OpenMetadata", "GreatExpectations"],
     "parameterDefinition": [
       {
         "name": "columnName",

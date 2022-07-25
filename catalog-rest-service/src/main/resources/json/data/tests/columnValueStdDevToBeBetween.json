@@ -2,7 +2,7 @@
     "name": "columnValueStdDevToBeBetween",
     "displayName": "columnValueStdDevToBeBetween",
     "description": "This schema defines the test ColumnValueStdDevToBeBetween. Test the std. dev. value in a col is within a range.",
-    "testPlatform": "OpenMetadata",
+    "testPlatform": ["OpenMetadata", "GreatExpectations"],
     "parameterDefinition": [
       {
         "name": "minValueForStdDevInCol",

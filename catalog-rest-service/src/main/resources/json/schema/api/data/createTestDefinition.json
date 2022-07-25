@@ -19,8 +19,11 @@
       "description": "Description of the testcase.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "testPlatform": {
-      "$ref": "../../tests/testDefinition.json#/definitions/testPlatform"
+    "testPlatforms": {
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testDefinition.json#/definitions/testPlatform"
+      }
     },
     "parameterDefinition": {
       "type": "array",
@@ -35,6 +38,6 @@
       }
     }
   },
-  "required": ["name", "description", "testPlatform"],
+  "required": ["name", "description", "testPlatforms"],
   "additionalProperties": false
 }

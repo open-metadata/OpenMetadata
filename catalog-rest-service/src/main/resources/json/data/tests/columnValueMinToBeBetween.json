@@ -2,7 +2,7 @@
     "name": "columnValueMinToBeBetween",
     "displayName": "ColumnValueMinToBeBetween",
     "description": "This schema defines the test ColumnValueMinToBeBetween. Test the minimum value in a col is within a range.",
-    "testPlatform": "OpenMetadata",
+    "testPlatform": ["OpenMetadata", "GreatExpectations"],
     "parameterDefinition": [
       {
         "name": "minValueForMinInCol",

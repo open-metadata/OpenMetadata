@@ -104,8 +104,11 @@
       "description": "Description of the testcase.",
       "$ref": "../type/basic.json#/definitions/markdown"
     },
-    "testPlatform": {
-      "$ref": "#/definitions/testPlatform"
+    "testPlatforms": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testPlatform"
+      }
     },
     "parameterDefinition": {
       "type": "array",
