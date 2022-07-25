@@ -2,13 +2,13 @@
   "name": "columnValuesToMatchRegex",
   "displayName": "columnValuesToMatchRegex",
   "description": "This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ",
-  "testPlatform": ["OpenMetadata", "GreatExpectations"],
+  "testPlatforms": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
       "name": "regex",
       "displayName": "RegEx",
       "description": "The regular expression the column entries should match.",
-      "dataType": "string",
+      "dataType": "STRING",
       "required": true
     }
   ]

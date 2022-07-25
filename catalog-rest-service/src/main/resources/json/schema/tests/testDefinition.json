@@ -36,7 +36,8 @@
         "DATETIME",
         "ARRAY",
         "MAP",
-        "SET"
+        "SET",
+        "STRING"
       ]
     },
     "testCaseParameterDefinition": {

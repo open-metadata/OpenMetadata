@@ -84,7 +84,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     testDefinitionFiles.forEach(
         testDefinitionFile -> {
           try {
-            LOG.info("Loading tag definitions from file {}", testDefinitionFile);
+            LOG.info("Loading test definitions from file {}", testDefinitionFile);
             String testDefinitionJson =
                 IOUtil.toString(
                     Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(testDefinitionFile)));

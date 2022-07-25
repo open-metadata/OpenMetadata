@@ -2,13 +2,13 @@
   "name": "columnValuesToNotMatchRegex",
   "displayName": "columnValuesToNotMatchRegex",
   "description": "This schema defines the test ColumnValuesToNotMatchRegex. Test the values in a column to not match a given regular expression. ",
-  "testPlatform": ["OpenMetadata", "GreatExpectations"],
+  "testPlatforms": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
       "name": "forbiddenRegex",
       "displayName": "forbiddenRegex",
       "description": "The regular expression the column entries should not match.",
-      "dataType": "string",
+      "dataType": "STRING",
       "required": true
     }
   ]
