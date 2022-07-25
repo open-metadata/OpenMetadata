@@ -49,7 +49,7 @@
     "less": "^4.1.3",
     "less-loader": "^11.0.0",
     "markdown-draft-js": "^2.3.0",
-    "mobx": "6.0.1",
+    "mobx": "6.6.1",
     "mobx-react": "6.1.4",
     "moment": "^2.29.1",
     "oidc-client": "^1.11.5",

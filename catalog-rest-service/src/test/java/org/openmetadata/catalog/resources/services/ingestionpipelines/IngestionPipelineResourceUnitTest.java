@@ -37,6 +37,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.PipelineServiceClient;
@@ -73,7 +74,7 @@ public class IngestionPipelineResourceUnitTest {
     when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(mock(EntityReference.class));
     when(entityDAO.getEntityClass()).thenReturn(IngestionPipeline.class);
     when(ingestionPipeline.getId()).thenReturn(UUID.fromString(DAG_ID));
-    ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer);
+    ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer, mock(SecretsManager.class));
   }
 
   @Test
