@@ -29,7 +29,7 @@ To create OpenMetadata Gateway, you will need to establish a connection with *Op
 To do so, several inputs needs to be provided as follows:
 * Host Port: The url on which your instance of OpenMetadata is up and running.
 * ApiVersion: The value will be "v1".
-* Auth Provider: This is Optional. To set security, please refer to **TODO**
+* Auth Provider: Provide the auth provider with you need to configure.
 * Security Config: Provide the config for the selected auth provider.
 
 ```java
