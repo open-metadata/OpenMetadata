@@ -15,6 +15,7 @@
 
 import { Editor, Viewer } from '@toast-ui/react-editor';
 import classNames from 'classnames';
+import { uniqueId } from 'lodash';
 import React, {
   createRef,
   forwardRef,
@@ -22,6 +23,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from 'react';
+import { EDITOR_TOOLBAR_ITEMS } from './EditorToolBar';
 import './RichTextEditor.css';
 import { editorRef, RichTextEditorProp } from './RichTextEditor.interface';
 
@@ -32,7 +34,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       previewStyle = 'tab',
       editorType = 'markdown',
       previewHighlight = false,
-      useCommandShortcut = false,
+      useCommandShortcut = true,
       extendedAutolinks = true,
       hideModeSwitch = true,
       initialValue = '',
@@ -75,6 +77,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
             <Viewer
               extendedAutolinks={extendedAutolinks}
               initialValue={editorValue}
+              key={uniqueId()}
               ref={richTextEditorRef}
             />
           </div>
@@ -82,7 +85,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
           <div data-testid="editor">
             <Editor
               extendedAutolinks={extendedAutolinks}
-              height={height ?? '280px'}
+              height={height ?? '320px'}
               hideModeSwitch={hideModeSwitch}
               initialEditType={editorType}
               initialValue={editorValue}
@@ -90,7 +93,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
               previewHighlight={previewHighlight}
               previewStyle={previewStyle}
               ref={richTextEditorRef}
-              toolbarItems={[['bold', 'italic', 'ul', 'ol', 'link']]}
+              toolbarItems={[EDITOR_TOOLBAR_ITEMS]}
               useCommandShortcut={useCommandShortcut}
               onChange={onChangeHandler}
             />
