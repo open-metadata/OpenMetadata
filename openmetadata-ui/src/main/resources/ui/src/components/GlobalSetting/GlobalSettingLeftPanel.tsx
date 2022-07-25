@@ -13,13 +13,10 @@
 
 import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { camelCase, isUndefined } from 'lodash';
+import { camelCase } from 'lodash';
 import React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  GlobalSettingOptions,
-  GLOBAL_SETTINGS_MENU,
-} from '../../constants/globalSettings.constants';
+import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
 import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 
@@ -38,11 +35,9 @@ const GlobalSettingLeftPanel = () => {
   return (
     <Menu
       className="global-setting-left-panel"
-      defaultSelectedKeys={[
-        isUndefined(tab) ? GlobalSettingOptions.USERS : tab,
-      ]}
       items={items}
       mode="inline"
+      selectedKeys={[tab]}
       onClick={onClick}
     />
   );

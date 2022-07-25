@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { Route, Switch } from 'react-router-dom';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import { GlobalSettingOptions } from '../constants/globalSettings.constants';
 import { getSettingPath } from '../utils/RouterUtils';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -21,9 +21,12 @@ const WebhooksPageV1 = withSuspenseFallback(
   React.lazy(() => import('../pages/WebhooksPage/WebhooksPageV1.component'))
 );
 
-const GlobalSettingRoute = () => {
+const GlobalSettingRouter = () => {
   return (
     <Switch>
+      <Route exact component={() => <h1>Team</h1>} path={getSettingPath()}>
+        <Redirect to={getSettingPath(GlobalSettingOptions.TEAMS)} />
+      </Route>
       <Route
         exact
         component={WebhooksPageV1}
@@ -33,4 +36,4 @@ const GlobalSettingRoute = () => {
   );
 };
 
-export default GlobalSettingRoute;
+export default GlobalSettingRouter;

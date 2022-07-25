@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { Card, Select } from 'antd';
+import { Card, Select, Space } from 'antd';
 import classNames from 'classnames';
-import { isNil, startCase } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { isNil } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
-import { Status, Webhook } from '../../generated/entity/events/webhook';
+import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
+import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
@@ -29,29 +30,6 @@ import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { WebhooksProps } from './Webhooks.interface';
 import './webhookV1.less';
-
-const statuses = [
-  {
-    label: startCase(Status.Disabled),
-    value: Status.Disabled,
-  },
-  {
-    label: startCase(Status.Active),
-    value: Status.Active,
-  },
-  {
-    label: startCase(Status.Failed),
-    value: Status.Failed,
-  },
-  {
-    label: startCase(Status.AwaitingRetry),
-    value: Status.AwaitingRetry,
-  },
-  {
-    label: startCase(Status.RetryLimitReached),
-    value: Status.RetryLimitReached,
-  },
-];
 
 const WebhooksV1: FC<WebhooksProps> = ({
   data = [],
@@ -74,41 +52,51 @@ const WebhooksV1: FC<WebhooksProps> = ({
       : data;
   };
 
-  const fetchRightPanel = () => {
-    return (
-      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
-        <div className="tw-my-2">
-          The webhook allows external services to be notified of the metadata
-          change events happening in your organization through APIs. Register
-          callback URLs with webhook integration to receive metadata event
-          notifications. You can add, list, update, and delete webhooks.
-        </div>
-      </Card>
-    );
-  };
+  const fetchRightPanel = useMemo(
+    () => () => {
+      return (
+        <Card
+          data-testid="data-summary-container"
+          style={leftPanelAntCardStyle}>
+          <div className="tw-my-2">
+            The webhook allows external services to be notified of the metadata
+            change events happening in your organization through APIs. Register
+            callback URLs with webhook integration to receive metadata event
+            notifications. You can add, list, update, and delete webhooks.
+          </div>
+        </Card>
+      );
+    },
+    []
+  );
 
-  const fetchErrorPlaceHolder = (message: string) => {
-    return (
-      <ErrorPlaceHolder>
-        <p className="tw-text-center">{message}</p>
-        <p className="tw-text-center">
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-8 tw-rounded tw-my-3', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-webhook-button"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={onAddWebhook}>
-              Add Webhook
-            </Button>
-          </NonAdminAction>
-        </p>
-      </ErrorPlaceHolder>
-    );
-  };
+  const fetchErrorPlaceHolder = useMemo(
+    () => (message: string) => {
+      return (
+        <ErrorPlaceHolder>
+          <p className="tw-text-center">{message}</p>
+          <p className="tw-text-center">
+            <NonAdminAction
+              position="bottom"
+              title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Button
+                className={classNames('tw-h-8 tw-rounded tw-my-3', {
+                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                })}
+                data-testid="add-webhook-button"
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={onAddWebhook}>
+                Add Webhook
+              </Button>
+            </NonAdminAction>
+          </p>
+        </ErrorPlaceHolder>
+      );
+    },
+    []
+  );
 
   useEffect(() => {
     setFilteredData(getFilteredWebhooks());
@@ -119,7 +107,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
   }
 
   return (
-    <div className="tw-flex tw-justify-between tw-gap-4">
+    <Space align="start" className="tw-w-full webhook-page-container" size={20}>
       <div className="tw-w-full">
         <div className="tw-flex tw-items-center tw-justify-between">
           <Select
@@ -176,7 +164,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
         )}
       </div>
       <div className="webhook-right-panel">{fetchRightPanel()}</div>
-    </div>
+    </Space>
   );
 };
 

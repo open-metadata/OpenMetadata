@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import GlobalSettingRoute from '../../router/GlobalSettingRoute';
+import GlobalSettingRouter from '../../router/GlobalSettingRouter';
 import PageLayout from '../containers/PageLayout';
 import './GlobalSetting.less';
 import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
@@ -22,7 +22,7 @@ const GlobalSetting = () => {
     <PageLayout
       classes="tw-h-full tw-px-6"
       leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRoute />
+      <GlobalSettingRouter />
     </PageLayout>
   );
 };

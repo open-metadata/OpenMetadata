@@ -1004,7 +1004,7 @@ code {
 }
 
 .ant-card-body {
-  padding: 14px;
+  padding: 14px !important;
 }
 
 .ant-card-feed > .ant-card-body {
