@@ -26,7 +26,12 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataModel,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -262,7 +267,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         From topology.
@@ -271,7 +276,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[CreateTableRequest]:
         """
         From topology.
@@ -281,7 +286,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
 
     def yield_datamodel(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[DataModelLink]:
         """
         Gets the current table being processed, fetches its data model

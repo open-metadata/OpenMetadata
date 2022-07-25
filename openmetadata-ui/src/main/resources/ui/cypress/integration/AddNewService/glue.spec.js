@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+
+
+const serviceType = 'Glue';
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Glue Ingestion', () => {
   it('add and ingest data', () => {
@@ -38,6 +42,17 @@ describe('Glue Ingestion', () => {
       // no filters
     };
 
-    testServiceCreationAndIngestion('Glue', connectionInput, addIngestionInput, 'database', false);
+    testServiceCreationAndIngestion(
+      serviceType,
+      connectionInput,
+      addIngestionInput,
+      serviceName,
+      'database',
+      false
+    );
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService('Database', serviceName);
   });
 });

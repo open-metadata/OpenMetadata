@@ -8,6 +8,10 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.database')
 WHERE serviceType = 'DynamoDB';
 
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.connectionOptions')
+WHERE serviceType = 'DeltaLake';
+
 UPDATE dashboard_service_entity
 SET json = JSON_INSERT(
         JSON_REMOVE(json, '$.connection.config.username'),
