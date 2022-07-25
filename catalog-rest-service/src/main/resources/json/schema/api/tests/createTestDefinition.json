@@ -30,12 +30,6 @@
       "items": {
         "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterDefinition"
       }
-    },
-    "parameterValues": {
-      "type": "array",
-      "items": {
-        "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterValue"
-      }
     }
   },
   "required": ["name", "description", "testPlatforms"],

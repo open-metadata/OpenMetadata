@@ -37,7 +37,7 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
     assertResponse(
         () -> createEntity(createRequest(test).withTestPlatforms(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[testPlatform must not be null]");
+        "testPlatforms must not be empty");
 
     // name is required field
     assertResponse(
