@@ -12,17 +12,27 @@ import inspect
 import json
 from abc import abstractmethod
 from pydoc import locate
-from typing import NewType, Optional, Union
+from typing import Dict, List, NewType, Optional, Union
 
 import boto3
 from botocore.exceptions import ClientError
 from pydantic.main import ModelMetaclass
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    AuthProvider,
+    OpenMetadataConnection,
     SecretsManagerProvider,
 )
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
+)
+from metadata.generated.schema.security.client import (
+    auth0SSOClientConfig,
+    azureSSOClientConfig,
+    customOidcSSOClientConfig,
+    googleSSOClientConfig,
+    oktaSSOClientConfig,
+    openMetadataJWTClientConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import ingestion_logger
@@ -36,6 +46,19 @@ ServiceConnectionType = NewType(
     "ServiceConnectionType", ServiceConnection.__fields__["__root__"].type_
 )
 
+AuthProviderClientType = NewType(
+    "AuthProviderClientType", OpenMetadataConnection.__fields__["securityConfig"].type_
+)
+
+AUTH_PROVIDER_MAPPING: Dict[AuthProvider, AuthProviderClientType] = {
+    AuthProvider.google: googleSSOClientConfig.GoogleSSOClientConfig,
+    AuthProvider.okta: oktaSSOClientConfig.OktaSSOClientConfig,
+    AuthProvider.auth0: auth0SSOClientConfig.Auth0SSOClientConfig,
+    AuthProvider.azure: azureSSOClientConfig.AzureSSOClientConfig,
+    AuthProvider.custom_oidc: customOidcSSOClientConfig.CustomOIDCSSOClientConfig,
+    AuthProvider.openmetadata: openMetadataJWTClientConfig.OpenMetadataJWTClientConfig,
+}
+
 
 class SecretsManager(metaclass=Singleton):
     @abstractmethod
@@ -43,17 +66,20 @@ class SecretsManager(metaclass=Singleton):
         self,
         service: ServiceConnectionType,
         service_type: str,
-    ) -> ServiceConnectionType:
+    ):
+        pass
+
+    @abstractmethod
+    def add_auth_provider_security_config(self, config: OpenMetadataConnection):
         pass
 
     @staticmethod
     def to_service_simple(service_type: str) -> str:
         return service_type.replace("Service", "").lower()
 
-    def build_secret_id(
-        self, service_type: str, service_connection_type: str, service_name: str
-    ) -> str:
-        return f"openmetadata-{self.to_service_simple(service_type).lower()}-{service_connection_type.lower()}-{service_name.lower()}"
+    def build_secret_id(self, parameters: List[str]) -> str:
+        secret_suffix = "-".join([parameter.lower() for parameter in parameters])
+        return f"openmetadata-{secret_suffix}"
 
     def get_service_connection_class(self, service_type) -> ModelMetaclass:
         service_conn_name = next(
@@ -67,10 +93,9 @@ class SecretsManager(metaclass=Singleton):
                 == f"{self.to_service_simple(service_type)}connection"
             )
         ).__name__
-        service_conn_class = locate(
+        return locate(
             f"metadata.generated.schema.entity.services.{service_type}.{service_conn_name}"
         )
-        return service_conn_class
 
     def get_connection_class(
         self, service_type: str, service_connection_type
@@ -78,31 +103,47 @@ class SecretsManager(metaclass=Singleton):
         connection_py_file = (
             service_connection_type[0].lower() + service_connection_type[1:]
         )
-        conn_class = locate(
+        return locate(
             f"metadata.generated.schema.entity.services.connections.{self.to_service_simple(service_type)}.{connection_py_file}Connection.{service_connection_type}Connection"
         )
-        return conn_class
 
 
 class LocalSecretsManager(SecretsManager):
+    def add_auth_provider_security_config(
+        self, open_metadata_connection: OpenMetadataConnection
+    ):
+        pass
+
     def add_service_config_connection(
         self,
         service: ServiceConnectionType,
         service_type: str,
-    ) -> ServiceConnectionType:
-        return service
+    ):
+        pass
 
 
 class AWSSecretsManager(SecretsManager):
+    def __init__(self, credentials: AWSCredentials):
+        session = boto3.Session(
+            aws_access_key_id=credentials.awsAccessKeyId,
+            aws_secret_access_key=credentials.awsSecretAccessKey.get_secret_value(),
+            region_name=credentials.awsRegion,
+        )
+        self.secretsmanager_client = session.client("secretsmanager")
+
     def add_service_config_connection(
         self,
         service: ServiceConnectionType,
         service_type: str,
-    ) -> ServiceConnectionType:
+    ):
         service_connection_type = service.serviceType.value
         service_name = service.name.__root__
         secret_id = self.build_secret_id(
-            service_type, service_connection_type, service_name
+            [
+                self.to_service_simple(service_type),
+                service_connection_type,
+                service_name,
+            ]
         )
         connection_class = self.get_connection_class(
             service_type, service_connection_type
@@ -114,15 +155,21 @@ class AWSSecretsManager(SecretsManager):
             )
         )
 
-        return service
-
-    def __init__(self, credentials: AWSCredentials):
-        session = boto3.Session(
-            aws_access_key_id=credentials.awsAccessKeyId,
-            aws_secret_access_key=credentials.awsSecretAccessKey.get_secret_value(),
-            region_name=credentials.awsRegion,
+    def add_auth_provider_security_config(self, config: OpenMetadataConnection):
+        if config.authProvider == AuthProvider.no_auth:
+            return config
+        secret_id = self.build_secret_id(
+            ["auth-provider", config.authProvider.value.lower()]
         )
-        self.secretsmanager_client = session.client("secretsmanager")
+        auth_config_json = self._get_string_value(secret_id)
+        try:
+            config.securityConfig = AUTH_PROVIDER_MAPPING.get(
+                config.authProvider
+            ).parse_obj(json.loads(auth_config_json))
+        except KeyError:
+            raise NotImplementedError(
+                f"No client implemented for auth provider: [{config.authProvider}]"
+            )
 
     def _get_string_value(self, name: str) -> str:
         """
