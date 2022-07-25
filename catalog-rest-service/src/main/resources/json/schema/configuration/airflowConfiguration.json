@@ -36,6 +36,12 @@
       "$ref": "authConfig.json"
     }
   },
-  "required": ["apiEndpoint", "username", "password", "metadataApiEndpoint", "authProvider", "authConfig"],
+  "required": [
+    "apiEndpoint",
+    "username",
+    "password",
+    "metadataApiEndpoint",
+    "authProvider"
+  ],
   "additionalProperties": false
 }
