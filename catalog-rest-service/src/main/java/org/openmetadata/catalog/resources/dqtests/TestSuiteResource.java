@@ -47,13 +47,13 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-@Path("/v1/tests/testSuite")
+@Path("/v1/testSuite")
 @Api(value = "Test Suite collection", tags = "Test Suite collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tests")
+@Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
-  public static final String COLLECTION_PATH = "/v1/tests/testSuite";
+  public static final String COLLECTION_PATH = "/v1/testSuite";
 
   static final String FIELDS = "owner,tests";
 
@@ -133,7 +133,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "listAllTestSuiteVersion",
       summary = "List test suite versions",
-      tags = "testsuite",
+      tags = "TestSuites",
       description = "Get a list of all the versions of a test suite identified by `id`",
       responses = {
         @ApiResponse(
@@ -186,7 +186,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "getTestSuiteByName",
       summary = "Get a test suite by name",
-      tags = "test definition",
+      tags = "TestSuites",
       description = "Get a test suite by  name.",
       responses = {
         @ApiResponse(
@@ -219,7 +219,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "getSpecificTestSuiteVersion",
       summary = "Get a version of the TestSuite",
-      tags = "test suite",
+      tags = "TestSuites",
       description = "Get a version of the test suite by given `id`",
       responses = {
         @ApiResponse(

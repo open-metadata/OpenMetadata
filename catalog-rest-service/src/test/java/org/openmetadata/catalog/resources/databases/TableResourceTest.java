@@ -169,6 +169,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
             getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
             getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable table = tableResourceTest.createRequest(test).withDatabaseSchema(DATABASE_SCHEMA_REFERENCE);
+    TEST_TABLE1 = tableResourceTest.createAndCheckEntity(table, ADMIN_AUTH_HEADERS);
   }
 
   @Test

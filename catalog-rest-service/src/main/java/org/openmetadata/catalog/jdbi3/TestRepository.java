@@ -8,24 +8,29 @@ import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.tests.Test;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class TestRepository extends EntityRepository<Test> {
-  private static final String UPDATE_FIELDS = "owner,entity,testSuite";
-  private static final String PATCH_FIELDS = "owner,entity,testSuite";
+  private static final String UPDATE_FIELDS = "owner,entity,testSuite,testDefinition";
+  private static final String PATCH_FIELDS = "owner,entity,testSuite,testDefinition";
 
   public TestRepository(CollectionDAO dao) {
     super(TestSuiteResource.COLLECTION_PATH, TEST, Test.class, dao.testDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
-  public Test setFields(Test entity, EntityUtil.Fields fields) throws IOException {
-    return entity;
+  public Test setFields(Test test, EntityUtil.Fields fields) throws IOException {
+    test.setEntity(fields.contains("entity") ? test.getEntity() : null);
+    test.setTestSuite(fields.contains("testSuite") ? test.getTestSuite() : null);
+    test.setTestDefinition(fields.contains("testDefinition") ? test.getTestDefinition() : null);
+    test.setOwner(fields.contains("owner") ? getOwner(test) : null);
+    return test;
   }
 
   @Override
-  public void prepare(Test entity) throws IOException {
-    setFullyQualifiedName(entity);
-    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
+  public void prepare(Test test) throws IOException {
+    test.setFullyQualifiedName(FullyQualifiedName.add(test.getEntity().getFullyQualifiedName(), test.getName()));
+    test.setOwner(Entity.getEntityReference(test.getOwner()));
   }
 
   @Override
@@ -51,9 +56,9 @@ public class TestRepository extends EntityRepository<Test> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("description", original.getDescription(), updated.getDescription());
       recordChange("entity", original.getEntity(), updated.getEntity());
       recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
+      recordChange("testDefinition", original.getTestDefinition(), updated.getTestDefinition());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
     }
   }

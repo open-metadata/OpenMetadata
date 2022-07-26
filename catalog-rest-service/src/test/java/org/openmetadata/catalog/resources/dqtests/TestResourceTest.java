@@ -7,6 +7,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
@@ -14,9 +15,15 @@ import org.openmetadata.catalog.api.tests.CreateTest;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.tests.Test;
 
+@Slf4j
 public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
   public TestResourceTest() {
-    super(Entity.TEST, Test.class, TestResource.TestList.class, "tests", TestResource.FIELDS);
+    super(
+        Entity.TEST,
+        org.openmetadata.catalog.tests.Test.class,
+        TestResource.TestList.class,
+        "test",
+        TestResource.FIELDS);
     supportsEmptyDescription = false;
     supportsFollowers = false;
     supportsAuthorizedMetadataOperations = false;
@@ -34,7 +41,12 @@ public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
 
   @Override
   public CreateTest createRequest(String name) {
-    return new CreateTest().withName(name).withDescription(name);
+    return new CreateTest()
+        .withName(name)
+        .withDescription(name)
+        .withEntity(TEST_TABLE1.getEntityReference())
+        .withTestSuite(TEST_SUITE1_REFERENCE)
+        .withTestDefinition(TEST_DEFINITION1_REFERENCE);
   }
 
   @Override

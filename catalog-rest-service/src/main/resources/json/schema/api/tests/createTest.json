@@ -33,8 +33,12 @@
       "items": {
         "$ref": "../../tests/test.json#/definitions/testCaseParameterValue"
       }
+    },
+    "owner": {
+      "description": "Owner of this test",
+      "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "testDefinition", "entity"],
+  "required": ["name", "testDefinition", "entity", "testSuite"],
   "additionalProperties": false
 }

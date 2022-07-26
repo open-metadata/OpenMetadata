@@ -33,6 +33,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tests.CreateTest;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -47,19 +48,22 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-@Path("/v1/tests")
+@Path("/v1/test")
 @Api(value = "Test collection", tags = "Test collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tests")
+@Collection(name = "Tests")
 public class TestResource extends EntityResource<Test, TestRepository> {
-  public static final String COLLECTION_PATH = "/v1/tests";
+  public static final String COLLECTION_PATH = "/v1/test";
 
   static final String FIELDS = "owner,testSuite,entity";
 
   @Override
   public Test addHref(UriInfo uriInfo, Test test) {
     test.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, test.getId()));
+    Entity.withHref(uriInfo, test.getOwner());
+    Entity.withHref(uriInfo, test.getTestSuite());
+    Entity.withHref(uriInfo, test.getTestDefinition());
     return test;
   }
 
@@ -133,7 +137,7 @@ public class TestResource extends EntityResource<Test, TestRepository> {
   @Operation(
       operationId = "listAllTestVersion",
       summary = "List test versions",
-      tags = "tests",
+      tags = "Tests",
       description = "Get a list of all the versions of a tests identified by `id`",
       responses = {
         @ApiResponse(
@@ -247,7 +251,7 @@ public class TestResource extends EntityResource<Test, TestRepository> {
   @Operation(
       operationId = "createTest",
       summary = "Create a Test",
-      tags = "TestSuites",
+      tags = "Tests",
       description = "Create a Test",
       responses = {
         @ApiResponse(
@@ -333,8 +337,10 @@ public class TestResource extends EntityResource<Test, TestRepository> {
     return copy(new Test(), create, user)
         .withDescription(create.getDescription())
         .withName(create.getName())
+        .withDisplayName(create.getDisplayName())
         .withParameterValues(create.getParameterValues())
         .withEntity(create.getEntity())
+        .withTestSuite(create.getTestSuite())
         .withTestDefinition(create.getTestDefinition());
   }
 }

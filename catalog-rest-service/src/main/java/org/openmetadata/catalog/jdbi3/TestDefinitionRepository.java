@@ -26,6 +26,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) throws IOException {
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -62,7 +63,6 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("description", original.getDescription(), updated.getDescription());
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
       recordChange("parameterDefinition", original.getParameterDefinition(), updated.getParameterDefinition());
     }

@@ -54,13 +54,13 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-@Path("/v1/tests/testDefinition")
+@Path("/v1/testDefinition")
 @Api(value = "Test Definitions collection", tags = "Test Definitions collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tests")
+@Collection(name = "TestDefinitions")
 public class TestDefinitionResource extends EntityResource<TestDefinition, TestDefinitionRepository> {
-  public static final String COLLECTION_PATH = "/v1/tests/testDefinition";
+  public static final String COLLECTION_PATH = "/v1/testDefinition";
   private final TestDefinitionRepository daoTestDefinition;
 
   static final String FIELDS = "owner";
@@ -164,7 +164,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "listAllTestDefinitionVersion",
       summary = "List test definition versions",
-      tags = "testdefintions",
+      tags = "TestDefinitions",
       description = "Get a list of all the versions of a test definition identified by `id`",
       responses = {
         @ApiResponse(
@@ -218,7 +218,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "getTestDefinitionByName",
       summary = "Get a test definition by name",
-      tags = "test definition",
+      tags = "TestDefinitions",
       description = "Get a test definition by  name.",
       responses = {
         @ApiResponse(
@@ -252,7 +252,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "getSpecificTestDefinitionVersion",
       summary = "Get a version of the TestDefinition",
-      tags = "test definition",
+      tags = "TestDefinitions",
       description = "Get a version of the test definition by given `id`",
       responses = {
         @ApiResponse(

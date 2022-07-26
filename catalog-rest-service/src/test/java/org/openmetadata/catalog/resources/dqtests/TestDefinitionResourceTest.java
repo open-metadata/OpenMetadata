@@ -23,12 +23,22 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
         Entity.TEST_DEFINITION,
         TestDefinition.class,
         TestDefinitionResource.TestDefinitionList.class,
-        "tests/testDefinition",
+        "testDefinition",
         TestDefinitionResource.FIELDS);
     supportsEmptyDescription = false;
     supportsFollowers = false;
     supportsAuthorizedMetadataOperations = false;
     supportsOwner = false;
+  }
+
+  public void setupTestDefinitions(TestInfo test) throws IOException {
+    TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
+    TEST_DEFINITION1 =
+        testDefinitionResourceTest.getEntityByName("columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION1_REFERENCE = TEST_DEFINITION1.getEntityReference();
+    TEST_DEFINITION2 =
+        testDefinitionResourceTest.getEntityByName("columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION2_REFERENCE = TEST_DEFINITION2.getEntityReference();
   }
 
   @Test

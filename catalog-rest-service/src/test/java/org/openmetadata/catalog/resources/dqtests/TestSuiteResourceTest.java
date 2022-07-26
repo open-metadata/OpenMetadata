@@ -21,12 +21,22 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         Entity.TEST_SUITE,
         TestSuite.class,
         TestSuiteResource.TestSuiteList.class,
-        "tests/testSuite",
+        "testSuite",
         TestSuiteResource.FIELDS);
     supportsEmptyDescription = false;
     supportsFollowers = false;
     supportsAuthorizedMetadataOperations = false;
     supportsOwner = false;
+  }
+
+  public void setupTestSuites(TestInfo test) throws IOException {
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
+    TEST_SUITE1 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+    TEST_SUITE1_REFERENCE = TEST_SUITE1.getEntityReference();
+    createTestSuite = testSuiteResourceTest.createRequest("testSuite2");
+    TEST_SUITE2 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+    TEST_SUITE2_REFERENCE = TEST_SUITE2.getEntityReference();
   }
 
   @Test

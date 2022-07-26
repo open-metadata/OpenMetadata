@@ -114,6 +114,8 @@ import org.openmetadata.catalog.entity.type.Category;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.dqtests.TestDefinitionResourceTest;
+import org.openmetadata.catalog.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
@@ -130,6 +132,8 @@ import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.tests.TestDefinition;
+import org.openmetadata.catalog.tests.TestSuite;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
@@ -236,6 +240,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static DatabaseSchema DATABASE_SCHEMA;
   public static EntityReference DATABASE_SCHEMA_REFERENCE;
 
+  public static Table TEST_TABLE1;
+  public static Table TEST_TABLE2;
+  public static TestSuite TEST_SUITE1;
+  public static EntityReference TEST_SUITE1_REFERENCE;
+
+  public static TestSuite TEST_SUITE2;
+  public static EntityReference TEST_SUITE2_REFERENCE;
+
+  public static TestDefinition TEST_DEFINITION1;
+  public static EntityReference TEST_DEFINITION1_REFERENCE;
+
+  public static TestDefinition TEST_DEFINITION2;
+  public static EntityReference TEST_DEFINITION2_REFERENCE;
+
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -291,6 +309,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new MlModelServiceResourceTest().setupMlModelServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
     new PolicyResourceTest().setupPolicies();
+    new TestSuiteResourceTest().setupTestSuites(test);
+    new TestDefinitionResourceTest().setupTestDefinitions(test);
   }
 
   @AfterAll

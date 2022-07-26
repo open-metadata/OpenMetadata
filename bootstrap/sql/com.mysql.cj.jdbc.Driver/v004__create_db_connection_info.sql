@@ -51,7 +51,18 @@ CREATE TABLE IF NOT EXISTS test_suite (
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     UNIQUE (name)
- );
+    );
+
+CREATE TABLE IF NOT EXISTS test (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(128) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fullyQualifiedName VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    UNIQUE (fullyQualifiedName)
+);
 
 UPDATE webhook_entity
 SET json = JSON_INSERT(json, '$.webhookType', 'generic');

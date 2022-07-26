@@ -26,6 +26,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) throws IOException {
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -58,7 +59,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("description", original.getDescription(), updated.getDescription());
       recordChange("tests", original.getTests(), updated.getTests());
     }
   }
