@@ -11,10 +11,10 @@
 """
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
+import base64
 import glob
 import gzip
 import os
-import base64
 from pathlib import Path
 
 from airflow.models import DagModel
