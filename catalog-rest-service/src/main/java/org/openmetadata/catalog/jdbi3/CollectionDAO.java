@@ -67,6 +67,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.tests.TestDefinition;
+import org.openmetadata.catalog.tests.TestSuite;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
@@ -189,6 +190,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TestDefinitionDAO testDefinitionDAO();
+
+  @CreateSqlObject
+  TestSuiteDAO testSuiteDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2015,12 +2019,29 @@ public interface CollectionDAO {
   interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
     @Override
     default String getTableName() {
-      return "test_definition_entity";
+      return "test_definition";
     }
 
     @Override
     default Class<TestDefinition> getEntityClass() {
       return TestDefinition.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface TestSuiteDAO extends EntityDAO<TestSuite> {
+    @Override
+    default String getTableName() {
+      return "test_suite";
+    }
+
+    @Override
+    default Class<TestSuite> getEntityClass() {
+      return TestSuite.class;
     }
 
     @Override

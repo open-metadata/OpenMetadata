@@ -16,9 +16,6 @@
     "testCase": {
       "$ref": "../../tests/columnTest.json#/definitions/columnTestCase"
     },
-    "executionFrequency": {
-      "$ref": "../../tests/basic.json#/definitions/testCaseExecutionFrequency"
-    },
     "result": {
       "$ref": "../../tests/basic.json#/definitions/testCaseResult"
     },

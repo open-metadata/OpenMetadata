@@ -29,11 +29,15 @@
       "$ref": "../type/basic.json#/definitions/markdown"
     },
     "tests": {
-      "$ref": "../type/entityReference.json",
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      },
       "default": null
     },
-    "executionFrequency": {
-      "$ref": "./basic.json#/definitions/testSuiteExecutionFrequency"
+    "scheduleInterval": {
+      "description": "TestSuite schedule interval in cron format.",
+      "type": "string"
     },
     "owner": {
       "description": "Owner of this TestCase definition.",

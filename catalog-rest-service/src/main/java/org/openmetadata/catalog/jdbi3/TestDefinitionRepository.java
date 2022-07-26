@@ -65,7 +65,6 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
       recordChange("description", original.getDescription(), updated.getDescription());
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
       recordChange("parameterDefinition", original.getParameterDefinition(), updated.getParameterDefinition());
-      recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
     }
   }
 }
