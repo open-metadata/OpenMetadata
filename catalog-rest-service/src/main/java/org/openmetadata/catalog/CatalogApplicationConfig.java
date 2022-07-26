@@ -34,102 +34,62 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
+import org.openmetadata.catalog.validators.AirflowConfigValidation;
 
+@Getter
+@Setter
 public class CatalogApplicationConfig extends Configuration {
-  private static final String DATABASE_CONFIG = "database";
-  private static final String SWAGGER_CONFIG = "swagger";
-  private static final String AUTHORIZER_CONFIG = "authorizerConfiguration";
-  private static final String AUTHENTICATION_CONFIG = "authenticationConfiguration";
-  private static final String JWT_CONFIG = "jwtTokenConfiguration";
-  private static final String ELASTIC_CONFIG = "elasticsearch";
-  private static final String EVENTHANDLER_CONFIG = "eventHandlerConfiguration";
-  private static final String AIRFLOW_CONFIG = "airflowConfiguration";
-  private static final String SLACK_CONFIG = "slackEventPublishers";
-  private static final String FERNET_CONFIG = "fernetConfiguration";
-  private static final String HEALTH_CONFIG = "health";
-  private static final String MIGRATION_CONFIG = "migrationConfiguration";
-  private static final String SANDBOXMODE_CONFIG = "sandboxModeEnabled";
-  private static final String SLACK_CHAT_CONFIG = "slackChat";
-  private static final String SECRET_MANAGER_CONFIG = "secretsManagerConfiguration";
-
-  @JsonProperty(DATABASE_CONFIG)
+  @JsonProperty("database")
   @NotNull
   @Valid
-  @Getter
-  @Setter
   private DataSourceFactory dataSourceFactory;
 
-  @JsonProperty(SWAGGER_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("swagger")
   private SwaggerBundleConfiguration swaggerBundleConfig;
 
-  @JsonProperty(AUTHORIZER_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("authorizerConfiguration")
   private AuthorizerConfiguration authorizerConfiguration;
 
-  @JsonProperty(AUTHENTICATION_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("authenticationConfiguration")
   private AuthenticationConfiguration authenticationConfiguration;
 
-  @JsonProperty(JWT_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("jwtTokenConfiguration")
   private JWTTokenConfiguration jwtTokenConfiguration;
 
-  @JsonProperty(ELASTIC_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
 
-  @JsonProperty(EVENTHANDLER_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @JsonProperty(AIRFLOW_CONFIG)
-  @Getter
-  @Setter
-  private AirflowConfiguration airflowConfiguration;
-
-  @JsonProperty(SLACK_CONFIG)
-  @Getter
-  @Setter
-  private List<SlackPublisherConfiguration> slackEventPublishers;
-
-  @JsonProperty(MIGRATION_CONFIG)
-  @NotNull
-  @Getter
-  @Setter
-  private MigrationConfiguration migrationConfiguration;
-
-  @JsonProperty(FERNET_CONFIG)
-  @Getter
-  @Setter
-  private FernetConfiguration fernetConfiguration;
-
-  @JsonProperty(HEALTH_CONFIG)
+  @AirflowConfigValidation
   @NotNull
   @Valid
-  @Getter
-  @Setter
+  @JsonProperty("airflowConfiguration")
+  private AirflowConfiguration airflowConfiguration;
+
+  @JsonProperty("slackEventPublishers")
+  private List<SlackPublisherConfiguration> slackEventPublishers;
+
+  @JsonProperty("migrationConfiguration")
+  @NotNull
+  private MigrationConfiguration migrationConfiguration;
+
+  @JsonProperty("fernetConfiguration")
+  private FernetConfiguration fernetConfiguration;
+
+  @JsonProperty("health")
+  @NotNull
+  @Valid
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty(SANDBOXMODE_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("sandboxModeEnabled")
   private boolean sandboxModeEnabled;
 
-  @JsonProperty(SLACK_CHAT_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("slackChat")
   private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
 
-  @JsonProperty(SECRET_MANAGER_CONFIG)
-  @Getter
-  @Setter
+  @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
   @Override

@@ -51,7 +51,7 @@ _TYPE_MAP = {
     DataType.CHAR: sqlalchemy.CHAR,
     DataType.VARCHAR: sqlalchemy.VARCHAR,
     DataType.BOOLEAN: sqlalchemy.BOOLEAN,
-    DataType.BINARY: sqlalchemy.BINARY,
+    DataType.BINARY: CustomTypes.BYTES.value,
     DataType.VARBINARY: sqlalchemy.VARBINARY,
     DataType.ARRAY: sqlalchemy.ARRAY,
     DataType.BLOB: sqlalchemy.BLOB,
@@ -66,6 +66,8 @@ _TYPE_MAP = {
     DataType.JSON: sqlalchemy.JSON,
     DataType.UUID: CustomTypes.UUID.value,
 }
+
+SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
 
 def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
@@ -118,7 +120,11 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
     """
 
     cols = {
-        str(col.name.__root__): build_orm_col(idx, col, table.serviceType)
+        (
+            col.name.__root__ + "_"
+            if col.name.__root__ in SQA_RESERVED_ATTRIBUTES
+            else col.name.__root__
+        ): build_orm_col(idx, col, table.serviceType)
         for idx, col in enumerate(table.columns)
     }
 

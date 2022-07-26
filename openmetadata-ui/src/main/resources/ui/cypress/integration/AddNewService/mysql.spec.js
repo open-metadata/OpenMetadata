@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+
+const serviceType = 'Mysql';
+const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
@@ -31,9 +34,14 @@ describe('MySQL Ingestion', () => {
     };
 
     testServiceCreationAndIngestion(
-      'Mysql',
+      serviceType,
       connectionInput,
-      addIngestionInput
+      addIngestionInput,
+      serviceName,
     );
   });
+
+    it('delete created service', () => {
+      deleteCreatedService('Database', serviceName);
+    });
 });

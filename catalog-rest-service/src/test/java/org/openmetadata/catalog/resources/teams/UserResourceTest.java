@@ -521,17 +521,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
    */
   @Test
   void patch_userNameChange_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure username can't be changed using patch
+    // Ensure user display can't be changed using patch by another user
     User user =
         createEntity(
             createRequest(test, 7).withName("test23").withDisplayName("displayName").withEmail("test23@email.com"),
             authHeaders("test23@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setDisplayName("newName");
-    assertResponse(
-        () -> patchEntity(user.getId(), userJson, user, authHeaders("test100@email.com")),
-        FORBIDDEN,
-        noPermission("test100"));
+    assertResponse(() -> patchEntity(user.getId(), userJson, user, TEST_AUTH_HEADERS), FORBIDDEN, noPermission("test"));
   }
 
   @Test
@@ -543,8 +540,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             authHeaders("test2@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
-    Map<String, String> authHeaders = authHeaders("test100@email.com");
-    assertResponse(() -> patchEntity(user.getId(), userJson, user, authHeaders), FORBIDDEN, notAdmin("test100"));
+    assertResponse(() -> patchEntity(user.getId(), userJson, user, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin("test"));
   }
 
   @Test

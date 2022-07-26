@@ -33,8 +33,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
-  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
+  private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
+  private static final String PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
   private static PipelineServiceClient pipelineServiceClient;
 
   public IngestionPipelineRepository(CollectionDAO dao) {
@@ -44,8 +44,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         IngestionPipeline.class,
         dao.ingestionPipelineDAO(),
         dao,
-        INGESTION_PIPELINE_PATCH_FIELDS,
-        INGESTION_PIPELINE_UPDATE_FIELDS);
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
     this.allowEdits = true;
   }
 

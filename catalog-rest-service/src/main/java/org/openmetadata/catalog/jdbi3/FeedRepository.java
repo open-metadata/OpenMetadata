@@ -1032,4 +1032,8 @@ public class FeedRepository {
       this.totalCount = totalCount;
     }
   }
+
+  public User findUserByName(String userName) {
+    return dao.userDAO().findEntityByName(userName);
+  }
 }

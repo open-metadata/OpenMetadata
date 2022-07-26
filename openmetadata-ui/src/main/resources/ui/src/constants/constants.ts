@@ -19,6 +19,11 @@ export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
+export const SUPPORTED_DOMAIN_TYPES = [
+  'localhost:3000',
+  'localhost:8585',
+  'sandbox-beta.open-metadata.org',
+];
 
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGIN_VALUE = 1;
@@ -154,7 +159,8 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
-  SETTINGS: '/settings',
+  SETTINGS: `/settings`,
+  SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_ROUTE_TAB}`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
@@ -220,6 +226,7 @@ export const ROUTES = {
 export const SOCKET_EVENTS = {
   ACTIVITY_FEED: 'activityFeed',
   TASK_CHANNEL: 'taskChannel',
+  MENTION_CHANNEL: 'mentionChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

@@ -898,6 +898,7 @@ const ServicePage: FunctionComponent = () => {
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}
+            onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
           />
         </div>
       );
