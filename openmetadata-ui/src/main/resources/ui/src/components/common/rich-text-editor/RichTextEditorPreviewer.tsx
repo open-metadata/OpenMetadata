@@ -28,6 +28,7 @@ const RichTextEditorPreviewer = ({
   maxHtClass = 'tw-h-24',
   maxLen = MAX_LENGTH,
   enableSeeMoreVariant = true,
+  textVariant,
 }: PreviewerProp) => {
   const [content, setContent] = useState<string>('');
   const [displayMoreText, setDisplayMoreText] = useState<boolean>(false);
@@ -53,7 +54,9 @@ const RichTextEditorPreviewer = ({
         }
       )}
       data-testid="viewer-container">
-      <div data-testid="markdown-parser">
+      <div
+        className={classNames('markdown-parser', textVariant)}
+        data-testid="markdown-parser">
         <Viewer extendedAutolinks initialValue={content} key={uniqueId()} />
       </div>
 
