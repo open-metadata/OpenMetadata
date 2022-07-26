@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
+import { Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
-import { killIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { postkillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface KillIngestionModalProps {
@@ -37,7 +37,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      const response = await killIngestionPipelineById(pipelineId);
+      const response = await postkillIngestionPipelineById(pipelineId);
       const status = response.status;
       if (status === 200) {
         onClose();
@@ -66,10 +66,10 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       visible={isModalOpen}
       onCancel={onClose}
       onOk={handleConfirm}>
-      <span data-testid="kill-modal-body">
+      <Typography.Text data-testid="kill-modal-body">
         Once you kill this Ingestion, all running and queued workflows will be
         stopped and marked as Failed.
-      </span>
+      </Typography.Text>
     </Modal>
   );
 };

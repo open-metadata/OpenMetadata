@@ -89,7 +89,7 @@ export const getIngestionPipelineLogById = (
   return APIClient.get(`/services/ingestionPipelines/logs/${id}/last`);
 };
 
-export const killIngestionPipelineById = (
+export const postkillIngestionPipelineById = (
   id: string
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/services/ingestionPipelines/kill/${id}`);
