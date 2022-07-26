@@ -69,6 +69,15 @@ class User(Base):
     age = Column(Integer)
 
 
+class NewUser(Base):
+    __tablename__ = "new_users"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(256))
+    fullname = Column(String(256))
+    nickname = Column(String(256))
+    age = Column(Integer)
+
+
 class ProfilerWorkflowTest(TestCase):
     """
     Run the end to end workflow and validate
@@ -87,14 +96,23 @@ class ProfilerWorkflowTest(TestCase):
         """
         Prepare Ingredients
         """
-        cls.session.execute("DROP TABLE IF EXISTS USERS")
         User.__table__.create(bind=cls.engine)
+        NewUser.__table__.create(bind=cls.engine)
 
         data = [
             User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
             User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
         ]
         cls.session.add_all(data)
+        cls.session.commit()
+
+        new_user = [
+            NewUser(
+                name="John", fullname="John Doe", nickname="johnny b goode", age=30
+            ),
+            NewUser(name="Jane", fullname="Jone Doe", nickname=None, age=31),
+        ]
+        cls.session.add_all(new_user)
         cls.session.commit()
 
         ingestion_workflow = Workflow.create(ingestion_config)
@@ -122,6 +140,9 @@ class ProfilerWorkflowTest(TestCase):
             hard_delete=True,
         )
 
+        NewUser.__table__.drop(bind=cls.engine)
+        User.__table__.drop(bind=cls.engine)
+
     def test_ingestion(self):
         """
         Validate that the ingestion ran correctly
@@ -138,7 +159,12 @@ class ProfilerWorkflowTest(TestCase):
         on top of the Users table
         """
         workflow_config = deepcopy(ingestion_config)
-        workflow_config["source"]["sourceConfig"]["config"].update({"type": "Profiler"})
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+                "fqnFilterPattern": {"includes": ["test_sqlite.main.main.users"]},
+            }
+        )
         workflow_config["processor"] = {
             "type": "orm-profiler",
             "config": {
@@ -198,3 +224,27 @@ class ProfilerWorkflowTest(TestCase):
 
         with pytest.raises(WorkflowExecutionError):
             profiler_workflow.raise_from_status()
+
+    def test_worflow_sample_profile(self):
+        """Test the worflow sample profile gets propagated down to the table profileSample"""
+        workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+                "profileSample": 50,
+                "fqnFilterPattern": {"includes": ["test_sqlite.main.main.new_users"]},
+            }
+        )
+        workflow_config["processor"] = {"type": "orm-profiler", "config": {}}
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        profiler_workflow.print_status()
+        profiler_workflow.stop()
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.new_users",
+            fields=["profileSample"],
+        )
+        assert table.profileSample == 50

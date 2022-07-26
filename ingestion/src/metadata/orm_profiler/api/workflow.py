@@ -138,8 +138,8 @@ class ProfilerWorkflow:
             processor_config=self.config.processor or ProfilerProcessorConfig(),
             metadata_config=self.metadata_config,
             _from="orm_profiler",
-            # Pass the processor_interface as kwargs for the profiler
             processor_interface=self.processor_interface,
+            workflow_profile_sample=self.source_config.profileSample,
         )
 
     def create_engine_for_session(self, service_connection_config):
