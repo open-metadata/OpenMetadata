@@ -11,14 +11,16 @@
 """
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
-import glob
-import os
-from pathlib import Path
 from typing import List
 
-from airflow.models import DagModel, DagRun, TaskInstance
+from airflow.models import DagModel, TaskInstance
+from airflow.utils.log.log_reader import TaskLogReader
 from flask import Response
-from openmetadata_managed_apis.api.response import ApiResponse, ResponseFormat
+from openmetadata_managed_apis.api.response import ApiResponse
+
+LOG_METADATA = {
+    "download_logs": True,
+}
 
 
 def last_dag_logs(dag_id: str) -> Response:
@@ -32,38 +34,43 @@ def last_dag_logs(dag_id: str) -> Response:
     dag_model = DagModel.get_dagmodel(dag_id=dag_id)
 
     if not dag_model:
-        return ApiResponse.not_found(f"DAG '{dag_id}' not found.")
+        return ApiResponse.not_found(f"DAG {dag_id} not found.")
 
     last_dag_run = dag_model.get_last_dagrun(include_externally_triggered=True)
 
     if not last_dag_run:
-        return ApiResponse.not_found(f"No DAG run found for '{dag_id}'.")
+        return ApiResponse.not_found(f"No DAG run found for {dag_id}.")
 
     task_instances: List[TaskInstance] = last_dag_run.get_task_instances()
+
+    if not task_instances:
+        return ApiResponse.not_found(
+            f"Cannot find any task instance for the last DagRun of {dag_id}."
+        )
 
     response = {}
 
     for task_instance in task_instances:
-        if os.path.isfile(task_instance.log_filepath):
-            response[task_instance.task_id] = Path(
-                task_instance.log_filepath
-            ).read_text()
-        # logs could be kept in a directory with the same name than the log file path without extension per attempt
-        # TODO: pick up log file
-        elif os.path.isdir(os.path.splitext(task_instance.log_filepath)[0]):
-            dir_path = os.path.splitext(task_instance.log_filepath)[0]
-            sorted_logs = sorted(
-                filter(os.path.isfile, glob.glob(f"{dir_path}/*.log")),
-                key=os.path.getmtime,
+
+        # Pick up the _try_number, otherwise they are adding 1
+        try_number = task_instance._try_number  # pylint: disable=protected-access
+
+        task_log_reader = TaskLogReader()
+        if not task_log_reader.supports_read:
+            return ApiResponse.server_error(
+                f"Task Log Reader does not support read logs."
             )
-            response[
-                task_instance.task_id
-            ] = f"\n*** Reading local file: {task_instance.log_filepath}\n".join(
-                [Path(log).read_text() for log in sorted_logs]
+
+        logs = "\n".join(
+            list(
+                task_log_reader.read_log_stream(
+                    ti=task_instance,
+                    try_number=try_number,
+                    metadata=LOG_METADATA,
+                )
             )
-        else:
-            return ApiResponse.not_found(
-                f"Logs for task instance '{task_instance}' of DAG '{dag_id}' not found."
-            )
+        )
+
+        response[task_instance.task_id] = logs
 
     return ApiResponse.success(response)
