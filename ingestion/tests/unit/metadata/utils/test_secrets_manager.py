@@ -38,7 +38,6 @@ from metadata.generated.schema.security.client.googleSSOClientConfig import (
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
-    AuthProviderClientType,
     Singleton,
     get_secrets_manager,
 )

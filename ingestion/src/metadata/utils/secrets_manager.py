@@ -12,11 +12,10 @@ import inspect
 import json
 from abc import abstractmethod
 from pydoc import locate
-from typing import Dict, List, NewType, Optional, Union
+from typing import Dict, NewType, Optional, Union
 
 import boto3
 from botocore.exceptions import ClientError
-from pydantic.main import ModelMetaclass
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
@@ -42,10 +41,12 @@ logger = ingestion_logger()
 
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
 
+# new typing type wrapping types from the '__root__' field of 'ServiceConnection' class
 ServiceConnectionType = NewType(
     "ServiceConnectionType", ServiceConnection.__fields__["__root__"].type_
 )
 
+# new typing type wrapping types from the 'securityConfig' field of 'OpenMetadataConnection' class
 AuthProviderClientType = NewType(
     "AuthProviderClientType", OpenMetadataConnection.__fields__["securityConfig"].type_
 )
@@ -61,27 +62,61 @@ AUTH_PROVIDER_MAPPING: Dict[AuthProvider, AuthProviderClientType] = {
 
 
 class SecretsManager(metaclass=Singleton):
+    """
+    Abstract class implemented by different secrets' manager providers.
+
+    It contains a set of auxiliary methods for adding missing fields which have been encrypted in the secrets' manager
+    providers.
+    """
+
     @abstractmethod
     def add_service_config_connection(
         self,
         service: ServiceConnectionType,
         service_type: str,
-    ):
+    ) -> None:
+        """
+        Add the service connection config to a given service connection object.
+        :param service: Service connection object e.g. DatabaseConnection
+        :param service_type: Service type e.g. databaseService
+        """
         pass
 
     @abstractmethod
-    def add_auth_provider_security_config(self, config: OpenMetadataConnection):
+    def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
+        """
+        Add the auth provider security config to a given OpenMetadata connection object.
+        :param config: OpenMetadataConnection object
+        """
         pass
 
     @staticmethod
     def to_service_simple(service_type: str) -> str:
+        """
+        Return the service simple name.
+        :param service_type: Service type e.g. databaseService
+        :return:
+        """
         return service_type.replace("Service", "").lower()
 
-    def build_secret_id(self, parameters: List[str]) -> str:
-        secret_suffix = "-".join([parameter.lower() for parameter in parameters])
+    @staticmethod
+    def build_secret_id(*args: str) -> str:
+        """
+        Returns a secret_id used by the secrets' manager providers for retrieving a secret.
+        For example:
+        If `args` are `Database`, `SERVICE` and `MySql` it will return `openmetadata-database-service-mysql`
+        :param args: sorted parameters for building the secret_id
+        :return: the secret_id
+        """
+        secret_suffix = "-".join([arg.lower() for arg in args])
         return f"openmetadata-{secret_suffix}"
 
-    def get_service_connection_class(self, service_type) -> ModelMetaclass:
+    def get_service_connection_class(self, service_type: str) -> object:
+        """
+        Returns the located service object by dotted path, importing as necessary.
+        :param service_type: Service type e.g. databaseService
+        :return: Located service object
+        """
         service_conn_name = next(
             (
                 clazz[1]
@@ -98,8 +133,14 @@ class SecretsManager(metaclass=Singleton):
         )
 
     def get_connection_class(
-        self, service_type: str, service_connection_type
-    ) -> ModelMetaclass:
+        self, service_type: str, service_connection_type: str
+    ) -> object:
+        """
+        Returns the located connection object by dotted path, importing as necessary.
+        :param service_type: Service type e.g. databaseService
+        :param service_connection_type: Service connection type e.g. Mysql
+        :return: Located connection object
+        """
         connection_py_file = (
             service_connection_type[0].lower() + service_connection_type[1:]
         )
@@ -111,14 +152,14 @@ class SecretsManager(metaclass=Singleton):
 class LocalSecretsManager(SecretsManager):
     def add_auth_provider_security_config(
         self, open_metadata_connection: OpenMetadataConnection
-    ):
+    ) -> None:
         pass
 
     def add_service_config_connection(
         self,
         service: ServiceConnectionType,
         service_type: str,
-    ):
+    ) -> None:
         pass
 
 
@@ -135,15 +176,11 @@ class AWSSecretsManager(SecretsManager):
         self,
         service: ServiceConnectionType,
         service_type: str,
-    ):
+    ) -> None:
         service_connection_type = service.serviceType.value
         service_name = service.name.__root__
         secret_id = self.build_secret_id(
-            [
-                self.to_service_simple(service_type),
-                service_connection_type,
-                service_name,
-            ]
+            self.to_service_simple(service_type), service_connection_type, service_name
         )
         connection_class = self.get_connection_class(
             service_type, service_connection_type
@@ -155,11 +192,11 @@ class AWSSecretsManager(SecretsManager):
             )
         )
 
-    def add_auth_provider_security_config(self, config: OpenMetadataConnection):
+    def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
         if config.authProvider == AuthProvider.no_auth:
             return config
         secret_id = self.build_secret_id(
-            ["auth-provider", config.authProvider.value.lower()]
+            "auth-provider", config.authProvider.value.lower()
         )
         auth_config_json = self._get_string_value(secret_id)
         try:
@@ -175,8 +212,8 @@ class AWSSecretsManager(SecretsManager):
         """
         :param name: The secret name to retrieve. Current stage is always retrieved.
         :return: The value of the secret. When the secret is a string, the value is
-                 contained in the `SecretString` field. When the secret is bytes,
-                 it is contained in the `SecretBinary` field.
+                 contained in the `SecretString` field. When the secret is bytes or not present,
+                 it throws a `ValueError` exception.
         """
         if name is None:
             raise ValueError
