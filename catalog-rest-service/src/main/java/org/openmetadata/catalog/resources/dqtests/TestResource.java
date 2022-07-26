@@ -33,59 +33,59 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.api.tests.CreateTestSuite;
+import org.openmetadata.catalog.api.tests.CreateTest;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
-import org.openmetadata.catalog.jdbi3.TestSuiteRepository;
+import org.openmetadata.catalog.jdbi3.TestRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.tests.TestSuite;
+import org.openmetadata.catalog.tests.Test;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-@Path("/v1/tests/testSuite")
-@Api(value = "Test Suite collection", tags = "Test Suite collection")
+@Path("/v1/tests")
+@Api(value = "Test collection", tags = "Test collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tests")
-public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
-  public static final String COLLECTION_PATH = "/v1/tests/testSuite";
+public class TestResource extends EntityResource<Test, TestRepository> {
+  public static final String COLLECTION_PATH = "/v1/tests";
 
-  static final String FIELDS = "owner,tests";
+  static final String FIELDS = "owner,testSuite,entity";
 
   @Override
-  public TestSuite addHref(UriInfo uriInfo, TestSuite testSuite) {
-    testSuite.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, testSuite.getId()));
-    return testSuite;
+  public Test addHref(UriInfo uriInfo, Test test) {
+    test.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, test.getId()));
+    return test;
   }
 
   @Inject
-  public TestSuiteResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestSuite.class, new TestSuiteRepository(dao), authorizer);
+  public TestResource(CollectionDAO dao, Authorizer authorizer) {
+    super(Test.class, new TestRepository(dao), authorizer);
   }
 
-  public static class TestSuiteList extends ResultList<TestSuite> {
+  public static class TestList extends ResultList<Test> {
     @SuppressWarnings("unused")
-    public TestSuiteList() {
+    public TestList() {
       // Empty constructor needed for deserialization
     }
 
-    public TestSuiteList(List<TestSuite> data, String beforeCursor, String afterCursor, int total) {
+    public TestList(List<Test> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
 
   @GET
   @Operation(
-      operationId = "listTestSuites",
-      summary = "List test suites",
-      tags = "TestSuites",
+      operationId = "listTests",
+      summary = "List tests",
+      tags = "Tests",
       description =
-          "Get a list of test suites. Use `fields` "
+          "Get a list of test. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -95,9 +95,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestSuiteResource.TestSuiteList.class)))
+                    schema = @Schema(implementation = TestResource.TestList.class)))
       })
-  public ResultList<TestSuite> list(
+  public ResultList<Test> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -105,16 +105,16 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number test definitions returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = " + "10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of test definitions before this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of tests before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of test definitions after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -131,20 +131,20 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllTestSuiteVersion",
-      summary = "List test suite versions",
-      tags = "testsuite",
-      description = "Get a list of all the versions of a test suite identified by `id`",
+      operationId = "listAllTestVersion",
+      summary = "List test versions",
+      tags = "tests",
+      description = "Get a list of all the versions of a tests identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of test suite versions",
+            description = "List of test versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Suite Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return dao.listVersions(id);
   }
@@ -152,17 +152,17 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a Test Suite",
-      tags = "TestSuites",
-      description = "Get a Test Suite by `id`.",
+      summary = "Get a Test",
+      tags = "Tests",
+      description = "Get a Test by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The Test suite",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
-        @ApiResponse(responseCode = "404", description = "Test Suite for instance {id} is not found")
+            description = "The Tests",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Test.class))),
+        @ApiResponse(responseCode = "404", description = "Test for instance {id} is not found")
       })
-  public TestSuite get(
+  public Test get(
       @Context UriInfo uriInfo,
       @PathParam("id") String id,
       @Context SecurityContext securityContext,
@@ -184,18 +184,18 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @GET
   @Path("/name/{name}")
   @Operation(
-      operationId = "getTestSuiteByName",
-      summary = "Get a test suite by name",
-      tags = "test definition",
-      description = "Get a test suite by  name.",
+      operationId = "getTestByName",
+      summary = "Get a test by name",
+      tags = "Tests",
+      description = "Get a test by  name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The test suite",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
-        @ApiResponse(responseCode = "404", description = "Test Suite for instance {id} is not found")
+            description = "The Test",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Test.class))),
+        @ApiResponse(responseCode = "404", description = "Test for instance {id} is not found")
       })
-  public TestSuite getByName(
+  public Test getByName(
       @Context UriInfo uriInfo,
       @PathParam("name") String name,
       @Context SecurityContext securityContext,
@@ -217,25 +217,25 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificTestSuiteVersion",
-      summary = "Get a version of the TestSuite",
-      tags = "test suite",
-      description = "Get a version of the test suite by given `id`",
+      operationId = "getSpecificTestVersion",
+      summary = "Get a version of the Test",
+      tags = "Tests",
+      description = "Get a version of the Test by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "TestSuite",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
+            description = "Test",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Test.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Test Suite for instance {id} and version {version} is " + "not found")
+            description = "Test for instance {id} and version {version} is " + "not found")
       })
-  public TestSuite getVersion(
+  public Test getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Suite Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(
-              description = "Test Suite version number in the form `major`.`minor`",
+              description = "Test version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -245,31 +245,30 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   @POST
   @Operation(
-      operationId = "createTestSuite",
-      summary = "Create a Test Suite",
+      operationId = "createTest",
+      summary = "Create a Test",
       tags = "TestSuites",
-      description = "Create a Test suite.",
+      description = "Create a Test",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The test suite",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
+            description = "The test",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Test.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTest create)
       throws IOException {
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, testSuite, true);
+    Test test = getTest(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, test, true);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchTestSuite",
-      summary = "Update a test suite",
-      tags = "TestSuites",
-      description = "Update an existing testSuite using JsonPatch.",
+      operationId = "patchTest",
+      summary = "Update a test",
+      tags = "Tests",
+      description = "Update an existing test using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
@@ -291,33 +290,32 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateTestSuite",
-      summary = "Update test suite",
-      tags = "TestSuites",
-      description = "Create a TestSuite, it it does not exist or update an existing test suite.",
+      operationId = "createOrUpdateTest",
+      summary = "Update test",
+      tags = "Tests",
+      description = "Create a Test, it it does not exist or update an existing Test.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The updated test definition ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
+            description = "The updated test.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Test.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
-      throws IOException {
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, testSuite, true);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTest create) throws IOException {
+    Test test = getTest(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, test, true);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteTestSuite",
-      summary = "Delete a test suite",
-      tags = "TestSuites",
-      description = "Delete a test suite by `id`.",
+      operationId = "deleteTest",
+      summary = "Delete a test",
+      tags = "Tests",
+      description = "Delete a test by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Test suite for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Test for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -331,11 +329,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private TestSuite getTestSuite(CreateTestSuite create, String user) {
-    return copy(new TestSuite(), create, user)
+  private Test getTest(CreateTest create, String user) {
+    return copy(new Test(), create, user)
         .withDescription(create.getDescription())
-        .withScheduleInterval(create.getScheduleInterval())
-        .withDisplayName(create.getDisplayName())
-        .withName(create.getName());
+        .withName(create.getName())
+        .withParameterValues(create.getParameterValues())
+        .withEntity(create.getEntity())
+        .withTestDefinition(create.getTestDefinition());
   }
 }

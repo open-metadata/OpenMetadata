@@ -11,7 +11,7 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateTestSuite;
+import org.openmetadata.catalog.api.tests.CreateTestSuite;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.tests.TestSuite;
 

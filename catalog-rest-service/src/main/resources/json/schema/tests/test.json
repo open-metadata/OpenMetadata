@@ -5,6 +5,7 @@
   "description": "Test is a test definition to capture data quality tests against tables and columns.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.tests.Test",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "testCaseParameterValue": {
       "type": "object",
@@ -31,11 +32,25 @@
       "description": "Name that identifies this test case.",
       "$ref": "../type/basic.json#/definitions/entityName"
     },
+    "displayName": {
+      "description": "Display Name that identifies this test.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "description": {
       "description": "Description of the testcase.",
       "$ref": "../type/basic.json#/definitions/markdown"
     },
     "testDefinition": {
+      "$ref": "../type/entityReference.json"
+    },
+    "entity": {
+      "$ref": "../type/entityReference.json"
+    },
+    "testSuite": {
       "$ref": "../type/entityReference.json"
     },
     "parameterValues": {
@@ -44,12 +59,9 @@
         "$ref": "#/definitions/testCaseParameterValue"
       }
     },
-    "results": {
-      "description": "List of results of the test case.",
-      "type": "array",
-      "items": {
-        "$ref": "./basic.json#/definitions/testCaseResult"
-      }
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
     },
     "owner": {
       "description": "Owner of this Pipeline.",
@@ -63,6 +75,19 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "testCase"],

@@ -38,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateTestDefinition;
+import org.openmetadata.catalog.api.tests.CreateTestDefinition;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TestDefinitionRepository;

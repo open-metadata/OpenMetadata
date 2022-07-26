@@ -4,7 +4,7 @@
   "title": "CreateTestDefinitionRequest",
   "description": "Schema corresponding to a Test Definition",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.data.CreateTestDefinition",
+  "javaType": "org.openmetadata.catalog.api.tests.CreateTestDefinition",
   "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
   "properties": {
     "name": {

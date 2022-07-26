@@ -4,7 +4,7 @@
   "title": "CreateTestSuiteRequest",
   "description": "Schema corresponding to a Test Suite",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.data.CreateTestSuite",
+  "javaType": "org.openmetadata.catalog.api.tests.CreateTestSuite",
   "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
   "properties": {
     "name": {
