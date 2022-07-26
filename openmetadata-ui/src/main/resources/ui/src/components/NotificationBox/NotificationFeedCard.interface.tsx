@@ -11,20 +11,14 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import GlobalSettingRouter from '../../router/GlobalSettingRouter';
-import PageLayout from '../containers/PageLayout';
-import './GlobalSetting.less';
-import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
+import { HTMLAttributes } from 'react';
+import { ActivityFeedCardProp } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
 
-const GlobalSetting = () => {
-  return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRouter />
-    </PageLayout>
-  );
-};
-
-export default GlobalSetting;
+export interface NotificationFeedProp
+  extends HTMLAttributes<HTMLDivElement>,
+    Pick<ActivityFeedCardProp, 'feedType' | 'taskDetails'> {
+  createdBy: string;
+  entityType: string;
+  entityFQN: string;
+  timestamp?: number;
+}

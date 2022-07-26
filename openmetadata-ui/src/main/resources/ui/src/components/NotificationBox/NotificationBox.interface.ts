@@ -11,20 +11,10 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import GlobalSettingRouter from '../../router/GlobalSettingRouter';
-import PageLayout from '../containers/PageLayout';
-import './GlobalSetting.less';
-import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
-
-const GlobalSetting = () => {
-  return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRouter />
-    </PageLayout>
-  );
-};
-
-export default GlobalSetting;
+export interface NotificationBoxProp {
+  hasMentionNotification: boolean;
+  hasTaskNotification: boolean;
+  onMarkMentionsNotificationRead: () => void;
+  onMarkTaskNotificationRead: () => void;
+  onTabChange: (key: string) => void;
+}

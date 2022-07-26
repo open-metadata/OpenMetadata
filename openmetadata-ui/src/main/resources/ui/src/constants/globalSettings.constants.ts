@@ -14,7 +14,7 @@
 export const GLOBAL_SETTINGS_MENU = [
   {
     category: 'Access',
-    items: ['Users', 'Teams', 'Roles', 'Policies'],
+    items: ['Teams', 'Users', 'Roles', 'Policies'],
   },
   {
     category: 'Services',

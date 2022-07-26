@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,8 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import GlobalSettingRouter from '../../router/GlobalSettingRouter';
-import PageLayout from '../containers/PageLayout';
-import './GlobalSetting.less';
-import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
+export const shouldRequestPermission = () =>
+  !['granted', 'denied'].includes(Notification.permission);
 
-const GlobalSetting = () => {
-  return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={<GlobalSettingLeftPanel />}>
-      <GlobalSettingRouter />
-    </PageLayout>
-  );
-};
-
-export default GlobalSetting;
+export const hasNotificationPermission = () =>
+  Notification.permission === 'granted';
