@@ -144,7 +144,7 @@ const Services = ({
     <div className="tw-py-1" data-testid="services-container">
       {serviceData.length ? (
         <Fragment>
-          <div className="tw-flex tw-justify-between" data-testid="header">
+          <div className="tw-flex tw-justify-end" data-testid="header">
             <NonAdminAction
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
