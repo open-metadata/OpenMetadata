@@ -62,10 +62,7 @@ export type DbtS3Creds = Pick<
   | 'endPointURL'
 >;
 
-export type DbtS3CredsReq = Pick<
-  DbtS3Creds,
-  'awsAccessKeyId' | 'awsSecretAccessKey' | 'awsRegion'
->;
+export type DbtS3CredsReq = Pick<DbtS3Creds, 'awsRegion'>;
 
 export interface DbtSourceTypes {
   sourceType: DBT_SOURCES;
