@@ -12,7 +12,7 @@ To enable security for the Docker deployment, follow the next steps:
 Create an `openmetadata.env` file and add the following contents as an example. Use the information
 generated when setting up the account in the previous steps.
 
-```yaml
+```bash
 # OpenMetadata Server Authentication Configuration
 AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
 AUTHORIZER_REQUEST_FILTER=org.openmetadata.catalog.security.JwtFilter
