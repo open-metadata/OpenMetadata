@@ -530,6 +530,7 @@ const EntityPageInfo = ({
             data-testid={info.key || `info${index}`}
             key={index}>
             <EntitySummaryDetails
+              hasEditAccess
               data={info}
               tier={tier}
               updateOwner={updateOwner}
