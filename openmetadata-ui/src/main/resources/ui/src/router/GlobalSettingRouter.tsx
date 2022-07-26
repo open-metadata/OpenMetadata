@@ -14,12 +14,14 @@
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { GlobalSettingOptions } from '../constants/globalSettings.constants';
-import ServicesPage from '../pages/services/ServicesPage';
 import { getSettingPath } from '../utils/RouterUtils';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const WebhooksPageV1 = withSuspenseFallback(
   React.lazy(() => import('../pages/WebhooksPage/WebhooksPageV1.component'))
+);
+const ServicesPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/services/ServicesPage'))
 );
 
 const GlobalSettingRouter = () => {
