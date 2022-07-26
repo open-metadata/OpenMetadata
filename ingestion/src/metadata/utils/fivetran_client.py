@@ -23,8 +23,6 @@ from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 class FivetranClient:
     def __init__(self, config: FivetranConnection):
         self.config = config
-        print(config.apiKey)
-        print(config.apiSecret.get_secret_value())
         api_token = str(
             base64.b64encode(
                 f"{config.apiKey}:{config.apiSecret.get_secret_value()}".encode("ascii")

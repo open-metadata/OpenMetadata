@@ -19,12 +19,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import (
-    PipelineStatus,
-    StatusType,
-    Task,
-    TaskStatus,
-)
+from metadata.generated.schema.entity.data.pipeline import Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -48,7 +43,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class FivetPipelineDetails(BaseModel):
+class FivetranPipelineDetails(BaseModel):
     """
     Wrapper Class to combine source & destination
     """
@@ -90,7 +85,7 @@ class FivetranSource(PipelineServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_connections_jobs(self, pipeline_details: FivetPipelineDetails):
+    def get_connections_jobs(self, pipeline_details: FivetranPipelineDetails):
         """
         Returns the list of tasks linked to connection
         """
@@ -103,7 +98,7 @@ class FivetranSource(PipelineServiceSource):
         ]
 
     def yield_pipeline(
-        self, pipeline_details: FivetPipelineDetails
+        self, pipeline_details: FivetranPipelineDetails
     ) -> Iterable[CreatePipelineRequest]:
         """
         Convert a Connection into a Pipeline Entity
@@ -122,14 +117,14 @@ class FivetranSource(PipelineServiceSource):
         )
 
     def yield_pipeline_status(
-        self, pipeline_details: FivetPipelineDetails
+        self, pipeline_details: FivetranPipelineDetails
     ) -> Optional[OMetaPipelineStatus]:
         """
         Method to get task & pipeline status
         """
 
     def yield_pipeline_lineage_details(
-        self, pipeline_details: FivetPipelineDetails
+        self, pipeline_details: FivetranPipelineDetails
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Parse all the stream available in the connection and create a lineage between them
@@ -144,8 +139,6 @@ class FivetranSource(PipelineServiceSource):
         )
         if not source_service or not destination_service:
             return
-        print("$ " * 100)
-        print(pipeline_details.source.get("config", {}))
 
         for schema, schema_data in self.client.get_connector_schema_details(
             connector_id=pipeline_details.source.get("id")
@@ -195,7 +188,7 @@ class FivetranSource(PipelineServiceSource):
                     )
                 )
 
-    def get_pipelines_list(self) -> Iterable[FivetPipelineDetails]:
+    def get_pipelines_list(self) -> Iterable[FivetranPipelineDetails]:
         """
         Get List of all pipelines
         """
@@ -203,14 +196,14 @@ class FivetranSource(PipelineServiceSource):
             for connector in self.client.list_group_connectors(
                 group_id=group.get("id")
             ):
-                yield FivetPipelineDetails(
+                yield FivetranPipelineDetails(
                     destination=self.client.get_destination_details(group.get("id")),
                     source=self.client.get_connector_details(connector.get("id")),
                     group=group,
                 )
 
-    def get_pipeline_name(self, pipeline_details: FivetPipelineDetails) -> str:
+    def get_pipeline_name(self, pipeline_details: FivetranPipelineDetails) -> str:
         """
         Get Pipeline Name
         """
-        return pipeline_details.pipeline_display_name
+        return pipeline_details.pipeline_name
