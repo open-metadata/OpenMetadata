@@ -14,6 +14,7 @@
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { GlobalSettingOptions } from '../constants/globalSettings.constants';
+import ServicesPage from '../pages/services/ServicesPage';
 import { getSettingPath } from '../utils/RouterUtils';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -31,6 +32,31 @@ const GlobalSettingRouter = () => {
         exact
         component={WebhooksPageV1}
         path={getSettingPath(GlobalSettingOptions.WEBHOOK)}
+      />
+      <Route
+        exact
+        component={ServicesPage}
+        path={getSettingPath(GlobalSettingOptions.DATABASES)}
+      />
+      <Route
+        exact
+        component={ServicesPage}
+        path={getSettingPath(GlobalSettingOptions.MESSAGING)}
+      />
+      <Route
+        exact
+        component={ServicesPage}
+        path={getSettingPath(GlobalSettingOptions.MLMODELS)}
+      />
+      <Route
+        exact
+        component={ServicesPage}
+        path={getSettingPath(GlobalSettingOptions.PIPELINES)}
+      />
+      <Route
+        exact
+        component={ServicesPage}
+        path={getSettingPath(GlobalSettingOptions.DASHBOARDS)}
       />
     </Switch>
   );

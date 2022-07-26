@@ -127,7 +127,15 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'mlmodelServices',
 ];
 
-export const servicesDisplayName = {
+export const SERVICE_CATEGORY = {
+  databases: 'databaseServices',
+  messaging: 'messagingServices',
+  dashboards: 'dashboardServices',
+  pipelines: 'pipelineServices',
+  mlModels: 'mlmodelServices',
+};
+
+export const servicesDisplayName: { [key: string]: string } = {
   databaseServices: 'Database Service',
   messagingServices: 'Messaging Service',
   dashboardServices: 'Dashboard Service',
