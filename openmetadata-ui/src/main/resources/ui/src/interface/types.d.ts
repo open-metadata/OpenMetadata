@@ -574,7 +574,7 @@ declare module 'Models' {
     EditDescription: boolean;
     EditLineage: boolean;
     EditTags: boolean;
-    TeamEditUsers: boolean;
+    EditUsers: boolean;
   }
   export interface EditorContentRef {
     getEditorContent: () => string;

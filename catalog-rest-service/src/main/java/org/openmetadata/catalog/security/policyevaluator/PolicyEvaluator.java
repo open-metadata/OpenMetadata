@@ -15,6 +15,7 @@ package org.openmetadata.catalog.security.policyevaluator;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.NonNull;
@@ -55,7 +56,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class PolicyEvaluator {
 
   private PolicyRepository policyRepository;
-  private final ConcurrentHashMap<UUID, Rules> policyToRules = new ConcurrentHashMap<>();
+  private final Map<UUID, Rules> policyToRules = new ConcurrentHashMap<>();
   private final RulesEngine checkPermissionRulesEngine;
   private final RulesEngine allowedOperationsRulesEngine;
 
