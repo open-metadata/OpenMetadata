@@ -937,6 +937,7 @@ const ServicePage: FunctionComponent = () => {
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
+                    hasEditAccess
                     data={info}
                     updateOwner={handleUpdateOwner}
                   />

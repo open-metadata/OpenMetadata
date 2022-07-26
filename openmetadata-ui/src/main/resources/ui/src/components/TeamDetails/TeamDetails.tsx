@@ -595,7 +595,11 @@ const TeamDetails = ({
             </div>
           </div>
           <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
-            <EntitySummaryDetails data={extraInfo} updateOwner={updateOwner} />
+            <EntitySummaryDetails
+              hasEditAccess
+              data={extraInfo}
+              updateOwner={updateOwner}
+            />
           </div>
           <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
             <Description

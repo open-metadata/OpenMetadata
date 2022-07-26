@@ -661,7 +661,7 @@ const DatabaseDetails: FunctionComponent = () => {
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
-                  <EntitySummaryDetails data={info} />
+                  <EntitySummaryDetails hasEditAccess data={info} />
 
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                     <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">

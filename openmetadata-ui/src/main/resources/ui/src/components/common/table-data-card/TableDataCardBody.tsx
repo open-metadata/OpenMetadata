@@ -56,7 +56,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
               className="tw-flex tw-items-center"
               data-testid={info.key}
               key={i}>
-              <EntitySummaryDetails data={info} />
+              <EntitySummaryDetails hasEditAccess data={info} />
               {i !== extraInfo.length - 1 && (
                 <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                   |
