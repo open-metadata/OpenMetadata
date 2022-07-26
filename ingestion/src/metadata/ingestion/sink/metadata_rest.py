@@ -40,6 +40,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -56,6 +57,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     _create_lineage_by_table_name,
@@ -461,14 +463,23 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_tag_category(self, record: OMetaTagAndCategory):
         try:
-            self.metadata.create_tag_category(tag_category_body=record.category_name)
+            self.metadata.update_tag_category(
+                tag_category_body=record.category_name,
+                category_name=record.category_name.name.__root__,
+            )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(err)
         try:
-            self.metadata.create_primary_tag(
+            self.metadata.update_primary_tag(
                 category_name=record.category_name.name.__root__,
                 primary_tag_body=record.category_details,
+                primary_tag_fqn=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Tag,
+                    tag_category_name=record.category_name.name.__root__,
+                    tag_name=record.category_details.name.__root__,
+                ),
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
