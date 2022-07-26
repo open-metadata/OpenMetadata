@@ -68,6 +68,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Override
   public TestDefinition addHref(UriInfo uriInfo, TestDefinition testDefinition) {
     testDefinition.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, testDefinition.getId()));
+    Entity.withHref(uriInfo, testDefinition.getOwner());
     return testDefinition;
   }
 

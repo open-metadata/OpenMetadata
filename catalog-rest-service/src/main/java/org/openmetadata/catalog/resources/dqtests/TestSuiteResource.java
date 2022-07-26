@@ -33,6 +33,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tests.CreateTestSuite;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -60,6 +61,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Override
   public TestSuite addHref(UriInfo uriInfo, TestSuite testSuite) {
     testSuite.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, testSuite.getId()));
+    Entity.withHref(uriInfo, testSuite.getOwner());
     return testSuite;
   }
 
