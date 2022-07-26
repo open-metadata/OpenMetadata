@@ -20,7 +20,7 @@ import org.openmetadata.catalog.resources.bots.BotResource.BotList;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 
-public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
+class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
   public static EntityReference botUserRef;
 

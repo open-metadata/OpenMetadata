@@ -1,26 +1,64 @@
 import textwrap
 
 REDSHIFT_SQL_STATEMENT = """
-        SELECT DISTINCT ss.userid,
-            ss.query query_type,
-            sui.usename user_name,
-            ss.tbl,
-            sq.querytxt query_text,
-            sti.database database_name,
-            sti.schema schema_name,
-            sti.table,
-            sq.starttime start_time,
-            sq.endtime end_time,
-            sq.aborted aborted
-        FROM stl_scan ss
-            JOIN svv_table_info sti ON ss.tbl = sti.table_id
-            JOIN stl_query sq ON ss.query = sq.query
-            JOIN svl_user_info sui ON sq.userid = sui.usesysid
-        WHERE ss.starttime >= '{start_time}'
-            AND ss.starttime < '{end_time}'
-            AND sq.aborted = 0
-        ORDER BY ss.endtime DESC;
-    """
+  WITH
+  queries AS (
+    SELECT *
+      FROM pg_catalog.stl_query
+     WHERE userid > 1
+          -- Filter out all automated & cursor queries
+          AND querytxt NOT ILIKE 'fetch %%'
+          AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
+          AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
+          AND querytxt NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
+          AND querytxt NOT LIKE '/* {"app": "dbt", %%} */%%'
+          AND aborted = 0
+          AND starttime >= '{start_time}'
+          AND starttime < '{end_time}'
+          
+  ),
+  full_queries AS (
+    SELECT
+          query,
+          LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
+            WITHIN GROUP (ORDER BY sequence) AS query_text
+      FROM pg_catalog.stl_querytext
+      WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
+    GROUP BY query
+  ),
+  raw_scans AS (
+    -- We have one row per table per slice so we need to get rid of the dupes
+    SELECT distinct query, tbl
+      FROM pg_catalog.stl_scan
+  ),
+  scans AS (
+  	SELECT DISTINCT
+  		query,
+  		sti.database AS database_name,
+      sti.schema AS schema_name
+  	  FROM raw_scans AS s
+          INNER JOIN pg_catalog.svv_table_info AS sti
+            ON (s.tbl)::oid = sti.table_id
+  )
+  SELECT DISTINCT
+        q.userid,
+        s.query AS query_id,
+        RTRIM(u.usename) AS user_name,
+        fq.query_text,
+        s.database_name,
+        s.schema_name,
+        q.starttime AS start_time,
+        q.endtime AS end_time,
+        q.aborted AS aborted
+    FROM scans AS s
+        INNER JOIN queries AS q
+          ON s.query = q.query
+        INNER JOIN full_queries AS fq
+          ON s.query = fq.query
+        INNER JOIN pg_catalog.pg_user AS u
+          ON q.userid = u.usesysid
+    ORDER BY q.endtime DESC
+"""
 
 REDSHIFT_GET_ALL_RELATION_INFO = """
         SELECT
@@ -150,7 +188,9 @@ SNOWFLAKE_SQL_STATEMENT = """
             RESULT_LIMIT => {result_limit}
             )
         )
-        WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES');
+        WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES')
+          AND query_text NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
+          AND query_text NOT LIKE '/* {"app": "dbt", %%} */%%';
         """
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
@@ -297,6 +337,8 @@ MSSQL_SQL_USAGE_STATEMENT = """
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
+          AND t.text NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
+          AND t.text NOT LIKE '/* {"app": "dbt", %%} */%%';
       ORDER BY s.last_execution_time DESC;
 """
 
@@ -315,6 +357,8 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
         Where start_time between '{start_time}' and '{end_time}'
         and CAST(type,'Int8') <> 3
         and CAST(type,'Int8') <> 4
+        and query NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
+        and query NOT LIKE '/* {"app": "dbt", %%} */%%'
         and (`type`='QueryFinish' or `type`='QueryStart')
 """
 
@@ -356,6 +400,8 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
+  AND text NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
+  AND text NOT LIKE '/* {"app": "dbt", %%} */%%'
 """
 
 

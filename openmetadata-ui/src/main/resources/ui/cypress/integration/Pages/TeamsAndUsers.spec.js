@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/// <reference types="cypress" />
 
 import { searchEntity } from '../../common/common';
 import { DELETE_TERM, NEW_TEAM, NEW_USER, SEARCH_ENTITY_TABLE, TEAMS, TOTAL_SAMPLE_DATA_TEAMS_COUNT } from '../../constants/constants';
@@ -63,6 +64,7 @@ describe('TeamsAndUsers page', () => {
       .as('hardDeleteContainer');
 
     cy.get('@hardDeleteContainer')
+      .scrollIntoView()
       .find('[data-testid="delete-button"]')
       .should('be.visible')
       .click();
@@ -80,10 +82,12 @@ describe('TeamsAndUsers page', () => {
   };
 
   it('All the required details should render properly', () => {
-    cy.get('[data-testid="team-name"]').should(
-      'have.length',
-      TOTAL_SAMPLE_DATA_TEAMS_COUNT
-    );
+    // let teamsCount = 0;
+    cy.intercept('GET', '/api/v1/teams*').as('getTeams');
+    cy.wait('@getTeams').then((xhr) => {
+      let teamsCount = xhr.response.body.data.length;
+      cy.get('[data-testid="team-name"]').should('have.length', teamsCount);
+    });
     cy.get(`[data-testid="team-${TEAMS.Cloud_Infra.name}"] > .tw-group`).should(
       'have.class',
       'activeCategory'
@@ -282,12 +286,24 @@ describe('TeamsAndUsers page', () => {
     cy.wait(500); // Wait for result to load after api success
     cy.get('@resultLink').click();
 
-    cy.get('[data-testid="Manage"]').should('be.visible').click();
-    cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
+    cy.get('[data-testid="Owner"] [data-testid="image"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
-    cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
+    cy.intercept('GET', '/api/v1/search/query?q=***&from=0&size=10&*').as(
+      'searchQuery'
+    );
+    cy.wait('@searchQuery');
+    cy.wait(1000);
+    cy.get('[data-testid="dropdown-tab"]')
+      .eq(0)
+      .scrollIntoView()
+      .should('exist')
+      .click();
 
     cy.get('[data-testid="list-item"] > .tw-truncate')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 

@@ -26,7 +26,12 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataModel,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -262,7 +267,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         From topology.
@@ -271,7 +276,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[CreateTableRequest]:
         """
         From topology.
@@ -281,7 +286,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
 
     def yield_datamodel(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[DataModelLink]:
         """
         Gets the current table being processed, fetches its data model
@@ -374,12 +379,12 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteTable]:
+    def delete_database_tables(self, database_fqn: str) -> Iterable[DeleteTable]:
         """
         Returns Deleted tables
         """
         database_state = self.metadata.list_all_entities(
-            entity=Table, params={"database": schema_fqn}
+            entity=Table, params={"database": database_fqn}
         )
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
@@ -393,13 +398,10 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            for schema_name in self.get_database_schema_names():
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.config.serviceName,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=schema_name,
-                )
-
-                yield from self.delete_schema_tables(schema_fqn)
+            databse_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.config.serviceName,
+                database_name=self.context.database.name.__root__,
+            )
+            yield from self.delete_database_tables(databse_fqn)

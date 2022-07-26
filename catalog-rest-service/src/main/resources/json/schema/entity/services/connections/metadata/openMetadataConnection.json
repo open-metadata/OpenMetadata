@@ -67,6 +67,14 @@
       "enum": ["local", "aws"],
       "default": "local"
     },
+    "secretsManagerCredentials": {
+      "description": "OpenMetadata Secrets Manager Client credentials",
+      "oneOf": [
+        {
+          "$ref": "../../../../security/credentials/awsCredentials.json"
+        }
+      ]
+    },
     "apiVersion": {
       "description": "OpenMetadata server API version to use.",
       "type": "string",

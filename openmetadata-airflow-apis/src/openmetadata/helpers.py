@@ -12,12 +12,13 @@
 Helper functions
 """
 import re
+from typing import Optional
 
 
-def clean_dag_id(raw_dag_id: str) -> str:
+def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
     """
     Given a string we want to use as a dag_id, we should
     give it a cleanup as Airflow does not support anything
     that is not alphanumeric for the name
     """
-    return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id)
+    return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id) if raw_dag_id else None

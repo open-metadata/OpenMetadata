@@ -1,15 +1,18 @@
-import logging
 import re
-import uuid
-from typing import Any, Dict, Iterable, List, Optional
+import traceback
+from enum import Enum
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from pyspark.sql import SparkSession
-from pyspark.sql.types import ArrayType, MapType, StructType
 from pyspark.sql.utils import AnalysisException, ParseException
 
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Table, TableType
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Column, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
@@ -17,15 +20,20 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    SQLSourceStatus,
+)
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -36,13 +44,27 @@ logger = ingestion_logger()
 DEFAULT_DATABASE = "default"
 
 
+class SparkTableType(Enum):
+    MANAGED = "MANAGED"
+    TEMPORARY = "TEMPORARY"
+    VIEW = "VIEW"
+    EXTERNAL = "EXTERNAL"
+
+
+TABLE_TYPE_MAP = {
+    SparkTableType.MANAGED.value: TableType.Regular,
+    SparkTableType.VIEW.value: TableType.View,
+    SparkTableType.EXTERNAL.value: TableType.External,
+}
+
+
 class MetaStoreNotFoundException(Exception):
     """
     Metastore is not passed thorugh file or url
     """
 
 
-class DeltalakeSource(Source[Entity]):
+class DeltalakeSource(DatabaseServiceSource):
     spark: SparkSession = None
 
     def __init__(
@@ -50,8 +72,11 @@ class DeltalakeSource(Source[Entity]):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
+
         self.config = config
+        self.source_config: DatabaseServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
@@ -72,6 +97,9 @@ class DeltalakeSource(Source[Entity]):
         self.array_datatype_replace_map = {"(": "<", ")": ">", "=": ":", "<>": ""}
         self.ARRAY_CHILD_START_INDEX = 6
         self.ARRAY_CHILD_END_INDEX = -1
+        self.table_constraints = None
+        self.database_source_state = set()
+        super().__init__()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -87,7 +115,35 @@ class DeltalakeSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Default case with a single database.
+
+        It might come informed - or not - from the source.
+
+        Sources with multiple databases should overwrite this and
+        apply the necessary filters.
+        """
+
+        yield DEFAULT_DATABASE
+
+    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink
+        """
+        yield CreateDatabaseRequest(
+            name=database_name,
+            service=EntityReference(
+                id=self.context.database_service.id,
+                type="databaseService",
+            ),
+        )
+
+    def get_database_schema_names(self) -> Iterable[str]:
+        """
+        return schema names
+        """
         schemas = self.spark.catalog.listDatabases()
         for schema in schemas:
             if filter_by_schema(
@@ -95,7 +151,109 @@ class DeltalakeSource(Source[Entity]):
             ):
                 self.status.filter(schema.name, "Schema pattern not allowed")
                 continue
-            yield from self.fetch_tables(schema.name)
+            yield schema.name
+
+    def yield_database_schema(
+        self, schema_name: str
+    ) -> Iterable[CreateDatabaseSchemaRequest]:
+        """
+        From topology.
+        Prepare a database schema request and pass it to the sink
+        """
+        yield CreateDatabaseSchemaRequest(
+            name=schema_name,
+            database=EntityReference(id=self.context.database.id, type="database"),
+        )
+
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Handle table and views.
+
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
+        """
+        schema_name = self.context.database_schema.name.__root__
+        for table in self.spark.catalog.listTables(schema_name):
+            try:
+                table_name = table.name
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=table_name
+                ):
+                    self.status.filter(
+                        f"{table_name}",
+                        "Table pattern not allowed",
+                    )
+                    continue
+                if (
+                    self.source_config.includeTables
+                    and table.tableType
+                    and table.tableType != SparkTableType.VIEW.value
+                ):
+                    # We will skip ingesting any TMP table
+                    if table.tableType == SparkTableType.TEMPORARY.value:
+                        logger.debug(f"Skipping temporary table {table.name}")
+                        continue
+
+                    self.context.table_description = table.description
+                    yield table_name, TABLE_TYPE_MAP.get(
+                        table.tableType, TableType.Regular
+                    )
+
+                if (
+                    self.source_config.includeViews
+                    and table.tableType
+                    and table.tableType == SparkTableType.VIEW.value
+                ):
+                    self.context.table_description = table.description
+                    yield table_name, TableType.View
+
+            except Exception as err:
+                logger.error(err)
+                self.status.warnings.append(
+                    "{}.{}".format(self.config.serviceName, table.name)
+                )
+
+    def yield_table(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[Optional[CreateTableRequest]]:
+        """
+        From topology.
+        Prepare a table request and pass it to the sink
+        """
+        table_name, table_type = table_name_and_type
+        schema_name = self.context.database_schema.name.__root__
+        try:
+            columns = self.get_columns(schema_name, table_name)
+            view_definition = (
+                self._fetch_view_schema(table_name)
+                if table_type == TableType.View
+                else None
+            )
+
+            table_request = CreateTableRequest(
+                name=table_name,
+                tableType=table_type,
+                description=self.context.table_description,
+                columns=columns,
+                tableConstraints=None,
+                databaseSchema=EntityReference(
+                    id=self.context.database_schema.id,
+                    type="databaseSchema",
+                ),
+                viewDefinition=view_definition,
+            )
+
+            yield table_request
+            self.register_record(table_request=table_request)
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+            self.status.failures.append(
+                "{}.{}".format(self.config.serviceName, table_name)
+            )
 
     def get_status(self):
         return self.status
@@ -103,83 +261,7 @@ class DeltalakeSource(Source[Entity]):
     def prepare(self):
         pass
 
-    def _get_table_type(self, table_type: str):
-        return self.table_type_map.get(table_type.lower(), TableType.Regular.value)
-
-    def fetch_tables(self, schema: str) -> Iterable[OMetaDatabaseAndTable]:
-        for table in self.spark.catalog.listTables(schema):
-            try:
-                table_name = table.name
-                if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern, table_name
-                ):
-                    self.status.filter(
-                        "{}.{}".format(self.config.serviceName, table_name),
-                        "Table pattern not allowed",
-                    )
-                    continue
-                self.status.scanned("{}.{}".format(self.config.serviceName, table_name))
-                table_columns = self._fetch_columns(schema, table_name)
-                if table.tableType and table.tableType.lower() != "view":
-                    table_entity = Table(
-                        id=uuid.uuid4(),
-                        name=table_name,
-                        tableType=self._get_table_type(table.tableType),
-                        description=table.description,
-                        columns=table_columns,
-                    )
-                else:
-                    view_definition = self._fetch_view_schema(table_name)
-                    table_entity = Table(
-                        id=uuid.uuid4(),
-                        name=table_name,
-                        tableType=self._get_table_type(table.tableType),
-                        description=table.description,
-                        columns=table_columns,
-                        viewDefinition=view_definition,
-                    )
-
-                database = self.get_database_entity()
-                table_and_db = OMetaDatabaseAndTable(
-                    table=table_entity,
-                    database=database,
-                    database_schema=self._get_database_schema(database, schema),
-                )
-                yield table_and_db
-            except Exception as err:
-                logger.error(err)
-                self.status.warnings.append(
-                    "{}.{}".format(self.config.serviceName, table.name)
-                )
-
-    def get_database_entity(self) -> Database:
-        return Database(
-            id=uuid.uuid4(),
-            name=DEFAULT_DATABASE,
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.type.value
-            ),
-        )
-
-    def _get_database_schema(self, database: Database, schema: str) -> DatabaseSchema:
-        return DatabaseSchema(
-            name=schema,
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.type.value
-            ),
-            database=EntityReference(id=database.id, type="database"),
-        )
-
-    def _fetch_table_description(self, table_name: str) -> Optional[Dict]:
-        try:
-            table_details_df = self.spark.sql(f"describe detail {table_name}")
-            table_detail = table_details_df.collect()[0]
-            return table_detail.asDict()
-        except Exception as e:
-            logging.error(e)
-
     def _fetch_view_schema(self, view_name: str) -> Optional[Dict]:
-        describe_output = []
         try:
             describe_output = self.spark.sql(f"describe extended {view_name}").collect()
         except Exception as e:
@@ -211,7 +293,6 @@ class DeltalakeSource(Source[Entity]):
 
     def _get_col_info(self, row):
         parsed_string = ColumnTypeParser._parse_datatype_string(row["data_type"])
-        column = None
         if parsed_string:
             parsed_string["dataLength"] = self._check_col_length(
                 parsed_string["dataType"], row["data_type"]
@@ -251,8 +332,7 @@ class DeltalakeSource(Source[Entity]):
             )
         return column
 
-    def _fetch_columns(self, schema: str, table: str) -> List[Column]:
-        raw_columns = []
+    def get_columns(self, schema: str, table: str) -> List[Column]:
         field_dict: Dict[str, Any] = {}
         table_name = f"{schema}.{table}"
         try:
@@ -275,12 +355,16 @@ class DeltalakeSource(Source[Entity]):
 
         return parsed_columns
 
-    def _is_complex_delta_type(self, delta_type: Any) -> bool:
-        return (
-            isinstance(delta_type, StructType)
-            or isinstance(delta_type, ArrayType)
-            or isinstance(delta_type, MapType)
-        )
+    def yield_view_lineage(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        pass
+
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+        pass
+
+    def close(self):
+        pass
 
     def test_connection(self) -> None:
         pass

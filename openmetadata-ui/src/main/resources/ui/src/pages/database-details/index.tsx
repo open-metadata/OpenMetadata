@@ -42,6 +42,7 @@ import { getAllTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
+import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -85,7 +86,7 @@ import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
-import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
@@ -660,7 +661,8 @@ const DatabaseDetails: FunctionComponent = () => {
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
-                  {getInfoElements(info)}
+                  <EntitySummaryDetails data={info} />
+
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                     <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                       |

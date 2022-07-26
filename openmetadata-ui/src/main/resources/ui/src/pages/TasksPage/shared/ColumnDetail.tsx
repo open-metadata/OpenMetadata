@@ -21,7 +21,9 @@ const ColumnDetail = ({ column }: { column: Column }) => {
   return !isEmpty(column) && !isUndefined(column) ? (
     <div className="tw-mb-4" data-testid="column-details">
       <div className="tw-flex">
-        <span className="tw-text-grey-muted tw-flex-none tw-mr-1">
+        <span
+          className="tw-text-grey-muted tw-flex-none tw-mr-1"
+          data-testid="column-type">
           Column type:
         </span>{' '}
         <Ellipses tooltip rows={1}>
@@ -29,7 +31,7 @@ const ColumnDetail = ({ column }: { column: Column }) => {
         </Ellipses>
       </div>
       {column.tags && column.tags.length ? (
-        <div className="tw-flex tw-mt-4">
+        <div className="tw-flex tw-mt-4" data-testid="column-tags">
           <SVGIcons
             alt="icon-tag"
             className="tw-mr-1"

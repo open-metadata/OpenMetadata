@@ -38,6 +38,10 @@ public final class RestUtil {
   public static final String ENTITY_NO_CHANGE = "entityNoChange";
   public static final String ENTITY_SOFT_DELETED = "entitySoftDeleted";
   public static final String ENTITY_DELETED = "entityDeleted";
+  public static final String DELETED_USER_NAME = "DeletedUser";
+  public static final String DELETED_USER_DISPLAY = "User was deleted";
+  public static final String DELETED_TEAM_NAME = "DeletedTeam";
+  public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
 
   public static final DateFormat DATE_TIME_FORMAT;
@@ -69,7 +73,13 @@ public final class RestUtil {
 
   public static URI getHref(URI parent, String child) {
     child = removeSlashes(child);
+    child = replaceSpaces(child);
     return URI.create(parent.toString() + "/" + child);
+  }
+
+  public static String replaceSpaces(String s) {
+    s = s.replaceAll(" ", "%20");
+    return s;
   }
 
   public static URI getHref(UriInfo uriInfo, String collectionPath, String resourcePath) {

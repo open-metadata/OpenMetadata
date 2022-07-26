@@ -105,7 +105,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
       String triggerUrl = String.format(triggerEndPoint, serviceURL);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("workflow_name", pipelineName);
+      requestPayload.put("dag_id", pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response.body();
@@ -188,7 +188,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public HttpResponse<String> getServiceStatus() {
     try {
-      HttpResponse<String> response = requestAuthenticatedForJsonContent("%s/rest_api/api?api=rest_status", serviceURL);
+      HttpResponse<String> response = requestNoAuthForJsonContent("%s/rest_api/health", serviceURL);
       if (response.statusCode() == 200) {
         return response;
       }
@@ -216,10 +216,30 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(String pipelineName) {
+  public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
+    try {
+      String killEndPoint = "%s/rest_api/api?api=kill_all";
+      String killUrl = String.format(killEndPoint, serviceURL);
+      JSONObject requestPayload = new JSONObject();
+      requestPayload.put("dag_id", ingestionPipeline.getName());
+      response = post(killUrl, requestPayload.toString());
+      if (response.statusCode() == 200) {
+        return response;
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to kill running workflows", e.getMessage());
+    }
+    throw new PipelineServiceClientException(
+        String.format("Failed to kill running workflows due to %s", response.body()));
+  }
+
+  @Override
+  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
     try {
       HttpResponse<String> response =
-          requestAuthenticatedForJsonContent("%s/rest_api/api?api=last_dag_logs&dag_id=%s", serviceURL, pipelineName);
+          requestAuthenticatedForJsonContent(
+              "%s/rest_api/api?api=last_dag_logs&dag_id=%s", serviceURL, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
@@ -240,6 +260,13 @@ public class AirflowRESTClient extends PipelineServiceClient {
             .header(AUTH_HEADER, authToken)
             .GET()
             .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> requestNoAuthForJsonContent(String stringUrlFormat, Object... stringReplacement)
+      throws IOException, InterruptedException {
+    String url = String.format(stringUrlFormat, stringReplacement);
+    HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header(CONTENT_HEADER, CONTENT_TYPE).GET().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }

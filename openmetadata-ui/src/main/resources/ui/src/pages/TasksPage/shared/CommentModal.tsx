@@ -41,6 +41,7 @@ const CommentModal: FC<CommentModalProps> = ({
         type: 'link',
         className: 'ant-btn-link-custom',
       }}
+      data-testid="comment-modal"
       okButtonProps={{
         disabled: !comment,
         className: 'ant-btn-primary-custom',

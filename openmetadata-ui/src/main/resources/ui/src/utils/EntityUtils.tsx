@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import { isEmpty, isNil, isString, isUndefined, startCase } from 'lodash';
-import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
+import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
+import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -34,7 +32,6 @@ import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
-import SVGIcons from './SvgUtils';
 import {
   getDataTypeString,
   getTierFromTableTags,
@@ -364,111 +361,6 @@ export const isLeafNode = (
   } else {
     return false;
   }
-};
-
-export const getInfoElements = (data: ExtraInfo) => {
-  let retVal = <></>;
-  const displayVal = data.placeholderText || data.value;
-
-  switch (data.key) {
-    case 'Owner':
-      {
-        retVal =
-          displayVal && displayVal !== '--' ? (
-            isString(displayVal) ? (
-              <div className="tw-inline-block tw-mr-2">
-                <ProfilePicture
-                  displayName={displayVal}
-                  id=""
-                  name={data.profileName || ''}
-                  width={data.avatarWidth || '20'}
-                />
-              </div>
-            ) : (
-              <></>
-            )
-          ) : (
-            <>No Owner</>
-          );
-      }
-
-      break;
-    case 'Tier':
-      {
-        retVal = !displayVal || displayVal === '--' ? <>No Tier</> : <></>;
-      }
-
-      break;
-    default:
-      {
-        retVal = (
-          <>
-            {data.key
-              ? displayVal
-                ? data.showLabel
-                  ? `${data.key}: `
-                  : null
-                : `No ${data.key}`
-              : null}
-          </>
-        );
-      }
-
-      break;
-  }
-
-  return (
-    <span>
-      <span className="tw-text-grey-muted">{retVal}</span>
-      {displayVal ? (
-        <span>
-          {data.isLink ? (
-            <a
-              data-testid="owner-link"
-              href={data.value as string}
-              rel="noopener noreferrer"
-              target={data.openInNewTab ? '_blank' : '_self'}>
-              <>
-                <span
-                  className={classNames(
-                    'tw-mr-1 tw-inline-block tw-truncate link-text tw-align-middle',
-                    {
-                      'tw-w-52': (displayVal as string).length > 32,
-                    }
-                  )}>
-                  {displayVal}
-                </span>
-                {data.openInNewTab && (
-                  <SVGIcons
-                    alt="external-link"
-                    className="tw-align-middle"
-                    icon="external-link"
-                    width="16px"
-                  />
-                )}
-              </>
-            </a>
-          ) : (
-            <>
-              {data.key === 'Owner' ? (
-                <span
-                  className={classNames(
-                    'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
-                    { 'tw-w-52': (displayVal as string).length > 32 }
-                  )}
-                  data-testid="owner-name"
-                  title={displayVal as string}>
-                  {displayVal}
-                </span>
-              ) : (
-                <span>{displayVal}</span>
-              )}
-            </>
-          )}
-        </span>
-      ) : null}
-    </span>
-  );
 };
 
 export const ENTITY_LINK_SEPARATOR = '::';

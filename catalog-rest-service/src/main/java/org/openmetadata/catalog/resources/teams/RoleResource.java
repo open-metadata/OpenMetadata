@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
-import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.dropwizard.jersey.PATCH;
@@ -75,9 +73,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Api(value = "Roles collection", tags = "Roles collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "roles", order = 2) // Load after PolicyResource at Order 0
-// policies exist before
-// loading roles
+@Collection(name = "roles", order = 1) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";
@@ -323,7 +319,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, role, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, role, true);
     RoleEvaluator.getInstance().update((Role) response.getEntity());
     return response;
   }
@@ -345,7 +341,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, role, ADMIN | BOT);
+    Response response = createOrUpdate(uriInfo, securityContext, role, true);
     RoleEvaluator.getInstance().update((Role) response.getEntity());
     return response;
   }
@@ -400,7 +396,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    Response response = delete(uriInfo, securityContext, id, true, hardDelete, ADMIN | BOT);
+    Response response = delete(uriInfo, securityContext, id, true, hardDelete, true);
     RoleEvaluator.getInstance().delete((Role) response.getEntity());
     return response;
   }

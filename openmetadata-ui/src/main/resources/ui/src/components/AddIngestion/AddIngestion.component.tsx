@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
 import {
-  INGESTION_SCHEDULER_INITIAL_VALUE,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/ingestion.constant';
@@ -97,7 +96,7 @@ const AddIngestion = ({
   );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
-    data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
+    data?.airflowConfig.scheduleInterval ?? ''
   );
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(
@@ -169,6 +168,9 @@ const AddIngestion = ({
   );
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
+  );
+  const [profileSample, setProfileSample] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.profileSample
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
@@ -470,6 +472,7 @@ const AddIngestion = ({
           ),
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
+          profileSample: profileSample,
         };
       }
       case PipelineType.Metadata:
@@ -482,7 +485,9 @@ const AddIngestion = ({
   const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: repeatFrequency,
+        scheduleInterval: isEmpty(repeatFrequency)
+          ? undefined
+          : repeatFrequency,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
@@ -627,6 +632,7 @@ const AddIngestion = ({
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
+            handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
@@ -639,6 +645,7 @@ const AddIngestion = ({
             markDeletedTables={markDeletedTables}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
+            profileSample={profileSample}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}

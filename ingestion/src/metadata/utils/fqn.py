@@ -124,7 +124,6 @@ def _(
     database_name: Optional[str],
     schema_name: Optional[str],
     table_name: str,
-    retries: int = 3,
     fetch_multiple_entities: bool = False,
 ) -> Union[Optional[str], Optional[List[str]]]:
     """
@@ -134,7 +133,6 @@ def _(
     :param database_name: DB name or None
     :param schema_name: Schema name or None
     :param table_name: Table name
-    :param retries: ES Search retries
     :return:
     """
     if not service_name or not table_name:
@@ -151,7 +149,6 @@ def _(
         es_result = metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
-            retries=retries,
         )
         entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
             entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities

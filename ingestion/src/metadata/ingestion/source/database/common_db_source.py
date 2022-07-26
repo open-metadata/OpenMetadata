@@ -365,7 +365,8 @@ class CommonDbSourceService(
                 ) or []
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error("Could not parse query: Ingesting lineage failed")
+            logger.debug(f"Query : {view_definition}")
+            logger.warning("Could not parse query: Ingesting lineage failed")
 
     def test_connection(self) -> None:
         """
@@ -397,6 +398,13 @@ class CommonDbSourceService(
         pass
 
     def standardize_table_name(self, schema: str, table: str) -> str:
+        """
+        This method is interesting to be maintained in case
+        some connector, such as BigQuery, needs to perform
+        some added logic here.
+
+        Returning `table` is just the default implementation.
+        """
         return table
 
     def yield_table_tag(self) -> Iterable[OMetaTagAndCategory]:

@@ -10,7 +10,9 @@
 #  limitations under the License.
 from typing import Any, Dict, Optional
 
-# TODO LOG (just link v1)
+DAG_ID_DESCRIPTION = "The ID of the DAG."
+
+# TODO https://github.com/open-metadata/OpenMetadata/issues/6215
 APIS_METADATA = [
     {
         "name": "deploy_dag",
@@ -34,8 +36,8 @@ APIS_METADATA = [
         "arguments": [],
         "post_arguments": [
             {
-                "name": "workflow_name",
-                "description": "Workflow name to run",
+                "name": "dag_id",
+                "description": DAG_ID_DESCRIPTION,
                 "required": True,
             },
         ],
@@ -60,7 +62,7 @@ APIS_METADATA = [
         "arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -73,7 +75,7 @@ APIS_METADATA = [
         "arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag to delete",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -86,16 +88,11 @@ APIS_METADATA = [
         "arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
         ],
-    },
-    {
-        "name": "rest_status",
-        "description": "Get the status of Airflow REST status",
-        "http_method": "GET",
     },
     {
         "name": "enable_dag",
@@ -105,7 +102,7 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },
@@ -119,7 +116,21 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "dag_id",
-                "description": "The id of the dag",
+                "description": DAG_ID_DESCRIPTION,
+                "form_input_type": "text",
+                "required": True,
+            },
+        ],
+    },
+    {
+        "name": "kill_all",
+        "description": "Mark all not finished tasks of a DAG as failed to kill the execution",
+        "http_method": "POST",
+        "arguments": [],
+        "post_arguments": [
+            {
+                "name": "dag_id",
+                "description": DAG_ID_DESCRIPTION,
                 "form_input_type": "text",
                 "required": True,
             },

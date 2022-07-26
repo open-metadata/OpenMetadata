@@ -23,9 +23,9 @@ const TaskPageLayout: FC<Props> = ({ children }) => {
 
   return (
     <Layout style={{ ...background, height: '100vh' }}>
-      <Sider style={background} width={180} />
+      <Sider data-testid="left-sider" style={background} width={180} />
       <Content style={contentStyles}>{children}</Content>
-      <Sider style={background} width={180} />
+      <Sider data-testid="right-sider" style={background} width={180} />
     </Layout>
   );
 };

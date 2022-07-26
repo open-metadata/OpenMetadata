@@ -27,7 +27,7 @@ import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class JWTTokenGeneratorTest {
+class JWTTokenGeneratorTest {
   protected static final String rsaPrivateKeyPath = ResourceHelpers.resourceFilePath("private_key.der");
   protected static final String rsaPublicKeyPath = ResourceHelpers.resourceFilePath("public_key.der");
   protected JWTTokenConfiguration jwtTokenConfiguration;
@@ -36,12 +36,11 @@ public class JWTTokenGeneratorTest {
   @BeforeAll
   public void setup(TestInfo test) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
     jwtTokenConfiguration = new JWTTokenConfiguration();
-    jwtTokenConfiguration.setJWTIssuer("open-metadata.org");
-    jwtTokenConfiguration.setRSAPrivateKeyFilePath(rsaPrivateKeyPath);
-    jwtTokenConfiguration.setRSAPublicKeyFilePath(rsaPublicKeyPath);
+    jwtTokenConfiguration.setJwtissuer("open-metadata.org");
+    jwtTokenConfiguration.setRsaprivateKeyFilePath(rsaPrivateKeyPath);
+    jwtTokenConfiguration.setRsapublicKeyFilePath(rsaPublicKeyPath);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     jwtTokenGenerator.init(jwtTokenConfiguration);
-    ;
   }
 
   @Test
@@ -71,7 +70,7 @@ public class JWTTokenGeneratorTest {
   private DecodedJWT decodedJWT(String token) {
     RSAPublicKey publicKey = jwtTokenGenerator.getPublicKey();
     Algorithm algorithm = Algorithm.RSA256(publicKey, null);
-    JWTVerifier verifier = JWT.require(algorithm).withIssuer(jwtTokenConfiguration.getJWTIssuer()).build();
+    JWTVerifier verifier = JWT.require(algorithm).withIssuer(jwtTokenConfiguration.getJwtissuer()).build();
     return verifier.verify(token);
   }
 }

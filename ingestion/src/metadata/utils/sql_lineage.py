@@ -28,9 +28,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.helpers import get_formatted_entity_name
 from metadata.utils.logger import utils_logger
+from metadata.utils.lru_cache import LRUCache
 
 logger = utils_logger()
 column_lineage_map = {}
+
+LRU_CACHE_SIZE = 4096
 
 
 def split_raw_table_name(database: str, raw_name: str) -> dict:
@@ -53,6 +56,9 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
             return tbl_column.fullyQualifiedName.__root__
 
 
+search_cache = LRUCache(LRU_CACHE_SIZE)
+
+
 def search_table_entities(
     metadata: OpenMetadata,
     service_name: str,
@@ -65,25 +71,30 @@ def search_table_entities(
     It uses ES to build the FQN if we miss some info and will run
     a request against the API to find the Entity.
     """
-    try:
-        table_fqns = fqn.build(
-            metadata,
-            entity_type=Table,
-            service_name=service_name,
-            database_name=database,
-            schema_name=database_schema,
-            table_name=table,
-            fetch_multiple_entities=True,
-        )
-        table_entities: Optional[List[Table]] = []
-        for table_fqn in table_fqns or []:
-            table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
-            if table_entity:
-                table_entities.append(table_entity)
-        return table_entities
-    except Exception as err:
-        logger.debug(traceback.format_exc())
-        logger.error(err)
+    search_tuple = (service_name, database, database_schema, table)
+    if search_tuple in search_cache:
+        return search_cache.get(search_tuple)
+    else:
+        try:
+            table_fqns = fqn.build(
+                metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=database,
+                schema_name=database_schema,
+                table_name=table,
+                fetch_multiple_entities=True,
+            )
+            table_entities: Optional[List[Table]] = []
+            for table_fqn in table_fqns or []:
+                table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
+                if table_entity:
+                    table_entities.append(table_entity)
+            search_cache.put(search_tuple, table_entities)
+            return table_entities
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
 
 
 def get_table_entities_from_query(
@@ -176,7 +187,6 @@ def _create_lineage_by_table_name(
     """
 
     try:
-
         from_table_entities = get_table_entities_from_query(
             metadata=metadata,
             service_name=service_name,
@@ -314,6 +324,7 @@ def get_lineage_by_query(
                     )
     except Exception as err:
         logger.debug(str(err))
+        logger.debug(f"Query : {query}")
         logger.warning(f"Ingesting lineage failed")
 
 
@@ -349,6 +360,6 @@ def get_lineage_via_table_entity(
                 query=query,
             ) or []
     except Exception as e:
-        logger.error("Failed to create view lineage")
+        logger.warn("Failed to create view lineage")
         logger.debug(f"Query : {query}")
         logger.debug(traceback.format_exc())

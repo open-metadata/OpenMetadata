@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+/// <reference types="cypress" />
+
 export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
@@ -56,15 +58,17 @@ export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
   checkSuccessState();
 };
 
+//Storing the created service name and the type of service for later use
+
 export const testServiceCreationAndIngestion = (
   serviceType,
   connectionInput,
   addIngestionInput,
+  serviceName,
   type = 'database',
   testIngestionButton = true
 ) => {
-  const serviceName = `${serviceType}-ci-test-${uuid()}`;
-
+  //Storing the created service name and the type of service
   // Select Service in step 1
   cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
   cy.get('[data-testid="next-button"]').should('exist').click();
@@ -87,7 +91,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(500); 
+  cy.wait(500);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -127,6 +131,7 @@ export const testServiceCreationAndIngestion = (
 
   // Schedule & Deploy
   cy.contains('Schedule for Ingestion').should('be.visible');
+  cy.get('[data-testid="ingestion-type"]').should('be.visible').select('hour');
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
@@ -150,9 +155,58 @@ export const testServiceCreationAndIngestion = (
   handleIngestionRetry(type, testIngestionButton);
 };
 
+export const deleteCreatedService = (typeOfService, service_Name) => {
+  cy.goToHomePage();
+
+  cy.get(
+    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+  )
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+  cy.wait(1000);
+
+  //redirecting to services page
+  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+
+  //click on created service
+  cy.get(`[data-testid="service-name-${service_Name}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.get(`[data-testid="inactive-link"]`)
+    .should('exist')
+    .should('be.visible')
+    .invoke('text')
+    .then((text) => {
+      expect(text).to.equal(service_Name);
+    });
+
+  cy.wait(1000);
+
+  cy.get('[data-testid="Manage"]').should('exist').should('be.visible').click();
+  cy.get('[data-testid="delete-button"]')
+    .scrollIntoView()
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="confirmation-text-input"]')
+    .should('be.visible')
+    .type('DELETE');
+  cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+  cy.wait(1000);
+  cy.get('.tw-modal-container').should('not.exist');
+  cy.get('[class="Toastify__toast-body"] >div')
+    .eq(1)
+    .should('exist')
+    .should('be.visible')
+    .should('have.text', `${typeOfService} Service deleted successfully!`);
+};
+
 export const goToAddNewServicePage = () => {
   cy.visit('/');
-  // cy.loginByGoogleApi();
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
   cy.get('[data-testid="closeWhatsNew"]').click();
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
@@ -216,7 +270,7 @@ export const visitEntityTab = (id) => {
 export const searchEntity = (term) => {
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
-  cy.get('[data-testid="suggestion-overlay"]').click(1,1);
+  cy.get('[data-testid="suggestion-overlay"]').click(1, 1);
 };
 
 // add new tag to entity and its table

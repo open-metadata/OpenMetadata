@@ -8,50 +8,42 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
+import os
+from itertools import islice
+from typing import Any
+
+import pandas as pd
+from pandas import DataFrame
+from pyarrow import fs
+from pyarrow.parquet import ParquetFile
 
 
-def read_csv_from_s3(client, key, bucket_name):
-    from io import StringIO
-
-    import pandas as pd
-
-    csv_obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
-    body = csv_obj["Body"]
-    csv_string = body.read().decode("utf-8")
-    df = pd.read_csv(StringIO(csv_string))
-
-    return df
+def read_csv_from_s3(
+    client: Any, key: str, bucket_name: str, sep: str = ",", sample_size: int = 100
+) -> DataFrame:
+    stream = client.get_object(Bucket=bucket_name, Key=key)["Body"]
+    return pd.read_csv(stream, sep=sep, nrows=sample_size + 1)
 
 
-def read_tsv_from_s3(client, key, bucket_name):
-    from io import StringIO
-
-    import pandas as pd
-
-    csv_obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
-    body = csv_obj["Body"]
-    csv_string = body.read().decode("utf-8")
-    df = pd.read_csv(StringIO(csv_string), sep="\t")
-
-    return df
+def read_tsv_from_gcs(
+    client, key: str, bucket_name: str, sample_size: int = 100
+) -> DataFrame:
+    read_csv_from_s3(client, key, bucket_name, sep="\t", sample_size=sample_size)
 
 
-def read_json_from_s3(client, key, bucket_name):
-    import json
-
-    import pandas as pd
-
-    obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
-    json_text = obj["Body"].read().decode("utf-8")
-    data = json.loads(json_text)
-    df = pd.DataFrame.from_dict(data)
-
-    return df
+def read_json_from_s3(
+    client: Any, key: str, bucket_name: str, sample_size=100
+) -> DataFrame:
+    line_stream = client.get_object(Bucket=bucket_name, Key=key)["Body"].iter_lines()
+    return pd.DataFrame.from_records(map(json.loads, line_stream), nrows=sample_size)
 
 
-def read_parquet_from_s3(client, key, bucket_name):
-    import dask.dataframe as dd
-
-    df = dd.read_parquet(f"s3://{bucket_name}/{key['Key']}")
-
-    return df
+def read_parquet_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    s3 = fs.S3FileSystem(region=client.meta.region_name)
+    return (
+        ParquetFile(s3.open_input_file(os.path.join(bucket_name, key)))
+        .schema.to_arrow_schema()
+        .empty_table()
+        .to_pandas()
+    )
