@@ -72,6 +72,7 @@ export interface ConfigureIngestionProps {
   includeTags: boolean;
   markDeletedTables?: boolean;
   enableDebugLog: boolean;
+  profileSample?: number;
   ingestSampleData: boolean;
   pipelineType: PipelineType;
   showDatabaseFilter: boolean;
@@ -97,6 +98,7 @@ export interface ConfigureIngestionProps {
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
   getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
   handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;
+  handleProfileSample: (value: number) => void;
   handleQueryLogDuration: (value: number) => void;
   handleStageFileLocation: (value: string) => void;
   handleResultLimit: (value: number) => void;
