@@ -227,7 +227,7 @@ class TestAirflowOps(TestCase):
         )
 
         # Create the DAG
-        deployer = DagDeployer(ingestion_pipeline, self.dagbag)
+        deployer = DagDeployer(ingestion_pipeline)
         res = deployer.deploy()
 
         self.assertEqual(res.status_code, 200)
