@@ -363,7 +363,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       'owner',
       'followers',
       'tags',
-      TabSpecificField.EXTENSION,
+      // TabSpecificField.EXTENSION,
     ])
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -673,25 +673,25 @@ const TopicDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtentionUpdate = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic)
-      .then((res) => {
-        if (res.data) {
-          const { version, owner: ownerValue, tags } = res.data;
-          setCurrentVersion(version);
-          setTopicDetails(res.data);
-          setOwner(ownerValue);
-          setTier(getTierTags(tags));
-        } else {
-          throw jsonData['api-error-messages']['update-entity-error'];
-        }
-      })
-      .catch((extensionErr: AxiosError) => {
-        showErrorToast(
-          extensionErr,
-          jsonData['api-error-messages']['update-entity-error']
-        );
-      });
+  const handleExtentionUpdate = async (updatedTopic: Topic) => {
+    try {
+      const response = await saveUpdatedTopicData(updatedTopic);
+      const data = await response.data;
+      if (data) {
+        const { version, owner: ownerValue, tags } = data;
+        setCurrentVersion(version);
+        setTopicDetails(data);
+        setOwner(ownerValue);
+        setTier(getTierTags(tags));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
+    }
   };
 
   useEffect(() => {
