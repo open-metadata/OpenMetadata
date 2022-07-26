@@ -53,11 +53,11 @@ const App: FunctionComponent = () => {
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router>
           <ErrorBoundry>
-            <WebSocketProvider>
-              <AuthProvider childComponentType={AppRouter}>
+            <AuthProvider childComponentType={AppRouter}>
+              <WebSocketProvider>
                 <AppRouter />
-              </AuthProvider>
-            </WebSocketProvider>
+              </WebSocketProvider>
+            </AuthProvider>
           </ErrorBoundry>
         </Router>
         <ToastContainer {...toastOptions} newestOnTop />

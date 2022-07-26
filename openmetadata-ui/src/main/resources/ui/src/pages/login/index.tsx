@@ -121,11 +121,15 @@ const SigninPage = () => {
     }
   }, []);
 
-  // If the user is already logged in or if security is disabled
-  // redirect the user to the home page.
-  if (isAlreadyLoggedIn) {
-    history.push(ROUTES.HOME);
+  useEffect(() => {
+    // If the user is already logged in or if security is disabled
+    // redirect the user to the home page.
+    if (isAlreadyLoggedIn) {
+      history.push(ROUTES.HOME);
+    }
+  }, [isAlreadyLoggedIn]);
 
+  if (isAlreadyLoggedIn) {
     return <Loader />;
   }
 
