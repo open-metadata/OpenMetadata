@@ -44,6 +44,8 @@ import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -97,6 +99,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateThreadHandler,
   entityFieldTaskCount,
   lineageTabData,
+  onExtensionUpdate,
 }: TopicDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -222,6 +225,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
     {
+      name: 'Custom Properties',
+      icon: {
+        alt: 'custom_properties',
+        name: 'custom_properties-light-grey',
+        title: 'custom_properties',
+        selectedName: 'custom_properties-primery',
+      },
+      isProtected: false,
+      position: 6,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -231,7 +245,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 6,
+      position: 7,
     },
   ];
   const extraInfo: Array<ExtraInfo> = [
@@ -557,6 +571,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 </div>
               )}
               {activeTab === 6 && (
+                <CustomPropertyTable
+                  entityDetails={
+                    topicDetails as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.TOPIC}
+                  handleExtentionUpdate={onExtensionUpdate}
+                />
+              )}
+              {activeTab === 7 && (
                 <div>
                   <ManageTabComponent
                     allowDelete

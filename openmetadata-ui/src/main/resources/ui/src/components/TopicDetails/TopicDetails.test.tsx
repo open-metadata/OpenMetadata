@@ -111,6 +111,7 @@ const TopicDetailsProps = {
     lineageLeafNodes: {} as LeafNodes,
     isNodeLoading: { id: undefined, state: false },
   },
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
