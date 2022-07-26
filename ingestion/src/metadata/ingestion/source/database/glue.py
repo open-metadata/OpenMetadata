@@ -16,10 +16,11 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.data.table import Column, TableType
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
@@ -41,7 +42,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
+    TableLocationLink,
 )
+from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -64,15 +67,6 @@ class GlueSource(DatabaseServiceSource):
         )
 
         self.service_connection = self.config.serviceConnection.__root__.config
-
-        # TODO: add to service_mixin
-        self.storage_service = get_storage_service_or_create(
-            {
-                "name": self.service_connection.storageServiceName,
-                "serviceType": "S3",
-            },
-            metadata_config,
-        )
         self.status = SQLSourceStatus()
         self.connection = get_connection(self.service_connection)
         self.glue = self.connection.client
@@ -106,6 +100,7 @@ class GlueSource(DatabaseServiceSource):
         """
         paginator = self.glue.get_paginator("get_databases")
         paginator_response = paginator.paginate()
+        database_names = []
         for page in paginator_response:
             for schema in page["DatabaseList"]:
                 try:
@@ -118,13 +113,16 @@ class GlueSource(DatabaseServiceSource):
                             "Database (Catalog ID) pattern not allowed",
                         )
                         continue
-                    yield schema["CatalogId"]
+                    if schema["CatalogId"] in database_names:
+                        continue
+                    database_names.append(schema["CatalogId"])
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(err)
                     self.status.failures.append(
                         "{}.{}".format(self.config.serviceName, schema["CatalogId"])
                     )
+        yield from database_names
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
@@ -224,7 +222,7 @@ class GlueSource(DatabaseServiceSource):
                     table_type = TableType.View
 
                 table_name = self.standardize_table_name(schema_name, table_name)
-                self.context.table = table
+                self.context.table_data = table
                 yield table_name, table_type
             except Exception as err:
                 logger.debug(traceback.format_exc())
@@ -241,7 +239,7 @@ class GlueSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        table = self.context.table
+        table = self.context.table_data
         table_constraints = None
         try:
             columns = self.get_columns(table["StorageDescriptor"])
@@ -266,50 +264,38 @@ class GlueSource(DatabaseServiceSource):
                 "{}.{}".format(self.config.serviceName, table_name)
             )
 
+    def yield_location(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[Optional[CreateLocationRequest]]:
+        """
+        From topology.
+        Prepare a table request and pass it to the sink
+        """
+        table_name, table_type = table_name_and_type
+        table = self.context.table_data
+        try:
+            location_type: LocationType = LocationType.Table
+            if table_type == TableType.Iceberg:
+                location_type = LocationType.Iceberg
+            location_request = CreateLocationRequest(
+                name=table["Name"][:128],
+                path=table["StorageDescriptor"]["Location"],
+                description=table.get("Description", ""),
+                locationType=location_type,
+                service=EntityReference(
+                    id=self.context.storage_service.id, type="storageService"
+                ),
+            )
+            yield location_request
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+            self.status.failures.append(
+                "{}.{}".format(self.config.serviceName, table_name)
+            )
+
     def prepare(self):
         pass
-
-    # def next_record(self) -> Iterable[Entity]:
-
-    #     yield from self.ingest_catalog()
-
-    # def ingest_catalog(self) -> Iterable[Entity]:
-    #     """
-    #     Ingest db and table data
-
-    #     Catalog ID -> Database
-    #     Glue db -> Schema
-    #     """
-    #     paginator = self.glue.get_paginator("get_databases")
-    #     paginator_response = paginator.paginate()
-
-    #     for page in paginator_response:
-    #         for schema in page["DatabaseList"]:
-
-    #             if filter_by_database(
-    #                 database_filter_pattern=self.config.sourceConfig.config.databaseFilterPattern,
-    #                 database_name=schema["CatalogId"],
-    #             ):
-    #                 self.status.filter(
-    #                     schema["CatalogId"], "Database (Catalog ID) pattern not allowed"
-    #                 )
-    #                 continue
-
-    #             if filter_by_schema(
-    #                 schema_filter_pattern=self.config.sourceConfig.config.schemaFilterPattern,
-    #                 schema_name=schema["Name"],
-    #             ):
-    #                 self.status.filter(schema["Name"], "Schema pattern not allowed")
-    #                 continue
-
-    #             yield from self.ingest_tables(
-    #                 catalog_id=schema["CatalogId"], schema_name=schema["Name"]
-    #             )
-
-    #             if self.config.sourceConfig.config.markDeletedTables:
-    #                 logger.warning(
-    #                     "Glue source does not currently support marking tables as deleted."
-    #                 )
 
     def get_columns(self, column_data):
         for column in column_data["Columns"]:
@@ -327,106 +313,32 @@ class GlueSource(DatabaseServiceSource):
             parsed_string["description"] = column.get("Comment")
             yield Column(**parsed_string)
 
-    # def ingest_tables(
-    #     self, catalog_id: str, schema_name: str
-    # ) -> Iterable[OMetaDatabaseAndTable]:
-    #     try:
-
-    #         all_tables: List[dict] = []
-
-    #         paginator = self.glue.get_paginator("get_tables")
-    #         paginator_response = paginator.paginate(DatabaseName=schema_name)
-
-    #         for page in paginator_response:
-    #             all_tables += page["TableList"]
-
-    #         for table in all_tables:
-
-    #             if filter_by_table(
-    #                 self.config.sourceConfig.config.tableFilterPattern,
-    #                 table.get("name"),
-    #             ):
-    #                 self.status.filter(
-    #                     "{}".format(table["Name"]),
-    #                     "Table pattern not allowed",
-    #                 )
-    #                 continue
-    #             database_entity = Database(
-    #                 id=uuid.uuid4(),
-    #                 name=catalog_id,
-    #                 service=EntityReference(id=self.service.id, type="databaseService"),
-    #             )
-
-    #             schema_entity = DatabaseSchema(
-    #                 id=uuid.uuid4(),
-    #                 name=table["DatabaseName"],
-    #                 database=EntityReference(id=database_entity.id, type="database"),
-    #                 service=EntityReference(id=self.service.id, type="databaseService"),
-    #             )
-    #             parameters = table.get("Parameters")
-    #             location_type = LocationType.Table
-    #             if parameters:
-    #                 # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
-    #                 # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
-    #                 location_type = (
-    #                     location_type
-    #                     if parameters.get("table_type") != "ICEBERG"
-    #                     else LocationType.Iceberg
-    #                 )
-
-    #             table_columns = self.get_columns(table["StorageDescriptor"])
-    #             location_entity = self.get_table_location(table, location_type)
-
-    #             table_type: TableType = TableType.Regular
-    #             if location_type == LocationType.Iceberg:
-    #                 table_type = TableType.Iceberg
-    #             elif table["TableType"] == "EXTERNAL_TABLE":
-    #                 table_type = TableType.External
-    #             elif table["TableType"] == "VIRTUAL_VIEW":
-    #                 table_type = TableType.View
-    #             table_entity = Table(
-    #                 id=uuid.uuid4(),
-    #                 name=table["Name"][:128],
-    #                 description=table.get("Description", ""),
-    #                 columns=table_columns,
-    #                 tableType=table_type,
-    #             )
-
-    #             table_and_db = OMetaDatabaseAndTable(
-    #                 table=table_entity,
-    #                 database=database_entity,
-    #                 database_schema=schema_entity,
-    #                 location=location_entity,
-    #             )
-    #             yield table_and_db
-
-    #     except Exception as err:
-    #         logger.debug(traceback.format_exc())
-    #         logger.error(err)
-
-    def get_table_location(
-        self, table: dict, location_type: LocationType
-    ) -> Optional[Location]:
+    def yield_table_location_link(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[TableLocationLink]:
         """
-        Try to create the location or return None
-        :param table: Table dict from boto3
-        :param location_type: Table or Iceberg
-        :return: Location or None
+        Gets the current location being processed, fetches its data model
+        and sends it ot the sink
         """
-        try:
-            return Location(
-                name=table["Name"][:128],  # set location name as table name
-                path=table["StorageDescriptor"]["Location"],
-                locationType=location_type,
-                service=EntityReference(
-                    id=self.storage_service.id, type="storageService"
-                ),
-            )
-        except Exception as err:
-            logger.error(f"Cannot create location for {table['Name']} due to {err}")
-            logger.debug(traceback.format_exc())
 
-        return None
+        table_name, _ = table_name_and_type
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service.name.__root__,
+            database_name=self.context.database.name.__root__,
+            schema_name=self.context.database_schema.name.__root__,
+            table_name=table_name,
+        )
+
+        location_fqn = fqn.build(
+            self.metadata,
+            entity_type=Location,
+            service_name=self.context.storage_service.name.__root__,
+            location_name=self.context.location.name.__root__,
+        )
+        if table_fqn and location_fqn:
+            yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
 
     def standardize_table_name(self, schema: str, table: str) -> str:
         return table[:128]
