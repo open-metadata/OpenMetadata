@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/policies/accessControl/resourceDescriptor.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ResourceDescriptor",
-  "description": "Resource descriptor with details of a resource.",
+  "description": "Resource descriptor",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.ResourceDescriptor",
   "definitions": {
