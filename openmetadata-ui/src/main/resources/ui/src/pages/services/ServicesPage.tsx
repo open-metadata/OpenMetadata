@@ -14,23 +14,28 @@
 import { AxiosError } from 'axios';
 import { ServiceCategory } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getServices } from '../../axiosAPIs/serviceAPI';
 import Loader from '../../components/Loader/Loader';
 import Services from '../../components/Services/Services';
 import { pagingObject } from '../../constants/constants';
 import { SERVICE_CATEGORY } from '../../constants/services.const';
+import { ServiceCategory as Category } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
 import { DataService } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ServicesPage = () => {
-  const location = useLocation();
+  const { tab, settingCategory } =
+    useParams<{ [key: string]: keyof ServiceCategory }>();
+
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<DataService[]>([]);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [serviceName, setServiceName] = useState<string>('');
+  const [serviceName, setServiceName] = useState<Category>(
+    Category.DATABASE_SERVICES
+  );
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   const getServiceDetails = async (type: string) => {
@@ -63,14 +68,12 @@ const ServicesPage = () => {
   };
 
   useEffect(() => {
-    const path = location.pathname.split('/');
-    const serviceType: keyof ServiceCategory = path[
-      path.length - 1
-    ] as keyof ServiceCategory;
-    setServiceName(SERVICE_CATEGORY[serviceType]);
-    setCurrentPage(1);
-    getServiceDetails(SERVICE_CATEGORY[serviceType]);
-  }, [location.pathname]);
+    if (tab) {
+      setServiceName(SERVICE_CATEGORY[tab]);
+      setCurrentPage(1);
+      getServiceDetails(SERVICE_CATEGORY[tab]);
+    }
+  }, [tab]);
 
   if (isLoading) {
     return <Loader />;

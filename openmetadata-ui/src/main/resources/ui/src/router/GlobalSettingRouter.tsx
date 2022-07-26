@@ -13,8 +13,11 @@
 
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import { GlobalSettingOptions } from '../constants/globalSettings.constants';
-import { getSettingPath } from '../utils/RouterUtils';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/globalSettings.constants';
+import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const WebhooksPageV1 = withSuspenseFallback(
@@ -28,37 +31,26 @@ const GlobalSettingRouter = () => {
   return (
     <Switch>
       <Route exact path={getSettingPath()}>
-        <Redirect to={getSettingPath(GlobalSettingOptions.TEAMS)} />
+        <Redirect
+          to={getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.TEAMS
+          )}
+        />
       </Route>
       <Route
         exact
         component={WebhooksPageV1}
-        path={getSettingPath(GlobalSettingOptions.WEBHOOK)}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.WEBHOOK
+        )}
       />
+
       <Route
         exact
         component={ServicesPage}
-        path={getSettingPath(GlobalSettingOptions.DATABASES)}
-      />
-      <Route
-        exact
-        component={ServicesPage}
-        path={getSettingPath(GlobalSettingOptions.MESSAGING)}
-      />
-      <Route
-        exact
-        component={ServicesPage}
-        path={getSettingPath(GlobalSettingOptions.MLMODELS)}
-      />
-      <Route
-        exact
-        component={ServicesPage}
-        path={getSettingPath(GlobalSettingOptions.PIPELINES)}
-      />
-      <Route
-        exact
-        component={ServicesPage}
-        path={getSettingPath(GlobalSettingOptions.DASHBOARDS)}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
       />
     </Switch>
   );

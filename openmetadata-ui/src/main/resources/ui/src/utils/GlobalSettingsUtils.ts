@@ -17,6 +17,7 @@ import { camelCase } from 'lodash';
 export const getGlobalSettingMenus = (
   label: string,
   key: string,
+  category?: string,
   children?: string[],
   type?: string
 ): {
@@ -26,9 +27,11 @@ export const getGlobalSettingMenus = (
   type: string | undefined;
 } => {
   return {
-    key,
+    key: `${category}.${key}`,
     children: children
-      ? children.map((child) => getGlobalSettingMenus(child, camelCase(child)))
+      ? children.map((child) =>
+          getGlobalSettingMenus(child, camelCase(child), key)
+        )
       : undefined,
     label,
     type,

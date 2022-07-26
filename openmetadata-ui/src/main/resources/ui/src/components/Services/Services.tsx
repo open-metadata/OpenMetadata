@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
-import { isNil } from 'lodash';
-import { EntityReference } from 'Models';
+import { Card, Col, Row } from 'antd';
 import React, { Fragment } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -27,17 +25,16 @@ import {
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
-import { DashboardService } from '../../generated/entity/services/dashboardService';
-import { MessagingService } from '../../generated/entity/services/messagingService';
-import { MlmodelService } from '../../generated/entity/services/mlmodelService';
-import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { DataService } from '../../interface/service.interface';
-import { getEntityName, getServiceLogo } from '../../utils/CommonUtils';
-import { getDashboardURL } from '../../utils/DashboardServiceUtils';
-import { getBrokers } from '../../utils/MessagingServiceUtils';
+import {
+  getEntityName,
+  getServiceLogo,
+  showPagination,
+} from '../../utils/CommonUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
+import { getOptionalFields } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -46,7 +43,7 @@ import { leftPanelAntCardStyle } from '../containers/PageLayout';
 
 interface ServicesProps {
   serviceData: DataService[];
-  serviceName: string;
+  serviceName: ServiceCategory;
   paging: Paging;
   currentPage: number;
   onPageChange: (cursorType: string | number, activePage?: number) => void;
@@ -62,82 +59,8 @@ const Services = ({
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const goToAddService = () => {
+  const handleAddServiceClick = () => {
     history.push(getAddServicePath(serviceName));
-  };
-  const getOptionalFields = (service: DataService): JSX.Element => {
-    switch (serviceName) {
-      case ServiceCategory.MESSAGING_SERVICES: {
-        const messagingService = service as MessagingService;
-
-        return (
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">Brokers:</label>
-            <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
-              data-testid="brokers">
-              {getBrokers(messagingService.connection?.config)}
-            </span>
-          </div>
-        );
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        const dashboardService = service as DashboardService;
-
-        return (
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">URL:</label>
-            <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
-              data-testid="dashboard-url">
-              {getDashboardURL(dashboardService.connection?.config)}
-            </span>
-          </div>
-        );
-      }
-      case ServiceCategory.PIPELINE_SERVICES: {
-        const pipelineService = service as PipelineService;
-
-        return (
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">URL:</label>
-            <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
-              data-testid="pipeline-url">
-              {pipelineService.connection?.config?.hostPort || '--'}
-            </span>
-          </div>
-        );
-      }
-
-      case ServiceCategory.ML_MODAL_SERVICES: {
-        const mlmodel = service as MlmodelService;
-
-        return (
-          <>
-            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-              <label className="tw-mb-0">Registry:</label>
-              <span
-                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
-                data-testid="pipeline-url">
-                {mlmodel.connection?.config?.registryUri || '--'}
-              </span>
-            </div>
-            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-              <label className="tw-mb-0">Tracking:</label>
-              <span
-                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
-                data-testid="pipeline-url">
-                {mlmodel.connection?.config?.trackingUri || '--'}
-              </span>
-            </div>
-          </>
-        );
-      }
-      default: {
-        return <></>;
-      }
-    }
   };
 
   return (
@@ -155,82 +78,77 @@ const Services = ({
                 size="small"
                 theme="primary"
                 variant="contained"
-                onClick={goToAddService}>
+                onClick={handleAddServiceClick}>
                 Add New Service
               </Button>
             </NonAdminAction>
           </div>
-          <div
-            className="tw-grid xl:tw-grid-cols-4 tw-grid-cols-2 tw-gap-4 tw-mb-4"
-            data-testid="data-container">
+          <Row data-testid="data-container" gutter={[16, 16]}>
             {serviceData.map((service, index) => (
-              <Card key={index} style={leftPanelAntCardStyle}>
-                <div
-                  className="tw-flex tw-justify-between tw-text-grey-muted"
-                  data-testid="service-card">
-                  <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
-                    <div>
-                      <Link
-                        to={getServiceDetailsPath(service.name, serviceName)}>
-                        <button>
-                          <h6
-                            className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                            data-testid={`service-name-${getEntityName(
-                              service as unknown as EntityReference
-                            )}`}
-                            title={getEntityName(
-                              service as unknown as EntityReference
-                            )}>
-                            {getEntityName(
-                              service as unknown as EntityReference
-                            )}
-                          </h6>
-                        </button>
-                      </Link>
-                      <div
-                        className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                        data-testid="service-description">
-                        {service.description ? (
-                          <RichTextEditorPreviewer
-                            enableSeeMoreVariant={false}
-                            markdown={service.description}
-                          />
-                        ) : (
-                          <span className="tw-no-description">
-                            No description
-                          </span>
-                        )}
+              <Col key={index} span={6}>
+                <Card size="small" style={leftPanelAntCardStyle}>
+                  <div
+                    className="tw-flex tw-justify-between tw-text-grey-muted"
+                    data-testid="service-card">
+                    <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
+                      <div>
+                        <Link
+                          to={getServiceDetailsPath(service.name, serviceName)}>
+                          <button>
+                            <h6
+                              className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                              data-testid={`service-name-${getEntityName(
+                                service
+                              )}`}
+                              title={getEntityName(service)}>
+                              {getEntityName(service)}
+                            </h6>
+                          </button>
+                        </Link>
+                        <div
+                          className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                          data-testid="service-description">
+                          {service.description ? (
+                            <RichTextEditorPreviewer
+                              enableSeeMoreVariant={false}
+                              markdown={service.description}
+                            />
+                          ) : (
+                            <span className="tw-no-description">
+                              No description
+                            </span>
+                          )}
+                        </div>
+                        {getOptionalFields(service, serviceName)}
                       </div>
-                      {getOptionalFields(service)}
+                      <div className="" data-testid="service-type">
+                        <label className="tw-mb-0">Type:</label>
+                        <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                          {service.serviceType}
+                        </span>
+                      </div>
                     </div>
-                    <div className="" data-testid="service-type">
-                      <label className="tw-mb-0">Type:</label>
-                      <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                        {service.serviceType}
-                      </span>
+                    <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                      <div
+                        className="tw-flex tw-justify-end"
+                        data-testid="service-icon">
+                        {getServiceLogo(service.serviceType || '', 'tw-h-8')}
+                      </div>
                     </div>
                   </div>
-                  <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                    <div
-                      className="tw-flex tw-justify-end"
-                      data-testid="service-icon">
-                      {getServiceLogo(service.serviceType || '', 'tw-h-8')}
-                    </div>
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              </Col>
             ))}
-          </div>
-          {!isNil(paging.after) ||
-            (!isNil(paging.before) && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={paging}
-                pagingHandler={onPageChange}
-                totalCount={paging.total}
-              />
-            ))}
+          </Row>
+          {showPagination(paging) && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE}
+              paging={paging}
+              pagingHandler={onPageChange}
+              totalCount={paging.total}
+            />
+          )}
         </Fragment>
       ) : (
         <div className="tw-flex tw-items-center tw-flex-col">
@@ -248,7 +166,7 @@ const Services = ({
                   size="small"
                   theme="primary"
                   variant="outlined"
-                  onClick={goToAddService}>
+                  onClick={handleAddServiceClick}>
                   Click here
                 </Button>
               </NonAdminAction>{' '}

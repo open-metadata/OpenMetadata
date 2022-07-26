@@ -57,6 +57,7 @@ import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import topicDefault from '../assets/svg/topic.svg';
+import { ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
@@ -127,12 +128,12 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'mlmodelServices',
 ];
 
-export const SERVICE_CATEGORY = {
-  databases: 'databaseServices',
-  messaging: 'messagingServices',
-  dashboards: 'dashboardServices',
-  pipelines: 'pipelineServices',
-  mlModels: 'mlmodelServices',
+export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
+  databases: ServiceCategory.DATABASE_SERVICES,
+  messaging: ServiceCategory.MESSAGING_SERVICES,
+  dashboards: ServiceCategory.DASHBOARD_SERVICES,
+  pipelines: ServiceCategory.PIPELINE_SERVICES,
+  mlModels: ServiceCategory.ML_MODAL_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
