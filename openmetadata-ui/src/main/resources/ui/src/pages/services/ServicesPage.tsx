@@ -27,8 +27,7 @@ import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ServicesPage = () => {
-  const { tab, settingCategory } =
-    useParams<{ [key: string]: keyof ServiceCategory }>();
+  const { tab } = useParams<{ [key: string]: keyof ServiceCategory }>();
 
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<DataService[]>([]);
