@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { startCase } from 'lodash';
+import { Status } from '../../generated/entity/events/webhook';
+
 export const CREATE_EVENTS_DEFAULT_VALUE = {
   eventType: 'entityCreated',
   entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
@@ -25,3 +28,26 @@ export const DELETE_EVENTS_DEFAULT_VALUE = {
   eventType: 'entityDeleted',
   entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
 };
+
+export const statuses = [
+  {
+    label: startCase(Status.Disabled),
+    value: Status.Disabled,
+  },
+  {
+    label: startCase(Status.Active),
+    value: Status.Active,
+  },
+  {
+    label: startCase(Status.Failed),
+    value: Status.Failed,
+  },
+  {
+    label: startCase(Status.AwaitingRetry),
+    value: Status.AwaitingRetry,
+  },
+  {
+    label: startCase(Status.RetryLimitReached),
+    value: Status.RetryLimitReached,
+  },
+];
