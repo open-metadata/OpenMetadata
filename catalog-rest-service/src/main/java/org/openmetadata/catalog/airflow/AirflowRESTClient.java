@@ -68,10 +68,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public String deletePipeline(String pipelineName) {
     try {
       String deleteEndpoint = "%s/%s/delete?dag_id=%s";
-      String deleteUrl = String.format(deleteEndpoint, serviceURL, apiEndpoint, pipelineName);
-      JSONObject requestPayload = new JSONObject();
-      requestPayload.put("workflow_name", pipelineName);
-      HttpResponse<String> response = post(deleteUrl, requestPayload.toString());
+      HttpResponse<String> response =
+          deleteRequestAuthenticatedForJsonContent(deleteEndpoint, serviceURL, apiEndpoint, pipelineName);
       return response.body();
     } catch (Exception e) {
       LOG.error(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
@@ -147,7 +145,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     try {
       String statusEndPoint = "%s/%s/status?dag_id=%s";
       response =
-          requestAuthenticatedForJsonContent(statusEndPoint, serviceURL, apiEndpoint, ingestionPipeline.getName());
+          getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, apiEndpoint, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
         ingestionPipeline.setPipelineStatuses(statuses);
@@ -218,7 +216,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
     try {
       HttpResponse<String> response =
-          requestAuthenticatedForJsonContent(
+          getRequestAuthenticatedForJsonContent(
               "%s/%s/last_dag_logs?dag_id=%s", serviceURL, apiEndpoint, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
@@ -229,16 +227,23 @@ public class AirflowRESTClient extends PipelineServiceClient {
     throw new PipelineServiceClientException("Failed to get last ingestion logs.");
   }
 
-  private HttpResponse<String> requestAuthenticatedForJsonContent(String stringUrlFormat, Object... stringReplacement)
-      throws IOException, InterruptedException {
-    String url = String.format(stringUrlFormat, stringReplacement);
-    HttpRequest request =
-        HttpRequest.newBuilder(URI.create(url))
-            .header(CONTENT_HEADER, CONTENT_TYPE)
-            .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
-            .GET()
-            .build();
+  private HttpResponse<String> getRequestAuthenticatedForJsonContent(
+      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {
+    HttpRequest request = authenticatedRequestBuilder(stringUrlFormat, stringReplacement).GET().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(
+      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {
+    HttpRequest request = authenticatedRequestBuilder(stringUrlFormat, stringReplacement).DELETE().build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpRequest.Builder authenticatedRequestBuilder(String stringUrlFormat, Object... stringReplacement) {
+    String url = String.format(stringUrlFormat, stringReplacement);
+    return HttpRequest.newBuilder(URI.create(url))
+        .header(CONTENT_HEADER, CONTENT_TYPE)
+        .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
   }
 
   private HttpResponse<String> requestNoAuthForJsonContent(String stringUrlFormat, Object... stringReplacement)
