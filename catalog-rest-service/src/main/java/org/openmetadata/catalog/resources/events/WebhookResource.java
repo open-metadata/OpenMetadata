@@ -267,7 +267,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
     Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
-    webhook.setWebhookType(Webhook.WebhookType.slack);
     Response response = create(uriInfo, securityContext, webhook, false);
     dao.addWebhookPublisher(webhook);
     return response;
