@@ -171,7 +171,7 @@ eventHandlerConfiguration:
 airflowConfiguration:
   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
   username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-MP6gEHWxwvFmwmSe}
+  password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openmetadata"
   authConfig:
