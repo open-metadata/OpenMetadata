@@ -179,8 +179,45 @@
         <name>onlyBackend</name>
       </property>
     </activation>
-    <dependencies>
-    </dependencies>
+    <build>
+      <finalName>${final.Name}-${project.version}</finalName>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <executions>
+            <execution>
+              <phase>package</phase>
+              <goals>
+                <goal>single</goal>
+              </goals>
+            </execution>
+          </executions>
+          <configuration>
+            <attach>true</attach>
+            <runOnlyAtExecutionRoot>false</runOnlyAtExecutionRoot>
+            <descriptors>
+              <descriptor>${project.basedir}/src/main/assembly/binary.xml</descriptor>
+            </descriptors>
+            <appendAssemblyId>false</appendAssemblyId>
+          </configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <executions>
+            <execution>
+              <phase>install</phase>
+              <goals>
+                <goal>copy-dependencies</goal>
+              </goals>
+              <configuration>
+                <outputDirectory>${project.build.directory}/libs</outputDirectory>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </build>
   </profile>
  </profiles>
 
