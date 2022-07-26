@@ -76,7 +76,7 @@ class SecretsManager(metaclass=Singleton):
         service_type: str,
     ) -> None:
         """
-        Add the service connection config to a given service connection object.
+        Add the service connection config from the secret manager to a given service connection object.
         :param service: Service connection object e.g. DatabaseConnection
         :param service_type: Service type e.g. databaseService
         """
@@ -85,7 +85,7 @@ class SecretsManager(metaclass=Singleton):
     @abstractmethod
     def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
         """
-        Add the auth provider security config to a given OpenMetadata connection object.
+        Add the auth provider security config from the secret manager to a given OpenMetadata connection object.
         :param config: OpenMetadataConnection object
         """
         pass
@@ -150,9 +150,16 @@ class SecretsManager(metaclass=Singleton):
 
 
 class LocalSecretsManager(SecretsManager):
+    """
+    LocalSecretsManager is used when there is not a secrets' manager configured.
+    """
+
     def add_auth_provider_security_config(
         self, open_metadata_connection: OpenMetadataConnection
     ) -> None:
+        """
+        The LocalSecretsManager does not modify the OpenMetadataConnection object
+        """
         pass
 
     def add_service_config_connection(
@@ -160,6 +167,9 @@ class LocalSecretsManager(SecretsManager):
         service: ServiceConnectionType,
         service_type: str,
     ) -> None:
+        """
+        The LocalSecretsManager does not modify the ServiceConnection object
+        """
         pass
 
 
