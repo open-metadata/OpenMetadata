@@ -39,11 +39,6 @@
       <artifactId>common</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>org.open-metadata</groupId>
-      <artifactId>openmetadata-ui</artifactId>
-      <version>${project.version}</version>
-    </dependency>
   </dependencies>
 
   <properties>
@@ -95,6 +90,13 @@
           </plugin>
         </plugins>
       </build>
+      <dependencies>
+        <dependency>
+          <groupId>org.open-metadata</groupId>
+          <artifactId>openmetadata-ui</artifactId>
+          <version>${project.version}</version>
+        </dependency>
+      </dependencies>
     </profile>
     <profile>
       <id>rpm</id>
@@ -169,6 +171,16 @@
         </plugin>
       </plugins>
     </build>
+  </profile>
+  <profile>
+    <id>only-backend</id>
+    <activation>
+      <property>
+        <name>onlyBackend</name>
+      </property>
+    </activation>
+    <dependencies>
+    </dependencies>
   </profile>
  </profiles>
 
