@@ -76,6 +76,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     location = createLocation();
   }
 
+  public void setupPolicies() throws HttpResponseException {
+    POLICY1 = createEntity(createRequest("policy1"), ADMIN_AUTH_HEADERS);
+    POLICY2 = createEntity(createRequest("policy2"), ADMIN_AUTH_HEADERS);
+  }
+
   @Override
   public CreatePolicy createRequest(String name) {
     return new CreatePolicy().withName(name).withPolicyType(PolicyType.Lifecycle);

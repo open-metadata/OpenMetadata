@@ -132,7 +132,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       throws HttpResponseException {
     // Entity specific validation
     TestUtils.validateTags(expected.getTags(), patched.getTags());
-    TestUtils.assertEntityReferenceList(expected.getReviewers(), patched.getReviewers());
+    TestUtils.assertEntityReferences(expected.getReviewers(), patched.getReviewers());
   }
 
   @Override

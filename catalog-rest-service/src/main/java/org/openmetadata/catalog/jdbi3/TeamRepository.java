@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.POLICY;
 import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
@@ -46,8 +47,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
-  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children";
-  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children";
+  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
+  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
   Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
@@ -65,6 +66,7 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
     team.setParents(fields.contains("parents") ? getParents(team) : null);
     team.setChildren(fields.contains("children") ? getChildren(team) : null);
+    team.setPolicies(fields.contains("policies") ? getPolicies(team) : null);
     return team;
   }
 
@@ -82,6 +84,7 @@ public class TeamRepository extends EntityRepository<Team> {
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
+    validatePolicies(team.getPolicies());
   }
 
   @Override
@@ -92,6 +95,7 @@ public class TeamRepository extends EntityRepository<Team> {
     List<EntityReference> defaultRoles = team.getDefaultRoles();
     List<EntityReference> parents = team.getParents();
     List<EntityReference> children = team.getChildren();
+    List<EntityReference> policies = team.getPolicies();
 
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null);
@@ -99,7 +103,12 @@ public class TeamRepository extends EntityRepository<Team> {
     store(team.getId(), team, update);
 
     // Restore the relationships
-    team.withUsers(users).withDefaultRoles(defaultRoles).withOwner(owner).withParents(parents).withChildren(children);
+    team.withUsers(users)
+        .withDefaultRoles(defaultRoles)
+        .withOwner(owner)
+        .withParents(parents)
+        .withChildren(children)
+        .withPolicies(policies);
   }
 
   @Override
@@ -117,6 +126,9 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     for (EntityReference child : listOrEmpty(team.getChildren())) {
       addRelationship(team.getId(), child.getId(), TEAM, TEAM, Relationship.PARENT_OF);
+    }
+    for (EntityReference policy : listOrEmpty(team.getPolicies())) {
+      addRelationship(team.getId(), policy.getId(), TEAM, POLICY, Relationship.HAS);
     }
   }
 
@@ -166,6 +178,11 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(children, TEAM);
   }
 
+  private List<EntityReference> getPolicies(Team team) throws IOException {
+    List<EntityRelationshipRecord> policies = findTo(team.getId(), TEAM, Relationship.HAS, POLICY);
+    return EntityUtil.populateEntityReferences(policies, POLICY);
+  }
+
   private void populateChildren(Team team) throws IOException {
     List<EntityReference> childrenRefs = team.getChildren();
     if (childrenRefs == null) {
@@ -188,7 +205,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private void populateParents(Team team) throws IOException {
-    // All the teams created without parents has the top Organization as the default parent
+    // Teams created without parents has the top Organization as the default parent
     List<EntityReference> parentRefs = team.getParents();
     if (parentRefs == null) {
       team.setParents(new ArrayList<>());
@@ -217,7 +234,8 @@ public class TeamRepository extends EntityRepository<Team> {
   // Populate team refs from team entity list
   private void populateTeamRefs(List<EntityReference> teamRefs, List<Team> teams) {
     for (int i = 0; i < teams.size(); i++) {
-      EntityUtil.copy(teamRefs.get(i), teams.get(i).getEntityReference());
+      System.out.print("XXX copying " + teams.get(i).getEntityReference());
+      EntityUtil.copy(teams.get(i).getEntityReference(), teamRefs.get(i));
     }
   }
 
@@ -295,6 +313,7 @@ public class TeamRepository extends EntityRepository<Team> {
       updateDefaultRoles(original, updated);
       updateParents(original, updated);
       updateChildren(original, updated);
+      updatePolicies(original, updated);
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
@@ -329,7 +348,14 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> origParents = listOrEmpty(original.getChildren());
       List<EntityReference> updatedParents = listOrEmpty(updated.getChildren());
       updateToRelationships(
-          "parents", TEAM, original.getId(), Relationship.PARENT_OF, TEAM, origParents, updatedParents, false);
+          "children", TEAM, original.getId(), Relationship.PARENT_OF, TEAM, origParents, updatedParents, false);
+    }
+
+    private void updatePolicies(Team original, Team updated) throws JsonProcessingException {
+      List<EntityReference> origPolicies = listOrEmpty(original.getPolicies());
+      List<EntityReference> updatedPolicies = listOrEmpty(updated.getPolicies());
+      updateToRelationships(
+          "policies", TEAM, original.getId(), Relationship.HAS, POLICY, origPolicies, updatedPolicies, false);
     }
   }
 }
