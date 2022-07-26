@@ -92,7 +92,7 @@ class UsageSource(Source[TableQuery], ABC):
                         datetime.utcnow()
                         if not query_dict.get("start_time")
                         else datetime.strptime(
-                            query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S"
+                            query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
                         )
                     )
                     query_list.append(
@@ -101,7 +101,7 @@ class UsageSource(Source[TableQuery], ABC):
                             userName=query_dict.get("user_name", ""),
                             startTime=query_dict.get("start_time", ""),
                             endTime=query_dict.get("end_time", ""),
-                            analysisDate=analysis_date.date(),
+                            analysisDate=analysis_date,
                             aborted=self.get_aborted_status(query_dict),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
