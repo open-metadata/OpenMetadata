@@ -20,18 +20,18 @@ from airflow.www.app import csrf
 from flask import Response, request
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import clean_dag_id
+from openmetadata_managed_apis.api.utils import clean_dag_id, get_request_arg
 from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
 
 
 @blueprint.route("/last_dag_logs", methods=["GET"])
 @csrf.exempt
-@security.requires_access([(permissions.ACTION_CAN_DELETE, permissions.RESOURCE_DAG)])
-def last_logs(self) -> Response:
+@security.requires_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
+def last_logs() -> Response:
     """
     Retrieve all logs from the task instances of a last DAG run
     """
-    raw_dag_id: str = self.get_request_arg(request, "dag_id")
+    raw_dag_id: str = get_request_arg(request, "dag_id")
 
     if not raw_dag_id:
         ApiResponse.bad_request("Missing dag_id parameter in the request")

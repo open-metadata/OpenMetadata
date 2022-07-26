@@ -14,8 +14,9 @@ Module containing the logic to retrieve all logs from the tasks of a last DAG ru
 import glob
 import os
 from pathlib import Path
+from typing import List
 
-from airflow.models import DagModel, DagRun
+from airflow.models import DagModel, DagRun, TaskInstance
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse, ResponseFormat
 
@@ -38,7 +39,7 @@ def last_dag_logs(dag_id: str) -> Response:
     if not last_dag_run:
         return ApiResponse.not_found(f"No DAG run found for '{dag_id}'.")
 
-    task_instances = last_dag_run.get_task_instances()
+    task_instances: List[TaskInstance] = last_dag_run.get_task_instances()
 
     response = {}
 
@@ -48,6 +49,7 @@ def last_dag_logs(dag_id: str) -> Response:
                 task_instance.log_filepath
             ).read_text()
         # logs could be kept in a directory with the same name than the log file path without extension per attempt
+        # TODO: pick up log file
         elif os.path.isdir(os.path.splitext(task_instance.log_filepath)[0]):
             dir_path = os.path.splitext(task_instance.log_filepath)[0]
             sorted_logs = sorted(

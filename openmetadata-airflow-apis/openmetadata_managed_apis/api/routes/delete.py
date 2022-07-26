@@ -21,13 +21,14 @@ from flask import Response
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.config import MISSING_DAG_ID_EXCEPTION_MSG
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.api.utils import get_arg_dag_id
 from openmetadata_managed_apis.operations.delete import delete_dag_id
 
 
 @blueprint.route("/delete", methods=["DELETE"])
 @csrf.exempt
 @security.requires_access([(permissions.ACTION_CAN_DELETE, permissions.RESOURCE_DAG)])
-def delete_dag(self) -> Response:
+def delete_dag() -> Response:
     """
     POST request to DELETE a DAG.
 
@@ -36,7 +37,7 @@ def delete_dag(self) -> Response:
         "workflow_name": "my_ingestion_pipeline3"
     }
     """
-    dag_id = self.get_arg_dag_id()
+    dag_id = get_arg_dag_id()
 
     if not dag_id:
         return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)

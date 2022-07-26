@@ -15,9 +15,8 @@ import traceback
 from pathlib import Path
 from typing import Dict
 
-from airflow import settings
-from airflow.models import DagBag, DagModel
-from airflow.models.serialized_dag import SerializedDagModel
+from airflow import DAG, settings
+from airflow.models import DagModel
 from jinja2 import Template
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
@@ -25,7 +24,12 @@ from openmetadata_managed_apis.api.config import (
     PLUGIN_NAME,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import clean_dag_id, import_path
+from openmetadata_managed_apis.api.utils import (
+    clean_dag_id,
+    get_dagbag,
+    import_path,
+    scan_dags_job,
+)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -45,14 +49,13 @@ class DagDeployer:
     and deploy it to Airflow
     """
 
-    def __init__(self, ingestion_pipeline: IngestionPipeline, dag_bag: DagBag):
+    def __init__(self, ingestion_pipeline: IngestionPipeline):
 
         logging.info(
             f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
         )
 
         self.ingestion_pipeline = ingestion_pipeline
-        self.dag_bag = dag_bag
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
 
     def store_airflow_pipeline_config(
@@ -78,7 +81,7 @@ class DagDeployer:
         dag_py_file = Path(AIRFLOW_DAGS_FOLDER) / f"{self.dag_id}.py"
 
         # Open the template and render
-        raw_template = str(pkgutil.get_data(PLUGIN_NAME, "resources/dag_runner.j2"))
+        raw_template = pkgutil.get_data(PLUGIN_NAME, "resources/dag_runner.j2").decode()
         template = Template(raw_template)
 
         rendered_dag = template.render(dag_runner_config)
@@ -104,33 +107,42 @@ class DagDeployer:
     def refresh_session_dag(self, dag_py_file: str):
         """
         Get the stored python DAG file and update the
-        Airflow DagBag and sync it to the db
+        Airflow DagBag and sync it to the db.
+
+        In Airflow 2.3.3, we also need to add a call
+        to the Scheduler job, to make sure that all
+        the pieces are being properly picked up.
         """
         # Refresh dag into session
-        session = settings.Session()
-        try:
-            logging.info("dagbag size {}".format(self.dag_bag.size()))
-            found_dags = self.dag_bag.process_file(dag_py_file)
-            logging.info("processed dags {}".format(found_dags))
-            dag = self.dag_bag.get_dag(self.dag_id, session=session)
-            SerializedDagModel.write_dag(dag)
-            dag.sync_to_db(session=session)
-            dag_model = (
-                session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
-            )
-            logging.info("dag_model:" + str(dag_model))
+        with settings.Session() as session:
+            try:
+                dag_bag = get_dagbag()
+                logging.info("dagbag size {}".format(dag_bag.size()))
+                found_dags = dag_bag.process_file(dag_py_file)
+                logging.info("processed dags {}".format(found_dags))
+                dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
+                # Sync to DB
+                dag.sync_to_db(session=session)
+                dag_model = (
+                    session.query(DagModel)
+                    .filter(DagModel.dag_id == self.dag_id)
+                    .first()
+                )
+                logging.info("dag_model:" + str(dag_model))
+                # Scheduler Job to scan dags
+                scan_dags_job()
 
-            return ApiResponse.success(
-                {"message": f"Workflow [{self.dag_id}] has been created"}
-            )
-        except Exception as exc:
-            logging.info(f"Failed to serialize the dag {exc}")
-            return ApiResponse.server_error(
-                {
-                    "message": f"Workflow [{self.dag_id}] failed to refresh due to [{exc}] "
-                    + f"- {traceback.format_exc()}"
-                }
-            )
+                return ApiResponse.success(
+                    {"message": f"Workflow [{self.dag_id}] has been created"}
+                )
+            except Exception as exc:
+                logging.info(f"Failed to serialize the dag {exc}")
+                return ApiResponse.server_error(
+                    {
+                        "message": f"Workflow [{self.dag_id}] failed to refresh due to [{exc}] "
+                        + f"- {traceback.format_exc()}"
+                    }
+                )
 
     def deploy(self):
         """

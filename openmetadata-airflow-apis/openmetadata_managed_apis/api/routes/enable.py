@@ -21,17 +21,18 @@ from flask import Response
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.config import MISSING_DAG_ID_EXCEPTION_MSG
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.state import enable_dag
 
 
 @blueprint.route("/enable", methods=["POST"])
 @csrf.exempt
 @security.requires_access([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
-def enable(self) -> Response:
+def enable() -> Response:
     """
     Given a DAG ID, mark the dag as enabled
     """
-    dag_id = self.get_request_dag_id()
+    dag_id = get_request_dag_id()
 
     if not dag_id:
         return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)

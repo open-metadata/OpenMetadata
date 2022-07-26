@@ -67,7 +67,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public String deletePipeline(String pipelineName) {
     try {
-      String deleteEndpoint = "%s/%s/delete&dag_id=%s";
+      String deleteEndpoint = "%s/%s/delete?dag_id=%s";
       String deleteUrl = String.format(deleteEndpoint, serviceURL, apiEndpoint, pipelineName);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("workflow_name", pipelineName);
@@ -145,10 +145,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
-      String statusEndPoint = "%s/%s/status&dag_id=%s";
-      String statusUrl = String.format(statusEndPoint, serviceURL, apiEndpoint, ingestionPipeline.getName());
-      JSONObject requestPayload = new JSONObject();
-      response = post(statusUrl, requestPayload.toString());
+      String statusEndPoint = "%s/%s/status?dag_id=%s";
+      response =
+          requestAuthenticatedForJsonContent(statusEndPoint, serviceURL, apiEndpoint, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
         ingestionPipeline.setPipelineStatuses(statuses);
@@ -220,7 +219,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     try {
       HttpResponse<String> response =
           requestAuthenticatedForJsonContent(
-              "%s/%s/last_dag_logs&dag_id=%s", serviceURL, apiEndpoint, ingestionPipeline.getName());
+              "%s/%s/last_dag_logs?dag_id=%s", serviceURL, apiEndpoint, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }

@@ -17,7 +17,7 @@ from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
-from openmetadata_managed_apis.helpers import clean_dag_id
+from openmetadata_managed_apis.api.utils import clean_dag_id
 
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService

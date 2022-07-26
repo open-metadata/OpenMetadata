@@ -17,6 +17,7 @@ import sys
 from typing import Optional
 
 from airflow import settings
+from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagBag
 from flask import request
 from flask_jwt_extended.view_decorators import jwt_required, verify_jwt_in_request
@@ -88,3 +89,16 @@ def get_dagbag():
     dagbag.collect_dags()
     dagbag.collect_dags_from_db()
     return dagbag
+
+
+def scan_dags_job():
+    """
+    Refresh the dags
+    """
+    scheduler_job = SchedulerJob(num_times_parse_dags=1)
+    scheduler_job.heartrate = 0
+    scheduler_job.run()
+    try:
+        scheduler_job.kill()
+    except Exception:
+        logging.info("Rescan Complete: Killed Job")

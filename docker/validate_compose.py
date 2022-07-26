@@ -2,23 +2,11 @@ from typing import Tuple
 
 from pprint import pprint
 import requests
+from requests.auth import HTTPBasicAuth
 import time
 
-HEADER_AUTH = {"Authorization": "Basic YWRtaW46YWRtaW4="}
 HEADER_JSON = {"Content-Type": "application/json"}
-
-
-def get_apis_token_header() -> dict:
-    """
-    Get our APIs token
-    """
-    req = requests.post(
-        "http://localhost:8080/api/v1/security/login",
-        json={"username": "admin", "password": "admin", "refresh": "true", "provider": "db"},
-        headers=HEADER_JSON,
-    ).json()
-
-    return {"Authorization": f"Bearer {req.get('access_token')}"}
+BASIC_AUTH = HTTPBasicAuth("admin", "admin")
 
 
 def get_last_run_info() -> Tuple[str, str]:
@@ -29,7 +17,7 @@ def get_last_run_info() -> Tuple[str, str]:
     while not dag_runs:
         print("Waiting for DAG Run data...")
         time.sleep(5)
-        runs = requests.get("http://localhost:8080/api/v1/dags/sample_data/dagRuns", headers=HEADER_AUTH).json()
+        runs = requests.get("http://localhost:8080/api/v1/dags/sample_data/dagRuns", auth=BASIC_AUTH).json()
         dag_runs = runs.get("dag_runs")
 
     return dag_runs[0].get("dag_run_id"), dag_runs[0].get("state")
@@ -39,10 +27,9 @@ def print_last_run_logs() -> None:
     """
     Show the logs
     """
-    token = get_apis_token_header()
     logs = requests.get(
-        "http://localhost:8080/rest_api/api?api=last_dag_logs&dag_id=sample_data",
-        headers={**HEADER_JSON, **token}
+        "http://localhost:8080/api/v1/openmetadata/last_dag_logs?dag_id=sample_data",
+        auth=BASIC_AUTH
     ).text
     pprint(logs)
 

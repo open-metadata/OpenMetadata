@@ -19,7 +19,6 @@ from airflow.www.app import csrf
 from flask import Response, request
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_dagbag
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from pydantic import ValidationError
 
@@ -43,7 +42,7 @@ def deploy_dag() -> Response:
     try:
         ingestion_pipeline = IngestionPipeline(**json_request)
 
-        deployer = DagDeployer(ingestion_pipeline, get_dagbag())
+        deployer = DagDeployer(ingestion_pipeline)
         response = deployer.deploy()
 
         return response
