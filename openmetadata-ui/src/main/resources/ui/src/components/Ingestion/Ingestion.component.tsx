@@ -62,6 +62,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   pagingHandler,
   handleEnableDisableIngestion,
   currrentPage,
+  onIngestionWorkflowsUpdate,
 }: IngestionProps) => {
   const history = useHistory();
   const { isAdminUser } = useAuth();
@@ -589,6 +590,9 @@ const Ingestion: React.FC<IngestionProps> = ({
                               setIsKillModalOpen(false);
                               setSelectedPipeline(undefined);
                             }}
+                            onIngestionWorkflowsUpdate={
+                              onIngestionWorkflowsUpdate
+                            }
                           />
                         )}
                     </td>

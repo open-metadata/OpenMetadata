@@ -14,7 +14,6 @@
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
-import { useHistory } from 'react-router-dom';
 import { killIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -23,6 +22,7 @@ interface KillIngestionModalProps {
   pipelinName: string;
   isModalOpen: boolean;
   onClose: () => void;
+  onIngestionWorkflowsUpdate: () => void;
 }
 
 const KillIngestionModal: FC<KillIngestionModalProps> = ({
@@ -30,8 +30,8 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   pipelinName,
   isModalOpen,
   onClose,
+  onIngestionWorkflowsUpdate,
 }) => {
-  const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleConfirm = async () => {
@@ -44,8 +44,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
         showSuccessToast(
           `Successfully killed running workflows for ${pipelinName}.`
         );
-        // reload the page after successful api response
-        history.go(0);
+        onIngestionWorkflowsUpdate();
       }
     } catch (error) {
       // catch block error is unknown type so we have to cast it to respective type
