@@ -28,7 +28,7 @@ const RichTextEditorPreviewer = ({
   maxHtClass = 'tw-h-24',
   maxLen = MAX_LENGTH,
   enableSeeMoreVariant = true,
-  textVariant,
+  textVariant = 'black',
 }: PreviewerProp) => {
   const [content, setContent] = useState<string>('');
   const [displayMoreText, setDisplayMoreText] = useState<boolean>(false);
