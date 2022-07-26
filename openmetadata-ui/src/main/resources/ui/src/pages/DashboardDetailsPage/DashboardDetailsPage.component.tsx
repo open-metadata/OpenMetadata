@@ -746,6 +746,27 @@ const DashboardDetailsPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
+  const handleExtentionUpdate = async (updatedDashboard: Dashboard) => {
+    try {
+      const response = await saveUpdatedDashboardData(updatedDashboard);
+      const data = await response.data;
+      if (data) {
+        const { version, owner: ownerValue, tags } = data;
+        setCurrentVersion(version);
+        setDashboardDetails(data);
+        setOwner(ownerValue);
+        setTier(getTierTags(tags));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
+    }
+  };
+
   useEffect(() => {
     fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -816,6 +837,7 @@ const DashboardDetailsPage = () => {
           updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
+          onExtensionUpdate={handleExtentionUpdate}
         />
       )}
     </>
