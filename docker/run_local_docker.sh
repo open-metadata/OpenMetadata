@@ -11,13 +11,20 @@
 #  limitations under the License.
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
-echo "Maven Build - Skipping Tests"
-cd ../ && mvn -DskipTests -DonlyBackend -DskipDefault clean package -pl !openmetadata-ui
-echo "Prepare Docker volume for the operators"
+
+if [[ $1 == "no-ui" ]]; then
+    echo "Maven Build - Skipping Tests and UI"
+    cd ../ && mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+else
+    echo "Maven Build - Skipping Tests"
+    cd ../ && mvn -DskipTests clean package
+fi
+
+echo "Prepare Docker volume for the operators"@
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
 
-docker compose down && docker compose --env-file .ci_env up --build -d
+docker compose down && docker compose up --build -d
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
   printf 'Checking if Elastic Search instance is up...\n'
