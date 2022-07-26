@@ -88,13 +88,21 @@ const NavBar = ({
     debouncedOnChange,
   ]);
 
+  const handleTaskNotificationRead = () => {
+    setHasTaskNotification(false);
+  };
+
+  const handleMentionsNotificationRead = () => {
+    setHasMentionNotification(false);
+  };
+
   const handleBellClick = (visible: boolean) => {
     if (visible) {
       switch (activeTab) {
         case 'Task':
           hasTaskNotification &&
             setTimeout(() => {
-              setHasTaskNotification(false);
+              handleTaskNotificationRead();
             }, 5000);
 
           break;
@@ -102,20 +110,12 @@ const NavBar = ({
         case 'Conversation':
           hasMentionNotification &&
             setTimeout(() => {
-              setHasMentionNotification(false);
+              handleMentionsNotificationRead();
             }, 5000);
 
           break;
       }
     }
-  };
-
-  const handleTaskNotificationRead = () => {
-    setHasTaskNotification(false);
-  };
-
-  const handleMentionsNotificationRead = () => {
-    setHasMentionNotification(false);
   };
 
   const handleActiveTab = (key: string) => {

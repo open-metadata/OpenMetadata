@@ -18,6 +18,7 @@ import AppState from '../../AppState';
 import { getFeedsWithFilter } from '../../axiosAPIs/feedsAPI';
 import { getUserPath } from '../../constants/constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import jsonData from '../../jsons/en';
@@ -27,7 +28,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
-import { tabsInfo } from './NotificationBox.utils';
+import { getFilters, tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
 
 const NotificationBox = ({
@@ -45,7 +46,9 @@ const NotificationBox = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [viewAllPath, setViewAllPath] = useState<string>(
-    `${getUserPath(currentUser?.name as string)}/tasks?feedFilter=ASSIGNED_TO`
+    `${getUserPath(currentUser?.name as string)}/tasks?feedFilter=${
+      FeedFilter.ASSIGNED_TO
+    }`
   );
 
   const notificationDropDownList = useMemo(() => {
@@ -86,21 +89,13 @@ const NotificationBox = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-activity-feed-error']
+          jsonData['api-error-messages']['fetch-notifications-error']
         );
       })
       .finally(() => {
         setIsLoading(false);
       });
   };
-
-  const getFilters = (activeTab: ThreadType) => ({
-    threadType: activeTab,
-    feedFilter:
-      activeTab === ThreadType.Task
-        ? FeedFilter.ASSIGNED_TO
-        : FeedFilter.MENTIONS,
-  });
 
   const updateActiveTab = useCallback(
     (key: string) => {
@@ -117,7 +112,7 @@ const NotificationBox = ({
 
       if (hasTaskNotification || hasMentionNotification) {
         setTimeout(() => {
-          key === 'Task'
+          key === NotificationTabsKey.TASK
             ? onMarkTaskNotificationRead()
             : onMarkMentionsNotificationRead();
         }, 4000);
@@ -133,12 +128,16 @@ const NotificationBox = ({
   const getTabTitle = (name: string, key: string) => {
     return (
       <Badge
-        dot={key === 'Task' ? hasTaskNotification : hasMentionNotification}
+        dot={
+          key === NotificationTabsKey.TASK
+            ? hasTaskNotification
+            : hasMentionNotification
+        }
         offset={[5, 0]}>
         <SVGIcons
           alt=""
           className="tw-mr-2"
-          icon={key === 'Task' ? Icons.TASK : Icons.MENTIONS}
+          icon={key === NotificationTabsKey.TASK ? Icons.TASK : Icons.MENTIONS}
           width="14px"
         />
         {name}

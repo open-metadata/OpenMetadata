@@ -16,15 +16,10 @@ import { isUndefined, toString } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../../../AppState';
-import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import { getUserPath } from '../../../../constants/constants';
-import { EntityType, FqnPart } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
 import {
-  getPartialNameFromFQN,
-  getPartialNameFromTableFQN,
-} from '../../../../utils/CommonUtils';
-import {
+  entityDisplayName,
   getEntityFieldDisplay,
   getFeedAction,
   prepareFeedLink,
@@ -52,44 +47,6 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   const onTitleClickHandler = (name: string) => {
     history.push(getUserPath(name));
   };
-  const entityDisplayName = () => {
-    let displayName;
-    if (entityType === EntityType.TABLE) {
-      displayName = getPartialNameFromTableFQN(
-        entityFQN,
-        [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        '.'
-      );
-    } else if (entityType === EntityType.DATABASE_SCHEMA) {
-      displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
-    } else if (
-      [
-        EntityType.DATABASE_SERVICE,
-        EntityType.DASHBOARD_SERVICE,
-        EntityType.MESSAGING_SERVICE,
-        EntityType.PIPELINE_SERVICE,
-        EntityType.TYPE,
-        EntityType.MLMODEL,
-      ].includes(entityType as EntityType)
-    ) {
-      displayName = getPartialNameFromFQN(entityFQN, ['service']);
-    } else if (
-      [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
-        entityType as EntityType
-      )
-    ) {
-      displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
-    } else {
-      displayName = getPartialNameFromFQN(entityFQN, ['database']);
-    }
-
-    // Remove quotes if the name is wrapped in quotes
-    if (displayName) {
-      displayName = displayName.replace(/^"+|"+$/g, '');
-    }
-
-    return displayName;
-  };
 
   const getFeedLinkElement = () => {
     if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
@@ -113,7 +70,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                     <EntityPopOverCard
                       entityFQN={entityFQN}
                       entityType={entityType}>
-                      <span>{entityDisplayName()}</span>
+                      <span>{entityDisplayName(entityType, entityFQN)}</span>
                     </EntityPopOverCard>
                   </button>
                 </Link>
@@ -161,7 +118,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                         cursor: 'pointer',
                         textDecoration: 'none',
                       }}>
-                      {entityDisplayName()}
+                      {entityDisplayName(entityType, entityFQN)}
                     </Ellipses>
                   </button>
                 </Link>

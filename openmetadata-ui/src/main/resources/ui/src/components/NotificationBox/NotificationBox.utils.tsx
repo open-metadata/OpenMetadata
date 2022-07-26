@@ -14,11 +14,17 @@
 import Icon from '@ant-design/icons';
 import React from 'react';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
+import { FeedFilter } from '../../enums/mydata.enum';
+import {
+  NotificationTabsKey,
+  NotificationTabsName,
+} from '../../enums/notification.enum';
+import { ThreadType } from '../../generated/api/feed/createThread';
 
 export const tabsInfo = [
   {
-    name: 'Task',
-    key: 'Task',
+    name: NotificationTabsName.TASK,
+    key: NotificationTabsKey.TASK,
     icon: (
       <Icon
         component={IconTask}
@@ -29,16 +35,24 @@ export const tabsInfo = [
     ),
   },
   // TODO: remove comments when Backend support for Mention is done
-  //   {
-  //     name: 'Mention',
-  //     key: 'Conversation',
-  //     icon: (
-  //       <Icon
-  //         component={IconMentions}
-  //         style={{
-  //           marginRight: '8px',
-  //         }}
-  //       />
-  //     ),
-  //   },
+  // {
+  //   name: NotificationTabsName.MENTION,
+  //   key: NotificationTabsKey.CONVERSATION,
+  //   icon: (
+  //     <Icon
+  //       component={IconMentions}
+  //       style={{
+  //         marginRight: '8px',
+  //       }}
+  //     />
+  //   ),
+  // },
 ];
+
+export const getFilters = (activeTab: ThreadType) => ({
+  threadType: activeTab,
+  feedFilter:
+    activeTab === ThreadType.Task
+      ? FeedFilter.ASSIGNED_TO
+      : FeedFilter.MENTIONS,
+});
