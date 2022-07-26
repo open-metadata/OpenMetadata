@@ -114,13 +114,10 @@ MOCK_PIPELINE = Pipeline(
 
 
 class FivetranUnitTest(TestCase):
-    def __init__(self, methodName: str = ...) -> None:
-        super().__init__(methodName)
-        self.init_workflow()
-
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
     @patch("metadata.ingestion.source.pipeline.fivetran.FivetranClient")
-    def init_workflow(self, fivetran_client, test_connection):
+    def __init__(self, methodName, fivetran_client, test_connection) -> None:
+        super().__init__(methodName)
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.parse_obj(mock_fivetran_config)
         self.fivetran = FivetranSource.create(

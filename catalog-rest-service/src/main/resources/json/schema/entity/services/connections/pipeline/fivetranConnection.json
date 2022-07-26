@@ -40,7 +40,7 @@
     },
     "limit": {
       "title": "Fivetran API Limit",
-      "description": "Fivetran API Limit For Pagitation.",
+      "description": "Fivetran API Limit For Pagination.",
       "type": "integer",
       "default": 1000
     },
