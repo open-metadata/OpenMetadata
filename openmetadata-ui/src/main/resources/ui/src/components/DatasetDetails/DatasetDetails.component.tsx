@@ -57,6 +57,8 @@ import {
 } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -75,7 +77,6 @@ import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableQueries from '../TableQueries/TableQueries';
-import { CustomPropertyTable } from './CustomPropertyTable/CustomPropertyTable';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -842,8 +843,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 9 && (
                 <CustomPropertyTable
+                  entityDetails={
+                    tableDetails as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.TABLE}
                   handleExtentionUpdate={handleExtentionUpdate}
-                  tableDetails={tableDetails}
                 />
               )}
               {activeTab === 10 && (
