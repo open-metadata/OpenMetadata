@@ -1,0 +1,1 @@
+INGESTION_DEPENDENCY=airflow-container,elasticsearch,mysql
