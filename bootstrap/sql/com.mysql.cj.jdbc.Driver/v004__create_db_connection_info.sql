@@ -31,3 +31,6 @@ WHERE serviceType = 'Looker';
 UPDATE dashboard_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.env')
 WHERE serviceType = 'Looker';
+
+UPDATE webhook_entity
+SET json = JSON_INSERT(json, '$.webhookType', 'generic');

@@ -25,3 +25,6 @@ WHERE serviceType = 'Looker'
 UPDATE dashboard_service_entity
 SET json = json::jsonb #- '{connection,config,username}' #- '{connection,config,password}' #- '{connection,config,env}'
 WHERE serviceType = 'Looker';
+
+UPDATE webhook_entity
+SET json = JSONB_SET(json, '{webhookType}', '"generic"', true);
