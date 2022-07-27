@@ -76,10 +76,9 @@
       "$ref": "../../type/basic.json#/definitions/sqlQuery",
       "default": null
     },
-    "extension" : {
+    "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
-      "$comment": "@om-entity-type",
-      "$ref" : "../../type/basic.json#/definitions/entityExtension"
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["name", "columns", "databaseSchema"],

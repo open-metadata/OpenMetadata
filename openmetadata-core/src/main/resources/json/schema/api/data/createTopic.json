@@ -83,7 +83,6 @@
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
-      "$comment": "@om-entity-type",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
