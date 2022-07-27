@@ -47,9 +47,16 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
-os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"] = "sqlite:////tmp/airflow/airflow.db"
+os.environ[
+    "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"
+] = "mysql+pymysql://airflow_user:airflow_pass@localhost/airflow_db"
 os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
-
+os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
+    (
+        Path(__file__).parent.parent.parent.parent
+        / "src/plugins/dag_templates/dag_runner.j2"
+    ).absolute()
+)
 
 from airflow import DAG
 from airflow.models import DagBag
@@ -78,9 +85,6 @@ class TestAirflowOps(TestCase):
         """
         Prepare ingredients
         """
-
-        db.resetdb()
-        db.initdb()
 
         with DAG(
             "dag_status",
