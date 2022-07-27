@@ -16,7 +16,6 @@ import dask.dataframe as dd
 import gcsfs
 import pandas as pd
 import pyarrow.parquet as pq
-from google.cloud.storage.blob import Blob
 from pandas import DataFrame
 
 from metadata.utils.logger import utils_logger
@@ -24,19 +23,21 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def read_csv_from_gcs(key: Blob, bucket_name: str) -> DataFrame:
-    df = dd.read_csv(f"gs://{bucket_name}/{key.name}")
+def read_csv_from_gcs(key: str, bucket_name: str) -> DataFrame:
+    df = dd.read_csv(f"gs://{bucket_name}/{key}")
     return df
 
 
-def read_tsv_from_gcs(key: Blob, bucket_name: str) -> DataFrame:
-    df = dd.read_csv(f"gs://{bucket_name}/{key.name}", sep="\t")
+def read_tsv_from_gcs(key: str, bucket_name: str) -> DataFrame:
+    df = dd.read_csv(f"gs://{bucket_name}/{key}", sep="\t")
     return df
 
 
-def read_json_from_gcs(key: Blob) -> DataFrame:
+def read_json_from_gcs(client, key: str, bucket_name: str) -> DataFrame:
     try:
-        data = key.download_as_string().decode()
+        bucket = client.get_bucket(bucket_name)
+        blob = bucket.get_blob(key)
+        data = blob.download_as_string().decode()
         data = json.loads(data)
         if isinstance(data, list):
             df = pd.DataFrame.from_dict(data)
@@ -51,8 +52,8 @@ def read_json_from_gcs(key: Blob) -> DataFrame:
         logger.error(verr)
 
 
-def read_parquet_from_gcs(key: Blob, bucket_name: str) -> DataFrame:
+def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:
     gs = gcsfs.GCSFileSystem()
-    arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key.name}", filesystem=gs)
+    arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key}", filesystem=gs)
     df = arrow_df.read_pandas().to_pandas()
     return df
