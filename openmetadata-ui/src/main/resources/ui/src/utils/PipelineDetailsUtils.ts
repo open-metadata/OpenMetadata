@@ -12,15 +12,11 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
-import {
-  Pipeline,
-  StatusType,
-  TaskStatus,
-} from '../generated/entity/data/pipeline';
+import { Pipeline, StatusType, TaskStatus } from '../generated/entity/data/pipeline';
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}`;
+${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificField.EXTENSION}`;
 
 export const pipelineDetailsTabs = [
   {

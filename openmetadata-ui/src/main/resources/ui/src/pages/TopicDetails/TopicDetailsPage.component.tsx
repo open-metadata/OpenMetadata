@@ -15,42 +15,20 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
+import { EntityFieldThreadCount, EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import {
-  getAllFeeds,
-  postFeedById,
-  postThread,
-} from '../../axiosAPIs/feedsAPI';
+import { getAllFeeds, postFeedById, postThread } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import {
-  addFollower,
-  getTopicByFqn,
-  patchTopicDetails,
-  removeFollower,
-} from '../../axiosAPIs/topicsAPI';
+import { addFollower, getTopicByFqn, patchTopicDetails, removeFollower } from '../../axiosAPIs/topicsAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
+import { Edge, EdgeData } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
-import {
-  getServiceDetailsPath,
-  getTopicDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
+import { getServiceDetailsPath, getTopicDetailsPath, getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -62,26 +40,13 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
-import {
-  addToRecentViewed,
-  getCurrentUserId,
-  getEntityMissingError,
-  getEntityName,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed, getCurrentUserId, getEntityMissingError, getEntityName, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import {
-  deletePost,
-  getUpdatedThread,
-  updateThreadData,
-} from '../../utils/FeedUtils';
+import { deletePost, getUpdatedThread, updateThreadData } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  getCurrentTopicTab,
-  topicDetailsTabs,
-} from '../../utils/TopicDetailsUtils';
+import { getCurrentTopicTab, topicDetailsTabs } from '../../utils/TopicDetailsUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
@@ -360,10 +325,10 @@ const TopicDetailsPage: FunctionComponent = () => {
   const fetchTopicDetail = (topicFQN: string) => {
     setLoading(true);
     getTopicByFqn(topicFQN, [
-      'owner',
-      'followers',
-      'tags',
-      // TabSpecificField.EXTENSION,
+      TabSpecificField.OWNER,
+      TabSpecificField.FOLLOWERS,
+      TabSpecificField.TAGS,
+      TabSpecificField.EXTENSION,
     ])
       .then((res: AxiosResponse) => {
         if (res.data) {
