@@ -75,6 +75,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
+    Entity.withHref(uriInfo, team.getParents());
+    Entity.withHref(uriInfo, team.getChildren());
+    Entity.withHref(uriInfo, team.getPolicies());
     return team;
   }
 
@@ -96,7 +99,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     }
   }
 
-  static final String FIELDS = "owner,profile,users,owns,defaultRoles,parents,children";
+  static final String FIELDS = "owner,profile,users,owns,defaultRoles,parents,children,policies";
 
   @GET
   @Valid
@@ -358,6 +361,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
         .withTeamType(ct.getTeamType())
         .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
-        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM));
+        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
+        .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY));
   }
 }

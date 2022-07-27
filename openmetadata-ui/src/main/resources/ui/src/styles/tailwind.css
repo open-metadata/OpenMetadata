@@ -301,20 +301,6 @@
     @apply tw-bg-primary tw-translate-x-4;
   }
 
-  body .content-container h1,
-  body .content-container h2 {
-    @apply tw-text-h3;
-  }
-  body .editor-wrapper ul,
-  body #description ul,
-  body .content-container ul {
-    @apply tw-list-disc;
-  }
-
-  body .content-container p {
-    word-break: break-word;
-  }
-
   .signin-box {
     @apply tw-m-auto tw-h-100 tw-w-120 tw-bg-white tw-shadow-modal;
   }
@@ -503,16 +489,6 @@
     @apply tw-w-full tw-rounded tw-text-info tw-py-1 tw-bg-feed-background tw-border tw-border-feed hover:tw-bg-feed-hover;
     box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.1);
     transition: background-color 100ms linear;
-  }
-
-  /* Bell Badge */
-  .tw-bell-badge {
-    @apply tw-p-1 tw-text-xs tw-absolute;
-    background-color: rgb(250, 62, 62);
-    border-radius: 50%;
-    color: white;
-    top: 0.4rem;
-    left: 1.3rem;
   }
 
   .tw-max-w-75 {

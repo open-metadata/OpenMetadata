@@ -105,6 +105,103 @@
       "dataType": "ARRAY",
       "arrayDataType": "STRUCT",
       "dataTypeDisplay": "array<struct<check_datatype:array<string>>>"
-    }
+    },
+    {
+      "children": [
+        {
+          "dataType": "STRING",
+          "dataTypeDisplay": "string",
+          "name": "type"
+        },
+        {
+          "dataType": "ARRAY",
+          "arrayDataType": "INT",
+          "dataTypeDisplay": "array<int>",
+          "name": "provider"
+        }
+      ],
+      "dataTypeDisplay": "struct<type:string,provider:array<int>>",
+      "dataType": "STRUCT"
+    },
+    {
+      "dataType": "VARCHAR",
+      "dataTypeDisplay": "VARCHAR",
+      "dataLength": 1
+    },
+    {
+      "dataType": "BIGINT",
+      "dataTypeDisplay": "bigint"
+    },
+    {
+      "dataType": "DOUBLE",
+      "dataTypeDisplay": "double"
+    },
+    {
+      "dataType": "VARCHAR",
+      "dataTypeDisplay": "VARCHAR",
+      "dataLength": "16777216"
+    },
+    {
+      "dataType": "DATE",
+      "dataTypeDisplay": "date"
+    },
+    {
+      "dataType": "TIMESTAMP",
+      "dataTypeDisplay": "timestamp"
+    },
+    {
+      "dataType": "ARRAY",
+      "arrayDataType": "INT",
+      "dataTypeDisplay": "array<int>"
+    },
+    {
+      "dataType": "ARRAY",
+      "arrayDataType": "STRUCT",
+      "dataTypeDisplay": "array<struct<type:string,provider:array<int>>>"
+    },
+    {
+      "dataType": "ARRAY",
+      "arrayDataType": "BINARY",
+      "dataTypeDisplay": "array<binary>"
+    },
+    {
+      "dataType": "MAP",
+      "dataTypeDisplay": "map<integer,string>"
+    },
+    {
+      "dataType": "STRING",
+      "dataTypeDisplay": "string"
+    },
+    [
+      {
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      },
+      {
+        "dataType": "DOUBLE",
+        "dataTypeDisplay": "double"
+      },
+      {
+        "dataType": "ARRAY",
+        "arrayDataType": "STRING",
+        "dataTypeDisplay": "array<string>"
+      },
+      {
+        "children": [
+          {
+            "dataType": "INT",
+            "dataTypeDisplay": "int",
+            "name": "a"
+          },
+          {
+            "dataType": "STRING",
+            "dataTypeDisplay": "string",
+            "name": "b"
+          }
+        ],
+        "dataTypeDisplay": "struct<a:int,b:string>",
+        "dataType": "STRUCT"
+      }
+    ]
   ]
 }
