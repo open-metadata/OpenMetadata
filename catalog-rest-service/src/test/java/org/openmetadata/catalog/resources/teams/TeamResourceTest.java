@@ -416,6 +416,258 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
   }
 
+  @Test
+  void patch_isJoinable_200(TestInfo test) throws IOException {
+    CreateTeam create =
+        createRequest(getEntityName(test), "description", "displayName", null)
+            .withProfile(PROFILE)
+            .withIsJoinable(false);
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // patch the team with isJoinable set to true
+    String json = JsonUtils.pojoToJson(team);
+    team.setIsJoinable(true);
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("isJoinable").withOldValue(false).withNewValue(true));
+    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // set isJoinable to false and check
+    json = JsonUtils.pojoToJson(team);
+    team.setIsJoinable(false);
+    change = getChangeDescription(team.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("isJoinable").withOldValue(true).withNewValue(false));
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void patch_deleteUserAndDefaultRoleFromTeam_200(TestInfo test) throws IOException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    final int totalUsers = 20;
+    ArrayList<UUID> users = new ArrayList<>();
+    for (int i = 0; i < totalUsers; i++) {
+      User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
+      users.add(user.getId());
+    }
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    roleResourceTest.createRolesAndSetDefault(test, 5, 0);
+    List<Role> roles = roleResourceTest.listEntities(Map.of(), ADMIN_AUTH_HEADERS).getData();
+    List<UUID> rolesIds = roles.stream().map(Role::getId).collect(Collectors.toList());
+
+    CreateTeam create =
+        createRequest(getEntityName(test), "description", "displayName", null)
+            .withProfile(PROFILE)
+            .withUsers(users)
+            .withDefaultRoles(rolesIds);
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Remove a user from the team using patch request
+    String json = JsonUtils.pojoToJson(team);
+    int removeUserIndex = new Random().nextInt(totalUsers);
+    EntityReference deletedUser = team.getUsers().get(removeUserIndex);
+    team.getUsers().remove(removeUserIndex);
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("users").withOldValue(Arrays.asList(deletedUser)));
+    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove a default role from the team using patch request
+    json = JsonUtils.pojoToJson(team);
+    int removeDefaultRoleIndex = new Random().nextInt(roles.size());
+    EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
+    team.getDefaultRoles().remove(removeDefaultRoleIndex);
+    change = getChangeDescription(team.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("defaultRoles").withOldValue(Arrays.asList(deletedRole)));
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void post_teamWithPolicies(TestInfo test) throws IOException {
+    System.out.println("XXX " + POLICY1);
+    System.out.println("XXX " + POLICY2);
+    CreateTeam create = createRequest(getEntityName(test)).withPolicies(List.of(POLICY1.getId(), POLICY2.getId()));
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_teamWithPolicies(TestInfo test) throws IOException {
+    CreateTeam create = createRequest(getEntityName(test));
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add policies to the team
+    create = createRequest(getEntityName(test)).withPolicies(List.of(POLICY1.getId(), POLICY2.getId()));
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    change
+        .getFieldsAdded()
+        .add(
+            new FieldChange()
+                .withName("policies")
+                .withNewValue(List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference())));
+    team = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove policies from the team
+    create = createRequest(getEntityName(test));
+    change = getChangeDescription(team.getVersion());
+    change
+        .getFieldsDeleted()
+        .add(
+            new FieldChange()
+                .withName("policies")
+                .withOldValue(List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference())));
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void patch_teamWithPolicies(TestInfo test) throws IOException {
+    CreateTeam create = createRequest(getEntityName(test));
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add policies to the team
+    String json = JsonUtils.pojoToJson(team);
+    team.withPolicies(List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    change
+        .getFieldsAdded()
+        .add(
+            new FieldChange()
+                .withName("policies")
+                .withNewValue(List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference())));
+    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove policies from the team
+    json = JsonUtils.pojoToJson(team);
+    team.withPolicies(null);
+    change = getChangeDescription(team.getVersion());
+    change
+        .getFieldsDeleted()
+        .add(
+            new FieldChange()
+                .withName("policies")
+                .withOldValue(List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference())));
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  private static void validateTeam(
+      Team team,
+      String expectedDescription,
+      String expectedDisplayName,
+      Profile expectedProfile,
+      List<EntityReference> expectedUsers,
+      List<EntityReference> expectedDefaultRoles,
+      String expectedUpdatedBy) {
+    assertListNotNull(team.getId(), team.getHref());
+    assertEquals(expectedDescription, team.getDescription());
+    assertEquals(expectedUpdatedBy, team.getUpdatedBy());
+    assertEquals(expectedDisplayName, team.getDisplayName());
+    assertEquals(expectedProfile, team.getProfile());
+    TestUtils.assertEntityReferences(expectedUsers, team.getUsers());
+    TestUtils.assertEntityReferences(expectedDefaultRoles, team.getDefaultRoles());
+    validateEntityReferences(team.getOwns());
+  }
+
+  @Override
+  public Team validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
+    if (expectedTeam.getUsers() == null) {
+      UserResourceTest userResourceTest = new UserResourceTest();
+      CreateUser create = userResourceTest.createRequest("user", "", "", null).withTeams(List.of(expectedTeam.getId()));
+      userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
+    String fields = "";
+    Team getTeam =
+        byName
+            ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(expectedTeam.getId(), null, fields, ADMIN_AUTH_HEADERS);
+    validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), null, null, null, updatedBy);
+    assertNull(getTeam.getOwns());
+
+    fields = "users,owns,profile,defaultRoles,owner";
+    getTeam =
+        byName
+            ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(expectedTeam.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertNotNull(getTeam.getProfile());
+    validateEntityReferences(getTeam.getOwns());
+    validateEntityReferences(getTeam.getUsers(), true);
+    validateEntityReferences(getTeam.getDefaultRoles());
+    return getTeam;
+  }
+
+  @Override
+  public CreateTeam createRequest(String name) {
+    return new CreateTeam().withName(name).withProfile(PROFILE);
+  }
+
+  @Override
+  public Team beforeDeletion(TestInfo test, Team team) throws HttpResponseException {
+    LocationResourceTest locationResourceTest = new LocationResourceTest();
+    EntityReference teamRef = new EntityReference().withId(team.getId()).withType("team");
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test), null, null, teamRef), ADMIN_AUTH_HEADERS);
+    return team;
+  }
+
+  @Override
+  public void validateCreatedEntity(Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
+    assertEquals(createRequest.getProfile(), team.getProfile());
+    TestUtils.validateEntityReferences(team.getOwns());
+
+    List<EntityReference> expectedUsers = new ArrayList<>();
+    for (UUID userId : listOrEmpty(createRequest.getUsers())) {
+      expectedUsers.add(new EntityReference().withId(userId).withType(Entity.USER));
+    }
+    expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
+    TestUtils.assertEntityReferences(expectedUsers, team.getUsers());
+    TestUtils.assertEntityReferenceIds(createRequest.getDefaultRoles(), team.getDefaultRoles());
+    System.out.println("XXX " + team.getParents());
+    TestUtils.assertEntityReferenceIds(createRequest.getParents(), team.getParents());
+    TestUtils.assertEntityReferenceIds(createRequest.getChildren(), team.getChildren());
+    TestUtils.assertEntityReferenceIds(createRequest.getPolicies(), team.getPolicies());
+  }
+
+  @Override
+  protected void validateDeletedEntity(
+      CreateTeam create, Team teamBeforeDeletion, Team teamAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    super.validateDeletedEntity(create, teamBeforeDeletion, teamAfterDeletion, authHeaders);
+
+    List<EntityReference> expectedOwnedEntities = new ArrayList<>();
+    for (EntityReference ref : listOrEmpty(teamBeforeDeletion.getOwns())) {
+      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+    }
+    TestUtils.assertEntityReferences(expectedOwnedEntities, teamAfterDeletion.getOwns());
+  }
+
+  @Override
+  public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
+    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertEquals(expected.getProfile(), updated.getProfile());
+    TestUtils.validateEntityReferences(updated.getOwns());
+
+    List<EntityReference> expectedUsers = listOrEmpty(expected.getUsers());
+    List<EntityReference> actualUsers = listOrEmpty(updated.getUsers());
+    TestUtils.assertEntityReferences(expectedUsers, actualUsers);
+
+    List<EntityReference> expectedDefaultRoles = listOrEmpty(expected.getDefaultRoles());
+    List<EntityReference> actualDefaultRoles = listOrEmpty(updated.getDefaultRoles());
+    TestUtils.assertEntityReferences(expectedDefaultRoles, actualDefaultRoles);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == actual) {
+      return;
+    }
+    if (List.of("users", "defaultRoles", "parents", "children", "policies").contains(fieldName)) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEntityReferences(expectedRefs, actualRefs);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
+
   private Team createWithParents(String teamName, TeamType teamType, EntityReference... parents)
       throws HttpResponseException {
     List<EntityReference> parentList = List.of(parents);
@@ -487,193 +739,5 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             .withName(getEntityName(testInfo) + "manager")
             .withRoles(List.of(teamManager.getId())),
         ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void patch_isJoinable_200(TestInfo test) throws IOException {
-    CreateTeam create =
-        createRequest(getEntityName(test), "description", "displayName", null)
-            .withProfile(PROFILE)
-            .withIsJoinable(false);
-    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    // patch the team with isJoinable set to true
-    String json = JsonUtils.pojoToJson(team);
-    team.setIsJoinable(true);
-    ChangeDescription change = getChangeDescription(team.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("isJoinable").withOldValue(false).withNewValue(true));
-    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-
-    // set isJoinable to false and check
-    json = JsonUtils.pojoToJson(team);
-    team.setIsJoinable(false);
-    change = getChangeDescription(team.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("isJoinable").withOldValue(true).withNewValue(false));
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-  }
-
-  @Test
-  void patch_deleteUserAndDefaultRoleFromTeam_200(TestInfo test) throws IOException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    final int totalUsers = 20;
-    ArrayList<UUID> users = new ArrayList<>();
-    for (int i = 0; i < totalUsers; i++) {
-      User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
-      users.add(user.getId());
-    }
-
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    roleResourceTest.createRolesAndSetDefault(test, 5, 0);
-    List<Role> roles = roleResourceTest.listEntities(Map.of(), ADMIN_AUTH_HEADERS).getData();
-    List<UUID> rolesIds = roles.stream().map(Role::getId).collect(Collectors.toList());
-
-    CreateTeam create =
-        createRequest(getEntityName(test), "description", "displayName", null)
-            .withProfile(PROFILE)
-            .withUsers(users)
-            .withDefaultRoles(rolesIds);
-    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    // Remove a user from the team using patch request
-    String json = JsonUtils.pojoToJson(team);
-    int removeUserIndex = new Random().nextInt(totalUsers);
-    EntityReference deletedUser = team.getUsers().get(removeUserIndex);
-    team.getUsers().remove(removeUserIndex);
-    ChangeDescription change = getChangeDescription(team.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("users").withOldValue(Arrays.asList(deletedUser)));
-    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-
-    // Remove a default role from the team using patch request
-    json = JsonUtils.pojoToJson(team);
-    int removeDefaultRoleIndex = new Random().nextInt(roles.size());
-    EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
-    team.getDefaultRoles().remove(removeDefaultRoleIndex);
-    change = getChangeDescription(team.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("defaultRoles").withOldValue(Arrays.asList(deletedRole)));
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-  }
-
-  private static void validateTeam(
-      Team team,
-      String expectedDescription,
-      String expectedDisplayName,
-      Profile expectedProfile,
-      List<EntityReference> expectedUsers,
-      List<EntityReference> expectedDefaultRoles,
-      String expectedUpdatedBy) {
-    assertListNotNull(team.getId(), team.getHref());
-    assertEquals(expectedDescription, team.getDescription());
-    assertEquals(expectedUpdatedBy, team.getUpdatedBy());
-    assertEquals(expectedDisplayName, team.getDisplayName());
-    assertEquals(expectedProfile, team.getProfile());
-    TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
-    TestUtils.assertEntityReferenceList(expectedDefaultRoles, team.getDefaultRoles());
-    validateEntityReferences(team.getOwns());
-  }
-
-  @Override
-  public Team validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
-    if (expectedTeam.getUsers() == null) {
-      UserResourceTest userResourceTest = new UserResourceTest();
-      CreateUser create = userResourceTest.createRequest("user", "", "", null).withTeams(List.of(expectedTeam.getId()));
-      userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    }
-
-    String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
-    String fields = "";
-    Team getTeam =
-        byName
-            ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(expectedTeam.getId(), null, fields, ADMIN_AUTH_HEADERS);
-    validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), null, null, null, updatedBy);
-    assertNull(getTeam.getOwns());
-
-    fields = "users,owns,profile,defaultRoles,owner";
-    getTeam =
-        byName
-            ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(expectedTeam.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertNotNull(getTeam.getProfile());
-    validateEntityReferences(getTeam.getOwns());
-    validateEntityReferences(getTeam.getUsers(), true);
-    validateEntityReferences(getTeam.getDefaultRoles());
-    return getTeam;
-  }
-
-  @Override
-  public CreateTeam createRequest(String name) {
-    return new CreateTeam().withName(name).withProfile(PROFILE);
-  }
-
-  @Override
-  public Team beforeDeletion(TestInfo test, Team team) throws HttpResponseException {
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference teamRef = new EntityReference().withId(team.getId()).withType("team");
-    locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test), null, null, teamRef), ADMIN_AUTH_HEADERS);
-    return team;
-  }
-
-  @Override
-  public void validateCreatedEntity(Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getProfile(), team.getProfile());
-    TestUtils.validateEntityReferences(team.getOwns());
-
-    List<EntityReference> expectedUsers = new ArrayList<>();
-    for (UUID userId : listOrEmpty(createRequest.getUsers())) {
-      expectedUsers.add(new EntityReference().withId(userId).withType(Entity.USER));
-    }
-    expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
-    TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
-
-    List<EntityReference> expectedDefaultRoles = new ArrayList<>();
-    for (UUID roleId : listOrEmpty(createRequest.getDefaultRoles())) {
-      expectedDefaultRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
-    }
-    expectedDefaultRoles = expectedDefaultRoles.isEmpty() ? null : expectedDefaultRoles;
-    TestUtils.assertEntityReferenceList(expectedDefaultRoles, team.getDefaultRoles());
-  }
-
-  @Override
-  protected void validateDeletedEntity(
-      CreateTeam create, Team teamBeforeDeletion, Team teamAfterDeletion, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    super.validateDeletedEntity(create, teamBeforeDeletion, teamAfterDeletion, authHeaders);
-
-    List<EntityReference> expectedOwnedEntities = new ArrayList<>();
-    for (EntityReference ref : listOrEmpty(teamBeforeDeletion.getOwns())) {
-      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
-    }
-    TestUtils.assertEntityReferenceList(expectedOwnedEntities, teamAfterDeletion.getOwns());
-  }
-
-  @Override
-  public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
-    assertEquals(expected.getDisplayName(), updated.getDisplayName());
-    assertEquals(expected.getProfile(), updated.getProfile());
-    TestUtils.validateEntityReferences(updated.getOwns());
-
-    List<EntityReference> expectedUsers = listOrEmpty(expected.getUsers());
-    List<EntityReference> actualUsers = listOrEmpty(updated.getUsers());
-    TestUtils.assertEntityReferenceList(expectedUsers, actualUsers);
-
-    List<EntityReference> expectedDefaultRoles = listOrEmpty(expected.getDefaultRoles());
-    List<EntityReference> actualDefaultRoles = listOrEmpty(updated.getDefaultRoles());
-    TestUtils.assertEntityReferenceList(expectedDefaultRoles, actualDefaultRoles);
-  }
-
-  @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    if (expected == actual) {
-      return;
-    }
-    if (List.of("users", "defaultRoles", "parents", "children").contains(fieldName)) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
-    }
   }
 }
