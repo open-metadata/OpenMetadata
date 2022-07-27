@@ -63,6 +63,7 @@ describe('TeamsAndUsers page', () => {
       .as('hardDeleteContainer');
 
     cy.get('@hardDeleteContainer')
+      .scrollIntoView()
       .find('[data-testid="delete-button"]')
       .should('be.visible')
       .click();

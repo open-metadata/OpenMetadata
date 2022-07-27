@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
-import 'tailwindcss/tailwind.css';
-import './fonts.css';
-import './myDataDetailsTemp.css';
-import './slick-carousel.scss';
-import './tailwind.css';
-import './antd-master.less';
-import './temp.css';
-import './x-custom/code-mirror.css';
-import './x-custom/CronEditor.css';
-import './x-custom/EntityVersionTimeLine.css';
-import './x-custom/stepper.css';
-import './x-master.css';
+import { Buffer } from 'buffer';
+import { ungzip } from 'pako';
+
+export const gzipToStringConverter = (data: string) => {
+  const gzipedDataBuffer = Buffer.from(data, 'base64');
+  const ungzipedData = ungzip(gzipedDataBuffer);
+
+  return new TextDecoder().decode(ungzipedData);
+};
