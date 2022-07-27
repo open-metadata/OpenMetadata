@@ -31,6 +31,10 @@ export const mlModelTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
+    name: 'Custom Properties',
+    path: 'custom_properties',
+  },
+  {
     name: 'Manage',
     path: 'manage',
   },
@@ -47,8 +51,12 @@ export const getCurrentMlModelTab = (tab: string) => {
       currentTab = 3;
 
       break;
-    case 'manage':
+    case 'custom_properties':
       currentTab = 4;
+
+      break;
+    case 'manage':
+      currentTab = 5;
 
       break;
     case 'features':

@@ -14,27 +14,10 @@
 import classNames from 'classnames';
 import { isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityTags,
-  ExtraInfo,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
-import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { EntityTags, ExtraInfo, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import React, { FC, Fragment, HTMLAttributes, useEffect, useMemo, useState } from 'react';
 import AppState from '../../AppState';
-import {
-  getDashboardDetailsPath,
-  getServiceDetailsPath,
-  getTeamAndUserDetailsPath,
-} from '../../constants/constants';
+import { getDashboardDetailsPath, getServiceDetailsPath, getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -45,6 +28,8 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -75,6 +60,7 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
     lineageLeafNodes: LeafNodes;
     isNodeLoading: LoadingNodeState;
   };
+  onExtensionUpdate: (updatedMlModel: Mlmodel) => void;
 }
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
@@ -88,6 +74,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   settingsUpdateHandler,
   updateMlModelFeatures,
   lineageTabData,
+  onExtensionUpdate,
 }) => {
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -214,6 +201,17 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 3,
     },
     {
+      name: 'Custom Properties',
+      icon: {
+        alt: 'custom_properties',
+        name: 'custom_properties-light-grey',
+        title: 'custom_properties',
+        selectedName: 'custom_properties-primery',
+      },
+      isProtected: false,
+      position: 4,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -223,7 +221,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       },
       isProtected: false,
       protectedState: !mlModelDetail.owner || hasEditAccess(),
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -536,6 +534,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </div>
               )}
               {activeTab === 4 && (
+                <CustomPropertyTable
+                  entityDetails={
+                    mlModelDetail as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.MLMODEL}
+                  handleExtentionUpdate={onExtensionUpdate}
+                />
+              )}
+              {activeTab === 5 && (
                 <div>
                   <ManageTabComponent
                     allowDelete

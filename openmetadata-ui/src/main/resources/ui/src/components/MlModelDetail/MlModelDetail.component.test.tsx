@@ -152,6 +152,7 @@ const mockProp = {
     lineageLeafNodes: {} as LeafNodes,
     isNodeLoading: { id: undefined, state: false },
   },
+  onExtensionUpdate: jest.fn(),
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {
