@@ -81,12 +81,24 @@ import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
-import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import {
+  DashboardService,
+  DashboardServiceType,
+} from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { MessagingServiceType } from '../generated/entity/services/messagingService';
-import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { ServiceResponse } from '../interface/service.interface';
+import {
+  MessagingService,
+  MessagingServiceType,
+} from '../generated/entity/services/messagingService';
+import { MlmodelService } from '../generated/entity/services/mlmodelService';
+import {
+  PipelineService,
+  PipelineServiceType,
+} from '../generated/entity/services/pipelineService';
+import { DataService, ServiceResponse } from '../interface/service.interface';
+import { getDashboardURL } from './DashboardServiceUtils';
+import { getBrokers } from './MessagingServiceUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const serviceTypeLogo = (type: string) => {
@@ -640,4 +652,82 @@ export const setServiceTableCount = (
       callback(count);
     })
     .catch((err: AxiosError) => showErrorToast(err));
+};
+
+export const getOptionalFields = (
+  service: DataService,
+  serviceName: ServiceCategory
+): JSX.Element => {
+  switch (serviceName) {
+    case ServiceCategory.MESSAGING_SERVICES: {
+      const messagingService = service as MessagingService;
+
+      return (
+        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+          <label className="tw-mb-0">Brokers:</label>
+          <span
+            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            data-testid="brokers">
+            {getBrokers(messagingService.connection?.config)}
+          </span>
+        </div>
+      );
+    }
+    case ServiceCategory.DASHBOARD_SERVICES: {
+      const dashboardService = service as DashboardService;
+
+      return (
+        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+          <label className="tw-mb-0">URL:</label>
+          <span
+            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            data-testid="dashboard-url">
+            {getDashboardURL(dashboardService.connection?.config)}
+          </span>
+        </div>
+      );
+    }
+    case ServiceCategory.PIPELINE_SERVICES: {
+      const pipelineService = service as PipelineService;
+
+      return (
+        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+          <label className="tw-mb-0">URL:</label>
+          <span
+            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            data-testid="pipeline-url">
+            {pipelineService.connection?.config?.hostPort || '--'}
+          </span>
+        </div>
+      );
+    }
+
+    case ServiceCategory.ML_MODAL_SERVICES: {
+      const mlmodel = service as MlmodelService;
+
+      return (
+        <>
+          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+            <label className="tw-mb-0">Registry:</label>
+            <span
+              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              data-testid="pipeline-url">
+              {mlmodel.connection?.config?.registryUri || '--'}
+            </span>
+          </div>
+          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+            <label className="tw-mb-0">Tracking:</label>
+            <span
+              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              data-testid="pipeline-url">
+              {mlmodel.connection?.config?.trackingUri || '--'}
+            </span>
+          </div>
+        </>
+      );
+    }
+    default: {
+      return <></>;
+    }
+  }
 };

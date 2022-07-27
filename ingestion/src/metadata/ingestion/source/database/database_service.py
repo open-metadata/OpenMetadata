@@ -44,7 +44,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type import basic
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -125,7 +125,7 @@ class DatabaseServiceTopology(ServiceTopology):
             NodeStage(
                 type_=OMetaTagAndCategory,
                 context="tags",
-                processor="yield_tag",
+                processor="yield_tag_details",
                 ack_sink=False,
                 nullable=True,
                 cache_all=True,
@@ -264,6 +264,13 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
         From topology. To be run for each schema
         """
+
+    def yield_tag_details(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+        """
+        From topology. To be run for each schema
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_tag(schema_name) or []
 
     @abstractmethod
     def yield_view_lineage(
