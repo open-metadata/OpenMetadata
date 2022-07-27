@@ -39,6 +39,9 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
     TEST_DEFINITION2 =
         testDefinitionResourceTest.getEntityByName("columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
     TEST_DEFINITION2_REFERENCE = TEST_DEFINITION2.getEntityReference();
+    TEST_DEFINITION3 =
+        testDefinitionResourceTest.getEntityByName("columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION3_REFERENCE = TEST_DEFINITION3.getEntityReference();
   }
 
   @Test

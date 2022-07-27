@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS test_suite (
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     UNIQUE (name)
-    );
+);
 
 CREATE TABLE IF NOT EXISTS test (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,

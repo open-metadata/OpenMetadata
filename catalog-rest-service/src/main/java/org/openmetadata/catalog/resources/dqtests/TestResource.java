@@ -56,7 +56,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class TestResource extends EntityResource<Test, TestRepository> {
   public static final String COLLECTION_PATH = "/v1/test";
 
-  static final String FIELDS = "owner,testSuite,entity";
+  static final String FIELDS = "owner,testSuite,entity,testDefinition";
 
   @Override
   public Test addHref(UriInfo uriInfo, Test test) {
@@ -64,6 +64,7 @@ public class TestResource extends EntityResource<Test, TestRepository> {
     Entity.withHref(uriInfo, test.getOwner());
     Entity.withHref(uriInfo, test.getTestSuite());
     Entity.withHref(uriInfo, test.getTestDefinition());
+    Entity.withHref(uriInfo, test.getEntity());
     return test;
   }
 
