@@ -16,6 +16,7 @@ import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
+import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/pipeline/glueConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
@@ -35,6 +36,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Glue: {
       schema = glueConnection;
+
+      break;
+    }
+    case PipelineServiceType.Fivetran: {
+      schema = fivetranConnection;
 
       break;
     }

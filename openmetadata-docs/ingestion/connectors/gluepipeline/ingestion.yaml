@@ -1,6 +1,6 @@
 source:
   type: glue
-  serviceName: local_glue
+  serviceName: local_glue5
   serviceConnection:
     config:
       type: Glue
@@ -9,16 +9,9 @@ source:
         awsSecretAccessKey: SECRET
         awsRegion: us-east-2
         endPointURL: https://glue.us-east-2.amazonaws.com/
-      storageServiceName: storage_name
   sourceConfig:
     config:
-      markDeletedTables: true or false
-      includeTables: true or false
-      includeViews: true or false
-      schemaFilterPattern: "<schema name regex list>"
-      tableFilterPattern: "<table name regex list>"
-      dbtConfigSource: "<configs for gcs, s3, local or file server to get the DBT
-        files"
+      type: PipelineMetadata
 sink:
   type: metadata-rest
   config: {}
