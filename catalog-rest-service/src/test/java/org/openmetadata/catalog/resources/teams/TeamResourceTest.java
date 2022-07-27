@@ -482,8 +482,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Test
   void post_teamWithPolicies(TestInfo test) throws IOException {
-    System.out.println("XXX " + POLICY1);
-    System.out.println("XXX " + POLICY2);
     CreateTeam create = createRequest(getEntityName(test)).withPolicies(List.of(POLICY1.getId(), POLICY2.getId()));
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -619,7 +617,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
     TestUtils.assertEntityReferences(expectedUsers, team.getUsers());
     TestUtils.assertEntityReferenceIds(createRequest.getDefaultRoles(), team.getDefaultRoles());
-    System.out.println("XXX " + team.getParents());
     TestUtils.assertEntityReferenceIds(createRequest.getParents(), team.getParents());
     TestUtils.assertEntityReferenceIds(createRequest.getChildren(), team.getChildren());
     TestUtils.assertEntityReferenceIds(createRequest.getPolicies(), team.getPolicies());

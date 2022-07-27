@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -59,7 +60,7 @@ import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
+import org.openmetadata.catalog.security.policyevaluator.RoleCache;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -319,9 +320,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, role, true);
-    RoleEvaluator.getInstance().update((Role) response.getEntity());
-    return response;
+    return create(uriInfo, securityContext, role, true);
   }
 
   @PUT
@@ -342,7 +341,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, role, true);
-    RoleEvaluator.getInstance().update((Role) response.getEntity());
+    RoleCache.invalidateRole(role.getId());
     return response;
   }
 
@@ -370,7 +369,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           JsonPatch patch)
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    RoleEvaluator.getInstance().update((Role) response.getEntity());
+    Role role = (Role) response.getEntity();
+    RoleCache.invalidateRole(role.getId());
     return response;
   }
 
@@ -397,7 +397,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
     Response response = delete(uriInfo, securityContext, id, true, hardDelete, true);
-    RoleEvaluator.getInstance().delete((Role) response.getEntity());
+    RoleCache.invalidateRole(UUID.fromString(id));
     return response;
   }
 

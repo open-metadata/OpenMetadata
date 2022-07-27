@@ -103,14 +103,14 @@ public class DefaultAuthorizer implements Authorizer {
     try {
       List<EntityReference> allRoles = subjectContext.getAllRoles();
       if (resourceContext == null) {
-        return RoleEvaluator.getInstance().getAllowedOperations(allRoles, null);
+        return RoleEvaluator.getInstance().getAllowedOperations(subjectContext, null);
       }
       EntityReference owner = resourceContext.getOwner();
       if (owner == null || subjectContext.isOwner(owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
         return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
       }
-      return RoleEvaluator.getInstance().getAllowedOperations(allRoles, resourceContext.getEntity());
+      return RoleEvaluator.getInstance().getAllowedOperations(subjectContext, resourceContext.getEntity());
     } catch (IOException | EntityNotFoundException ex) {
       return Collections.emptyList();
     }
@@ -157,8 +157,7 @@ public class DefaultAuthorizer implements Authorizer {
       throw new AuthorizationException(noPermission(securityContext.getUserPrincipal()));
     }
     for (MetadataOperation operation : metadataOperations) {
-      if (!RoleEvaluator.getInstance()
-          .hasPermissions(subjectContext.getAllRoles(), resourceContext.getEntity(), operation)) {
+      if (!RoleEvaluator.getInstance().hasPermissions(subjectContext, resourceContext.getEntity(), operation)) {
         throw new AuthorizationException(noPermission(securityContext.getUserPrincipal(), operation.value()));
       }
     }
