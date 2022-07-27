@@ -12,12 +12,27 @@
  */
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DBTBucketDetails, DbtConfigSource, SCredentials } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { errorMsg, getSeparator, requiredField } from '../../../utils/CommonUtils';
-import { checkDbtS3CredsConfigRules, validateDbtS3Config } from '../../../utils/DBTConfigFormUtil';
+import {
+  DBTBucketDetails,
+  DbtConfigSource,
+  SCredentials,
+} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import {
+  errorMsg,
+  getSeparator,
+  requiredField,
+} from '../../../utils/CommonUtils';
+import {
+  checkDbtS3CredsConfigRules,
+  validateDbtS3Config,
+} from '../../../utils/DBTConfigFormUtil';
 import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
-import { DbtConfigS3GCS, DBTFormCommonProps, ErrorDbtS3 } from './DBTConfigForm.interface';
+import {
+  DbtConfigS3GCS,
+  DBTFormCommonProps,
+  ErrorDbtS3,
+} from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;

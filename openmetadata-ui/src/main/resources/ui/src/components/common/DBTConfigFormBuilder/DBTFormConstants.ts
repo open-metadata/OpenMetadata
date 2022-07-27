@@ -14,7 +14,14 @@
 import { FormValidationRulesType } from '../../../enums/form.enum';
 import { FormValidationRules } from '../../../interface/genericForm.interface';
 import { DropDownListItem } from '../../dropdown/types';
-import { DbtConfigCloud, DbtConfigHttp, DbtConfigLocal, DbtGCSCreds, DbtS3Creds, DbtS3CredsReq } from './DBTConfigForm.interface';
+import {
+  DbtConfigCloud,
+  DbtConfigHttp,
+  DbtConfigLocal,
+  DbtGCSCreds,
+  DbtS3Creds,
+  DbtS3CredsReq,
+} from './DBTConfigForm.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export const DBTSources: Array<DropDownListItem> = [

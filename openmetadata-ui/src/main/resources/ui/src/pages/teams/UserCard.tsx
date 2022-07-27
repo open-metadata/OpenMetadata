@@ -24,7 +24,10 @@ import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
-import { getPartialNameFromFQN, getPartialNameFromTableFQN } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 

@@ -14,15 +14,30 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
-import { EntityFieldThreadCount, RecentlySearched, RecentlySearchedData, RecentlyViewed, RecentlyViewedData } from 'Models';
+import {
+  EntityFieldThreadCount,
+  RecentlySearched,
+  RecentlySearchedData,
+  RecentlyViewed,
+  RecentlyViewedData,
+} from 'Models';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { imageTypes, LOCALSTORAGE_RECENTLY_SEARCHED, LOCALSTORAGE_RECENTLY_VIEWED, SUPPORTED_DOMAIN_TYPES, TITLE_FOR_NON_OWNER_ACTION } from '../constants/constants';
-import { UrlEntityCharRegEx, validEmailRegEx } from '../constants/regex.constants';
+import {
+  imageTypes,
+  LOCALSTORAGE_RECENTLY_SEARCHED,
+  LOCALSTORAGE_RECENTLY_VIEWED,
+  SUPPORTED_DOMAIN_TYPES,
+  TITLE_FOR_NON_OWNER_ACTION,
+} from '../constants/constants';
+import {
+  UrlEntityCharRegEx,
+  validEmailRegEx,
+} from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';

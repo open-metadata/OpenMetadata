@@ -13,7 +13,10 @@
 
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import { GlobalSettingOptions, GlobalSettingsMenuCategory } from '../constants/globalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/globalSettings.constants';
 import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
 import withSuspenseFallback from './withSuspenseFallback';
 
