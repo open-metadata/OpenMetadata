@@ -33,7 +33,7 @@ public class UtilResource {
   private final Authorizer authorizer;
 
   public UtilResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "FeedRepository must not be null");
+    Objects.requireNonNull(dao, "UtilRepository must not be null");
     this.utilRepository = new UtilRepository(dao.utilDAO());
     this.authorizer = authorizer;
   }
