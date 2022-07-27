@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
+import { Viewer } from '@toast-ui/react-editor';
 import classNames from 'classnames';
+import { uniqueId } from 'lodash';
 import React, { useEffect, useState } from 'react';
-// Markdown Parser and plugin imports
-import MarkdownParser from 'react-markdown';
-import { Link } from 'react-router-dom';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
-import { isExternalUrl } from '../../../utils/StringsUtils';
 import { BlurLayout } from './BlurLayout';
 import { PreviewerProp } from './RichTextEditor.interface';
+import './RichTextEditorPreviewer.less';
 
 export const MAX_LENGTH = 300;
 
@@ -31,23 +28,17 @@ const RichTextEditorPreviewer = ({
   maxHtClass = 'tw-h-24',
   maxLen = MAX_LENGTH,
   enableSeeMoreVariant = true,
+  textVariant = 'black',
 }: PreviewerProp) => {
   const [content, setContent] = useState<string>('');
-  const [displayMoreText, setDisplayMoreText] = useState(false);
-
-  const setModifiedContent = (markdownValue: string) => {
-    const modifiedContent = markdownValue
-      .replace(/&lt;/g, '<')
-      .replace(/&gt/g, '>');
-    setContent(modifiedContent);
-  };
+  const [displayMoreText, setDisplayMoreText] = useState<boolean>(false);
 
   const displayMoreHandler = () => {
     setDisplayMoreText((pre) => !pre);
   };
 
   useEffect(() => {
-    setModifiedContent(markdown);
+    setContent(markdown);
   }, [markdown]);
 
   return (
@@ -63,54 +54,12 @@ const RichTextEditorPreviewer = ({
         }
       )}
       data-testid="viewer-container">
-      <MarkdownParser
-        sourcePos
-        components={{
-          h1: 'p',
-          h2: 'p',
-          ul: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { ordered, ...rest } = props;
+      <div
+        className={classNames('markdown-parser', textVariant)}
+        data-testid="markdown-parser">
+        <Viewer extendedAutolinks initialValue={content} key={uniqueId()} />
+      </div>
 
-            return (
-              <ul className="tw-ml-3" {...rest}>
-                {children}
-              </ul>
-            );
-          },
-          ol: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { ordered, ...rest } = props;
-
-            return (
-              <ol className="tw-ml-3" {...rest} style={{ listStyle: 'auto' }}>
-                {children}
-              </ol>
-            );
-          },
-          code: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { inline, ...rest } = props;
-
-            return (
-              <code {...rest} className="tw-my">
-                {children}
-              </code>
-            );
-          },
-          a: ({ children, ...props }) => {
-            const href = props.href;
-            if (isExternalUrl(href)) {
-              return <a {...props}>{children}</a>;
-            } else {
-              return <Link to={props.href || ''}>{children}</Link>;
-            }
-          },
-        }}
-        rehypePlugins={[rehypeRaw]}
-        remarkPlugins={[remarkGfm]}>
-        {content}
-      </MarkdownParser>
       <BlurLayout
         blurClasses={blurClasses}
         displayMoreHandler={displayMoreHandler}
