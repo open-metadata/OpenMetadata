@@ -46,6 +46,10 @@
     "service": {
       "description": "Link to the dashboard service where this dashboard is hosted in",
       "$ref": "../../type/entityReference.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["name", "service"],
