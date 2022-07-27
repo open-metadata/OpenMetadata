@@ -187,15 +187,16 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public HttpResponse<String> getServiceStatus() {
+    HttpResponse<String> response;
     try {
-      HttpResponse<String> response = requestNoAuthForJsonContent("%s/rest_api/health", serviceURL);
+      response = requestNoAuthForJsonContent("%s/rest_api/health", serviceURL);
       if (response.statusCode() == 200) {
         return response;
       }
     } catch (Exception e) {
-      throw new PipelineServiceClientException("Failed to get REST status.");
+      throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
     }
-    throw new PipelineServiceClientException("Failed to get REST status.");
+    throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
   }
 
   @Override
@@ -236,17 +237,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
     try {
-      HttpResponse<String> response =
+      response =
           requestAuthenticatedForJsonContent(
               "%s/rest_api/api?api=last_dag_logs&dag_id=%s", serviceURL, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
     } catch (Exception e) {
-      throw new PipelineServiceClientException("Failed to get last ingestion logs.");
+      throw PipelineServiceClientException.byMessage("Failed to get last ingestion logs.", e.getMessage());
     }
-    throw new PipelineServiceClientException("Failed to get last ingestion logs.");
+    throw new PipelineServiceClientException(
+        String.format("Failed to get last ingestion logs due to %s", response.body()));
   }
 
   private HttpResponse<String> requestAuthenticatedForJsonContent(String stringUrlFormat, Object... stringReplacement)
