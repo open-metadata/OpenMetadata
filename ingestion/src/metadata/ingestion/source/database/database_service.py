@@ -120,7 +120,7 @@ class DatabaseServiceTopology(ServiceTopology):
             NodeStage(
                 type_=OMetaTagAndCategory,
                 context="tags",
-                processor="yield_tag",
+                processor="yield_tag_details",
                 ack_sink=False,
                 nullable=True,
                 cache_all=True,
@@ -259,6 +259,13 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
         From topology. To be run for each schema
         """
+
+    def yield_tag_details(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+        """
+        From topology. To be run for each schema
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_tag(schema_name) or []
 
     @abstractmethod
     def yield_view_lineage(
