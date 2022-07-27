@@ -463,7 +463,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_tag_category(self, record: OMetaTagAndCategory):
         try:
-            self.metadata.update_tag_category(
+            self.metadata.create_or_update_tag_category(
                 tag_category_body=record.category_name,
                 category_name=record.category_name.name.__root__,
             )
@@ -471,7 +471,7 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(err)
         try:
-            self.metadata.update_primary_tag(
+            self.metadata.create_or_update_primary_tag(
                 category_name=record.category_name.name.__root__,
                 primary_tag_body=record.category_details,
                 primary_tag_fqn=fqn.build(
