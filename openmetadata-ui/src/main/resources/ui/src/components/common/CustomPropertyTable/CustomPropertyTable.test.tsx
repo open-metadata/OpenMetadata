@@ -14,7 +14,12 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
+import { EntityType } from '../../../enums/entity.enum';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
+import { Topic } from '../../../generated/entity/data/topic';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
 const mockCustomProperties = [
@@ -53,12 +58,13 @@ jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
   ),
 }));
 
-const mockTableDetails = {} as Table;
+const mockTableDetails = {} as Table & Topic & Dashboard & Pipeline & Mlmodel;
 const handleExtentionUpdate = jest.fn();
 
 const mockProp = {
-  tableDetails: mockTableDetails,
+  entityDetails: mockTableDetails,
   handleExtentionUpdate,
+  entityType: EntityType.TABLE,
 };
 
 describe('Test CustomProperty Table Component', () => {

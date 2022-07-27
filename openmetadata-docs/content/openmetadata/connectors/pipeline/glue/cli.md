@@ -7,7 +7,7 @@ slug: /openmetadata/connectors/pipeline/glue/cli
 
 <Requirements />
 
-<MetadataIngestionServiceDev service="pipeline" connector="Glue" goal="CLI"/>
+<MetadataIngestionServiceDev service="pipeline" connector="GluePipeline" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>
 

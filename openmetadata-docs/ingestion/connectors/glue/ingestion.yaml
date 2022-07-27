@@ -10,7 +10,6 @@ source:
         awsRegion: us-east-2
         endPointURL: https://glue.us-east-2.amazonaws.com/
       storageServiceName: storage_name
-      pipelineServiceName: local_glue_pipeline
   sourceConfig:
     config:
       markDeletedTables: true or false

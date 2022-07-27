@@ -111,6 +111,7 @@ const TopicDetailsProps = {
     lineageLeafNodes: {} as LeafNodes,
     isNodeLoading: { id: undefined, state: false },
   },
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -240,7 +241,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
+      <TopicDetails {...TopicDetailsProps} activeTab={7} />,
       {
         wrapper: MemoryRouter,
       }
@@ -261,6 +262,21 @@ describe('Test TopicDetails component', () => {
     const detailContainer = await findByTestId(container, 'lineage-details');
 
     expect(detailContainer).toBeInTheDocument();
+  });
+
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

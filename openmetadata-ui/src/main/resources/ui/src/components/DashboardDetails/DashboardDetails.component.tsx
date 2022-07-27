@@ -53,6 +53,8 @@ import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -112,6 +114,7 @@ const DashboardDetails = ({
   fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
+  onExtensionUpdate,
 }: DashboardDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -193,6 +196,11 @@ const DashboardDetails = ({
       position: 3,
     },
     {
+      name: 'Custom Properties',
+      isProtected: false,
+      position: 4,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -202,7 +210,7 @@ const DashboardDetails = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -739,6 +747,15 @@ const DashboardDetails = ({
                 </div>
               )}
               {activeTab === 4 && (
+                <CustomPropertyTable
+                  entityDetails={
+                    dashboardDetails as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.DASHBOARD}
+                  handleExtentionUpdate={onExtensionUpdate}
+                />
+              )}
+              {activeTab === 5 && (
                 <div>
                   <ManageTabComponent
                     allowDelete

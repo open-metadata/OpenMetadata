@@ -51,7 +51,11 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [Airbyte](/openmetadata/connectors/pipeline/airbyte)
 - [Airflow](/openmetadata/connectors/pipeline/airflow)
 - [Glue](/openmetadata/connectors/pipeline/glue)
+- [Fivetran](/openmetadata/connectors/pipeline/fivetran)
 
 ## Metadata Services
 
 - [Amundsen](/openmetadata/connectors/metadata/amundsen)
+
+
+

@@ -1,0 +1,21 @@
+source:
+  type: glue
+  serviceName: local_glue5
+  serviceConnection:
+    config:
+      type: Glue
+      awsConfig:
+        awsAccessKeyId: KEY
+        awsSecretAccessKey: SECRET
+        awsRegion: us-east-2
+        endPointURL: https://glue.us-east-2.amazonaws.com/
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
