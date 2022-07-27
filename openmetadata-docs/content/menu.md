@@ -337,6 +337,11 @@ site_menu:
   - category: OpenMetadata / Connectors / Pipeline / Glue / CLI
     url: /openmetadata/connectors/pipeline/glue/cli
 
+  - category: OpenMetadata / Connectors / Metadata
+    url: /openmetadata/connectors/metadata
+  - category: OpenMetadata / Connectors / Metadata / Amundsen
+    url: /openmetadata/connectors/metadata/amundsen
+
   - category: OpenMetadata / Ingestion
     url: /openmetadata/ingestion
   - category: OpenMetadata / Ingestion / Workflows
