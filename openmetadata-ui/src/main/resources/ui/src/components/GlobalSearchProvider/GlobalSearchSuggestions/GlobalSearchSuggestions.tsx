@@ -292,6 +292,7 @@ const GlobalSearchSuggestions = ({
         icon={Icons.SEARCHV1}
       />
       <Select
+        autoFocus
         open
         showSearch
         bordered={false}
