@@ -16,8 +16,8 @@ import React, { FC, Fragment, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
