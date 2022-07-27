@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_EXTENSION;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -37,8 +38,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts";
-  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts";
+  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension";
+  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension";
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -67,6 +68,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
             : null);
+    dashboard.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(dashboard) : null);
     return dashboard;
   }
 

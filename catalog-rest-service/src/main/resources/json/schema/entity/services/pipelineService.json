@@ -13,7 +13,7 @@
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
-      "enum": ["Airflow", "Glue", "Airbyte"],
+      "enum": ["Airflow", "Glue", "Airbyte", "Fivetran"],
       "javaEnums": [
         {
           "name": "Airflow"
@@ -23,6 +23,9 @@
         },
         {
           "name": "Airbyte"
+        },
+        {
+          "name": "Fivetran"
         }
       ]
     },
@@ -44,6 +47,9 @@
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/fivetranConnection.json"
             }
           ]
         }

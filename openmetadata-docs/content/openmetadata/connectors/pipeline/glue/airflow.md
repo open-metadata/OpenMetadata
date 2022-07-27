@@ -7,7 +7,7 @@ slug: /openmetadata/connectors/pipeline/glue/airflow
 
 <Requirements />
 
-<MetadataIngestionServiceDev service="pipeline" connector="Glue" goal="Airflow"/>
+<MetadataIngestionServiceDev service="pipeline" connector="GluePipeline" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>
 
