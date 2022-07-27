@@ -15,13 +15,24 @@ import { Card, Col, Row } from 'antd';
 import React, { Fragment } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { getServiceDetailsPath, PAGE_SIZE, TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { NoDataFoundPlaceHolder, servicesDisplayName } from '../../constants/services.const';
+import {
+  getServiceDetailsPath,
+  PAGE_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
+import {
+  NoDataFoundPlaceHolder,
+  servicesDisplayName,
+} from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { DataService } from '../../interface/service.interface';
-import { getEntityName, getServiceLogo, showPagination } from '../../utils/CommonUtils';
+import {
+  getEntityName,
+  getServiceLogo,
+  showPagination,
+} from '../../utils/CommonUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import { getOptionalFields } from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';

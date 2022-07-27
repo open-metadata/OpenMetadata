@@ -12,13 +12,24 @@
  */
 
 import { library } from '@fortawesome/fontawesome-svg-core';
-import { faCheck, faCheckCircle, faCheckSquare, faChevronDown, faChevronRight, faChevronUp, faEllipsisV, faPlus, faSearch, faTimes } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCheck,
+  faCheckCircle,
+  faCheckSquare,
+  faChevronDown,
+  faChevronRight,
+  faChevronUp,
+  faEllipsisV,
+  faPlus,
+  faSearch,
+  faTimes,
+} from '@fortawesome/free-solid-svg-icons';
 import React, { FunctionComponent } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import { AuthProvider } from './authentication/auth-provider/AuthProvider';
-import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearch.provider';
+import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import { toastOptions } from './constants/toast.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';

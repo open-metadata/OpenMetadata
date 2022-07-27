@@ -26,6 +26,7 @@ import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getExplorePathWithSearch, ROUTES } from '../../constants/constants';
 import { addToRecentSearched } from '../../utils/CommonUtils';
+import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import GlobalSearchSuggestions from './GlobalSearchSuggestions/GlobalSearchSuggestions';
 
 export const GlobalSearchContext = React.createContext(null);
@@ -41,10 +42,18 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
   const [searchValue, setSearchValue] = useState<string>();
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
 
+  const handleCancel = () => {
+    setSearchValue('');
+    setSuggestionSearch('');
+    setVisible(false);
+  };
+
   const handleKeyPress = useCallback((event) => {
-    if (event.metaKey && event.key === 'k') {
+    if (isCommandKeyPress(event) && event.key === Keys.K) {
       setVisible(true);
       selectRef.current?.focus();
+    } else if (event.key === Keys.ESC) {
+      handleCancel();
     }
   }, []);
 
@@ -72,18 +81,12 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
     });
   };
 
-  const handleCancel = () => {
-    setSearchValue('');
-    setSuggestionSearch('');
-    setVisible(false);
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
     if (e.key === 'Enter') {
       handleCancel();
       searchHandler(target.value);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === Keys.ESC) {
       handleCancel();
     }
   };
@@ -99,19 +102,22 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
     <GlobalSearchContext.Provider value={null}>
       {children}
       <Modal
+        closable
+        destroyOnClose
         maskClosable
         bodyStyle={{
           padding: '20px',
-          height: '312px',
+          height: '314px',
         }}
-        closable={false}
+        closeIcon={<></>}
         footer={null}
+        transitionName=""
         visible={visible}
         width={650}
         onCancel={handleCancel}>
         <GlobalSearchSuggestions
-          ref={selectRef}
           searchText={suggestionSearch}
+          selectRef={selectRef}
           value={searchValue || ''}
           onInputKeyDown={handleKeyDown}
           onOptionSelection={handleCancel}

@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, findByTestId, findByText, fireEvent, queryByTestId, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  findByText,
+  fireEvent,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { ServiceCategory } from '../../enums/service.enum';

@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
+import { BaseSelectRef } from 'rc-select';
+
 export interface GlobalSearchSuggestionsProp {
   value: string;
   searchText: string;
   onOptionSelection: () => void;
   onInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onSearch: (newValue: string) => void;
+  selectRef?: React.Ref<BaseSelectRef>;
 }
 
 export interface CommonSource {

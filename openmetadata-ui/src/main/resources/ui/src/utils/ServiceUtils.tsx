@@ -13,22 +13,89 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { Bucket, DynamicFormFieldType, DynamicObj, ServiceCollection, ServiceData, ServicesData, ServiceTypes } from 'Models';
+import {
+  Bucket,
+  DynamicFormFieldType,
+  DynamicObj,
+  ServiceCollection,
+  ServiceData,
+  ServicesData,
+  ServiceTypes,
+} from 'Models';
 import React from 'react';
 import { getEntityCount } from '../axiosAPIs/miscAPI';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
-import { addMetadataIngestionGuide, addProfilerIngestionGuide, addServiceGuide, addServiceGuideWOAirflow, addUsageIngestionGuide } from '../constants/service-guide.constant';
-import { AIRBYTE, AIRFLOW, arrServiceTypes, ATHENA, AZURESQL, BIGQUERY, CLICKHOUSE, DASHBOARD_DEFAULT, DATABASE_DEFAULT, DATABRICK, DEFAULT_SERVICE, DELTALAKE, DRUID, DYNAMODB, GLUE, HIVE, IBMDB2, KAFKA, LOOKER, MARIADB, METABASE, MLFLOW, MSSQL, MYSQL, ORACLE, PIPELINE_DEFAULT, POSTGRES, POWERBI, PRESTO, PULSAR, REDASH, REDSHIFT, SALESFORCE, SCIKIT, serviceTypes, SINGLESTORE, SNOWFLAKE, SQLITE, SUPERSET, TABLEAU, TOPIC_DEFAULT, TRINO, VERTICA } from '../constants/services.const';
+import {
+  addMetadataIngestionGuide,
+  addProfilerIngestionGuide,
+  addServiceGuide,
+  addServiceGuideWOAirflow,
+  addUsageIngestionGuide,
+} from '../constants/service-guide.constant';
+import {
+  AIRBYTE,
+  AIRFLOW,
+  arrServiceTypes,
+  ATHENA,
+  AZURESQL,
+  BIGQUERY,
+  CLICKHOUSE,
+  DASHBOARD_DEFAULT,
+  DATABASE_DEFAULT,
+  DATABRICK,
+  DEFAULT_SERVICE,
+  DELTALAKE,
+  DRUID,
+  DYNAMODB,
+  GLUE,
+  HIVE,
+  IBMDB2,
+  KAFKA,
+  LOOKER,
+  MARIADB,
+  METABASE,
+  MLFLOW,
+  MSSQL,
+  MYSQL,
+  ORACLE,
+  PIPELINE_DEFAULT,
+  POSTGRES,
+  POWERBI,
+  PRESTO,
+  PULSAR,
+  REDASH,
+  REDSHIFT,
+  SALESFORCE,
+  SCIKIT,
+  serviceTypes,
+  SINGLESTORE,
+  SNOWFLAKE,
+  SQLITE,
+  SUPERSET,
+  TABLEAU,
+  TOPIC_DEFAULT,
+  TRINO,
+  VERTICA,
+} from '../constants/services.const';
 import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
-import { DashboardService, DashboardServiceType } from '../generated/entity/services/dashboardService';
+import {
+  DashboardService,
+  DashboardServiceType,
+} from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { MessagingService, MessagingServiceType } from '../generated/entity/services/messagingService';
+import {
+  MessagingService,
+  MessagingServiceType,
+} from '../generated/entity/services/messagingService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
-import { PipelineService, PipelineServiceType } from '../generated/entity/services/pipelineService';
+import {
+  PipelineService,
+  PipelineServiceType,
+} from '../generated/entity/services/pipelineService';
 import { DataService, ServiceResponse } from '../interface/service.interface';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';

@@ -17,7 +17,11 @@ import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
 import Loader from '../../components/Loader/Loader';
 import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
-import { getEditWebhookPath, pagingObject, ROUTES } from '../../constants/constants';
+import {
+  getEditWebhookPath,
+  pagingObject,
+  ROUTES,
+} from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';

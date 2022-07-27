@@ -20,7 +20,14 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
-import { checkAirflowStatus, deleteIngestionPipelineById, deployIngestionPipelineById, enableDisableIngestionPipelineById, getIngestionPipelines, triggerIngestionPipelineById } from '../../axiosAPIs/ingestionPipelineAPI';
+import {
+  checkAirflowStatus,
+  deleteIngestionPipelineById,
+  deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
+  getIngestionPipelines,
+  triggerIngestionPipelineById,
+} from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getMlmodels } from '../../axiosAPIs/mlModelAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
@@ -42,7 +49,12 @@ import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
-import { getServiceDetailsPath, getTeamAndUserDetailsPath, PAGE_SIZE, pagingObject } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  getTeamAndUserDetailsPath,
+  PAGE_SIZE,
+  pagingObject,
+} from '../../constants/constants';
 import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -59,9 +71,26 @@ import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
-import { getEntityDeleteMessage, getEntityMissingError, getEntityName, hasEditAccess, isEven, pluralize } from '../../utils/CommonUtils';
-import { getEditConnectionPath, getServicesWithTabPath } from '../../utils/RouterUtils';
-import { getCurrentServiceTab, getServiceCategoryFromType, servicePageTabs, serviceTypeLogo, setServiceSchemaCount, setServiceTableCount } from '../../utils/ServiceUtils';
+import {
+  getEntityDeleteMessage,
+  getEntityMissingError,
+  getEntityName,
+  hasEditAccess,
+  isEven,
+  pluralize,
+} from '../../utils/CommonUtils';
+import {
+  getEditConnectionPath,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
+import {
+  getCurrentServiceTab,
+  getServiceCategoryFromType,
+  servicePageTabs,
+  serviceTypeLogo,
+  setServiceSchemaCount,
+  setServiceTableCount,
+} from '../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

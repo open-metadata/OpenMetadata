@@ -15,7 +15,10 @@ import Icon from '@ant-design/icons';
 import React from 'react';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { NotificationTabsKey, NotificationTabsName } from '../../enums/notification.enum';
+import {
+  NotificationTabsKey,
+  NotificationTabsName,
+} from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 
 export const tabsInfo = [

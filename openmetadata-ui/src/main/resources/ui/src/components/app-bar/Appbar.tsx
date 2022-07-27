@@ -21,11 +21,27 @@ import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getVersion } from '../../axiosAPIs/miscAPI';
-import { getExplorePathWithSearch, getTeamAndUserDetailsPath, getUserPath, navLinkSettings, ROUTES, TERM_ADMIN, TERM_USER } from '../../constants/constants';
-import { urlGitbookDocs, urlGithubRepo, urlJoinSlack } from '../../constants/url.const';
+import {
+  getExplorePathWithSearch,
+  getTeamAndUserDetailsPath,
+  getUserPath,
+  navLinkSettings,
+  ROUTES,
+  TERM_ADMIN,
+  TERM_USER,
+} from '../../constants/constants';
+import {
+  urlGitbookDocs,
+  urlGithubRepo,
+  urlJoinSlack,
+} from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { addToRecentSearched, getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
+import {
+  addToRecentSearched,
+  getEntityName,
+  getNonDeletedTeams,
+} from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Ellipses from '../common/Ellipses/Ellipses';

@@ -16,7 +16,10 @@ import { isUndefined } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { FC, useState } from 'react';
 import { RuleAccess } from '../../../enums/rule.enum';
-import { Operation, Rule } from '../../../generated/entity/policies/accessControl/rule';
+import {
+  Operation,
+  Rule,
+} from '../../../generated/entity/policies/accessControl/rule';
 import { errorMsg } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 

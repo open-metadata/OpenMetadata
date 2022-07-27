@@ -16,7 +16,11 @@ import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { FilterPattern, IngestionPipeline, PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  FilterPattern,
+  IngestionPipeline,
+  PipelineType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {

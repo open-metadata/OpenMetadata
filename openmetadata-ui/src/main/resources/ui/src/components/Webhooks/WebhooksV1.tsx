@@ -15,7 +15,10 @@ import { Card, Select, Space } from 'antd';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { PAGE_SIZE, TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  PAGE_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import { statuses } from '../AddWebhook/WebhookConstants';

@@ -20,11 +20,20 @@ import { capitalize, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { PAGE_SIZE, TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { IngestionPipeline, PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  PAGE_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
-import { getAddIngestionPath, getEditIngestionPath } from '../../utils/RouterUtils';
+import {
+  getAddIngestionPath,
+  getEditIngestionPath,
+} from '../../utils/RouterUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';

@@ -12,17 +12,29 @@
  */
 
 import classNames from 'classnames';
-import { ArrayChange, Change, diffArrays, diffWords, diffWordsWithSpace } from 'diff';
+import {
+  ArrayChange,
+  Change,
+  diffArrays,
+  diffWords,
+  diffWordsWithSpace,
+} from 'diff';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DESCRIPTIONLENGTH, getTeamAndUserDetailsPath } from '../constants/constants';
+import {
+  DESCRIPTIONLENGTH,
+  getTeamAndUserDetailsPath,
+} from '../constants/constants';
 import { EntityField } from '../constants/feed.constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
-import { ChangeDescription, FieldChange } from '../generated/entity/services/databaseService';
+import {
+  ChangeDescription,
+  FieldChange,
+} from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityName } from './CommonUtils';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';

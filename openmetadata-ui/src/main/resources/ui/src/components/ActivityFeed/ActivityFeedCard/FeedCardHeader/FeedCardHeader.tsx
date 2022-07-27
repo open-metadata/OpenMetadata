@@ -18,7 +18,12 @@ import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../../../AppState';
 import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
-import { entityDisplayName, getEntityFieldDisplay, getFeedAction, prepareFeedLink } from '../../../../utils/FeedUtils';
+import {
+  entityDisplayName,
+  getEntityFieldDisplay,
+  getFeedAction,
+  prepareFeedLink,
+} from '../../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../../utils/TimeUtils';
 import Ellipses from '../../../common/Ellipses/Ellipses';

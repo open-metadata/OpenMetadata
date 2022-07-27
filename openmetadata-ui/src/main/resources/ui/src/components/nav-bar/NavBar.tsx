@@ -11,22 +11,33 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Space } from 'antd';
+import { Badge, Dropdown, Input, Space } from 'antd';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
-import { hasNotificationPermission, shouldRequestPermission } from '../../utils/BrowserNotificationUtils';
-import { getEntityFQN, getEntityType, prepareFeedLink } from '../../utils/FeedUtils';
-import { inPageSearchOptions, isInPageSearchAllowed } from '../../utils/RouterUtils';
+import {
+  hasNotificationPermission,
+  shouldRequestPermission,
+} from '../../utils/BrowserNotificationUtils';
+import {
+  getEntityFQN,
+  getEntityType,
+  prepareFeedLink,
+} from '../../utils/FeedUtils';
+import {
+  inPageSearchOptions,
+  isInPageSearchAllowed,
+} from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
+import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import PopOver from '../common/popover/PopOver';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
@@ -214,21 +225,31 @@ const NavBar = ({
           <div
             className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
             data-testid="appbar-item">
-            <span
-              className="tw-cursor-pointer tw-absolute tw-right-2.5 tw-top-2 tw-block tw-z-40 tw-w-4 tw-h-4 tw-text-center"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleOnClick();
-              }}>
-              <SVGIcons alt="icon-search" icon={searchIcon} />
-            </span>
-            <input
+            <Input
               autoComplete="off"
-              className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs tw-ml-4"
+              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
               placeholder="Search for Table, Topics, Dashboards,Pipeline and ML Models"
+              style={{
+                borderRadius: '0.24rem',
+                boxShadow: 'none',
+                height: '37px',
+              }}
+              suffix={
+                <span
+                  className="tw-flex tw-items-center"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleOnClick();
+                  }}>
+                  <CmdKIcon />
+                  <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
+                    <SVGIcons alt="icon-search" icon={searchIcon} />
+                  </span>
+                </span>
+              }
               type="text"
               value={searchValue}
               onBlur={() => setSearchIcon('icon-searchv1')}

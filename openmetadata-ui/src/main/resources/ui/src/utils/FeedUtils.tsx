@@ -16,17 +16,42 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEqual } from 'lodash';
-import { EntityFieldThreadCount, EntityFieldThreads, EntityThreadField } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityFieldThreads,
+  EntityThreadField,
+} from 'Models';
 import React from 'react';
 import TurndownService from 'turndown';
-import { deletePostById, getFeedById, updatePost, updateThread } from '../axiosAPIs/feedsAPI';
-import { getInitialEntity, getSuggestions, getUserSuggestions } from '../axiosAPIs/miscAPI';
+import {
+  deletePostById,
+  getFeedById,
+  updatePost,
+  updateThread,
+} from '../axiosAPIs/feedsAPI';
+import {
+  getInitialEntity,
+  getSuggestions,
+  getUserSuggestions,
+} from '../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { entityLinkRegEx, entityRegex, EntityRegEx, entityUrlMap, hashtagRegEx, linkRegEx, mentionRegEx } from '../constants/feed.constants';
+import {
+  entityLinkRegEx,
+  entityRegex,
+  EntityRegEx,
+  entityUrlMap,
+  hashtagRegEx,
+  linkRegEx,
+  mentionRegEx,
+} from '../constants/feed.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Post, Thread, ThreadType } from '../generated/entity/feed/thread';
-import { getEntityPlaceHolder, getPartialNameFromFQN, getPartialNameFromTableFQN } from './CommonUtils';
+import {
+  getEntityPlaceHolder,
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
