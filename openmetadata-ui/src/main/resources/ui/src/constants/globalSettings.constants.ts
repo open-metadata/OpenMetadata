@@ -14,7 +14,7 @@
 export const GLOBAL_SETTINGS_MENU = [
   {
     category: 'Access',
-    items: ['Teams', 'Users', 'Roles', 'Policies'],
+    items: ['Teams', 'Users', 'Roles'],
   },
   {
     category: 'Services',
@@ -22,7 +22,7 @@ export const GLOBAL_SETTINGS_MENU = [
   },
   {
     category: 'Custom Attributes',
-    items: ['Tables'],
+    items: ['Table', 'Topic', 'Dashboard', 'Pipeline', 'ML Model'],
   },
   {
     category: 'Integrations',
