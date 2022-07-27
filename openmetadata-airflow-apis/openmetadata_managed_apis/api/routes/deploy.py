@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Health endpoint. Globally accessible
+Deploy the DAG and scan it with the scheduler
 """
 import traceback
 

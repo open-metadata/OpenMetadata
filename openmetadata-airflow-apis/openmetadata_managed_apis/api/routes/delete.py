@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Health endpoint. Globally accessible
+Delete the DAG in Airflow's db, as well as the python file
 """
 import logging
 import traceback

@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Health endpoint. Globally accessible
+Return a list of the 10 last status for the ingestion Pipeline
 """
 import logging
 import traceback

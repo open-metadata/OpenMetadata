@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Health endpoint. Globally accessible
+Enable/unpause a DAG
 """
 import logging
 import traceback

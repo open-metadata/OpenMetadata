@@ -21,11 +21,9 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
-import lombok.SneakyThrows;
+
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
-import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
-import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus;
@@ -36,7 +34,7 @@ import org.openmetadata.catalog.util.PipelineServiceClient;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
-  private final String apiEndpoint = "api/v1/openmetadata";
+  private final static String API_ENDPOINT = "api/v1/openmetadata";
 
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     super(
@@ -51,7 +49,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     HttpResponse<String> response;
     try {
       String deployEndpoint = "%s/%s/deploy";
-      String deployUrl = String.format(deployEndpoint, serviceURL, apiEndpoint);
+      String deployUrl = String.format(deployEndpoint, serviceURL, API_ENDPOINT);
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
@@ -72,7 +70,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     try {
       String deleteEndpoint = "%s/%s/delete?dag_id=%s";
       HttpResponse<String> response =
-          deleteRequestAuthenticatedForJsonContent(deleteEndpoint, serviceURL, apiEndpoint, pipelineName);
+          deleteRequestAuthenticatedForJsonContent(deleteEndpoint, serviceURL, API_ENDPOINT, pipelineName);
       return response.body();
     } catch (Exception e) {
       LOG.error(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
@@ -85,7 +83,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     HttpResponse<String> response;
     try {
       String triggerEndPoint = "%s/%s/trigger";
-      String triggerUrl = String.format(triggerEndPoint, serviceURL, apiEndpoint);
+      String triggerUrl = String.format(triggerEndPoint, serviceURL, API_ENDPOINT);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("dag_id", pipelineName);
       response = post(triggerUrl, requestPayload.toString());
@@ -111,7 +109,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       // If the pipeline is currently enabled, disable it
       if (ingestionPipeline.getEnabled().equals(Boolean.TRUE)) {
         toggleEndPoint = "%s/%s/disable";
-        toggleUrl = String.format(toggleEndPoint, serviceURL, apiEndpoint);
+        toggleUrl = String.format(toggleEndPoint, serviceURL, API_ENDPOINT);
         response = post(toggleUrl, requestPayload.toString());
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(false);
@@ -123,7 +121,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         // otherwise, enable it back
       } else {
         toggleEndPoint = "%s/%s/enable";
-        toggleUrl = String.format(toggleEndPoint, serviceURL, apiEndpoint);
+        toggleUrl = String.format(toggleEndPoint, serviceURL, API_ENDPOINT);
         response = post(toggleUrl, requestPayload.toString());
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(true);
@@ -148,7 +146,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     try {
       String statusEndPoint = "%s/%s/status?dag_id=%s";
       response =
-          getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, apiEndpoint, ingestionPipeline.getName());
+          getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
         ingestionPipeline.setPipelineStatuses(statuses);
@@ -170,7 +168,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public HttpResponse<String> getServiceStatus() {
     HttpResponse<String> response;
     try {
-      response = requestNoAuthForJsonContent("%s/%s/health", serviceURL, apiEndpoint);
+      response = getRequestNoAuthForJsonContent("%s/%s/health", serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
         return response;
       }
@@ -185,7 +183,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     HttpResponse<String> response;
     try {
       String statusEndPoint = "%s/%s/test_connection";
-      String statusUrl = String.format(statusEndPoint, serviceURL, apiEndpoint);
+      String statusUrl = String.format(statusEndPoint, serviceURL, API_ENDPOINT);
       String connectionPayload = JsonUtils.pojoToJson(testServiceConnection);
       response = post(statusUrl, connectionPayload);
       if (response.statusCode() == 200) {
@@ -202,7 +200,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     HttpResponse<String> response;
     try {
       String killEndPoint = "%s/%s/kill";
-      String killUrl = String.format(killEndPoint, serviceURL, apiEndpoint);
+      String killUrl = String.format(killEndPoint, serviceURL, API_ENDPOINT);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("dag_id", ingestionPipeline.getName());
       response = post(killUrl, requestPayload.toString());
@@ -222,7 +220,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     try {
       response =
           getRequestAuthenticatedForJsonContent(
-              "%s/%s/last_dag_logs?dag_id=%s", serviceURL, apiEndpoint, ingestionPipeline.getName());
+              "%s/%s/last_dag_logs?dag_id=%s", serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
@@ -240,7 +238,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(
-      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {
+      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {da
     HttpRequest request = authenticatedRequestBuilder(stringUrlFormat, stringReplacement).DELETE().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
@@ -252,7 +250,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
   }
 
-  private HttpResponse<String> requestNoAuthForJsonContent(String stringUrlFormat, Object... stringReplacement)
+  private HttpResponse<String> getRequestNoAuthForJsonContent(String stringUrlFormat, Object... stringReplacement)
       throws IOException, InterruptedException {
     String url = String.format(stringUrlFormat, stringReplacement);
     HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header(CONTENT_HEADER, CONTENT_TYPE).GET().build();

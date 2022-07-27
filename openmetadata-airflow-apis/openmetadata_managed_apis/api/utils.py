@@ -24,6 +24,12 @@ from flask_jwt_extended.view_decorators import jwt_required, verify_jwt_in_reque
 from flask_login.utils import _get_user
 
 
+class MissingArgException(Exception):
+    """
+    Raised when we cannot properly validate the incoming data
+    """
+
+
 def import_path(path):
     module_name = os.path.basename(path).replace("-", "_")
     spec = importlib.util.spec_from_loader(
@@ -58,7 +64,12 @@ def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
 
 
 def get_request_arg(req, arg) -> Optional[str]:
-    return req.args.get(arg) or req.form.get(arg)
+    request_argument = req.args.get(arg) or req.form.get(arg)
+
+    if not request_argument:
+        raise MissingArgException(f"Missing {arg} from request {req} argument")
+
+    return request_argument
 
 
 def get_arg_dag_id() -> Optional[str]:
@@ -77,6 +88,9 @@ def get_request_dag_id() -> Optional[str]:
     and clean it
     """
     raw_dag_id = request.get_json().get("dag_id")
+
+    if not raw_dag_id:
+        raise MissingArgException("Missing dag_id from request JSON")
 
     return clean_dag_id(raw_dag_id)
 

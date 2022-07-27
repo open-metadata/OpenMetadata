@@ -16,6 +16,7 @@ import logging
 
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.api.utils import MissingArgException
 from werkzeug.exceptions import HTTPException
 
 
@@ -25,3 +26,9 @@ def handle_any_error(e):
     if isinstance(e, HTTPException):
         return ApiResponse.error(e.code, repr(e))
     return ApiResponse.server_error(repr(e))
+
+
+@blueprint.app_errorhandler(MissingArgException)
+def handle_missing_arg(e):
+    logging.exception("Missing Argument Exception")
+    return ApiResponse.bad_request(repr(e))
