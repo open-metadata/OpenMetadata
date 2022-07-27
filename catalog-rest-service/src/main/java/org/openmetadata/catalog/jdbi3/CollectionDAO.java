@@ -27,6 +27,7 @@ import lombok.Getter;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.core.statement.StatementException;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
@@ -74,7 +75,9 @@ import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
+import org.openmetadata.catalog.util.EntitiesCount;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.ServicesCount;
 import org.openmetadata.common.utils.CommonUtil;
 
 public interface CollectionDAO {
@@ -185,6 +188,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TypeEntityDAO typeEntityDAO();
+
+  @CreateSqlObject
+  UtilDAO utilDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2003,5 +2009,63 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
+  }
+
+  class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
+    @Override
+    public EntitiesCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new EntitiesCount()
+          .withTableCount(rs.getInt("tableCount"))
+          .withTopicCount(rs.getInt("topicCount"))
+          .withDashboardCount(rs.getInt("dashboardCount"))
+          .withPipelineCount(rs.getInt("pipelineCount"))
+          .withMlmodelCount(rs.getInt("mlmodelCount"))
+          .withServicesCount(rs.getInt("servicesCount"))
+          .withUserCount(rs.getInt("userCount"))
+          .withTeamCount(rs.getInt("teamCount"));
+    }
+  }
+
+  class ServicesCountRowMapper implements RowMapper<ServicesCount> {
+    @Override
+    public ServicesCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ServicesCount()
+          .withDatabaseServiceCount(rs.getInt("databaseServiceCount"))
+          .withMessagingServiceCount(rs.getInt("messagingServiceCount"))
+          .withDashboardServiceCount(rs.getInt("dashboardServiceCount"))
+          .withPipelineServiceCounte(rs.getInt("pipelineServiceCount"))
+          .withMlModelServiceCount(rs.getInt("mlModelServiceCount"));
+    }
+  }
+
+  interface UtilDAO {
+    @SqlQuery(
+        "SELECT\n"
+            + "  (SELECT COUNT(*) FROM table_entity) as tableCount, \n"
+            + "  (SELECT COUNT(*) FROM topic_entity) as topicCount,\n"
+            + "  (SELECT COUNT(*) FROM dashboard_entity) as dashboardCount,\n"
+            + "  (SELECT COUNT(*) FROM pipeline_entity) as pipelineCount, \n"
+            + "  (SELECT COUNT(*) FROM ml_model_entity) as mlmodelCount,\n"
+            + "  (SELECT \n"
+            + "  \t\t(SELECT COUNT(*) FROM database_entity) +\n"
+            + "  \t\t(SELECT COUNT(*) FROM messaging_service_entity)+\n"
+            + "  \t\t(SELECT COUNT(*) FROM dashboard_service_entity)+\n"
+            + "  \t\t(SELECT COUNT(*) FROM pipeline_service_entity)+\n"
+            + "  \t\t(SELECT COUNT(*) FROM mlmodel_service_entity)\n"
+            + "  ) as servicesCount,\n"
+            + "  (SELECT COUNT(*) FROM user_entity) as userCount,\n"
+            + "  (SELECT COUNT(*) FROM team_entity) as teamCount")
+    @RegisterRowMapper(EntitiesCountRowMapper.class)
+    EntitiesCount getAggergatedEntitiesCount() throws StatementException;
+
+    @SqlQuery(
+        "SELECT\n"
+            + "  (SELECT COUNT(*) FROM database_entity) as databaseServiceCount,\n"
+            + "  (SELECT COUNT(*) FROM messaging_service_entity) as messagingServiceCount,\n"
+            + "  (SELECT COUNT(*) FROM dashboard_service_entity) as dashboardServiceCount,\n"
+            + "  (SELECT COUNT(*) FROM pipeline_service_entity) as pipelineServiceCount,\n"
+            + "  (SELECT COUNT(*) FROM mlmodel_service_entity) as mlModelServiceCount")
+    @RegisterRowMapper(ServicesCountRowMapper.class)
+    ServicesCount getAggergatedServicesCount() throws StatementException;
   }
 }
