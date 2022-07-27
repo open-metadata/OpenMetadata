@@ -15,30 +15,18 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEqual, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { Fragment, FunctionComponent, useCallback, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
-import {
-  FQN_SEPARATOR_CHAR,
-  WILD_CARD_CHAR,
-} from '../../constants/char.constants';
+import { FQN_SEPARATOR_CHAR, WILD_CARD_CHAR } from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getOwnerList } from '../../utils/ManageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  searchFormattedUsersAndTeams,
-  suggestFormattedUsersAndTeams,
-} from '../../utils/UserDataUtils';
+import { searchFormattedUsersAndTeams, suggestFormattedUsersAndTeams } from '../../utils/UserDataUtils';
 import CardListItem from '../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../cardlist/CardListItem/CardWithListItem.interface';
 import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
@@ -281,7 +269,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return (
       isAdminUser ||
       isAuthDisabled ||
-      userPermissions[Operation.TeamEditUsers] ||
+      userPermissions[Operation.EditUsers] ||
       !hasEditAccess
     );
   };

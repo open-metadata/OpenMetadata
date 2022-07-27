@@ -23,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -47,8 +45,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.ResourceRegistry;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -61,6 +61,9 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.ResourceDescriptor;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -71,7 +74,6 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "policies")
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
-  public static final List<String> RESOURCES = new ArrayList<>();
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
@@ -92,6 +94,24 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     // Load any existing rules from database, before loading seed data.
     policyEvaluator.load();
     dao.initSeedDataFromResources();
+    initResourceDescriptors();
+  }
+
+  /** Initialize list of resources and the corresponding operations */
+  private void initResourceDescriptors() throws IOException {
+    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/ResourceDescriptors.json$");
+    if (jsonDataFiles.size() != 1) {
+      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
+      return;
+    }
+    String jsonDataFile = jsonDataFiles.get(0);
+    try {
+      String json = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(jsonDataFile));
+      List<ResourceDescriptor> resourceDetails = JsonUtils.readObjects(json, ResourceDescriptor.class);
+      ResourceRegistry.add(resourceDetails);
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
+    }
   }
 
   public static class PolicyList extends ResultList<Policy> {
@@ -102,6 +122,17 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
     public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {
+    @SuppressWarnings("unused")
+    ResourceDescriptorList() {
+      // Empty constructor needed for deserialization
+    }
+
+    public ResourceDescriptorList(List<ResourceDescriptor> data) {
+      super(data, null, null, data.size());
     }
   }
 
@@ -283,16 +314,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
             responseCode = "404",
             description = "Policy for instance {id} and version {version} is" + " " + "not found")
       })
-  public List<String> listPolicyResources(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
-    if (RESOURCES.isEmpty()) {
-      // Load set of resource types
-      RESOURCES.addAll(Entity.listEntities());
-      RESOURCES.add("lineage");
-      RESOURCES.add("feed");
-      Collections.sort(RESOURCES);
-    }
-    return RESOURCES;
+  public ResultList<ResourceDescriptor> listPolicyResources(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    return new ResourceDescriptorList(ResourceRegistry.listResourceDescriptors());
   }
 
   @POST

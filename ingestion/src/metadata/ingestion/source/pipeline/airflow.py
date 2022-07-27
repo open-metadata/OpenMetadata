@@ -12,7 +12,6 @@
 Airflow source to extract metadata from OM UI
 """
 import traceback
-from collections.abc import Iterable
 from typing import Any, Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun
@@ -24,7 +23,6 @@ from sqlalchemy.orm import Session
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
-    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -128,7 +126,9 @@ class AirflowSource(PipelineServiceSource):
                         task.state, StatusType.Pending.value
                     ),
                     startTime=datetime_to_ts(task.start_date),
-                    endTime=datetime_to_ts(task.end_date),
+                    endTime=datetime_to_ts(
+                        task.end_date
+                    ),  # Might be None for running tasks
                     logLink=task.log_url,
                 )
                 for task in tasks

@@ -14,14 +14,7 @@
 import { FormValidationRulesType } from '../../../enums/form.enum';
 import { FormValidationRules } from '../../../interface/genericForm.interface';
 import { DropDownListItem } from '../../dropdown/types';
-import {
-  DbtConfigCloud,
-  DbtConfigHttp,
-  DbtConfigLocal,
-  DbtGCSCreds,
-  DbtS3Creds,
-  DbtS3CredsReq,
-} from './DBTConfigForm.interface';
+import { DbtConfigCloud, DbtConfigHttp, DbtConfigLocal, DbtGCSCreds, DbtS3Creds, DbtS3CredsReq } from './DBTConfigForm.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export const DBTSources: Array<DropDownListItem> = [
@@ -78,8 +71,6 @@ export const reqDBTHttpFields: Record<keyof DbtConfigHttp, string> = {
 };
 
 export const reqDBTS3Fields: Record<keyof DbtS3CredsReq, string> = {
-  awsAccessKeyId: 'AWS Access Key ID',
-  awsSecretAccessKey: 'AWS Secret Access Key',
   awsRegion: 'AWS Region',
 };
 

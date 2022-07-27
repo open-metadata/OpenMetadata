@@ -50,15 +50,10 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.helpers import (
-    get_chart_entities_from_id,
-    get_dashboard_service_or_create,
-    get_standard_chart_type,
-)
+from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.sql_queries import (

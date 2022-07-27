@@ -21,8 +21,11 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
+import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus;
@@ -165,15 +168,16 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public HttpResponse<String> getServiceStatus() {
+    HttpResponse<String> response;
     try {
-      HttpResponse<String> response = requestNoAuthForJsonContent("%s/%s/health", serviceURL, apiEndpoint);
+      response = requestNoAuthForJsonContent("%s/%s/health", serviceURL, apiEndpoint);
       if (response.statusCode() == 200) {
         return response;
       }
     } catch (Exception e) {
-      throw new PipelineServiceClientException("Failed to get REST status.");
+      throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
     }
-    throw new PipelineServiceClientException("Failed to get REST status.");
+    throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
   }
 
   @Override
@@ -214,17 +218,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
     try {
-      HttpResponse<String> response =
+      response =
           getRequestAuthenticatedForJsonContent(
               "%s/%s/last_dag_logs?dag_id=%s", serviceURL, apiEndpoint, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
     } catch (Exception e) {
-      throw new PipelineServiceClientException("Failed to get last ingestion logs.");
+      throw PipelineServiceClientException.byMessage("Failed to get last ingestion logs.", e.getMessage());
     }
-    throw new PipelineServiceClientException("Failed to get last ingestion logs.");
+    throw new PipelineServiceClientException(
+        String.format("Failed to get last ingestion logs due to %s", response.body()));
   }
 
   private HttpResponse<String> getRequestAuthenticatedForJsonContent(

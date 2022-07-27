@@ -30,6 +30,13 @@ export const GLOBAL_SETTINGS_MENU = [
   },
 ];
 
+export enum GlobalSettingsMenuCategory {
+  ACCESS = 'access',
+  SERVICES = 'services',
+  CUSTOM_ATTRIBUTES = 'customAttributes',
+  INTEGRATIONS = 'integrations',
+}
+
 export enum GlobalSettingOptions {
   USERS = 'users',
   TEAMS = 'teams',

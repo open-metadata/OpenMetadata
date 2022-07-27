@@ -8,6 +8,7 @@ slug: /openmetadata/connectors
 OpenMetadata can extract metadata from the following list of connectors:
 
 ## Database Services
+
 - [Athena](/openmetadata/connectors/database/athena)
 - [AzureSQL](/openmetadata/connectors/database/azuresql)
 - [BigQuery](/openmetadata/connectors/database/bigquery)
@@ -33,6 +34,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [Vertica](/openmetadata/connectors/database/vertica)
 
 ## Dashboard Services
+
 - [Looker](/openmetadata/connectors/dashboard/looker)
 - [Metabase](/openmetadata/connectors/dashboard/metabase)
 - [PowerBI](/openmetadata/connectors/dashboard/powerbi)
@@ -41,6 +43,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [Tableau](/openmetadata/connectors/dashboard/tableau)
 
 ## Messaging Services
+
 - [Kafka](/openmetadata/connectors/messaging/kafka) 
 
 ## Pipeline Services
@@ -48,3 +51,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [Airbyte](/openmetadata/connectors/pipeline/airbyte)
 - [Airflow](/openmetadata/connectors/pipeline/airflow)
 - [Glue](/openmetadata/connectors/pipeline/glue)
+
+## Metadata Services
+
+- [Amundsen](/openmetadata/connectors/metadata/amundsen)

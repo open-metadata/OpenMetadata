@@ -19,21 +19,12 @@ import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  PAGE_SIZE_MEDIUM,
-  TITLE_FOR_NON_ADMIN_ACTION,
-  TITLE_FOR_NON_OWNER_ACTION,
-} from '../../constants/constants';
+import { getTeamAndUserDetailsPath, getUserPath, PAGE_SIZE_MEDIUM, TITLE_FOR_NON_ADMIN_ACTION, TITLE_FOR_NON_OWNER_ACTION } from '../../constants/constants';
 import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team } from '../../generated/entity/teams/team';
-import {
-  EntityReference as UserTeams,
-  User,
-} from '../../generated/entity/teams/user';
+import { EntityReference as UserTeams, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
@@ -343,7 +334,7 @@ const TeamDetails = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(userPermissions[Operation.TeamEditUsers]) ? (
+                {isActionAllowed(userPermissions[Operation.EditUsers]) ? (
                   <>
                     <p>Would like to start adding some?</p>
                     <Button

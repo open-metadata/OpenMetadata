@@ -130,15 +130,6 @@ class OMetaServiceTest(TestCase):
             hard_delete=True,
         )
 
-    def test_clean_dag_id(self):
-        """
-        Validate dag_id clean
-        """
-        self.assertEqual(clean_dag_id("hello"), "hello")
-        self.assertEqual(clean_dag_id("hello(world)"), "hello_world_")
-        self.assertEqual(clean_dag_id("hello-world"), "hello-world")
-        self.assertEqual(clean_dag_id("%%&^++hello__"), "_hello__")
-
     def test_ingestion_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
