@@ -111,7 +111,7 @@ const TopicDetailsProps = {
     lineageLeafNodes: {} as LeafNodes,
     isNodeLoading: { id: undefined, state: false },
   },
-  // onExtensionUpdate: jest.fn(),
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -241,7 +241,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
+      <TopicDetails {...TopicDetailsProps} activeTab={7} />,
       {
         wrapper: MemoryRouter,
       }

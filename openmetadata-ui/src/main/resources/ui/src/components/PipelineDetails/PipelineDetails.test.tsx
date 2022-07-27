@@ -275,7 +275,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }

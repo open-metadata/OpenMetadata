@@ -11,19 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  fireEvent,
-  render,
-} from '@testing-library/react';
+import { findByTestId, findByText, fireEvent, render } from '@testing-library/react';
 import { flatten } from 'lodash';
-import {
-  FormattedGlossaryTermData,
-  LeafNodes,
-  LoadingNodeState,
-  TagOption,
-} from 'Models';
+import { FormattedGlossaryTermData, LeafNodes, LoadingNodeState, TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -337,7 +327,7 @@ describe('Test DashboardDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <DashboardDetails {...DashboardDetailsProps} activeTab={4} />,
+      <DashboardDetails {...DashboardDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
