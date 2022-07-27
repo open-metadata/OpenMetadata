@@ -226,12 +226,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     },
     {
       name: 'Custom Properties',
-      icon: {
-        alt: 'custom_properties',
-        name: 'custom_properties-light-grey',
-        title: 'custom_properties',
-        selectedName: 'custom_properties-primery',
-      },
       isProtected: false,
       position: 6,
     },
