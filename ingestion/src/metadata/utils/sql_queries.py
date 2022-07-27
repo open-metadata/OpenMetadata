@@ -10,8 +10,8 @@ REDSHIFT_SQL_STATEMENT = """
           AND querytxt NOT ILIKE 'fetch %%'
           AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
           AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
-          AND querytxt NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
-          AND querytxt NOT LIKE '/* {"app": "dbt", %%} */%%'
+          AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
@@ -189,8 +189,8 @@ SNOWFLAKE_SQL_STATEMENT = """
             )
         )
         WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES')
-          AND query_text NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
-          AND query_text NOT LIKE '/* {"app": "dbt", %%} */%%';
+          AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
         """
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
@@ -337,8 +337,8 @@ MSSQL_SQL_USAGE_STATEMENT = """
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
-          AND t.text NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
-          AND t.text NOT LIKE '/* {"app": "dbt", %%} */%%';
+          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
       ORDER BY s.last_execution_time DESC;
 """
 
@@ -357,8 +357,8 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
         Where start_time between '{start_time}' and '{end_time}'
         and CAST(type,'Int8') <> 3
         and CAST(type,'Int8') <> 4
-        and query NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
-        and query NOT LIKE '/* {"app": "dbt", %%} */%%'
+        and query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        and query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
         and (`type`='QueryFinish' or `type`='QueryStart')
 """
 
@@ -400,6 +400,6 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
-  AND text NOT LIKE '/* {"app": "OpenMetadata", %%} */%%'
-  AND text NOT LIKE '/* {"app": "dbt", %%} */%%'
+  AND text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  AND text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
 """
