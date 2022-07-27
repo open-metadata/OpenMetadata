@@ -20,19 +20,37 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import { addFollower, getMlModelByFQN, patchMlModelDetails, removeFollower } from '../../axiosAPIs/mlModelAPI';
+import {
+  addFollower,
+  getMlModelByFQN,
+  patchMlModelDetails,
+  removeFollower,
+} from '../../axiosAPIs/mlModelAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { Edge, EdgeData } from '../../components/EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
 import { getMlModelPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { EntityLineage, EntityReference } from '../../generated/type/entityLineage';
+import {
+  EntityLineage,
+  EntityReference,
+} from '../../generated/type/entityLineage';
 import jsonData from '../../jsons/en';
-import { getCurrentUserId, getEntityMissingError } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getEntityMissingError,
+} from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
-import { defaultFields, getCurrentMlModelTab, mlModelTabs } from '../../utils/MlModelDetailsUtils';
+import {
+  defaultFields,
+  getCurrentMlModelTab,
+  mlModelTabs,
+} from '../../utils/MlModelDetailsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MlModelPage = () => {

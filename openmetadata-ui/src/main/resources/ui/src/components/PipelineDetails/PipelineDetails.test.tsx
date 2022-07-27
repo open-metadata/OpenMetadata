@@ -285,6 +285,21 @@ describe('Test PipelineDetails component', () => {
     expect(manage).toBeInTheDocument();
   });
 
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
+  });
+
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,

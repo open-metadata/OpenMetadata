@@ -14,10 +14,27 @@
 import classNames from 'classnames';
 import { isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags, ExtraInfo, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
-import React, { FC, Fragment, HTMLAttributes, useEffect, useMemo, useState } from 'react';
+import {
+  EntityTags,
+  ExtraInfo,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
+import React, {
+  FC,
+  Fragment,
+  HTMLAttributes,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import AppState from '../../AppState';
-import { getDashboardDetailsPath, getServiceDetailsPath, getTeamAndUserDetailsPath } from '../../constants/constants';
+import {
+  getDashboardDetailsPath,
+  getServiceDetailsPath,
+  getTeamAndUserDetailsPath,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';

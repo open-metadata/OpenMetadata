@@ -264,6 +264,21 @@ describe('Test TopicDetails component', () => {
     expect(detailContainer).toBeInTheDocument();
   });
 
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
+  });
+
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
       <TopicDetails {...TopicDetailsProps} activeTab={4} />,

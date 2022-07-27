@@ -267,4 +267,19 @@ describe('Test MlModel entity detail component', () => {
     expect(detailContainer).toBeInTheDocument();
     expect(manageTab).toBeInTheDocument();
   });
+
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <MlModelDetailComponent {...mockProp} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
+  });
 });

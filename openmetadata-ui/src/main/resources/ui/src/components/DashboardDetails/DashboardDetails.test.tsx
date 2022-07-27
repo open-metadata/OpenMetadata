@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, fireEvent, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+} from '@testing-library/react';
 import { flatten } from 'lodash';
-import { FormattedGlossaryTermData, LeafNodes, LoadingNodeState, TagOption } from 'Models';
+import {
+  FormattedGlossaryTermData,
+  LeafNodes,
+  LoadingNodeState,
+  TagOption,
+} from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -335,6 +345,21 @@ describe('Test DashboardDetails component', () => {
     const manage = await findByTestId(container, 'manage');
 
     expect(manage).toBeInTheDocument();
+  });
+
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
