@@ -79,12 +79,11 @@ setup(
     description="Airflow REST APIs to create and manage DAGS",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    # Adding the entrypoint allows automatic installation, but breaks the integration tests.
-    # entry_points={
-    #     "airflow.plugins": [
-    #         f"{PLUGIN_NAME} = {PLUGIN_NAME}.{PLUGIN_ROOT_FILE}:{PLUGIN_ENTRY_POINT}"
-    #     ]
-    # },
+    entry_points={
+        "airflow.plugins": [
+            f"{PLUGIN_NAME} = {PLUGIN_NAME}.{PLUGIN_ROOT_FILE}:{PLUGIN_ENTRY_POINT}"
+        ]
+    },
     python_requires=">=3.7",
     zip_safe=False,
     dependency_links=[],
