@@ -90,6 +90,12 @@ APIS_METADATA = [
                 "form_input_type": "text",
                 "required": True,
             },
+            {
+                "name": "compress",
+                "description": "Return the logs as gzip",
+                "form_input_type": "bool",
+                "required": False,
+            },
         ],
     },
     {
