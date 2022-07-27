@@ -26,6 +26,7 @@ import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getAddCustomPropertyPath } from '../../constants/constants';
 import { Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
+import { pluralizeWord } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const CustomEntityDetailV1 = () => {
@@ -101,7 +102,7 @@ const CustomEntityDetailV1 = () => {
     if (!isUndefined(tab)) {
       setActiveTab(1);
       setIsError(false);
-      fetchTypeDetail(tab);
+      fetchTypeDetail(pluralizeWord(1, tab));
     }
   }, [tab]);
 

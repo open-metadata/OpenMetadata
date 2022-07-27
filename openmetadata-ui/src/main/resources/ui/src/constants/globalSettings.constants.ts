@@ -22,7 +22,7 @@ export const GLOBAL_SETTINGS_MENU = [
   },
   {
     category: 'Custom Attributes',
-    items: ['Table', 'Topic', 'Dashboard', 'Pipeline', 'ML Model'],
+    items: ['Tables', 'Topics', 'Dashboards', 'Pipelines', 'ML Models'],
   },
   {
     category: 'Integrations',
