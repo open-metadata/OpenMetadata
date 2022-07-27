@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_EXTENSION;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -46,8 +47,8 @@ import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks";
-  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks";
+  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension";
+  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension";
 
   public PipelineRepository(CollectionDAO dao) {
     super(
@@ -79,6 +80,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
     pipeline.setPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
     pipeline.setTags(fields.contains(FIELD_TAGS) ? getTags(pipeline.getFullyQualifiedName()) : null);
+    pipeline.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(pipeline) : null);
     return pipeline;
   }
 
