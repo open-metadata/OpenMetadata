@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD;
+import static org.openmetadata.catalog.Entity.FIELD_EXTENSION;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -49,8 +50,8 @@ import org.openmetadata.catalog.util.FullyQualifiedName;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags";
-  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags";
+  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension";
+  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension";
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -77,6 +78,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setTags(fields.contains(FIELD_TAGS) ? getTags(mlModel.getFullyQualifiedName()) : null);
     mlModel.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
+    mlModel.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(mlModel) : null);
     return mlModel;
   }
 
