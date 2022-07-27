@@ -17,10 +17,10 @@ import traceback
 from airflow.api_connexion import security
 from airflow.security import permissions
 from airflow.www.app import csrf
-from flask import Response, request
+from flask import Response
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import clean_dag_id, get_request_arg
+from openmetadata_managed_apis.api.utils import get_arg_dag_id
 from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
 
 
@@ -31,12 +31,8 @@ def last_logs() -> Response:
     """
     Retrieve all logs from the task instances of a last DAG run
     """
-    raw_dag_id: str = get_request_arg(request, "dag_id")
 
-    if not raw_dag_id:
-        ApiResponse.bad_request("Missing dag_id parameter in the request")
-
-    dag_id = clean_dag_id(raw_dag_id)
+    dag_id = get_arg_dag_id()
 
     try:
         return last_dag_logs(dag_id)

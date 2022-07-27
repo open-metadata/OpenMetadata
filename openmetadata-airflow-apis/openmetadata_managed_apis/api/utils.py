@@ -41,19 +41,6 @@ def import_path(path):
     return module
 
 
-# Function used to validate the JWT Token
-def jwt_token_secure(func):
-    def jwt_secure_check(arg):
-        logging.info("Rest_API_Plugin.jwt_token_secure() called")
-        if not _get_user().is_anonymous:
-            return func(arg)
-
-        verify_jwt_in_request()
-        return jwt_required(func(arg))
-
-    return jwt_secure_check
-
-
 def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
     """
     Given a string we want to use as a dag_id, we should
@@ -63,10 +50,17 @@ def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
     return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id) if raw_dag_id else None
 
 
-def get_request_arg(req, arg) -> Optional[str]:
+def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:
+    """
+    Pick up the `arg` from the flask `req`.
+    E.g., GET api/v1/endpoint?key=value
+
+    If raise_missing, throw an exception if the argument is
+    not present in the request
+    """
     request_argument = req.args.get(arg) or req.form.get(arg)
 
-    if not request_argument:
+    if not request_argument and raise_missing:
         raise MissingArgException(f"Missing {arg} from request {req} argument")
 
     return request_argument

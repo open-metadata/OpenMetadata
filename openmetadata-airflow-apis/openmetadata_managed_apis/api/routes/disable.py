@@ -19,7 +19,6 @@ from airflow.security import permissions
 from airflow.www.app import csrf
 from flask import Response
 from openmetadata_managed_apis.api.app import blueprint
-from openmetadata_managed_apis.api.config import MISSING_DAG_ID_EXCEPTION_MSG
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.state import disable_dag
@@ -33,9 +32,6 @@ def disable() -> Response:
     Given a DAG ID, mark the dag as disabled
     """
     dag_id = get_request_dag_id()
-
-    if not dag_id:
-        return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
 
     try:
         return disable_dag(dag_id)

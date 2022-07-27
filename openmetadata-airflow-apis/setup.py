@@ -16,7 +16,7 @@ from itertools import chain
 from setuptools import find_packages, setup
 
 PLUGIN_NAME = "openmetadata_managed_apis"
-PLUGIN_ROOT_FILE = "main"
+PLUGIN_ROOT_FILE = "plugin"
 PLUGIN_ENTRY_POINT = "RestApiPlugin"
 HOME = pathlib.Path(__file__).parent
 README = (HOME / "README.md").read_text()

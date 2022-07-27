@@ -35,5 +35,3 @@ DAG_GENERATED_CONFIGS = conf.get(
     "DAG_GENERATED_CONFIGS",
     fallback=f"{os.environ['AIRFLOW_HOME']}/dag_generated_configs",
 )
-
-MISSING_DAG_ID_EXCEPTION_MSG = "Missing dag_id argument in the request"

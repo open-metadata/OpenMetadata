@@ -19,7 +19,6 @@ from airflow.security import permissions
 from airflow.www.app import csrf
 from flask import Response, request
 from openmetadata_managed_apis.api.app import blueprint
-from openmetadata_managed_apis.api.config import MISSING_DAG_ID_EXCEPTION_MSG
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_arg, get_request_dag_id
 from openmetadata_managed_apis.operations.trigger import trigger
@@ -27,18 +26,15 @@ from openmetadata_managed_apis.operations.trigger import trigger
 
 @blueprint.route("/trigger", methods=["POST"])
 @csrf.exempt
-@security.requires_access([(permissions.RESOURCE_TRIGGER, permissions.RESOURCE_DAG)])
+@security.requires_access([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
 def trigger_dag() -> Response:
     """
     Trigger a dag run
     """
     dag_id = get_request_dag_id()
 
-    if not dag_id:
-        return ApiResponse.bad_request(MISSING_DAG_ID_EXCEPTION_MSG)
-
     try:
-        run_id = get_request_arg(request, "run_id")
+        run_id = get_request_arg(request, "run_id", raise_missing=False)
         response = trigger(dag_id, run_id)
 
         return response
