@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -57,6 +58,7 @@ import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
@@ -89,10 +91,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Set up the PolicyEvaluator, before loading seed data.
     PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
-    policyEvaluator.setPolicyRepository(dao);
 
     // Load any existing rules from database, before loading seed data.
-    policyEvaluator.load();
     dao.initSeedDataFromResources();
     initResourceDescriptors();
   }
@@ -335,9 +335,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, policy, true);
-    PolicyEvaluator.getInstance().update((Policy) response.getEntity());
-    return response;
+    return create(uriInfo, securityContext, policy, true);
   }
 
   @PATCH
@@ -364,7 +362,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           JsonPatch patch)
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    PolicyEvaluator.getInstance().update((Policy) response.getEntity());
+    Policy policy = (Policy) response.getEntity();
+    PolicyCache.invalidatePolicy(policy.getId());
     return response;
   }
 
@@ -386,7 +385,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, policy, true);
-    PolicyEvaluator.getInstance().update((Policy) response.getEntity());
+    PolicyCache.invalidatePolicy(policy.getId());
     return response;
   }
 
@@ -411,7 +410,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Parameter(description = "Policy Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
-    PolicyEvaluator.getInstance().delete((Policy) response.getEntity());
+    PolicyCache.invalidatePolicy(UUID.fromString(id));
     return response;
   }
 

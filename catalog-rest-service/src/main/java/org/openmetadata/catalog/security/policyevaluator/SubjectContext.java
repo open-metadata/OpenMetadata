@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -34,13 +35,11 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
+@Slf4j
 public class SubjectContext {
   // Cache used for caching subject context for a user
-  private static final LoadingCache<String, SubjectContext> CACHE =
+  private static final LoadingCache<String, SubjectContext> USER_CACHE =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new SubjectLoader());
-  private static final EntityRepository<User> USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
-  private static final Fields SUBJECT_FIELDS = USER_REPOSITORY.getFields("roles, teams");
-
   private final User user;
 
   public SubjectContext(User user) {
@@ -49,18 +48,22 @@ public class SubjectContext {
 
   public static SubjectContext getSubjectContext(String userName) throws EntityNotFoundException {
     try {
-      return CACHE.get(userName);
+      return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }
   }
 
   public static void cleanup() {
-    CACHE.invalidateAll();
+    USER_CACHE.invalidateAll();
   }
 
-  public static void invalidateKey(String userName) {
-    CACHE.invalidate(userName);
+  public static void invalidateUser(String userName) {
+    try {
+      USER_CACHE.invalidate(userName);
+    } catch (Exception ex) {
+      LOG.error("Failed to invalidate cache for user {}", userName, ex);
+    }
   }
 
   public boolean isAdmin() {
@@ -95,10 +98,13 @@ public class SubjectContext {
   }
 
   static class SubjectLoader extends CacheLoader<String, SubjectContext> {
+    private static final EntityRepository<User> USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
+    private static final Fields FIELDS = USER_REPOSITORY.getFields("roles, teams");
+
     @Override
     public SubjectContext load(@CheckForNull String userName) throws IOException {
-      User user = USER_REPOSITORY.getByName(null, userName, SUBJECT_FIELDS);
-      user.getRoles().forEach(r -> System.out.println("User " + user.getRoles() + " role " + r));
+      User user = USER_REPOSITORY.getByName(null, userName, FIELDS);
+      LOG.info("Loaded user {}:{}", user.getName(), user.getId());
       return new SubjectContext(user);
     }
   }

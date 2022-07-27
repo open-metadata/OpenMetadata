@@ -121,7 +121,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   protected void postDelete(User entity) {
-    SubjectContext.invalidateKey(entity.getName());
+    SubjectContext.invalidateUser(entity.getName());
   }
 
   @Override
