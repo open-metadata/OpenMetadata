@@ -115,7 +115,7 @@ const NotificationBox = ({
           key === NotificationTabsKey.TASK
             ? onMarkTaskNotificationRead()
             : onMarkMentionsNotificationRead();
-        }, 4000);
+        }, 2500);
       }
     },
     [currentUser, hasTaskNotification, hasMentionNotification]
@@ -153,6 +153,7 @@ const NotificationBox = ({
         </div>
       ) : (
         <List
+          className="tw-min-h-64"
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">

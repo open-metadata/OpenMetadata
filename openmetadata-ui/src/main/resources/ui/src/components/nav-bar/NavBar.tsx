@@ -103,7 +103,7 @@ const NavBar = ({
           hasTaskNotification &&
             setTimeout(() => {
               handleTaskNotificationRead();
-            }, 5000);
+            }, 2500);
 
           break;
 
@@ -111,7 +111,7 @@ const NavBar = ({
           hasMentionNotification &&
             setTimeout(() => {
               handleMentionsNotificationRead();
-            }, 5000);
+            }, 2500);
 
           break;
       }
@@ -125,8 +125,8 @@ const NavBar = ({
   const showBrowserNotification = (
     about: string,
     createdBy: string,
-    id: string,
-    type: string
+    type: string,
+    id?: string
   ) => {
     if (!hasNotificationPermission()) {
       return;
@@ -169,8 +169,8 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.task.id,
-            activity.type
+            activity.type,
+            activity.task?.id
           );
         }
       });
@@ -182,8 +182,8 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.task.id,
-            activity.type
+            activity.type,
+            activity.task?.id
           );
         }
       });
@@ -286,7 +286,9 @@ const NavBar = ({
                     />
                   }
                   overlayStyle={{
+                    zIndex: 9999,
                     width: '425px',
+                    minHeight: '375px',
                   }}
                   placement="bottomRight"
                   trigger={['click']}
