@@ -151,11 +151,7 @@ test = {
     # great_expectations tests
     "great-expectations~=0.15.0",
     # Airflow tests
-    "apache-airflow==2.1.4",
-    "marshmallow-sqlalchemy>=0.26.0",
-    "SQLAlchemy-Utils>=0.38.0",
-    "pymysql>=1.0.2",
-    "requests==2.26.0",
+    "apache-airflow==2.3.3",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
