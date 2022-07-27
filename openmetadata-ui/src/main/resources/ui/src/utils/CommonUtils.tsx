@@ -154,18 +154,6 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const pluralizeWord = (count: number, noun: string, suffix = 's') => {
-  if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
-    return `${noun}${suffix}`;
-  } else {
-    if (noun.endsWith(suffix)) {
-      return `${count > 1 ? noun : noun.slice(0, noun.length - 1)}`;
-    } else {
-      return `${noun}${count > 1 ? suffix : ''}`;
-    }
-  }
-};
-
 export const hasEditAccess = (type: string, id: string) => {
   const loggedInUser = AppState.getCurrentUserDetails();
   if (type === 'user') {

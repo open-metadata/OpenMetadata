@@ -24,9 +24,9 @@ import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomP
 import Loader from '../../components/Loader/Loader';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getAddCustomPropertyPath } from '../../constants/constants';
+import { customAttributesPath } from '../../constants/globalSettings.constants';
 import { Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
-import { pluralizeWord } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const CustomEntityDetailV1 = () => {
@@ -102,7 +102,9 @@ const CustomEntityDetailV1 = () => {
     if (!isUndefined(tab)) {
       setActiveTab(1);
       setIsError(false);
-      fetchTypeDetail(pluralizeWord(1, tab));
+      fetchTypeDetail(
+        customAttributesPath[tab as keyof typeof customAttributesPath]
+      );
     }
   }, [tab]);
 

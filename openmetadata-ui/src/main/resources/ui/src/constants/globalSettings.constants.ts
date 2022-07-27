@@ -30,6 +30,14 @@ export const GLOBAL_SETTINGS_MENU = [
   },
 ];
 
+export const customAttributesPath = {
+  tables: 'table',
+  topics: 'topic',
+  dashboards: 'dashboard',
+  pipelines: 'pipeline',
+  mlModels: 'mlmodel',
+};
+
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   SERVICES = 'services',
