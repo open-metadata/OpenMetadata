@@ -21,7 +21,7 @@
   <artifactId>catalog</artifactId>
   <name>OpenMetadata-catalog</name>
   <description>Openmetadata catalog</description>
-  <version>0.11.2</version>
+  <version>0.11.3</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>common</module>
