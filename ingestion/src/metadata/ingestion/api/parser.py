@@ -127,7 +127,7 @@ def get_source_config_class(
     """
     Return the source config type for a source string
     :param source_config_type: source config type string
-    :return: source config type
+    :return: source config class
     """
     if source_config_type == DashboardMetadataConfigType.DashboardMetadata.value:
         return DashboardServiceMetadataPipeline
