@@ -135,7 +135,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
-  cy.get('[data-testid="success-line"]').should('be.visible');
+  cy.get('[data-testid="success-line"]', { timeout: 10000 }).should('be.visible');
   cy.contains(`"${serviceName}_metadata"`).should('be.visible');
   cy.contains('has been created and deployed successfully').should(
     'be.visible'
