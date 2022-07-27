@@ -126,7 +126,7 @@ class OMetaTagMixinPut(TestCase):
             categoryType="Descriptive", description="test tag", name=f"{rand_name}"
         )
 
-        self.metadata.update_tag_category(CATEGORY_NAME, updated_tag_category)
+        self.metadata.create_or_update_tag_category(CATEGORY_NAME, updated_tag_category)
 
         assert True
 
@@ -138,7 +138,7 @@ class OMetaTagMixinPut(TestCase):
             description="test tag", name=f"{rand_name}"
         )
 
-        self.metadata.update_primary_tag(
+        self.metadata.create_or_update_primary_tag(
             CATEGORY_NAME, PRIMARY_TAG_NAME, updated_primary_tag
         )
 
