@@ -6,4 +6,5 @@ branch = True
 omit =
     *__init__*
     tests/*
-    src/plugins/*
+    views/**
+    plugin.py
