@@ -107,7 +107,7 @@ From your terminal:
 
 ```commandline
 mkdir openmetadata && cd "$_"
-wget https://github.com/open-metadata/OpenMetadata/releases/download/0.11.0-release/docker-compose.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/0.11.3-release/docker-compose.yml
 docker compose up -d
 ```
 
