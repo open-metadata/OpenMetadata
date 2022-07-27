@@ -80,9 +80,6 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=config
-        )
         self.connection = get_connection(self.service_connection)
 
         self.status = SQLSourceStatus()

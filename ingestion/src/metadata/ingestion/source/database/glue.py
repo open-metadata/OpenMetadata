@@ -48,7 +48,6 @@ from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.helpers import get_storage_service_or_create
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -62,10 +61,6 @@ class GlueSource(DatabaseServiceSource):
         )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=config
-        )
-
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
         self.connection = get_connection(self.service_connection)
@@ -87,6 +82,19 @@ class GlueSource(DatabaseServiceSource):
             )
         return cls(config, metadata_config)
 
+    def _get_glue_database_and_schemas(self):
+        paginator = self.glue.get_paginator("get_databases")
+        paginator_response = paginator.paginate()
+        for page in paginator_response:
+            yield page
+
+    def _get_glue_tables(self):
+        schema_name = self.context.database_schema.name.__root__
+        paginator = self.glue.get_paginator("get_tables")
+        paginator_response = paginator.paginate(DatabaseName=schema_name)
+        for page in paginator_response:
+            yield page
+
     def get_database_names(self) -> Iterable[str]:
         """
         Default case with a single database.
@@ -98,10 +106,8 @@ class GlueSource(DatabaseServiceSource):
 
         Catalog ID -> Database
         """
-        paginator = self.glue.get_paginator("get_databases")
-        paginator_response = paginator.paginate()
         database_names = []
-        for page in paginator_response:
+        for page in self._get_glue_database_and_schemas() or []:
             for schema in page["DatabaseList"]:
                 try:
                     if filter_by_database(
@@ -141,9 +147,7 @@ class GlueSource(DatabaseServiceSource):
         """
         return schema names
         """
-        paginator = self.glue.get_paginator("get_databases")
-        paginator_response = paginator.paginate()
-        for page in paginator_response:
+        for page in self._get_glue_database_and_schemas() or []:
             for schema in page["DatabaseList"]:
                 try:
                     if filter_by_schema(
@@ -184,12 +188,8 @@ class GlueSource(DatabaseServiceSource):
         schema_name = self.context.database_schema.name.__root__
         all_tables: List[dict] = []
 
-        paginator = self.glue.get_paginator("get_tables")
-        paginator_response = paginator.paginate(DatabaseName=schema_name)
-
-        for page in paginator_response:
+        for page in self._get_glue_tables():
             all_tables += page["TableList"]
-
         for table in all_tables:
             try:
                 table_name = table.get("Name")
