@@ -14,7 +14,7 @@
 export const GLOBAL_SETTINGS_MENU = [
   {
     category: 'Access',
-    items: ['Teams', 'Users', 'Roles', 'Policies'],
+    items: ['Teams', 'Users', 'Roles'],
   },
   {
     category: 'Services',
@@ -22,13 +22,21 @@ export const GLOBAL_SETTINGS_MENU = [
   },
   {
     category: 'Custom Attributes',
-    items: ['Tables'],
+    items: ['Tables', 'Topics', 'Dashboards', 'Pipelines', 'ML Models'],
   },
   {
     category: 'Integrations',
     items: ['Webhook', 'Slack', 'Bots'],
   },
 ];
+
+export const customAttributesPath = {
+  tables: 'table',
+  topics: 'topic',
+  dashboards: 'dashboard',
+  pipelines: 'pipeline',
+  mlModels: 'mlmodel',
+};
 
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
