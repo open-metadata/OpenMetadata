@@ -208,3 +208,14 @@ docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs a
 .PHONY: docker-docs-local
 docker-docs-local:  ## Runs the OM docs in docker with a local image
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local
+
+.PHONY: snyk-ingestion-report
+snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container
+	@echo "Validating Ingestion container..."
+	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile
+
+.PHONY: snyk-report
+snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
+	@echo "To run this locally, make sure to install and authenticate using the Snyk CLI: https://docs.snyk.io/snyk-cli/install-the-snyk-cli"
+	$(MAKE) snyk-ingestion-report
