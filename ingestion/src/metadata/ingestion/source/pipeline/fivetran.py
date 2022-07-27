@@ -102,7 +102,7 @@ class FivetranSource(PipelineServiceSource):
     ) -> Iterable[CreatePipelineRequest]:
         """
         Convert a Connection into a Pipeline Entity
-        :param pipeline_details: pipeline_details object from airbyte
+        :param pipeline_details: pipeline_details object from fivetran
         :return: Create Pipeline request with tasks
         """
         yield CreatePipelineRequest(
