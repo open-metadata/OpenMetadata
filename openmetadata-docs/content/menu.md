@@ -336,6 +336,12 @@ site_menu:
     url: /openmetadata/connectors/pipeline/glue/airflow
   - category: OpenMetadata / Connectors / Pipeline / Glue / CLI
     url: /openmetadata/connectors/pipeline/glue/cli
+  - category: OpenMetadata / Connectors / Pipeline / Fivetran
+    url: /openmetadata/connectors/pipeline/fivetran
+  - category: OpenMetadata / Connectors / Pipeline / Fivetran / Airflow
+    url: /openmetadata/connectors/pipeline/fivetran/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Fivetran / CLI
+    url: /openmetadata/connectors/pipeline/fivetran/cli
 
   - category: OpenMetadata / Connectors / Metadata
     url: /openmetadata/connectors/metadata

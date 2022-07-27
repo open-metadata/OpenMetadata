@@ -98,7 +98,7 @@
     "prebuild": "yarn run build-check",
     "pretest": "yarn run build-check",
     "pretest:coverage": "yarn run pretest",
-    "pre-commit": "lint-staged",
+    "pre-commit": "lint-staged --concurrent false",
     "test": "jest --passWithNoTests",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
     "test:watch": "jest --passWithNoTests --watch",
