@@ -11,6 +11,8 @@
 """
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
+import base64
+import gzip
 from typing import List
 
 from airflow.models import DagModel, TaskInstance
@@ -71,6 +73,8 @@ def last_dag_logs(dag_id: str) -> Response:
             )
         )
 
-        response[task_instance.task_id] = logs
+        response[task_instance.task_id] = str(
+            base64.b64encode(gzip.compress(bytes(logs, "utf-8")))
+        )[2:-1]
 
     return ApiResponse.success(response)
