@@ -48,14 +48,13 @@ CREATE TABLE IF NOT EXISTS test_suite (
 
 CREATE TABLE IF NOT EXISTS test (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    name VARCHAR(128) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     fullyQualifiedName VARCHAR(512) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
     UNIQUE (fullyQualifiedName)
-    );
+);
 
 UPDATE webhook_entity
 SET json = JSONB_SET(json::jsonb, '{webhookType}', '"generic"', true);
