@@ -21,7 +21,6 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
-
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
@@ -34,7 +33,7 @@ import org.openmetadata.catalog.util.PipelineServiceClient;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
-  private final static String API_ENDPOINT = "api/v1/openmetadata";
+  private static final String API_ENDPOINT = "api/v1/openmetadata";
 
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     super(
@@ -238,7 +237,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(
-      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {da
+      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(stringUrlFormat, stringReplacement).DELETE().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
