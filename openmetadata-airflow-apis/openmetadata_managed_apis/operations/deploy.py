@@ -28,7 +28,7 @@ from openmetadata_managed_apis.api.utils import (
     clean_dag_id,
     get_dagbag,
     import_path,
-    scan_dags_job,
+    scan_dags_job_background,
 )
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -130,7 +130,7 @@ class DagDeployer:
                 )
                 logging.info("dag_model:" + str(dag_model))
                 # Scheduler Job to scan dags
-                scan_dags_job()
+                scan_dags_job_background()
 
                 return ApiResponse.success(
                     {"message": f"Workflow [{self.dag_id}] has been created"}

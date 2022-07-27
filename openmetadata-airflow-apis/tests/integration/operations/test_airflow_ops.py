@@ -14,6 +14,7 @@ Test Airflow related operations
 import datetime
 import os
 import shutil
+import time
 import uuid
 from pathlib import Path
 from unittest import TestCase
@@ -59,7 +60,7 @@ os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
 )
 
 from airflow import DAG
-from airflow.models import DagBag
+from airflow.models import DagBag, DagModel
 from airflow.operators.bash import BashOperator
 from airflow.utils import db, timezone
 from airflow.utils.state import DagRunState
@@ -236,7 +237,15 @@ class TestAirflowOps(TestCase):
         dag_file = Path("/tmp/airflow/dags/my_new_dag.py")
         self.assertTrue(dag_file.is_file())
 
-        # Trigger it
+        # Trigger it, waiting for it to be parsed by the scheduler
+        dag_id = "my_new_dag"
+        tries = 5
+        dag_model = None
+        while not dag_model and tries >= 0:
+            dag_model = DagModel.get_current(dag_id)
+            time.sleep(5)
+            tries -= 1
+
         res = trigger(dag_id="my_new_dag", run_id=None)
 
         self.assertEqual(res.status_code, 200)

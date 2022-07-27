@@ -14,14 +14,13 @@ import logging
 import os
 import re
 import sys
+from multiprocessing import Process
 from typing import Optional
 
 from airflow import settings
 from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagBag
 from flask import request
-from flask_jwt_extended.view_decorators import jwt_required, verify_jwt_in_request
-from flask_login.utils import _get_user
 
 
 class MissingArgException(Exception):
@@ -99,14 +98,21 @@ def get_dagbag():
     return dagbag
 
 
-def scan_dags_job():
+class ScanDagsTask(Process):
+    def run(self):
+        scheduler_job = SchedulerJob(num_times_parse_dags=1)
+        scheduler_job.heartrate = 0
+        scheduler_job.run()
+        try:
+            scheduler_job.kill()
+        except Exception:
+            logging.info("Rescan Complete: Killed Job")
+
+
+def scan_dags_job_background():
     """
-    Refresh the dags
+    Runs the scheduler scan in another thread
+    to not block the API call
     """
-    scheduler_job = SchedulerJob(num_times_parse_dags=1)
-    scheduler_job.heartrate = 0
-    scheduler_job.run()
-    try:
-        scheduler_job.kill()
-    except Exception:
-        logging.info("Rescan Complete: Killed Job")
+    process = ScanDagsTask()
+    process.start()
