@@ -39,9 +39,22 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataConnection
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    DashboardServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
+    PipelineServiceMetadataPipeline,
+)
 from metadata.ingestion.api.parser import (
     get_connection_class,
     get_service_type,
+    get_source_config_class,
     parse_test_connection_request_gracefully,
     parse_workflow_config_gracefully,
 )
@@ -93,6 +106,26 @@ class TestWorkflowParse(TestCase):
         source_type = "Pulsar"
         connection = get_connection_class(source_type, get_service_type(source_type))
         self.assertEqual(connection, PulsarConnection)
+
+    def test_get_source_config_class(self):
+        """
+        Check that we can correctly build the connection module ingredients
+        """
+        source_config_type = "Profiler"
+        connection = get_source_config_class(source_config_type)
+        self.assertEqual(connection, DatabaseServiceProfilerPipeline)
+
+        source_config_type = "DatabaseMetadata"
+        connection = get_source_config_class(source_config_type)
+        self.assertEqual(connection, DatabaseServiceMetadataPipeline)
+
+        source_config_type = "PipelineMetadata"
+        connection = get_source_config_class(source_config_type)
+        self.assertEqual(connection, PipelineServiceMetadataPipeline)
+
+        source_config_type = "DashboardMetadata"
+        connection = get_source_config_class(source_config_type)
+        self.assertEqual(connection, DashboardServiceMetadataPipeline)
 
     def test_parsing_ok(self):
         """
@@ -162,6 +195,46 @@ class TestWorkflowParse(TestCase):
 
         self.assertIn("1 validation error for MssqlConnection", str(err.exception))
 
+    def test_parsing_ko_mssql_source_config(self):
+        """
+        Test MSSQL JSON Config parsing KO
+        """
+
+        config_dict = {
+            "source": {
+                "type": "mssql",
+                "serviceName": "test_mssql",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Mssql",
+                        "database": "master",
+                        "username": "sa",
+                        "password": "MY%password",
+                        "hostPort": "localhost:1433",
+                    }
+                },
+                "sourceConfig": {
+                    "config": {"type": "DatabaseMetadata", "random": "extra"}
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "loggerLevel": "WARN",
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "no-auth",
+                },
+            },
+        }
+
+        with self.assertRaises(ValidationError) as err:
+            parse_workflow_config_gracefully(config_dict)
+
+        self.assertIn(
+            "1 validation error for DatabaseServiceMetadataPipeline\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            str(err.exception),
+        )
+
     def test_parsing_ko_glue(self):
         """
         Test Glue JSON Config parsing OK
@@ -199,6 +272,39 @@ class TestWorkflowParse(TestCase):
 
         self.assertIn(
             "1 validation error for GlueConnection\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            str(err.exception),
+        )
+
+    def test_parsing_ko_airbyte(self):
+        """
+        Test Glue JSON Config parsing OK
+        """
+
+        config_dict = {
+            "source": {
+                "type": "airbyte",
+                "serviceName": "local_airbyte",
+                "serviceConnection": {
+                    "config": {"type": "Airbyte", "hostPort": "http://localhost:8000"}
+                },
+                "sourceConfig": {
+                    "config": {"type": "PipelineMetadata", "random": "extra"}
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "no-auth",
+                }
+            },
+        }
+
+        with self.assertRaises(ValidationError) as err:
+            parse_workflow_config_gracefully(config_dict)
+
+        self.assertIn(
+            "1 validation error for PipelineServiceMetadataPipeline\nrandom\n  extra fields not permitted (type=value_error.extra)",
             str(err.exception),
         )
 
