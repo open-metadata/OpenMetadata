@@ -38,6 +38,10 @@ export const pipelineDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
+    name: 'Custom Properties',
+    path: 'custom_properties',
+  },
+  {
     name: 'Manage',
     path: 'manage',
   },
@@ -55,9 +59,13 @@ export const getCurrentPipelineTab = (tab: string) => {
       currentTab = 3;
 
       break;
+    case 'custom_properties':
+      currentTab = 4;
+
+      break;
 
     case 'manage':
-      currentTab = 4;
+      currentTab = 5;
 
       break;
 

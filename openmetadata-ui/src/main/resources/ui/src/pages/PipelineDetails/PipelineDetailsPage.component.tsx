@@ -687,6 +687,27 @@ const PipelineDetailsPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
+  const handleExtentionUpdate = async (updatedPipeline: Pipeline) => {
+    try {
+      const response = await saveUpdatedPipelineData(updatedPipeline);
+      const data = await response.data;
+      if (data) {
+        const { version, owner: ownerValue, tags } = data;
+        setCurrentVersion(version);
+        setPipelineDetails(data);
+        setOwner(ownerValue);
+        setTier(getTierTags(tags));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
+    }
+  };
+
   useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -757,6 +778,7 @@ const PipelineDetailsPage = () => {
           updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
+          onExtensionUpdate={handleExtentionUpdate}
         />
       )}
     </>

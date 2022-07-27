@@ -43,6 +43,8 @@ import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -100,6 +102,7 @@ const PipelineDetails = ({
   pipelineStatus,
   updateThreadHandler,
   entityFieldTaskCount,
+  onExtensionUpdate,
 }: PipeLineDetailsProp) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -187,6 +190,17 @@ const PipelineDetails = ({
       position: 3,
     },
     {
+      name: 'Custom Properties',
+      icon: {
+        alt: 'custom_properties',
+        name: 'custom_properties-light-grey',
+        title: 'custom_properties',
+        selectedName: 'custom_properties-primery',
+      },
+      isProtected: false,
+      position: 4,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -196,7 +210,7 @@ const PipelineDetails = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -524,6 +538,15 @@ const PipelineDetails = ({
                 </div>
               )}
               {activeTab === 4 && (
+                <CustomPropertyTable
+                  entityDetails={
+                    pipelineDetails as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.PIPELINE}
+                  handleExtentionUpdate={onExtensionUpdate}
+                />
+              )}
+              {activeTab === 5 && (
                 <div>
                   <ManageTabComponent
                     allowDelete

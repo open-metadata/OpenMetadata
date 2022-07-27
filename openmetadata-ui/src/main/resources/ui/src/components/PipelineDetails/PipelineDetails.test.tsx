@@ -125,6 +125,7 @@ const PipelineDetailsProps = {
   pipelineStatus: [],
   isPipelineStatusLoading: false,
   updateThreadHandler: jest.fn(),
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
