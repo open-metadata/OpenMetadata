@@ -24,10 +24,7 @@ import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
-import {
-  getPartialNameFromFQN,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
+import { getPartialNameFromFQN, getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
@@ -230,7 +227,7 @@ const UserCard = ({
             <NonAdminAction
               html={<>You do not have permission to update the team.</>}
               isOwner={isOwner}
-              permission={Operation.TeamEditUsers}
+              permission={Operation.EditUsers}
               position="bottom">
               <span
                 className={classNames('tw-h-8 tw-rounded tw-mb-3', {
@@ -238,7 +235,7 @@ const UserCard = ({
                     !isAdminUser &&
                     !isAuthDisabled &&
                     !isOwner &&
-                    !userPermissions[Operation.TeamEditUsers],
+                    !userPermissions[Operation.EditUsers],
                 })}
                 data-testid="remove"
                 onClick={() => onRemove?.(item.id as string)}>

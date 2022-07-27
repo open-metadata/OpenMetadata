@@ -22,13 +22,7 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import {
-  createTeam,
-  deleteTeam,
-  getTeamByName,
-  getTeams,
-  patchTeamDetail,
-} from '../../axiosAPIs/teamsAPI';
+import { createTeam, deleteTeam, getTeamByName, getTeams, patchTeamDetail } from '../../axiosAPIs/teamsAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
@@ -40,27 +34,14 @@ import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
-import {
-  getTeamAndUserDetailsPath,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { getTeamAndUserDetailsPath, TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Team } from '../../generated/entity/teams/team';
-import {
-  EntityReference,
-  EntityReference as UserTeams,
-  User,
-} from '../../generated/entity/teams/user';
+import { EntityReference, EntityReference as UserTeams, User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import {
-  getActiveCatClass,
-  getCountBadge,
-  getEntityName,
-  hasEditAccess,
-  isUrlFriendlyName,
-} from '../../utils/CommonUtils';
+import { getActiveCatClass, getCountBadge, getEntityName, hasEditAccess, isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddUsersModal from './AddUsersModal';
@@ -445,7 +426,7 @@ const TeamsPage = () => {
           {isAdminUser ||
           isAuthDisabled ||
           isOwner() ||
-          userPermissions[Operation.TeamEditUsers] ? (
+          userPermissions[Operation.EditUsers] ? (
             <>
               <p>Would like to start adding some?</p>
               <Button
@@ -780,7 +761,7 @@ const TeamsPage = () => {
                               </Fragment>
                             }
                             isOwner={isOwner()}
-                            permission={Operation.TeamEditUsers}
+                            permission={Operation.EditUsers}
                             position="bottom">
                             <Button
                               className={classNames(
@@ -789,7 +770,7 @@ const TeamsPage = () => {
                                   'tw-opacity-40':
                                     !isAdminUser &&
                                     !isAuthDisabled &&
-                                    !userPermissions[Operation.TeamEditUsers] &&
+                                    !userPermissions[Operation.EditUsers] &&
                                     !isOwner(),
                                 }
                               )}

@@ -12,18 +12,7 @@
  */
 
 import { library } from '@fortawesome/fontawesome-svg-core';
-import {
-  faCheck,
-  faCheckCircle,
-  faCheckSquare,
-  faChevronDown,
-  faChevronRight,
-  faChevronUp,
-  faEllipsisV,
-  faPlus,
-  faSearch,
-  faTimes,
-} from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faCheckCircle, faCheckSquare, faChevronDown, faChevronRight, faChevronUp, faEllipsisV, faPlus, faSearch, faTimes } from '@fortawesome/free-solid-svg-icons';
 import React, { FunctionComponent } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
@@ -54,13 +43,13 @@ const App: FunctionComponent = () => {
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router>
           <ErrorBoundry>
-            <WebSocketProvider>
-              <AuthProvider childComponentType={AppRouter}>
+            <AuthProvider childComponentType={AppRouter}>
+              <WebSocketProvider>
                 <GlobalSearchProvider>
                   <AppRouter />
                 </GlobalSearchProvider>
-              </AuthProvider>
-            </WebSocketProvider>
+              </WebSocketProvider>
+            </AuthProvider>
           </ErrorBoundry>
         </Router>
         <ToastContainer {...toastOptions} newestOnTop />

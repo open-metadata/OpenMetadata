@@ -12,27 +12,12 @@
  */
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import {
-  DBTBucketDetails,
-  DbtConfigSource,
-  SCredentials,
-} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import {
-  checkDbtS3CredsConfigRules,
-  validateDbtS3Config,
-} from '../../../utils/DBTConfigFormUtil';
+import { DBTBucketDetails, DbtConfigSource, SCredentials } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { errorMsg, getSeparator, requiredField } from '../../../utils/CommonUtils';
+import { checkDbtS3CredsConfigRules, validateDbtS3Config } from '../../../utils/DBTConfigFormUtil';
 import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
-import {
-  DbtConfigS3GCS,
-  DBTFormCommonProps,
-  ErrorDbtS3,
-} from './DBTConfigForm.interface';
+import { DbtConfigS3GCS, DBTFormCommonProps, ErrorDbtS3 } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
@@ -92,7 +77,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="aws-access-key-id">
-          {requiredField('AWS Access Key ID')}
+          AWS Access Key ID
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Access Key ID.
@@ -106,13 +91,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           value={dbtSecurityConfig?.awsAccessKeyId}
           onChange={(e) => updateS3Creds('awsAccessKeyId', e.target.value)}
         />
-        {errors?.awsAccessKeyId && errorMsg(errors.awsAccessKeyId)}
       </Field>
       <Field>
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="aws-secret-access-key-id">
-          {requiredField('AWS Secret Access Key')}
+          AWS Secret Access Key
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Secret Access Key.
@@ -126,7 +110,6 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           value={dbtSecurityConfig?.awsSecretAccessKey}
           onChange={(e) => updateS3Creds('awsSecretAccessKey', e.target.value)}
         />
-        {errors?.awsSecretAccessKey && errorMsg(errors.awsSecretAccessKey)}
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="aws-region">

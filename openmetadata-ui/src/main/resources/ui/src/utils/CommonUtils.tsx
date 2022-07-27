@@ -13,35 +13,22 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isEmpty, isNull, isUndefined } from 'lodash';
-import {
-  EntityFieldThreadCount,
-  RecentlySearched,
-  RecentlySearchedData,
-  RecentlyViewed,
-  RecentlyViewedData,
-} from 'Models';
+import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
+import { EntityFieldThreadCount, RecentlySearched, RecentlySearchedData, RecentlyViewed, RecentlyViewedData } from 'Models';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  imageTypes,
-  LOCALSTORAGE_RECENTLY_SEARCHED,
-  LOCALSTORAGE_RECENTLY_VIEWED,
-  SUPPORTED_DOMAIN_TYPES,
-  TITLE_FOR_NON_OWNER_ACTION,
-} from '../constants/constants';
-import {
-  UrlEntityCharRegEx,
-  validEmailRegEx,
-} from '../constants/regex.constants';
+import { imageTypes, LOCALSTORAGE_RECENTLY_SEARCHED, LOCALSTORAGE_RECENTLY_VIEWED, SUPPORTED_DOMAIN_TYPES, TITLE_FOR_NON_OWNER_ACTION } from '../constants/constants';
+import { UrlEntityCharRegEx, validEmailRegEx } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference, User } from '../generated/entity/teams/user';
+import { Paging } from '../generated/type/paging';
+import { DataService } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -610,7 +597,7 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @param entity - entity reference
  * @returns - entity name
  */
-export const getEntityName = (entity?: EntityReference) => {
+export const getEntityName = (entity?: EntityReference | DataService) => {
   return entity?.displayName || entity?.name || '';
 };
 
@@ -717,4 +704,13 @@ export const isTaskSupported = (entityType: EntityType) =>
 
 export const isAllowedHost = () => {
   return SUPPORTED_DOMAIN_TYPES.includes(window.location.host);
+};
+
+/**
+ * Utility function to show pagination
+ * @param paging paging object
+ * @returns boolean
+ */
+export const showPagination = (paging: Paging) => {
+  return !isNil(paging.after) || !isNil(paging.before);
 };

@@ -21,34 +21,16 @@ import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getVersion } from '../../axiosAPIs/miscAPI';
-import {
-  getExplorePathWithSearch,
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  navLinkSettings,
-  ROUTES,
-  SOCKET_EVENTS,
-  TERM_ADMIN,
-  TERM_USER,
-} from '../../constants/constants';
-import {
-  urlGitbookDocs,
-  urlGithubRepo,
-  urlJoinSlack,
-} from '../../constants/url.const';
+import { getExplorePathWithSearch, getTeamAndUserDetailsPath, getUserPath, navLinkSettings, ROUTES, TERM_ADMIN, TERM_USER } from '../../constants/constants';
+import { urlGitbookDocs, urlGithubRepo, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import {
-  addToRecentSearched,
-  getEntityName,
-  getNonDeletedTeams,
-} from '../../utils/CommonUtils';
+import { addToRecentSearched, getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Ellipses from '../common/Ellipses/Ellipses';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
-import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 
 const cookieStorage = new CookieStorage();
 
@@ -71,9 +53,6 @@ const Appbar: React.FC = (): JSX.Element => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>('');
-
-  const { socket } = useWebSocketConnector();
-  const [hasNotification, setHasNotification] = useState(false);
 
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
@@ -168,21 +147,6 @@ const Appbar: React.FC = (): JSX.Element => {
 
     return currentUser?.displayName || currentUser?.name || TERM_USER;
   };
-
-  useEffect(() => {
-    if (socket) {
-      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          setHasNotification(true);
-        }
-      });
-    }
-
-    return () => {
-      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
-      setHasNotification(false);
-    };
-  }, [socket]);
 
   const getUserData = () => {
     const currentUser = isAuthDisabled
@@ -320,7 +284,6 @@ const Appbar: React.FC = (): JSX.Element => {
           handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
-          hasNotification={hasNotification}
           isFeatureModalOpen={isFeatureModalOpen}
           isSearchBoxOpen={isOpen}
           pathname={location.pathname}

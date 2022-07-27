@@ -14,37 +14,19 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
-import {
-  INITIAL_FILTER_PATTERN,
-  STEPS_FOR_ADD_INGESTION,
-} from '../../constants/ingestion.constant';
+import { INITIAL_FILTER_PATTERN, STEPS_FOR_ADD_INGESTION } from '../../constants/ingestion.constant';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import {
-  CreateIngestionPipeline,
-  LogLevels,
-  PipelineType,
-} from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import {
-  ConfigClass,
-  ConfigType,
-  FilterPattern,
-  IngestionPipeline,
-} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import {
-  DatabaseServiceMetadataPipelineClass,
-  DbtConfigSource,
-} from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { CreateIngestionPipeline, LogLevels, PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { ConfigClass, ConfigType, FilterPattern, IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { DatabaseServiceMetadataPipelineClass, DbtConfigSource } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
 import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
 import DBTConfigFormBuilder from '../common/DBTConfigFormBuilder/DBTConfigFormBuilder';
-import {
-  DBT_SOURCES,
-  GCS_CONFIG,
-} from '../common/DBTConfigFormBuilder/DBTFormEnum';
+import { DBT_SOURCES, GCS_CONFIG } from '../common/DBTConfigFormBuilder/DBTFormEnum';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -168,6 +150,9 @@ const AddIngestion = ({
   );
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
+  );
+  const [profileSample, setProfileSample] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.profileSample
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
@@ -469,6 +454,7 @@ const AddIngestion = ({
           ),
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
+          profileSample: profileSample,
         };
       }
       case PipelineType.Metadata:
@@ -628,6 +614,7 @@ const AddIngestion = ({
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
+            handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
@@ -640,6 +627,7 @@ const AddIngestion = ({
             markDeletedTables={markDeletedTables}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
+            profileSample={profileSample}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}

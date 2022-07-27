@@ -11,20 +11,15 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByTestId,
-  findByText,
-  fireEvent,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { act, findByTestId, findByText, fireEvent, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { ServiceCategory } from '../../enums/service.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import Ingestion from './Ingestion.component';
 import { mockIngestionWorkFlow, mockService } from './Ingestion.mock';
+
+const mockUpdateWorkflows = jest.fn();
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
@@ -82,6 +77,17 @@ jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
 });
 
+jest.mock('../Modals/IngestionLogsModal/IngestionLogsModal', () => {
+  return jest.fn().mockImplementation(() => <div>IngestionLogsModal</div>);
+});
+
+jest.mock(
+  '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',
+  () => {
+    return jest.fn().mockImplementation(() => <div>KillIngestionModal</div>);
+  }
+);
+
 describe('Test Ingestion page', () => {
   it('Page Should render', async () => {
     const { container } = render(
@@ -102,6 +108,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -144,6 +151,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -155,6 +163,8 @@ describe('Test Ingestion page', () => {
     const runButton = await findByTestId(container, 'run');
     const editButton = await findByTestId(container, 'edit');
     const deleteButton = await findByTestId(container, 'delete');
+    const killButton = await findByTestId(container, 'kill');
+    const logsButton = await findByTestId(container, 'logs');
     const tableHeaders: string[] = [];
 
     tableHeaderContainer.childNodes.forEach(
@@ -174,6 +184,8 @@ describe('Test Ingestion page', () => {
     expect(runButton).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+    expect(killButton).toBeInTheDocument();
+    expect(logsButton).toBeInTheDocument();
   });
 
   it('Pagination should be render if paging is provided', async () => {
@@ -200,6 +212,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -236,6 +249,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -274,6 +288,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -325,6 +340,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -355,6 +371,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -391,6 +408,7 @@ describe('Test Ingestion page', () => {
         serviceList={[]}
         serviceName=""
         triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
       />,
       {
         wrapper: MemoryRouter,
@@ -406,5 +424,85 @@ describe('Test Ingestion page', () => {
     fireEvent.click(unpause);
 
     expect(handleEnableDisableIngestion).toBeCalled();
+  });
+
+  it('Should render logs modal on click of logs button', async () => {
+    const mockPagingAfter = {
+      after: 'afterKey',
+      before: 'beforeKey',
+      total: 0,
+    };
+
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        airflowEndpoint=""
+        currrentPage={1}
+        deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+        }
+        paging={mockPagingAfter}
+        pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceList={[]}
+        serviceName=""
+        triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const logsButton = await findByTestId(container, 'logs');
+    fireEvent.click(logsButton);
+
+    expect(
+      await findByText(container, /IngestionLogsModal/i)
+    ).toBeInTheDocument();
+  });
+
+  it('Should render kill modal on click of kill button', async () => {
+    const mockPagingAfter = {
+      after: 'afterKey',
+      before: 'beforeKey',
+      total: 0,
+    };
+
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        airflowEndpoint=""
+        currrentPage={1}
+        deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+        }
+        paging={mockPagingAfter}
+        pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceList={[]}
+        serviceName=""
+        triggerIngestion={mockTriggerIngestion}
+        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const killButton = await findByTestId(container, 'kill');
+    fireEvent.click(killButton);
+
+    expect(
+      await findByText(container, /KillIngestionModal/i)
+    ).toBeInTheDocument();
   });
 });

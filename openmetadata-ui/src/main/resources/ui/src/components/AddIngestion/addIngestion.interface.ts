@@ -16,11 +16,7 @@ import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import {
-  FilterPattern,
-  IngestionPipeline,
-  PipelineType,
-} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { FilterPattern, IngestionPipeline, PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
@@ -72,6 +68,7 @@ export interface ConfigureIngestionProps {
   includeTags: boolean;
   markDeletedTables?: boolean;
   enableDebugLog: boolean;
+  profileSample?: number;
   ingestSampleData: boolean;
   pipelineType: PipelineType;
   showDatabaseFilter: boolean;
@@ -97,6 +94,7 @@ export interface ConfigureIngestionProps {
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
   getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
   handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;
+  handleProfileSample: (value: number) => void;
   handleQueryLogDuration: (value: number) => void;
   handleStageFileLocation: (value: string) => void;
   handleResultLimit: (value: number) => void;

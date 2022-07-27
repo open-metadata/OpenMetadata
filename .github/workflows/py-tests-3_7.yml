@@ -62,7 +62,7 @@ jobs:
     - name: Start Server and Ingest Sample Data
       env:
         INGESTION_DEPENDENCY: "airflow-container,sample-data,elasticsearch"
-      run: ./docker/run_local_docker.sh
+      run: ./docker/run_local_docker.sh no-ui
       timeout-minutes: 30
 
     - name: Run Python Tests

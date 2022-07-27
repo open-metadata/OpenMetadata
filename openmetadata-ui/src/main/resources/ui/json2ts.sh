@@ -18,6 +18,7 @@ addLicensing(){
     echo "$txt" > "$dir"
 }
 generateType(){
+    echo "Generating type for $2"
     ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types > /dev/null 2>&1
     if [ -s $om_ui_directory$2 ]
     then

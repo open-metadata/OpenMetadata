@@ -24,18 +24,9 @@ import { MyDataProps } from '../../components/MyData/MyData.interface';
 import NavBar from '../../components/nav-bar/NavBar';
 import Tour from '../../components/tour/Tour';
 import { ROUTES, TOUR_SEARCH_TERM } from '../../constants/constants';
-import {
-  mockDatasetData,
-  mockFeedData,
-  mockSearchData as exploreSearchData,
-} from '../../constants/mockTourData.constants';
+import { mockDatasetData, mockFeedData, mockSearchData as exploreSearchData } from '../../constants/mockTourData.constants';
 import { CurrentTourPageType } from '../../enums/tour.enum';
-import {
-  Table,
-  TableJoins,
-  TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
-} from '../../generated/entity/data/table';
+import { Table, TableJoins, TableType, TypeUsedToReturnUsageDetailsOfAnEntity } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -264,7 +255,6 @@ const TourPage = () => {
         handleOnClick={handleOnClick}
         handleSearchBoxOpen={handleCountChange}
         handleSearchChange={(value) => setSearchValue(value)}
-        hasNotification={false}
         isFeatureModalOpen={false}
         isSearchBoxOpen={false}
         pathname={location.pathname}

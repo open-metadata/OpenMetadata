@@ -83,6 +83,7 @@ export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
+export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -160,7 +161,7 @@ export const ROUTES = {
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
   SETTINGS: `/settings`,
-  SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_ROUTE_TAB}`,
+  SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
@@ -226,6 +227,7 @@ export const ROUTES = {
 export const SOCKET_EVENTS = {
   ACTIVITY_FEED: 'activityFeed',
   TASK_CHANNEL: 'taskChannel',
+  MENTION_CHANNEL: 'mentionChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

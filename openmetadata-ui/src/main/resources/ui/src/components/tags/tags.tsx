@@ -12,12 +12,12 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
@@ -95,25 +95,24 @@ const Tags: FunctionComponent<TagProps> = ({
       ) : (
         <>
           {!editable && tag.description ? (
-            <PopOver
-              html={
+            <Tooltip
+              placement="bottomLeft"
+              title={
                 <div className="tw-text-left tw-p-1">
                   {tag.description && (
-                    <div className="tw-mb-3">
+                    <div className="tw-mb-2">
                       <RichTextEditorPreviewer
                         enableSeeMoreVariant={false}
                         markdown={tag.description}
+                        textVariant="white"
                       />
                     </div>
                   )}
                 </div>
               }
-              position="top"
-              size="small"
-              title=""
-              trigger="mouseenter">
+              trigger="hover">
               {getTag(tag.tagFQN, startWith)}
-            </PopOver>
+            </Tooltip>
           ) : (
             getTag(tag.tagFQN, startWith)
           )}

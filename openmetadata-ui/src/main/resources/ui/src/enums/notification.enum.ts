@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,17 +11,12 @@
  *  limitations under the License.
  */
 
-export const CREATE_EVENTS_DEFAULT_VALUE = {
-  eventType: 'entityCreated',
-  entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
-};
+export enum NotificationTabsName {
+  TASK = 'Tasks',
+  MENTION = 'Mentions',
+}
 
-export const UPDATE_EVENTS_DEFAULT_VALUE = {
-  eventType: 'entityUpdated',
-  entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
-};
-
-export const DELETE_EVENTS_DEFAULT_VALUE = {
-  eventType: 'entityDeleted',
-  entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
-};
+export enum NotificationTabsKey {
+  TASK = 'Task',
+  CONVERSATION = 'Conversation',
+}

@@ -12,18 +12,7 @@
  */
 
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  IN_PAGE_SEARCH_ROUTES,
-  PLACEHOLDER_GLOSSARY_NAME,
-  PLACEHOLDER_GLOSSARY_TERMS_FQN,
-  PLACEHOLDER_ROUTE_INGESTION_FQN,
-  PLACEHOLDER_ROUTE_INGESTION_TYPE,
-  PLACEHOLDER_ROUTE_SEARCHQUERY,
-  PLACEHOLDER_ROUTE_SERVICE_CAT,
-  PLACEHOLDER_ROUTE_SERVICE_FQN,
-  PLACEHOLDER_ROUTE_TAB,
-  ROUTES,
-} from '../constants/constants';
+import { IN_PAGE_SEARCH_ROUTES, PLACEHOLDER_GLOSSARY_NAME, PLACEHOLDER_GLOSSARY_TERMS_FQN, PLACEHOLDER_ROUTE_INGESTION_FQN, PLACEHOLDER_ROUTE_INGESTION_TYPE, PLACEHOLDER_ROUTE_SEARCHQUERY, PLACEHOLDER_ROUTE_SERVICE_CAT, PLACEHOLDER_ROUTE_SERVICE_FQN, PLACEHOLDER_ROUTE_TAB, PLACEHOLDER_SETTING_CATEGORY, ROUTES } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
 
 export const isDashboard = (pathname: string): boolean => {
@@ -193,11 +182,22 @@ export const getAddGlossaryTermsPath = (
   return path;
 };
 
-export const getSettingPath = (tab?: string) => {
-  let path = tab ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
+export const getSettingPath = (category?: string, tab?: string) => {
+  let path = tab && category ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
 
-  if (tab) {
+  if (tab && category) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
+  }
+
+  return path;
+};
+
+export const getSettingCategoryPath = (category: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB;
+
+  if (category) {
+    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
 
   return path;

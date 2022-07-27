@@ -12,98 +12,22 @@
  */
 
 import classNames from 'classnames';
-import { ArrayChange, diffArrays, diffWordsWithSpace } from 'diff';
+import { ArrayChange, Change, diffArrays, diffWords, diffWordsWithSpace } from 'diff';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
-// Markdown Parser and plugin imports
-import MarkdownParser from 'react-markdown';
 import { Link } from 'react-router-dom';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  DESCRIPTIONLENGTH,
-  getTeamAndUserDetailsPath,
-} from '../constants/constants';
+import { DESCRIPTIONLENGTH, getTeamAndUserDetailsPath } from '../constants/constants';
 import { EntityField } from '../constants/feed.constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
-import {
-  ChangeDescription,
-  FieldChange,
-} from '../generated/entity/services/databaseService';
+import { ChangeDescription, FieldChange } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityName } from './CommonUtils';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { isValidJSONString } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
-
-/* eslint-disable */
-const parseMarkdown = (
-  content: string,
-  className: string,
-  _isNewLine: boolean
-) => {
-  return (
-    <Fragment>
-      <MarkdownParser
-        sourcePos
-        components={{
-          h1: 'p',
-          h2: 'p',
-          ul: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { ordered, ...rest } = props;
-
-            return (
-              <ul className={classNames('tw-ml-3', className)} {...rest}>
-                {children}
-              </ul>
-            );
-          },
-          ol: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { ordered, ...rest } = props;
-
-            return (
-              <ol className="tw-ml-3" {...rest} style={{ listStyle: 'auto' }}>
-                {children}
-              </ol>
-            );
-          },
-          code: ({ children, ...props }) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { inline, ...rest } = props;
-
-            return (
-              <code {...rest} className="tw-my">
-                {children}
-              </code>
-            );
-          },
-          p: ({ children, ...props }) => {
-            return (
-              <p className={className} {...props}>
-                {children}
-              </p>
-            );
-          },
-          span: ({ children, ...props }) => {
-            return (
-              <span className={className} {...props}>
-                {children}
-              </span>
-            );
-          },
-        }}
-        rehypePlugins={[rehypeRaw]}
-        remarkPlugins={[remarkGfm]}>
-        {content}
-      </MarkdownParser>
-    </Fragment>
-  );
-};
 
 export const getDiffByFieldName = (
   name: string,
@@ -135,7 +59,7 @@ export const getDiffByFieldName = (
 export const getDiffValue = (oldValue: string, newValue: string) => {
   const diff = diffWordsWithSpace(oldValue, newValue);
 
-  return diff.map((part: any, index: any) => {
+  return diff.map((part: Change, index: number) => {
     return (
       <span
         className={classNames(
@@ -155,21 +79,30 @@ export const getDescriptionDiff = (
   latestDescription: string | undefined
 ) => {
   if (!isUndefined(newDescription) || !isUndefined(oldDescription)) {
-    const diff = diffWordsWithSpace(oldDescription ?? '', newDescription ?? '');
+    const diffArr = diffWords(oldDescription ?? '', newDescription ?? '');
 
-    const result: Array<string> = diff.map((part: any, index: any) => {
-      const classes = classNames(
-        { 'diff-added': part.added },
-        { 'diff-removed': part.removed }
-      );
+    const result = diffArr.map((diff) => {
+      if (diff.added) {
+        return ReactDOMServer.renderToString(
+          <ins className="diff-added" data-testid="diff-added" key={uniqueId()}>
+            {diff.value}
+          </ins>
+        );
+      }
+      if (diff.removed) {
+        return ReactDOMServer.renderToString(
+          <del
+            data-testid="diff-removed"
+            key={uniqueId()}
+            style={{ color: 'grey', textDecoration: 'line-through' }}>
+            {diff.value}
+          </del>
+        );
+      }
 
       return ReactDOMServer.renderToString(
-        <span key={index}>
-          {parseMarkdown(
-            part.value,
-            classes,
-            part.value?.startsWith('\n\n') || part.value?.includes('\n\n')
-          )}
+        <span data-testid="diff-normal" key={uniqueId()}>
+          {diff.value}
         </span>
       );
     });
@@ -217,6 +150,7 @@ export const getPreposition = (type: ChangeType) => {
 const getColumnName = (column: string) => {
   const name = column.split(FQN_SEPARATOR_CHAR);
   const length = name.length;
+
   return name
     .slice(length > 1 ? 1 : 0, length > 1 ? length - 1 : length)
     .join(FQN_SEPARATOR_CHAR);
@@ -234,6 +168,7 @@ const getLinkWithColumn = (column: string, eFqn: string, eType: string) => {
 
 const getDescriptionText = (value: string) => {
   const length = value.length;
+
   return `${value.slice(0, DESCRIPTIONLENGTH)}${
     length > DESCRIPTIONLENGTH ? '...' : ''
   }`;
@@ -291,7 +226,7 @@ export const feedSummaryFromatter = (
         summary = (
           <p key={uniqueId()}>
             {`${type} tags ${value
-              ?.map((val: any) => val?.tagFQN)
+              ?.map((val: TagLabel) => val?.tagFQN)
               ?.join(', ')} ${getPreposition(type)} column`}
             {getLinkWithColumn(
               fieldChange?.name as string,
@@ -354,13 +289,15 @@ export const feedSummaryFromatter = (
     }
 
     case fieldChange?.name === 'tags': {
-      const tier = value?.find((t: any) => t?.tagFQN?.startsWith('Tier'));
-      const tags = value?.filter((t: any) => !t?.tagFQN?.startsWith('Tier'));
+      const tier = value?.find((t: TagLabel) => t?.tagFQN?.startsWith('Tier'));
+      const tags = value?.filter(
+        (t: TagLabel) => !t?.tagFQN?.startsWith('Tier')
+      );
       summary = (
         <div>
           {tags?.length > 0 ? (
             <p key={uniqueId()}>{`${type} tags ${tags
-              ?.map((val: any) => val?.tagFQN)
+              ?.map((val: TagLabel) => val?.tagFQN)
               ?.join(', ')}`}</p>
           ) : null}
           {tier ? (
@@ -412,8 +349,7 @@ export const feedSummaryFromatter = (
             'tw-w-52': ownerName.length > 32,
           })}
           key={uniqueId()}>
-          {`Assigned ownership to`}
-          {ownerText}
+          {`Assigned ownership to ${ownerText}`}
         </p>
       );
 
@@ -452,6 +388,7 @@ export const feedSummaryFromatter = (
 
       break;
   }
+
   return summary;
 };
 
@@ -525,12 +462,12 @@ export const summaryFormatter = (fieldChange: FieldChange) => {
       : '{}'
   );
   if (fieldChange.name === EntityField.COLUMNS) {
-    return `columns ${value?.map((val: any) => val?.name).join(', ')}`;
+    return `columns ${value?.map((val: Column) => val?.name).join(', ')}`;
   } else if (
     fieldChange.name === 'tags' ||
     fieldChange.name?.endsWith('tags')
   ) {
-    return `tags ${value?.map((val: any) => val?.tagFQN)?.join(', ')}`;
+    return `tags ${value?.map((val: TagLabel) => val?.tagFQN)?.join(', ')}`;
   } else if (fieldChange.name === 'owner') {
     return `${fieldChange.name} ${value.name}`;
   } else {

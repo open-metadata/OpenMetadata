@@ -38,7 +38,6 @@ from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.core import Profiler
@@ -47,8 +46,6 @@ from metadata.orm_profiler.profiler.handle_partition import (
     get_partition_cols,
     is_partitioned,
 )
-from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.validations.core import validation_enum_registry
 from metadata.orm_profiler.validations.models import TestDef
 from metadata.utils.helpers import get_start_and_end
 
@@ -84,6 +81,7 @@ class OrmProfilerProcessor(Processor[Table]):
         config: ProfilerProcessorConfig,
         metadata_config: OpenMetadataConnection,
         processor_interface: InterfaceProtocol,
+        workflow_profile_sample: Optional[float] = None,
     ):
         super().__init__()
         self.config = config
@@ -94,7 +92,9 @@ class OrmProfilerProcessor(Processor[Table]):
 
         # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
+
         self.processor_interface = processor_interface
+        self.workflow_profile_sample = workflow_profile_sample
 
     @classmethod
     def create(
@@ -110,12 +110,18 @@ class OrmProfilerProcessor(Processor[Table]):
         config = ProfilerProcessorConfig.parse_obj(config_dict)
 
         processor_interface = kwargs.get("processor_interface")
+        workflow_profile_sample = kwargs.get("workflow_profile_sample")
         if not processor_interface:
             raise ValueError(
                 "Cannot initialise the ProfilerProcessor without processor interface object"
             )
 
-        return cls(config, metadata_config, processor_interface=processor_interface)
+        return cls(
+            config,
+            metadata_config,
+            processor_interface=processor_interface,
+            workflow_profile_sample=workflow_profile_sample,
+        )
 
     def get_table_profile_sample(self, table: Table) -> Optional[float]:
         """
@@ -131,6 +137,14 @@ class OrmProfilerProcessor(Processor[Table]):
             my_record_tests = self.get_record_test_def(table)
             if my_record_tests and my_record_tests.profile_sample:
                 return my_record_tests.profile_sample
+
+        if self.workflow_profile_sample:
+            if (
+                table.profileSample is not None
+                and self.workflow_profile_sample != table.profileSample
+            ):
+                return table.profileSample
+            return self.workflow_profile_sample
 
         return table.profileSample or None
 
