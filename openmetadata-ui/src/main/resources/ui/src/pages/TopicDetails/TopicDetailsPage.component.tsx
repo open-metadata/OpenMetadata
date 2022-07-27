@@ -675,8 +675,8 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const handleExtentionUpdate = async (updatedTopic: Topic) => {
     try {
-      const response = await saveUpdatedTopicData(updatedTopic);
-      const data = await response.data;
+      const { data } = await saveUpdatedTopicData(updatedTopic);
+
       if (data) {
         const { version, owner: ownerValue, tags } = data;
         setCurrentVersion(version);

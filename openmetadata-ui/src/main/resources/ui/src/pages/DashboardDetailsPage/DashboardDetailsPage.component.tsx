@@ -748,8 +748,8 @@ const DashboardDetailsPage = () => {
 
   const handleExtentionUpdate = async (updatedDashboard: Dashboard) => {
     try {
-      const response = await saveUpdatedDashboardData(updatedDashboard);
-      const data = await response.data;
+      const { data } = await saveUpdatedDashboardData(updatedDashboard);
+
       if (data) {
         const { version, owner: ownerValue, tags } = data;
         setCurrentVersion(version);

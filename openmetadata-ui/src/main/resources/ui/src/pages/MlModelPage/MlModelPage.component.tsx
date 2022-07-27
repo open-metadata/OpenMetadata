@@ -358,8 +358,8 @@ const MlModelPage = () => {
 
   const handleExtentionUpdate = async (updatedMlModel: Mlmodel) => {
     try {
-      const response = await saveUpdatedMlModelData(updatedMlModel);
-      const data = await response.data;
+      const { data } = await saveUpdatedMlModelData(updatedMlModel);
+
       if (data) {
         setMlModelDetail(data);
       } else {

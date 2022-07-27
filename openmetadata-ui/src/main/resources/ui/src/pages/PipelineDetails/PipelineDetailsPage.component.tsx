@@ -689,8 +689,8 @@ const PipelineDetailsPage = () => {
 
   const handleExtentionUpdate = async (updatedPipeline: Pipeline) => {
     try {
-      const response = await saveUpdatedPipelineData(updatedPipeline);
-      const data = await response.data;
+      const { data } = await saveUpdatedPipelineData(updatedPipeline);
+
       if (data) {
         const { version, owner: ownerValue, tags } = data;
         setCurrentVersion(version);
