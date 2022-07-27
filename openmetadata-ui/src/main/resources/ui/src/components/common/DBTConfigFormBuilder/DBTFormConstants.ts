@@ -78,8 +78,6 @@ export const reqDBTHttpFields: Record<keyof DbtConfigHttp, string> = {
 };
 
 export const reqDBTS3Fields: Record<keyof DbtS3CredsReq, string> = {
-  awsAccessKeyId: 'AWS Access Key ID',
-  awsSecretAccessKey: 'AWS Secret Access Key',
   awsRegion: 'AWS Region',
 };
 

@@ -26,7 +26,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 

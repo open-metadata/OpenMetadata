@@ -17,14 +17,13 @@ from typing import List, Optional, Set, Tuple
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import SQLSourceStatus

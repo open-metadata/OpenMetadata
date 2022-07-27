@@ -1,9 +1,20 @@
-body {
+.markdown-parser {
   .toastui-editor-contents {
     p {
       margin-top: 0px;
       margin-bottom: 10px;
       color: #37352f;
+      word-break: break-word;
+    }
+  }
+}
+.markdown-parser.white {
+  .toastui-editor-contents {
+    p {
+      color: white;
+    }
+    ul li::before {
+      background-color: white;
     }
   }
 }
