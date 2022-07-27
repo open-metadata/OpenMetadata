@@ -255,7 +255,7 @@ describe('Test MlModel entity detail component', () => {
 
   it('Should render manage component for manage tab', async () => {
     const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={4} />,
+      <MlModelDetailComponent {...mockProp} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
