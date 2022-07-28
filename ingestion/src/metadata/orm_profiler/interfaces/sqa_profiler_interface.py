@@ -128,7 +128,7 @@ class SQAProfilerInterface(InterfaceProtocol):
             partition_details,
             profile_sample_query,
         ) = metric_funcs
-        logger.debug(f"Running profiler for {table.__tablename__}")
+        logger.debug(f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}")
         session = self._session_factory()
         sampler = self._create_thread_safe_sampler(
             session, table, profile_sample, partition_details, profile_sample_query
