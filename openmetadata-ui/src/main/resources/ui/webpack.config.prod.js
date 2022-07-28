@@ -179,6 +179,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       favicon: path.join(__dirname, 'public/favicon.png'),
       hash: true,
+      cache: false,
       template: path.join(__dirname, 'public/index.html'),
       scriptLoading: 'defer',
     }),
