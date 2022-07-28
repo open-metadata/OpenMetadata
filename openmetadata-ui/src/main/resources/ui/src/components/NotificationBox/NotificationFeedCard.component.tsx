@@ -49,7 +49,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
                 <>
-                  <span> posted on </span> <span>{entityType} </span>
+                  <span> mentioned you on the </span> <span>{entityType} </span>
                   <Link
                     className="tw-truncate"
                     to={prepareFeedLink(entityType, entityFQN)}>
