@@ -85,6 +85,14 @@ site_menu:
     url: /deployment/security/okta/bare-metal
   - category: Deployment / Enable Security / Okta SSO / Kubernetes
     url: /deployment/security/okta/kubernetes
+  - category: Deployment / Enable Security / Amazon Cognito SSO
+    url: /deployment/security/amazon-cognito
+  - category: Deployment / Enable Security / Amazon Cognito SSO / Docker
+    url: /deployment/security/amazon-cognito/docker
+  - category: Deployment / Enable Security / Amazon Cognito SSO / Bare Metal
+    url: /deployment/security/amazon-cognito/bare-metal
+  - category: Deployment / Enable Security / Amazon Cognito SSO / Kubernetes
+    url: /deployment/security/amazon-cognito/kubernetes
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
