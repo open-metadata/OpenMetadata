@@ -81,6 +81,8 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
+import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.socket.FeedServlet;
 import org.openmetadata.catalog.socket.SocketAddressFilter;
 import org.openmetadata.catalog.socket.WebSocketManager;
@@ -152,8 +154,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EventPubSub.start();
 
     registerResources(catalogConfig, environment, jdbi, secretsManager);
-    RoleEvaluator.getInstance().load();
-    PolicyEvaluator.getInstance().load();
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);

@@ -234,7 +234,6 @@ public class TeamRepository extends EntityRepository<Team> {
   // Populate team refs from team entity list
   private void populateTeamRefs(List<EntityReference> teamRefs, List<Team> teams) {
     for (int i = 0; i < teams.size(); i++) {
-      System.out.print("XXX copying " + teams.get(i).getEntityReference());
       EntityUtil.copy(teams.get(i).getEntityReference(), teamRefs.get(i));
     }
   }
