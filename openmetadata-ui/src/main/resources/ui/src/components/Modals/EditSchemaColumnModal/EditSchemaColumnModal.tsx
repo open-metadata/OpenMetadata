@@ -66,9 +66,9 @@ export const EditSchemaColumnModal: FunctionComponent<Props> = ({
             data-testid="column-description"
             name="column-description"
             placeholder="Type message..."
-            onChange={handleDescriptionChange}>
-            {descriptionText}
-          </textarea>
+            value={descriptionText}
+            onChange={handleDescriptionChange}
+          />
         </div>
         <div className="tw-modal-footer tw-justify-end">
           <Button

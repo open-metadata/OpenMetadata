@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { Fragment } from 'react';
+import React from 'react';
 import { EdgeProps, getBezierPath, getEdgeCenter } from 'react-flow-renderer';
 import { foreignObjectSize } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
@@ -79,7 +79,7 @@ export const CustomEdge = ({
   };
 
   return (
-    <Fragment>
+    <svg>
       <path
         className="react-flow__edge-path"
         d={edgePath}
@@ -110,6 +110,6 @@ export const CustomEdge = ({
           </button>
         </foreignObject>
       ) : null}
-    </Fragment>
+    </svg>
   );
 };

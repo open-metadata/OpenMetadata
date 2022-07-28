@@ -161,7 +161,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             cacheOptions
             defaultOptions
             isMulti
-            className={classNames('tw-min-w-64', className)}
+            className={classNames('tw-min-w-64 tags-select', className)}
             defaultValue={getDefaultTags}
             loadOptions={loadOptions}
             onChange={handleTagSelection}

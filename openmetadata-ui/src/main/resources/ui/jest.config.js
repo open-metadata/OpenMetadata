@@ -39,8 +39,8 @@ module.exports = {
   // "scriptPreprocessor": "<rootDir>/node_modules/babel-jest",
   // "moduleFileExtensions": ["js", "json","jsx" ],
 
-  // Test Environment
-  testEnvironment: 'jest-environment-jsdom-fourteen',
+  //Test environment
+  testEnvironment: 'jest-environment-jsdom',
   setupFilesAfterEnv: ['@testing-library/jest-dom/extend-expect'],
   clearMocks: true,
   moduleNameMapper: {

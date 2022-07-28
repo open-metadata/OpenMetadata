@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   findAllByTestId,
   findByTestId,
   findByText,
@@ -80,54 +81,65 @@ jest.mock('../../axiosAPIs/tagAPI', () => ({
 
 describe('Test Manage tab Component', () => {
   it('Component should render', async () => {
-    const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
-    );
-    const manageTab = await findByTestId(container, 'manage-tab');
-    const ownerDropdown = await findByTestId(container, 'owner-dropdown');
+    await act(async () => {
+      const { container } = render(
+        <ManageTab hasEditAccess onSave={mockFunction} />
+      );
+      const manageTab = await findByTestId(container, 'manage-tab');
+      const ownerDropdown = await findByTestId(container, 'owner-dropdown');
 
-    expect(manageTab).toBeInTheDocument();
-    expect(ownerDropdown).toBeInTheDocument();
+      expect(manageTab).toBeInTheDocument();
+      expect(ownerDropdown).toBeInTheDocument();
+    });
   });
 
   it('Number of card visible is same as data', async () => {
-    const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
-    );
-    const card = await findAllByTestId(container, 'card');
+    await act(async () => {
+      const { container } = render(
+        <ManageTab hasEditAccess onSave={mockFunction} />
+      );
+      const card = await findAllByTestId(container, 'card');
 
-    expect(card.length).toBe(3);
+      expect(card.length).toBe(3);
+    });
   });
 
   it('Should render switch if isJoinable is present', async () => {
-    const { container } = render(
-      <ManageTab hasEditAccess isJoinable onSave={mockFunction} />
-    );
+    await act(async () => {
+      const { container } = render(
+        <ManageTab hasEditAccess isJoinable onSave={mockFunction} />
+      );
 
-    const isJoinableSwitch = await findByText(
-      container,
-      'ToggleSwitchV1.Component'
-    );
+      const isJoinableSwitch = await findByText(
+        container,
+        'ToggleSwitchV1.Component'
+      );
 
-    expect(isJoinableSwitch).toBeInTheDocument();
+      expect(isJoinableSwitch).toBeInTheDocument();
+    });
   });
 
   it('Should render danger zone if allowDelete, entityId, entityName and entityType is present', async () => {
-    const { container } = render(
-      <ManageTab
-        allowDelete
-        hasEditAccess
-        entityId="testid"
-        entityName="testEntity"
-        entityType="testType"
-        onSave={mockFunction}
-      />
-    );
+    await act(async () => {
+      const { container } = render(
+        <ManageTab
+          allowDelete
+          hasEditAccess
+          entityId="testid"
+          entityName="testEntity"
+          entityType="testType"
+          onSave={mockFunction}
+        />
+      );
 
-    const dangerZone = await findByTestId(container, 'danger-zone');
-    const DeleteWidget = await findByText(container, 'DeleteWidget.Component');
+      const dangerZone = await findByTestId(container, 'danger-zone');
+      const DeleteWidget = await findByText(
+        container,
+        'DeleteWidget.Component'
+      );
 
-    expect(dangerZone).toBeInTheDocument();
-    expect(DeleteWidget).toBeInTheDocument();
+      expect(dangerZone).toBeInTheDocument();
+      expect(DeleteWidget).toBeInTheDocument();
+    });
   });
 });

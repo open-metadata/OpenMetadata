@@ -27,19 +27,20 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
 
   // Init websocket for Feed & notification
   const initWebSocket = useCallback(() => {
-    setSocket(
-      io(ROUTES.HOME, {
-        path: ROUTES.ACTIVITY_PUSH_FEED,
-        reconnectionAttempts: 3,
-        query: {
-          userId: currentUser?.id,
-        },
-        // Since we have load balancer in our application
-        // We need to enforce transports to be websocket only
-        // Refer: https://socket.io/docs/v3/using-multiple-nodes/
-        transports: ['websocket'],
-      })
-    );
+    const newSocket = io(ROUTES.HOME, {
+      path: ROUTES.ACTIVITY_PUSH_FEED,
+      reconnectionAttempts: 3,
+      query: {
+        userId: currentUser?.id,
+      },
+      autoConnect: false,
+      // Since we have load balancer in our application
+      // We need to enforce transports to be websocket only
+      // Refer: https://socket.io/docs/v3/using-multiple-nodes/
+      transports: ['websocket'],
+    });
+    newSocket.connect();
+    setSocket(newSocket);
   }, [currentUser]);
 
   useEffect(() => {
