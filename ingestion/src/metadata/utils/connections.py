@@ -94,6 +94,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
+    FivetranConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
     GlueConnection as GluePipelineConnection,
 )
@@ -103,6 +106,7 @@ from metadata.utils.connection_clients import (
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
+    FivetranClient,
     GlueDBClient,
     GluePipelineClient,
     KafkaClient,
@@ -565,6 +569,23 @@ def _(connection: AirbyteConnection, verbose: bool = False):
 def _(connection: AirByteClient) -> None:
     try:
         connection.client.list_workspaces()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: FivetranConnection, verbose: bool = False):
+    from metadata.utils.fivetran_client import FivetranClient as FivetranRestClient
+
+    return FivetranClient(FivetranRestClient(connection))
+
+
+@test_connection.register
+def _(connection: FivetranClient) -> None:
+    try:
+        connection.client.list_groups()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

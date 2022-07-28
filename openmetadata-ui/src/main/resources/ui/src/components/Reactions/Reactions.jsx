@@ -104,7 +104,8 @@ const Reactions = ({ reactions, onReactionSelect }) => {
           <Button
             className="ant-btn-reaction ant-btn-add-reactions"
             data-testid="add-reactions"
-            shape="round">
+            shape="round"
+            onClick={(e) => e.stopPropagation()}>
             <SVGIcons
               alt="add-reaction"
               icon={Icons.ADD_REACTION}

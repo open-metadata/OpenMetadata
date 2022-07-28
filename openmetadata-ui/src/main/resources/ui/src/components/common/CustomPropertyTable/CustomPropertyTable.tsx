@@ -16,25 +16,21 @@ import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
-import { Table } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { isEven } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { CustomPropertyProps } from './CustomPropertyTable.interface';
 import { PropertyValue } from './PropertyValue';
 
-interface Props {
-  tableDetails: Table;
-  handleExtentionUpdate: (updatedTable: Table) => void;
-}
-
-export const CustomPropertyTable: FC<Props> = ({
-  tableDetails,
+export const CustomPropertyTable: FC<CustomPropertyProps> = ({
+  entityDetails,
   handleExtentionUpdate,
+  entityType,
 }) => {
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
 
   const fetchTypeDetail = () => {
-    getTypeByFQN('table')
+    getTypeByFQN(entityType)
       .then((res: AxiosResponse) => {
         setEntityTypeDetail(res.data);
       })
@@ -43,10 +39,12 @@ export const CustomPropertyTable: FC<Props> = ({
 
   const customProperties = entityTypeDetail.customProperties || [];
 
-  const extension = tableDetails.extension;
+  const extension = entityDetails.extension;
 
-  const onExtensionUpdate = (updatedExtension: Table['extension']) => {
-    handleExtentionUpdate({ ...tableDetails, extension: updatedExtension });
+  const onExtensionUpdate = (
+    updatedExtension: CustomPropertyProps['entityDetails']['extension']
+  ) => {
+    handleExtentionUpdate({ ...entityDetails, extension: updatedExtension });
   };
 
   useEffect(() => {

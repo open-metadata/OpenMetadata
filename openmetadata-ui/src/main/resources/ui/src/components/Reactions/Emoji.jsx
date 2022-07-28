@@ -50,7 +50,8 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
     (reactionItem) => reactionItem.user.name
   );
 
-  const handleEmojiOnClick = () => {
+  const handleEmojiOnClick = (e) => {
+    e.stopPropagation();
     if (!isClicked) {
       const operation = isReacted
         ? ReactionOperation.REMOVE

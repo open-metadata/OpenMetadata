@@ -33,7 +33,9 @@ export const SendButton: FC<SendButtonProp> = ({
   onSaveHandler,
 }) => {
   return (
-    <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
+    <div
+      className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end"
+      onClick={(e) => e.stopPropagation()}>
       <PopOver
         html={
           <Fragment>

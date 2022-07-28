@@ -13,23 +13,13 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
-import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.jdbi3.EntityRepository;
-import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.ResultList;
 
 /**
  * RoleEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link
@@ -41,8 +31,6 @@ import org.openmetadata.catalog.util.ResultList;
  */
 @Slf4j
 public class RoleEvaluator {
-  private final ConcurrentHashMap<UUID, List<EntityReference>> roleToPolicies = new ConcurrentHashMap<>();
-
   // Eager initialization of Singleton since PolicyEvaluator is lightweight.
   private static final RoleEvaluator INSTANCE = new RoleEvaluator();
 
@@ -52,29 +40,10 @@ public class RoleEvaluator {
     return INSTANCE;
   }
 
-  public void load() {
-    EntityRepository<Role> roleRepository = Entity.getEntityRepository(Entity.ROLE);
-    roleToPolicies.clear();
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
-    try {
-      Fields roleFields = roleRepository.getFields("policies");
-      ResultList<Role> roles = roleRepository.listAfter(null, roleFields, filter, Short.MAX_VALUE, null);
-      roles
-          .getData()
-          .forEach(
-              r -> {
-                LOG.info("Adding to role {}:{} policies {}", r.getName(), r.getId(), r.getPolicies());
-                roleToPolicies.put(r.getId(), r.getPolicies());
-              });
-    } catch (IOException e) {
-      LOG.error("Failed to load roles", e);
-    }
-  }
-
-  public boolean hasPermissions(List<EntityReference> roles, EntityInterface entity, MetadataOperation operation) {
+  public boolean hasPermissions(SubjectContext subjectContext, EntityInterface entity, MetadataOperation operation) {
     // Role based permission
-    for (EntityReference role : roles) {
-      List<EntityReference> policies = roleToPolicies.get(role.getId());
+    for (EntityReference role : subjectContext.getAllRoles()) {
+      List<EntityReference> policies = RoleCache.getRole(role.getId()).getPolicies();
       for (EntityReference policy : policies) {
         if (PolicyEvaluator.getInstance().hasPermission(policy.getId(), entity, operation)) {
           return true;
@@ -84,24 +53,14 @@ public class RoleEvaluator {
     return false;
   }
 
-  public List<MetadataOperation> getAllowedOperations(List<EntityReference> roles, EntityInterface entity) {
+  public List<MetadataOperation> getAllowedOperations(SubjectContext subjectContext, EntityInterface entity) {
     List<MetadataOperation> list = new ArrayList<>();
-    for (EntityReference role : roles) {
-      List<EntityReference> policies = roleToPolicies.get(role.getId());
+    for (EntityReference role : subjectContext.getAllRoles()) {
+      List<EntityReference> policies = RoleCache.getRole(role.getId()).getPolicies();
       for (EntityReference policy : policies) {
         list.addAll(PolicyEvaluator.getInstance().getAllowedOperations(policy.getId(), entity));
       }
     }
     return list.stream().distinct().collect(Collectors.toList());
-  }
-
-  public void update(Role role) {
-    roleToPolicies.put(role.getId(), role.getPolicies());
-    LOG.info("Updating to role {}:{} policies {}", role.getName(), role.getId(), role.getPolicies());
-  }
-
-  public void delete(Role role) {
-    roleToPolicies.remove(role.getId());
-    LOG.info("Removing to role {}:{}", role.getName(), role.getId());
   }
 }

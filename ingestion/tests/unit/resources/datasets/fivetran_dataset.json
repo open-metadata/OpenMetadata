@@ -1,0 +1,56 @@
+{
+    "destination": {
+        "id": "wackiness_remote",
+        "group_id": "wackiness_remote",
+        "service": "redshift",
+        "region": "AWS_US_EAST_1",
+        "time_zone_offset": "-8",
+        "setup_status": "connected",
+        "config": {
+            "database": "dev",
+            "password": "******",
+            "auth_type": "PASSWORD",
+            "cluster_region": "us-east-2",
+            "port": "5439",
+            "host": "redshift.amazonaws.com",
+            "user": "openmetadata",
+            "connection_method": "Directly"
+        }
+    },
+    "source": {
+        "id": "aiding_pointless",
+        "group_id": "wackiness_remote",
+        "service": "postgres_rds",
+        "service_version": 3,
+        "schema": "postgres_rds",
+        "connected_by": "solving_jogger",
+        "created_at": "2022-07-25T05:55:02.292119Z",
+        "succeeded_at": "2022-07-25T08:34:31.425131Z",
+        "failed_at": null,
+        "paused": false,
+        "pause_after_trial": false,
+        "sync_frequency": 360,
+        "schedule_type": "auto",
+        "status": {
+            "setup_state": "connected",
+            "sync_state": "scheduled",
+            "update_state": "on_schedule",
+            "is_historical_sync": false,
+            "tasks": [],
+            "warnings": []
+        },
+        "config": {
+            "database": "TESTDB",
+            "password": "********",
+            "port": "5432",
+            "host": "rds.amazonaws.com",
+            "incremental_update_method": "XMIN",
+            "user": "postgres"
+        }
+    },
+    "group": {
+        "id": "wackiness_remote",
+        "name": "test",
+        "created_at": "2022-07-25T05:49:31.122867Z"
+    }
+}

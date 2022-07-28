@@ -119,7 +119,10 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         <div className="tw-self-center">
           <button
             className="tw-text-info"
-            onClick={() => onTitleClickHandler(getUserPath(name))}>
+            onClick={(e) => {
+              e.stopPropagation();
+              onTitleClickHandler(getUserPath(name));
+            }}>
             <span className="tw-font-medium tw-mr-2">{displayName}</span>
           </button>
           {displayName !== name ? (

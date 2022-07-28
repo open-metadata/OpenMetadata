@@ -29,6 +29,11 @@ const ServicesPage = withSuspenseFallback(
 const BotsListPage = withSuspenseFallback(
   React.lazy(() => import('../pages/BotsListpage/BotsListpage.component'))
 );
+const CustomPropertiesPageV1 = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/CustomPropertiesPage/CustomPropertiesPageV1')
+  )
+);
 
 const GlobalSettingRouter = () => {
   return (
@@ -62,6 +67,14 @@ const GlobalSettingRouter = () => {
         exact
         component={ServicesPage}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
+      />
+
+      <Route
+        exact
+        component={CustomPropertiesPageV1}
+        path={getSettingCategoryPath(
+          GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
+        )}
       />
     </Switch>
   );
