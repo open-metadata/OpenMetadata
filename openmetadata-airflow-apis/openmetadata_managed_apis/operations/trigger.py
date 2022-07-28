@@ -9,23 +9,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Test helper functions
+Module containing the logic to trigger a DAG
 """
-from unittest import TestCase
+from typing import Optional
 
-from openmetadata_managed_apis.api.utils import clean_dag_id
+from airflow.api.common.trigger_dag import trigger_dag
+from airflow.utils import timezone
+from flask import Response
+from openmetadata_managed_apis.api.response import ApiResponse
 
 
-class TestHelpers(TestCase):
-    """
-    Methods to validate helpers on REST APIs
-    """
+def trigger(dag_id: str, run_id: Optional[str]) -> Response:
 
-    def test_clean_dag_id(self):
-        """
-        To make sure airflow can parse it
-        """
-        self.assertEqual(clean_dag_id("hello"), "hello")
-        self.assertEqual(clean_dag_id("hello(world)"), "hello_world_")
-        self.assertEqual(clean_dag_id("hello-world"), "hello-world")
-        self.assertEqual(clean_dag_id("%%&^++hello__"), "_hello__")
+    dag_run = trigger_dag(
+        dag_id=dag_id,
+        run_id=run_id,
+        conf=None,
+        execution_date=timezone.utcnow(),
+    )
+    return ApiResponse.success(
+        {"message": f"Workflow [{dag_id}] has been triggered {dag_run}"}
+    )
