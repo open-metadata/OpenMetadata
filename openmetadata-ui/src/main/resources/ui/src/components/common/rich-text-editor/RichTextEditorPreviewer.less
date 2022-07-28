@@ -1,6 +1,7 @@
 @body-text-color: #37352f;
 @badge-color: #d5d8dc;
 @while-color: #ffffff;
+@border-radius: 6px;
 
 .markdown-parser {
   .toastui-editor-contents {
@@ -21,6 +22,7 @@
 
     pre {
       background-color: @badge-color;
+      border-radius: @border-radius;
       code {
         background-color: transparent;
       }
@@ -41,6 +43,10 @@
       margin-bottom: 10px;
       color: @body-text-color;
       word-break: break-word;
+    }
+
+    img {
+      border-radius: @border-radius;
     }
   }
 }
