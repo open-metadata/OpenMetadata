@@ -50,9 +50,8 @@ class ProfilerTest(TestCase):
     """
 
     db_path = os.path.join(
-        os.path.dirname(__file__),
-        f"{os.path.splitext(__file__)[0]}.db"
-        )
+        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
+    )
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
