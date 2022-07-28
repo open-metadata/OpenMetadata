@@ -21,7 +21,7 @@ routes = Path(dirname(__file__)) / "routes"
 modules = [
     str(elem.absolute())
     for elem in routes.glob("*.py")
-    if elem.is_file() and not elem.stem == "__init__"
+    if elem.is_file() and elem.stem != "__init__"
 ]
 
 # Force import routes to load endpoints

@@ -31,6 +31,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 logger = logging.getLogger(__name__)
 
 
+class WorkflowCreationError(Exception):
+    """
+    Cannot properly build a workflow
+    """
+
+
 class WorkflowFactory:
     """
     :param config: workflow config dictionary.
@@ -55,7 +61,7 @@ class WorkflowFactory:
         try:
             workflow = workflow_builder.build()
         except Exception as err:
-            raise Exception(
+            raise WorkflowCreationError(
                 f"Failed to generate workflow {self.airflow_pipeline.name.__root__}. verify config is correct"
             ) from err
         return workflow

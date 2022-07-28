@@ -11,14 +11,12 @@
 """
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
-import base64
-import gzip
 from typing import List
 
 from airflow.models import DagModel, TaskInstance
 from airflow.utils.log.log_reader import TaskLogReader
 from flask import Response
-from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.api.response import ApiResponse, ResponseFormat
 
 LOG_METADATA = {
     "download_logs": True,
@@ -73,8 +71,6 @@ def last_dag_logs(dag_id: str) -> Response:
             )
         )
 
-        response[task_instance.task_id] = str(
-            base64.b64encode(gzip.compress(bytes(logs, "utf-8")))
-        )[2:-1]
+        response[task_instance.task_id] = ResponseFormat.b64_gzip_compression(logs)
 
     return ApiResponse.success(response)

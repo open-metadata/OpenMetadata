@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import base64
+import gzip
 import json
 from typing import Optional, Union
 
@@ -24,9 +26,6 @@ class ApiResponse:
     """
     Helper class to respond API calls
     """
-
-    def __init__(self):
-        pass
 
     STATUS_OK = 200
     STATUS_BAD_REQUEST = 400
@@ -67,11 +66,15 @@ class ApiResponse:
 
 
 class ResponseFormat:
-    def __init__(self):
-        pass
+    """
+    Handle how to manage responses
+    """
 
     @staticmethod
     def format_dag_run_state(dag_run: DagRun) -> PipelineStatus:
+        """
+        Build the pipeline status
+        """
         return PipelineStatus(
             state=dag_run.get_state(),
             runId=dag_run.run_id,
@@ -82,3 +85,10 @@ class ResponseFormat:
             if not dag_run.end_date
             else dag_run.end_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
         )
+
+    @staticmethod
+    def b64_gzip_compression(string: str) -> str:
+        """
+        Return a compressed base64 gzip string
+        """
+        return str(base64.b64encode(gzip.compress(bytes(string, "utf-8"))))[2:-1]
