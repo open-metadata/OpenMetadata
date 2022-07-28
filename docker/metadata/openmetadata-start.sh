@@ -11,7 +11,7 @@
 #  limitations under the License.
 
 MYSQL="${MYSQL_HOST:-mysql}":"${MYSQL_PORT:-3306}"
-while ! wget -O /dev/null -o /dev/null "${MYSQL}";
+while ! nc -z -w 5 "${MYSQL}";
   do echo "Trying to connect to ${MYSQL}"; sleep 5;
 done
 cd /openmetadata-*/
