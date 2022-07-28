@@ -27,4 +27,4 @@ SET json = json::jsonb #- '{connection,config,username}' #- '{connection,config,
 WHERE serviceType = 'Looker';
 
 UPDATE webhook_entity
-SET json = JSONB_SET(json, '{webhookType}', '"generic"', true);
+SET json = JSONB_SET(json::jsonb, '{webhookType}', '"generic"', true);
