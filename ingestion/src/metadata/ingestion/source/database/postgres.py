@@ -11,6 +11,7 @@
 
 from collections import namedtuple
 from typing import Iterable
+
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
