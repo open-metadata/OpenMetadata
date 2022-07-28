@@ -1,20 +1,63 @@
+@body-text-color: #37352f;
+@badge-color: #d5d8dc;
+@while-color: #ffffff;
+@border-radius: 6px;
+
 .markdown-parser {
   .toastui-editor-contents {
+    font-size: 14px;
+    h1,
+    h2 {
+      border-bottom: 1px solid @badge-color;
+    }
+
+    blockquote {
+      padding: 0px 16px;
+    }
+
+    code {
+      color: @body-text-color;
+      background-color: @badge-color;
+    }
+
+    pre {
+      background-color: @badge-color;
+      border-radius: @border-radius;
+      code {
+        background-color: transparent;
+      }
+    }
+
+    table {
+      width: 100%;
+      overflow: auto;
+      th {
+        background-color: @badge-color;
+        color: @body-text-color;
+        font-weight: bold;
+      }
+    }
+
     p {
       margin-top: 0px;
       margin-bottom: 10px;
-      color: #37352f;
+      color: @body-text-color;
       word-break: break-word;
+    }
+
+    img {
+      border-radius: @border-radius;
     }
   }
 }
+
 .markdown-parser.white {
   .toastui-editor-contents {
     p {
-      color: white;
+      color: @while-color;
     }
     ul li::before {
-      background-color: white;
+      background-color: @while-color;
     }
   }
 }
