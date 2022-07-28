@@ -638,10 +638,10 @@ const AddIngestion = ({
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
-            handleResultLimit={(val) => setResultLimit(val)}
+            handleResultLimit={setResultLimit}
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
-            handleThreadCount={(val) => setThreadCount(val)}
+            handleThreadCount={setThreadCount}
             includeLineage={includeLineage}
             includeTags={includeTag}
             includeView={includeView}

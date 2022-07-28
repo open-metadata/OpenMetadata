@@ -151,8 +151,9 @@ class SQAProfilerInterface(InterfaceProtocol):
 
         try:
             column = column.name
-        except:
-            column = column
+        except Exception as err:
+            logger.debug(err)
+
         return row, column
 
     def get_all_metrics(
