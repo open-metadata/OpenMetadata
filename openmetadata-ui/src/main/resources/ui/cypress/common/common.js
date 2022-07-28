@@ -197,7 +197,6 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .type('DELETE');
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
   cy.wait(2000);
-  cy.get('.tw-modal-container').should('not.exist');
   cy.get('[class="Toastify__toast-body"] >div')
     .eq(1)
     .should('exist')
