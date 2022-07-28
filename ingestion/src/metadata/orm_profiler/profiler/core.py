@@ -243,21 +243,22 @@ class Profiler(Generic[TMetric]):
 
     def _prepare_table_metrics_for_thread_pool(self):
         """prepare table metrics for thread pool"""
-        return [
-            (
-                [
-                    metric
-                    for metric in self.static_metrics
-                    if not metric.is_col_metric()
-                ],  # metric functions
-                MetricTypes.Table,  # metric type for function mapping
-                None,  # column name
-                self.table,  # ORM table object
-                self._profile_sample,  # profile sample
-                self._partition_details,  # partition details if any
-                self._profile_sample_query,  # profile sample query
-            )
+        metrics = [
+            metric for metric in self.static_metrics if not metric.is_col_metric()
         ]
+        if metrics:
+            return [
+                (
+                    metrics,  # metric functions
+                    MetricTypes.Table,  # metric type for function mapping
+                    None,  # column name
+                    self.table,  # ORM table object
+                    self._profile_sample,  # profile sample
+                    self._partition_details,  # partition details if any
+                    self._profile_sample_query,  # profile sample query
+                )
+            ]
+        return []
 
     def _prepare_column_metrics_for_thread_pool(self):
         """prepare column metrics for thread pool"""

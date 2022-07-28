@@ -54,10 +54,11 @@ class SQAProfilerInterface(InterfaceProtocol):
     sqlalchemy.
     """
 
-    def __init__(self, service_connection_config):
+    def __init__(self, service_connection_config, thread_count: int = 5):
         """Instantiate SQA Interface object"""
         self._sampler = None
         self._runner = None
+        self._thread_count = thread_count
         self.service_connection_config = service_connection_config
         self.session: Session = self._session_factory()
 
@@ -159,22 +160,27 @@ class SQAProfilerInterface(InterfaceProtocol):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
+        logger.info(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            results = executor.map(
-                self.compute_metrics_in_thread,
-                metric_funcs,
-            )
-            for result in results:
-                profile, column = result
-                if not isinstance(profile, dict):
-                    profile = dict()
-                if not column:
-                    profile_results["table"].update(profile)
-                else:
-                    profile_results["columns"][column].update(
-                        {"name": column, **profile}
-                    )
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self._thread_count
+        ) as executor:
+            futures = [
+                executor.submit(
+                    self.compute_metrics_in_thread,
+                    metric_func,
+                )
+                for metric_func in metric_funcs
+            ]
+
+        for future in concurrent.futures.as_completed(futures):
+            profile, column = future.result()
+            if not isinstance(profile, dict):
+                profile = dict()
+            if not column:
+                profile_results["table"].update(profile)
+            else:
+                profile_results["columns"][column].update({"name": column, **profile})
         return profile_results
 
     def _get_engine(self, service_connection_config):
