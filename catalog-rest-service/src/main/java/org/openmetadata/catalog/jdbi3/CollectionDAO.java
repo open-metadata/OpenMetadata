@@ -2069,5 +2069,93 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityFqn = filter.getQueryParam("entityFqn");
+      String testSuiteId = filter.getQueryParam("testSuiteId");
+      String condition = filter.getCondition();
+
+      if (entityFqn == null && entityId == null && testSuiteId == null) {
+        return EntityDAO.super.listBefore(filter, limit, before);
+      }
+      if (entityId != null || entityFqn != null) {
+        if (entityId != null) {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
+                  condition, entityId, Entity.TEST, Relationship.CONTAINS.ordinal());
+        } else {
+          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+        }
+      }
+      if (testSuiteId != null) {
+        condition =
+            String.format(
+                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
+                condition, testSuiteId, Entity.TEST, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+      }
+
+      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityFqn = filter.getQueryParam("entityFqn");
+      String testSuiteId = filter.getQueryParam("testSuiteId");
+      String condition = filter.getCondition();
+      if (entityFqn == null && entityId == null && testSuiteId == null) {
+        return EntityDAO.super.listAfter(filter, limit, after);
+      }
+      if (entityId != null || entityFqn != null) {
+        if (entityId != null) {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
+                  condition, entityId, Entity.TEST, Relationship.CONTAINS.ordinal());
+        } else {
+          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+        }
+      }
+      if (testSuiteId != null) {
+        condition =
+            String.format(
+                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
+                condition, testSuiteId, Entity.TEST, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+      }
+
+      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityFqn = filter.getQueryParam("entityFqn");
+      String testSuiteId = filter.getQueryParam("testSuiteId");
+      String condition = filter.getCondition();
+      if (entityFqn == null && entityId == null && testSuiteId == null) {
+        return EntityDAO.super.listCount(filter);
+      }
+      if (entityId != null || entityFqn != null) {
+        if (entityId != null) {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
+                  condition, entityId, Entity.TEST, Relationship.CONTAINS.ordinal());
+        } else {
+          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+        }
+      }
+      if (testSuiteId != null) {
+        condition =
+            String.format(
+                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
+                condition, testSuiteId, Entity.TEST, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+      }
+
+      return listCount(getTableName(), getNameColumn(), condition);
+    }
   }
 }

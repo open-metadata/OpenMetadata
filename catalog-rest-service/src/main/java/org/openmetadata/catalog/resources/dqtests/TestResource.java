@@ -122,6 +122,15 @@ public class TestResource extends EntityResource<Test, TestRepository> {
       @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Returns list of tests filtered by the entity id", schema = @Schema(type = "string"))
+          @QueryParam("entityId")
+          String entityId,
+      @Parameter(description = "Returns list of tests filtered by the entity FQN", schema = @Schema(type = "string"))
+          @QueryParam("entityFqn")
+          String entityFqn,
+      @Parameter(description = "Returns list of tests filtered by the testSuite id", schema = @Schema(type = "string"))
+          @QueryParam("testSuiteId")
+          String testSuiteId,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -129,7 +138,11 @@ public class TestResource extends EntityResource<Test, TestRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("entityId", entityId)
+            .addQueryParam("entityFqn", entityFqn)
+            .addQueryParam("testSuiteId", testSuiteId);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

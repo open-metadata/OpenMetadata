@@ -40,13 +40,12 @@ public class TestRepository extends EntityRepository<Test> {
 
   @Override
   public void prepare(Test test) throws IOException {
-    Entity.getEntityReferenceById(Entity.TABLE, test.getEntity().getId(), Include.NON_DELETED);
-    Entity.getEntityReferenceById(Entity.TEST_DEFINITION, test.getTestDefinition().getId(), Include.NON_DELETED);
-    Entity.getEntityReferenceById(Entity.TEST_SUITE, test.getTestSuite().getId(), Include.NON_DELETED);
+    EntityReference tableRef =
+        Entity.getEntityReferenceById(Entity.TABLE, test.getEntity().getId(), Include.NON_DELETED);
     TestDefinition testDefinition =
         Entity.getEntity(test.getTestDefinition(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
-    test.setFullyQualifiedName(FullyQualifiedName.add(test.getEntity().getFullyQualifiedName(), test.getName()));
+    test.setFullyQualifiedName(FullyQualifiedName.add(tableRef.getFullyQualifiedName(), test.getName()));
     test.setOwner(Entity.getEntityReference(test.getOwner()));
   }
 
