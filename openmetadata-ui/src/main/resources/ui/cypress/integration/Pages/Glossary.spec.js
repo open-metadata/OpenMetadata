@@ -97,8 +97,8 @@ describe('Glossary page should work properly', () => {
     cy.goToHomePage();
     // redirecting to glossary page
     cy.get(
-        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-      )
+      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -180,7 +180,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]')
+    cy.get('.tags-select > [class*="-control"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
@@ -259,7 +259,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]')
+    cy.get('.tags-select > [class*="-control"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
@@ -322,8 +322,8 @@ describe('Glossary page should work properly', () => {
     addNewTagToEntity(entity, term);
 
     cy.get(
-        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-      )
+      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -378,8 +378,8 @@ describe('Glossary page should work properly', () => {
       .click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get(
-        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-      )
+      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
       .scrollIntoView()
       .should('be.visible')
       .click();

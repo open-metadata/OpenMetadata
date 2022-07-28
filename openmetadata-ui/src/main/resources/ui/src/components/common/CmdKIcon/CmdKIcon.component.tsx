@@ -10,50 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ControlOutlined,
-  MacCommandOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
-import { Typography } from 'antd';
+
 import React from 'react';
+import { ReactComponent as CmdButton } from '../../../assets/svg/command-button.svg';
+import { ReactComponent as CtrlButton } from '../../../assets/svg/control-button.svg';
+import { ReactComponent as KButton } from '../../../assets/svg/k-button.svg';
 import { NavigatorHelper } from '../../../utils/NavigatorUtils';
 
 const CmdKIcon = () => {
   return (
     <div className="tw-flex tw-items-center">
       {NavigatorHelper.isMacOs() ? (
-        <MacCommandOutlined
-          className="tw-m-0"
+        <CmdButton
           style={{
-            fontSize: '14px',
-            color: '#95989f',
+            backgroundColor: 'white',
           }}
         />
       ) : (
-        <ControlOutlined
-          className="tw-m-0"
+        <CtrlButton
           style={{
-            fontSize: '14px',
-            color: '#95989f',
+            backgroundColor: 'white',
           }}
         />
       )}
-
-      <PlusOutlined
-        className="tw-mx-0 tw-my"
+      <KButton
         style={{
-          fontSize: '10px',
-          color: '#95989f',
+          marginLeft: '4px',
+          backgroundColor: 'white',
         }}
       />
-      <Typography.Text
-        className="tw-text-sm tw-m-0"
-        style={{
-          color: '#95989f',
-        }}>
-        K
-      </Typography.Text>
     </div>
   );
 };
