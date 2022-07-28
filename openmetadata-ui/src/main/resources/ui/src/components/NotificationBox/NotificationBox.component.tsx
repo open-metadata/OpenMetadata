@@ -16,7 +16,10 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AppState from '../../AppState';
 import { getFeedsWithFilter } from '../../axiosAPIs/feedsAPI';
-import { getUserPath } from '../../constants/constants';
+import {
+  getUserPath,
+  NOTIFICATION_READ_TIMER,
+} from '../../constants/constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
@@ -115,7 +118,7 @@ const NotificationBox = ({
           key === NotificationTabsKey.TASK
             ? onMarkTaskNotificationRead()
             : onMarkMentionsNotificationRead();
-        }, 2500);
+        }, NOTIFICATION_READ_TIMER);
       }
     },
     [currentUser, hasTaskNotification, hasMentionNotification]

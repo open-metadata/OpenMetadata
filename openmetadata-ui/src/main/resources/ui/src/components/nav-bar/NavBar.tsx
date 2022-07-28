@@ -17,7 +17,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
-import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
+import {
+  NOTIFICATION_READ_TIMER,
+  ROUTES,
+  SOCKET_EVENTS,
+} from '../../constants/constants';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
@@ -103,7 +107,7 @@ const NavBar = ({
           hasTaskNotification &&
             setTimeout(() => {
               handleTaskNotificationRead();
-            }, 2500);
+            }, NOTIFICATION_READ_TIMER);
 
           break;
 
@@ -111,7 +115,7 @@ const NavBar = ({
           hasMentionNotification &&
             setTimeout(() => {
               handleMentionsNotificationRead();
-            }, 2500);
+            }, NOTIFICATION_READ_TIMER);
 
           break;
       }
