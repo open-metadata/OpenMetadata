@@ -216,22 +216,29 @@ SNYK_ARGS := --severity-threshold=high --sarif
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
 	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) >> ingestion-docker-scan.sarif | true;
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) >> ingestion-docker-scan.sarif;
 	@echo "Validating ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
-		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> ingestion-dep-scan.sarif | true; \
-		snyk code test $(SNYK_ARGS) >> ingestion-code-scan.sarif | true;
+		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> ingestion-dep-scan.sarif; \
+		snyk code test $(SNYK_ARGS) >> ingestion-code-scan.sarif;
 
 .PHONY: snyk-airflow-apis-report
 snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
 	@echo "Validating airflow dependencies. Make sure the venv is activated."
 	cd openmetadata-airflow-apis; \
     	pip freeze > scan-requirements.txt; \
-    	snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> airflow-apis-dep-scan.sarif | true; \
-    	snyk code test $(SNYK_ARGS) >> airflow-apis-code-scan.sarif | true;
+    	snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> airflow-apis-dep-scan.sarif; \
+    	snyk code test $(SNYK_ARGS) >> airflow-apis-code-scan.sarif;
+
+.PHONY: snyk-catalog-report
+snyk-catalog-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
+	@echo "Validating catalog container... Make sure the code is built and available under openmetadata-dist"
+
 
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
 	@echo "To run this locally, make sure to install and authenticate using the Snyk CLI: https://docs.snyk.io/snyk-cli/install-the-snyk-cli"
-	$(MAKE) snyk-ingestion-report
+	$(MAKE) snyk-ingestion-report | true
+	$(MAKE) snyk-airflow-apis-report | true
+
