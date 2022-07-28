@@ -255,6 +255,7 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 	$(MAKE) snyk-ingestion-report
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
+	$(MAKE) snyk-ui-report
 	$(MAKE) snyk-dependencies-report
 	@echo "Ingestion Docker Scan"
 	cat ingestion-docker-scan.sarif
