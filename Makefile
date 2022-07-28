@@ -213,7 +213,11 @@ docker-docs-local:  ## Runs the OM docs in docker with a local image
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container
 	@echo "Validating Ingestion container..."
 	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile
+	snyk container test --severity-threshold=high openmetadata-ingestion:scan --file=ingestion/Dockerfile
+	@echo "Validating ingestion dependencies. Make sure the venv is activated."
+	cd ingestion; \
+		pip freeze > scan-requirements.txt; \
+		snyk test --file=scan-requirements.txt
 
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
