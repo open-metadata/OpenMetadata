@@ -43,8 +43,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   public void setupTestCase(TestInfo test) throws IOException {
     TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable tableReq = tableResourceTest.createRequest(test).withName("testCaseTable").withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
-        .withOwner(USER_OWNER1);
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("testCaseTable")
+            .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
+            .withOwner(USER_OWNER1);
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
   }
 
@@ -142,12 +146,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Override
   public CreateTestCase createRequest(String name) {
-      return new CreateTestCase()
-          .withName(name)
-          .withDescription(name)
-          .withEntity(TEST_TABLE1.getEntityReference())
-          .withTestSuite(TEST_SUITE1_REFERENCE)
-          .withTestDefinition(TEST_DEFINITION1_REFERENCE);
+    return new CreateTestCase()
+        .withName(name)
+        .withDescription(name)
+        .withEntity(TEST_TABLE1.getEntityReference())
+        .withTestSuite(TEST_SUITE1_REFERENCE)
+        .withTestDefinition(TEST_DEFINITION1_REFERENCE);
   }
 
   @Override

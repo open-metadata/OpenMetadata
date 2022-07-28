@@ -26,7 +26,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS = "owner,entity,testSuite,testDefinition";
 
   public TestCaseRepository(CollectionDAO dao) {
-    super(TestSuiteResource.COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+    super(
+        TestSuiteResource.COLLECTION_PATH,
+        TEST_CASE,
+        TestCase.class,
+        dao.testCaseDAO(),
+        dao,
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -102,9 +109,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Add relationship from testSuite to test
     addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.HAS);
     // Add relationship from entity to test
-    addRelationship(test.getEntity().getId(), test.getId(), test.getEntity().getType(), TEST_CASE, Relationship.CONTAINS);
+    addRelationship(
+        test.getEntity().getId(), test.getId(), test.getEntity().getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
-    addRelationship(test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
+    addRelationship(
+        test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
     // Add test owner relationship
     storeOwner(test, test.getOwner());
   }
