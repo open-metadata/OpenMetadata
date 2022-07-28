@@ -23,7 +23,8 @@ import useImage from '../../hooks/useImage';
 const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
   const { image } = useImage(`emojis/${reaction.reaction}.png`);
 
-  const handleOnClick = () => {
+  const handleOnClick = (e) => {
+    e.stopPropagation();
     const operation = isReacted
       ? ReactionOperation.REMOVE
       : ReactionOperation.ADD;

@@ -161,7 +161,10 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   const PopoverTitle = () => {
     return (
       <Link data-testid="entitylink" to={getEntityLink(entityType, entityFQN)}>
-        <button className="tw-text-info" disabled={AppState.isTourOpen}>
+        <button
+          className="tw-text-info"
+          disabled={AppState.isTourOpen}
+          onClick={(e) => e.stopPropagation()}>
           <span>{entityFQN}</span>
         </button>
       </Link>

@@ -138,7 +138,10 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         <UserPopOverCard userName={createdBy}>
           <span
             className="thread-author tw-cursor-pointer"
-            onClick={() => onTitleClickHandler(createdBy)}>
+            onClick={(e) => {
+              e.stopPropagation();
+              onTitleClickHandler(createdBy);
+            }}>
             {createdBy}
           </span>
         </UserPopOverCard>
