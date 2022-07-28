@@ -99,6 +99,7 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -114,6 +115,7 @@ import org.openmetadata.catalog.entity.type.Category;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.catalog.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
@@ -241,7 +243,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference DATABASE_SCHEMA_REFERENCE;
 
   public static Table TEST_TABLE1;
-  public static Table TEST_TABLE2;
   public static TestSuite TEST_SUITE1;
   public static EntityReference TEST_SUITE1_REFERENCE;
 
@@ -314,6 +315,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new PolicyResourceTest().setupPolicies();
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions(test);
+    new TestCaseResourceTest().setupTestCase(test);
   }
 
   @AfterAll

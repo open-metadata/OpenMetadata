@@ -16,27 +16,36 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.tests.CreateTest;
+import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.tests.CreateTestCase;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
-import org.openmetadata.catalog.tests.Test;
+import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
-public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
-  public TestResourceTest() {
+public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTestCase> {
+  public TestCaseResourceTest() {
     super(
-        Entity.TEST,
-        org.openmetadata.catalog.tests.Test.class,
-        TestResource.TestList.class,
-        "test",
-        TestResource.FIELDS);
+        Entity.TEST_CASE,
+        org.openmetadata.catalog.tests.TestCase.class,
+        TestCaseResource.TestCaseList.class,
+        "testCase",
+        TestCaseResource.FIELDS);
     supportsEmptyDescription = false;
     supportsFollowers = false;
     supportsAuthorizedMetadataOperations = false;
     supportsOwner = false;
+  }
+
+  public void setupTestCase(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq = tableResourceTest.createRequest(test).withName("testCaseTable").withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
+        .withOwner(USER_OWNER1);
+    TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
   }
 
   @org.junit.jupiter.api.Test
@@ -50,21 +59,21 @@ public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
 
   @org.junit.jupiter.api.Test
   void post_testWithInvalidEntityTestSuite_4xx(TestInfo test) {
-    CreateTest create = createRequest(test);
+    CreateTestCase create = createRequest(test);
     create.withEntity(TEST_DEFINITION1_REFERENCE).withTestSuite(TEST_TABLE1.getEntityReference());
     assertResponseContains(
         () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         "table instance for " + TEST_DEFINITION1_REFERENCE.getId() + " not found");
 
-    CreateTest create1 = createRequest(test);
-    create1.withEntity(TEST_TABLE1.getEntityReference()).withTestSuite(TEST_DEFINITION1_REFERENCE);
+    CreateTestCase create1 = createRequest(test);
+    create1.withTestSuite(TEST_DEFINITION1_REFERENCE);
     assertResponseContains(
         () -> createAndCheckEntity(create1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         "testSuite instance for " + TEST_DEFINITION1_REFERENCE.getId() + " not found");
 
-    CreateTest create2 = createRequest(test);
+    CreateTestCase create2 = createRequest(test);
     create2
         .withEntity(TEST_TABLE1.getEntityReference())
         .withTestSuite(TEST_SUITE1_REFERENCE)
@@ -76,8 +85,8 @@ public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
   }
 
   @org.junit.jupiter.api.Test
-  void post_testWithInvalidParamValues_4xx(TestInfo test) {
-    CreateTest create = createRequest(test);
+  void post_testWithInvalidParamValues_4xx(TestInfo test) throws IOException {
+    CreateTestCase create = createRequest(test);
     create
         .withEntity(TEST_TABLE1.getEntityReference())
         .withTestSuite(TEST_SUITE1_REFERENCE)
@@ -88,7 +97,7 @@ public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
         BAD_REQUEST,
         "Parameter Values doesn't match Test Definition Parameters");
 
-    CreateTest create1 = createRequest(test);
+    CreateTestCase create1 = createRequest(test);
     create1
         .withEntity(TEST_TABLE1.getEntityReference())
         .withTestSuite(TEST_SUITE1_REFERENCE)
@@ -101,13 +110,13 @@ public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
 
   @org.junit.jupiter.api.Test
   void createUpdateDelete_tests_200(TestInfo test) throws IOException {
-    CreateTest create = createRequest(test);
+    CreateTestCase create = createRequest(test);
     create
         .withEntity(TEST_TABLE1.getEntityReference())
         .withTestSuite(TEST_SUITE1_REFERENCE)
         .withTestDefinition(TEST_DEFINITION3_REFERENCE)
         .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    Test testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     testCase = getEntity(testCase.getId(), "entity,testSuite,testDefinition,owner", ADMIN_AUTH_HEADERS);
     validateCreatedEntity(testCase, create, ADMIN_AUTH_HEADERS);
     create.withTestDefinition(TEST_DEFINITION2_REFERENCE).withParameterValues(new ArrayList<>());
@@ -132,17 +141,17 @@ public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
   }
 
   @Override
-  public CreateTest createRequest(String name) {
-    return new CreateTest()
-        .withName(name)
-        .withDescription(name)
-        .withEntity(TEST_TABLE1.getEntityReference())
-        .withTestSuite(TEST_SUITE1_REFERENCE)
-        .withTestDefinition(TEST_DEFINITION1_REFERENCE);
+  public CreateTestCase createRequest(String name) {
+      return new CreateTestCase()
+          .withName(name)
+          .withDescription(name)
+          .withEntity(TEST_TABLE1.getEntityReference())
+          .withTestSuite(TEST_SUITE1_REFERENCE)
+          .withTestDefinition(TEST_DEFINITION1_REFERENCE);
   }
 
   @Override
-  public void validateCreatedEntity(Test createdEntity, CreateTest request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
@@ -153,14 +162,14 @@ public class TestResourceTest extends EntityResourceTest<Test, CreateTest> {
   }
 
   @Override
-  public void compareEntities(Test expected, Test updated, Map<String, String> authHeaders)
+  public void compareEntities(TestCase expected, TestCase updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDescription(), updated.getDescription());
   }
 
   @Override
-  public Test validateGetWithDifferentFields(Test entity, boolean byName) throws HttpResponseException {
+  public TestCase validateGetWithDifferentFields(TestCase entity, boolean byName) throws HttpResponseException {
     return null;
   }
 

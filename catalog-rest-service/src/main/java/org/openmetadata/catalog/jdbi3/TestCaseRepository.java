@@ -1,6 +1,6 @@
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.TEST;
+import static org.openmetadata.catalog.Entity.TEST_CASE;
 import static org.openmetadata.catalog.Entity.TEST_DEFINITION;
 import static org.openmetadata.catalog.Entity.TEST_SUITE;
 
@@ -13,7 +13,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.test.TestCaseParameter;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
-import org.openmetadata.catalog.tests.Test;
+import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -21,16 +21,16 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 
-public class TestRepository extends EntityRepository<Test> {
+public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS = "owner,entity,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entity,testSuite,testDefinition";
 
-  public TestRepository(CollectionDAO dao) {
-    super(TestSuiteResource.COLLECTION_PATH, TEST, Test.class, dao.testDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public TestCaseRepository(CollectionDAO dao) {
+    super(TestSuiteResource.COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
-  public Test setFields(Test test, EntityUtil.Fields fields) throws IOException {
+  public TestCase setFields(TestCase test, EntityUtil.Fields fields) throws IOException {
     test.setEntity(fields.contains("entity") ? getEntity(test) : null);
     test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
@@ -39,7 +39,7 @@ public class TestRepository extends EntityRepository<Test> {
   }
 
   @Override
-  public void prepare(Test test) throws IOException {
+  public void prepare(TestCase test) throws IOException {
     EntityReference tableRef =
         Entity.getEntityReferenceById(Entity.TABLE, test.getEntity().getId(), Include.NON_DELETED);
     // validate test definition and test suite
@@ -52,15 +52,15 @@ public class TestRepository extends EntityRepository<Test> {
     test.setOwner(Entity.getEntityReference(test.getOwner()));
   }
 
-  private EntityReference getEntity(Test test) throws IOException {
+  private EntityReference getEntity(TestCase test) throws IOException {
     return getFromEntityRef(test.getId(), Relationship.CONTAINS, null, true);
   }
 
-  private EntityReference getTestSuite(Test test) throws IOException {
+  private EntityReference getTestSuite(TestCase test) throws IOException {
     return getFromEntityRef(test.getId(), Relationship.HAS, null, true);
   }
 
-  private EntityReference getTestDefinition(Test test) throws IOException {
+  private EntityReference getTestDefinition(TestCase test) throws IOException {
     return getFromEntityRef(test.getId(), Relationship.APPLIED_TO, TEST_DEFINITION, true);
   }
 
@@ -83,7 +83,7 @@ public class TestRepository extends EntityRepository<Test> {
   }
 
   @Override
-  public void storeEntity(Test test, boolean update) throws IOException {
+  public void storeEntity(TestCase test, boolean update) throws IOException {
     EntityReference owner = test.getOwner();
     EntityReference entity = test.getEntity();
     EntityReference testSuite = test.getTestSuite();
@@ -98,24 +98,24 @@ public class TestRepository extends EntityRepository<Test> {
   }
 
   @Override
-  public void storeRelationships(Test test) {
+  public void storeRelationships(TestCase test) {
     // Add relationship from testSuite to test
-    addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST, Relationship.HAS);
+    addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.HAS);
     // Add relationship from entity to test
-    addRelationship(test.getEntity().getId(), test.getId(), test.getEntity().getType(), TEST, Relationship.CONTAINS);
+    addRelationship(test.getEntity().getId(), test.getId(), test.getEntity().getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
-    addRelationship(test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST, Relationship.APPLIED_TO);
+    addRelationship(test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
     // Add test owner relationship
     storeOwner(test, test.getOwner());
   }
 
   @Override
-  public EntityUpdater getUpdater(Test original, Test updated, Operation operation) {
+  public EntityUpdater getUpdater(TestCase original, TestCase updated, Operation operation) {
     return new TestUpdater(original, updated, operation);
   }
 
   public class TestUpdater extends EntityUpdater {
-    public TestUpdater(Test original, Test updated, Operation operation) {
+    public TestUpdater(TestCase original, TestCase updated, Operation operation) {
       super(original, updated, operation);
     }
 
@@ -127,7 +127,7 @@ public class TestRepository extends EntityRepository<Test> {
           new ArrayList<>(List.of(original.getEntity())),
           new ArrayList<>(List.of(updated.getEntity())),
           Relationship.CONTAINS,
-          TEST,
+          TEST_CASE,
           updated.getId());
       updateFromRelationships(
           "testSuite",
@@ -135,7 +135,7 @@ public class TestRepository extends EntityRepository<Test> {
           new ArrayList<>(List.of(original.getTestSuite())),
           new ArrayList<>(List.of(updated.getTestSuite())),
           Relationship.HAS,
-          TEST,
+          TEST_CASE,
           updated.getId());
       updateFromRelationships(
           "testDefinition",
@@ -143,7 +143,7 @@ public class TestRepository extends EntityRepository<Test> {
           new ArrayList<>(List.of(original.getTestDefinition())),
           new ArrayList<>(List.of(updated.getTestDefinition())),
           Relationship.APPLIED_TO,
-          TEST,
+          TEST_CASE,
           updated.getId());
       recordChange("parameterValues", original.getParameterValues(), updated.getParameterValues());
     }

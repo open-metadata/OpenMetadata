@@ -169,9 +169,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
             getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
             getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable table = tableResourceTest.createRequest(test).withDatabaseSchema(DATABASE_SCHEMA_REFERENCE);
-    TEST_TABLE1 = tableResourceTest.createAndCheckEntity(table, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -1450,19 +1447,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 g1t1
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Total 3 user tags  - 1 table tag + 2 column tags
-    assertEquals(3, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
+    // Total 5 user tags  - 1 table tag + 2 column tags includes global test entities
+    assertEquals(5, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
+    assertEquals(2, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary2 tags  - 1 table
     assertEquals(1, getGlossaryUsageCount("g2", ADMIN_AUTH_HEADERS));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
-    assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 column level
-    assertEquals(1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 table level
     assertEquals(1, getGlossaryTermUsageCount(GLOSSARY2_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
@@ -1475,14 +1472,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
     // Additional 2 user tags - 2 column tags
-    assertEquals(5, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
+    assertEquals(7, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
     // Additional 2 USER_ADDRESS tags - 2 column tags
-    assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(7, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Additional 1 glossary tag - 1 column tags
-    assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(3, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     ResultList<Table> tableList = listEntities(null, ADMIN_AUTH_HEADERS); // List tables
-    assertEquals(2, tableList.getData().size());
+    assertEquals(3, tableList.getData().size());
     assertFields(tableList.getData(), null);
 
     // List tables with databaseFQN as filter
@@ -1497,7 +1494,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(2, tableList.getData().size());
+    assertEquals(3, tableList.getData().size());
     assertFields(tableList.getData(), fields);
 
     // List tables with databaseFQN as filter
@@ -1513,7 +1510,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields1);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(2, tableList.getData().size());
+    assertEquals(3, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
       assertEquals(USER_OWNER1, table.getOwner());

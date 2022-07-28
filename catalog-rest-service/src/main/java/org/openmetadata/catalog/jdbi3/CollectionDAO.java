@@ -66,7 +66,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.catalog.tests.Test;
+import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.tests.TestSuite;
 import org.openmetadata.catalog.type.Relationship;
@@ -196,7 +196,7 @@ public interface CollectionDAO {
   TestSuiteDAO testSuiteDAO();
 
   @CreateSqlObject
-  TestDAO testDAO();
+  TestCaseDAO testCaseDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2054,15 +2054,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface TestDAO extends EntityDAO<Test> {
+  interface TestCaseDAO extends EntityDAO<TestCase> {
     @Override
     default String getTableName() {
-      return "test";
+      return "test_case";
     }
 
     @Override
-    default Class<Test> getEntityClass() {
-      return Test.class;
+    default Class<TestCase> getEntityClass() {
+      return TestCase.class;
     }
 
     @Override
@@ -2085,7 +2085,7 @@ public interface CollectionDAO {
           condition =
               String.format(
                   "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST, Relationship.CONTAINS.ordinal());
+                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
         } else {
           condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
         }
@@ -2094,7 +2094,7 @@ public interface CollectionDAO {
         condition =
             String.format(
                 "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
       }
 
       return listBefore(getTableName(), getNameColumn(), condition, limit, before);
@@ -2114,7 +2114,7 @@ public interface CollectionDAO {
           condition =
               String.format(
                   "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST, Relationship.CONTAINS.ordinal());
+                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
         } else {
           condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
         }
@@ -2123,7 +2123,7 @@ public interface CollectionDAO {
         condition =
             String.format(
                 "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
       }
 
       return listAfter(getTableName(), getNameColumn(), condition, limit, after);
@@ -2143,7 +2143,7 @@ public interface CollectionDAO {
           condition =
               String.format(
                   "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST, Relationship.CONTAINS.ordinal());
+                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
         } else {
           condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
         }
@@ -2152,7 +2152,7 @@ public interface CollectionDAO {
         condition =
             String.format(
                 "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
       }
 
       return listCount(getTableName(), getNameColumn(), condition);

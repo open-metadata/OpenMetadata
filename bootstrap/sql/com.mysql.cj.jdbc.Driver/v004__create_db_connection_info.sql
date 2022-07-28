@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS test_suite (
     UNIQUE (name)
 );
 
-CREATE TABLE IF NOT EXISTS test (
+CREATE TABLE IF NOT EXISTS test_case (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,

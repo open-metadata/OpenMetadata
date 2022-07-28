@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/api/tests/createTest.json",
+  "$id": "https://open-metadata.org/schema/api/tests/createTestCase.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateTestRequest",
   "description": "Test is a test definition to capture data quality tests.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.tests.CreateTest",
+  "javaType": "org.openmetadata.catalog.api.tests.CreateTestCase",
   "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
   "properties": {
     "name": {
@@ -31,7 +31,7 @@
     "parameterValues": {
       "type": "array",
       "items": {
-        "$ref": "../../tests/test.json#/definitions/testCaseParameterValue"
+        "$ref": "../../tests/testCase.json#/definitions/testCaseParameterValue"
       }
     },
     "owner": {

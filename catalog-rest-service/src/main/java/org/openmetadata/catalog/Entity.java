@@ -100,7 +100,7 @@ public final class Entity {
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_SUITE = "testSuite";
-  public static final String TEST = "test";
+  public static final String TEST_CASE = "testCase";
 
   //
   // Policy entity
