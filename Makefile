@@ -196,7 +196,6 @@ install_antlr_cli:  ## Install antlr CLI locally
 	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
 	chmod 755 /usr/local/bin/antlr4
 
-
 .PHONY: docker-docs
 docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest
@@ -209,36 +208,73 @@ docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs a
 docker-docs-local:  ## Runs the OM docs in docker with a local image
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local
 
+
 ## SNYK
 SNYK_ARGS := --severity-threshold=high --sarif
+SNYK_DEPS_ARGS := --severity-threshold=high --json  # Sarif only works if we pass a dockerfile, which we don't always have
 
 .PHONY: snyk-ingestion-report
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
 	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) >> ingestion-docker-scan.sarif;
-	@echo "Validating ingestion dependencies. Make sure the venv is activated."
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) >> ingestion-docker-scan.sarif | true;
+	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
-		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> ingestion-dep-scan.sarif; \
-		snyk code test $(SNYK_ARGS) >> ingestion-code-scan.sarif;
+		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> ingestion-dep-scan.sarif | true; \
+		snyk code test $(SNYK_ARGS) >> ingestion-code-scan.sarif | true;
 
 .PHONY: snyk-airflow-apis-report
 snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
 	@echo "Validating airflow dependencies. Make sure the venv is activated."
 	cd openmetadata-airflow-apis; \
-    	pip freeze > scan-requirements.txt; \
-    	snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> airflow-apis-dep-scan.sarif; \
-    	snyk code test $(SNYK_ARGS) >> airflow-apis-code-scan.sarif;
+    	snyk code test $(SNYK_ARGS) >> airflow-apis-code-scan.sarif | true;
 
 .PHONY: snyk-catalog-report
-snyk-catalog-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
+snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
 	@echo "Validating catalog container... Make sure the code is built and available under openmetadata-dist"
+	docker build -t openmetadata-server:scan -f docker/local-metadata/Dockerfile .
+	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) >> server-docker-scan.sarif | true;
+	snyk test --all-projects $(SNYK_ARGS) >> server-dep-scan.sarif | true;
+	snyk code test --all-projects $(SNYK_ARGS) >> server-code-scan.sarif | true;
 
+.PHONY: snyk-ui-report
+snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop the execution
+	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) >> ui-dep-scan.sarif | true;
+
+.PHONY: snyk-dependencies-report
+snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES
+	@echo "Validating dependencies images..."
+	snyk container test mysql/mysql-server:latest $(SNYK_DEPS_ARGS) >> mysql-scan.sarif | true;
+	snyk container test postgres:latest $(SNYK_DEPS_ARGS) >> postgres-scan.sarif | true;
+	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_DEPS_ARGS) >> es-scan.sarif | true;
 
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
 	@echo "To run this locally, make sure to install and authenticate using the Snyk CLI: https://docs.snyk.io/snyk-cli/install-the-snyk-cli"
-	$(MAKE) snyk-ingestion-report | true
-	$(MAKE) snyk-airflow-apis-report | true
-
+	$(MAKE) snyk-ingestion-report
+	$(MAKE) snyk-airflow-apis-report
+	$(MAKE) snyk-server-report
+	$(MAKE) snyk-dependencies-report
+	@echo "Ingestion Docker Scan"
+	cat ingestion-docker-scan.sarif
+	@echo "Ingestion Dependency Scan"
+	cat ingestion/ingestion-dep-scan.sarif
+	@echo "Ingestion Code Scan"
+	cat ingestion/ingestion-code-scan.sarif
+	@echo "Airflow APIs Code Scan"
+	cat openmetadata-airflow-apis/airflow-apis-code-scan.sarif
+	@echo "Server Docker Scan"
+	cat server-docker-scan.sarif
+	@echo "Server Dependency Scan"
+	cat server-dep-scan.sarif
+	@echo "Server Code Scan"
+	cat server-code-scan.sarif
+	@echo "UI Dependency Scan"
+	cat ui-dep-scan.sarif
+	@echo "MySQL Scan"
+	cat mysql-scan.sarif
+	@echo "Postgres Scan"
+	cat postgres-scan.sarif
+	@echo "ElasticSearch Scan"
+	cat es-scan.sarif
