@@ -11,8 +11,6 @@
 """
 Redshift usage module
 """
-
-# This import verifies that the dependencies are available.
 from typing import Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
