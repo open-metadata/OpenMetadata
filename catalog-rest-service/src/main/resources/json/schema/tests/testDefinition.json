@@ -20,7 +20,7 @@
         "Other"
       ]
     },
-    "dataType": {
+    "testDataType": {
       "javaType": "org.openmetadata.catalog.type.TestCaseParameterDataType",
       "description": "This enum defines the type of data stored in a column.",
       "type": "string",
@@ -55,7 +55,7 @@
         },
         "dataType": {
           "description": "Data type of the parameter (int, date etc.).",
-          "$ref": "#/definitions/dataType"
+          "$ref": "#/definitions/testDataType"
         },
         "description": {
           "description": "Description of the parameter.",
