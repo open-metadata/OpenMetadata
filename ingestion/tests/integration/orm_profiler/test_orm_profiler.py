@@ -84,7 +84,7 @@ class ProfilerWorkflowTest(TestCase):
     """
 
     engine = create_engine(
-        f"sqlite+pysqlite:///{sqlite_shared}", echo=True, future=True
+        f"sqlite+pysqlite:///{sqlite_shared}",
     )
     session = create_and_bind_session(engine)
 

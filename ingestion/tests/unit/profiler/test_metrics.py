@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+import os
 import datetime
 from unittest import TestCase
 
@@ -23,7 +24,6 @@ from sqlalchemy import (
     Integer,
     String,
     Time,
-    create_engine,
 )
 from sqlalchemy.orm import declarative_base
 
@@ -56,8 +56,14 @@ class MetricsTest(TestCase):
     """
     Run checks on different metrics
     """
-
-    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    db_path = os.path.join(
+        os.path.dirname(__file__),
+        f"{os.path.splitext(__file__)[0]}.db"
+        )
+    sqlite_conn = SQLiteConnection(
+        scheme=SQLiteScheme.sqlite_pysqlite,
+        databaseMode=db_path + "?check_same_thread=False",
+    )
     sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
     engine = sqa_profiler_interface.session.get_bind()
 
@@ -835,3 +841,8 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        os.remove(cls.db_path)
+        return super().tearDownClass()
