@@ -244,9 +244,9 @@ snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop th
 .PHONY: snyk-dependencies-report
 snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES
 	@echo "Validating dependencies images..."
-	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) >> security/mysql-scan.json | true;
-	snyk container test postgres:latest $(SNYK_ARGS) >> security/postgres-scan.json | true;
-	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) >> security/es-scan.json | true;
+	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) >> security/mysql-scan.out | true;
+	snyk container test postgres:latest $(SNYK_ARGS) >> security/postgres-scan.out | true;
+	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) >> security/es-scan.out | true;
 
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
