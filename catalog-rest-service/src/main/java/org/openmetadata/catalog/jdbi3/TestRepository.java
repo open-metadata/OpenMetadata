@@ -42,7 +42,7 @@ public class TestRepository extends EntityRepository<Test> {
   public void prepare(Test test) throws IOException {
     EntityReference tableRef =
         Entity.getEntityReferenceById(Entity.TABLE, test.getEntity().getId(), Include.NON_DELETED);
-    //validate test definition and test suite
+    // validate test definition and test suite
     Entity.getEntityReferenceById(Entity.TEST_DEFINITION, test.getTestDefinition().getId(), Include.NON_DELETED);
     Entity.getEntityReferenceById(Entity.TEST_SUITE, test.getTestSuite().getId(), Include.NON_DELETED);
     TestDefinition testDefinition =
