@@ -1,0 +1,417 @@
+{
+    "mock_database_paginator": {
+      "DatabaseList": [
+        {
+          "Name": "default",
+          "CreateTime": "2022-05-13 17:02:17",
+          "CreateTableDefaultPermissions": [
+            {
+              "Principal": {
+                "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+              },
+              "Permissions": [
+                "ALL"
+              ]
+            }
+          ],
+          "CatalogId": "118146679784"
+        },
+        {
+          "Name": "mydatabase",
+          "CreateTime": "2022-05-13 17:02:17",
+          "CreateTableDefaultPermissions": [
+            {
+              "Principal": {
+                "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+              },
+              "Permissions": [
+                "ALL"
+              ]
+            }
+          ],
+          "CatalogId": "118146679784"
+        },
+        {
+          "Name": "testdatalake_db",
+          "LocationUri": "s3://awsdatalake-testing/data",
+          "CreateTime": "2022-05-13 17:02:17",
+          "CreateTableDefaultPermissions": [
+            {
+              "Principal": {
+                "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+              },
+              "Permissions": [
+                "ALL"
+              ]
+            }
+          ],
+          "CatalogId": "118146679784"
+        },
+        {
+          "Name": "zipcode-db",
+          "LocationUri": "s3://datalake-openmetadata-ohio/zipcode",
+          "CreateTime": "2022-05-13 17:02:17",
+          "CreateTableDefaultPermissions": [
+            {
+              "Principal": {
+                "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+              },
+              "Permissions": [
+                "ALL"
+              ]
+            }
+          ],
+          "CatalogId": "118146679784"
+        }
+      ],
+      "ResponseMetadata": {
+        "RequestId": "21a5c41c-da65-4531-83cb-e6d3425c4ec7",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+          "date": "Tue, 26 Jul 2022 16:28:52 GMT",
+          "content-type": "application/x-amz-json-1.1",
+          "content-length": "1062",
+          "connection": "keep-alive",
+          "x-amzn-requestid": "21a5c41c-da65-4531-83cb-e6d3425c4ec7"
+        },
+        "RetryAttempts": 0
+      }
+    },
+    "mock_table_paginator": {
+      "TableList": [
+        {
+          "Name": "cloudfront_logs",
+          "DatabaseName": "default",
+          "Owner": "hadoop",
+          "CreateTime": "2022-05-13 17:02:17",
+          "UpdateTime": "2022-05-13 17:02:17",
+          "LastAccessTime": "2022-05-13 17:02:17",
+          "Retention": 0,
+          "StorageDescriptor": {
+            "Columns": [
+              {
+                "Name": "date",
+                "Type": "date"
+              },
+              {
+                "Name": "time",
+                "Type": "string"
+              },
+              {
+                "Name": "location",
+                "Type": "string"
+              },
+              {
+                "Name": "bytes",
+                "Type": "int"
+              },
+              {
+                "Name": "requestip",
+                "Type": "string"
+              },
+              {
+                "Name": "method",
+                "Type": "string"
+              },
+              {
+                "Name": "host1",
+                "Type": "string"
+              },
+              {
+                "Name": "uri1",
+                "Type": "string"
+              },
+              {
+                "Name": "status",
+                "Type": "int"
+              },
+              {
+                "Name": "referrer",
+                "Type": "string"
+              },
+              {
+                "Name": "os",
+                "Type": "string"
+              },
+              {
+                "Name": "browser",
+                "Type": "string"
+              },
+              {
+                "Name": "browserversion",
+                "Type": "string"
+              }
+            ],
+            "Location": "s3://athena-examples-MyRegion/cloudfront/plaintext",
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "Compressed": false,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+              "SerializationLibrary": "org.apache.hadoop.hive.serde2.RegexSerDe",
+              "Parameters": {
+                "input.regex": "^(?!#)([^ ] )\\s ([^ ] )\\s ([^ ] )\\s ([^ ] )\\s ([^ ] )\\s ([^ ] )\\s ([^ ] )\\s ([^ ] )\\s ([^ ] )\\s ([^ ] )\\s [^(] [(]([^;] ).*\\ ([^/] )[/](.*)$",
+                "serialization.format": "1"
+              }
+            },
+            "BucketColumns": [],
+            "SortColumns": [],
+            "Parameters": {},
+            "SkewedInfo": {
+              "SkewedColumnNames": [],
+              "SkewedColumnValues": [],
+              "SkewedColumnValueLocationMaps": {}
+            },
+            "StoredAsSubDirectories": false
+          },
+          "PartitionKeys": [],
+          "TableType": "EXTERNAL_TABLE",
+          "Parameters": {
+            "EXTERNAL": "TRUE",
+            "transient_lastDdlTime": "1652441537"
+          },
+          "CreatedBy": "arn:aws:iam::118146679784:user/abhishek-pandey",
+          "IsRegisteredWithLakeFormation": false,
+          "CatalogId": "118146679784"
+        },
+        {
+          "Name": "cloudfront_logs2",
+          "DatabaseName": "default",
+          "Description": "TEST DESCRIPTION",
+          "Owner": "hadoop",
+          "CreateTime": "2022-05-13 17:02:17",
+          "UpdateTime": "2022-05-13 17:02:17",
+          "LastAccessTime": "2022-05-13 17:02:17",
+          "Retention": 0,
+          "StorageDescriptor": {
+            "Columns": [
+              {
+                "Name": "date",
+                "Type": "date",
+                "Comment": "TEST COMMENT 1"
+              },
+              {
+                "Name": "time",
+                "Type": "string"
+              },
+              {
+                "Name": "location",
+                "Type": "string",
+                "Comment": "NEW LOC"
+              },
+              {
+                "Name": "bytes",
+                "Type": "bigint",
+                "Comment": "TEST BYTES"
+              },
+              {
+                "Name": "request_ip",
+                "Type": "string"
+              },
+              {
+                "Name": "method",
+                "Type": "string"
+              },
+              {
+                "Name": "host",
+                "Type": "string"
+              },
+              {
+                "Name": "uri",
+                "Type": "string"
+              },
+              {
+                "Name": "status",
+                "Type": "int"
+              },
+              {
+                "Name": "referrer",
+                "Type": "string"
+              },
+              {
+                "Name": "user_agent",
+                "Type": "string"
+              },
+              {
+                "Name": "query_string",
+                "Type": "string"
+              },
+              {
+                "Name": "cookie",
+                "Type": "string"
+              },
+              {
+                "Name": "result_type",
+                "Type": "string"
+              },
+              {
+                "Name": "request_id",
+                "Type": "string"
+              },
+              {
+                "Name": "host_header",
+                "Type": "string"
+              },
+              {
+                "Name": "request_protocol",
+                "Type": "string"
+              },
+              {
+                "Name": "request_bytes",
+                "Type": "bigint"
+              },
+              {
+                "Name": "time_taken",
+                "Type": "float"
+              },
+              {
+                "Name": "xforwarded_for",
+                "Type": "string"
+              },
+              {
+                "Name": "ssl_protocol",
+                "Type": "string"
+              },
+              {
+                "Name": "ssl_cipher",
+                "Type": "string"
+              },
+              {
+                "Name": "response_result_type",
+                "Type": "string"
+              },
+              {
+                "Name": "http_version",
+                "Type": "string"
+              },
+              {
+                "Name": "fle_status",
+                "Type": "string"
+              },
+              {
+                "Name": "fle_encrypted_fields",
+                "Type": "int"
+              },
+              {
+                "Name": "c_port",
+                "Type": "int"
+              },
+              {
+                "Name": "time_to_first_byte",
+                "Type": "float"
+              },
+              {
+                "Name": "x_edge_detailed_result_type",
+                "Type": "string"
+              },
+              {
+                "Name": "sc_content_type",
+                "Type": "string"
+              },
+              {
+                "Name": "sc_content_len",
+                "Type": "bigint"
+              },
+              {
+                "Name": "sc_range_start",
+                "Type": "bigint"
+              },
+              {
+                "Name": "sc_range_end",
+                "Type": "bigint"
+              }
+            ],
+            "Location": "s3://athena-postgres/",
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "Compressed": false,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+              "SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+              "Parameters": {
+                "field.delim": "\t",
+                "serialization.format": "\t"
+              }
+            },
+            "BucketColumns": [],
+            "SortColumns": [],
+            "Parameters": {},
+            "SkewedInfo": {
+              "SkewedColumnNames": [],
+              "SkewedColumnValues": [],
+              "SkewedColumnValueLocationMaps": {}
+            },
+            "StoredAsSubDirectories": false
+          },
+          "PartitionKeys": [],
+          "TableType": "EXTERNAL_TABLE",
+          "Parameters": {
+            "EXTERNAL": "TRUE",
+            "skip.header.line.count": "2",
+            "transient_lastDdlTime": "1652446944"
+          },
+          "CreatedBy": "arn:aws:iam::118146679784:user/abhishek-pandey",
+          "IsRegisteredWithLakeFormation": false,
+          "CatalogId": "118146679784"
+        },
+        {
+          "Name": "map_table",
+          "DatabaseName": "default",
+          "Owner": "hadoop",
+          "CreateTime": "2022-05-13 17:02:17",
+          "UpdateTime": "2022-05-13 17:02:17",
+          "LastAccessTime": "2022-05-13 17:02:17",
+          "Retention": 0,
+          "StorageDescriptor": {
+            "Columns": [
+              {
+                "Name": "c1",
+                "Type": "map<string,int>"
+              }
+            ],
+            "Location": "s3://athena-postgres/map-test",
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "Compressed": false,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+              "SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+              "Parameters": {
+                "serialization.format": "1"
+              }
+            },
+            "BucketColumns": [],
+            "SortColumns": [],
+            "Parameters": {},
+            "SkewedInfo": {
+              "SkewedColumnNames": [],
+              "SkewedColumnValues": [],
+              "SkewedColumnValueLocationMaps": {}
+            },
+            "StoredAsSubDirectories": false
+          },
+          "PartitionKeys": [],
+          "TableType": "EXTERNAL_TABLE",
+          "Parameters": {
+            "EXTERNAL": "TRUE",
+            "transient_lastDdlTime": "1653641000"
+          },
+          "CreatedBy": "arn:aws:iam::118146679784:user/pere-brull",
+          "IsRegisteredWithLakeFormation": false,
+          "CatalogId": "118146679784"
+        }
+      ],
+      "ResponseMetadata": {
+        "RequestId": "c0524fd8-cba1-44c3-915d-fbeccc9b3334",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+          "date": "Tue, 26 Jul 2022 17:55:29 GMT",
+          "content-type": "application/x-amz-json-1.1",
+          "content-length": "5247",
+          "connection": "keep-alive",
+          "x-amzn-requestid": "c0524fd8-cba1-44c3-915d-fbeccc9b3334"
+        },
+        "RetryAttempts": 0
+      }
+    }
+  }

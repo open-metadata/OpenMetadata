@@ -30,6 +30,9 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceRequest,
+)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -56,7 +59,10 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
-from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.database_service import (
+    DataModelLink,
+    TableLocationLink,
+)
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
@@ -119,8 +125,12 @@ class MetadataRestSink(Sink[Entity]):
             self.write_charts(record)
         elif isinstance(record, CreateDashboardRequest):
             self.write_dashboards(record)
+        elif isinstance(record, CreateStorageServiceRequest):
+            self.write_storage_service(record)
         elif isinstance(record, Location):
             self.write_locations(record)
+        elif isinstance(record, CreateLocationRequest):
+            self.write_locations_requests(record)
         elif isinstance(record, OMetaPolicy):
             self.write_policies(record)
         elif isinstance(record, Pipeline):
@@ -143,6 +153,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_pipeline_status(record)
         elif isinstance(record, DataModelLink):
             self.write_datamodel(record)
+        elif isinstance(record, TableLocationLink):
+            self.write_table_location_link(record)
         elif isinstance(record, DashboardUsage):
             self.write_dashboard_usage(record)
         else:
@@ -182,6 +194,19 @@ class MetadataRestSink(Sink[Entity]):
         self.metadata.ingest_table_data_model(
             table=table, data_model=datamodel_link.datamodel
         )
+
+    def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
+        """
+        Send to OM the Table and Location Link based on FQNs
+        :param table_location_link: Table FQN + Location FQN
+        """
+        table = self.metadata.get_by_name(
+            entity=Table, fqn=table_location_link.table_fqn
+        )
+        location = self.metadata.get_by_name(
+            entity=Location, fqn=table_location_link.location_fqn
+        )
+        self.metadata.add_location(table=table, location=location)
 
     def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
         """
@@ -226,7 +251,6 @@ class MetadataRestSink(Sink[Entity]):
                 db_schema_and_table.table.description = (
                     db_schema_and_table.table.description.__root__.strip()
                 )
-
             table_request = CreateTableRequest(
                 name=db_schema_and_table.table.name.__root__,
                 tableType=db_schema_and_table.table.tableType,
@@ -372,6 +396,20 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Dashboard {dashboard.name}")
 
+    def write_storage_service(self, storage_service: CreateStorageServiceRequest):
+        try:
+            created_storage_service = self.metadata.create_or_update(storage_service)
+            logger.info(
+                f"Successfully ingested storage service {created_storage_service.name.__root__}"
+            )
+            self.status.records_written(
+                f"Storage Service: {created_storage_service.name.__root__}"
+            )
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest storage service {storage_service.name}")
+            logger.error(err)
+            self.status.failure(f"Storage Service {storage_service.name}")
+
     def write_locations(self, location: Location):
         try:
             created_location = self._create_location(location)
@@ -381,6 +419,16 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest Location {location.name}")
             logger.error(err)
             self.status.failure(f"Location: {location.name}")
+
+    def write_locations_requests(self, location_request: CreateLocationRequest):
+        try:
+            location = self.metadata.create_or_update(location_request)
+            logger.info(f"Successfully ingested Location {location.name.__root__}")
+            self.status.records_written(f"Location: {location.name.__root__}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest Location {location_request.name}")
+            logger.error(err)
+            self.status.failure(f"Location: {location_request.name}")
 
     def write_pipelines_create(self, pipeline: CreatePipelineRequest) -> None:
         """

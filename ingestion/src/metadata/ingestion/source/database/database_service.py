@@ -22,10 +22,15 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -36,6 +41,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -43,8 +49,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.storage import StorageServiceType
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -79,6 +85,15 @@ class DataModelLink(BaseModel):
     datamodel: DataModel
 
 
+class TableLocationLink(BaseModel):
+    """
+    Model to handle table and location link
+    """
+
+    table_fqn: FullyQualifiedEntityName
+    location_fqn: FullyQualifiedEntityName
+
+
 class DatabaseServiceTopology(ServiceTopology):
     """
     Defines the hierarchy in Database Services.
@@ -95,7 +110,13 @@ class DatabaseServiceTopology(ServiceTopology):
                 type_=DatabaseService,
                 context="database_service",
                 processor="yield_database_service",
-            )
+            ),
+            NodeStage(
+                type_=StorageService,
+                context="storage_service",
+                processor="yield_storage_service",
+                nullable=True,
+            ),
         ],
         children=["database"],
         post_process="create_dbt_lineage",
@@ -143,6 +164,13 @@ class DatabaseServiceTopology(ServiceTopology):
                 consumer=["database_service", "database", "database_schema"],
             ),
             NodeStage(
+                type_=Location,
+                context="location",
+                processor="yield_location",
+                consumer=["storage_service"],
+                nullable=True,
+            ),
+            NodeStage(
                 type_=AddLineageRequest,
                 context="view_lineage",
                 processor="yield_view_lineage",
@@ -153,6 +181,12 @@ class DatabaseServiceTopology(ServiceTopology):
                 type_=DataModelLink,
                 processor="yield_datamodel",
                 ack_sink=False,
+            ),
+            NodeStage(
+                type_=TableLocationLink,
+                processor="yield_table_location_link",
+                ack_sink=False,
+                nullable=True,
             ),
         ],
     )
@@ -217,6 +251,15 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         yield self.metadata.get_create_service_from_source(
             entity=DatabaseService, config=config
         )
+
+    def yield_storage_service(self, config: WorkflowSource):
+        if hasattr(self.service_connection, "storageServiceName"):
+            service_json = {
+                "name": self.service_connection.storageServiceName,
+                "serviceType": StorageServiceType.S3,
+            }
+            storage_service = CreateStorageServiceRequest(**service_json)
+            yield storage_service
 
     @abstractmethod
     def get_database_names(self) -> Iterable[str]:
@@ -287,10 +330,21 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[CreateTableRequest]:
         """
         From topology.
-        Prepare a database request and pass it to the sink.
+        Prepare a table request and pass it to the sink.
 
         Also, update the self.inspector value to the current db.
         """
+
+    def yield_location(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[CreateLocationRequest]:
+        """
+        From topology.
+        Prepare a location request and pass it to the sink.
+
+        Also, update the self.inspector value to the current db.
+        """
+        return
 
     def yield_datamodel(
         self, table_name_and_type: Tuple[str, TableType]
@@ -315,6 +369,15 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
                 fqn=table_fqn,
                 datamodel=datamodel,
             )
+
+    def yield_table_location_link(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[TableLocationLink]:
+        """
+        Gets the current location being processed, fetches its data model
+        and sends it ot the sink
+        """
+        return
 
     def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:
         """
