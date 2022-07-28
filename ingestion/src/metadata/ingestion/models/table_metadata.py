@@ -14,7 +14,6 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
     MlHyperParameter,

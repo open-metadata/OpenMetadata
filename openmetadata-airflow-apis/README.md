@@ -12,29 +12,37 @@ The command will build the image by downloading the branch changes inside the co
 test the REST APIs using some ongoing changes on OpenMetadata as well.
 
 ## Requirements
-Install following packages in your scheduler and webserver python env.
+
+First, make sure that Airflow is properly installed with the latest version `2.3.3`. From
+the [docs](https://airflow.apache.org/docs/apache-airflow/stable/installation/installing-from-pypi.html):
+
+Then, install following packages in your scheduler and webserver python env.
 
 ```
 pip install openmetadata-airflow-managed-apis       
 ```
 
 ## Configuration
+
 Add the following section to airflow.cfg
 
 ```
 [openmetadata_airflow_apis]
-dag_runner_template = {AIRFLOW_HOME}/dag_templates/dag_runner.j2
 dag_generated_configs = {AIRFLOW_HOME}/dag_generated_configs
 ```
+
 substitute AIRFLOW_HOME with your airflow installation home
 
 ## Deploy
 
-1. Download the latest openmetadata-airflow-apis-plugin release from [here](https://github.com/open-metadata/OpenMetadata/releases)
-2. Untar it under {AIRFLOW_HOME} directory. This will create and setup a plugins directory under {AIRFLOW_HOME} .
-3. cp -r {AIRFLOW_HOME}/plugins/dag_templates {AIRFLOW_HOME}
-4. mkdir -p {AIRFLOW_HOME}/dag_generated_configs
-5. (re)start the airflow webserver and scheduler
+
+```
+pip install "apache-airflow==2.3.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+```
+
+1. Install the package
+2. `mkdir -p {AIRFLOW_HOME}/dag_generated_configs`
+3. (re)start the airflow webserver and scheduler
 
     ```
     airflow webserver

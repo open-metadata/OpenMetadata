@@ -99,6 +99,7 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -117,6 +118,7 @@ import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.catalog.resources.metadata.TypeResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
@@ -186,6 +188,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference DATA_CONSUMER_ROLE_REFERENCE;
   public static Role ROLE1;
   public static EntityReference ROLE1_REFERENCE;
+
+  public static Policy POLICY1;
+  public static Policy POLICY2;
 
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
@@ -285,6 +290,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
+    new PolicyResourceTest().setupPolicies();
   }
 
   @AfterAll

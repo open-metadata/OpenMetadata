@@ -109,9 +109,7 @@ const AddRuleModal: FC<AddRuleProps> = ({
                   <option value={Operation.EditLineage}>Edit Lineage</option>
                   <option value={Operation.EditOwner}>Edit Owner</option>
                   <option value={Operation.EditTags}>Edit Tags</option>
-                  <option value={Operation.TeamEditUsers}>
-                    Edit Team Users
-                  </option>
+                  <option value={Operation.EditUsers}>Edit Team Users</option>
                 </select>
                 {errorData?.operation && errorMsg(errorData.operation)}
               </div>

@@ -343,7 +343,7 @@ const TeamDetails = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(userPermissions[Operation.TeamEditUsers]) ? (
+                {isActionAllowed(userPermissions[Operation.EditUsers]) ? (
                   <>
                     <p>Would like to start adding some?</p>
                     <Button

@@ -43,7 +43,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -85,10 +84,6 @@ class DatalakeSource(DatabaseServiceSource):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=config
-        )
-
         self.connection = get_connection(self.service_connection)
         self.client = self.connection.client
         self.table_constraints = None

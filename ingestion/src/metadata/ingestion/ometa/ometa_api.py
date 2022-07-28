@@ -160,6 +160,14 @@ class OpenMetadata(
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
 
+        # Load the secrets' manager client
+        self.secrets_manager_client = get_secrets_manager(
+            config.secretsManagerProvider, config.secretsManagerCredentials
+        )
+
+        # Load auth provider config from Secret Manager if necessary
+        self.secrets_manager_client.add_auth_provider_security_config(self.config)
+
         # Load the auth provider init from the registry
         auth_provider_fn = auth_provider_registry.registry.get(
             self.config.authProvider.value
@@ -170,11 +178,6 @@ class OpenMetadata(
             )
 
         self._auth_provider = auth_provider_fn(self.config)
-
-        # Load the secrets' manager client
-        self.secrets_manager_client = get_secrets_manager(
-            config.secretsManagerProvider, config.secretsManagerCredentials
-        )
 
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,

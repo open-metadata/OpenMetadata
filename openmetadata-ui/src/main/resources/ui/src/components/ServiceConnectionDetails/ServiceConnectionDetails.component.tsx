@@ -16,8 +16,7 @@
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { isEmpty, isNull, isObject } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { ReactNode } from 'react-markdown/lib/react-markdown';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { DEF_UI_SCHEMA } from '../../constants/services.const';
 import { EntityType } from '../../enums/entity.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';

@@ -62,12 +62,14 @@ const PopoverContent: FC<Props> = ({
   const deleteButtonCheck =
     threadId && postId && onConfirmation && isAuthor && !isThread;
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     onConfirmation && onConfirmation({ state: true, postId: postId, threadId });
     onPopoverHide();
   };
 
-  const handleReply = () => {
+  const handleReply = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     onReply && onReply();
     onPopoverHide();
 
@@ -142,7 +144,7 @@ const PopoverContent: FC<Props> = ({
         visible={visible}
         zIndex={9999}
         onVisibleChange={handleVisibleChange}>
-        <button>
+        <button onClick={(e) => e.stopPropagation()}>
           <SVGIcons
             alt="add-reaction"
             icon={Icons.REACTION}

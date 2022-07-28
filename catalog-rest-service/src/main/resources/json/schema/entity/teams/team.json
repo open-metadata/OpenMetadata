@@ -102,6 +102,10 @@
     "defaultRoles": {
       "description": "Default roles of a team. These roles will be inherited by all the users that are part of this team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "policies": {
+      "description": "Policies that is attached to this team.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
   "required": ["id", "name", "href"],

@@ -34,6 +34,7 @@ import {
   getSuggestions,
   getUserSuggestions,
 } from '../axiosAPIs/miscAPI';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,
   entityRegex,
@@ -43,11 +44,17 @@ import {
   linkRegEx,
   mentionRegEx,
 } from '../constants/feed.constants';
+import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Post, Thread, ThreadType } from '../generated/entity/feed/thread';
-import { getEntityPlaceHolder } from './CommonUtils';
+import {
+  getEntityPlaceHolder,
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
+import { getEntityLink } from './TableUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -421,4 +428,61 @@ export const getFeedAction = (type: ThreadType) => {
   }
 
   return 'posted on';
+};
+
+export const prepareFeedLink = (entityType: string, entityFQN: string) => {
+  const withoutFeedEntities = [
+    EntityType.WEBHOOK,
+    EntityType.GLOSSARY,
+    EntityType.GLOSSARY_TERM,
+    EntityType.TYPE,
+    EntityType.MLMODEL,
+  ];
+
+  const entityLink = getEntityLink(entityType, entityFQN);
+
+  if (!withoutFeedEntities.includes(entityType as EntityType)) {
+    return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+  } else {
+    return entityLink;
+  }
+};
+
+export const entityDisplayName = (entityType: string, entityFQN: string) => {
+  let displayName;
+  if (entityType === EntityType.TABLE) {
+    displayName = getPartialNameFromTableFQN(
+      entityFQN,
+      [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+      '.'
+    );
+  } else if (entityType === EntityType.DATABASE_SCHEMA) {
+    displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
+  } else if (
+    [
+      EntityType.DATABASE_SERVICE,
+      EntityType.DASHBOARD_SERVICE,
+      EntityType.MESSAGING_SERVICE,
+      EntityType.PIPELINE_SERVICE,
+      EntityType.TYPE,
+      EntityType.MLMODEL,
+    ].includes(entityType as EntityType)
+  ) {
+    displayName = getPartialNameFromFQN(entityFQN, ['service']);
+  } else if (
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
+      entityType as EntityType
+    )
+  ) {
+    displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
+  } else {
+    displayName = getPartialNameFromFQN(entityFQN, ['database']);
+  }
+
+  // Remove quotes if the name is wrapped in quotes
+  if (displayName) {
+    displayName = displayName.replace(/(?:^"+)|(?:"+$)/g, '');
+  }
+
+  return displayName;
 };

@@ -79,8 +79,6 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
-import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.socket.FeedServlet;
@@ -151,8 +149,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
     registerResources(catalogConfig, environment, jdbi, secretsManager);
-    RoleEvaluator.getInstance().load();
-    PolicyEvaluator.getInstance().load();
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);

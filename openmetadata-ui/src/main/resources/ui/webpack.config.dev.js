@@ -96,7 +96,6 @@ module.exports = {
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/tailwindcss'),
           path.resolve(__dirname, 'node_modules/react-tippy'),
-          path.resolve(__dirname, 'node_modules/react-draft-wysiwyg'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/rc-tree'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
@@ -145,7 +144,6 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/slick-carousel'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
         ], // Just the source code
       },
@@ -161,10 +159,7 @@ module.exports = {
             },
           },
         ],
-        include: [
-          path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/slick-carousel'),
-        ], // Just the source code
+        include: [path.resolve(__dirname, 'src')], // Just the source code
       },
     ],
   },

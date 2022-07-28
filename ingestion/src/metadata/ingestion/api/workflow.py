@@ -19,14 +19,6 @@ from metadata.config.workflow import get_source_dir
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.entity.services.messagingService import (
-    MessagingConnection,
-)
-from metadata.generated.schema.entity.services.metadataService import MetadataConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )

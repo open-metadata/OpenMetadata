@@ -11,6 +11,19 @@ COLUMN_TYPE_PARSE = [
     "struct<bigquerytestdatatype51:array<struct<bigquery_test_datatype_511:array<string>>>>",
     "struct<record_1:struct<record_2:struct<record_3:struct<record_4:string>>>>",
     "array<struct<check_datatype:array<string>>>",
+    "struct<type:string,provider:array<int>>",
+    "s",
+    "bigint",
+    "double",
+    "VARCHAR(16777216)",
+    "date",
+    "timestamp",
+    "array<int>",
+    "array<struct<type:string,provider:array<int>>>",
+    "array<binary>",
+    "map<integer,string>",
+    "string",
+    "uniontype<int,double,array<string>,struct<a:int,b:string>>",
 ]
 root = os.path.dirname(__file__)
 import json

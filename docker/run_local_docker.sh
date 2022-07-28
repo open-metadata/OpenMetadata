@@ -11,9 +11,16 @@
 #  limitations under the License.
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
-echo "Maven Build - Skipping Tests"
-cd ../ && mvn -DskipTests clean package
-echo "Prepare Docker volume for the operators"
+
+if [[ $1 == "no-ui" ]]; then
+    echo "Maven Build - Skipping Tests and UI"
+    cd ../ && mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+else
+    echo "Maven Build - Skipping Tests"
+    cd ../ && mvn -DskipTests clean package
+fi
+
+echo "Prepare Docker volume for the operators"@
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
 

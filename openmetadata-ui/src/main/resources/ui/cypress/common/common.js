@@ -135,7 +135,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
-  cy.get('[data-testid="success-line"]').should('be.visible');
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should('be.visible');
   cy.contains(`"${serviceName}_metadata"`).should('be.visible');
   cy.contains('has been created and deployed successfully').should(
     'be.visible'
@@ -196,7 +196,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('be.visible')
     .type('DELETE');
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-  cy.wait(1000);
+  cy.wait(2000);
   cy.get('.tw-modal-container').should('not.exist');
   cy.get('[class="Toastify__toast-body"] >div')
     .eq(1)

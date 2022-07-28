@@ -14,6 +14,8 @@
 import { HTMLAttributes, ReactNode } from 'react';
 
 export type editorRef = ReactNode | HTMLElement | string;
+export type TextVariant = 'white' | 'black';
+
 export enum Format {
   JSON = 'json',
   MARKDOWN = 'markdown',
@@ -34,6 +36,7 @@ export interface PreviewerProp {
   maxHtClass?: string;
   maxLen?: number;
   enableSeeMoreVariant?: boolean;
+  textVariant?: TextVariant;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';

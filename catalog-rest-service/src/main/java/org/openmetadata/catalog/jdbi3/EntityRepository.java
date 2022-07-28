@@ -972,13 +972,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public void validateRoles(List<EntityReference> entityReferences) throws IOException {
-    if (entityReferences != null) {
-      for (EntityReference entityReference : entityReferences) {
+  public void validateRoles(List<EntityReference> roles) throws IOException {
+    if (roles != null) {
+      for (EntityReference entityReference : roles) {
         EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
         EntityUtil.copy(ref, entityReference);
       }
-      entityReferences.sort(EntityUtil.compareEntityReference);
+      roles.sort(EntityUtil.compareEntityReference);
+    }
+  }
+
+  void validatePolicies(List<EntityReference> policies) throws IOException {
+    if (policies != null) {
+      for (EntityReference entityReference : policies) {
+        EntityReference ref = daoCollection.policyDAO().findEntityReferenceById(entityReference.getId());
+        EntityUtil.copy(ref, entityReference);
+      }
+      policies.sort(EntityUtil.compareEntityReference);
     }
   }
 

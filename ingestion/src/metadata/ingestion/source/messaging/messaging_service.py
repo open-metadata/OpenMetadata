@@ -18,13 +18,8 @@ from typing import Any, Iterable, List, Optional
 
 from confluent_kafka.admin import AdminClient, ConfigResource
 
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import (
-    SchemaType,
-    Topic,
-    TopicSampleData,
-)
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -38,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,

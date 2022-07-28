@@ -35,7 +35,7 @@ import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityReferences;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -753,8 +753,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   private void assertRoles(
       User user, List<EntityReference> expectedRoles, List<EntityReference> expectedInheritedRoles) {
-    assertEntityReferenceList(expectedRoles, user.getRoles());
-    assertEntityReferenceList(expectedInheritedRoles, user.getInheritedRoles());
+    TestUtils.assertEntityReferences(expectedRoles, user.getRoles());
+    TestUtils.assertEntityReferences(expectedInheritedRoles, user.getInheritedRoles());
   }
 
   @Override
@@ -806,7 +806,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
 
-    TestUtils.assertEntityReferenceList(expectedOwnedEntities, userAfterDeletion.getOwns());
+    TestUtils.assertEntityReferences(expectedOwnedEntities, userAfterDeletion.getOwns());
   }
 
   @Override
@@ -828,7 +828,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (UUID teamId : listOrEmpty(createRequest.getTeams())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
-    TestUtils.assertEntityReferenceList(expectedTeams, user.getTeams());
+    TestUtils.assertEntityReferences(expectedTeams, user.getTeams());
 
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
@@ -843,8 +843,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(expected.getIsBot(), expected.getIsBot());
     assertEquals(expected.getIsAdmin(), expected.getIsAdmin());
 
-    assertEntityReferenceList(expected.getRoles(), updated.getRoles());
-    assertEntityReferenceList(expected.getTeams(), updated.getTeams());
+    TestUtils.assertEntityReferences(expected.getRoles(), updated.getRoles());
+    TestUtils.assertEntityReferences(expected.getTeams(), updated.getTeams());
 
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());

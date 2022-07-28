@@ -34,7 +34,7 @@ public class JsonPatchUtils {
       return MetadataOperation.EDIT_OWNER;
     }
     if (path.startsWith("/users")) { // Ability to update users within a team.
-      return MetadataOperation.TEAM_EDIT_USERS;
+      return MetadataOperation.EDIT_USERS;
     }
     return null;
   }

@@ -21,22 +21,31 @@ import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 
 const GlobalSettingLeftPanel = () => {
-  const { tab } = useParams<{ [key: string]: string }>();
+  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
+
   const history = useHistory();
   const items: ItemType[] = GLOBAL_SETTINGS_MENU.map(({ category, items }) => {
-    return getGlobalSettingMenus(category, camelCase(category), items, 'group');
+    return getGlobalSettingMenus(
+      category,
+      camelCase(category),
+      '',
+      items,
+      'group'
+    );
   });
 
   const onClick: MenuProps['onClick'] = (e) => {
-    history.push(getSettingPath(e.key));
+    // As we are setting key as "category.option" and extracting here category and option
+    const [category, option] = e.key.split('.');
+    history.push(getSettingPath(category, option));
   };
 
   return (
     <Menu
       className="global-setting-left-panel"
-      defaultSelectedKeys={[tab]}
       items={items}
       mode="inline"
+      selectedKeys={[`${settingCategory}.${tab}`]}
       onClick={onClick}
     />
   );
