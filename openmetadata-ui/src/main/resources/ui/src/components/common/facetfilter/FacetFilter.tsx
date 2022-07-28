@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { toLower } from 'lodash';
-import { AggregationType, Bucket, FilterObject } from 'Models';
+import { FilterObject } from 'Models';
 import PropTypes from 'prop-types';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
@@ -22,6 +22,7 @@ import {
 } from '../../../constants/constants';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
+import { AggregationType, Bucket } from '../../../interface/search.interface';
 
 const FacetFilter: FunctionComponent<FacetProp> = ({
   aggregations,

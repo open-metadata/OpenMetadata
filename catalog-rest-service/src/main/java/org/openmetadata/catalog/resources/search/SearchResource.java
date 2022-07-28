@@ -25,6 +25,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -41,12 +43,19 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
+import org.elasticsearch.search.SearchModule;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
@@ -69,6 +78,14 @@ public class SearchResource {
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
+  private static final NamedXContentRegistry xContentRegistry;
+
+  static {
+    SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
+
+    xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
+  }
+
   public SearchResource(ElasticSearchConfiguration esConfig) {
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
   }
@@ -86,7 +103,10 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "search response",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response search(
       @Context UriInfo uriInfo,
@@ -131,22 +151,21 @@ public class SearchResource {
                       + " , daily_stats, monthly_stats, last_updated_timestamp")
           @QueryParam("sort_field")
           String sortFieldParam,
-      @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
+      @Parameter(
+              description =
+                  "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
-          String sortOrderParam,
-      @Parameter(description = "Track Total Hits") @DefaultValue("false") @QueryParam("track_total_hits")
-          boolean trackTotalHits)
+          SortOrder sortOrder,
+      @Parameter(description = "Track Total Hits")
+          @DefaultValue("false")
+          @QueryParam("track_total_hits")
+          boolean trackTotalHits,
+      @Parameter(description = "Additional Condition") @QueryParam("query_filter")
+          String elasticsearchFilter)
       throws IOException {
 
-    SearchRequest searchRequest = new SearchRequest(index);
-    SortOrder sortOrder = SortOrder.DESC;
     SearchSourceBuilder searchSourceBuilder;
-    if (sortOrderParam.equals("asc")) {
-      sortOrder = SortOrder.ASC;
-    }
-    // add deleted flag
-    query += " AND deleted:" + deleted;
 
     switch (index) {
       case "topic_search_index":
@@ -178,6 +197,21 @@ public class SearchResource {
         break;
     }
 
+    if (elasticsearchFilter != null) {
+      try {
+        var filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(
+                    xContentRegistry, LoggingDeprecationHandler.INSTANCE, elasticsearchFilter);
+        var filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        var newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.error("Error applying 'condition' to elasticsearch query", ex);
+      }
+    }
+
     if (!nullOrEmpty(sortFieldParam)) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
@@ -193,7 +227,8 @@ public class SearchResource {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    searchRequest.source(searchSourceBuilder);
+
+    var searchRequest = new SearchRequest(index).source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     return Response.status(OK).entity(searchResponse.toString()).build();
   }
@@ -209,7 +244,10 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "Table Suggestion API",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Suggest.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Suggest.class)))
       })
   public Response suggest(
       @Context UriInfo uriInfo,
@@ -225,19 +263,33 @@ public class SearchResource {
           @javax.ws.rs.QueryParam("q")
           String query,
       @DefaultValue("table_search_index") @javax.ws.rs.QueryParam("index") String index,
-      @DefaultValue("suggest") @javax.ws.rs.QueryParam("field") String fieldName)
+      @DefaultValue("suggest") @javax.ws.rs.QueryParam("field") String fieldName,
+      @DefaultValue("false") @QueryParam("fetch_source") boolean fetchSource,
+      @QueryParam("include_source_fields") List<String> includeSourceFields,
+      @QueryParam("exclude_source_fields") List<String> excludeSourceFields)
       throws IOException {
-    SearchRequest searchRequest = new SearchRequest(index);
+
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    SuggestionBuilder suggestionBuilder = SuggestBuilders.termSuggestion(fieldName).text(query);
+    SuggestionBuilder<?> suggestionBuilder =
+        SuggestBuilders.completionSuggestion(fieldName)
+            .prefix(query, Fuzziness.AUTO)
+            .size(10)
+            .skipDuplicates(true);
     SuggestBuilder suggestBuilder = new SuggestBuilder();
     suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
-    searchSourceBuilder.suggest(suggestBuilder);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    searchSourceBuilder.fetchSource(false);
-    searchRequest.source(searchSourceBuilder);
+    searchSourceBuilder
+        .suggest(suggestBuilder)
+        .timeout(new TimeValue(30, TimeUnit.SECONDS))
+        .fetchSource(
+            new FetchSourceContext(
+                fetchSource, includeSourceFields.toArray(String[]::new), new String[0]));
+    SearchRequest searchRequest = new SearchRequest(index).source(searchSourceBuilder);
+
+    LOG.debug(searchSourceBuilder.toString());
+
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();
+
     return Response.status(OK).entity(suggest.toString()).build();
   }
 
@@ -264,9 +316,11 @@ public class SearchResource {
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("columns.name");
     highlightColumns.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("columns.description");
+    HighlightBuilder.Field highlightColumnDescriptions =
+        new HighlightBuilder.Field("columns.description");
     highlightColumnDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnChildren = new HighlightBuilder.Field("columns.children.name");
+    HighlightBuilder.Field highlightColumnChildren =
+        new HighlightBuilder.Field("columns.children.name");
     highlightColumnDescriptions.highlighterType(UNIFIED);
     hb.field(highlightDescription);
     hb.field(highlightTableName);
@@ -274,15 +328,20 @@ public class SearchResource {
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryStringBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database.name.keyword"));
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("DatabaseSchema").field("databaseSchema.name.keyword"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("Database").field("database.name.keyword"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("DatabaseSchema").field("databaseSchema.name.keyword"));
 
     return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(FIELD_NAME, 10.0f).field(FIELD_DESCRIPTION, 2.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_NAME, 10.0f)
+            .field(FIELD_DESCRIPTION, 2.0f)
+            .lenient(true);
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -308,7 +367,8 @@ public class SearchResource {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("charts.name");
     highlightCharts.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightChartDescriptions = new HighlightBuilder.Field("charts.description");
+    HighlightBuilder.Field highlightChartDescriptions =
+        new HighlightBuilder.Field("charts.description");
     highlightChartDescriptions.highlighterType(UNIFIED);
 
     HighlightBuilder hb = new HighlightBuilder();
@@ -335,7 +395,8 @@ public class SearchResource {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
     highlightTasks.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("tasks.description");
+    HighlightBuilder.Field highlightTaskDescriptions =
+        new HighlightBuilder.Field("tasks.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
@@ -348,7 +409,8 @@ public class SearchResource {
 
   private SearchSourceBuilder searchBuilder(
       QueryStringQueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
-    SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
+    SearchSourceBuilder builder =
+        new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
     if (hb != null) {
       hb.preTags("<span class=\"text-highlighter\">");
       hb.postTags("</span>");
@@ -361,30 +423,47 @@ public class SearchResource {
     builder
         .aggregation(AggregationBuilders.terms("Service").field("serviceType"))
         .size(MAX_AGGREGATE_SIZE)
-        .aggregation(AggregationBuilders.terms("ServiceName").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service.type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("EntityType").field("entityType").size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("ServiceName")
+                .field("service.name.keyword")
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("ServiceCategory")
+                .field("service.type")
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("EntityType").field("entityType").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("Tier").field("tier.tagFQN"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
+        .aggregation(
+            AggregationBuilders.terms("Tags").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
 
     return builder;
   }
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 5.0f)
+            .field(DISPLAY_NAME, 1.0f)
+            .lenient(true);
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 5.0f)
+            .field(DISPLAY_NAME, 3.0f)
+            .lenient(true);
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 5.0f)
+            .field(DESCRIPTION, 3.0f)
+            .lenient(true);
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -401,7 +480,10 @@ public class SearchResource {
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 5.0f)
+            .field(DESCRIPTION, 3.0f)
+            .lenient(true);
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
     highlightTagName.highlighterType(UNIFIED);

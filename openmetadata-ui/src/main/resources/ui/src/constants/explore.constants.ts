@@ -12,11 +12,12 @@
  */
 
 import { toLower } from 'lodash';
-import { AggregationType, Bucket, FilterObject } from 'Models';
+import { FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
 import { tiers } from './constants';
+import { AggregationType, Bucket } from '../interface/search.interface';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
@@ -190,33 +191,24 @@ export const getAggrWithDefaultValue = (
   return sortedAgg as Array<AggregationType>;
 };
 
-export const getCurrentIndex = (tab: string) => {
-  let currentIndex = SearchIndex.TABLE;
+export const getCurrentIndex: (tab: string) => SearchIndex = (tab) => {
   switch (tab) {
     case 'topics':
-      currentIndex = SearchIndex.TOPIC;
+      return SearchIndex.TOPIC;
 
-      break;
     case 'dashboards':
-      currentIndex = SearchIndex.DASHBOARD;
+      return SearchIndex.DASHBOARD;
 
-      break;
     case 'pipelines':
-      currentIndex = SearchIndex.PIPELINE;
+      return SearchIndex.PIPELINE;
 
-      break;
     case 'mlmodels':
-      currentIndex = SearchIndex.MLMODEL;
+      return SearchIndex.MLMODEL;
 
-      break;
     case 'tables':
     default:
-      currentIndex = SearchIndex.TABLE;
-
-      break;
+      return SearchIndex.TABLE;
   }
-
-  return currentIndex;
 };
 
 export const getCurrentTab = (tab: string) => {

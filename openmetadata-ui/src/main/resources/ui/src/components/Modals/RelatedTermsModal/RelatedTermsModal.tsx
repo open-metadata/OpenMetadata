@@ -12,9 +12,7 @@
  */
 
 import { isUndefined } from 'lodash';
-import { FormattedGlossaryTermData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
@@ -22,6 +20,9 @@ import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
+import { searchQuery } from '../../../axiosAPIs/searchAPI';
+import { SearchResponse } from '../../../interface/search.interface';
+import { FormattedGlossaryTermData } from 'Models';
 
 type RelatedTermsModalProp = {
   glossaryTermFQN?: string;
@@ -58,11 +59,17 @@ const RelatedTermsModal = ({
 
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
-    searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
+    searchQuery({
+      query: searchText,
+      from: 1,
+      size: PAGE_SIZE,
+      searchIndex: SearchIndex.GLOSSARY,
+    })
+      .then((res) => res as SearchResponse<FormattedGlossaryTermData>)
+      .then((res) => {
         const termResult = (
           formatSearchGlossaryTermResponse(
-            res?.data?.hits?.hits || []
+            res?.hits?.hits || []
           ) as FormattedGlossaryTermData[]
         ).filter((item) => item.fullyQualifiedName !== glossaryTermFQN);
         const data = !searchText ? getSearchedTerms(termResult) : termResult;

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 
 export enum AdvancedSearchFieldKey {
@@ -37,7 +37,7 @@ const common = [
   {
     key: AdvancedSearchFieldKey.Service,
     label: 'Service',
-    searchField: AdvancedFields.SERVICE,
+    searchField: SuggestionField.SERVICE,
   },
 ];
 
@@ -46,19 +46,19 @@ export const TABLE_DROPDOWN_ITEMS = [
   {
     key: AdvancedSearchFieldKey.Database,
     label: 'Database',
-    searchField: AdvancedFields.DATABASE,
+    searchField: SuggestionField.DATABASE,
     searchIndex: SearchIndex.TABLE,
   },
   {
     key: AdvancedSearchFieldKey.Schema,
     label: 'Schema',
-    searchField: AdvancedFields.SCHEMA,
+    searchField: SuggestionField.SCHEMA,
     searchIndex: SearchIndex.TABLE,
   },
   {
     key: AdvancedSearchFieldKey.Columns,
     label: 'Column',
-    searchField: AdvancedFields.COLUMN,
+    searchField: SuggestionField.COLUMN,
     SearchIndex: SearchIndex.TABLE,
   },
 ];
@@ -68,7 +68,7 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
   {
     key: AdvancedSearchFieldKey.Chart,
     label: 'Chart',
-    searchField: AdvancedFields.CHART,
+    searchField: SuggestionField.CHART,
     searchIndex: SearchIndex.DASHBOARD,
   },
 ];
@@ -78,7 +78,7 @@ export const PIPELINE_DROPDOWN_ITEMS = [
   {
     key: AdvancedSearchFieldKey.Task,
     label: 'Task',
-    searchField: AdvancedFields.TASK,
+    searchField: SuggestionField.TASK,
     SearchIndex: SearchIndex.PIPELINE,
   },
 ];

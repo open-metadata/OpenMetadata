@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { FilterObject, SearchDataFunctionType, SearchResponse } from 'Models';
+import { FilterObject } from 'Models';
+import * as QueryBuilder from 'react-awesome-query-builder';
+import {
+  SearchRequest,
+  SearchResponse,
+  SearchSource,
+} from '../../interface/search.interface';
 
 export type UrlParams = {
   searchQuery: string;
@@ -19,13 +25,13 @@ export type UrlParams = {
 };
 
 export type ExploreSearchData = {
-  resSearchResults: SearchResponse;
-  resAggServiceType: SearchResponse;
-  resAggTier: SearchResponse;
-  resAggTag: SearchResponse;
-  resAggDatabase: SearchResponse;
-  resAggDatabaseSchema: SearchResponse;
-  resAggServiceName: SearchResponse;
+  resSearchResults: SearchResponse<SearchSource>;
+  resAggServiceType: SearchResponse<SearchSource>;
+  resAggTier: SearchResponse<SearchSource>;
+  resAggTag: SearchResponse<SearchSource>;
+  resAggDatabase: SearchResponse<SearchSource>;
+  resAggDatabaseSchema: SearchResponse<SearchSource>;
+  resAggServiceName: SearchResponse<SearchSource>;
 };
 
 export interface ExploreProps {
@@ -57,11 +63,11 @@ export interface ExploreProps {
   updatePipelineCount: (count: number) => void;
   updateDbtModelCount: (count: number) => void;
   updateMlModelCount: (count: number) => void;
-  fetchData: (value: SearchDataFunctionType[]) => void;
+  fetchData: (value: SearchRequest[]) => void;
   onShowDeleted: (checked: boolean) => void;
 }
 
-export interface AdvanceField {
-  key: string;
-  value: string | undefined;
+export interface QueryBuilderState {
+  config: QueryBuilder.Config;
+  tree: QueryBuilder.ImmutableTree;
 }

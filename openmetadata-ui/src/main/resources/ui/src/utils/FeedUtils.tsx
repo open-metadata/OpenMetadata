@@ -30,11 +30,6 @@ import {
   updateThread,
 } from '../axiosAPIs/feedsAPI';
 import {
-  getInitialEntity,
-  getSuggestions,
-  getUserSuggestions,
-} from '../axiosAPIs/miscAPI';
-import {
   entityLinkRegEx,
   entityRegex,
   EntityRegEx,
@@ -50,6 +45,12 @@ import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 import { showErrorToast } from './ToastUtils';
+import {
+  getSuggestions,
+  getUserSuggestions,
+  searchQuery,
+} from '../axiosAPIs/searchAPI';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 
 export const getEntityType = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
@@ -158,8 +159,13 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
     if (!searchTerm) {
-      const data = await getInitialEntity(SearchIndex.USER);
-      const hits = data.data.hits.hits;
+      const data = await searchQuery({
+        query: WILD_CARD_CHAR,
+        from: 0,
+        size: 5,
+        searchIndex: SearchIndex.USER,
+      });
+      const hits = data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
         const entityType = hit._source.entityType;
@@ -201,8 +207,13 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   } else {
     let hashValues = [];
     if (!searchTerm) {
-      const data = await getInitialEntity(SearchIndex.TABLE);
-      const hits = data.data.hits.hits;
+      const data = await searchQuery({
+        query: WILD_CARD_CHAR,
+        from: 0,
+        size: 5,
+        searchIndex: SearchIndex.TABLE,
+      });
+      const hits = data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
         const entityType = hit._source.entityType;

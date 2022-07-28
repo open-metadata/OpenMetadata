@@ -64,7 +64,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 }: SearchedDataProp) => {
   const highlightSearchResult = () => {
     return data.map((table, index) => {
-      let tDesc = table.description;
+      let tDesc = table.description ?? '';
       const highLightedTexts = table.highlight?.description || [];
 
       if (highLightedTexts.length > 0) {

@@ -19,13 +19,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, lowerCase } from 'lodash';
-import {
-  AggregationType,
-  Bucket,
-  FilterObject,
-  FormattedTableData,
-  SearchResponse,
-} from 'Models';
+import { FilterObject, FormattedTableData } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -66,9 +60,20 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { ExploreProps } from './explore.interface';
+import { ExploreProps, QueryBuilderState } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
+import {
+  emptyImmutableTree,
+  getQbConfigs,
+} from '../AdvancedSearch/AdvancesSearch.constants';
+import {
+  AggregationType,
+  Bucket,
+  SearchResponse,
+  SearchSource,
+} from '../../interface/search.interface';
+import { elasticSearchFormat } from '../../utils/QueryBuilder';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -112,14 +117,18 @@ const Explore: React.FC<ExploreProps> = ({
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
-  const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
+  const [searchIndex, setSearchIndex] = useState<SearchIndex>(
+    getCurrentIndex(tab)
+  );
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
 
   const [isEntityLoading, setIsEntityLoading] = useState(true);
   const [isFilterSet, setIsFilterSet] = useState<boolean>(
     !isEmpty(initialFilter)
   );
-  const [connectionError] = useState(error.includes('Connection refused'));
+  const [connectionError] = useState(
+    error && error.includes('Connection refused')
+  );
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
@@ -129,6 +138,19 @@ const Explore: React.FC<ExploreProps> = ({
   const [isInitialFilterSet, setIsInitialFilterSet] = useState<boolean>(
     !isEmpty(initialFilter)
   );
+
+  const [advancedSearchState, setAdvancedSearchState] =
+    useState<QueryBuilderState>({
+      tree: emptyImmutableTree,
+      config: getQbConfigs(searchIndex),
+    });
+
+  const elasticsearchFilter = {
+    query: elasticSearchFormat(
+      advancedSearchState.tree,
+      advancedSearchState.config
+    ),
+  } as Record<string, unknown>;
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -209,10 +231,10 @@ const Explore: React.FC<ExploreProps> = ({
     [aggregations, filters]
   );
 
-  const updateSearchResults = (res: SearchResponse) => {
-    const hits = res.data.hits.hits;
+  const updateSearchResults = (res: SearchResponse<SearchSource>) => {
+    const hits = res.hits.hits;
     if (hits.length > 0) {
-      setTotalNumberOfValues(res.data.hits.total.value);
+      setTotalNumberOfValues(res.hits.total.value);
       setData(formatDataResponse(hits));
     } else {
       setData([]);
@@ -249,73 +271,78 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchTableData = () => {
     setIsEntityLoading(true);
-    const fetchParams = [
+    fetchData([
       {
-        queryString: searchText,
+        query: searchText,
         from: currentPage,
         size: PAGE_SIZE,
         filters: getFilterString(filters),
-        sortField: sortField,
-        sortOrder: sortOrder,
-        searchIndex: searchIndex,
+        sortField,
+        sortOrder,
+        searchIndex,
+        elasticsearchFilter,
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['service']),
-        sortField: sortField,
-        sortOrder: sortOrder,
-        searchIndex: searchIndex,
+        sortField,
+        sortOrder,
+        searchIndex,
+        elasticsearchFilter,
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['tier']),
-        sortField: sortField,
-        sortOrder: sortOrder,
-        searchIndex: searchIndex,
+        sortField,
+        sortOrder,
+        searchIndex,
+        elasticsearchFilter,
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['tags']),
-        sortField: sortField,
-        sortOrder: sortOrder,
-        searchIndex: searchIndex,
+        sortField,
+        sortOrder,
+        searchIndex,
+        elasticsearchFilter,
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['database']),
-        sortField: sortField,
-        sortOrder: sortOrder,
-        searchIndex: searchIndex,
+        sortField,
+        sortOrder,
+        searchIndex,
+        elasticsearchFilter,
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['databaseschema']),
-        sortField: sortField,
-        sortOrder: sortOrder,
-        searchIndex: searchIndex,
+        sortField,
+        sortOrder,
+        searchIndex,
+        elasticsearchFilter,
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['servicename']),
-        sortField: sortField,
-        sortOrder: sortOrder,
-        searchIndex: searchIndex,
+        sortField,
+        sortOrder,
+        searchIndex,
+        elasticsearchFilter,
       },
-    ];
-
-    fetchData(fetchParams);
+    ]);
   };
 
   const getFacetedFilter = () => {
@@ -469,6 +496,10 @@ const Explore: React.FC<ExploreProps> = ({
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
+    setAdvancedSearchState({
+      config: getQbConfigs(getCurrentIndex(tab)),
+      tree: emptyImmutableTree,
+    });
     if (!isMounting.current) {
       fetchCount();
       handleFilterChange(filterObject);
@@ -499,39 +530,37 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     if (searchResult) {
       updateSearchResults(searchResult.resSearchResults);
-      setCount(searchResult.resSearchResults.data.hits.total.value);
+      setCount(searchResult.resSearchResults.hits.total.value);
       if (forceSetAgg.current) {
         setAggregations(
-          searchResult.resSearchResults.data.hits.hits.length > 0
-            ? getAggregationList(
-                searchResult.resSearchResults.data.aggregations
-              )
+          searchResult.resSearchResults.hits.hits.length > 0
+            ? getAggregationList(searchResult.resSearchResults.aggregations)
             : getAggregationListFromQS(location.search)
         );
         setIsInitialFilterSet(false);
       } else {
         const aggServiceType = getAggregationList(
-          searchResult.resAggServiceType.data.aggregations,
+          searchResult.resAggServiceType.aggregations,
           'service'
         );
         const aggTier = getAggregationList(
-          searchResult.resAggTier.data.aggregations,
+          searchResult.resAggTier.aggregations,
           'tier'
         );
         const aggTag = getAggregationList(
-          searchResult.resAggTag.data.aggregations,
+          searchResult.resAggTag.aggregations,
           'tags'
         );
         const aggDatabase = getAggregationList(
-          searchResult.resAggDatabase.data.aggregations,
+          searchResult.resAggDatabase.aggregations,
           'database'
         );
         const aggDatabaseSchema = getAggregationList(
-          searchResult.resAggDatabaseSchema.data.aggregations,
+          searchResult.resAggDatabaseSchema.aggregations,
           'databaseschema'
         );
         const aggServiceName = getAggregationList(
-          searchResult.resAggServiceName.data.aggregations,
+          searchResult.resAggServiceName.aggregations,
           'servicename'
         );
 
@@ -550,7 +579,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     getData();
-  }, [currentPage, sortField, sortOrder]);
+  }, [currentPage, sortField, sortOrder, advancedSearchState]);
 
   useEffect(() => {
     if (currentPage === 1) {
@@ -611,7 +640,19 @@ const Explore: React.FC<ExploreProps> = ({
         ) : (
           <>
             {!connectionError && getTabs()}
-            <AdvancedSearch />
+            <AdvancedSearch
+              config={advancedSearchState.config}
+              tree={advancedSearchState.tree}
+              onChange={(tree, config) =>
+                setAdvancedSearchState({ tree, config })
+              }
+            />
+            <p>
+              <pre>{JSON.stringify(elasticsearchFilter, null, 2)}</pre>
+            </p>
+            {/* <code> */}
+            {/*   <pre>{JSON.stringify(advancedSearchState.tree, null, 2)}</pre> */}
+            {/* </code> */}
             <SearchedData
               showResultCount
               currentPage={currentPage}

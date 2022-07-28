@@ -15,7 +15,6 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize } from 'lodash';
 import { FormattedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -25,6 +24,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { getSuggestions } from '../../axiosAPIs/searchAPI';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;

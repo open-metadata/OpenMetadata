@@ -14,7 +14,6 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
-  Bucket,
   DynamicFormFieldType,
   DynamicObj,
   ServiceCollection,
@@ -88,6 +87,7 @@ import { MessagingServiceType } from '../generated/entity/services/messagingServ
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { ServiceResponse } from '../interface/service.interface';
 import { showErrorToast } from './ToastUtils';
+import { Bucket } from '../interface/search.interface';
 
 export const serviceTypeLogo = (type: string) => {
   switch (type) {

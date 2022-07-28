@@ -15,7 +15,6 @@ import { Select } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { getTagSuggestions } from '../../../axiosAPIs/miscAPI';
 import {
   LabelType,
   State,
@@ -23,6 +22,7 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { getTagSuggestions } from '../../../axiosAPIs/searchAPI';
 
 const { Option } = Select;
 

@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { SelectableOption } from 'Models';
+import { FormattedTeamsData, SelectableOption } from 'Models';
 import React, { useState } from 'react';
 import AsyncSelect from 'react-select/async';
-import { getSuggestedTeams, getTeamsByQuery } from '../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../constants/constants';
-import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/type/entityReference';
 import { formatTeamsResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
+import { getSearchedTeams, getSuggestedTeams } from '../../axiosAPIs/searchAPI';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 
 interface CustomOption extends SelectableOption {
   isDisabled: boolean;
@@ -43,7 +43,7 @@ const TeamsSelectable = ({
     onSelectionChange(selectedOptions.map((option) => option.value));
   };
 
-  const getOptions = (teams: Team[]) => {
+  const getOptions = (teams: FormattedTeamsData[]) => {
     const filteredTeams = filterJoinable
       ? teams.filter((team) => team.isJoinable)
       : teams;
@@ -58,20 +58,14 @@ const TeamsSelectable = ({
     return new Promise<SelectableOption[]>((resolve) => {
       if (text) {
         getSuggestedTeams(text).then((res) => {
-          const teams: Team[] = formatTeamsResponse(
+          const teams = formatTeamsResponse(
             res.data.suggest['metadata-suggest'][0].options
           );
           resolve(getOptions(teams));
         });
       } else {
-        getTeamsByQuery({
-          q: '*',
-          from: 0,
-          size: PAGE_SIZE,
-          isJoinable: filterJoinable,
-        }).then((res) => {
-          const teams: Team[] =
-            res.hits.hits.map((t: { _source: Team }) => t._source) || [];
+        getSearchedTeams(WILD_CARD_CHAR, 0, PAGE_SIZE).then((res) => {
+          const teams = res.hits.hits.map((t) => t._source) || [];
           resolve(getOptions(teams));
         });
       }

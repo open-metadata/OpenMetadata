@@ -15,12 +15,11 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormattedUsersData, FormErrorData, SearchResponse } from 'Models';
+import { FormattedUsersData, FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { searchData } from '../../axiosAPIs/miscAPI';
 import {
   createTeam,
   getTeamByName,
@@ -53,6 +52,8 @@ import { formatUsersResponse } from '../../utils/APIUtils';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
+import { SearchResponse } from '../../interface/search.interface';
 
 const TeamsAndUsersPage = () => {
   const { teamAndUser } = useParams<Record<string, string>>();
@@ -169,19 +170,18 @@ const TeamsAndUsersPage = () => {
     }
 
     return new Promise<Array<FormattedUsersData>>((resolve) => {
-      searchData(
-        text,
-        currentPage,
-        PAGE_SIZE_BASE,
+      searchQuery({
+        query: text,
+        from: currentPage,
+        size: PAGE_SIZE_BASE,
         filters,
-        '',
-        '',
-        SearchIndex.USER
-      )
-        .then((res: SearchResponse) => {
-          const data = formatUsersResponse(res.data.hits.hits);
+        searchIndex: SearchIndex.USER,
+      })
+        .then((res) => res as SearchResponse<FormattedUsersData>)
+        .then((res) => {
+          const data = formatUsersResponse(res.hits.hits);
           setUserPaging({
-            total: res.data.hits.total.value,
+            total: res.hits.total.value,
           });
           resolve(data);
         })
@@ -369,20 +369,19 @@ const TeamsAndUsersPage = () => {
 
   const searchUsers = (text: string, currentPage: number) => {
     setIsTeamMemberLoading(true);
-    searchData(
-      text,
-      currentPage,
-      PAGE_SIZE_MEDIUM,
-      `(teams.id:${currentTeam?.id})`,
-      '',
-      '',
-      SearchIndex.USER
-    )
-      .then((res: SearchResponse) => {
-        const data = formatUsersResponse(res.data.hits.hits);
+    searchQuery({
+      query: text,
+      from: currentPage,
+      size: PAGE_SIZE_MEDIUM,
+      filters: `(teams.id:${currentTeam?.id})`,
+      searchIndex: SearchIndex.USER,
+    })
+      .then((res) => res as SearchResponse<FormattedUsersData>)
+      .then((res) => {
+        const data = formatUsersResponse(res.hits.hits);
         setCurrentTeamUsers(data);
         setTeamUserPagin({
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
         });
       })
       .catch(() => {

@@ -13,16 +13,16 @@
 
 import { AxiosResponse } from 'axios';
 import { isUndefined } from 'lodash';
-import { FormattedUsersData, SearchResponse } from 'Models';
+import { FormattedUsersData } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
-import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
+import { getSuggestions, searchQuery } from '../../../axiosAPIs/searchAPI';
+import { SearchResponse } from '../../../interface/search.interface';
 
 type ReviewerModalProp = {
   reviewer?: Array<FormattedUsersData>;
@@ -55,11 +55,10 @@ const ReviewerModal = ({
 
   const querySearch = () => {
     setIsLoading(true);
-    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER)
-      .then((res: SearchResponse) => {
-        const data = getSearchedReviewers(
-          formatUsersResponse(res.data.hits.hits)
-        );
+    searchQuery({ from: 1, size: 10, searchIndex: SearchIndex.USER })
+      .then((res) => res as SearchResponse<FormattedUsersData>)
+      .then((res) => {
+        const data = getSearchedReviewers(formatUsersResponse(res.hits.hits));
         setOptions(data);
       })
       .catch(() => {

@@ -15,11 +15,9 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, extend, isEmpty } from 'lodash';
 import {
-  FormattedGlossarySuggestion,
-  GlossarySuggestionHit,
+  FormattedGlossaryTermData,
   GlossaryTermAssets,
   LoadingState,
-  SearchResponse,
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -32,7 +30,6 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../axiosAPIs/glossaryAPI';
-import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
@@ -58,6 +55,8 @@ import {
   getGlossaryPath,
 } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
+import { SearchResponse, SearchSource } from '../../interface/search.interface';
 
 export type ModifiedGlossaryData = Glossary & {
   children?: GlossaryTerm[];
@@ -230,22 +229,18 @@ const GlossaryPageV1 = () => {
    */
   const fetchGlossaryTermAssets = (fqn: string, forceReset = false) => {
     if (fqn) {
-      const tagName = fqn;
-      searchData(
-        '',
-        forceReset ? 1 : assetData.currPage,
-        PAGE_SIZE,
-        `(tags.tagFQN:"${tagName}")`,
-        '',
-        '',
-        myDataSearchIndex
-      )
-        .then((res: SearchResponse) => {
-          const hits = res?.data?.hits?.hits;
+      searchQuery({
+        from: forceReset ? 1 : assetData.currPage,
+        size: PAGE_SIZE,
+        filters: `(tags.tagFQN:"${fqn}")`,
+        searchIndex: myDataSearchIndex,
+      })
+        .then((res: SearchResponse<SearchSource>) => {
+          const hits = res?.hits?.hits;
           if (hits?.length > 0) {
             setAssetData((pre) => {
               const data = formatDataResponse(hits);
-              const total = res.data.hits.total.value;
+              const total = res.hits.total.value;
 
               return forceReset
                 ? {
@@ -329,7 +324,7 @@ const GlossaryPageV1 = () => {
     if (isEmpty(data)) {
       modifiedData = updateGlossaryListBySearchedTerms(modifiedData, [
         { fullyQualifiedName: arrFQN[arrFQN.length - 1] },
-      ] as FormattedGlossarySuggestion[]);
+      ] as FormattedGlossaryTermData[]);
     }
     selectDataByFQN(fqn, modifiedData);
   };
@@ -379,7 +374,7 @@ const GlossaryPageV1 = () => {
   const getSearchedGlossaries = (
     arrGlossaries: ModifiedGlossaryData[],
     newGlossaries: string[],
-    searchedTerms: FormattedGlossarySuggestion[]
+    searchedTerms: FormattedGlossaryTermData[]
   ) => {
     if (newGlossaries.length) {
       let arrNewData: ModifiedGlossaryData[] = [];
@@ -423,13 +418,17 @@ const GlossaryPageV1 = () => {
    */
   const fetchSearchedTerms = useCallback(() => {
     if (searchText) {
-      searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            const searchedTerms: FormattedGlossarySuggestion[] =
-              res.data.hits?.hits?.map(
-                (item: GlossarySuggestionHit) => item._source
-              ) || [];
+      searchQuery({
+        query: searchText,
+        from: 1,
+        size: PAGE_SIZE,
+        searchIndex: SearchIndex.GLOSSARY,
+      })
+        .then((res) => res as SearchResponse<FormattedGlossaryTermData>)
+        .then((res) => {
+          if (res) {
+            const searchedTerms: FormattedGlossaryTermData[] =
+              res.hits?.hits?.map((item) => item._source) || [];
             if (searchedTerms.length) {
               const searchedGlossaries: string[] = [
                 ...new Set(

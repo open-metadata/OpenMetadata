@@ -13,15 +13,9 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEqual, isUndefined } from 'lodash';
-import { SearchedUsersAndTeams, SearchResponse } from 'Models';
+import { SearchedUsersAndTeams } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
-import {
-  getSearchedTeams,
-  getSearchedUsers,
-  getSuggestedTeams,
-  getSuggestedUsers,
-} from '../axiosAPIs/miscAPI';
 import { getRoles } from '../axiosAPIs/rolesAPI';
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
@@ -29,6 +23,13 @@ import { SettledStatus } from '../enums/axios.enum';
 import { User } from '../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
+import {
+  getSearchedTeams,
+  getSearchedUsers,
+  getSuggestedTeams,
+  getSuggestedUsers,
+} from '../axiosAPIs/searchAPI';
+import { SearchResponse, SearchSource } from '../interface/search.interface';
 
 // Moving this code here from App.tsx
 export const getAllUsersList = (arrQueryFields = ''): void => {
@@ -156,14 +157,16 @@ export const searchFormattedUsersAndTeams = (
     ];
     Promise.allSettled(promises)
       .then(
-        ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
+        ([resUsers, resTeams]: Array<
+          PromiseSettledResult<SearchResponse<SearchSource>>
+        >) => {
           const users =
             resUsers.status === SettledStatus.FULFILLED
-              ? formatUsersResponse(resUsers.value.data.hits.hits)
+              ? formatUsersResponse(resUsers.value.hits.hits)
               : [];
           const teams =
             resTeams.status === SettledStatus.FULFILLED
-              ? formatTeamsResponse(resTeams.value.data.hits.hits)
+              ? formatTeamsResponse(resTeams.value.hits.hits)
               : [];
           resolve({ users, teams });
         }

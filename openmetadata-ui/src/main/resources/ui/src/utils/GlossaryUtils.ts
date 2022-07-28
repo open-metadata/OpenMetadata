@@ -13,22 +13,14 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
-import {
-  FormattedGlossarySuggestion,
-  FormattedGlossaryTermData,
-  SearchResponse,
-} from 'Models';
+import { FormattedGlossaryTermData } from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
 import {
   getGlossaries,
   getGlossaryTermByFQN,
   getGlossaryTerms,
 } from '../axiosAPIs/glossaryAPI';
-import { searchData } from '../axiosAPIs/miscAPI';
-import {
-  FQN_SEPARATOR_CHAR,
-  WILD_CARD_CHAR,
-} from '../constants/char.constants';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { PRIMERY_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
@@ -36,6 +28,8 @@ import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.compo
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 import { getNameFromFQN } from './CommonUtils';
+import { searchQuery } from '../axiosAPIs/searchAPI';
+import { SearchResponse } from '../interface/search.interface';
 
 export interface GlossaryTermTreeNode {
   children?: GlossaryTermTreeNode[];
@@ -49,11 +43,10 @@ export interface GlossaryTermTreeNode {
  */
 export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
   return new Promise<FormattedGlossaryTermData[]>((resolve, reject) => {
-    searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
-        const data = formatSearchGlossaryTermResponse(
-          res?.data?.hits?.hits || []
-        );
+    searchQuery({ from: 1, size: 1000, searchIndex: SearchIndex.GLOSSARY })
+      .then((res) => res as SearchResponse<FormattedGlossaryTermData>)
+      .then((res) => {
+        const data = formatSearchGlossaryTermResponse(res?.hits?.hits || []);
         resolve(data);
       })
       .catch((error: AxiosError) => reject(error.response));
@@ -187,7 +180,7 @@ const optimiseGlossaryTermTree = (treeNodes?: GlossaryTermTreeNode[]) => {
  * @returns list of glossary tree
  */
 export const getSearchedGlossaryTermTree = (
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: FormattedGlossaryTermData[]
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
@@ -208,7 +201,7 @@ export const getSearchedGlossaryTermTree = (
  */
 export const updateGlossaryListBySearchedTerms = (
   glossaries: ModifiedGlossaryData[],
-  searchedTerms: FormattedGlossarySuggestion[]
+  searchedTerms: FormattedGlossaryTermData[]
 ) => {
   const searchedTermTree = getSearchedGlossaryTermTree(searchedTerms);
 

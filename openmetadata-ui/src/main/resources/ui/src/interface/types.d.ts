@@ -155,35 +155,6 @@ declare module 'Models' {
     tier?: string;
   };
 
-  export type Bucket = {
-    key: string;
-    doc_count: number;
-  };
-  type AggregationType = {
-    title: string;
-    buckets: Array<Bucket>;
-  };
-  export type Sterm = {
-    doc_count_error_upper_bound: number;
-    sum_other_doc_count: number;
-    buckets: Array<Bucket>;
-  };
-
-  export interface Aggregation {
-    'sterms#Platform': Sterm;
-    'sterms#Cluster': Sterm;
-    'sterms#Tags': Sterm;
-  }
-  export type TableEntity = {
-    id: string;
-    href: string;
-    tableType: string;
-    fullyQualifiedName: string;
-    tableConstraints?: string;
-    followers?: Array<string>;
-    tags?: Array<string>;
-  } & TableDetail;
-
   export type UserProfile = {
     images: Record<string, string>;
   };
@@ -207,58 +178,61 @@ declare module 'Models' {
     channels: string[];
   };
 
-  export type FormattedTableData = {
-    id: string;
+  export interface BaseFormattedData {
     name: string;
-    displayName: string;
-    description: string;
     fullyQualifiedName: string;
-    owner: EntityReference;
+    displayName: string;
+    email: string;
+    type: string;
+    id: string;
+    owner?: EntityReference;
+    description?: string;
+    tags?: string[] | TagLabel[];
+    tier?: string | TagLabel;
+    deleted: boolean;
+    entityType?: string;
+    index: string;
+    serviceType: string;
+  }
+
+  export interface FormattedTableData extends BaseFormattedData {
     tableType?: string;
-    tags: string[] | TagLabel[];
     dailyStats?: number;
     dailyPercentileRank?: number;
     weeklyStats?: number;
     weeklyPercentileRank?: number;
     service?: string;
-    serviceType?: string;
-    tier: string | TagLabel;
     highlight?: {
       description: string[];
       name: string[];
     };
-    index: string;
     type?: string;
     database?: string;
     databaseSchema?: string;
-    deleted?: boolean;
-    entityType?: string;
-  };
+  }
 
-  export type FormattedUsersData = {
-    name: string;
-    displayName: string;
-    email: string;
-    type: string;
-    id: string;
-  };
+  export type FormattedUsersData = BaseFormattedData;
 
-  export type FormattedTeamsData = {
-    name: string;
-    displayName: string;
-    type: string;
-    id: string;
-  };
+  export interface FormattedTeamsData extends BaseFormattedData {
+    isJoinable: boolean;
+  }
 
-  export type FormattedGlossaryTermData = {
-    name: string;
-    displayName: string;
-    fullyQualifiedName: string;
+  export interface FormattedGlossaryTermData extends BaseFormattedData {
     fqdn?: string;
-    type: string;
-    id: string;
-    description?: string;
-  };
+    glossary: {
+      name: string;
+    };
+  }
+
+  export type FormattedDashboardData = BaseFormattedData;
+
+  export type FormattedTopicData = BaseFormattedData;
+
+  export type FormattedTagData = BaseFormattedData;
+
+  export type FormattedMLModelData = BaseFormattedData;
+
+  export type FormattedPipelineData = BaseFormattedData;
 
   export type SearchedUsersAndTeams = {
     users: FormattedUsersData[];
@@ -270,25 +244,13 @@ declare module 'Models' {
     source: string;
   };
 
-  export interface FormattedGlossarySuggestion {
-    deleted: boolean;
-    description: string;
-    display_name: string;
-    entity_type: string;
-    fullyQualifiedName: string;
-    glossary_id: string;
-    glossary: { name: string };
-    last_updated_timestamp: number;
-    name: string;
-  }
-
   export interface GlossarySuggestionHit {
     text: string;
     _index?: string;
     _type?: string;
     _id?: string;
     _score?: number;
-    _source: FormattedGlossarySuggestion;
+    _source: FormattedGlossaryTermData;
   }
 
   export interface GlossaryTermAssets {
@@ -358,26 +320,6 @@ declare module 'Models' {
     usageSummary: UsageState;
   };
 
-  export type SearchHit = {
-    _index?: string;
-    _type?: string;
-    _id?: string;
-    _score?: number;
-    _source: FormattedTableData;
-  };
-
-  export type SearchResponse = {
-    data: {
-      hits: {
-        total: {
-          value: number;
-          relation?: string;
-        };
-        hits: Array<SearchHit>;
-      };
-      aggregations: Record<string, Sterm>;
-    };
-  };
   export type Team = {
     id: string;
     name: string;
@@ -411,16 +353,6 @@ declare module 'Models' {
   export type SampleData = {
     columns: Array<string>;
     rows: Array<Array<string>>;
-  };
-
-  export type SearchDataFunctionType = {
-    queryString: string;
-    from: number;
-    size?: number;
-    filters: string;
-    sortField: string;
-    sortOrder: string;
-    searchIndex?: string;
   };
 
   export type EntityCounts = {

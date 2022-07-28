@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
-import { Bucket, LeafNodes, LineagePos } from 'Models';
+import { LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -38,6 +38,7 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
+import { Bucket } from '../interface/search.interface';
 
 export const getEntityTags = (
   type: string,

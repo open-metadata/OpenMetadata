@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { FormattedTableData, SearchDataFunctionType } from 'Models';
+import { FormattedTableData } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
+import { SearchRequest } from '../../interface/search.interface';
 
 export interface MyDataProps {
   activityFeeds?: Thread[] | undefined;
@@ -44,7 +45,7 @@ export interface MyDataProps {
     after?: string,
     threadType?: ThreadType
   ) => void;
-  fetchData?: (value: SearchDataFunctionType) => void;
+  fetchData?: (value: SearchRequest) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;

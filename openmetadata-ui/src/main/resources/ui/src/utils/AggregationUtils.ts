@@ -12,9 +12,9 @@
  */
 
 import { capitalize, toLower } from 'lodash';
-import { AggregationType, Sterm } from 'Models';
 import { getQueryParam } from '../constants/explore.constants';
 import { getFilterKey } from './FilterUtils';
+import { AggregationType, Sterm } from '../interface/search.interface';
 
 export const getAggregationList = (
   aggregation: Record<string, Sterm>,

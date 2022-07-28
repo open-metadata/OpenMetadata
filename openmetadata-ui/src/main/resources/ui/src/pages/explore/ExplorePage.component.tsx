@@ -13,12 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import {
-  Bucket,
-  FilterObject,
-  SearchDataFunctionType,
-  SearchResponse,
-} from 'Models';
+import { FilterObject } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -28,7 +23,6 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
 import {
@@ -37,7 +31,6 @@ import {
 } from '../../components/Explore/explore.interface';
 import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
-  emptyValue,
   getCurrentIndex,
   getCurrentTab,
   getInitialFilter,
@@ -53,6 +46,12 @@ import jsonData from '../../jsons/en';
 import { getTotalEntityCountByType } from '../../utils/EntityUtils';
 import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  SearchRequest,
+  SearchResponse,
+  SearchSource,
+} from '../../interface/search.interface';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
@@ -66,8 +65,8 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
   const [error, setError] = useState<string>('');
-  const { searchQuery, tab } = useParams<UrlParams>();
-  const [searchText, setSearchText] = useState<string>(searchQuery || '');
+  const { searchQuery: searchQueryParam, tab } = useParams<UrlParams>();
+  const [searchText, setSearchText] = useState<string>(searchQueryParam || '');
   const [tableCount, setTableCount] = useState<number>(0);
   const [topicCount, setTopicCount] = useState<number>(0);
   const [dashboardCount, setDashboardCount] = useState<number>(0);
@@ -119,7 +118,7 @@ const ExplorePage: FunctionComponent = () => {
   const handleFilterChange = (filterData: FilterObject) => {
     const params = prepareQueryParams(filterData, initialFilter);
 
-    const explorePath = getExplorePathWithSearch(searchQuery, tab);
+    const explorePath = getExplorePathWithSearch(searchQueryParam, tab);
 
     history.push({
       pathname: explorePath,
@@ -137,65 +136,54 @@ const ExplorePage: FunctionComponent = () => {
     ];
 
     const entityCounts = entities.map((entity) =>
-      searchData(
-        searchText,
-        0,
-        0,
-        getFilterString(initialFilter),
-        emptyValue,
-        emptyValue,
-        entity,
-        showDeleted,
-        true
-      )
+      searchQuery({
+        query: searchText,
+        from: 0,
+        size: 0,
+        filters: getFilterString(initialFilter),
+        searchIndex: entity,
+        includeDeleted: showDeleted,
+        trackTotalHits: true,
+      })
     );
 
     Promise.allSettled(entityCounts)
       .then(
-        ([
-          table,
-          topic,
-          dashboard,
-          pipeline,
-          mlmodel,
-        ]: PromiseSettledResult<SearchResponse>[]) => {
+        ([table, topic, dashboard, pipeline, mlmodel]: PromiseSettledResult<
+          SearchResponse<SearchSource>
+        >[]) => {
           setTableCount(
             table.status === 'fulfilled'
               ? getTotalEntityCountByType(
-                  table.value.data.aggregations?.['sterms#EntityType']
-                    ?.buckets as Bucket[]
+                  table.value.aggregations?.['sterms#EntityType']?.buckets
                 )
               : 0
           );
           setTopicCount(
             topic.status === 'fulfilled'
               ? getTotalEntityCountByType(
-                  topic.value.data.aggregations?.['sterms#EntityType']
-                    ?.buckets as Bucket[]
+                  topic.value.aggregations?.['sterms#EntityType']?.buckets
                 )
               : 0
           );
           setDashboardCount(
             dashboard.status === 'fulfilled'
               ? getTotalEntityCountByType(
-                  dashboard.value.data.aggregations?.['sterms#EntityType']
-                    ?.buckets as Bucket[]
+                  dashboard.value.aggregations?.['sterms#EntityType']?.buckets
                 )
               : 0
           );
           setPipelineCount(
             pipeline.status === 'fulfilled'
               ? getTotalEntityCountByType(
-                  pipeline.value.data.aggregations?.['sterms#EntityType']
-                    ?.buckets as Bucket[]
+                  pipeline.value.aggregations?.['sterms#EntityType']?.buckets
                 )
               : 0
           );
           setMlModelCount(
             mlmodel.status === 'fulfilled'
               ? getTotalEntityCountByType(
-                  mlmodel.value.data.aggregations?.['sterms#EntityType']
-                    ?.buckets as Bucket[]
+                  mlmodel.value.aggregations?.['sterms#EntityType']?.buckets
                 )
               : 0
           );
@@ -209,18 +197,9 @@ const ExplorePage: FunctionComponent = () => {
       });
   };
 
-  const fetchData = (value: SearchDataFunctionType[]) => {
-    const promiseValue = value.map((d) => {
-      return searchData(
-        d.queryString,
-        d.from,
-        d.size,
-        d.filters,
-        d.sortField,
-        d.sortOrder,
-        d.searchIndex,
-        showDeleted
-      );
+  const fetchData = (value: SearchRequest[]) => {
+    const promiseValue = value.map((request) => {
+      return searchQuery(request);
     });
 
     Promise.all(promiseValue)
@@ -233,7 +212,7 @@ const ExplorePage: FunctionComponent = () => {
           resAggDatabase,
           resAggDatabaseSchema,
           resAggServiceName,
-        ]: Array<SearchResponse>) => {
+        ]) => {
           setError('');
           setSearchResult({
             resSearchResults,
@@ -263,7 +242,7 @@ const ExplorePage: FunctionComponent = () => {
     setSearchResult(undefined);
     fetchData([
       {
-        queryString: searchText,
+        query: searchText,
         from: INITIAL_FROM,
         size: PAGE_SIZE,
         filters: getFilterString(initialFilter),
@@ -272,7 +251,7 @@ const ExplorePage: FunctionComponent = () => {
         searchIndex: getCurrentIndex(tab),
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
         filters: getFilterString(initialFilter),
@@ -281,7 +260,7 @@ const ExplorePage: FunctionComponent = () => {
         searchIndex: getCurrentIndex(tab),
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
         filters: getFilterString(initialFilter),
@@ -290,7 +269,7 @@ const ExplorePage: FunctionComponent = () => {
         searchIndex: getCurrentIndex(tab),
       },
       {
-        queryString: searchText,
+        query: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
         filters: getFilterString(initialFilter),
@@ -314,7 +293,7 @@ const ExplorePage: FunctionComponent = () => {
           initialFilter={initialFilter}
           isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
           searchFilter={searchFilter}
-          searchQuery={searchQuery}
+          searchQuery={searchQueryParam}
           searchResult={searchResult}
           searchText={searchText}
           showDeleted={showDeleted}

@@ -15,7 +15,6 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
-import { getUserSuggestions } from '../axiosAPIs/miscAPI';
 import { getPipelineByFqn } from '../axiosAPIs/pipelineAPI';
 import { getTableDetailsByFQN } from '../axiosAPIs/tableAPI';
 import { getTopicByFqn } from '../axiosAPIs/topicsAPI';
@@ -45,6 +44,7 @@ import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
+import { getUserSuggestions } from '../axiosAPIs/searchAPI';
 
 export const getRequestDescriptionPath = (
   entityType: string,

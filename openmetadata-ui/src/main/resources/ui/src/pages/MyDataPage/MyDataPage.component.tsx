@@ -27,7 +27,7 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
+import { fetchSandboxConfig } from '../../axiosAPIs/miscAPI';
 import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
@@ -59,6 +59,7 @@ import {
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -264,44 +265,38 @@ const MyDataPage = () => {
   };
 
   const fetchMyData = () => {
-    const ownedEntity = searchData(
-      '',
-      1,
-      8,
-      getMyDataFilters(
+    const ownedEntity = searchQuery({
+      from: 1,
+      size: 8,
+      filters: getMyDataFilters(
         Ownership.OWNER,
         AppState.userDetails,
         AppState.nonSecureUserDetails
       ),
-      '',
-      '',
-      myDataSearchIndex
-    );
+      searchIndex: myDataSearchIndex,
+    });
 
-    const followedEntity = searchData(
-      '',
-      1,
-      8,
-      getMyDataFilters(
+    const followedEntity = searchQuery({
+      from: 1,
+      size: 8,
+      filters: getMyDataFilters(
         Ownership.FOLLOWERS,
         AppState.userDetails,
         AppState.nonSecureUserDetails
       ),
-      '',
-      '',
-      myDataSearchIndex
-    );
+      searchIndex: myDataSearchIndex,
+    });
 
     Promise.allSettled([ownedEntity, followedEntity])
       .then(([resOwnedEntity, resFollowedEntity]) => {
         if (resOwnedEntity.status === 'fulfilled') {
-          setOwnedData(formatDataResponse(resOwnedEntity.value.data.hits.hits));
-          setOwnedDataCount(resOwnedEntity.value.data.hits.total.value);
+          setOwnedData(formatDataResponse(resOwnedEntity.value.hits.hits));
+          setOwnedDataCount(resOwnedEntity.value.hits.total.value);
         }
         if (resFollowedEntity.status === 'fulfilled') {
-          setFollowedDataCount(resFollowedEntity.value.data.hits.total.value);
+          setFollowedDataCount(resFollowedEntity.value.hits.total.value);
           setFollowedData(
-            formatDataResponse(resFollowedEntity.value.data.hits.hits)
+            formatDataResponse(resFollowedEntity.value.hits.hits)
           );
         }
       })
