@@ -288,6 +288,8 @@ site_menu:
     url: /openmetadata/connectors/dashboard/tableau/cli
   - category: OpenMetadata / Connectors / Dashboard / PowerBI
     url: /openmetadata/connectors/dashboard/powerbi
+  - category: OpenMetadata / Connectors / Dashboard / PowerBI / PowerBI Account Setup
+    url: /openmetadata/connectors/dashboard/powerbi/powerbi-account-setup
   - category: OpenMetadata / Connectors / Dashboard / PowerBI / Airflow
     url: /openmetadata/connectors/dashboard/powerbi/airflow
   - category: OpenMetadata / Connectors / Dashboard / PowerBI / CLI
