@@ -65,6 +65,15 @@ CREATE TABLE IF NOT EXISTS test_case (
 UPDATE webhook_entity
 SET json = JSON_INSERT(json, '$.webhookType', 'generic');
 
+CREATE TABLE IF NOT EXISTS entity_extension_time_series (
+    id VARCHAR(36) NOT NULL,                    -- ID of the from entity
+    extension VARCHAR(256) NOT NULL,            -- Extension name same as entity.fieldName
+    jsonSchema VARCHAR(256) NOT NULL,           -- Schema used for generating JSON
+    json JSON NOT NULL,
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
+    PRIMARY KEY (id, extension)
+);
+
 ALTER TABLE thread_entity
     ADD announcementStart BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.startTime'),
     ADD announcementEnd BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.endTime');
