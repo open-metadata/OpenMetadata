@@ -209,15 +209,27 @@ docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs a
 docker-docs-local:  ## Runs the OM docs in docker with a local image
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local
 
+## SNYK
+SNYK_ARGS := --severity-threshold=high --sarif
+
 .PHONY: snyk-ingestion-report
-snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container
+snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
 	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test --severity-threshold=high openmetadata-ingestion:scan --file=ingestion/Dockerfile
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) >> ingestion-docker-scan.sarif | true;
 	@echo "Validating ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
-		snyk test --file=scan-requirements.txt
+		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> ingestion-dep-scan.sarif | true; \
+		snyk code test $(SNYK_ARGS) >> ingestion-code-scan.sarif | true;
+
+.PHONY: snyk-airflow-apis-report
+snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
+	@echo "Validating airflow dependencies. Make sure the venv is activated."
+	cd openmetadata-airflow-apis; \
+    	pip freeze > scan-requirements.txt; \
+    	snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> airflow-apis-dep-scan.sarif | true; \
+    	snyk code test $(SNYK_ARGS) >> airflow-apis-code-scan.sarif | true;
 
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
