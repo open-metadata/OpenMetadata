@@ -357,5 +357,29 @@
       "Delete",
       "ViewAll"
     ]
+  },
+  {
+    "name" : "testSuite",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
+    "name" : "testDefinition",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
+    "name" : "testCase",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
   }
 ]

@@ -110,7 +110,6 @@ import org.openmetadata.catalog.tests.column.ColumnValuesToMatchRegex;
 import org.openmetadata.catalog.tests.table.TableColumnCountToEqual;
 import org.openmetadata.catalog.tests.table.TableRowCountToBeBetween;
 import org.openmetadata.catalog.tests.table.TableRowCountToEqual;
-import org.openmetadata.catalog.tests.type.TestCaseExecutionFrequency;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -1300,8 +1299,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableTestCase()
             .withTableTestType(TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_EQUAL)
             .withConfig(tableRowCountToEqual);
-    CreateTableTest createTableTest =
-        new CreateTableTest().withTestCase(tableTestCase).withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+    CreateTableTest createTableTest = new CreateTableTest().withTestCase(tableTestCase);
     Table putResponse = putTableTest(table.getId(), createTableTest, ADMIN_AUTH_HEADERS);
     verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(createTableTest));
 
@@ -1356,10 +1354,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnTestType(ColumnTestCase.ColumnTestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN)
             .withConfig(columnValueLengthsToBeBetween);
     CreateColumnTest createColumnTest =
-        new CreateColumnTest()
-            .withColumnName(c1.getName())
-            .withTestCase(columnTestCase)
-            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+        new CreateColumnTest().withColumnName(c1.getName()).withTestCase(columnTestCase);
     putResponse = putColumnTest(table.getId(), createColumnTest, ADMIN_AUTH_HEADERS);
     verifyColumnTest(putResponse, c1, List.of(createColumnTest));
 
@@ -1385,10 +1380,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnTestType(ColumnTestCase.ColumnTestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL)
             .withConfig(columnValuesMissingCountToBeEqual);
     CreateColumnTest createColumnTest1 =
-        new CreateColumnTest()
-            .withColumnName(c1.getName())
-            .withTestCase(columnTestCase1)
-            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+        new CreateColumnTest().withColumnName(c1.getName()).withTestCase(columnTestCase1);
     putResponse = putColumnTest(table.getId(), createColumnTest1, ADMIN_AUTH_HEADERS);
     verifyColumnTest(putResponse, c1, List.of(createColumnTest1));
 
@@ -1398,11 +1390,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new ColumnTestCase()
             .withColumnTestType(ColumnTestCase.ColumnTestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL)
             .withConfig(columnValuesMissingCountToBeEqual);
-    createColumnTest1 =
-        new CreateColumnTest()
-            .withColumnName(c1.getName())
-            .withTestCase(columnTestCase1)
-            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+    createColumnTest1 = new CreateColumnTest().withColumnName(c1.getName()).withTestCase(columnTestCase1);
+
     putResponse = putColumnTest(table.getId(), createColumnTest1, ADMIN_AUTH_HEADERS);
     verifyColumnTest(putResponse, c1, List.of(createColumnTest1));
 
@@ -1458,19 +1447,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 g1t1
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Total 3 user tags  - 1 table tag + 2 column tags
-    assertEquals(3, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
+    // Total 5 user tags  - 1 table tag + 2 column tags includes global test entities
+    assertEquals(5, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
+    assertEquals(2, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary2 tags  - 1 table
     assertEquals(1, getGlossaryUsageCount("g2", ADMIN_AUTH_HEADERS));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
-    assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 column level
-    assertEquals(1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 table level
     assertEquals(1, getGlossaryTermUsageCount(GLOSSARY2_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
@@ -1483,14 +1472,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
     // Additional 2 user tags - 2 column tags
-    assertEquals(5, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
+    assertEquals(7, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
     // Additional 2 USER_ADDRESS tags - 2 column tags
-    assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(7, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Additional 1 glossary tag - 1 column tags
-    assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(3, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     ResultList<Table> tableList = listEntities(null, ADMIN_AUTH_HEADERS); // List tables
-    assertEquals(2, tableList.getData().size());
+    assertEquals(3, tableList.getData().size());
     assertFields(tableList.getData(), null);
 
     // List tables with databaseFQN as filter
@@ -1505,7 +1494,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(2, tableList.getData().size());
+    assertEquals(3, tableList.getData().size());
     assertFields(tableList.getData(), fields);
 
     // List tables with databaseFQN as filter
@@ -1521,7 +1510,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields1);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(2, tableList.getData().size());
+    assertEquals(3, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
       assertEquals(USER_OWNER1, table.getOwner());
@@ -2008,7 +1997,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertNotNull(storedTest);
       assertEquals(expectedTestName, storedTest.getName());
       assertEquals(test.getDescription(), storedTest.getDescription());
-      assertEquals(test.getExecutionFrequency(), storedTest.getExecutionFrequency());
       assertEquals(test.getOwner(), storedTest.getOwner());
       verifyTableTestCase(test.getTestCase(), storedTest.getTestCase());
       if (test.getResult() != null && storedTest.getResults().size() > 0) {
@@ -2056,7 +2044,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertNotNull(storedTest);
       assertEquals(expectedTestName, storedTest.getName());
       assertEquals(test.getDescription(), storedTest.getDescription());
-      assertEquals(test.getExecutionFrequency(), storedTest.getExecutionFrequency());
       assertEquals(test.getOwner(), storedTest.getOwner());
       verifyColumnTestCase(test.getTestCase(), storedTest.getTestCase());
       if (test.getResult() != null) {
