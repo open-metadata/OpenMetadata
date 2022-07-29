@@ -22,7 +22,13 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "type": "text"
       },
       "name": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+            "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+            }
+          }
       },
       "fullyQualifiedName": {
         "type": "keyword",
