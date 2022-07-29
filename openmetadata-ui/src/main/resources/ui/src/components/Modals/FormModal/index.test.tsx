@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-disabled-tests */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +28,7 @@ const mockInitionalData = {
   description: '',
 };
 
-describe.skip('Test FormModal component', () => {
+describe('Test FormModal component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <FormModal
