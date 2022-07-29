@@ -22,6 +22,7 @@ from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_arg_dag_id
 from openmetadata_managed_apis.operations.delete import delete_dag_id
+from werkzeug.utils import secure_filename
 
 
 @blueprint.route("/delete", methods=["DELETE"])
@@ -37,13 +38,15 @@ def delete_dag() -> Response:
     }
     """
     dag_id = get_arg_dag_id()
+    # Sanitize Path Traversal, as later on we clean files based on the DAG id
+    secure_dag_id = secure_filename(dag_id)
 
     try:
-        return delete_dag_id(dag_id)
+        return delete_dag_id(secure_dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to delete dag {dag_id}")
+        logging.info(f"Failed to delete dag {dag_id} [secured: {secure_dag_id}]")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to delete {dag_id} due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to delete {dag_id} [secured: {secure_dag_id}] due to {exc} - {traceback.format_exc()}",
         )
