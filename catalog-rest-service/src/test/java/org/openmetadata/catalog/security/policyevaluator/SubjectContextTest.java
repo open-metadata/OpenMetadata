@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.catalog.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,15 +38,15 @@ public class SubjectContextTest {
 
     List<Role> team11Roles = getRoles("team11", 3);
     List<Policy> team11Policies = getPolicies("team11", 3);
-    Team team11 = createTeam("team11", team11Roles, team11Policies, team1);
+    Team team11 = createTeam("team11", team11Roles, team11Policies, List.of(team1));
 
     List<Role> team12Roles = getRoles("team12", 3);
     List<Policy> team12Policies = getPolicies("team12", 3);
-    Team team12 = createTeam("team12", team12Roles, team12Policies, team1);
+    Team team12 = createTeam("team12", team12Roles, team12Policies, List.of(team1));
 
     List<Role> team111Roles = getRoles("team111", 3);
     List<Policy> team111Policies = getPolicies("team111", 3);
-    Team team111 = createTeam("team111", team111Roles, team111Policies, team11, team12);
+    Team team111 = createTeam("team111", team111Roles, team111Policies, List.of(team11, team12));
 
     // Add user to team111
     List<Role> userRoles = getRoles("user", 3);
@@ -53,8 +65,8 @@ public class SubjectContextTest {
     expectedPolicyOrder.addAll(getPolicyList(team11Policies)); // Next parent of team111 team11 policies first
     expectedPolicyOrder.addAll(getPolicyListFromRoles(team1Roles)); // Next parent of team11 team1 roles
     expectedPolicyOrder.addAll(getPolicyList(team1Policies)); // Next parent of team11 team1 policies
-    expectedPolicyOrder.addAll(getPolicyListFromRoles(team12Roles)); // Next parent of team111 team11 roles next
-    expectedPolicyOrder.addAll(getPolicyList(team12Policies)); // Next parent of team111 team11 policies next
+    expectedPolicyOrder.addAll(getPolicyListFromRoles(team12Roles)); // Next parent of team111 team12 roles next
+    expectedPolicyOrder.addAll(getPolicyList(team12Policies)); // Next parent of team111 team12 policies next
 
     SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
     Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies();
@@ -125,8 +137,8 @@ public class SubjectContextTest {
     return list;
   }
 
-  private Team createTeam(String name, List<Role> roles, List<Policy> policies, Team... parents) {
-    List<EntityReference> parentList = parents == null ? null : toEntityReferences(List.of(parents));
+  private Team createTeam(String name, List<Role> roles, List<Policy> policies, List<Team> parents) {
+    List<EntityReference> parentList = parents == null ? null : toEntityReferences(parents);
     Team team =
         new Team()
             .withName(name)

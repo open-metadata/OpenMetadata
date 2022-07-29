@@ -158,15 +158,15 @@ public class SubjectContext {
 
   /** RolePolicyIterator goes over policies in a set of roles one by one. */
   static class RolePolicyIterator implements Iterator<PolicyContext> {
-    private final String entity;
+    private final String entityName;
     private int roleIndex = 0;
     private final List<EntityReference> roles;
     private PolicyIterator policyIterator;
 
-    RolePolicyIterator(String entity, List<EntityReference> roles) {
-      this.entity = entity;
+    RolePolicyIterator(String entityName, List<EntityReference> roles) {
+      this.entityName = entityName;
       this.roles = listOrEmpty(roles);
-      this.policyIterator = new PolicyIterator(entity, null, null);
+      this.policyIterator = new PolicyIterator(entityName, null, null);
     }
 
     @Override
@@ -177,7 +177,9 @@ public class SubjectContext {
       if (roleIndex < roles.size()) {
         policyIterator =
             new PolicyIterator(
-                entity, roles.get(roleIndex).getName(), RoleCache.getRole(roles.get(roleIndex).getId()).getPolicies());
+                entityName,
+                roles.get(roleIndex).getName(),
+                RoleCache.getRole(roles.get(roleIndex).getId()).getPolicies());
         roleIndex++;
       }
       return policyIterator.hasNext();
@@ -193,10 +195,8 @@ public class SubjectContext {
   }
 
   /**
-   * A class that allows iterating over policies of a user or a team using iterator of iterators.
-   *
-   * <p>For a user, the policies in user roles are visited one by one, followed by policies in the teams that a user is
-   * in. For a team, the policies in team roles are visited one by one, followed by the policies in the parent teams.
+   * A class that allows iterating over policies of a user using iterator of iterators. For a user, the policies in user
+   * roles are visited one by one, followed by policies in the teams that a user belongs to.
    */
   static class UserPolicyIterator implements Iterator<PolicyContext> {
     private final User user;
@@ -209,9 +209,6 @@ public class SubjectContext {
       this.user = user;
       this.teamsVisited = teamsVisited;
       iterators.add(new RolePolicyIterator(user.getName(), user.getRoles()));
-      for (EntityReference team : listOrEmpty(user.getTeams())) {
-        iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited));
-      }
     }
 
     @Override
@@ -221,6 +218,11 @@ public class SubjectContext {
       }
       while (iteratorIndex < iterators.size()) {
         iteratorIndex++;
+        if (iteratorIndex == 1) { // Lazy load policies from the teams that the user belongs to
+          for (EntityReference team : listOrEmpty(user.getTeams())) {
+            iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited));
+          }
+        }
         if (iteratorIndex < iterators.size() && iterators.get(iteratorIndex).hasNext()) {
           return true;
         }
@@ -238,14 +240,13 @@ public class SubjectContext {
   }
 
   /**
-   * A class that allows iterating over policies of a user or a team using iterator of iterators.
-   *
-   * <p>For a user, the policies in user roles are visited one by one, followed by policies in the teams that a user is
-   * in. For a team, the policies in team roles are visited one by one, followed by the policies in the parent teams.
+   * A class that allows iterating over policies of a team using iterator of iterators. For a team, the policies in team
+   * roles are visited one by one, followed by the policies in the parent teams.
    */
   static class TeamPolicyIterator implements Iterator<PolicyContext> {
     private final UUID teamId;
     private int iteratorIndex = 0;
+    private final Team team;
     private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
     private final List<UUID> teamsVisited;
 
@@ -253,12 +254,9 @@ public class SubjectContext {
     TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited) {
       this.teamId = teamId;
       this.teamsVisited = teamsVisited;
-      Team team = SubjectContext.getTeam(teamId);
+      this.team = SubjectContext.getTeam(teamId);
       iterators.add(new RolePolicyIterator(team.getName(), team.getDefaultRoles()));
-      iterators.add(new PolicyIterator(Entity.TEAM, null, team.getPolicies()));
-      for (EntityReference t : listOrEmpty(team.getParents())) {
-        iterators.add(new TeamPolicyIterator(t.getId(), teamsVisited));
-      }
+      iterators.add(new PolicyIterator(team.getName(), null, team.getPolicies()));
     }
 
     @Override
@@ -273,6 +271,11 @@ public class SubjectContext {
       }
       while (iteratorIndex < iterators.size()) {
         iteratorIndex++;
+        if (iteratorIndex == 2) { // Lazy load parent teams and get policies from them
+          for (EntityReference t : listOrEmpty(team.getParents())) {
+            iterators.add(new TeamPolicyIterator(t.getId(), teamsVisited));
+          }
+        }
         if (iteratorIndex < iterators.size() && iterators.get(iteratorIndex).hasNext()) {
           return true;
         }
@@ -308,7 +311,7 @@ public class SubjectContext {
 
     @Override
     public Team load(@NonNull UUID teamId) throws IOException {
-      Team team = TEAM_REPOSITORY.getByName(null, teamId.toString(), FIELDS);
+      Team team = TEAM_REPOSITORY.get(null, teamId.toString(), FIELDS);
       LOG.info("Loaded team {}:{}", team.getName(), team.getId());
       return team;
     }

@@ -62,7 +62,6 @@ import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy> {
-
   private static final String LOCATION_NAME = "aws-s3";
   private static Location location;
 
