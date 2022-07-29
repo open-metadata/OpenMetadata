@@ -29,6 +29,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import { AuthProvider } from './authentication/auth-provider/AuthProvider';
+import Appbar from './components/app-bar/Appbar';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import { toastOptions } from './constants/toast.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
@@ -55,6 +56,7 @@ const App: FunctionComponent = () => {
           <ErrorBoundry>
             <AuthProvider childComponentType={AppRouter}>
               <WebSocketProvider>
+                <Appbar />
                 <AppRouter />
               </WebSocketProvider>
             </AuthProvider>
