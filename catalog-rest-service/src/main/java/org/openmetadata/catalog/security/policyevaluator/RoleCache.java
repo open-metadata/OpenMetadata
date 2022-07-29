@@ -31,7 +31,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class RoleCache {
-  private static final LoadingCache<UUID, Role> ROLE_CACHE =
+  protected static final LoadingCache<UUID, Role> ROLE_CACHE =
       CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
 
   public static Role getRole(UUID roleId) {
