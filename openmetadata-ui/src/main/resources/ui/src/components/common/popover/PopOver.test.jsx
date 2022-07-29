@@ -23,6 +23,8 @@ import PopOver from './PopOver';
 
 let global;
 
+jest.useRealTimers();
+
 global.document.createRange = () => ({
   setStart: jest.fn(),
   setEnd: jest.fn(),

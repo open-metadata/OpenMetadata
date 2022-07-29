@@ -1,0 +1,15 @@
+{
+  "name": "ColumnValuesToBeInSet",
+  "displayName": "ColumnValuesToBeInSet",
+  "description": "This schema defines the test ColumnValuesToBeInSet. Test the column values are in the set.",
+  "testPlatforms": ["OpenMetadata", "GreatExpectations"],
+  "parameterDefinition": [
+    {
+      "name": "allowedValues",
+      "displayName": "allowedValues",
+      "description": "An Array of values.",
+      "dataType": "ARRAY",
+      "required": true
+    }
+  ]
+}

@@ -56,4 +56,7 @@ module.exports = {
 
   // Sonar Cloud Configuration
   testResultsProcessor: 'jest-sonar-reporter',
+
+  // use fake timers
+  timers: 'fake',
 };

@@ -13,8 +13,10 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Rule;
@@ -24,6 +26,7 @@ import org.jeasy.rules.api.RulesEngineParameters;
 import org.jeasy.rules.core.DefaultRulesEngine;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
 
 /**
@@ -64,23 +67,39 @@ public class PolicyEvaluator {
   }
 
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
-  public boolean hasPermission(@NonNull UUID policyId, EntityInterface entity, @NonNull MetadataOperation operation) {
+  public boolean hasPermission(
+      @NonNull SubjectContext subjectContext, EntityInterface entity, @NonNull MetadataOperation operation) {
+    // Role based permission
     AttributeBasedFacts facts =
         new AttributeBasedFacts.AttributeBasedFactsBuilder()
             .withEntity(entity)
             .withOperation(operation)
             .withCheckOperation(true)
             .build();
-    Rules rules = PolicyCache.getPolicyRules(policyId);
-    checkPermissionRulesEngine.fire(rules, facts.getFacts());
-    return facts.hasPermission();
+    Iterator<PolicyContext> policies = subjectContext.getPolicies();
+    while (policies.hasNext()) {
+      PolicyContext policyContext = policies.next();
+      Rules rules = policyContext.getRules();
+      checkPermissionRulesEngine.fire(rules, facts.getFacts());
+      if (facts.hasPermission()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
-  public List<MetadataOperation> getAllowedOperations(@NonNull UUID policyId, EntityInterface entity) {
+  public List<MetadataOperation> getAllowedOperations(@NonNull SubjectContext subjectContext, EntityInterface entity) {
+    List<MetadataOperation> list = new ArrayList<>();
     AttributeBasedFacts facts = new AttributeBasedFacts.AttributeBasedFactsBuilder().withEntity(entity).build();
-    Rules rules = PolicyCache.getPolicyRules(policyId);
-    allowedOperationsRulesEngine.fire(rules, facts.getFacts());
-    return facts.getAllowedOperations();
+
+    Iterator<PolicyContext> policies = subjectContext.getPolicies();
+    while (policies.hasNext()) {
+      PolicyContext policyContext = policies.next();
+      Rules rules = policyContext.getRules();
+      allowedOperationsRulesEngine.fire(rules, facts.getFacts());
+      list.addAll(facts.getAllowedOperations());
+    }
+    return list.stream().distinct().collect(Collectors.toList());
   }
 }
