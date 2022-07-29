@@ -59,12 +59,12 @@ describe('Test Description Tabs Component', () => {
 
     expect(tabs).toHaveLength(tabList.length);
 
-    tabs.forEach(async (_tab, index) => {
-      expect(await screen.findByText(tabList[index])).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Current')).toBeInTheDocument();
+    expect(await screen.findByText('Diff')).toBeInTheDocument();
+    expect(await screen.findByText('New')).toBeInTheDocument();
   });
 
-  it('Should render the component relavant tab component', async () => {
+  it('Should render the component relevant tab component', async () => {
     render(<DescriptionTabs {...mockProps} />);
 
     const tabs = await screen.findAllByRole('tab');
