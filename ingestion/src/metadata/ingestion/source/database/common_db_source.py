@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -75,12 +76,24 @@ class CommonDbSourceService(
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
+
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(self.metadata_config)
+
+        # retrieve service from OM, if exists retrieve service connection from secrets manager when it is configured
+        service: DatabaseService = self.metadata.get_by_name(
+            DatabaseService, config.serviceName
+        )
+        if service:
+            self.config.serviceConnection = (
+                self.metadata.secrets_manager_client.retrieve_service_connection(
+                    service, "database"
+                )
+            )
+
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
-
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
 
         self.engine: Engine = get_connection(self.service_connection)
         self.test_connection()
