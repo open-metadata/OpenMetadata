@@ -281,7 +281,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return (
       isAdminUser ||
       isAuthDisabled ||
-      userPermissions[Operation.TeamEditUsers] ||
+      userPermissions[Operation.EditUsers] ||
       !hasEditAccess
     );
   };

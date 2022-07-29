@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.catalog.type.MetadataOperation.*;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -798,7 +800,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .withDescription(create.getDescription())
         .withTestCase(create.getTestCase())
         .withOwner(create.getOwner())
-        .withExecutionFrequency(create.getExecutionFrequency())
         .withResults(create.getResult() != null ? List.of(create.getResult()) : new ArrayList<>())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
@@ -811,7 +812,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .withTestCase(create.getTestCase())
         .withColumnName(create.getColumnName())
         .withOwner(create.getOwner())
-        .withExecutionFrequency(create.getExecutionFrequency())
         .withResults(create.getResult() != null ? List.of(create.getResult()) : new ArrayList<>())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

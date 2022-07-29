@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_EXTENSION;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -38,8 +39,8 @@ import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final String TOPIC_UPDATE_FIELDS = "owner,tags";
-  private static final String TOPIC_PATCH_FIELDS = "owner,tags";
+  private static final String TOPIC_UPDATE_FIELDS = "owner,tags,extension";
+  private static final String TOPIC_PATCH_FIELDS = "owner,tags,extension";
 
   @Override
   public void setFullyQualifiedName(Topic topic) {
@@ -97,6 +98,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setTags(fields.contains(FIELD_TAGS) ? getTags(topic.getFullyQualifiedName()) : null);
     topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
+    topic.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(topic) : null);
     return topic;
   }
 

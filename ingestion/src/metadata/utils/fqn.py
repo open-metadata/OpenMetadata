@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
@@ -254,6 +255,16 @@ def _(
     pipeline_name: str,
 ) -> str:
     return _build(service_name, pipeline_name)
+
+
+@fqn_build_registry.add(Location)
+def _(
+    _: OpenMetadata,
+    *,
+    service_name: str,
+    location_name: str,
+) -> str:
+    return _build(service_name, location_name)
 
 
 @fqn_build_registry.add(Column)

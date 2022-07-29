@@ -99,6 +99,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleIngestSampleData: jest.fn(),
   databaseServiceName: '',
   handleDatasetServiceName: jest.fn(),
+  threadCount: 5,
+  handleThreadCount: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {

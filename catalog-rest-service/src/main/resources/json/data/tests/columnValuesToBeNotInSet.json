@@ -1,0 +1,15 @@
+{
+  "name": "columnValuesToBeNotInSet",
+  "displayName": "columnValuesToBeNotInSet",
+  "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
+  "testPlatforms": ["OpenMetadata", "GreatExpectations"],
+  "parameterDefinition": [
+    {
+      "name": "forbiddenValues",
+      "displayName": "forbiddenValues",
+      "description": "An Array of values.",
+      "dataType": "ARRAY",
+      "required": true
+    }
+  ]
+}

@@ -137,22 +137,24 @@ public class ChangeEventHandler implements EventHandler {
         String jsonThread = mapper.writeValueAsString(thread);
         switch (thread.getType()) {
           case Task:
-            List<EntityReference> assignees = thread.getTask().getAssignees();
-            assignees.forEach(
-                (e) -> {
-                  if (Entity.USER.equals(e.getType())) {
-                    WebSocketManager.getInstance()
-                        .sendToOne(e.getId(), WebSocketManager.taskBroadcastChannel, jsonThread);
-                  } else if (Entity.TEAM.equals(e.getType())) {
-                    // fetch all that are there in the team
-                    List<EntityRelationshipRecord> records =
-                        dao.relationshipDAO()
-                            .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-                    WebSocketManager.getInstance()
-                        .sendToManyWithString(records, WebSocketManager.taskBroadcastChannel, jsonThread);
-                  }
-                });
-            return;
+            if (thread.getPostsCount() == 0) {
+              List<EntityReference> assignees = thread.getTask().getAssignees();
+              assignees.forEach(
+                  (e) -> {
+                    if (Entity.USER.equals(e.getType())) {
+                      WebSocketManager.getInstance()
+                          .sendToOne(e.getId(), WebSocketManager.taskBroadcastChannel, jsonThread);
+                    } else if (Entity.TEAM.equals(e.getType())) {
+                      // fetch all that are there in the team
+                      List<EntityRelationshipRecord> records =
+                          dao.relationshipDAO()
+                              .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                      WebSocketManager.getInstance()
+                          .sendToManyWithString(records, WebSocketManager.taskBroadcastChannel, jsonThread);
+                    }
+                  });
+              return;
+            }
           case Conversation:
             WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
             List<EntityLink> mentions;

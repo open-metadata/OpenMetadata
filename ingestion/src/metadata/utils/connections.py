@@ -26,7 +26,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
@@ -94,6 +94,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
+    FivetranConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
     GlueConnection as GluePipelineConnection,
 )
@@ -103,6 +106,7 @@ from metadata.utils.connection_clients import (
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
+    FivetranClient,
     GlueDBClient,
     GluePipelineClient,
     KafkaClient,
@@ -367,6 +371,16 @@ def create_and_bind_session(engine: Engine) -> Session:
     return session()
 
 
+def create_and_bind_thread_safe_session(engine: Engine) -> Session:
+    """
+    Given an engine, create a session bound
+    to it to make our operations.
+    """
+    session = sessionmaker()
+    session.configure(bind=engine)
+    return scoped_session(session)
+
+
 @timeout(seconds=120)
 @singledispatch
 def test_connection(connection) -> None:
@@ -565,6 +579,23 @@ def _(connection: AirbyteConnection, verbose: bool = False):
 def _(connection: AirByteClient) -> None:
     try:
         connection.client.list_workspaces()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: FivetranConnection, verbose: bool = False):
+    from metadata.utils.fivetran_client import FivetranClient as FivetranRestClient
+
+    return FivetranClient(FivetranRestClient(connection))
+
+
+@test_connection.register
+def _(connection: FivetranClient) -> None:
+    try:
+        connection.client.list_groups()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

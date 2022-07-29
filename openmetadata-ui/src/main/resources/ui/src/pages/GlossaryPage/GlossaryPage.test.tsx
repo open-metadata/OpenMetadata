@@ -21,6 +21,8 @@ import {
 import { MOCK_GLOSSARY } from './glossary.mock';
 import GlossaryPageV1 from './GlossaryPageV1.component';
 
+jest.useRealTimers();
+
 jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: jest.fn(),

@@ -75,7 +75,7 @@ class OMetaTagMixin:
         path = f"{category_name}"
         return self._get(entity=entity, path=path, fields=fields)
 
-    def update_tag_category(
+    def create_or_update_tag_category(
         self, category_name: str, tag_category_body: CreateTagCategoryRequest
     ) -> None:
         """Method to update a tag category
@@ -117,7 +117,7 @@ class OMetaTagMixin:
         path = f"{category_name}/{primary_tag_fqn}"
         return self._get(entity=entity, path=path, fields=fields)
 
-    def update_primary_tag(
+    def create_or_update_primary_tag(
         self,
         category_name: str,
         primary_tag_fqn: str,

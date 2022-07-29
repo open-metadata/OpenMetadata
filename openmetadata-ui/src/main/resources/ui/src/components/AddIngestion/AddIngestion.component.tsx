@@ -172,6 +172,9 @@ const AddIngestion = ({
   const [profileSample, setProfileSample] = useState(
     (data?.sourceConfig.config as ConfigClass)?.profileSample
   );
+  const [threadCount, setThreadCount] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.threadCount ?? 5
+  );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
       (data?.sourceConfig.config as ConfigClass)?.dashboardFilterPattern ??
@@ -473,6 +476,7 @@ const AddIngestion = ({
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
           profileSample: profileSample,
+          threadCount: threadCount,
         };
       }
       case PipelineType.Metadata:
@@ -634,9 +638,10 @@ const AddIngestion = ({
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
-            handleResultLimit={(val) => setResultLimit(val)}
+            handleResultLimit={setResultLimit}
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
+            handleThreadCount={setThreadCount}
             includeLineage={includeLineage}
             includeTags={includeTag}
             includeView={includeView}
@@ -660,6 +665,7 @@ const AddIngestion = ({
             showTopicFilter={showTopicFilter}
             stageFileLocation={stageFileLocation}
             tableFilterPattern={tableFilterPattern}
+            threadCount={threadCount}
             topicFilterPattern={topicFilterPattern}
             onCancel={handleCancelClick}
             onNext={handleNext}

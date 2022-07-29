@@ -14,11 +14,13 @@
 import { Card } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
+import { useHistory } from 'react-router-dom';
 import {
   Post,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -39,6 +41,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onConfirmation,
   updateThreadHandler,
 }) => {
+  const history = useHistory();
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
   };
@@ -89,6 +92,12 @@ const FeedListBody: FC<FeedListBodyProp> = ({
     );
   };
 
+  const handleCardClick = (taskId: number, isTask: boolean) => {
+    if (isTask) {
+      history.push(getTaskDetailPath(String(taskId)));
+    }
+  };
+
   return (
     <Fragment>
       {updatedFeedList
@@ -124,7 +133,10 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 border: isTask
                   ? '1px solid #C6B5F6'
                   : leftPanelAntCardStyle.border,
-              }}>
+              }}
+              onClick={() =>
+                feed.task && handleCardClick(feed.task.id, isTask)
+              }>
               {isTask && (
                 <TaskBadge status={feed.task?.status as ThreadTaskStatus} />
               )}

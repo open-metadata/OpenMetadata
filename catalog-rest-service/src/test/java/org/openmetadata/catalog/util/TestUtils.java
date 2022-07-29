@@ -391,7 +391,22 @@ public final class TestUtils {
     }
   }
 
-  public static void assertEntityReferenceList(List<EntityReference> expected, List<EntityReference> actual) {
+  public static void assertEntityReferenceIds(List<UUID> expected, List<EntityReference> actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+    if (listOrEmpty(expected).isEmpty()) {
+      return;
+    }
+    for (UUID id : listOrEmpty(expected)) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().get());
+    }
+    validateEntityReferences(actual);
+  }
+
+  public static void assertEntityReferences(List<EntityReference> expected, List<EntityReference> actual) {
     if (expected == actual) { // Take care of both being null
       return;
     }

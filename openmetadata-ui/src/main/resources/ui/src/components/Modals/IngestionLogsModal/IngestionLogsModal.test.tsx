@@ -31,6 +31,10 @@ jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
   ),
 }));
 
+jest.mock('../../../utils/ingestionutils', () => ({
+  gzipToStringConverter: jest.fn().mockImplementation(() => 'logs'),
+}));
+
 jest.mock('../../buttons/CopyToClipboardButton/CopyToClipboardButton', () =>
   jest.fn().mockReturnValue(<button data-testid="copy">copy</button>)
 );

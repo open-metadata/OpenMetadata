@@ -155,13 +155,10 @@ MOCK_PIPELINE = Pipeline(
 
 
 class AirbyteUnitTest(TestCase):
-    def __init__(self, methodName: str = ...) -> None:
-        super().__init__(methodName)
-        self.init_workflow()
-
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
     @patch("metadata.ingestion.source.pipeline.airbyte.AirbyteClient")
-    def init_workflow(self, airbyte_client, test_connection):
+    def __init__(self, methodName, airbyte_client, test_connection) -> None:
+        super().__init__(methodName)
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.parse_obj(mock_airbyte_config)
         self.airbyte = AirbyteSource.create(

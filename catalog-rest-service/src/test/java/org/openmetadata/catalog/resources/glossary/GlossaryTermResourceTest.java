@@ -30,7 +30,7 @@ import static org.openmetadata.catalog.resources.databases.TableResourceTest.get
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityReferences;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -326,8 +326,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
       assertEquals(expected.getSynonyms(), actual.getSynonyms());
       assertEquals(expected.getParent(), actual.getParent());
-      assertEntityReferenceList(expected.getChildren(), actual.getChildren());
-      assertEntityReferenceList(expected.getReviewers(), actual.getReviewers());
+      TestUtils.assertEntityReferences(expected.getChildren(), actual.getChildren());
+      TestUtils.assertEntityReferences(expected.getReviewers(), actual.getReviewers());
       TestUtils.validateTags(expected.getTags(), actual.getTags());
     }
     TestUtils.validateAlphabeticalOrdering(actualTerms, EntityUtil.compareGlossaryTerm);
@@ -366,8 +366,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertTrue(EntityUtil.entityReferenceMatch.test(request.getParent(), entity.getParent()));
     }
 
-    assertEntityReferenceList(request.getRelatedTerms(), entity.getRelatedTerms());
-    assertEntityReferenceList(request.getReviewers(), entity.getReviewers());
+    TestUtils.assertEntityReferences(request.getRelatedTerms(), entity.getRelatedTerms());
+    TestUtils.assertEntityReferences(request.getReviewers(), entity.getReviewers());
 
     // Entity specific validation
     TestUtils.validateTags(request.getTags(), entity.getTags());

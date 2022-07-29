@@ -350,6 +350,21 @@ describe('Test MyDataDetailsPage page', () => {
     expect(manage).toBeInTheDocument();
   });
 
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
+  });
+
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
       <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,

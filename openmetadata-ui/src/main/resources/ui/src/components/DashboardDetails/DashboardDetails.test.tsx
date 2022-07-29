@@ -118,6 +118,7 @@ const DashboardDetailsProps = {
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -336,7 +337,7 @@ describe('Test DashboardDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <DashboardDetails {...DashboardDetailsProps} activeTab={4} />,
+      <DashboardDetails {...DashboardDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
@@ -344,6 +345,21 @@ describe('Test DashboardDetails component', () => {
     const manage = await findByTestId(container, 'manage');
 
     expect(manage).toBeInTheDocument();
+  });
+
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

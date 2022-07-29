@@ -23,10 +23,8 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.helpers import get_formatted_entity_name
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRUCache
 

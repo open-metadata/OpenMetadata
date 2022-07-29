@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import React from 'react';
+import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { FeedFilter } from '../../enums/mydata.enum';
 import {
@@ -34,19 +35,18 @@ export const tabsInfo = [
       />
     ),
   },
-  // TODO: remove comments when Backend support for Mention is done
-  // {
-  //   name: NotificationTabsName.MENTION,
-  //   key: NotificationTabsKey.CONVERSATION,
-  //   icon: (
-  //     <Icon
-  //       component={IconMentions}
-  //       style={{
-  //         marginRight: '8px',
-  //       }}
-  //     />
-  //   ),
-  // },
+  {
+    name: NotificationTabsName.MENTION,
+    key: NotificationTabsKey.CONVERSATION,
+    icon: (
+      <Icon
+        component={IconMentions}
+        style={{
+          marginRight: '8px',
+        }}
+      />
+    ),
+  },
 ];
 
 export const getFilters = (activeTab: ThreadType) => ({

@@ -5,36 +5,6 @@
   "description": "Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user (subject) and entity (object) attributes are evaluated with logical AND.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.policies.accessControl.Rule",
-  "definitions": {
-    "operation": {
-      "javaType": "org.openmetadata.catalog.type.MetadataOperation",
-      "description": "This schema defines all possible operations on metadata of data entities.",
-      "type": "string",
-      "enum": [
-        "Create",
-        "Delete",
-        "ViewAll",
-        "ViewUsage",
-        "ViewTests",
-        "TableViewQueries",
-        "TableViewDataProfile",
-        "TableViewSampleData",
-        "EditAll",
-        "EditDescription",
-        "EditTags",
-        "EditOwner",
-        "EditTier",
-        "EditCustomFields",
-        "EditLineage",
-        "EditReviewers",
-        "EditTests",
-        "TableEditQueries",
-        "TableEditDataProfile",
-        "TableEditSampleData",
-        "TeamEditUsers"
-      ]
-    }
-  },
   "properties": {
     "name": {
       "description": "Name for this Rule.",
@@ -56,7 +26,7 @@
     },
     "operation": {
       "description": "Operation on the entity.",
-      "$ref": "#/definitions/operation",
+      "$ref": "resourceDescriptor.json#/definitions/operation",
       "default": null
     },
     "allow": {

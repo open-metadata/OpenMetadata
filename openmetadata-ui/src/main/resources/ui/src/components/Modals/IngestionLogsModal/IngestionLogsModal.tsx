@@ -19,6 +19,7 @@ import { isNil } from 'lodash';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getIngestionPipelineLogById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { gzipToStringConverter } from '../../../utils/ingestionutils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../Loader/Loader';
@@ -48,15 +49,15 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
       .then((res: AxiosResponse) => {
         switch (pipelineType) {
           case PipelineType.Metadata:
-            setLogs(res.data?.ingestion_task || '');
+            setLogs(gzipToStringConverter(res.data?.ingestion_task || ''));
 
             break;
           case PipelineType.Profiler:
-            setLogs(res.data?.profiler_task || '');
+            setLogs(gzipToStringConverter(res.data?.profiler_task || ''));
 
             break;
           case PipelineType.Usage:
-            setLogs(res.data?.usage_task || '');
+            setLogs(gzipToStringConverter(res.data?.usage_task || ''));
 
             break;
 

@@ -14,6 +14,7 @@ Test Airflow related operations
 import datetime
 import os
 import shutil
+import time
 import uuid
 from pathlib import Path
 from unittest import TestCase
@@ -47,7 +48,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
-os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"] = "sqlite:////tmp/airflow/airflow.db"
+os.environ[
+    "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN"
+] = "mysql+pymysql://airflow_user:airflow_pass@localhost/airflow_db"
 os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS"] = "/tmp/airflow"
 os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
     (
@@ -56,19 +59,18 @@ os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
     ).absolute()
 )
 
-
 from airflow import DAG
-from airflow.models import DagBag
+from airflow.models import DagBag, DagModel
 from airflow.operators.bash import BashOperator
 from airflow.utils import db, timezone
 from airflow.utils.state import DagRunState
 from airflow.utils.types import DagRunType
-from openmetadata.operations.delete import delete_dag_id
-from openmetadata.operations.deploy import DagDeployer
-from openmetadata.operations.kill_all import kill_all
-from openmetadata.operations.state import disable_dag, enable_dag
-from openmetadata.operations.status import status
-from openmetadata.operations.trigger import trigger
+from openmetadata_managed_apis.operations.delete import delete_dag_id
+from openmetadata_managed_apis.operations.deploy import DagDeployer
+from openmetadata_managed_apis.operations.kill_all import kill_all
+from openmetadata_managed_apis.operations.state import disable_dag, enable_dag
+from openmetadata_managed_apis.operations.status import status
+from openmetadata_managed_apis.operations.trigger import trigger
 
 
 class TestAirflowOps(TestCase):
@@ -84,9 +86,6 @@ class TestAirflowOps(TestCase):
         """
         Prepare ingredients
         """
-
-        db.resetdb()
-        db.initdb()
 
         with DAG(
             "dag_status",
@@ -227,7 +226,7 @@ class TestAirflowOps(TestCase):
         )
 
         # Create the DAG
-        deployer = DagDeployer(ingestion_pipeline, self.dagbag)
+        deployer = DagDeployer(ingestion_pipeline)
         res = deployer.deploy()
 
         self.assertEqual(res.status_code, 200)
@@ -238,7 +237,15 @@ class TestAirflowOps(TestCase):
         dag_file = Path("/tmp/airflow/dags/my_new_dag.py")
         self.assertTrue(dag_file.is_file())
 
-        # Trigger it
+        # Trigger it, waiting for it to be parsed by the scheduler
+        dag_id = "my_new_dag"
+        tries = 5
+        dag_model = None
+        while not dag_model and tries >= 0:
+            dag_model = DagModel.get_current(dag_id)
+            time.sleep(5)
+            tries -= 1
+
         res = trigger(dag_id="my_new_dag", run_id=None)
 
         self.assertEqual(res.status_code, 200)

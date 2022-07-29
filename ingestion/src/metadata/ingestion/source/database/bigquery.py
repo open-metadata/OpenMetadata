@@ -123,8 +123,6 @@ class BigquerySource(CommonDbSourceService):
         :param _:
         :return:
         """
-        if not self.source_config.includeTags:
-            return
         taxonomies = PolicyTagManagerClient().list_taxonomies(
             parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
         )

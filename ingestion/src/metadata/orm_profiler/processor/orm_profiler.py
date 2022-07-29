@@ -38,7 +38,6 @@ from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.core import Profiler
@@ -47,8 +46,6 @@ from metadata.orm_profiler.profiler.handle_partition import (
     get_partition_cols,
     is_partitioned,
 )
-from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.validations.core import validation_enum_registry
 from metadata.orm_profiler.validations.models import TestDef
 from metadata.utils.helpers import get_start_and_end
 

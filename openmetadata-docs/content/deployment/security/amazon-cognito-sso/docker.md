@@ -1,0 +1,41 @@
+---
+title: Amazon Cognito SSO for Docker
+slug: /deployment/security/amazon-cognito/docker
+---
+
+# Amazon Cognito SSO for Docker
+
+To enable security for the Docker deployment, follow the next steps:
+
+## 1. Create an .env file
+
+Create an `openmetadata.env` file and add the following contents as an example. Use the information
+generated when setting up the account in the previous steps.
+
+```bash
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.catalog.security.JwtFilter
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
+AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+
+AUTHENTICATION_PROVIDER=aws-cognito
+AUTHENTICATION_PUBLIC_KEYS=[https://cognito-idp.us-west-1.amazonaws.com/{User Pool ID}/.well-known/jwks.json]
+AUTHENTICATION_AUTHORITY=https://cognito-idp.us-west-1.amazonaws.com/{User Pool ID}
+AUTHENTICATION_CLIENT_ID={Client ID}
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+
+# Airflow Configuration
+AIRFLOW_AUTH_PROVIDER=openmetadata
+OM_AUTH_JWT_TOKEN=
+```
+
+Finally, update the Airflow information with the JWT token
+from [Enabling JWT Tokens](/deployment/security/enable-jwt-tokens).
+
+## 2. Start Docker
+
+```commandline
+docker compose --env-file ~/openmetadata.env up -d
+```

@@ -84,4 +84,5 @@ export interface TopicDetailsProps {
     lineageLeafNodes: LeafNodes;
     isNodeLoading: LoadingNodeState;
   };
+  onExtensionUpdate: (updatedTopic: Topic) => void;
 }

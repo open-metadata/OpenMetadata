@@ -51,7 +51,7 @@ public final class Entity {
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
 
-  // List of entities
+  // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
 
   // Common field names
@@ -98,6 +98,9 @@ public final class Entity {
   public static final String TAG = "tag";
   public static final String TAG_CATEGORY = "tagCategory";
   public static final String TYPE = "type";
+  public static final String TEST_DEFINITION = "testDefinition";
+  public static final String TEST_SUITE = "testSuite";
+  public static final String TEST_CASE = "testCase";
 
   //
   // Policy entity
@@ -152,7 +155,7 @@ public final class Entity {
         entityRepository.getClass().getSimpleName());
   }
 
-  public static List<String> listEntities() {
+  public static List<String> getEntityList() {
     return Collections.unmodifiableList(ENTITY_LIST);
   }
 
