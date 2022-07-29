@@ -242,7 +242,7 @@ snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop th
 	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) >> security/ui-dep-scan.out | true;
 
 .PHONY: snyk-dependencies-report
-snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES
+snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES. Only local testing.
 	@echo "Validating dependencies images..."
 	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) >> security/mysql-scan.out | true;
 	snyk container test postgres:latest $(SNYK_ARGS) >> security/postgres-scan.out | true;
@@ -256,7 +256,6 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
-	$(MAKE) snyk-dependencies-report
 	$(MAKE)	read-report
 
 .PHONY: read-report
