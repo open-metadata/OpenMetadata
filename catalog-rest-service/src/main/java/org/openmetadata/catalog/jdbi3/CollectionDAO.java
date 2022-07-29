@@ -2227,11 +2227,11 @@ public interface CollectionDAO {
     EntitiesCount getAggregatedEntitiesCount() throws StatementException;
 
     @SqlQuery(
-            "SELECT (SELECT COUNT(*) FROM database_entity) as databaseServiceCount, "
-                + "(SELECT COUNT(*) FROM messaging_service_entity) as messagingServiceCount, "
-                + "(SELECT COUNT(*) FROM dashboard_service_entity) as dashboardServiceCount, "
-                + "(SELECT COUNT(*) FROM pipeline_service_entity) as pipelineServiceCount, "
-                + "(SELECT COUNT(*) FROM mlmodel_service_entity) as mlModelServiceCount")
+        "SELECT (SELECT COUNT(*) FROM database_entity) as databaseServiceCount, "
+            + "(SELECT COUNT(*) FROM messaging_service_entity) as messagingServiceCount, "
+            + "(SELECT COUNT(*) FROM dashboard_service_entity) as dashboardServiceCount, "
+            + "(SELECT COUNT(*) FROM pipeline_service_entity) as pipelineServiceCount, "
+            + "(SELECT COUNT(*) FROM mlmodel_service_entity) as mlModelServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount() throws StatementException;
   }
