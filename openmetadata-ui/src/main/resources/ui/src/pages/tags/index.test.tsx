@@ -30,6 +30,8 @@ import {
 } from '../../axiosAPIs/tagAPI';
 import { getTagCategories } from '../../utils/TagsUtils';
 
+jest.useRealTimers();
+
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({

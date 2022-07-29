@@ -35,7 +35,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class PolicyCache {
-  private static final LoadingCache<UUID, Rules> POLICY_CACHE =
+  protected static final LoadingCache<UUID, Rules> POLICY_CACHE =
       CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
 
   public static Rules getPolicyRules(UUID policyId) {
@@ -64,35 +64,35 @@ public class PolicyCache {
       LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
       return getRules(policy);
     }
+  }
 
-    private Rules getRules(Policy policy) {
-      Rules rules = new Rules();
-      for (Object r : policy.getRules()) {
-        org.openmetadata.catalog.entity.policies.accessControl.Rule acRule = null;
-        try {
-          acRule =
-              JsonUtils.readValue(
-                  JsonUtils.getJsonStructure(r).toString(),
-                  org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
-        } catch (Exception e) {
-          LOG.warn("Failed to load a rule", e);
-        }
-        if (acRule != null && Boolean.TRUE.equals(acRule.getAllow())) {
-          rules.register(convertRule(acRule));
-        }
+  protected static Rules getRules(Policy policy) {
+    Rules rules = new Rules();
+    for (Object r : policy.getRules()) {
+      org.openmetadata.catalog.entity.policies.accessControl.Rule acRule = null;
+      try {
+        acRule =
+            JsonUtils.readValue(
+                JsonUtils.getJsonStructure(r).toString(),
+                org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
+      } catch (Exception e) {
+        LOG.warn("Failed to load a rule", e);
       }
-      return rules;
+      if (acRule != null && Boolean.TRUE.equals(acRule.getAllow())) {
+        rules.register(convertRule(acRule));
+      }
     }
+    return rules;
+  }
 
-    private Rule convertRule(org.openmetadata.catalog.entity.policies.accessControl.Rule rule) {
-      return new RuleBuilder()
-          .name(rule.getName())
-          .description(rule.getName())
-          .priority(rule.getPriority())
-          .when(new RuleCondition(rule))
-          .then(new SetPermissionAction(rule))
-          .then(new SetAllowedOperationAction(rule))
-          .build();
-    }
+  private static Rule convertRule(org.openmetadata.catalog.entity.policies.accessControl.Rule rule) {
+    return new RuleBuilder()
+        .name(rule.getName())
+        .description(rule.getName())
+        .priority(rule.getPriority())
+        .when(new RuleCondition(rule))
+        .then(new SetPermissionAction(rule))
+        .then(new SetAllowedOperationAction(rule))
+        .build();
   }
 }

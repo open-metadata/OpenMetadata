@@ -43,6 +43,8 @@ const MOCK_HISTORY = {
   push: jest.fn(),
 };
 
+jest.useRealTimers();
+
 jest.mock('../../components/containers/PageContainerV1', () => {
   return jest
     .fn()
