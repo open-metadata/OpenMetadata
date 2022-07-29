@@ -17,7 +17,6 @@ from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
-from openmetadata_managed_apis.api.utils import clean_dag_id
 
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -29,6 +28,7 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
+from openmetadata_managed_apis.api.utils import clean_dag_id
 
 try:
     from airflow.operators.python import PythonOperator
@@ -102,9 +102,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     return WorkflowSource(
         type=service.serviceType.value.lower(),
         serviceName=service.name.__root__,
-        serviceConnection=metadata.secrets_manager_client.retrieve_service_connection(
-            service, service_type
-        ),
+        serviceConnection=service.connection,
         sourceConfig=ingestion_pipeline.sourceConfig,
     )
 
