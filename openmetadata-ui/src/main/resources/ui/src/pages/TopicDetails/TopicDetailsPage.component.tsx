@@ -428,6 +428,7 @@ const TopicDetailsPage: FunctionComponent = () => {
             fqn: fullyQualifiedName,
             serviceType: serviceType,
             timestamp: 0,
+            id: id,
           });
         } else {
           showErrorToast(

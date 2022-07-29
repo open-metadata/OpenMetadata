@@ -317,6 +317,7 @@ const PipelineDetailsPage = () => {
             fqn: fullyQualifiedName,
             serviceType: serviceType,
             timestamp: 0,
+            id: id,
           });
 
           setPipelineUrl(pipelineUrl);
