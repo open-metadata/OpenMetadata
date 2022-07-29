@@ -17,6 +17,9 @@ on:
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
     steps:
       - uses: actions/checkout@v2
 
