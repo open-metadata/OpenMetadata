@@ -24,12 +24,9 @@ const PageContainerV1 = ({
   className = '',
 }: PageContainerV1Props) => {
   return (
-    <>
-      <div
-        className={classNames('page-container-v1 tw-bg-body-main', className)}>
-        {children}
-      </div>
-    </>
+    <div className={classNames('page-container-v1 tw-bg-body-main', className)}>
+      {children}
+    </div>
   );
 };
 
