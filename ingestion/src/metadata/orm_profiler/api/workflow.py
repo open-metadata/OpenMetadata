@@ -131,7 +131,8 @@ class ProfilerWorkflow:
 
     def create_processor(self, service_connection_config):
         self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
-            service_connection_config
+            service_connection_config,
+            thread_count=self.source_config.threadCount,
         )
         self.processor = get_processor(
             processor_type=self.config.processor.type,  # orm-profiler
