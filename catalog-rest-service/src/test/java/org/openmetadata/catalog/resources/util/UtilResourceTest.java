@@ -105,10 +105,10 @@ public class UtilResourceTest extends CatalogApplicationTest {
     CreatePipeline createPipeline = pipelineResourceTest.createRequest(test);
     pipelineResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
 
-    // Create MlModel
-    MlModelResourceTest mlModelResourceTest = new MlModelResourceTest();
-    CreateMlModel createMlModel = mlModelResourceTest.createRequest(test);
-    mlModelResourceTest.createEntity(createMlModel, ADMIN_AUTH_HEADERS);
+    // Create Dashboard Service
+    DashboardServiceResourceTest dashboardServiceResourceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createDashboardService = dashboardServiceResourceTest.createRequest(test);
+    dashboardServiceResourceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Create Service
     MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
@@ -156,6 +156,7 @@ public class UtilResourceTest extends CatalogApplicationTest {
     int beforePipelineServiceCount = getServicesCount().getPipelineServiceCounte();
     int beforeMlModelServiceCount = getServicesCount().getMlModelServiceCount();
 
+    // Create Database Service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     CreateDatabaseService createDatabaseService = databaseServiceResourceTest.createRequest(test);
     databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
