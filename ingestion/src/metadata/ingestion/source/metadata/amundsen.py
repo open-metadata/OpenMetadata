@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -114,8 +115,18 @@ class AmundsenSource(Source[Entity]):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
-        self.service_connection = config.serviceConnection.__root__.config
         self.metadata = OpenMetadata(self.metadata_config)
+
+        service = self.metadata.get_by_name(
+            entity=MetadataService, fqn=self.config.serviceName
+        )
+        if service:
+            self.config.serviceConnection = (
+                self.metadata.secrets_manager_client.retrieve_service_connection(
+                    service, "database"
+                )
+            )
+        self.service_connection = self.config.serviceConnection.__root__.config
 
         neo4j_config = Neo4JConfig(
             username=self.service_connection.username,

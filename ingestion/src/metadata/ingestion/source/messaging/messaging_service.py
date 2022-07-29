@@ -62,6 +62,7 @@ class MessagingServiceTopology(ServiceTopology):
                 type_=MessagingService,
                 context="messaging_service",
                 processor="yield_messaging_service",
+                overwrite=False
             )
         ],
         children=["topic"],
@@ -139,11 +140,22 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: MessagingServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
+
+        service = self.metadata.get_by_name(
+            entity=MessagingService, fqn=self.config.serviceName
+        )
+        if service:
+            self.config.serviceConnection = (
+                self.metadata.secrets_manager_client.retrieve_service_connection(
+                    service, "database"
+                )
+            )
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
+
         self.test_connection()
         self.status = MessagingSourceStatus()
 

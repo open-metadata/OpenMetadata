@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 import traceback
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, List
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -98,7 +98,7 @@ class GlueSource(PipelineServiceSource):
         )
         yield pipeline_ev
 
-    def get_tasks(self, pipeline_details: Any) -> Task:
+    def get_tasks(self, pipeline_details: Any) -> List[Task]:
         task_list = []
         for task in pipeline_details["Graph"]["Nodes"]:
             self.task_id_mapping[task["UniqueId"]] = task["Name"][:128]

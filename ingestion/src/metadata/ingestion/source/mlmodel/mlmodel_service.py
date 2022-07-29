@@ -66,6 +66,7 @@ class MlModelServiceTopology(ServiceTopology):
                 type_=MlModelService,
                 context="mlmodel_service",
                 processor="yield_mlmodel_service",
+                overwrite=False
             ),
         ],
         children=["mlmodel"],
@@ -140,7 +141,18 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+
+        service = self.metadata.get_by_name(
+            entity=MlModelService, fqn=self.config.serviceName
+        )
+        if service:
+            self.config.serviceConnection = (
+                self.metadata.secrets_manager_client.retrieve_service_connection(
+                    service, "database"
+                )
+            )
         self.service_connection = self.config.serviceConnection.__root__.config
+
         self.source_config: MlModelServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
