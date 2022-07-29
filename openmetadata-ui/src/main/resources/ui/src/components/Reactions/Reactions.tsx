@@ -15,25 +15,44 @@ import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
-import PropTypes from 'prop-types';
-import React, { useMemo, useState } from 'react';
+import React, { FunctionComponent, useMemo, useState } from 'react';
 import AppState from '../../AppState';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
 } from '../../constants/reactions.constant';
+import { ReactionOperation } from '../../enums/reactions.enum';
+import { ReactionType } from '../../generated/type/reaction';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 
-const Reactions = ({ reactions, onReactionSelect }) => {
-  const [visible, setVisible] = useState(false);
+interface Reaction {
+  reactionType: ReactionType;
+  user: {
+    id: string;
+    name: string;
+    displayName: string;
+    type: string;
+  };
+}
+
+interface ReactionsProps {
+  reactions: Array<Reaction>;
+  onReactionSelect: (reaction: string, operation: ReactionOperation) => void;
+}
+
+const Reactions: FunctionComponent<ReactionsProps> = ({
+  reactions,
+  onReactionSelect,
+}: ReactionsProps) => {
+  const [visible, setVisible] = useState<boolean>(false);
 
   const hide = () => {
     setVisible(false);
   };
 
-  const handleVisibleChange = (newVisible) => {
+  const handleVisibleChange = (newVisible: boolean) => {
     setVisible(newVisible);
   };
 
@@ -48,7 +67,7 @@ const Reactions = ({ reactions, onReactionSelect }) => {
    * @param reactionType
    * @returns true if current user has reacted with {reactionType}
    */
-  const isReacted = (reactionType) => {
+  const isReacted = (reactionType: ReactionType) => {
     return reactions.some(
       (reactionItem) =>
         reactionItem.user.id === currentUser?.id &&
@@ -118,21 +137,6 @@ const Reactions = ({ reactions, onReactionSelect }) => {
       </div>
     </div>
   );
-};
-
-Reactions.propTypes = {
-  reactions: PropTypes.arrayOf(
-    PropTypes.shape({
-      reactionType: PropTypes.string.isRequired,
-      user: PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        name: PropTypes.string,
-        displayName: PropTypes.string,
-        type: PropTypes.string,
-      }).isRequired,
-    })
-  ).isRequired,
-  onReactionSelect: PropTypes.func.isRequired,
 };
 
 export default observer(Reactions);

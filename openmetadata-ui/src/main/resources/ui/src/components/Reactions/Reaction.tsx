@@ -15,16 +15,32 @@ import '@github/g-emoji-element';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
+import React, { FunctionComponent } from 'react';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import useImage from '../../hooks/useImage';
 
-const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
+interface ReactionProps {
+  reaction: ReactionInternal;
+  isReacted: boolean;
+  onReactionSelect: (reaction: string, operation: ReactionOperation) => void;
+  onHide: () => void;
+}
+
+export interface ReactionInternal {
+  emoji: string;
+  reaction: string;
+  alias: string;
+}
+
+const Reaction: FunctionComponent<ReactionProps> = ({
+  reaction,
+  isReacted,
+  onReactionSelect,
+  onHide,
+}: ReactionProps) => {
   const { image } = useImage(`emojis/${reaction.reaction}.png`);
 
-  const handleOnClick = (e) => {
-    e.stopPropagation();
+  const handleOnClick = () => {
     const operation = isReacted
       ? ReactionOperation.REMOVE
       : ReactionOperation.ADD;
@@ -44,26 +60,37 @@ const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
       title={reaction.reaction}
       type="text"
       onClick={handleOnClick}>
-      <g-emoji
+      <div
+        dangerouslySetInnerHTML={{
+          __html: `<g-emoji
+          alias={${reaction.alias}}
+          className="d-flex"
+          data-testid="emoji"
+          fallback-src={${image}}>
+          {${reaction.emoji}}
+        </g-emoji>`,
+        }}
+      />
+      {/* <g-emoji
         alias={reaction.alias}
         className="d-flex"
         data-testid="emoji"
         fallback-src={image}>
         {reaction.emoji}
-      </g-emoji>
+      </g-emoji> */}
     </Button>
   );
 };
 
-Reaction.propTypes = {
-  reaction: PropTypes.shape({
-    emoji: PropTypes.string.isRequired,
-    reaction: PropTypes.string.isRequired,
-    alias: PropTypes.string.isRequired,
-  }).isRequired,
-  isReacted: PropTypes.bool.isRequired,
-  onReactionSelect: PropTypes.func.isRequired,
-  onHide: PropTypes.func.isRequired,
-};
+// Reaction.propTypes = {
+//   reaction: PropTypes.shape({
+//     emoji: PropTypes.string.isRequired,
+//     reaction: PropTypes.string.isRequired,
+//     alias: PropTypes.string.isRequired,
+//   }).isRequired,
+//   isReacted: PropTypes.bool.isRequired,
+//   onReactionSelect: PropTypes.func.isRequired,
+//   onHide: PropTypes.func.isRequired,
+// };
 
 export default Reaction;
