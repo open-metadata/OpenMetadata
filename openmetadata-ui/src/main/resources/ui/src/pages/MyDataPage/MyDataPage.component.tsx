@@ -15,7 +15,6 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormattedTableData } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -56,10 +55,11 @@ import {
   getUpdatedThread,
   updateThreadData,
 } from '../../utils/FeedUtils';
-import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
+import { getOwnerIds } from '../../utils/CommonUtils';
+import { ExploreSearchSource } from '../../interface/search.interface';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -74,8 +74,8 @@ const MyDataPage = () => {
   const [countUsers, setCountUsers] = useState<number>();
   const [countTeams, setCountTeams] = useState<number>();
 
-  const [ownedData, setOwnedData] = useState<Array<FormattedTableData>>();
-  const [followedData, setFollowedData] = useState<Array<FormattedTableData>>();
+  const [ownedData, setOwnedData] = useState<ExploreSearchSource[]>();
+  const [followedData, setFollowedData] = useState<ExploreSearchSource[]>();
   const [ownedDataCount, setOwnedDataCount] = useState(0);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
@@ -268,22 +268,30 @@ const MyDataPage = () => {
     const ownedEntity = searchQuery({
       from: 1,
       size: 8,
-      filters: getMyDataFilters(
-        Ownership.OWNER,
-        AppState.userDetails,
-        AppState.nonSecureUserDetails
-      ),
+      queryFilter: {
+        bool: {
+          should: getOwnerIds(
+            Ownership.OWNER,
+            AppState.userDetails,
+            AppState.nonSecureUserDetails
+          ).map((id) => ({ term: { [Ownership.OWNER]: id } })),
+        },
+      },
       searchIndex: myDataSearchIndex,
     });
 
     const followedEntity = searchQuery({
       from: 1,
       size: 8,
-      filters: getMyDataFilters(
-        Ownership.FOLLOWERS,
-        AppState.userDetails,
-        AppState.nonSecureUserDetails
-      ),
+      queryFilter: {
+        bool: {
+          should: getOwnerIds(
+            Ownership.FOLLOWERS,
+            AppState.userDetails,
+            AppState.nonSecureUserDetails
+          ).map((id) => ({ term: { [Ownership.FOLLOWERS]: id } })),
+        },
+      },
       searchIndex: myDataSearchIndex,
     });
 

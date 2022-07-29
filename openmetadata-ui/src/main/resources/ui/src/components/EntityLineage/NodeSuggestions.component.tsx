@@ -13,7 +13,6 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize } from 'lodash';
-import { FormattedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -25,6 +24,7 @@ import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { getSuggestions } from '../../axiosAPIs/searchAPI';
+import { TableSearchSource } from '../../interface/search.interface';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -35,7 +35,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
-  const [data, setData] = useState<Array<FormattedTableData>>([]);
+  const [data, setData] = useState<TableSearchSource[]>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 
@@ -118,7 +118,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
                 {getSuggestionLabel(
-                  entity.fullyQualifiedName,
+                  entity.fullyQualifiedName ?? '',
                   entity.entityType as string,
                   entity.name
                 )}

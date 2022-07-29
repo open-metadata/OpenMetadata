@@ -18,17 +18,10 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, lowerCase } from 'lodash';
-import { FilterObject, FormattedTableData } from 'Models';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { cloneDeep, lowerCase } from 'lodash';
+import { FilterObject } from 'Models';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
@@ -39,7 +32,6 @@ import {
 } from '../../constants/constants';
 import {
   emptyValue,
-  getAggrWithDefaultValue,
   getCurrentIndex,
   getCurrentTab,
   INITIAL_FILTERS,
@@ -47,18 +39,11 @@ import {
   INITIAL_SORT_ORDER,
   tableSortingFields,
   tabsInfo,
-  UPDATABLE_AGGREGATION,
-  ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
-import {
-  getAggregationList,
-  getAggregationListFromQS,
-} from '../../utils/AggregationUtils';
-import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
+import { getFilterString } from '../../utils/FilterUtils';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { ExploreProps, QueryBuilderState } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
@@ -67,13 +52,8 @@ import {
   emptyImmutableTree,
   getQbConfigs,
 } from '../AdvancedSearch/AdvancesSearch.constants';
-import {
-  AggregationType,
-  Bucket,
-  SearchResponse,
-  SearchSource,
-} from '../../interface/search.interface';
 import { elasticSearchFormat } from '../../utils/QueryBuilder';
+import { getPostFilter } from '../../axiosAPIs/searchAPI';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -84,7 +64,6 @@ const Explore: React.FC<ExploreProps> = ({
   searchQuery,
   searchResult,
   sortValue,
-  error,
   fetchCount,
   handleFilterChange,
   handlePathChange,
@@ -105,7 +84,6 @@ const Explore: React.FC<ExploreProps> = ({
     ...INITIAL_FILTERS,
     ...initialFilter,
   };
-  const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [filters, setFilters] = useState<FilterObject>({
     ...filterObject,
     ...searchFilter,
@@ -113,7 +91,6 @@ const Explore: React.FC<ExploreProps> = ({
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
@@ -123,21 +100,12 @@ const Explore: React.FC<ExploreProps> = ({
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
 
   const [isEntityLoading, setIsEntityLoading] = useState(true);
-  const [isFilterSet, setIsFilterSet] = useState<boolean>(
-    !isEmpty(initialFilter)
-  );
-  const [connectionError] = useState(
-    error && error.includes('Connection refused')
-  );
+
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
-
-  const [isInitialFilterSet, setIsInitialFilterSet] = useState<boolean>(
-    !isEmpty(initialFilter)
-  );
 
   const [advancedSearchState, setAdvancedSearchState] =
     useState<QueryBuilderState>({
@@ -163,8 +131,6 @@ const Explore: React.FC<ExploreProps> = ({
       if (filterType.includes(selectedFilter)) {
         filterData = { ...filters };
       } else {
-        setIsFilterSet(true);
-
         filterData = {
           ...filters,
           [type]: [...filters[type], selectedFilter],
@@ -177,8 +143,6 @@ const Explore: React.FC<ExploreProps> = ({
       const filter = filters[type];
       const index = filter.indexOf(selectedFilter);
       filter.splice(index, 1);
-      const selectedFilterCount = getFilterCount(filters);
-      setIsFilterSet(selectedFilterCount >= 1);
 
       filterData = { ...filters, [type]: filter };
     }
@@ -198,49 +162,38 @@ const Explore: React.FC<ExploreProps> = ({
     setCurrentPage(pageNumber as number);
   };
 
-  const updateAggregationCount = useCallback(
-    (newAggregations: Array<AggregationType>) => {
-      const oldAggs = cloneDeep(aggregations);
-      for (const newAgg of newAggregations) {
-        for (const oldAgg of oldAggs) {
-          if (newAgg.title === oldAgg.title) {
-            if (UPDATABLE_AGGREGATION.includes(newAgg.title)) {
-              const buckets = cloneDeep(oldAgg.buckets)
-                .map((item) => {
-                  // eslint-disable-next-line @typescript-eslint/camelcase
-                  return { ...item, doc_count: 0 };
-                })
-                .concat(newAgg.buckets);
-              const bucketHashmap = buckets.reduce((obj, item) => {
-                obj[item.key]
-                  ? // eslint-disable-next-line @typescript-eslint/camelcase
-                    (obj[item.key].doc_count += item.doc_count)
-                  : (obj[item.key] = { ...item });
-
-                return obj;
-              }, {} as { [key: string]: Bucket });
-              oldAgg.buckets = Object.values(bucketHashmap);
-            } else {
-              oldAgg.buckets = newAgg.buckets;
-            }
-          }
-        }
-      }
-      setAggregations(oldAggs);
-    },
-    [aggregations, filters]
-  );
-
-  const updateSearchResults = (res: SearchResponse<SearchSource>) => {
-    const hits = res.hits.hits;
-    if (hits.length > 0) {
-      setTotalNumberOfValues(res.hits.total.value);
-      setData(formatDataResponse(hits));
-    } else {
-      setData([]);
-      setTotalNumberOfValues(0);
-    }
-  };
+  // const updateAggregationCount = useCallback(
+  //   (newAggregations: Array<AggregationType>) => {
+  //     const oldAggs = cloneDeep(aggregations);
+  //     for (const newAgg of newAggregations) {
+  //       for (const oldAgg of oldAggs) {
+  //         if (newAgg.title === oldAgg.title) {
+  //           if (UPDATABLE_AGGREGATION.includes(newAgg.title)) {
+  //             const buckets = cloneDeep(oldAgg.buckets)
+  //               .map((item) => {
+  //                 // eslint-disable-next-line @typescript-eslint/camelcase
+  //                 return { ...item, doc_count: 0 };
+  //               })
+  //               .concat(newAgg.buckets);
+  //             const bucketHashmap = buckets.reduce((obj, item) => {
+  //               obj[item.key]
+  //                 ? // eslint-disable-next-line @typescript-eslint/camelcase
+  //                   (obj[item.key].doc_count += item.doc_count)
+  //                 : (obj[item.key] = { ...item });
+  //
+  //               return obj;
+  //             }, {} as { [key: string]: Bucket });
+  //             oldAgg.buckets = Object.values(bucketHashmap);
+  //           } else {
+  //             oldAgg.buckets = newAgg.buckets;
+  //           }
+  //         }
+  //       }
+  //     }
+  //     setAggregations(oldAggs);
+  //   },
+  //   [aggregations, filters]
+  // );
 
   const setCount = (count = 0, index = searchIndex) => {
     switch (index) {
@@ -271,78 +224,16 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchTableData = () => {
     setIsEntityLoading(true);
-    fetchData([
-      {
-        query: searchText,
-        from: currentPage,
-        size: PAGE_SIZE,
-        filters: getFilterString(filters),
-        sortField,
-        sortOrder,
-        searchIndex,
-        elasticsearchFilter,
-      },
-      {
-        query: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['service']),
-        sortField,
-        sortOrder,
-        searchIndex,
-        elasticsearchFilter,
-      },
-      {
-        query: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['tier']),
-        sortField,
-        sortOrder,
-        searchIndex,
-        elasticsearchFilter,
-      },
-      {
-        query: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['tags']),
-        sortField,
-        sortOrder,
-        searchIndex,
-        elasticsearchFilter,
-      },
-      {
-        query: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['database']),
-        sortField,
-        sortOrder,
-        searchIndex,
-        elasticsearchFilter,
-      },
-      {
-        query: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['databaseschema']),
-        sortField,
-        sortOrder,
-        searchIndex,
-        elasticsearchFilter,
-      },
-      {
-        query: searchText,
-        from: currentPage,
-        size: ZERO_SIZE,
-        filters: getFilterString(filters, ['servicename']),
-        sortField,
-        sortOrder,
-        searchIndex,
-        elasticsearchFilter,
-      },
-    ]);
+    fetchData({
+      query: searchText,
+      from: currentPage,
+      size: PAGE_SIZE,
+      sortField,
+      sortOrder,
+      searchIndex,
+      postFilter: getPostFilter(filters),
+      queryFilter: elasticsearchFilter,
+    });
   };
 
   const getFacetedFilter = () => {
@@ -413,10 +304,10 @@ const Explore: React.FC<ExploreProps> = ({
         return getCountBadge();
     }
   };
+
   const onTabChange = (selectedTab: number) => {
     if (tabsInfo[selectedTab - 1].path !== tab) {
       setIsEntityLoading(true);
-      setData([]);
       handlePathChange(tabsInfo[selectedTab - 1].path);
       history.push({
         pathname: getExplorePathWithSearch(
@@ -427,58 +318,40 @@ const Explore: React.FC<ExploreProps> = ({
       });
     }
   };
-  const getTabs = () => {
-    return (
-      <div className="tw-mb-5 centered-layout">
-        <nav
-          className={classNames(
-            'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
-          )}>
-          <div className="tw-flex">
-            {/* <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
-              <Button
-                className={classNames('tw-underline tw-mt-5', {
-                  'tw-invisible': !getFilterCount(filters),
-                })}
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => resetFilters(true)}>
-                Clear All
-              </Button>
-            </div> */}
-            <div>
-              {tabsInfo.map((tabDetail, index) => (
-                <button
-                  className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
-                    tabDetail.tab
-                  )}`}
-                  data-testid={`${lowerCase(tabDetail.label)}-tab`}
-                  key={index}
-                  onClick={() => {
-                    onTabChange(tabDetail.tab);
-                  }}>
-                  {tabDetail.label}
-                  <span className="tw-pl-1">
-                    {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
-                  </span>
-                </button>
-              ))}
-            </div>
+
+  const getTabs = () => (
+    <div className="tw-mb-5 centered-layout">
+      <nav
+        className={classNames(
+          'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
+        )}>
+        <div className="tw-flex">
+          <div>
+            {tabsInfo.map((tabDetail, index) => (
+              <button
+                className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+                  tabDetail.tab
+                )}`}
+                data-testid={`${lowerCase(tabDetail.label)}-tab`}
+                key={index}
+                onClick={() => {
+                  onTabChange(tabDetail.tab);
+                }}>
+                {tabDetail.label}
+                <span className="tw-pl-1">
+                  {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
+                </span>
+              </button>
+            ))}
           </div>
-          {getSortingElements()}
-        </nav>
-      </div>
-    );
-  };
+        </div>
+        {getSortingElements()}
+      </nav>
+    </div>
+  );
 
   const getData = () => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      if (isInitialFilterSet) {
-        forceSetAgg.current = isInitialFilterSet;
-      } else {
-        forceSetAgg.current = !isFilterSet;
-      }
       fetchTableData();
     }
   };
@@ -529,50 +402,14 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     if (searchResult) {
-      updateSearchResults(searchResult.resSearchResults);
-      setCount(searchResult.resSearchResults.hits.total.value);
-      if (forceSetAgg.current) {
-        setAggregations(
-          searchResult.resSearchResults.hits.hits.length > 0
-            ? getAggregationList(searchResult.resSearchResults.aggregations)
-            : getAggregationListFromQS(location.search)
-        );
-        setIsInitialFilterSet(false);
+      if (searchResult.hits.total.value > 0) {
+        setTotalNumberOfValues(searchResult.hits.total.value);
       } else {
-        const aggServiceType = getAggregationList(
-          searchResult.resAggServiceType.aggregations,
-          'service'
-        );
-        const aggTier = getAggregationList(
-          searchResult.resAggTier.aggregations,
-          'tier'
-        );
-        const aggTag = getAggregationList(
-          searchResult.resAggTag.aggregations,
-          'tags'
-        );
-        const aggDatabase = getAggregationList(
-          searchResult.resAggDatabase.aggregations,
-          'database'
-        );
-        const aggDatabaseSchema = getAggregationList(
-          searchResult.resAggDatabaseSchema.aggregations,
-          'databaseschema'
-        );
-        const aggServiceName = getAggregationList(
-          searchResult.resAggServiceName.aggregations,
-          'servicename'
-        );
-
-        updateAggregationCount([
-          ...aggServiceType,
-          ...aggTier,
-          ...aggTag,
-          ...aggDatabase,
-          ...aggDatabaseSchema,
-          ...aggServiceName,
-        ]);
+        setTotalNumberOfValues(0);
       }
+
+      setCount(searchResult.hits.total.value);
+
       setIsEntityLoading(false);
     }
   }, [searchResult]);
@@ -614,18 +451,13 @@ const Explore: React.FC<ExploreProps> = ({
           style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
           <Fragment>
             <div className="tw-filter-seperator" />
-            {!error && (
-              <FacetFilter
-                aggregations={getAggrWithDefaultValue(
-                  aggregations,
-                  visibleFilters
-                )}
-                filters={getFacetedFilter()}
-                showDeletedOnly={showDeleted}
-                onSelectDeleted={handleShowDeleted}
-                onSelectHandler={handleSelectedFilter}
-              />
-            )}
+            <FacetFilter
+              aggregations={searchResult?.aggregations ?? {}}
+              filters={getFacetedFilter()}
+              showDeletedOnly={showDeleted}
+              onSelectDeleted={handleShowDeleted}
+              onSelectHandler={handleSelectedFilter}
+            />
           </Fragment>
         </Card>
       </div>
@@ -634,39 +466,31 @@ const Explore: React.FC<ExploreProps> = ({
 
   return (
     <Fragment>
-      <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
-        {error ? (
-          <ErrorPlaceHolderES errorMessage={error} type="error" />
-        ) : (
-          <>
-            {!connectionError && getTabs()}
-            <AdvancedSearch
-              config={advancedSearchState.config}
-              tree={advancedSearchState.tree}
-              onChange={(tree, config) =>
-                setAdvancedSearchState({ tree, config })
-              }
-            />
-            <p>
-              <pre>{JSON.stringify(elasticsearchFilter, null, 2)}</pre>
-            </p>
-            {/* <code> */}
-            {/*   <pre>{JSON.stringify(advancedSearchState.tree, null, 2)}</pre> */}
-            {/* </code> */}
-            <SearchedData
-              showResultCount
-              currentPage={currentPage}
-              data={data}
-              isFilterSelected={isFilterSelected}
-              isLoading={
-                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-              }
-              paginate={paginate}
-              searchText={searchText}
-              totalValue={totalNumberOfValue}
-            />
-          </>
-        )}
+      <PageLayout leftPanel={fetchLeftPanel()}>
+        {getTabs()}
+        <AdvancedSearch
+          config={advancedSearchState.config}
+          tree={advancedSearchState.tree}
+          onChange={(tree, config) => setAdvancedSearchState({ tree, config })}
+        />
+        <p>
+          <pre>{JSON.stringify(elasticsearchFilter, null, 2)}</pre>
+        </p>
+        {/* <code> */}
+        {/*   <pre>{JSON.stringify(advancedSearchState.tree, null, 2)}</pre> */}
+        {/* </code> */}
+        <SearchedData
+          showResultCount
+          currentPage={currentPage}
+          data={searchResult?.hits.hits ?? []}
+          isFilterSelected={isFilterSelected}
+          isLoading={
+            !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+          }
+          paginate={paginate}
+          searchText={searchText}
+          totalValue={totalNumberOfValue}
+        />
       </PageLayout>
     </Fragment>
   );

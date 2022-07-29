@@ -132,9 +132,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       value:
         mlModelDetail.owner?.type === 'team'
           ? getTeamAndUserDetailsPath(mlModelDetail.owner?.name || '')
-          : getEntityName(mlModelDetail.owner),
+          : mlModelDetail.owner
+          ? getEntityName(mlModelDetail.owner)
+          : '--',
       placeholderText: getEntityPlaceHolder(
-        getEntityName(mlModelDetail.owner),
+        mlModelDetail.owner ? getEntityName(mlModelDetail.owner) : '--',
         mlModelDetail.owner?.deleted
       ),
       isLink: mlModelDetail.owner?.type === 'team',

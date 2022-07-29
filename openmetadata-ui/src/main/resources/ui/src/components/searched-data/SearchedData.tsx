@@ -11,25 +11,26 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
-import { FormattedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
-import { TableType } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
 import { pluralize } from '../../utils/CommonUtils';
-import { getTierFromSearchTableTags } from '../../utils/TableUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
-type SearchedDataProp = {
+import {
+  ExploreSearchSource,
+  SearchHit,
+} from '../../interface/search.interface';
+import { SearchIndex } from '../../enums/search.enum';
+
+export interface SearchedDataProp {
   children?: ReactNode;
-  data: Array<FormattedTableData>;
+  data: SearchHit<ExploreSearchSource>[];
   currentPage: number;
   isLoading?: boolean;
   paginate: (value: string | number) => void;
@@ -40,14 +41,7 @@ type SearchedDataProp = {
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
-};
-
-const ASSETS_NAME = [
-  'table_name',
-  'topic_name',
-  'dashboard_name',
-  'pipeline_name',
-];
+}
 
 const SearchedData: React.FC<SearchedDataProp> = ({
   children,
@@ -63,9 +57,10 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   isFilterSelected,
 }: SearchedDataProp) => {
   const highlightSearchResult = () => {
-    return data.map((table, index) => {
-      let tDesc = table.description ?? '';
-      const highLightedTexts = table.highlight?.description || [];
+    return data.map(({ _index, _source, highlight }, idx) => {
+      let { description, name } = _source;
+
+      const highLightedTexts = highlight?.description ?? [];
 
       if (highLightedTexts.length > 0) {
         const matchTextArr = highLightedTexts.map((val) =>
@@ -73,62 +68,40 @@ const SearchedData: React.FC<SearchedDataProp> = ({
         );
 
         matchTextArr.forEach((text, i) => {
-          tDesc = tDesc.replace(text, highLightedTexts[i]);
+          description = description?.replace(text, highLightedTexts[i]);
         });
       }
 
-      let name = table.name;
-      if (!isUndefined(table.highlight)) {
-        name = table.highlight?.name?.join(' ') || name;
+      if (highlight) {
+        name = highlight?.name?.join(' ') ?? name;
       }
 
-      const matches = table.highlight
-        ? Object.entries(table.highlight)
-            .map((d) => {
-              let highlightedTextCount = 0;
-              d[1].forEach((value) => {
-                const currentCount = value.match(
-                  /<span(.*?)>(.*?)<\/span>/g
-                )?.length;
+      const matches = highlight
+        ? Object.entries(highlight).map(([key, value]) => {
+            let highlightedTextCount = 0;
+            value.forEach((value) => {
+              const currentCount = value.match(
+                /<span(.*?)>(.*?)<\/span>/g
+              )?.length;
 
-                highlightedTextCount =
-                  highlightedTextCount + (currentCount || 0);
-              });
+              highlightedTextCount = highlightedTextCount + (currentCount || 0);
+            });
 
-              return {
-                key: d[0],
-                value: highlightedTextCount,
-              };
-            })
-            .filter((d) => !ASSETS_NAME.includes(d.key))
-        : [];
+            return {
+              key,
+              value: highlightedTextCount,
+            };
+          })
+        : // .filter((d) => !ASSETS_NAME.includes(d.key))
+          [];
 
       return (
-        <div className="tw-mb-3" key={index}>
+        <div className="tw-mb-3" key={idx}>
           <TableDataCard
-            database={table.database}
-            databaseSchema={table.databaseSchema}
-            deleted={table.deleted}
-            description={tDesc}
-            fullyQualifiedName={table.fullyQualifiedName}
-            id={`tabledatacard${index}`}
-            indexType={table.index}
+            id={`tabledatacard${idx}`}
             matches={matches}
-            name={name}
-            owner={table.owner}
-            service={table.service}
-            serviceType={table.serviceType || '--'}
-            tableType={table.tableType as TableType}
-            tags={table.tags}
-            tier={
-              (
-                table.tier?.tagFQN ||
-                getTierFromSearchTableTags(
-                  (table.tags || []).map((tag) => tag.tagFQN)
-                )
-              )?.split(FQN_SEPARATOR_CHAR)[1]
-            }
-            usage={table.weeklyPercentileRank}
+            searchIndex={_index as SearchIndex}
+            source={{ ..._source, name, description }}
           />
         </div>
       );

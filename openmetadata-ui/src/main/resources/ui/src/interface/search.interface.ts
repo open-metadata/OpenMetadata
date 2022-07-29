@@ -1,27 +1,54 @@
-import {
-  FormattedDashboardData,
-  FormattedGlossaryTermData,
-  FormattedTableData,
-  FormattedTeamsData,
-  FormattedUsersData,
-  FormattedTopicData,
-  FormattedTagData,
-  FormattedMLModelData,
-  FormattedPipelineData,
-} from 'Models';
+import { FormattedGlossaryTermData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
+import { Table } from '../generated/entity/data/table';
+import { User } from '../generated/entity/teams/user';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { Mlmodel } from '../generated/entity/data/mlmodel';
+import { Pipeline } from '../generated/entity/data/pipeline';
+import { TagLabel } from '../generated/type/tagLabel';
+import { Team } from '../generated/entity/teams/team';
+import { Topic } from '../generated/entity/data/topic';
+
+interface SearchSourceBase {
+  tier?: TagLabel;
+  entityType: string;
+}
+
+export interface TableSearchSource extends SearchSourceBase, Table {}
+
+export interface DashboardSearchSource extends SearchSourceBase, Dashboard {}
+
+export interface PipelineSearchSource extends SearchSourceBase, Pipeline {}
+
+export interface MlmodelSearchSource extends SearchSourceBase, Mlmodel {}
+
+export interface TopicSearchSource extends SearchSourceBase, Topic {}
 
 export type SearchSource =
-  | FormattedTableData
-  | FormattedUsersData
-  | FormattedTeamsData
+  | TableSearchSource
+  | User
+  | DashboardSearchSource
+  | MlmodelSearchSource
+  | PipelineSearchSource
+  | TagLabel
+  | Team
+  | TopicSearchSource
   | FormattedGlossaryTermData;
 
+export type ExploreSearchSource =
+  | TableSearchSource
+  | DashboardSearchSource
+  | MlmodelSearchSource
+  | TopicSearchSource
+  | PipelineSearchSource;
+
 export interface SearchHit<T extends SearchSource> {
-  _index?: string;
+  _index: string;
   _type?: string;
   _id?: string;
   _score?: number;
+  highlight?: Record<string, string[]>;
+  sort?: number[];
   _source: T;
 }
 
@@ -30,12 +57,12 @@ export interface SearchRequest {
   size: number;
   searchIndex: string;
   query?: string;
-  filters?: string;
+  queryFilter?: Record<string, unknown>;
+  postFilter?: Record<string, unknown>;
   sortField?: string;
   sortOrder?: string;
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
-  elasticsearchFilter?: Record<string, unknown>;
   includeFields?: string[];
   excludeFields?: string[];
   fetchSource?: boolean;
@@ -56,21 +83,12 @@ export interface SearchResponse<T extends SearchSource> {
       value: number;
       relation?: string;
     };
-    hits: Array<SearchHit<T>>;
+    hits: SearchHit<T>[];
   };
-  aggregations: Record<string, Sterm>;
+  aggregations?: Aggregations;
 }
 
-export type Sterm = {
-  doc_count_error_upper_bound: number;
-  sum_other_doc_count: number;
-  buckets: Array<Bucket>;
-};
-
-export type AggregationType = {
-  title: string;
-  buckets: Array<Bucket>;
-};
+export type Aggregations = Record<string, { buckets: Bucket[] }>;
 
 export type Bucket = {
   key: string;
@@ -88,19 +106,19 @@ export type SuggestOption = {
 } & (
   | {
       _index: SearchIndex.TABLE;
-      _source: FormattedTableData;
+      _source: TableSearchSource;
     }
   | {
       _index: SearchIndex.DASHBOARD;
-      _source: FormattedDashboardData;
+      _source: DashboardSearchSource;
     }
   | {
       _index: SearchIndex.TOPIC;
-      _source: FormattedTopicData;
+      _source: TopicSearchSource;
     }
   | {
       _index: SearchIndex.TAG;
-      _source: FormattedTagData;
+      _source: TagLabel;
     }
   | {
       _index: SearchIndex.GLOSSARY;
@@ -108,10 +126,10 @@ export type SuggestOption = {
     }
   | {
       _index: SearchIndex.MLMODEL;
-      _source: FormattedMLModelData;
+      _source: MlmodelSearchSource;
     }
   | {
       _index: SearchIndex.PIPELINE;
-      _source: FormattedPipelineData;
+      _source: PipelineSearchSource;
     }
 );

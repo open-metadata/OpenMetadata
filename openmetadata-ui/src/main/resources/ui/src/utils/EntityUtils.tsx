@@ -121,7 +121,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: getEntityName(owner) || '--',
+          value: owner ? getEntityName(owner) : '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
@@ -194,7 +194,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: getEntityName(owner) || '--',
+          value: owner ? getEntityName(owner) : '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
@@ -237,7 +237,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: getEntityName(owner) || '--',
+          value: owner ? getEntityName(owner) : '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },

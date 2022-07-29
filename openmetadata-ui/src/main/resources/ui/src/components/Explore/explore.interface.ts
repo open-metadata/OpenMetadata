@@ -14,6 +14,7 @@
 import { FilterObject } from 'Models';
 import * as QueryBuilder from 'react-awesome-query-builder';
 import {
+  ExploreSearchSource,
   SearchRequest,
   SearchResponse,
   SearchSource,
@@ -48,10 +49,9 @@ export interface ExploreProps {
   searchFilter?: FilterObject;
   sortValue: string;
   tab: string;
-  error: string;
   searchQuery: string;
   showDeleted: boolean;
-  searchResult: ExploreSearchData | undefined;
+  searchResult: SearchResponse<ExploreSearchSource> | undefined;
   isFilterSelected: boolean;
   fetchCount: () => void;
   handleFilterChange: (data: FilterObject) => void;
@@ -63,7 +63,7 @@ export interface ExploreProps {
   updatePipelineCount: (count: number) => void;
   updateDbtModelCount: (count: number) => void;
   updateMlModelCount: (count: number) => void;
-  fetchData: (value: SearchRequest[]) => void;
+  fetchData: (req: SearchRequest) => void;
   onShowDeleted: (checked: boolean) => void;
 }
 

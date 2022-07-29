@@ -12,10 +12,10 @@
  */
 
 import { FilterObject } from 'Models';
-import { AggregationType } from '../../../interface/search.interface';
+import { Aggregations } from '../../../interface/search.interface';
 
 export type FacetProp = {
-  aggregations: Array<AggregationType>;
+  aggregations: Aggregations;
   filters: FilterObject;
   showDeletedOnly?: boolean;
   onSelectHandler: (

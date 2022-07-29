@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { FormattedTableData } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
-import { SearchRequest } from '../../interface/search.interface';
+import {
+  ExploreSearchSource,
+  SearchRequest,
+} from '../../interface/search.interface';
 
 export interface MyDataProps {
   activityFeeds?: Thread[] | undefined;
@@ -35,8 +37,8 @@ export interface MyDataProps {
   ownedDataCount: number;
   countPipelines: number;
   userDetails?: User;
-  ownedData: Array<FormattedTableData>;
-  followedData: Array<FormattedTableData>;
+  ownedData: Array<ExploreSearchSource>;
+  followedData: Array<ExploreSearchSource>;
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;

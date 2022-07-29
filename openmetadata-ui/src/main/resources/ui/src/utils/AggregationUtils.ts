@@ -11,40 +11,4 @@
  *  limitations under the License.
  */
 
-import { capitalize, toLower } from 'lodash';
-import { getQueryParam } from '../constants/explore.constants';
-import { getFilterKey } from './FilterUtils';
-import { AggregationType, Sterm } from '../interface/search.interface';
-
-export const getAggregationList = (
-  aggregation: Record<string, Sterm>,
-  aggregationType = ''
-): Array<AggregationType> => {
-  const aggrEntriesArr = Object.entries(aggregation);
-  const aggregationList: Array<AggregationType> = [];
-  aggrEntriesArr.forEach((aggr) => {
-    const aggrTitle = aggr[0].substring(aggr[0].indexOf('#') + 1);
-    if (!aggregationType || toLower(aggrTitle) === toLower(aggregationType)) {
-      aggregationList.push({
-        title: aggrTitle,
-        buckets: aggr[1].buckets,
-      });
-    }
-  });
-
-  return aggregationList;
-};
-
-export const getAggregationListFromQS = (qsSearch?: string) => {
-  return [
-    ...Object.entries(getQueryParam(qsSearch)).map((qEntry) => {
-      return {
-        title: capitalize(getFilterKey(qEntry[0])),
-        buckets: qEntry[1].map((key) => {
-          // eslint-disable-next-line @typescript-eslint/camelcase
-          return { key, doc_count: 0 };
-        }),
-      };
-    }),
-  ];
-};
+export {};

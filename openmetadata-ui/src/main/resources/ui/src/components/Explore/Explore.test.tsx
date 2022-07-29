@@ -16,7 +16,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { mockResponse } from './exlore.mock';
 import Explore from './Explore.component';
-import { SearchResponse, SearchSource } from '../../interface/search.interface';
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useLocation: jest
@@ -74,29 +73,18 @@ jest.mock(
 
 const mockFunction = jest.fn();
 
-const mockSearchResult = {
-  resSearchResults: mockResponse as unknown as SearchResponse<SearchSource>,
-  resAggServiceType: mockResponse as unknown as SearchResponse<SearchSource>,
-  resAggTier: mockResponse as unknown as SearchResponse<SearchSource>,
-  resAggTag: mockResponse as unknown as SearchResponse<SearchSource>,
-  resAggDatabase: mockResponse as unknown as SearchResponse<SearchSource>,
-  resAggDatabaseSchema: mockResponse as unknown as SearchResponse<SearchSource>,
-  resAggServiceName: mockResponse as unknown as SearchResponse<SearchSource>,
-};
-
 describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <Explore
         isFilterSelected
-        error=""
         fetchCount={mockFunction}
         fetchData={mockFunction}
         handleFilterChange={mockFunction}
         handlePathChange={mockFunction}
         handleSearchText={mockFunction}
         searchQuery=""
-        searchResult={mockSearchResult}
+        searchResult={mockResponse}
         searchText=""
         showDeleted={false}
         sortValue=""

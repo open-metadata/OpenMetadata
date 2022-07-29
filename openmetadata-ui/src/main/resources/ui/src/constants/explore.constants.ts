@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { toLower } from 'lodash';
 import { FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
 import { tiers } from './constants';
-import { AggregationType, Bucket } from '../interface/search.interface';
+import { Bucket } from '../interface/search.interface';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
@@ -147,48 +146,6 @@ export const getQueryParam = (urlSearchQuery = ''): FilterObject => {
     .reduce((prev, curr) => {
       return Object.assign(prev, curr);
     }, {}) as FilterObject;
-};
-
-export const getAggrWithDefaultValue = (
-  aggregations: Array<AggregationType>,
-  visibleAgg: Array<string> = []
-): Array<AggregationType> => {
-  const aggregation = aggregations.find(
-    (aggregation) => aggregation.title === 'Tier'
-  );
-
-  const allowedAgg = visibleAgg.map((item) => toLower(item));
-
-  if (aggregation) {
-    const index = aggregations.indexOf(aggregation);
-    aggregations[index].buckets = getBucketList(aggregations[index].buckets);
-  }
-
-  const visibleAggregations = !allowedAgg.length
-    ? aggregations
-    : aggregations.filter((item) => allowedAgg.includes(toLower(item.title)));
-
-  const sortedAgg = allowedAgg
-    .map((agg) => {
-      const aggregation = visibleAggregations.find(
-        (a) => toLower(a.title) === agg
-      );
-
-      return aggregation;
-    })
-    .filter(Boolean)
-    .sort((aggA, aggB) => {
-      if (
-        FACET_FILTER_SORTING_ORDER.indexOf(aggA?.title as string) >
-        FACET_FILTER_SORTING_ORDER.indexOf(aggB?.title as string)
-      ) {
-        return 1;
-      } else {
-        return -1;
-      }
-    });
-
-  return sortedAgg as Array<AggregationType>;
 };
 
 export const getCurrentIndex: (tab: string) => SearchIndex = (tab) => {

@@ -12,9 +12,9 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Database } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+import { Database } from '../generated/entity/data/database';
 
 export const getDatabases: Function = (
   serviceName: string,

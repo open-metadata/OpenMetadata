@@ -13,131 +13,89 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  isNil,
-  isString,
-  isUndefined,
-  startCase,
-  uniqBy,
-  uniqueId,
-} from 'lodash';
+import { isString, isUndefined, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React from 'react';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
-import { OwnerType } from '../../../enums/user.enum';
-import { TableType } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/type/entityReference';
-import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import './TableDataCard.style.css';
 import TableDataCardBody from './TableDataCardBody';
+import { ExploreSearchSource } from '../../../interface/search.interface';
 
-type Props = {
-  name: string;
-  owner?: EntityReference;
-  description?: string;
-  tableType?: TableType;
-  id?: string;
-  tier?: string | TagLabel;
-  usage?: number;
-  service?: string;
-  serviceType?: string;
-  fullyQualifiedName: string;
-  tags?: string[] | TagLabel[];
-  indexType: string;
+interface TableDataCardProps {
+  id: string;
+  source: ExploreSearchSource;
   matches?: {
     key: string;
     value: number;
   }[];
-  database?: string;
-  databaseSchema?: string;
-  deleted?: boolean;
-};
+  searchIndex: SearchIndex;
+}
 
-const TableDataCard: FunctionComponent<Props> = ({
-  owner,
-  description,
+const TableDataCard: React.FC<TableDataCardProps> = ({
   id,
-  tier = '',
-  usage,
-  serviceType,
-  fullyQualifiedName,
-  tags,
-  indexType,
+  source,
   matches,
-  tableType,
-  deleted = false,
-  name,
-  database,
-  databaseSchema,
-}: Props) => {
+  searchIndex,
+}) => {
   const location = useLocation();
   const history = useHistory();
-  const getTier = () => {
-    if (tier) {
-      return isString(tier) ? tier : tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
-    }
 
-    return '';
-  };
+  const tierDisplayName = isUndefined(source.tier)
+    ? ''
+    : isString(source.tier)
+    ? source.tier
+    : source.tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
 
-  const OtherDetails: Array<ExtraInfo> = [
+  const ownerDisplayName =
+    source.owner?.name ?? source.owner?.displayName ?? '';
+
+  const otherDetails: Array<ExtraInfo> = [
     {
       key: 'Owner',
-      value: getEntityName(owner),
+      value: ownerDisplayName,
       avatarWidth: '16',
-      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+      profileName: source.owner?.name ?? source.owner?.displayName ?? '',
     },
-    { key: 'Tier', value: getTier() },
+    { key: 'Tier', value: tierDisplayName },
   ];
-  if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
-    OtherDetails.push({
+
+  if ('usageSummary' in source) {
+    otherDetails.push({
       key: 'Usage',
-      value:
-        indexType !== SearchIndex.DASHBOARD && usage !== undefined
-          ? getUsagePercentile(usage, true)
-          : undefined,
+      value: source.usageSummary?.weeklyStats?.percentileRank, // getUsagePercentile(source.usageSummary, true),
     });
   }
-  if (tableType) {
-    OtherDetails.push({
+
+  if ('tableType' in source) {
+    otherDetails.push({
       key: 'Type',
-      value: tableType,
+      value: source.tableType,
       showLabel: true,
     });
   }
-
-  const getAssetTags = () => {
-    const assetTags = [...(tags as Array<TagLabel>)];
-    if (tier && !isUndefined(tier)) {
-      assetTags.unshift(tier as TagLabel);
-    }
-
-    return [...uniqBy(assetTags, 'tagFQN')];
-  };
 
   const handleLinkClick = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {
       AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
     } else {
-      history.push(getEntityLink(indexType, fullyQualifiedName));
+      history.push(getEntityLink(searchIndex, source.fullyQualifiedName ?? ''));
     }
   };
 
   const getTableMetaInfo = () => {
-    if (!isNil(database) && !isNil(databaseSchema)) {
+    if ('databaseSchema' in source && 'database' in source) {
       return (
         <span
           className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
-          data-testid="database-schema">{`${database}${FQN_SEPARATOR_CHAR}${databaseSchema}`}</span>
+          data-testid="database-schema">{`${source.database}${FQN_SEPARATOR_CHAR}${source.databaseSchema}`}</span>
       );
     } else {
       return null;
@@ -147,28 +105,28 @@ const TableDataCard: FunctionComponent<Props> = ({
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
-      data-testid="table-data-card"
-      id={id}>
+      data-testid="table-data-card">
       <div>
         {getTableMetaInfo()}
         <div className="tw-flex tw-items-center">
           <img
             alt=""
             className="tw-inline tw-h-5"
-            src={serviceTypeLogo(serviceType || '')}
+            src={serviceTypeLogo(source.serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
-            <Link to={getEntityLink(indexType, fullyQualifiedName)}>
+            <Link
+              to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
               <button
                 className="tw-text-grey-body tw-font-semibold"
                 data-testid="table-link"
                 id={`${id}Title`}
                 onClick={handleLinkClick}>
-                {stringToHTML(name)}
+                {stringToHTML(source.name)}
               </button>
             </Link>
           </h6>
-          {deleted && (
+          {source.deleted && (
             <>
               <div
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
@@ -185,9 +143,9 @@ const TableDataCard: FunctionComponent<Props> = ({
       </div>
       <div className="tw-pt-3">
         <TableDataCardBody
-          description={description || ''}
-          extraInfo={OtherDetails}
-          tags={getAssetTags()}
+          description={source.description || ''}
+          extraInfo={otherDetails}
+          tags={source.tags}
         />
       </div>
       {matches && matches.length > 0 ? (

@@ -13,6 +13,8 @@
 
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
+  import { Column, Table } from '../generated/entity/data/table';
+
   export interface EntityReference {
     deleted?: boolean;
 
@@ -36,15 +38,9 @@ declare module 'Models' {
       searchQuery: string;
     };
   };
-  export type FilterObject = {
-    [key: string]: Array<string>;
-  };
-  export type PaginationProps = {
-    sizePerPage: number;
-    totalNumberOfValues: number;
-    currentPage: number;
-    paginate: Function;
-  };
+
+  export type FilterObject = Record<string, string[]>;
+
   export type Feed = {
     addressedToEntity: {
       description: string;
@@ -178,6 +174,17 @@ declare module 'Models' {
     channels: string[];
   };
 
+  //
+  // interface FormattedColumn {
+  //   dataType: string;
+  //   name: string;
+  //   description?: string;
+  //   fullyQualifiedName: string;
+  //   ordinalPosition: number;
+  //   dataDisplayType: string;
+  //
+  // }
+
   export interface BaseFormattedData {
     name: string;
     fullyQualifiedName: string;
@@ -193,24 +200,29 @@ declare module 'Models' {
     entityType?: string;
     index: string;
     serviceType: string;
+    service: EntityReference;
+    updatedAt?: number;
+    updatedBy?: string;
+    href: string;
   }
 
-  export interface FormattedTableData extends BaseFormattedData {
-    tableType?: string;
-    dailyStats?: number;
-    dailyPercentileRank?: number;
-    weeklyStats?: number;
-    weeklyPercentileRank?: number;
-    service?: string;
-    highlight?: {
-      description: string[];
-      name: string[];
-    };
-    type?: string;
-    database?: string;
-    databaseSchema?: string;
-  }
-
+  // extends BaseFormattedData {
+  //     tableType?: string;
+  //     dailyStats?: number;
+  //     dailyPercentileRank?: number;
+  //     weeklyStats?: number;
+  //     weeklyPercentileRank?: number;
+  //     service?: string;
+  //     highlight?: {
+  //       description: string[];
+  //       name: string[];
+  //     };
+  //     type?: string;
+  //     database: EntityReference;
+  //     databaseSchema: EntityReference;
+  //     columns: Column;
+  //   }
+  //
   export type FormattedUsersData = BaseFormattedData;
 
   export interface FormattedTeamsData extends BaseFormattedData {
@@ -274,15 +286,6 @@ declare module 'Models' {
     signingIn?: boolean;
   };
 
-  export type Table = {
-    id: string;
-    type?: string;
-    name: string;
-    description: string;
-    href: string;
-    fullyQualifiedName: string;
-  };
-
   export type StateInfo = {
     count: number;
     percentileRank: number;
@@ -293,31 +296,6 @@ declare module 'Models' {
     weeklyStats: StateInfo;
     monthlyStats: StateInfo;
     date: string;
-  };
-
-  export type Database = {
-    description: string;
-    displayName?: string;
-    fullyQualifiedName: string;
-    href: string;
-    id: string;
-    name: string;
-    owner: {
-      description: string;
-      href: string;
-      id: string;
-      name: string;
-      type: string;
-    };
-    service: {
-      description: string;
-      href: string;
-      id: string;
-      name: string;
-      type: string;
-    };
-    tables: Table[];
-    usageSummary: UsageState;
   };
 
   export type Team = {

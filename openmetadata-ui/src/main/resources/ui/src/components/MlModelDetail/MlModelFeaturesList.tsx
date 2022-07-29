@@ -207,7 +207,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                         source.dataSource?.name ||
                         ''
                     )}>
-                    {getEntityName(source.dataSource)}
+                    {source.dataSource
+                      ? getEntityName(source.dataSource)
+                      : '--'}
                   </Link>
                 </span>
               </span>

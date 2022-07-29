@@ -762,7 +762,11 @@ const DatabaseDetails: FunctionComponent = () => {
                                 )}
                               </td>
                               <td className="tableBody-cell">
-                                <p>{getEntityName(schema?.owner) || '--'}</p>
+                                <p>
+                                  {schema.owner
+                                    ? getEntityName(schema.owner)
+                                    : '--'}
+                                </p>
                               </td>
                               <td className="tableBody-cell">
                                 <p>

@@ -25,10 +25,7 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Explore from '../../components/Explore/Explore.component';
-import {
-  ExploreSearchData,
-  UrlParams,
-} from '../../components/Explore/explore.interface';
+import { UrlParams } from '../../components/Explore/explore.interface';
 import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
   getCurrentIndex,
@@ -39,19 +36,19 @@ import {
   INITIAL_FROM,
   INITIAL_SORT_ORDER,
   tabsInfo,
-  ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import jsonData from '../../jsons/en';
 import { getTotalEntityCountByType } from '../../utils/EntityUtils';
-import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
+import { prepareQueryParams } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
+  ExploreSearchSource,
   SearchRequest,
   SearchResponse,
   SearchSource,
 } from '../../interface/search.interface';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
+import { getPostFilter, searchQuery } from '../../axiosAPIs/searchAPI';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
@@ -64,7 +61,6 @@ const ExplorePage: FunctionComponent = () => {
     () => getQueryParam(getSearchFilter(location.search)),
     [location.search]
   );
-  const [error, setError] = useState<string>('');
   const { searchQuery: searchQueryParam, tab } = useParams<UrlParams>();
   const [searchText, setSearchText] = useState<string>(searchQueryParam || '');
   const [tableCount, setTableCount] = useState<number>(0);
@@ -73,7 +69,8 @@ const ExplorePage: FunctionComponent = () => {
   const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [dbtModelCount, setDbtModelCount] = useState<number>(0);
   const [mlModelCount, setMlModelCount] = useState<number>(0);
-  const [searchResult, setSearchResult] = useState<ExploreSearchData>();
+  const [searchResult, setSearchResult] =
+    useState<SearchResponse<ExploreSearchSource>>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
     tabsInfo[getCurrentTab(tab) - 1].sortField
@@ -140,7 +137,7 @@ const ExplorePage: FunctionComponent = () => {
         query: searchText,
         from: 0,
         size: 0,
-        filters: getFilterString(initialFilter),
+        postFilter: getPostFilter(initialFilter),
         searchIndex: entity,
         includeDeleted: showDeleted,
         trackTotalHits: true,
@@ -197,38 +194,10 @@ const ExplorePage: FunctionComponent = () => {
       });
   };
 
-  const fetchData = (value: SearchRequest[]) => {
-    const promiseValue = value.map((request) => {
-      return searchQuery(request);
-    });
-
-    Promise.all(promiseValue)
-      .then(
-        ([
-          resSearchResults,
-          resAggServiceType,
-          resAggTier,
-          resAggTag,
-          resAggDatabase,
-          resAggDatabaseSchema,
-          resAggServiceName,
-        ]) => {
-          setError('');
-          setSearchResult({
-            resSearchResults,
-            resAggServiceType,
-            resAggTier,
-            resAggTag,
-            resAggDatabase,
-            resAggDatabaseSchema,
-            resAggServiceName,
-          });
-        }
-      )
-      .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
-      });
-  };
+  const fetchData = (req: SearchRequest) =>
+    searchQuery(req).then((res) =>
+      setSearchResult(res as SearchResponse<ExploreSearchSource>)
+    );
 
   useEffect(() => {
     fetchCounts();
@@ -240,51 +209,48 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     setSearchResult(undefined);
-    fetchData([
-      {
-        query: searchText,
-        from: INITIAL_FROM,
-        size: PAGE_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-      {
-        query: searchText,
-        from: INITIAL_FROM,
-        size: ZERO_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-      {
-        query: searchText,
-        from: INITIAL_FROM,
-        size: ZERO_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-      {
-        query: searchText,
-        from: INITIAL_FROM,
-        size: ZERO_SIZE,
-        filters: getFilterString(initialFilter),
-        sortField: initialSortField,
-        sortOrder: INITIAL_SORT_ORDER,
-        searchIndex: getCurrentIndex(tab),
-      },
-    ]);
+    fetchData({
+      query: searchText,
+      from: INITIAL_FROM,
+      size: PAGE_SIZE,
+      postFilter: getPostFilter(initialFilter),
+      sortField: initialSortField,
+      sortOrder: INITIAL_SORT_ORDER,
+      searchIndex: getCurrentIndex(tab),
+    });
+    // {
+    //   query: searchText,
+    //   from: INITIAL_FROM,
+    //   size: ZERO_SIZE,
+    //   filters: getFilterString(initialFilter),
+    //   sortField: initialSortField,
+    //   sortOrder: INITIAL_SORT_ORDER,
+    //   searchIndex: getCurrentIndex(tab),
+    // },
+    // {
+    //   query: searchText,
+    //   from: INITIAL_FROM,
+    //   size: ZERO_SIZE,
+    //   filters: getFilterString(initialFilter),
+    //   sortField: initialSortField,
+    //   sortOrder: INITIAL_SORT_ORDER,
+    //   searchIndex: getCurrentIndex(tab),
+    // },
+    // {
+    //   query: searchText,
+    //   from: INITIAL_FROM,
+    //   size: ZERO_SIZE,
+    //   filters: getFilterString(initialFilter),
+    //   sortField: initialSortField,
+    //   sortOrder: INITIAL_SORT_ORDER,
+    //   searchIndex: getCurrentIndex(tab),
+    // },
   }, []);
 
   return (
     <Fragment>
       <PageContainerV1>
         <Explore
-          error={error}
           fetchCount={fetchCounts}
           fetchData={fetchData}
           handleFilterChange={handleFilterChange}

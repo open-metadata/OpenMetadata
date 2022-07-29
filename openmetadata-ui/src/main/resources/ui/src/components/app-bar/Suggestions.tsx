@@ -22,36 +22,34 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { suggestQuery } from '../../axiosAPIs/searchAPI';
 import {
+  DashboardSearchSource,
+  MlmodelSearchSource,
+  PipelineSearchSource,
   SuggestionProp,
   SuggestOption,
+  TableSearchSource,
+  TopicSearchSource,
 } from '../../interface/search.interface';
-import {
-  FormattedMLModelData,
-  FormattedTableData,
-  FormattedTopicData,
-  FormattedDashboardData,
-  FormattedPipelineData,
-} from 'Models';
 
 type FormattedDataFields = 'fullyQualifiedName' | 'name' | 'serviceType';
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [tableSuggestions, setTableSuggestions] = useState<
-    Pick<FormattedTableData, FormattedDataFields>[]
+    Pick<TableSearchSource, FormattedDataFields>[]
   >([]);
   const [topicSuggestions, setTopicSuggestions] = useState<
-    Pick<FormattedTopicData, FormattedDataFields>[]
+    Pick<TopicSearchSource, FormattedDataFields>[]
   >([]);
 
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
-    Pick<FormattedDashboardData, FormattedDataFields>[]
+    Pick<DashboardSearchSource, FormattedDataFields>[]
   >([]);
 
   const [pipelineSuggestions, setPipelineSuggestions] = useState<
-    Pick<FormattedPipelineData, FormattedDataFields>[]
+    Pick<PipelineSearchSource, FormattedDataFields>[]
   >([]);
   const [mlModelSuggestions, setMlModelSuggestions] = useState<
-    Pick<FormattedMLModelData, FormattedDataFields>[]
+    Pick<MlmodelSearchSource, FormattedDataFields>[]
   >([]);
   const isMounting = useRef(true);
 
@@ -59,27 +57,27 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     setTableSuggestions(
       options
         .filter(({ _index }) => _index === SearchIndex.TABLE)
-        .map(({ _source }) => _source)
+        .map(({ _source }) => _source as TableSearchSource)
     );
     setTopicSuggestions(
       options
         .filter(({ _index }) => _index === SearchIndex.TOPIC)
-        .map(({ _source }) => _source)
+        .map(({ _source }) => _source as TopicSearchSource)
     );
     setDashboardSuggestions(
       options
         .filter(({ _index }) => _index === SearchIndex.DASHBOARD)
-        .map(({ _source }) => _source)
+        .map(({ _source }) => _source as DashboardSearchSource)
     );
     setPipelineSuggestions(
       options
         .filter(({ _index }) => _index === SearchIndex.PIPELINE)
-        .map(({ _source }) => _source)
+        .map(({ _source }) => _source as PipelineSearchSource)
     );
     setMlModelSuggestions(
       options
         .filter(({ _index }) => _index === SearchIndex.MLMODEL)
-        .map(({ _source }) => _source)
+        .map(({ _source }) => _source as MlmodelSearchSource)
     );
   };
 
@@ -173,8 +171,8 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.TABLE
               );
@@ -189,8 +187,8 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.TOPIC
               );
@@ -205,8 +203,8 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.DASHBOARD
               );
@@ -221,8 +219,8 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.PIPELINE
               );
@@ -237,8 +235,8 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
               const { fullyQualifiedName, name, serviceType } = suggestion;
 
               return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
+                fullyQualifiedName ?? '',
+                serviceType ?? '',
                 name,
                 SearchIndex.MLMODEL
               );

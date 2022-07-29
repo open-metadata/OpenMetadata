@@ -1,6 +1,5 @@
 import { AxiosResponse } from 'axios';
 import APIClient from './index';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import {
   SearchRequest,
@@ -9,28 +8,19 @@ import {
   SuggestOption,
   SuggestRequest,
 } from '../interface/search.interface';
-import { FormattedTeamsData, FormattedUsersData } from 'Models';
+import { FilterObject, FormattedTeamsData, FormattedUsersData } from 'Models';
 
-const buildQuery = (
-  queryString: string | undefined,
-  filters: string | undefined
-) => {
-  let query: string | undefined;
-
-  if (!queryString) {
-    query = WILD_CARD_CHAR;
-  } else if (queryString.includes(':')) {
-    query = queryString;
-  } else {
-    query = queryString;
-  }
-
-  if (filters) {
-    query = `${query} AND ${filters}`;
-  }
-
-  return query;
-};
+export const getPostFilter: (f: FilterObject) => Record<string, unknown> = (
+  f
+) => ({
+  query: {
+    bool: {
+      must: Object.entries(f).map((entry) => ({
+        bool: { should: entry[1].map((value) => ({ [entry[0]]: value })) },
+      })),
+    },
+  },
+});
 
 export const searchQuery: (
   request: SearchRequest
@@ -38,23 +28,24 @@ export const searchQuery: (
   query,
   from,
   size,
-  filters,
+  queryFilter,
   sortField,
   sortOrder,
   searchIndex,
   includeDeleted,
   trackTotalHits,
-  elasticsearchFilter,
+  postFilter,
 }) =>
   APIClient.get<SearchResponse<SearchSource>>('/search/query', {
     params: {
-      q: buildQuery(query, filters),
+      q: query,
       index: searchIndex,
       from: (from - 1) * size,
       size,
       deleted: includeDeleted,
       /* eslint-disable @typescript-eslint/camelcase */
-      query_filter: JSON.stringify(elasticsearchFilter),
+      query_filter: JSON.stringify(postFilter),
+      post_filter: JSON.stringify(queryFilter),
       sort_field: sortField,
       sort_order: sortOrder,
       track_total_hits: trackTotalHits,

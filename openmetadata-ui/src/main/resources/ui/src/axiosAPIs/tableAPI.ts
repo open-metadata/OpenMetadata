@@ -13,10 +13,9 @@
 
 import { AxiosResponse } from 'axios';
 import { isNil, isUndefined } from 'lodash';
-import { Table } from 'Models';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
-import { ColumnTestType } from '../generated/entity/data/table';
+import { ColumnTestType, Table } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';

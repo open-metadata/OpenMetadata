@@ -13,31 +13,12 @@
 
 package org.openmetadata.catalog.resources.search;
 
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.catalog.Entity.FIELD_NAME;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -48,7 +29,6 @@ import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
@@ -65,6 +45,26 @@ import org.elasticsearch.search.suggest.SuggestionBuilder;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_NAME;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 @Slf4j
 @Path("/v1/search")
 @Api(value = "Search collection", tags = "Search collection")
@@ -72,7 +72,6 @@ import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 public class SearchResource {
   private final RestHighLevelClient client;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
-  private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
   private static final String DISPLAY_NAME = "displayName";
   private static final String DESCRIPTION = "description";
@@ -157,12 +156,9 @@ public class SearchResource {
           @DefaultValue("desc")
           @QueryParam("sort_order")
           SortOrder sortOrder,
-      @Parameter(description = "Track Total Hits")
-          @DefaultValue("false")
-          @QueryParam("track_total_hits")
-          boolean trackTotalHits,
       @Parameter(description = "Additional Condition") @QueryParam("query_filter")
-          String elasticsearchFilter)
+          String queryFilter,
+      @Parameter(description = "Post Filter") @QueryParam("post_filter") String postFilter)
       throws IOException {
 
     SearchSourceBuilder searchSourceBuilder;
@@ -197,40 +193,48 @@ public class SearchResource {
         break;
     }
 
-    if (elasticsearchFilter != null) {
+    if (!nullOrEmpty(queryFilter)) {
       try {
         var filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(
-                    xContentRegistry, LoggingDeprecationHandler.INSTANCE, elasticsearchFilter);
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         var filter = SearchSourceBuilder.fromXContent(filterParser).query();
         var newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
-        LOG.error("Error applying 'condition' to elasticsearch query", ex);
+        LOG.error("Error deserializing query_filter to elasticsearch query", ex);
+      }
+    }
+
+    if (!nullOrEmpty(postFilter)) {
+      try {
+        var filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, postFilter);
+        var filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        searchSourceBuilder.postFilter(filter);
+      } catch (Exception ex) {
+        LOG.error("Error deserializing post_filter to elasticsearch query", ex);
       }
     }
 
     if (!nullOrEmpty(sortFieldParam)) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
+
     LOG.debug(searchSourceBuilder.toString());
-    /* for performance reasons ElasticSearch doesn't provide accurate hits
-    if we enable trackTotalHits parameter it will try to match every result, count and return hits
-    however in most cases for search results an approximate value is good enough.
-    we are displaying total entity counts in landing page and explore page where we need the total count
-    https://github.com/elastic/elasticsearch/issues/33028 */
-    if (trackTotalHits) {
-      searchSourceBuilder.trackTotalHits(true);
-    } else {
-      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
-    }
+
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
 
-    var searchRequest = new SearchRequest(index).source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return Response.status(OK).entity(searchResponse.toString()).build();
+    return Response.status(OK)
+        .entity(
+            client
+                .search(
+                    new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT)
+                .toString())
+        .build();
   }
 
   @GET

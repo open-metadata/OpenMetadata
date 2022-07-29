@@ -232,7 +232,7 @@ const GlossaryPageV1 = () => {
       searchQuery({
         from: forceReset ? 1 : assetData.currPage,
         size: PAGE_SIZE,
-        filters: `(tags.tagFQN:"${fqn}")`,
+        queryFilter: { query: { term: { 'tags.tagFQN': fqn } } },
         searchIndex: myDataSearchIndex,
       })
         .then((res: SearchResponse<SearchSource>) => {

@@ -163,37 +163,31 @@ const TeamsAndUsersPage = () => {
     text = WILD_CARD_CHAR,
     currentPage = 1,
     isAdmin = false
-  ) => {
-    let filters = '';
-    if (isAdmin) {
-      filters = '(isAdmin:true)';
-    }
-
-    return new Promise<Array<FormattedUsersData>>((resolve) => {
-      searchQuery({
-        query: text,
-        from: currentPage,
-        size: PAGE_SIZE_BASE,
-        filters,
-        searchIndex: SearchIndex.USER,
-      })
-        .then((res) => res as SearchResponse<FormattedUsersData>)
-        .then((res) => {
-          const data = formatUsersResponse(res.hits.hits);
-          setUserPaging({
-            total: res.hits.total.value,
-          });
-          resolve(data);
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-users-error']
-          );
-          resolve([]);
+  ) =>
+    searchQuery({
+      query: text,
+      from: currentPage,
+      size: PAGE_SIZE_BASE,
+      queryFilter: isAdmin ? { query: { term: { isAdmin: true } } } : undefined,
+      searchIndex: SearchIndex.USER,
+    })
+      .then((res) => res as SearchResponse<FormattedUsersData>)
+      .then((res) => {
+        const data = formatUsersResponse(res.hits.hits);
+        setUserPaging({
+          total: res.hits.total.value,
         });
-    });
-  };
+
+        return data;
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-users-error']
+        );
+
+        return [];
+      });
 
   const setAllTabList = (type: string, cursorValue?: string | number) => {
     setIsUsersLoading(true);
@@ -373,7 +367,10 @@ const TeamsAndUsersPage = () => {
       query: text,
       from: currentPage,
       size: PAGE_SIZE_MEDIUM,
-      filters: `(teams.id:${currentTeam?.id})`,
+      // queryFilter: `(teams.id:${currentTeam?.id})`,
+      queryFilter: currentTeam?.id
+        ? { query: { term: { 'teams.id': currentTeam.id } } }
+        : undefined,
       searchIndex: SearchIndex.USER,
     })
       .then((res) => res as SearchResponse<FormattedUsersData>)
