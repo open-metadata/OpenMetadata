@@ -23,6 +23,7 @@ from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
@@ -396,8 +397,7 @@ class SampleDataSource(Source[Entity]):
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
-            location_ev = Location(
-                id=uuid.uuid4(),
+            location_ev = CreateLocationRequest(
                 name=location["name"],
                 path=location["path"],
                 displayName=location["displayName"],
