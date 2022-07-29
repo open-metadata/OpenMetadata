@@ -11,7 +11,6 @@
 """
 Redshift usage module
 """
-
 from typing import Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (

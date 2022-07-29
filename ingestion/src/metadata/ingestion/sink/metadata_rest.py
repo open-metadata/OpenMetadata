@@ -119,30 +119,12 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, Topic):
-            self.write_topics(record)
-        elif isinstance(record, CreateChartRequest):
-            self.write_charts(record)
-        elif isinstance(record, CreateDashboardRequest):
-            self.write_dashboards(record)
-        elif isinstance(record, CreateStorageServiceRequest):
-            self.write_storage_service(record)
-        elif isinstance(record, Location):
-            self.write_locations(record)
-        elif isinstance(record, CreateLocationRequest):
-            self.write_locations_requests(record)
         elif isinstance(record, OMetaPolicy):
             self.write_policies(record)
-        elif isinstance(record, Pipeline):
-            self.write_pipelines(record)
-        elif isinstance(record, CreatePipelineRequest):
-            self.write_pipelines_create(record)
         elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
         elif isinstance(record, OMetaUserProfile):
             self.write_users(record)
-        elif isinstance(record, CreateMlModelRequest):
-            self.write_ml_model(record)
         elif isinstance(record, OMetaTagAndCategory):
             self.write_tag_category(record)
         elif isinstance(record, DeleteTable):
@@ -345,130 +327,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Table: {db_schema_and_table.table.name.__root__}")
 
-    def write_topics(self, topic: Topic) -> None:
-        try:
-            topic_request = CreateTopicRequest(
-                name=topic.name,
-                displayName=topic.displayName,
-                description=topic.description,
-                service=topic.service,
-                partitions=topic.partitions,
-                replicationFactor=topic.replicationFactor,
-                maximumMessageSize=topic.maximumMessageSize,
-                retentionTime=topic.retentionTime,
-                cleanupPolicies=topic.cleanupPolicies,
-                topicConfig=topic.topicConfig,
-            )
-            if topic.schemaType:
-                topic_request.schemaType = topic.schemaType
-                topic_request.schemaText = topic.schemaText
-            created_topic = self.metadata.create_or_update(topic_request)
-
-            if topic.sampleData:
-                self.metadata.ingest_topic_sample_data(created_topic, topic.sampleData)
-
-            logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
-            self.status.records_written(f"Topic: {created_topic.name.__root__}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest topic {topic.name.__root__}")
-            logger.error(err)
-            self.status.failure(f"Topic: {topic.name}")
-
-    def write_charts(self, chart: CreateChartRequest):
-        try:
-            created_chart = self.metadata.create_or_update(chart)
-            logger.info(f"Successfully ingested chart {created_chart.displayName}")
-            self.status.records_written(f"Chart: {created_chart.displayName}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest chart {chart.displayName}")
-            logger.error(err)
-            self.status.failure(f"Chart: {chart.displayName}")
-
-    def write_dashboards(self, dashboard: CreateDashboardRequest):
-        try:
-            created_dashboard = self.metadata.create_or_update(dashboard)
-            logger.info(
-                f"Successfully ingested dashboard {created_dashboard.displayName}"
-            )
-            self.status.records_written(f"Dashboard: {created_dashboard.displayName}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest dashboard {dashboard.name}")
-            logger.error(err)
-            self.status.failure(f"Dashboard {dashboard.name}")
-
-    def write_storage_service(self, storage_service: CreateStorageServiceRequest):
-        try:
-            created_storage_service = self.metadata.create_or_update(storage_service)
-            logger.info(
-                f"Successfully ingested storage service {created_storage_service.name.__root__}"
-            )
-            self.status.records_written(
-                f"Storage Service: {created_storage_service.name.__root__}"
-            )
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest storage service {storage_service.name}")
-            logger.error(err)
-            self.status.failure(f"Storage Service {storage_service.name}")
-
-    def write_locations(self, location: Location):
-        try:
-            created_location = self._create_location(location)
-            logger.info(f"Successfully ingested Location {created_location.name}")
-            self.status.records_written(f"Location: {created_location.name}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest Location {location.name}")
-            logger.error(err)
-            self.status.failure(f"Location: {location.name}")
-
-    def write_locations_requests(self, location_request: CreateLocationRequest):
-        try:
-            location = self.metadata.create_or_update(location_request)
-            logger.info(f"Successfully ingested Location {location.name.__root__}")
-            self.status.records_written(f"Location: {location.name.__root__}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest Location {location_request.name}")
-            logger.error(err)
-            self.status.failure(f"Location: {location_request.name}")
-
-    def write_pipelines_create(self, pipeline: CreatePipelineRequest) -> None:
-        """
-        Proper implementation of write_pipelines.
-        Send the CreatePipelineRequest to the OM API
-        :param pipeline: Create Pipeline Entity
-        """
-        try:
-            created_pipeline = self.metadata.create_or_update(pipeline)
-            logger.info(
-                f"Successfully ingested Pipeline {created_pipeline.displayName or created_pipeline.name.__root__}"
-            )
-            self.status.records_written(
-                f"Pipeline: {created_pipeline.displayName or created_pipeline.name.__root__}"
-            )
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest pipeline {pipeline.name}")
-            logger.error(err)
-            self.status.failure(f"Pipeline: {pipeline.name}")
-
-    def write_pipelines(self, pipeline: Pipeline):
-        try:
-            pipeline_request = CreatePipelineRequest(
-                name=pipeline.name,
-                displayName=pipeline.displayName,
-                description=pipeline.description,
-                pipelineUrl=pipeline.pipelineUrl,
-                tasks=pipeline.tasks,
-                service=pipeline.service,
-            )
-            created_pipeline = self.metadata.create_or_update(pipeline_request)
-            logger.info(
-                f"Successfully ingested Pipeline {created_pipeline.displayName}"
-            )
-            self.status.records_written(f"Pipeline: {created_pipeline.displayName}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest pipeline {pipeline.name}")
-            logger.error(err)
-            self.status.failure(f"Pipeline: {pipeline.name}")
-
     def write_policies(self, ometa_policy: OMetaPolicy) -> None:
         try:
             created_location = None
@@ -542,16 +400,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest lineage {add_lineage}")
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
-
-    def write_ml_model(self, model: CreateMlModelRequest):
-        try:
-            created_model = self.metadata.create_or_update(model)
-            logger.info(f"Successfully added Model {created_model.name}")
-            self.status.records_written(f"Model: {created_model.name}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest Model {model.name}")
-            logger.error(err)
-            self.status.failure(f"Model: {model.name}")
 
     def _create_role(self, create_role: CreateRoleRequest) -> Role:
         try:

@@ -26,7 +26,7 @@ def read_csv_from_s3(
     return pd.read_csv(stream, sep=sep, nrows=sample_size + 1)
 
 
-def read_tsv_from_gcs(
+def read_tsv_from_s3(
     client, key: str, bucket_name: str, sample_size: int = 100
 ) -> DataFrame:
     read_csv_from_s3(client, key, bucket_name, sep="\t", sample_size=sample_size)
