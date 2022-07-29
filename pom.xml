@@ -489,6 +489,20 @@
         <artifactId>disruptor</artifactId>
         <version>3.4.4</version>
       </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <version>9.4.30.v20200611</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
+      <dependency>
+        <groupId>org.glassfish</groupId>
+        <artifactId>jakarta.el</artifactId>
+        <version>3.0.4</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
