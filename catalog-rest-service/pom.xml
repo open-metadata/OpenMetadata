@@ -182,7 +182,15 @@
           <groupId>org.apache.lucene</groupId>
           <artifactId>lucene-suggest</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.dataformat</groupId>
+          <artifactId>jackson-dataformat-cbor</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-cbor</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
