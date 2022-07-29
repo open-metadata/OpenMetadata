@@ -369,6 +369,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             fqn: fullyQualifiedName,
             serviceType: serviceType,
             timestamp: 0,
+            id: id,
           });
           setName(name);
 
