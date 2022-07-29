@@ -18,7 +18,7 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Kafka Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage('Messaging');
 
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').select('messagingServices');

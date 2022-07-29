@@ -18,7 +18,7 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage('Database');
     const connectionInput = () => {
       cy.get('#root_username').type('openmetadata_user');
       cy.get('#root_password').type('openmetadata_password');

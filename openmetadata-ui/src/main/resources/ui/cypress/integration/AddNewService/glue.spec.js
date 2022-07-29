@@ -19,7 +19,7 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Glue Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage('Database');
     const connectionInput = () => {
       cy.get('#root_awsConfig_awsAccessKeyId')
         .scrollIntoView()

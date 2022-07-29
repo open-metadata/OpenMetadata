@@ -26,9 +26,7 @@ const updateService = () => {
     '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
   ).contains(service.newDescription);
   cy.get(':nth-child(1) > .link-title').click();
-  cy.get('.toastui-editor-contents > p').contains(
-    service.newDescription
-  );
+  cy.get('.toastui-editor-contents > p').contains(service.newDescription);
 };
 
 const updateOwner = () => {
@@ -51,39 +49,42 @@ const updateOwner = () => {
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
-    cy.goToHomePage();
-    //redirecting to services page
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+    // cy.goToHomePage();
+    // //redirecting to services page
+    // cy.get(
+    //   '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    // )
+    //   .scrollIntoView()
+    //   .should('be.visible')
+    //   .click();
+    // cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+    cy.visit('http://localhost:8585/settings', { failOnStatusCode: false });
+
+    cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+    cy.get('[data-testid="closeWhatsNew"]').click();
+    cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+    cy.contains('Database').scrollIntoView().click();
   });
 
   it('Update service description', () => {
-    cy.intercept('GET', '/**').as('serviceApi');
-    cy.wait('@serviceApi');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-    cy.wait('@serviceApi');
+    cy.wait(1000);
     //need wait here
     updateService();
   });
 
-  it.skip('Update owner and check description', () => {
+  it('Update owner and check description', () => {
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-    cy.intercept('GET', '/**').as('serviceApi');
-    cy.wait('@serviceApi');
+    cy.wait(1000);
     updateOwner();
     //Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     //need wait here
-    cy.wait('@serviceApi');
+    cy.wait(1000);
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
   });
 });

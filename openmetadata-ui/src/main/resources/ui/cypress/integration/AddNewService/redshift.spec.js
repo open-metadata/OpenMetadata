@@ -18,7 +18,7 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('RedShift Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage('Database');
     const connectionInput = () => {
       cy.get('#root_username').type(Cypress.env('redshiftUsername'));
       cy.get('#root_password')

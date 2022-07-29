@@ -19,7 +19,7 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('BigQuery Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage('Database');
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
       cy.get('.form-group > #root_type')

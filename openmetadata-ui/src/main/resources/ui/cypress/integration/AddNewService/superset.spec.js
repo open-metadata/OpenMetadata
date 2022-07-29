@@ -18,7 +18,7 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Superset Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage('Dashboard');
 
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').select('dashboardServices');

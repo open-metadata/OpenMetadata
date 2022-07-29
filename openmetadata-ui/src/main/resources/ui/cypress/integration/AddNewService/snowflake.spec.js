@@ -18,7 +18,7 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Snowflake Ingestion', () => {
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage('Database');
     const connectionInput = () => {
       cy.get('#root_username').type(Cypress.env('snowflakeUsername'));
       cy.get('#root_password').type(Cypress.env('snowflakePassword'));

@@ -135,7 +135,9 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
-  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should('be.visible');
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
+    'be.visible'
+  );
   cy.contains(`"${serviceName}_metadata"`).should('be.visible');
   cy.contains('has been created and deployed successfully').should(
     'be.visible'
@@ -156,19 +158,29 @@ export const testServiceCreationAndIngestion = (
 };
 
 export const deleteCreatedService = (typeOfService, service_Name) => {
-  cy.goToHomePage();
+  // cy.goToHomePage();
 
-  cy.get(
-    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-  )
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-  cy.wait(1000);
+  // cy.get(
+  //   '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+  // )
+  //   .scrollIntoView()
+  //   .should('be.visible')
+  //   .click();
+  // cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+  // cy.wait(1000);
 
-  //redirecting to services page
-  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+  // //redirecting to services page
+  // cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+
+  // cy.visit('')
+
+  cy.visit('http://localhost:8585/settings', { failOnStatusCode: false });
+
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+  cy.get('[data-testid="closeWhatsNew"]').click();
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+
+  cy.contains(typeOfService).should('be.visible').click();
 
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
@@ -204,22 +216,45 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('have.text', `${typeOfService} Service deleted successfully!`);
 };
 
-export const goToAddNewServicePage = () => {
-  cy.visit('/');
+export const goToAddNewServicePage = (typeOfService) => {
+  // cy.visit('/');
+  // cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+  // cy.get('[data-testid="closeWhatsNew"]').click();
+  // cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+  // cy.get('[data-testid="tables"]').should('be.visible');
+
+  // cy.get('[data-testid="menu-button"]').should('be.visible');
+  // cy.get('[data-testid="menu-button"]').first().click();
+  // cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+
+  // // Services page
+  // cy.contains('Services').should('be.visible');
+  // cy.wait(500);
+  // cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
+  //   if ($databaseServiceCount.text() === '0') {
+  //     cy.get('[data-testid="add-service-button"]').should('be.visible').click();
+  //   } else {
+  //     cy.get('[data-testid="add-new-service-button"]')
+  //       .should('be.visible')
+  //       .click();
+  //   }
+  // });
+
+  // // Add new service page
+  // cy.url().should('include', 'databaseServices/add-service');
+  // cy.get('[data-testid="header"]').should('be.visible');
+  // cy.contains('Add New Service').should('be.visible');
+  // cy.get('[data-testid="service-category"]').should('be.visible');
+
+  cy.visit('http://localhost:8585/settings', { failOnStatusCode: false });
+
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
   cy.get('[data-testid="closeWhatsNew"]').click();
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
-  cy.get('[data-testid="tables"]').should('be.visible');
-
-  cy.get('[data-testid="menu-button"]').should('be.visible');
-  cy.get('[data-testid="menu-button"]').first().click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-
-  // Services page
-  cy.contains('Services').should('be.visible');
-  cy.wait(500);
-  cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
-    if ($databaseServiceCount.text() === '0') {
+  cy.wait(1000);
+  cy.contains(typeOfService).should('be.visible').click();
+  cy.get('[data-testid="services-container"]').then(($databaseServiceCount) => {
+    if (!$databaseServiceCount) {
       cy.get('[data-testid="add-service-button"]').should('be.visible').click();
     } else {
       cy.get('[data-testid="add-new-service-button"]')
@@ -227,12 +262,6 @@ export const goToAddNewServicePage = () => {
         .click();
     }
   });
-
-  // Add new service page
-  cy.url().should('include', 'databaseServices/add-service');
-  cy.get('[data-testid="header"]').should('be.visible');
-  cy.contains('Add New Service').should('be.visible');
-  cy.get('[data-testid="service-category"]').should('be.visible');
 };
 
 export const testServiceSampleData = (database, schema, table) => {
