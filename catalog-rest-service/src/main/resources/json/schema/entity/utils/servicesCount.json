@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/tags/servicesCount.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Services Count",
+  "description": "This schema defines Services Count. This contains aggregated services count.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.util.ServicesCount",
+  "properties": {
+    "databaseServiceCount": {
+      "description": "Database Service Count",
+      "type": "integer"
+    },
+    "messagingServiceCount": {
+      "description": "Messaging Service Count",
+      "type": "integer"
+    },
+    "dashboardServiceCount": {
+      "description": "Dashboard Service Count",
+      "type": "integer"
+    },
+    "pipelineServiceCounte": {
+      "description": "Pipeline Service Count",
+      "type": "integer"
+    },
+    "mlModelServiceCount": {
+      "description": "MlModel Service Count",
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}

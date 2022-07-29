@@ -171,6 +171,13 @@
         </plugin>
       </plugins>
     </build>
+    <dependencies>
+      <dependency>
+        <groupId>org.open-metadata</groupId>
+        <artifactId>openmetadata-ui</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+    </dependencies>
   </profile>
   <profile>
     <id>only-backend</id>

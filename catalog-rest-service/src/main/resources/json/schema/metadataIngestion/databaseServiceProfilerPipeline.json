@@ -32,6 +32,11 @@
       "exclusiveMinimum": 0,
       "maximum": 100,
       "default": null
+    },
+    "threadCount": {
+      "description": "Number of threads to use during metric computations",
+      "type": "number",
+      "default": 5
     }
   },
   "additionalProperties": false

@@ -14,6 +14,7 @@ Metric Core definitions
 """
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from functools import wraps
 from typing import Any, Dict, Optional, Tuple, TypeVar
 
@@ -223,3 +224,14 @@ class ComposedMetric(Metric, ABC):
         This metric computes its value based on
         the results already present in the Profiler
         """
+
+
+class MetricTypes(Enum):
+    """List of metric types"""
+
+    Table = "Table"
+    Static = "Static"
+    Composed = "Composed"
+    Custom = "Custom"
+    Query = "Query"
+    Window = "Window"

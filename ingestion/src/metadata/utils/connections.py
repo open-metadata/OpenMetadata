@@ -26,7 +26,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
@@ -369,6 +369,16 @@ def create_and_bind_session(engine: Engine) -> Session:
     session = sessionmaker()
     session.configure(bind=engine)
     return session()
+
+
+def create_and_bind_thread_safe_session(engine: Engine) -> Session:
+    """
+    Given an engine, create a session bound
+    to it to make our operations.
+    """
+    session = sessionmaker()
+    session.configure(bind=engine)
+    return scoped_session(session)
 
 
 @timeout(seconds=120)
