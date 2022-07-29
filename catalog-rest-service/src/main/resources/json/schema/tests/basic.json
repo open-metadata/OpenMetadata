@@ -41,9 +41,9 @@
       },
       "additionalProperties": false
     },
-    "testCaseExecutionFrequency": {
+    "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",
-      "javaType": "org.openmetadata.catalog.tests.type.TestCaseExecutionFrequency",
+      "javaType": "org.openmetadata.catalog.tests.type.TestSuiteExecutionFrequency",
       "type": "string",
       "enum": ["Hourly", "Daily", "Weekly"],
       "javaEnums": [

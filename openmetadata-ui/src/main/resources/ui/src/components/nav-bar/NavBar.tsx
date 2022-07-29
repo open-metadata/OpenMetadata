@@ -17,7 +17,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
-import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
+import {
+  NOTIFICATION_READ_TIMER,
+  ROUTES,
+  SOCKET_EVENTS,
+} from '../../constants/constants';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
@@ -104,7 +108,7 @@ const NavBar = ({
           hasTaskNotification &&
             setTimeout(() => {
               handleTaskNotificationRead();
-            }, 5000);
+            }, NOTIFICATION_READ_TIMER);
 
           break;
 
@@ -112,7 +116,7 @@ const NavBar = ({
           hasMentionNotification &&
             setTimeout(() => {
               handleMentionsNotificationRead();
-            }, 5000);
+            }, NOTIFICATION_READ_TIMER);
 
           break;
       }
@@ -126,8 +130,8 @@ const NavBar = ({
   const showBrowserNotification = (
     about: string,
     createdBy: string,
-    id: string,
-    type: string
+    type: string,
+    id?: string
   ) => {
     if (!hasNotificationPermission()) {
       return;
@@ -170,8 +174,8 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.task.id,
-            activity.type
+            activity.type,
+            activity.task?.id
           );
         }
       });
@@ -183,8 +187,8 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.task.id,
-            activity.type
+            activity.type,
+            activity.task?.id
           );
         }
       });
@@ -297,7 +301,9 @@ const NavBar = ({
                     />
                   }
                   overlayStyle={{
+                    zIndex: 9999,
                     width: '425px',
+                    minHeight: '375px',
                   }}
                   placement="bottomRight"
                   trigger={['click']}

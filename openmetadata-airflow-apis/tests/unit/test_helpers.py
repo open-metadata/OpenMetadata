@@ -13,7 +13,7 @@ Test helper functions
 """
 from unittest import TestCase
 
-from openmetadata.helpers import clean_dag_id
+from openmetadata_managed_apis.api.utils import clean_dag_id
 
 
 class TestHelpers(TestCase):

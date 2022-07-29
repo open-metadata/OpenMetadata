@@ -15,14 +15,12 @@ import traceback
 from typing import Any, Iterable, Optional
 
 import confluent_kafka
-from confluent_kafka.admin import AdminClient, ConfigResource
+from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import SchemaType, TopicSampleData
-
-# This import verifies that the dependencies are available.
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )

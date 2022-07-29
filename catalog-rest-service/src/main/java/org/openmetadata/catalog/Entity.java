@@ -98,11 +98,19 @@ public final class Entity {
   public static final String TAG = "tag";
   public static final String TAG_CATEGORY = "tagCategory";
   public static final String TYPE = "type";
+  public static final String TEST_DEFINITION = "testDefinition";
+  public static final String TEST_SUITE = "testSuite";
+  public static final String TEST_CASE = "testCase";
 
   //
   // Policy entity
   //
   public static final String POLICY = "policy";
+
+  //
+  // Service
+  //
+  public static final String SERVICE = "service";
 
   //
   // Role, team and user entities

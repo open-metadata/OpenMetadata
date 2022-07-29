@@ -23,7 +23,9 @@ from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -43,7 +45,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
@@ -396,8 +397,7 @@ class SampleDataSource(Source[Entity]):
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
-            location_ev = Location(
-                id=uuid.uuid4(),
+            location_ev = CreateLocationRequest(
                 name=location["name"],
                 path=location["path"],
                 displayName=location["displayName"],
@@ -493,7 +493,7 @@ class SampleDataSource(Source[Entity]):
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = Topic(**topic)
+            create_topic = CreateTopicRequest(**topic)
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
@@ -536,8 +536,7 @@ class SampleDataSource(Source[Entity]):
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
         for pipeline in self.pipelines["pipelines"]:
-            pipeline_ev = Pipeline(
-                id=uuid.uuid4(),
+            pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],

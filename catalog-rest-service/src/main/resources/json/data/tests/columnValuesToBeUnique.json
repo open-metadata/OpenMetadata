@@ -1,0 +1,6 @@
+{
+  "name": "columnValuesToBeUnique",
+  "displayName": "columnValuesToBeUnique",
+  "description": "This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be unique. ",
+  "testPlatforms": ["OpenMetadata", "GreatExpectations"]
+}
