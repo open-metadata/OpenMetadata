@@ -18,7 +18,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.api.data.CreateDashboard;
-import org.openmetadata.catalog.api.data.CreateMlModel;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.data.CreateTopic;
@@ -33,7 +32,6 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
-import org.openmetadata.catalog.resources.mlmodels.MlModelResourceTest;
 import org.openmetadata.catalog.resources.pipelines.PipelineResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
@@ -80,7 +78,6 @@ public class UtilResourceTest extends CatalogApplicationTest {
     int beforeDashboardCount = getEntitiesCount().getDashboardCount();
     int beforePipelineCount = getEntitiesCount().getPipelineCount();
     int beforeTopicCount = getEntitiesCount().getTopicCount();
-    int beforeMlModelCount = getEntitiesCount().getMlmodelCount();
     int beforeServiceCount = getEntitiesCount().getServicesCount();
     int beforeUserCount = getEntitiesCount().getUserCount();
     int beforeTeamCount = getEntitiesCount().getTeamCount();
@@ -105,11 +102,6 @@ public class UtilResourceTest extends CatalogApplicationTest {
     CreatePipeline createPipeline = pipelineResourceTest.createRequest(test);
     pipelineResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
 
-    // Create Dashboard Service
-    DashboardServiceResourceTest dashboardServiceResourceTest = new DashboardServiceResourceTest();
-    CreateDashboardService createDashboardService = dashboardServiceResourceTest.createRequest(test);
-    dashboardServiceResourceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-
     // Create Service
     MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
     CreateMessagingService createMessagingService = messagingServiceResourceTest.createRequest(test);
@@ -130,7 +122,6 @@ public class UtilResourceTest extends CatalogApplicationTest {
     int afterDashboardCount = getEntitiesCount().getDashboardCount();
     int afterPipelineCount = getEntitiesCount().getPipelineCount();
     int afterTopicCount = getEntitiesCount().getTopicCount();
-    int afterMlModelCount = getEntitiesCount().getMlmodelCount();
     int afterServiceCount = getEntitiesCount().getServicesCount();
     int afterUserCount = getEntitiesCount().getUserCount();
     int afterTeamCount = getEntitiesCount().getTeamCount();
@@ -138,7 +129,6 @@ public class UtilResourceTest extends CatalogApplicationTest {
     int actualCount = 1;
 
     Assertions.assertEquals(afterDashboardCount - beforeDashboardCount, actualCount);
-    Assertions.assertEquals(afterMlModelCount - beforeMlModelCount, actualCount);
     Assertions.assertEquals(afterPipelineCount - beforePipelineCount, actualCount);
     Assertions.assertEquals(afterServiceCount - beforeServiceCount, actualCount);
     Assertions.assertEquals(afterUserCount - beforeUserCount, actualCount);
