@@ -15,6 +15,8 @@ import { fireEvent, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import Searchbar from './Searchbar';
 
+jest.useRealTimers();
+
 describe('Test Searchbar Component', () => {
   it('Renders the searchbar with the search text sent to it', () => {
     const onSearch = jest.fn();

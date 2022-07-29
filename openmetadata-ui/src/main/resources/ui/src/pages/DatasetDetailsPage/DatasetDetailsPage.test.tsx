@@ -57,6 +57,8 @@ const mockUseHistory = {
   push: jest.fn(),
 };
 
+jest.useRealTimers();
+
 jest.mock('../../AppState', () => ({
   userDetails: {
     name: 'test',
