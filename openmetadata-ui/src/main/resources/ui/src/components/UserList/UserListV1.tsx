@@ -88,7 +88,7 @@ const UserListV1: FC<UserListV1Props> = ({
       if (data) {
         afterDeleteAction();
         showSuccessToast(
-          jsonData['api-success-messages']['user-reactivated-success']
+          jsonData['api-success-messages']['user-restored-success']
         );
       } else {
         throw jsonData['api-error-messages']['update-user-error'];
@@ -235,15 +235,15 @@ const UserListV1: FC<UserListV1Props> = ({
           type: 'link',
         }}
         className="reactive-modal"
-        okText="Reactive"
-        title="Reactive User"
+        okText="Restore"
+        title="restore User"
         visible={showReactiveModal}
         onCancel={() => {
           setShowReactiveModal(false);
           setSelectedUser(undefined);
         }}
         onOk={handleReactiveUser}>
-        <p>Are you sure you want to reactive {getEntityName(selectedUser)}?</p>
+        <p>Are you sure you want to restore {getEntityName(selectedUser)}?</p>
       </Modal>
 
       <DeleteWidgetModal
