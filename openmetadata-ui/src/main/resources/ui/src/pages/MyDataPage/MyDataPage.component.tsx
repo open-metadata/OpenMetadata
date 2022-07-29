@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormattedTableData } from 'Models';
+import { EntityReference } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -27,13 +27,13 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
+import { fetchSandboxConfig } from '../../axiosAPIs/miscAPI';
 import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { getAllTopics } from '../../axiosAPIs/topicsAPI';
-import { getUsers } from '../../axiosAPIs/userAPI';
+import { getUserById, getUsers } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
@@ -44,19 +44,17 @@ import {
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
-import { myDataSearchIndex } from '../../constants/Mydata.constants';
-import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { AssetsType } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { formatDataResponse } from '../../utils/APIUtils';
 import {
   deletePost,
   getUpdatedThread,
   updateThreadData,
 } from '../../utils/FeedUtils';
-import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -73,8 +71,8 @@ const MyDataPage = () => {
   const [countUsers, setCountUsers] = useState<number>();
   const [countTeams, setCountTeams] = useState<number>();
 
-  const [ownedData, setOwnedData] = useState<Array<FormattedTableData>>();
-  const [followedData, setFollowedData] = useState<Array<FormattedTableData>>();
+  const [ownedData, setOwnedData] = useState<Array<EntityReference>>();
+  const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [ownedDataCount, setOwnedDataCount] = useState(0);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
@@ -263,52 +261,38 @@ const MyDataPage = () => {
     }
   };
 
-  const fetchMyData = () => {
-    const ownedEntity = searchData(
-      '',
-      1,
-      8,
-      getMyDataFilters(
-        Ownership.OWNER,
-        AppState.userDetails,
-        AppState.nonSecureUserDetails
-      ),
-      '',
-      '',
-      myDataSearchIndex
-    );
+  const fetchMyData = async () => {
+    if (!currentUser || !currentUser.id) {
+      return;
+    }
+    try {
+      const { data: userData } = await getUserById(
+        currentUser?.id,
+        'follows, owns'
+      );
 
-    const followedEntity = searchData(
-      '',
-      1,
-      8,
-      getMyDataFilters(
-        Ownership.FOLLOWERS,
-        AppState.userDetails,
-        AppState.nonSecureUserDetails
-      ),
-      '',
-      '',
-      myDataSearchIndex
-    );
+      if (userData) {
+        const includeData = Object.values(AssetsType);
+        const owns: EntityReference[] = userData.owns ?? [];
+        const follows: EntityReference[] = userData.follows ?? [];
 
-    Promise.allSettled([ownedEntity, followedEntity])
-      .then(([resOwnedEntity, resFollowedEntity]) => {
-        if (resOwnedEntity.status === 'fulfilled') {
-          setOwnedData(formatDataResponse(resOwnedEntity.value.data.hits.hits));
-          setOwnedDataCount(resOwnedEntity.value.data.hits.total.value);
-        }
-        if (resFollowedEntity.status === 'fulfilled') {
-          setFollowedDataCount(resFollowedEntity.value.data.hits.total.value);
-          setFollowedData(
-            formatDataResponse(resFollowedEntity.value.data.hits.hits)
-          );
-        }
-      })
-      .catch(() => {
-        setOwnedData([]);
-        setFollowedData([]);
-      });
+        setFollowedDataCount(follows.length);
+        setOwnedDataCount(owns.length);
+
+        const includedOwnsData = owns.filter((data) =>
+          includeData.includes(data.type as AssetsType)
+        );
+        const includedFollowsData = follows.filter((data) =>
+          includeData.includes(data.type as AssetsType)
+        );
+
+        setFollowedData(includedFollowsData.slice(0, 8));
+        setOwnedData(includedOwnsData.slice(0, 8));
+      }
+    } catch (err) {
+      setOwnedData([]);
+      setFollowedData([]);
+    }
   };
 
   const getFeedData = (
