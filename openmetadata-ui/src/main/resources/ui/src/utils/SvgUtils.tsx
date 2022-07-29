@@ -89,6 +89,7 @@ import IconMyData from '../assets/svg/ic-mydata.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
 import IconReply from '../assets/svg/ic-reply.svg';
 import IconReports from '../assets/svg/ic-reports.svg';
+import IconRestore from '../assets/svg/ic-restore.svg';
 import IconSchema from '../assets/svg/ic-schema.svg';
 import IconSearch from '../assets/svg/ic-search.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
@@ -206,6 +207,7 @@ export const Icons = {
   QUALITY: 'icon-quality',
   ISSUES: 'icon-issues',
   TRENDS: 'icon-trends',
+  RESTORE: 'icon-restore',
   LINEAGE: 'icon-lineage',
   MANAGE: 'icon-manage',
   HOME: 'icon-home',
@@ -361,6 +363,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TEAMS:
       IconComponent = IconTeams;
+
+      break;
+    case Icons.RESTORE:
+      IconComponent = IconRestore;
 
       break;
     case Icons.TEAMS_GREY:

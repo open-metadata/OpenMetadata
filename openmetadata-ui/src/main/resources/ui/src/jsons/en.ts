@@ -153,6 +153,8 @@ const jsonData = {
     'delete-glossary-success': 'Glossary deleted successfully!',
     'delete-glossary-term-success': 'Glossary term deleted successfully!',
     'test-connection-success': 'Connection tested successfully!',
+
+    'user-reactivated-success': 'User reactivated successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
