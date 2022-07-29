@@ -48,7 +48,6 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
-from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger

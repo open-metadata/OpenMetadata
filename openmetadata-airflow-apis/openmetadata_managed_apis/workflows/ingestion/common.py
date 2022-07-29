@@ -99,12 +99,12 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     if not service:
         raise ValueError(f"Could not get service from type {service_type}")
 
-    metadata.secrets_manager_client.add_service_config_connection(service, service_type)
-
     return WorkflowSource(
         type=service.serviceType.value.lower(),
         serviceName=service.name.__root__,
-        serviceConnection=service.connection,
+        serviceConnection=metadata.secrets_manager_client.retrieve_service_connection(
+            service, service_type
+        ),
         sourceConfig=ingestion_pipeline.sourceConfig,
     )
 

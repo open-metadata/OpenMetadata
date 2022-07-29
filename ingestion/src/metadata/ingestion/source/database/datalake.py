@@ -76,13 +76,21 @@ DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet")
 class DatalakeSource(DatabaseServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.status = SQLSourceStatus()
-
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        service = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=self.config.serviceName
+        )
+        if service:
+            self.config.serviceConnection = (
+                self.metadata.secrets_manager_client.retrieve_service_connection(
+                    service, "database"
+                )
+            )
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
         self.client = self.connection.client

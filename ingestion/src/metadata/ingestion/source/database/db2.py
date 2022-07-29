@@ -11,7 +11,6 @@
 
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,

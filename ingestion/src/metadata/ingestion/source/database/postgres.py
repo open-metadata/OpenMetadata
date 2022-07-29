@@ -12,14 +12,9 @@
 from collections import namedtuple
 from typing import Iterable
 
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
-
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-
-# This import verifies that the dependencies are available.
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -49,7 +44,6 @@ class PostgresSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected PostgresConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:

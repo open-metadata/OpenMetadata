@@ -28,8 +28,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
-
-# This import verifies that the dependencies are available.
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_start_and_end

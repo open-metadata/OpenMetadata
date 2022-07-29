@@ -159,22 +159,30 @@ class TopologyRunnerMixin(Generic[C]):
 
         if entity is not None:
             if stage.ack_sink:
-                tries = 3
                 entity = None
 
                 entity_fqn = self.fqn_from_context(
                     stage=stage, entity_request=entity_request
                 )
 
-                while not entity and tries > 0:
-                    yield entity_request
-                    # Improve validation logic
+                if not stage.overwrite:
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
                         fqn=entity_fqn,
                         fields=["*"],  # Get all the available data from the Entity
                     )
-                    tries -= 1
+
+                if entity is None:
+                    tries = 3
+                    while not entity and tries > 0:
+                        yield entity_request
+                        # Improve validation logic
+                        entity = self.metadata.get_by_name(
+                            entity=stage.type_,
+                            fqn=entity_fqn,
+                            fields=["*"],  # Get all the available data from the Entity
+                        )
+                        tries -= 1
             else:
                 yield entity
 

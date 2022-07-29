@@ -11,9 +11,6 @@
 """MSSQL source module"""
 from typing import Iterable
 
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
-
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
