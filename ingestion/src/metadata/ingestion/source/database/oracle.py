@@ -9,10 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# This import verifies that the dependencies are available.
-
-from sqlalchemy.engine.reflection import Inspector
-
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
