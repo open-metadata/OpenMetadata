@@ -180,7 +180,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('.tags-select > [class*="-control"]')
+    cy.get('[class*="-control"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
@@ -259,7 +259,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('.tags-select > [class*="-control"]')
+    cy.get('[class*="-control"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');

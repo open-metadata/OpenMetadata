@@ -284,7 +284,7 @@ export const addNewTagToEntity = (entity, term) => {
     .scrollIntoView()
     .click();
 
-  cy.get('.tags-select > [class*="-control"]').should('be.visible').type(term);
+  cy.get('[class*="-control"]').should('be.visible').type(term);
   cy.wait(500);
   cy.get('[id*="-option-0"]').should('be.visible').click();
   cy.get(
@@ -301,7 +301,7 @@ export const addNewTagToEntity = (entity, term) => {
     .should('be.visible')
     .click();
 
-  cy.get('.tags-select > [class*="-control"]')
+  cy.get('[class*="-control"]')
     .scrollIntoView()
     .should('be.visible')
     .type(term);
