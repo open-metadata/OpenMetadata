@@ -105,6 +105,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "policyType"],
+  "required": ["id", "name", "policyType", "rules"],
   "additionalProperties": false
 }

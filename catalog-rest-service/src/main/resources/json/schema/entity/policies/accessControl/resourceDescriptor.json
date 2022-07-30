@@ -11,6 +11,7 @@
       "description": "This schema defines all possible operations on metadata of entities in OpenMetadata.",
       "type": "string",
       "enum": [
+        "All",
         "Create",
         "Delete",
         "ViewAll",

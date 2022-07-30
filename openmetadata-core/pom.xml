@@ -102,7 +102,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt</artifactId>
-            <version>0.9.1</version>
+            <version>${jjwt.version}</version>
         </dependency>
 
 
@@ -110,14 +110,14 @@
         <dependency>
             <groupId>com.auth0</groupId>
             <artifactId>java-jwt</artifactId>
-            <version>3.19.1</version>
+            <version>${java-jwt.version}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
         <dependency>
             <groupId>com.auth0</groupId>
             <artifactId>jwks-rsa</artifactId>
-            <version>0.21.1</version>
+            <version>${jwks-rsa.version}</version>
         </dependency>
 
         <!--test dependencies-->
