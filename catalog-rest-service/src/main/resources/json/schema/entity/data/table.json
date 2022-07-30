@@ -466,9 +466,9 @@
       "javaType": "org.openmetadata.catalog.type.TableProfile",
       "description": "This schema defines the type to capture the table's data profile.",
       "properties": {
-        "profileDate": {
-          "description": "Data one which profile is taken.",
-          "$ref": "../../type/basic.json#/definitions/date"
+        "timestamp": {
+          "description": "Timestamp on which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/dateTime"
         },
         "profileSample": {
           "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",

@@ -72,6 +72,7 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/tables")
@@ -106,6 +107,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     }
 
     public TableList(List<Table> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class TableProfileList extends ResultList<TableProfile> {
+    @SuppressWarnings("unused")
+    public TableProfileList() {
+      /* Required for serde */
+    }
+
+    public TableProfileList(List<TableProfile> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -469,6 +481,64 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addSampleData(UUID.fromString(id), tableData);
     return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/tableProfile")
+  @Operation(
+      operationId = "listTableProfiles",
+      summary = "List of table profiles",
+      tags = "tables",
+      description =
+          "Get a list of all the table profiles for the given table id, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of table profiles",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfileList.class)))
+      })
+  public ResultList<TableProfile> listTableProfiles(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Filter table profiles by extension name", schema = @Schema(type = "string"))
+          @QueryParam("extension")
+          String extension,
+      @Parameter(
+              description = "Filter table profiles after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter table profiles before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of table profiles before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of table profiles after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+
+    ListFilter filter = new ListFilter().addQueryParam("entityId", id).addQueryParam("extension", extension);
+    if (startTs != null) {
+      filter.addQueryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("endTs", String.valueOf(endTs));
+    }
+    return dao.getTableProfiles(filter, before, after, limitParam);
   }
 
   @PUT

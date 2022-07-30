@@ -2501,6 +2501,11 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension")
     String getExtension(@Bind("entityId") String entityId, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension "
+            + "ORDER BY timestamp DESC LIMIT 1")
+    String getLatestExtension(@Bind("entityId") String entityId, @Bind("extension") String extension);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -2518,9 +2523,9 @@ public interface CollectionDAO {
         "SELECT json FROM entity_extension_time_series <condition> "
             + " AND timestamp <:before ORDER BY timestamp ASC LIMIT :limit")
     List<String> listBefore(
-        @Define("condition") String condition, @Bind("limit") int limit, @Bind("before") String before);
+        @Define("condition") String condition, @Bind("limit") int limit, @Bind("before") long before);
 
-    default List<String> listBefore(ListFilter filter, int limit, String before) {
+    default List<String> listBefore(ListFilter filter, int limit, long before) {
       String entityId = filter.getQueryParam("entityId");
       String entityFqn = filter.getQueryParam("entityFqn");
       String startTs = filter.getQueryParam("startTs");
@@ -2558,11 +2563,10 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series <condition> "
             + " AND timestamp >:after ORDER BY timestamp ASC LIMIT :limit")
-    List<String> listAfter(
-        @Define("condition") String condition, @Bind("limit") int limit, @Bind("after") String after);
+    List<String> listAfter(@Define("condition") String condition, @Bind("limit") int limit, @Bind("after") long after);
 
     @Override
-    default List<String> listAfter(ListFilter filter, int limit, String after) {
+    default List<String> listAfter(ListFilter filter, int limit, long after) {
       String entityId = filter.getQueryParam("entityId");
       String extension = filter.getQueryParam("extension");
       String entityFqn = filter.getQueryParam("entityFqn");
