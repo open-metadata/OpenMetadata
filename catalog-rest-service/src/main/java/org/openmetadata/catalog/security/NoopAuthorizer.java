@@ -57,7 +57,9 @@ public class NoopAuthorizer implements Authorizer {
       SecurityContext securityContext,
       OperationContext operationContext,
       ResourceContextInterface resourceContext,
-      boolean allowBots) {}
+      boolean allowBots) {
+    /* Always authorize */
+  }
 
   private void addAnonymousUser() {
     String username = "anonymous";
@@ -90,5 +92,7 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {}
+  public void authorizeAdmin(SecurityContext securityContext, boolean allowBots) {
+    /* Always authorize */
+  }
 }

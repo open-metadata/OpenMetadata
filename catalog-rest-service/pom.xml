@@ -380,7 +380,7 @@
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt</artifactId>
-      <version>0.9.1</version>
+      <version>${jjwt.version}</version>
     </dependency>
 
 
@@ -388,14 +388,14 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.19.1</version>
+      <version>${java-jwt.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.21.1</version>
+      <version>${jwks-rsa.version}</version>
     </dependency>
 
 
@@ -408,7 +408,7 @@
     <dependency>
       <groupId>io.github.artsok</groupId>
       <artifactId>rerunner-jupiter</artifactId>
-      <version>2.1.6</version>
+      <version>${rerunner-jupiter.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -450,6 +450,11 @@
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
       <version>9.4.46.v20220331</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-expression</artifactId>
+      <version>${spring-expression.version}</version>
     </dependency>
   </dependencies>
 

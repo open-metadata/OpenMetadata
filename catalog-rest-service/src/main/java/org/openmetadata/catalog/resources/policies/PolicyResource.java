@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.policies;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -94,24 +96,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
-    initResourceDescriptors();
-  }
-
-  /** Initialize list of resources and the corresponding operations */
-  private void initResourceDescriptors() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/ResourceDescriptors.json$");
-    if (jsonDataFiles.size() != 1) {
-      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
-      return;
-    }
-    String jsonDataFile = jsonDataFiles.get(0);
-    try {
-      String json = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(jsonDataFile));
-      List<ResourceDescriptor> resourceDetails = JsonUtils.readObjects(json, ResourceDescriptor.class);
-      ResourceRegistry.add(resourceDetails);
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
-    }
+    ResourceRegistry.add(listOrEmpty(PolicyResource.getResourceDescriptors()));
   }
 
   public static class PolicyList extends ResultList<Policy> {
@@ -424,5 +409,21 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }
     return policy;
+  }
+
+  public static List<ResourceDescriptor> getResourceDescriptors() throws IOException {
+    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/ResourceDescriptors.json$");
+    if (jsonDataFiles.size() != 1) {
+      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
+      return null;
+    }
+    String jsonDataFile = jsonDataFiles.get(0);
+    try {
+      String json = IOUtil.toString(PolicyResource.class.getClassLoader().getResourceAsStream(jsonDataFile));
+      return JsonUtils.readObjects(json, ResourceDescriptor.class);
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);
+    }
+    return null;
   }
 }

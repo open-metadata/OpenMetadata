@@ -383,7 +383,8 @@ public final class EntityUtil {
     List<Rule> resolvedRules = new ArrayList<>();
     for (Object ruleObject : rules) {
       // Cast to access control policy Rule.
-      resolvedRules.add(JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class));
+      resolvedRules.add(
+          JsonUtils.readValueWithValidation(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class));
     }
     return resolvedRules;
   }

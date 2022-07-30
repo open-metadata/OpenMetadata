@@ -11,24 +11,47 @@ import org.openmetadata.catalog.util.JsonPatchUtils;
 /** OperationContext for Access Control Policy */
 public class OperationContext {
   @Getter @NonNull private final String resource;
-  @NonNull private final List<MetadataOperation> operations = new ArrayList<>();
+  List<MetadataOperation> operations;
   @Getter private JsonPatch patch;
 
-  public OperationContext(String resource, MetadataOperation... operations) {
+  public OperationContext(@NonNull String resource, MetadataOperation... operations) {
     this.resource = resource;
+    this.operations = new ArrayList<>();
     this.operations.addAll(List.of(operations));
   }
 
-  public OperationContext(String resource, JsonPatch patch) {
+  public OperationContext(@NonNull String resource, JsonPatch patch) {
     this.resource = resource;
     this.patch = patch;
   }
 
   public List<MetadataOperation> getOperations() {
     // Lazy resolve patch operations
-    if (patch != null) {
+    if (operations != null) {
+      return operations;
+    }
+    if (patch != null) { // Lazy initialize operations for PATCH
+      operations = new ArrayList<>();
       operations.addAll(JsonPatchUtils.getMetadataOperations(patch));
     }
     return operations;
+  }
+
+  public boolean isEditOperation() {
+    for (MetadataOperation operation : operations) {
+      if (!operation.value().startsWith("Edit")) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public boolean isViewOperation() {
+    for (MetadataOperation operation : operations) {
+      if (!operation.value().startsWith("View")) {
+        return false;
+      }
+    }
+    return true;
   }
 }
