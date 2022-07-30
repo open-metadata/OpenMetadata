@@ -289,6 +289,7 @@ const NavBar = ({
             <Space size={24}>
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown
+                  destroyPopupOnHide
                   overlay={
                     <NotificationBox
                       hasMentionNotification={hasMentionNotification}
