@@ -17,8 +17,7 @@ public class PolicyUtils {
         .withEntityTagAttr(entityTag)
         .withEntityTypeAttr(entityType)
         .withOperation(operation)
-        .withAllow(allow)
-        .withPriority(priority);
+        .withAllow(allow);
   }
 
   public static Rule accessControlRule(
