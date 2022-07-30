@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
@@ -612,7 +613,9 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @param entity - entity reference
  * @returns - entity name
  */
-export const getEntityName = (entity?: EntityReference | DataService) => {
+export const getEntityName = (
+  entity?: EntityReference | DataService | User
+) => {
   return entity?.displayName || entity?.name || '';
 };
 
@@ -728,4 +731,33 @@ export const isAllowedHost = () => {
  */
 export const showPagination = (paging: Paging) => {
   return !isNil(paging.after) || !isNil(paging.before);
+};
+
+export const getTeamsText = (teams: EntityReference[]) => {
+  return teams.length === 0 ? (
+    'No teams'
+  ) : teams.length > 1 ? (
+    <span>
+      {getEntityName(teams[0])}, &{' '}
+      <Popover
+        content={
+          <span>
+            {teams.map((t, i) => {
+              return i >= 1 ? (
+                <span className="tw-block tw-text-left" key={i}>
+                  {getEntityName(t)}
+                </span>
+              ) : null;
+            })}
+          </span>
+        }
+        trigger="hover">
+        <span className="tw-underline tw-cursor-pointer">
+          {teams.length - 1} more
+        </span>
+      </Popover>
+    </span>
+  ) : (
+    `${getEntityName(teams[0])}`
+  );
 };
