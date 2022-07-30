@@ -17,7 +17,6 @@ import React, { useEffect, useState } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { fetchSlackConfig } from '../axiosAPIs/miscAPI';
-import Appbar from '../components/app-bar/Appbar';
 import Loader from '../components/Loader/Loader';
 import SlackChat from '../components/SlackChat/SlackChat';
 import { ROUTES } from '../constants/constants';
@@ -95,7 +94,6 @@ const AppRouter = () => {
         </>
       ) : (
         <>
-          <Appbar />
           {slackChat}
           <Switch>
             <Route exact path={ROUTES.HOME}>

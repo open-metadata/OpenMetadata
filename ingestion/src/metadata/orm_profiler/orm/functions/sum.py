@@ -18,19 +18,26 @@ data.
 """
 
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import GenericFunction, sum
+from sqlalchemy.sql.functions import GenericFunction
 
 from metadata.orm_profiler.metrics.core import CACHE
 from metadata.orm_profiler.orm.registry import Dialects
 
 
 class SumFn(GenericFunction):
-    name = "sum"
+    name = "SumFn"
     inherit_cache = CACHE
+
+
+@compiles(SumFn)
+def _(element, compiler, **kw):
+    """Handle case for empty table. If empty, clickhouse returns NaN"""
+    proc = compiler.process(element.clauses, **kw)
+    return "SUM(%s)" % proc
 
 
 @compiles(SumFn, Dialects.BigQuery)
 def _(element, compiler, **kw):
-    """Handle case for empty table. If empty, clickhouse returns NaN"""
+    """Handle case where column type is INTEGER but SUM returns a NUMBER"""
     proc = compiler.process(element.clauses, **kw)
     return "SUM(CAST(%s AS NUMERIC))" % proc

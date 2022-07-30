@@ -9,20 +9,17 @@
     {
       "name": "DataConsumerPolicy-editDescription",
       "operation": "EditDescription",
-      "allow": true,
-      "priority": 1000
+      "allow": true
     },
     {
       "name": "DataConsumerPolicy-editOwner",
       "operation": "EditOwner",
-      "allow": true,
-      "priority": 1000
+      "allow": true
     },
     {
       "name": "DataConsumerPolicy-editTags",
       "operation": "EditTags",
-      "allow": true,
-      "priority": 1000
+      "allow": true
     }
   ]
 }

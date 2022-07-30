@@ -159,6 +159,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           </UserPopOverCard>
           <div className="tw-flex tw-flex-col">
             <FeedCardHeader
+              className="tw-pl-2"
               createdBy={feedDetail.from}
               entityFQN={entityFQN as string}
               entityField={entityField as string}

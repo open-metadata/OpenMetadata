@@ -19,6 +19,7 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
+import { EntityReference } from 'Models';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { User } from '../../generated/entity/teams/user';
@@ -233,6 +234,16 @@ const mockUserDetails = {
   },
 };
 
+const currentUserMockData = {
+  id: '7b26a534-25e8-4112-ae08-ee059f8918c4',
+  type: 'table',
+  name: 'test_dim_staff',
+  fullyQualifiedName: 'test_sample.test_db.test_dim_staff',
+  description: 'test test_dim_staff',
+  deleted: false,
+  href: 'http://localhost:8585/api/v1/tables/7b26a534-25e8-4112-ae08-ee059f8918c4',
+} as EntityReference;
+
 jest.mock('../../axiosAPIs/miscAPI', () => ({
   searchData: jest
     .fn()
@@ -333,14 +344,14 @@ const mockProp: MyDataProps = {
   feedData: formatDataResponse(mockData.data.hits.hits),
   fetchData: fetchData,
   fetchFeedHandler: mockFetchFeedHandler,
-  followedData: formatDataResponse(mockData.data.hits.hits),
+  followedData: currentUserMockData,
   isFeedLoading: false,
-  ownedData: formatDataResponse(mockData.data.hits.hits),
+  ownedData: currentUserMockData,
   paging: mockPaging,
   postFeedHandler: postFeed,
   userDetails: mockUserDetails as unknown as User,
   updateThreadHandler: jest.fn(),
-};
+} as unknown as MyDataProps;
 
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();

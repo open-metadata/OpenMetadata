@@ -89,7 +89,6 @@ public class PolicyCache {
     return new RuleBuilder()
         .name(rule.getName())
         .description(rule.getName())
-        .priority(rule.getPriority())
         .when(new RuleCondition(rule))
         .then(new SetPermissionAction(rule))
         .then(new SetAllowedOperationAction(rule))

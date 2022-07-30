@@ -144,6 +144,7 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, 'node_modules/slick-carousel'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
         ], // Just the source code
       },
@@ -159,7 +160,10 @@ module.exports = {
             },
           },
         ],
-        include: [path.resolve(__dirname, 'src')], // Just the source code
+        include: [
+          path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, 'node_modules/slick-carousel'),
+        ], // Just the source code
       },
     ],
   },
