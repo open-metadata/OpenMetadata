@@ -31,12 +31,12 @@ import javax.annotation.CheckForNull;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jeasy.rules.api.Rules;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.security.policyevaluator.PolicyCache.CompiledRule;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -118,9 +118,9 @@ public class SubjectContext {
     private final String entityName;
     private final String roleName;
     private final String policyName;
-    private final Rules rules;
+    private final List<CompiledRule> rules;
 
-    PolicyContext(String entity, String role, String policy, Rules rules) {
+    PolicyContext(String entity, String role, String policy, List<CompiledRule> rules) {
       this.entityName = entity;
       this.roleName = role;
       this.policyName = policy;

@@ -108,16 +108,6 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions to %s", name, operation);
   }
 
-  public static String invalidPolicyOperationNull(String rule, String policy) {
-    return String.format("Found invalid rule %s within policy %s. Please ensure operation is non-null", rule, policy);
-  }
-
-  public static String invalidPolicyDuplicateOperation(String operation, String policy) {
-    return String.format(
-        "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
-        operation, policy);
-  }
-
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
   }

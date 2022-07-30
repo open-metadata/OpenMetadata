@@ -59,6 +59,7 @@ import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -705,7 +706,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
     Rule rule =
-        new Rule().withName("TeamManagerPolicy-UpdateTeam").withAllow(true).withOperation(MetadataOperation.EDIT_USERS);
+        new Rule()
+            .withName("TeamManagerPolicy-UpdateTeam")
+            .withEffect(Effect.ALLOW)
+            .withResources(List.of(Entity.TEAM))
+            .withOperations(List.of(MetadataOperation.EDIT_USERS));
 
     // Create a policy with the rule
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();

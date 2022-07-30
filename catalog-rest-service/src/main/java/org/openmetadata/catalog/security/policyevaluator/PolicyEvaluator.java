@@ -13,18 +13,18 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
+import static org.openmetadata.catalog.security.policyevaluator.PolicyFunctions.matchOperations;
+import static org.openmetadata.catalog.security.policyevaluator.PolicyFunctions.matchResource;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jeasy.rules.api.Rules;
-import org.jeasy.rules.api.RulesEngine;
-import org.jeasy.rules.api.RulesEngineParameters;
-import org.jeasy.rules.core.DefaultRulesEngine;
-import org.openmetadata.catalog.EntityInterface;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.security.policyevaluator.PolicyCache.CompiledRule;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
 
@@ -32,12 +32,14 @@ import org.openmetadata.catalog.type.MetadataOperation;
  * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link
  * org.openmetadata.catalog.entity.policies.Policy} format to make access decisions.
  *
+ * <p>TODO documentation
+ *
  * <p>This Singleton class uses {@link DefaultRulesEngine} provided by <a
  * href="https://github.com/j-easy/easy-rules">j-easy/easy-rules</a> package.
  *
  * <p>The rules defined as {@link org.openmetadata.catalog.entity.policies.accessControl.Rule} are to be fetched from
- * OpenMetadata's {@link org.openmetadata.catalog.jdbi3.PolicyRepository} and converted into type {@link Rule} to be
- * used within the {@link DefaultRulesEngine}
+ * OpenMetadata's {@link org.openmetadata.catalog.jdbi3.PolicyRepository} and to be used within the {@link
+ * DefaultRulesEngine}
  *
  * <p>The facts are constructed based on 3 inputs for the PolicyEvaluator:
  *
@@ -49,17 +51,10 @@ import org.openmetadata.catalog.type.MetadataOperation;
  */
 @Slf4j
 public class PolicyEvaluator {
-  private final RulesEngine checkPermissionRulesEngine;
-  private final RulesEngine allowedOperationsRulesEngine;
-
   // Eager initialization of Singleton since PolicyEvaluator is lightweight.
   private static final PolicyEvaluator policyEvaluator = new PolicyEvaluator();
 
-  private PolicyEvaluator() {
-    // When first rule applies, stop the check for permission.
-    checkPermissionRulesEngine = new DefaultRulesEngine(new RulesEngineParameters().skipOnFirstAppliedRule(true));
-    allowedOperationsRulesEngine = new DefaultRulesEngine();
-  }
+  private PolicyEvaluator() {}
 
   public static PolicyEvaluator getInstance() {
     return policyEvaluator;
@@ -67,37 +62,43 @@ public class PolicyEvaluator {
 
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
   public boolean hasPermission(
-      @NonNull SubjectContext subjectContext, EntityInterface entity, @NonNull MetadataOperation operation) {
+      @NonNull SubjectContext subjectContext,
+      @NonNull ResourceContextInterface resourceContext,
+      @NonNull OperationContext operationContext) {
     // Role based permission
-    AttributeBasedFacts facts =
-        new AttributeBasedFacts.AttributeBasedFactsBuilder()
-            .withEntity(entity)
-            .withOperation(operation)
-            .withCheckOperation(true)
-            .build();
     Iterator<PolicyContext> policies = subjectContext.getPolicies();
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
-      Rules rules = policyContext.getRules();
-      checkPermissionRulesEngine.fire(rules, facts.getFacts());
-      if (facts.hasPermission()) {
-        return true;
+      for (CompiledRule rule : policyContext.getRules()) {
+        if (matchResource(operationContext.getResource(), rule)
+            && matchOperations(operationContext.getOperations(), rule)) {
+          if (rule.getEffect() == Effect.DENY) {
+            return false;
+          }
+          if (rule.getEffect() == Effect.ALLOW) {
+            return true;
+          }
+        }
       }
     }
     return false;
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
-  public List<MetadataOperation> getAllowedOperations(@NonNull SubjectContext subjectContext, EntityInterface entity) {
+  public List<MetadataOperation> getAllowedOperations(
+      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
     List<MetadataOperation> list = new ArrayList<>();
-    AttributeBasedFacts facts = new AttributeBasedFacts.AttributeBasedFactsBuilder().withEntity(entity).build();
-
     Iterator<PolicyContext> policies = subjectContext.getPolicies();
     while (policies.hasNext()) {
+      // TODO clean up (add resource name and allow/deny)
       PolicyContext policyContext = policies.next();
-      Rules rules = policyContext.getRules();
-      allowedOperationsRulesEngine.fire(rules, facts.getFacts());
-      list.addAll(facts.getAllowedOperations());
+      for (CompiledRule rule : policyContext.getRules()) {
+        if (matchResource("all", rule)) {
+          if (rule.getEffect() == Effect.ALLOW) {
+            list.addAll(rule.getOperations());
+          }
+        }
+      }
     }
     return list.stream().distinct().collect(Collectors.toList());
   }

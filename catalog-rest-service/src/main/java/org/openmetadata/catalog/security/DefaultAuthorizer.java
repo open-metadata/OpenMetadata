@@ -109,7 +109,7 @@ public class DefaultAuthorizer implements Authorizer {
         // Entity does not have an owner or is owned by the user - allow all operations.
         return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
       }
-      return PolicyEvaluator.getInstance().getAllowedOperations(subjectContext, resourceContext.getEntity());
+      return PolicyEvaluator.getInstance().getAllowedOperations(subjectContext, resourceContext);
     } catch (IOException | EntityNotFoundException ex) {
       return Collections.emptyList();
     }
@@ -144,6 +144,10 @@ public class DefaultAuthorizer implements Authorizer {
       return;
     }
 
+    if (subjectContext.isOwner(resourceContext.getOwner())) {
+      return;
+    }
+
     // TODO view is currently allowed for everyone
     if (operationContext.getOperations().size() == 1
         && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
@@ -156,7 +160,7 @@ public class DefaultAuthorizer implements Authorizer {
       throw new AuthorizationException(noPermission(securityContext.getUserPrincipal()));
     }
     for (MetadataOperation operation : metadataOperations) {
-      if (!PolicyEvaluator.getInstance().hasPermission(subjectContext, resourceContext.getEntity(), operation)) {
+      if (!PolicyEvaluator.getInstance().hasPermission(subjectContext, resourceContext, operationContext)) {
         throw new AuthorizationException(noPermission(securityContext.getUserPrincipal(), operation.value()));
       }
     }

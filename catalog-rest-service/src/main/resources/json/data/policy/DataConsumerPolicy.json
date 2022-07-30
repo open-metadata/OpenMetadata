@@ -7,19 +7,17 @@
   "enabled": true,
   "rules": [
     {
-      "name": "DataConsumerPolicy-editDescription",
-      "operation": "EditDescription",
-      "allow": true
+      "name": "DataConsumerPolicy-edit",
+      "resources" : ["all"],
+      "operations": ["EditDescription", "EditOwner", "EditTags"],
+      "effect": "allow"
     },
     {
       "name": "DataConsumerPolicy-editOwner",
-      "operation": "EditOwner",
-      "allow": true
-    },
-    {
-      "name": "DataConsumerPolicy-editTags",
-      "operation": "EditTags",
-      "allow": true
+      "resources" : ["all"],
+      "operations": ["EditOwner"],
+      "effect": "allow",
+      "condition": "#noOwner() || #matchOwner()"
     }
   ]
 }

@@ -18,27 +18,29 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jeasy.rules.api.Rule;
-import org.jeasy.rules.api.Rules;
-import org.jeasy.rules.core.RuleBuilder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.springframework.expression.Expression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class PolicyCache {
-  protected static final LoadingCache<UUID, Rules> POLICY_CACHE =
+  protected static final LoadingCache<UUID, List<CompiledRule>> POLICY_CACHE =
       CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
 
-  public static Rules getPolicyRules(UUID policyId) {
+  public static List<CompiledRule> getPolicyRules(UUID policyId) {
     try {
       return POLICY_CACHE.get(policyId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -54,44 +56,54 @@ public class PolicyCache {
     }
   }
 
-  static class PolicyLoader extends CacheLoader<UUID, Rules> {
+  static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
     private static final EntityRepository<Policy> POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
     private static final Fields FIELDS = POLICY_REPOSITORY.getFields("rules");
 
     @Override
-    public Rules load(@CheckForNull UUID policyId) throws IOException {
+    public List<CompiledRule> load(@CheckForNull UUID policyId) throws IOException {
       Policy policy = POLICY_REPOSITORY.get(null, policyId.toString(), FIELDS);
       LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
       return getRules(policy);
     }
   }
 
-  protected static Rules getRules(Policy policy) {
-    Rules rules = new Rules();
+  protected static List<CompiledRule> getRules(Policy policy) {
+    List<CompiledRule> rules = new ArrayList<>();
     for (Object r : policy.getRules()) {
-      org.openmetadata.catalog.entity.policies.accessControl.Rule acRule = null;
       try {
-        acRule =
+        Rule rule =
             JsonUtils.readValue(
                 JsonUtils.getJsonStructure(r).toString(),
                 org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
+        rules.add(new CompiledRule(rule));
       } catch (Exception e) {
         LOG.warn("Failed to load a rule", e);
-      }
-      if (acRule != null && Boolean.TRUE.equals(acRule.getAllow())) {
-        rules.register(convertRule(acRule));
       }
     }
     return rules;
   }
 
-  private static Rule convertRule(org.openmetadata.catalog.entity.policies.accessControl.Rule rule) {
-    return new RuleBuilder()
-        .name(rule.getName())
-        .description(rule.getName())
-        .when(new RuleCondition(rule))
-        .then(new SetPermissionAction(rule))
-        .then(new SetAllowedOperationAction(rule))
-        .build();
+  /** This class is used in a single threaded model and hence does not have concurrency support */
+  public static class CompiledRule extends Rule {
+    private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
+    private Expression expression;
+
+    public CompiledRule(Rule rule) {
+      super();
+      this.withName(rule.getName())
+          .withDescription(rule.getDescription())
+          .withCondition(rule.getCondition())
+          .withEffect(rule.getEffect())
+          .withOperations(rule.getOperations())
+          .withResources(rule.getResources());
+    }
+
+    public Expression getExpression() {
+      if (expression == null) {
+        expression = EXPRESSION_PARSER.parseExpression(this.getCondition());
+      }
+      return expression;
+    }
   }
 }
