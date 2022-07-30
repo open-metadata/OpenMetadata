@@ -559,7 +559,8 @@ public class FeedRepository {
       boolean isResolved,
       PaginationType paginationType,
       ThreadType threadType,
-      TaskStatus taskStatus)
+      TaskStatus taskStatus,
+      Boolean activeAnnouncement)
       throws IOException {
     List<Thread> threads;
     int total;
@@ -577,12 +578,12 @@ public class FeedRepository {
       // Get one extra result used for computing before cursor
       List<String> jsons;
       if (paginationType == PaginationType.BEFORE) {
-        jsons = dao.feedDAO().listBefore(limit + 1, time, taskStatus, isResolved, threadType);
+        jsons = dao.feedDAO().listBefore(limit + 1, time, taskStatus, isResolved, threadType, activeAnnouncement);
       } else {
-        jsons = dao.feedDAO().listAfter(limit + 1, time, taskStatus, isResolved, threadType);
+        jsons = dao.feedDAO().listAfter(limit + 1, time, taskStatus, isResolved, threadType, activeAnnouncement);
       }
       threads = JsonUtils.readObjects(jsons, Thread.class);
-      total = dao.feedDAO().listCount(taskStatus, isResolved, threadType);
+      total = dao.feedDAO().listCount(taskStatus, isResolved, threadType, activeAnnouncement);
     } else {
       // Either one or both the filters are enabled
       // we don't support both the filters together. If both are not null, entity link takes precedence
@@ -610,6 +611,7 @@ public class FeedRepository {
                         time,
                         threadType,
                         taskStatus,
+                        activeAnnouncement,
                         isResolved,
                         IS_ABOUT.ordinal());
           } else {
@@ -622,6 +624,7 @@ public class FeedRepository {
                         time,
                         threadType,
                         taskStatus,
+                        activeAnnouncement,
                         isResolved,
                         IS_ABOUT.ordinal());
           }
@@ -633,6 +636,7 @@ public class FeedRepository {
                       entityLink.getFullyQualifiedFieldType(),
                       threadType,
                       taskStatus,
+                      activeAnnouncement,
                       isResolved,
                       IS_ABOUT.ordinal());
         }

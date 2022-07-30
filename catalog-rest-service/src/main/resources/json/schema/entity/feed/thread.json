@@ -111,6 +111,23 @@
       ],
       "default": "Conversation"
     },
+    "announcementDetails": {
+      "javaType": "org.openmetadata.catalog.type.AnnouncementDetails",
+      "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "description": "Timestamp of the start time from when the announcement should be shown.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "endTime": {
+          "description": "Timestamp of when the announcement should end",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["startTime", "endTime"],
+      "additionalProperties": false
+    },
     "post": {
       "javaType": "org.openmetadata.catalog.type.Post",
       "type": "object",
@@ -208,6 +225,10 @@
     "task": {
       "description": "Details about the task. This is only applicable if thread is of type task.",
       "$ref": "#/definitions/taskDetails"
+    },
+    "announcement": {
+      "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
+      "$ref": "#/definitions/announcementDetails"
     }
   },
   "required": ["id", "about", "message"],

@@ -32,7 +32,6 @@ UPDATE dashboard_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.env')
 WHERE serviceType = 'Looker';
 
-
 CREATE TABLE IF NOT EXISTS test_definition (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
@@ -65,3 +64,7 @@ CREATE TABLE IF NOT EXISTS test_case (
 
 UPDATE webhook_entity
 SET json = JSON_INSERT(json, '$.webhookType', 'generic');
+
+ALTER TABLE thread_entity
+    ADD announcementStart BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.startTime'),
+    ADD announcementEnd BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.endTime');

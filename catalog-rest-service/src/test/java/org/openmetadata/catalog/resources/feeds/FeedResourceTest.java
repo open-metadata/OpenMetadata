@@ -43,6 +43,8 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -89,6 +91,7 @@ import org.openmetadata.catalog.resources.feeds.FeedResource.PostList;
 import org.openmetadata.catalog.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.type.AnnouncementDetails;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.CreateTaskDetails;
@@ -415,6 +418,83 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void post_validAnnouncementAndList_200() throws IOException {
+    int totalAnnouncementCount = listAnnouncements(null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+
+    // create two announcements with start time in the future
+    LocalDateTime now = LocalDateTime.now();
+    AnnouncementDetails announcementDetails =
+        new AnnouncementDetails()
+            .withStartTime(now.plusDays(1L).toEpochSecond(ZoneOffset.UTC))
+            .withEndTime(now.plusDays(2L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create =
+        create()
+            .withMessage("Announcement One")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+
+    create =
+        create()
+            .withMessage("Announcement Two")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    createAndCheck(create, userAuthHeaders);
+
+    // create one expired announcement
+    announcementDetails
+        .withStartTime(now.minusDays(3L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.minusMinutes(1L).toEpochSecond(ZoneOffset.UTC));
+    create =
+        create()
+            .withMessage("Announcement Three")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    createAndCheck(create, userAuthHeaders);
+
+    // create one active announcement
+    announcementDetails
+        .withStartTime(now.minusDays(2L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(5L).toEpochSecond(ZoneOffset.UTC));
+    create =
+        create()
+            .withMessage("Announcement Four")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    createAndCheck(create, userAuthHeaders);
+
+    ThreadList announcements = listAnnouncements(null, null, null, ADMIN_AUTH_HEADERS);
+    int announcementCount = announcements.getPaging().getTotal();
+
+    assertEquals(totalAnnouncementCount + 4, announcementCount);
+    assertEquals(totalAnnouncementCount + 4, announcements.getData().size());
+
+    announcements = listAnnouncements(create.getAbout(), null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(announcementCount, announcements.getPaging().getTotal());
+    assertEquals(announcementCount, announcements.getData().size());
+
+    announcements = listAnnouncements(null, null, true, ADMIN_AUTH_HEADERS);
+    int activeAnnouncementCount = announcements.getPaging().getTotal();
+
+    assertEquals(1, activeAnnouncementCount);
+    assertEquals(1, announcements.getData().size());
+
+    announcements = listAnnouncements(create.getAbout(), null, true, ADMIN_AUTH_HEADERS);
+    assertEquals(activeAnnouncementCount, announcements.getPaging().getTotal());
+    assertEquals(activeAnnouncementCount, announcements.getData().size());
+
+    // get non-active announcements
+    announcements = listAnnouncements(null, null, false, ADMIN_AUTH_HEADERS);
+    assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
+    assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+
+    announcements = listAnnouncements(create.getAbout(), null, false, ADMIN_AUTH_HEADERS);
+    assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
+    assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+  }
+
+  @Test
   void put_resolveTask_description_200() throws IOException {
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
@@ -606,7 +686,17 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Get the first page
     ThreadList threads =
         listThreads(
-            entityLink, null, userAuthHeaders, null, null, null, ThreadType.Conversation.toString(), limit, null, null);
+            entityLink,
+            null,
+            userAuthHeaders,
+            null,
+            null,
+            null,
+            ThreadType.Conversation.toString(),
+            null,
+            limit,
+            null,
+            null);
     assertEquals(limit, threads.getData().size());
     assertEquals(totalThreadCount, threads.getPaging().getTotal());
     assertNotNull(threads.getPaging().getAfter());
@@ -626,6 +716,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
               null,
               null,
               ThreadType.Conversation.toString(),
+              null,
               limit,
               null,
               afterCursor);
@@ -649,6 +740,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
             null,
             null,
             ThreadType.Conversation.toString(),
+            null,
             limit,
             null,
             afterCursor);
@@ -665,6 +757,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
             null,
             null,
             ThreadType.Conversation.toString(),
+            null,
             limit,
             beforeCursor,
             null);
@@ -1119,13 +1212,41 @@ public class FeedResourceTest extends CatalogApplicationTest {
         ThreadType.Task.toString(),
         null,
         null,
+        null,
+        null);
+  }
+
+  public static ThreadList listAnnouncements(
+      String entityLink, Integer limitPosts, Boolean activeAnnouncement, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return listThreads(
+        entityLink,
+        limitPosts,
+        authHeaders,
+        null,
+        null,
+        null,
+        ThreadType.Announcement.toString(),
+        activeAnnouncement,
+        null,
+        null,
         null);
   }
 
   public static ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
-        entityLink, limitPosts, authHeaders, null, null, null, ThreadType.Conversation.toString(), null, null, null);
+        entityLink,
+        limitPosts,
+        authHeaders,
+        null,
+        null,
+        null,
+        ThreadType.Conversation.toString(),
+        null,
+        null,
+        null,
+        null);
   }
 
   public static ThreadList listThreads(
@@ -1136,6 +1257,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
       String filterType,
       TaskStatus taskStatus,
       String threadType,
+      Boolean activeAnnouncement,
       Integer limitParam,
       String before,
       String after)
@@ -1145,6 +1267,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     target = filterType != null ? target.queryParam("filterType", filterType) : target;
     target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
     target = threadType != null ? target.queryParam("type", threadType) : target;
+    target = activeAnnouncement != null ? target.queryParam("activeAnnouncement", activeAnnouncement) : target;
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = limitPosts != null ? target.queryParam("limitPosts", limitPosts) : target;
     target = limitParam != null ? target.queryParam("limit", limitParam) : target;
