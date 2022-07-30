@@ -100,6 +100,9 @@ public interface CollectionDAO {
   EntityExtensionDAO entityExtensionDAO();
 
   @CreateSqlObject
+  EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -2436,23 +2439,23 @@ public interface CollectionDAO {
   interface EntityExtensionTimeSeriesDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "REPLACE INTO entity_extension_time_series(id, extension, jsonSchema, json) "
-                + "VALUES (:id, :extension, :jsonSchema, :json)",
+            "INSERT INTO entity_extension_time_series(entityId, entityFqn, extension, jsonSchema, json, timestamp) "
+                + "VALUES (:entityId, :entityFqn, :extension, :jsonSchema, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
-                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
-                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
+            "INSERT INTO entity_extension_time_series(entityId, entityFqn, extension, jsonSchema, json, timestamp) "
+                + "VALUES (:entityId, :entityFqn, :extension, :jsonSchema, (:json :: jsonb))",
         connectionType = POSTGRES)
     void insert(
-        @Bind("id") String id,
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
-    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE id = :id AND extension = :extension")
-    String getExtension(@Bind("id") String id, @Bind("extension") String extension);
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension")
+    String getExtension(@Bind("entityId") String entityId, @Bind("extension") String extension);
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
@@ -2467,96 +2470,141 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE id = :id")
     void deleteAll(@Bind("id") String id);
 
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series <condition> "
+            + " AND timestamp <:before ORDER BY timestamp ASC LIMIT :limit")
+    List<String> listBefore(
+        @Define("condition") String condition, @Bind("limit") int limit, @Bind("before") String before);
 
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String entityId = filter.getQueryParam("entityId");
       String entityFqn = filter.getQueryParam("entityFqn");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
+      String startTs = filter.getQueryParam("startTs");
+      String endTs = filter.getQueryParam("endTs");
       String condition = filter.getCondition();
 
-      if (entityFqn == null && entityId == null && testSuiteId == null) {
-        return listBefore(filter, limit, before);
+      if (entityId != null) {
+        condition = String.format("%s AND entityId=%s ", condition, entityId);
       }
-      if (entityId != null || entityFqn != null) {
+      if (extension != null) {
+        condition = String.format("%s AND extension=%s ", condition, extension);
+      }
+      if (entityFqn != null) {
         if (entityId != null) {
           condition =
               String.format(
                   "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
                   condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
         } else {
-          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+        condition = String.format("%s AND entityFqn=%s ", condition, entityFqn);
         }
       }
-      if (testSuiteId != null) {
+      if (startTs != null & endTs != null) {
         condition =
             String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                "%s AND timestamp BETWEEN %d and %d ", condition, Long.parseLong(startTs), Long.parseLong(endTs));
+      } else if (startTs != null) {
+        condition = String.format("%s AND timestamp > %d ", condition, Long.parseLong(startTs));
+      } else if (endTs != null) {
+        condition = String.format("%s AND timestamp < %d ", condition, Long.parseLong(endTs));
       }
-
-      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
+      return listBefore(condition, limit, before);
     }
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series <condition> "
+            + " AND timestamp >:after ORDER BY timestamp ASC LIMIT :limit")
+    List<String> listAfter(
+        @Define("condition") String condition, @Bind("limit") int limit, @Bind("after") String after);
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String entityId = filter.getQueryParam("entityId");
+      String extension = filter.getQueryParam("extension");
       String entityFqn = filter.getQueryParam("entityFqn");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
+      String startTs = filter.getQueryParam("startTs");
+      String endTs = filter.getQueryParam("endTs");
       String condition = filter.getCondition();
-      if (entityFqn == null && entityId == null && testSuiteId == null) {
-        return EntityDAO.super.listAfter(filter, limit, after);
+
+      if (entityId != null) {
+        condition = String.format("%s AND entityId=%s ", condition, entityId);
       }
-      if (entityId != null || entityFqn != null) {
+      if (extension != null) {
+        condition = String.format("%s AND extension=%s ", condition, extension);
+      }
+      if (entityFqn != null) {
+        condition = String.format("%s AND entityFqn=%s ", condition, entityFqn);
+      }
+      if (startTs != null & endTs != null) {
+        condition =
+            String.format(
+                "%s AND timestamp BETWEEN %d and %d ", condition, Long.parseLong(startTs), Long.parseLong(endTs));
+      } else if (startTs != null) {
+        condition = String.format("%s AND timestamp > %d ", condition, Long.parseLong(startTs));
+      } else if (endTs != null) {
+        condition = String.format("%s AND timestamp < %d ", condition, Long.parseLong(endTs));
+      }
+      return listAfter(condition, limit, after);
+    }
+
+    @SqlQuery("SELECT count(*) FROM entity_extension_time_series <cond>")
+    int listCount(@Define("cond") String cond);
+
+    default int listCount(ListFilter filter) {
+      String entityId = filter.getQueryParam("entityId");
+      String extension = filter.getQueryParam("extension");
+      String entityFqn = filter.getQueryParam("entityFqn");
+      String startTs = filter.getQueryParam("startTs");
+      String endTs = filter.getQueryParam("endTs");
+      String condition = filter.getCondition();
+
+      if (entityId != null) {
+        condition = String.format("%s AND entityId=%s ", condition, entityId);
+      }
+      if (extension != null) {
+        condition = String.format("%s AND extension=%s ", condition, extension);
+      }
+      if (entityFqn != null) {
         if (entityId != null) {
           condition =
               String.format(
                   "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
                   condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
         } else {
-          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+        condition = String.format("%s AND entityFqn=%s ", condition, entityFqn);
         }
       }
-      if (testSuiteId != null) {
+      if (startTs != null & endTs != null) {
         condition =
             String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                "%s AND timestamp BETWEEN %d and %d ", condition, Long.parseLong(startTs), Long.parseLong(endTs));
+      } else if (startTs != null) {
+        condition = String.format("%s AND timestamp > %d ", condition, Long.parseLong(startTs));
+      } else if (endTs != null) {
+        condition = String.format("%s AND timestamp < %d ", condition, Long.parseLong(endTs));
       }
-
-      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
+      return listCount(condition);
     }
+  }
 
-    @SqlQuery("SELECT count(*) FROM <table> <cond>")
-    int listCount(@Define("table") String table, @Define("extension") String extensionColumn, @Define("cond") String cond);
+  class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
+    @Override
+    public EntitiesCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new EntitiesCount()
+          .withTableCount(rs.getInt("tableCount"))
+          .withTopicCount(rs.getInt("topicCount"))
+          .withDashboardCount(rs.getInt("dashboardCount"))
+          .withPipelineCount(rs.getInt("pipelineCount"))
+          .withMlmodelCount(rs.getInt("mlmodelCount"))
+          .withServicesCount(rs.getInt("servicesCount"))
+          .withUserCount(rs.getInt("userCount"))
+          .withTeamCount(rs.getInt("teamCount"));
+    }
+  }
 
   class ServicesCountRowMapper implements RowMapper<ServicesCount> {
     @Override
-    default int listCount(ListFilter filter) {
-      Integer startTs = Integer.parseInt(filter.getQueryParam("startTs"));
-      Integer endTs = Integer.parseInt(filter.getQueryParam("endTs"));
-      String extension = filter.getQueryParam("extension");
-
-      String condition = filter.getCondition();
-      if (extension == null && startTs == null && endTs == null) {
-        return listCount(filter);
-      }
-      if (entityId != null || entityFqn != null) {
-        if (entityId != null) {
-          condition =
-              String.format(
-                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
-        } else {
-          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
-        }
-      }
-      if (testSuiteId != null) {
-        condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
-      }
-
+    public ServicesCount map(ResultSet rs, StatementContext ctx) throws SQLException {
       return listCount(getTableName(), getNameColumn(), condition);
     }
   }

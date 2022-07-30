@@ -66,7 +66,6 @@ import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
-import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityReference;
@@ -218,23 +217,14 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
 
-    List<TableProfile> storedTableProfiles = getTableProfile(table);
-    Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
-    if (storedTableProfiles != null) {
-      for (TableProfile profile : storedTableProfiles) {
-        storedMapTableProfiles.put(profile.getProfileDate(), profile);
-      }
-    }
-    // validate all the columns
-    for (ColumnProfile columnProfile : tableProfile.getColumnProfile()) {
-      validateColumn(table, columnProfile.getName());
-    }
-    storedMapTableProfiles.put(tableProfile.getProfileDate(), tableProfile);
-    List<TableProfile> updatedProfiles = new ArrayList<>(storedMapTableProfiles.values());
-
     daoCollection
-        .entityExtensionDAO()
-        .insert(tableId.toString(), "table.tableProfile", "tableProfile", JsonUtils.pojoToJson(updatedProfiles));
+        .entityExtensionTimeSeriesDao()
+        .insert(
+            tableId.toString(),
+            table.getFullyQualifiedName(),
+            "table.tableProfile",
+            "tableProfile",
+            JsonUtils.pojoToJson(tableProfile));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withTableProfile(getTableProfile(table));
   }
