@@ -27,7 +27,6 @@ import static org.openmetadata.catalog.util.LambdaExceptionUtil.ignoringComparat
 import static org.openmetadata.catalog.util.LambdaExceptionUtil.rethrowFunction;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Streams;
@@ -83,6 +82,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
@@ -756,6 +756,45 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
+  public ResultList<TableProfile> getTableProfiles(ListFilter filter, String before, String after, int limit)
+      throws IOException {
+    List<TableProfile> tableProfiles;
+    int total;
+    // Here timestamp is used for page marker since table profiles are sorted by timestamp
+    long time = Long.MAX_VALUE;
+
+    if (before != null) { // Reverse paging
+      time = Long.parseLong(RestUtil.decodeCursor(before));
+      tableProfiles =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), TableProfile.class);
+    } else { // Forward paging or first page
+      if (after != null) {
+        time = Long.parseLong(RestUtil.decodeCursor(after));
+      }
+      tableProfiles =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), TableProfile.class);
+    }
+    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
+    String beforeCursor = null;
+    String afterCursor = null;
+    if (before != null) {
+      if (tableProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
+        tableProfiles.remove(0);
+        beforeCursor = tableProfiles.get(0).getTimestamp().toString();
+      }
+      afterCursor = tableProfiles.get(tableProfiles.size() - 1).getTimestamp().toString();
+    } else {
+      beforeCursor = after == null ? null : tableProfiles.get(0).getTimestamp().toString();
+      if (tableProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
+        tableProfiles.remove(limit);
+        afterCursor = tableProfiles.get(limit - 1).getTimestamp().toString();
+      }
+    }
+    return new ResultList<>(tableProfiles, beforeCursor, afterCursor, total);
+  }
+
   /**
    * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
    * or, if there is already data for the date {@code newDailyCount.getDate()}, replace older count with the new one.
@@ -870,15 +909,12 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private List<TableProfile> getTableProfile(Table table) throws IOException {
-    List<TableProfile> tableProfiles =
-        JsonUtils.readObjects(
-            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableProfile"),
-            TableProfile.class);
-    if (tableProfiles != null) {
-      tableProfiles.sort(
-          Comparator.comparing(p -> parseDate(p.getProfileDate(), RestUtil.DATE_FORMAT), Comparator.reverseOrder()));
-    }
-    return tableProfiles;
+    return List.of(
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getLatestExtension(table.getId().toString(), "table.tableProfile"),
+            TableProfile.class));
   }
 
   private List<SQLQuery> getQueries(Table table) throws IOException {
