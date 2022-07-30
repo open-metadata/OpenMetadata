@@ -55,7 +55,7 @@
       "description": "Operation on the entity.",
       "$ref": "#/definitions/operation",
       "default": null
-    }
+    },
     "allow": {
       "description": "Allow or Deny operation on the entity.",
       "type": "boolean",
