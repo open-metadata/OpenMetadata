@@ -65,7 +65,7 @@ def cls_timeout(seconds: int = TEN_MIN):
     """
 
     def inner(cls):
-        for attr_name, attr in inspect.getmembers(cls, inspect.isfunction):
+        for attr_name, attr in inspect.getmembers(cls, inspect.ismethod):
             setattr(cls, attr_name, timeout(seconds)(getattr(cls, attr_name)))
 
         return cls
