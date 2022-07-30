@@ -108,6 +108,11 @@ public final class Entity {
   public static final String POLICY = "policy";
 
   //
+  // Service
+  //
+  public static final String SERVICE = "service";
+
+  //
   // Role, team and user entities
   //
   public static final String ROLE = "role";

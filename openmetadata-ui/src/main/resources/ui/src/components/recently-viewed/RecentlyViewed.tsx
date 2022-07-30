@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FormattedTableData } from 'Models';
+import { EntityReference } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import { EntityListWithAntd } from '../EntityList/EntityList';
@@ -19,7 +19,7 @@ import Loader from '../Loader/Loader';
 
 const RecentlyViewed: FunctionComponent = () => {
   const recentlyViewedData = getRecentlyViewedData();
-  const [data, setData] = useState<Array<FormattedTableData>>([]);
+  const [data, setData] = useState<Array<EntityReference>>([]);
   const [isLoading, setIsloading] = useState<boolean>(false);
 
   const prepareData = () => {
@@ -31,11 +31,11 @@ const RecentlyViewed: FunctionComponent = () => {
             serviceType: item.serviceType,
             name: item.displayName || prepareLabel(item.entityType, item.fqn),
             fullyQualifiedName: item.fqn,
-            index: item.entityType,
+            type: item.entityType,
           };
         })
         .filter((item) => item.name);
-      setData(formattedData as unknown as FormattedTableData[]);
+      setData(formattedData as unknown as EntityReference[]);
       setIsloading(false);
     }
   };

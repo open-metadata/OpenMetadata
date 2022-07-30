@@ -376,6 +376,7 @@ const DashboardDetailsPage = () => {
             fqn: fullyQualifiedName,
             serviceType: serviceType,
             timestamp: 0,
+            id: id,
           });
 
           fetchServiceDetails(service.type, service.name)

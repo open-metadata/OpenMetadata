@@ -12,7 +12,6 @@
  */
 
 import { Button, Card, Typography } from 'antd';
-import { FormattedTableData } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -21,14 +20,14 @@ import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
 import Ellipses from '../common/Ellipses/Ellipses';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 interface Prop {
-  entityList: Array<FormattedTableData>;
+  entityList: Array<EntityReference>;
   headerText: string | JSX.Element;
   noDataPlaceholder: JSX.Element;
   testIDText: string;
 }
 
 interface AntdEntityListProp {
-  entityList: Array<FormattedTableData>;
+  entityList: Array<EntityReference>;
   headerText?: string | JSX.Element;
   headerTextLabel: string;
   noDataPlaceholder: JSX.Element;
@@ -58,12 +57,12 @@ const EntityList: FunctionComponent<Prop> = ({
                 )}`}
                 key={index}>
                 <div className="tw-flex">
-                  {getEntityIcon(item.index || item.type || '')}
+                  {getEntityIcon(item.type || '')}
                   <Link
                     className="tw-font-medium"
                     to={getEntityLink(
-                      item.index || item.type || '',
-                      item.fullyQualifiedName
+                      item.type || '',
+                      item.fullyQualifiedName as string
                     )}>
                     <Button
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
@@ -103,12 +102,12 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
                 )}`}
                 key={index}>
                 <div className="tw-flex">
-                  {getEntityIcon(item.index || item.type || '')}
+                  {getEntityIcon(item.type || '')}
                   <Link
                     className="tw-font-medium"
                     to={getEntityLink(
-                      item.index || item.type || '',
-                      item.fullyQualifiedName
+                      item.type || '',
+                      item.fullyQualifiedName as string
                     )}>
                     <Button
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"

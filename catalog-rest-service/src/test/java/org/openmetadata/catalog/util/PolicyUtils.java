@@ -11,18 +11,17 @@ public class PolicyUtils {
   private static final Random random = new Random();
 
   public static Rule accessControlRule(
-      String name, String entityTag, String entityType, MetadataOperation operation, boolean allow, int priority) {
+      String name, String entityTag, String entityType, MetadataOperation operation, boolean allow) {
     return new Rule()
         .withName(name)
         .withEntityTagAttr(entityTag)
         .withEntityTypeAttr(entityType)
         .withOperation(operation)
-        .withAllow(allow)
-        .withPriority(priority);
+        .withAllow(allow);
   }
 
   public static Rule accessControlRule(
-      String entityTag, String entityType, MetadataOperation operation, boolean allow, int priority) {
-    return accessControlRule("rule" + random.nextInt(21), entityTag, entityType, operation, allow, priority);
+      String entityTag, String entityType, MetadataOperation operation, boolean allow) {
+    return accessControlRule("rule" + random.nextInt(21), entityTag, entityType, operation, allow);
   }
 }

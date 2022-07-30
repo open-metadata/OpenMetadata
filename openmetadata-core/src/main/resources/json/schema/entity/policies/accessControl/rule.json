@@ -55,16 +55,11 @@
       "description": "Operation on the entity.",
       "$ref": "#/definitions/operation",
       "default": null
-    },
+    }
     "allow": {
       "description": "Allow or Deny operation on the entity.",
       "type": "boolean",
       "default": false
-    },
-    "priority": {
-      "description": "Priority of this rule among all rules across all policies.",
-      "type": "integer",
-      "default": 250000
     },
     "deleted": {
       "description": "Is the rule soft-deleted.",

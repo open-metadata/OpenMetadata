@@ -489,6 +489,27 @@
         <artifactId>disruptor</artifactId>
         <version>3.4.4</version>
       </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <version>9.4.39.v20210325</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
+      <dependency>
+        <groupId>org.glassfish</groupId>
+        <artifactId>jakarta.el</artifactId>
+        <version>3.0.4</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONDATAFORMAT-1047329 -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.dataformat</groupId>
+        <artifactId>jackson-dataformat-cbor</artifactId>
+        <version>2.11.4</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
