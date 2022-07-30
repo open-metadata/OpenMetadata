@@ -63,7 +63,6 @@ class RunnerTest(TestCase):
     sample = sampler.random_sample()
 
     raw_runner = QueryRunner(session=session, table=User, sample=sample)
-    
     timeout_runner: Timer = cls_timeout(1)(Timer())
 
     @classmethod
