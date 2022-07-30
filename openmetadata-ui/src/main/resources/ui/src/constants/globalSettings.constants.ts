@@ -14,7 +14,7 @@
 export const GLOBAL_SETTINGS_MENU = [
   {
     category: 'Access',
-    items: ['Teams', 'Users', 'Roles'],
+    items: ['Teams', 'Users', 'Admins', 'Roles'],
   },
   {
     category: 'Services',
@@ -26,7 +26,7 @@ export const GLOBAL_SETTINGS_MENU = [
   },
   {
     category: 'Integrations',
-    items: ['Webhook', 'Slack', 'Bots'],
+    items: ['Webhook', 'Bots'],
   },
 ];
 
@@ -47,6 +47,7 @@ export enum GlobalSettingsMenuCategory {
 
 export enum GlobalSettingOptions {
   USERS = 'users',
+  ADMINS = 'admins',
   TEAMS = 'teams',
   ROLES = 'roles',
   POLICIES = 'policies',
