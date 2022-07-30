@@ -178,10 +178,15 @@ class DatalakeSource(DatabaseServiceSource):
                 for key in bucket.list_blobs(prefix=prefix):
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern, key.name
-                    ) or not self.check_valid_file_type(key.name):
+                    ):
                         self.status.filter(
-                            "{}".format(key["Key"]),
-                            "Table pattern not allowed",
+                            "{}".format(key.name),
+                            "Object pattern not allowed",
+                        )
+                        continue
+                    if not self.check_valid_file_type(key.name):
+                        logger.debug(
+                            f"Object filtered due to unsupported file type: {key.name}"
                         )
                         continue
                     table_name = self.standardize_table_name(bucket_name, key.name)
@@ -193,10 +198,15 @@ class DatalakeSource(DatabaseServiceSource):
                 for key in self._list_s3_objects(**kwargs):
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern, key["Key"]
-                    ) or not self.check_valid_file_type(key["Key"]):
+                    ):
                         self.status.filter(
                             "{}".format(key["Key"]),
-                            "Table pattern not allowed",
+                            "Object pattern not allowed",
+                        )
+                        continue
+                    if not self.check_valid_file_type(key["Key"]):
+                        logger.debug(
+                            f"Object filtered due to unsupported file type: {key['Key']}"
                         )
                         continue
                     table_name = self.standardize_table_name(bucket_name, key["Key"])
