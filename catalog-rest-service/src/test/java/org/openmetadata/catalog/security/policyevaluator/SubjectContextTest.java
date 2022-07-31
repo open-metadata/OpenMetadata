@@ -18,19 +18,39 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.PolicyDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.RoleDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
+import org.openmetadata.catalog.jdbi3.PolicyRepository;
+import org.openmetadata.catalog.jdbi3.RoleRepository;
+import org.openmetadata.catalog.jdbi3.TeamRepository;
+import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.EntityReference;
 
 public class SubjectContextTest {
-  public void testPolicyIterator() {
-    System.setProperty("org.apache.commons.logging.LogFactory", "org.apache.commons.logging.impl.LogFactoryImpl");
+  @BeforeAll
+  public static void setup() throws NoSuchMethodException {
+    Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
+    Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
+    Entity.registerEntity(
+        Policy.class, Entity.POLICY, Mockito.mock(PolicyDAO.class), Mockito.mock(PolicyRepository.class));
+    Entity.registerEntity(Role.class, Entity.ROLE, Mockito.mock(RoleDAO.class), Mockito.mock(RoleRepository.class));
+  }
 
+  @Test
+  public void testPolicyIterator() {
     // Create team hierarchy team1, team11, team111 each with 3 roles and 3 policies
     List<Role> team1Roles = getRoles("team1", 3);
     List<Policy> team1Policies = getPolicies("team1", 3);

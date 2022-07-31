@@ -49,7 +49,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.catalog.resources.policies.PolicyResource.ResourceDescriptorList;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContextTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -193,12 +192,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
           actualResourceDescriptors.getData().stream().filter(rd -> rd.getName().equals(entity)).findFirst().get();
       assertNotNull(resourceDescriptor);
     }
-  }
-
-  @Test
-  void test_subjectContextPolicyIterator() {
-    SubjectContextTest subjectContextTest = new SubjectContextTest();
-    subjectContextTest.testPolicyIterator();
   }
 
   @Override
