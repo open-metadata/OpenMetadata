@@ -57,6 +57,7 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -1081,7 +1082,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_tableProfile_200(TestInfo test) throws IOException {
+  void put_tableProfile_200(TestInfo test) throws IOException, ParseException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
     ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
@@ -1093,12 +1094,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withRowCount(6.0)
             .withColumnCount(3.0)
             .withColumnProfile(columnProfiles)
-            .withProfileDate("2021-09-09");
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
     Table putResponse = putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS);
-    verifyTableProfileData(putResponse.getTableProfile(), List.of(tableProfile));
+    verifyTableProfile(putResponse.getLatestTableProfile(), tableProfile);
 
-    table = getEntity(table.getId(), "tableProfile", ADMIN_AUTH_HEADERS);
-    verifyTableProfileData(table.getTableProfile(), List.of(tableProfile));
+    ResultList<TableProfile> tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTableProfiles(tableProfiles, List.of(tableProfile), 1);
 
     // Add new date for TableProfile
     TableProfile newTableProfile =
@@ -1106,12 +1107,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withRowCount(7.0)
             .withColumnCount(3.0)
             .withColumnProfile(columnProfiles)
-            .withProfileDate("2021-09-08");
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
     putResponse = putTableProfileData(table.getId(), newTableProfile, ADMIN_AUTH_HEADERS);
-    verifyTableProfileData(putResponse.getTableProfile(), List.of(newTableProfile, tableProfile));
+    verifyTableProfile(putResponse.getLatestTableProfile(), newTableProfile);
 
-    table = getEntity(table.getId(), "tableProfile", ADMIN_AUTH_HEADERS);
-    verifyTableProfileData(table.getTableProfile(), List.of(newTableProfile, tableProfile));
+    tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTableProfiles(tableProfiles, List.of(newTableProfile, tableProfile), 2);
 
     // Replace table profile for a date
     TableProfile newTableProfile1 =
@@ -1119,19 +1120,57 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withRowCount(21.0)
             .withColumnCount(3.0)
             .withColumnProfile(columnProfiles)
-            .withProfileDate("2021-09-08");
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
     putResponse = putTableProfileData(table.getId(), newTableProfile1, ADMIN_AUTH_HEADERS);
-    assertEquals(tableProfile.getProfileDate(), putResponse.getTableProfile().get(0).getProfileDate());
-    verifyTableProfileData(putResponse.getTableProfile(), List.of(newTableProfile1, tableProfile));
+    assertEquals(newTableProfile1.getTimestamp(), putResponse.getLatestTableProfile().getTimestamp());
+    verifyTableProfile(putResponse.getLatestTableProfile(), newTableProfile1);
 
-    table = getEntity(table.getId(), "tableProfile", ADMIN_AUTH_HEADERS);
+    table = getEntity(table.getId(), "latestTableProfile", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
-    assertEquals(tableProfile.getProfileDate(), table.getTableProfile().get(0).getProfileDate());
-    verifyTableProfileData(table.getTableProfile(), List.of(newTableProfile1, tableProfile));
+    tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTableProfiles(tableProfiles, List.of(newTableProfile1, tableProfile), 2);
+
+    String dateStr = "2021-09-";
+    List<TableProfile> tableProfileList = new ArrayList<>();
+    tableProfileList.add(tableProfile);
+    tableProfileList.add(newTableProfile1);
+    for (int i=11; i <= 20; i++) {
+        tableProfile =
+          new TableProfile()
+              .withRowCount(21.0)
+              .withColumnCount(3.0)
+              .withColumnProfile(columnProfiles)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+      putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS);
+      tableProfileList.add(tableProfile);
+    }
+    tableProfiles = getTableProfiles(table.getId(), tableProfileList.size(), ADMIN_AUTH_HEADERS);
+    verifyTableProfiles(tableProfiles, tableProfileList, 12);
+
+    //create another table and add profiles
+    Table table1 = createAndCheckEntity(createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
+    List<TableProfile> table1ProfileList = new ArrayList<>();
+    dateStr = "2021-10-";
+    for (int i=11; i <= 15; i++) {
+      tableProfile =
+          new TableProfile()
+              .withRowCount(21.0)
+              .withColumnCount(3.0)
+              .withColumnProfile(columnProfiles)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+      putTableProfileData(table1.getId(), tableProfile, ADMIN_AUTH_HEADERS);
+      table1ProfileList.add(tableProfile);
+    }
+    tableProfiles = getTableProfiles(table1.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTableProfiles(tableProfiles, table1ProfileList, 5);
+    deleteTableProfile(table1.getId(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
+    table1ProfileList.remove(0);
+    tableProfiles = getTableProfiles(table1.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTableProfiles(tableProfiles, table1ProfileList , 4);
   }
 
   @Test
-  void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException {
+  void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException, ParseException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
 
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
@@ -1144,7 +1183,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withRowCount(6.0)
             .withColumnCount(3.0)
             .withColumnProfile(columnProfiles)
-            .withProfileDate("2021-09-09");
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
     assertResponseContains(
         () -> putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -1809,14 +1848,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         table.getJoins(),
         table.getSampleData(),
         table.getViewDefinition(),
-        table.getTableProfile(),
+        table.getLatestTableProfile(),
         table.getLocation(),
         table.getTableQueries(),
         table.getDataModel());
 
     String fields =
         "tableConstraints,usageSummary,owner,"
-            + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
+            + "tags,followers,joins,sampleData,viewDefinition,latestTableProfile,location,tableQueries,dataModel";
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -1901,6 +1940,21 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
+  public static Table deleteTableProfile(
+      UUID tableId, Long timestamp, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target =
+        CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile/" + timestamp);
+    return TestUtils.delete(target, Table.class, authHeaders);
+  }
+
+  public static ResultList<TableProfile> getTableProfiles(UUID tableId, Integer limit, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile");
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    return TestUtils.get(target, TableResource.TableProfileList.class, authHeaders);
+  }
+
   public static Table putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableQuery");
@@ -1971,17 +2025,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return new GlossaryTermResourceTest().getEntityByName(name, null, "usageCount", authHeaders).getUsageCount();
   }
 
-  private void verifyTableProfileData(List<TableProfile> actualProfiles, List<TableProfile> expectedProfiles) {
-    assertEquals(actualProfiles.size(), expectedProfiles.size());
-    Map<String, TableProfile> tableProfileMap = new HashMap<>();
-    for (TableProfile profile : actualProfiles) {
-      tableProfileMap.put(profile.getProfileDate(), profile);
+  private void verifyTableProfiles(
+      ResultList<TableProfile> actualProfiles, List<TableProfile> expectedProfiles, int expectedCount) {
+    assertEquals(expectedCount, actualProfiles.getPaging().getTotal());
+    assertEquals(expectedProfiles.size(), actualProfiles.getData().size());
+    Map<Long, TableProfile> tableProfileMap = new HashMap<>();
+    for (TableProfile profile : actualProfiles.getData()) {
+      tableProfileMap.put(profile.getTimestamp(), profile);
     }
     for (TableProfile tableProfile : expectedProfiles) {
-      TableProfile storedProfile = tableProfileMap.get(tableProfile.getProfileDate());
-      assertNotNull(storedProfile);
-      assertEquals(tableProfile, storedProfile);
+      TableProfile storedProfile = tableProfileMap.get(tableProfile.getTimestamp());
+      verifyTableProfile(storedProfile, tableProfile);
     }
+  }
+
+  private void verifyTableProfile(TableProfile actualProfile, TableProfile expectedProfile) {
+    assertNotNull(actualProfile);
+    assertEquals(actualProfile, expectedProfile);
   }
 
   private void verifyTableTest(String tableName, List<TableTest> actualTests, List<CreateTableTest> expectedTests) {

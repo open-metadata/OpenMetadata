@@ -2483,12 +2483,12 @@ public interface CollectionDAO {
   interface EntityExtensionTimeSeriesDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_extension_time_series(entityId, entityFqn, extension, jsonSchema, json, timestamp) "
+            "INSERT INTO entity_extension_time_series(entityId, entityFqn, extension, jsonSchema, json) "
                 + "VALUES (:entityId, :entityFqn, :extension, :jsonSchema, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_extension_time_series(entityId, entityFqn, extension, jsonSchema, json, timestamp) "
+            "INSERT INTO entity_extension_time_series(entityId, entityFqn, extension, jsonSchema, json) "
                 + "VALUES (:entityId, :entityFqn, :extension, :jsonSchema, (:json :: jsonb))",
         connectionType = POSTGRES)
     void insert(
@@ -2498,8 +2498,20 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
+    @ConnectionAwareSqlUpdate(value = "UPDATE entity_extension_time_series set json = :json where entityId=:entityId and extension=:extension and timestamp=:timestamp", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(value = "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityId=:entityId and extension=:extension and timestamp=:timestamp", connectionType = POSTGRES)
+    void update(
+        @Bind("entityId") String entityId,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Bind("timestamp") Long timestamp
+    );
+
     @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension")
     String getExtension(@Bind("entityId") String entityId, @Bind("extension") String extension);
+
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension AND timestamp = :timestamp")
+    String getExtensionAtTimestamp(@Bind("entityId") String entityId, @Bind("extension") String extension, @Bind("timestamp") long timestamp);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension "
@@ -2513,40 +2525,37 @@ public interface CollectionDAO {
             + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
-    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE id = :id AND extension = :extension")
-    void delete(@Bind("id") String id, @Bind("extension") String extension);
+    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension")
+    void delete(@Bind("entityId") String id, @Bind("extension") String extension);
 
-    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE id = :id")
-    void deleteAll(@Bind("id") String id);
+    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityId = :entityId")
+    void deleteAll(@Bind("entityId") String entityId);
+
+    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension AND timestamp = :timestamp")
+    void deleteAtTimestamp(@Bind("entityId") String id, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series <condition> "
-            + " AND timestamp <:before ORDER BY timestamp ASC LIMIT :limit")
+            + " AND timestamp > :before ORDER BY timestamp ASC LIMIT :limit")
     List<String> listBefore(
         @Define("condition") String condition, @Bind("limit") int limit, @Bind("before") long before);
 
     default List<String> listBefore(ListFilter filter, int limit, long before) {
       String entityId = filter.getQueryParam("entityId");
+      String extension = filter.getQueryParam("extension");
       String entityFqn = filter.getQueryParam("entityFqn");
       String startTs = filter.getQueryParam("startTs");
       String endTs = filter.getQueryParam("endTs");
       String condition = filter.getCondition();
 
       if (entityId != null) {
-        condition = String.format("%s AND entityId=%s ", condition, entityId);
+        condition = String.format("%s AND entityId='%s' ", condition, entityId);
       }
       if (extension != null) {
-        condition = String.format("%s AND extension=%s ", condition, extension);
+        condition = String.format("%s AND extension='%s' ", condition, extension);
       }
       if (entityFqn != null) {
-        if (entityId != null) {
-          condition =
-              String.format(
-                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
-        } else {
-        condition = String.format("%s AND entityFqn=%s ", condition, entityFqn);
-        }
+        condition = String.format("%s AND entityFqn='%s' ", condition, entityFqn);
       }
       if (startTs != null & endTs != null) {
         condition =
@@ -2562,10 +2571,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series <condition> "
-            + " AND timestamp >:after ORDER BY timestamp ASC LIMIT :limit")
+            + " AND timestamp < :after ORDER BY timestamp DESC LIMIT :limit")
     List<String> listAfter(@Define("condition") String condition, @Bind("limit") int limit, @Bind("after") long after);
 
-    @Override
     default List<String> listAfter(ListFilter filter, int limit, long after) {
       String entityId = filter.getQueryParam("entityId");
       String extension = filter.getQueryParam("extension");
@@ -2575,13 +2583,13 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
 
       if (entityId != null) {
-        condition = String.format("%s AND entityId=%s ", condition, entityId);
+        condition = String.format("%s AND entityId='%s' ", condition, entityId);
       }
       if (extension != null) {
-        condition = String.format("%s AND extension=%s ", condition, extension);
+        condition = String.format("%s AND extension='%s' ", condition, extension);
       }
       if (entityFqn != null) {
-        condition = String.format("%s AND entityFqn=%s ", condition, entityFqn);
+        condition = String.format("%s AND entityFqn='%s' ", condition, entityFqn);
       }
       if (startTs != null & endTs != null) {
         condition =
@@ -2607,20 +2615,13 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
 
       if (entityId != null) {
-        condition = String.format("%s AND entityId=%s ", condition, entityId);
+        condition = String.format("%s AND entityId='%s' ", condition, entityId);
       }
       if (extension != null) {
-        condition = String.format("%s AND extension=%s ", condition, extension);
+        condition = String.format("%s AND extension='%s' ", condition, extension);
       }
       if (entityFqn != null) {
-        if (entityId != null) {
-          condition =
-              String.format(
-                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
-        } else {
-        condition = String.format("%s AND entityFqn=%s ", condition, entityFqn);
-        }
+        condition = String.format("%s AND entityFqn='%s' ", condition, entityFqn);
       }
       if (startTs != null & endTs != null) {
         condition =
@@ -2653,7 +2654,12 @@ public interface CollectionDAO {
   class ServicesCountRowMapper implements RowMapper<ServicesCount> {
     @Override
     public ServicesCount map(ResultSet rs, StatementContext ctx) throws SQLException {
-      return listCount(getTableName(), getNameColumn(), condition);
+      return new ServicesCount()
+          .withDatabaseServiceCount(rs.getInt("databaseServiceCount"))
+          .withMessagingServiceCount(rs.getInt("messagingServiceCount"))
+          .withDashboardServiceCount(rs.getInt("dashboardServiceCount"))
+          .withPipelineServiceCounte(rs.getInt("pipelineServiceCount"))
+          .withMlModelServiceCount(rs.getInt("mlModelServiceCount"));
     }
   }
 
