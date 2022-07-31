@@ -50,7 +50,7 @@ public class SubjectContextTest {
   }
 
   @Test
-  public void testPolicyIterator() {
+  void testPolicyIterator() {
     // Create team hierarchy team1, team11, team111 each with 3 roles and 3 policies
     List<Role> team1Roles = getRoles("team1", 3);
     List<Policy> team1Policies = getPolicies("team1", 3);

@@ -100,6 +100,9 @@ public class PolicyCache {
     }
 
     public Expression getExpression() {
+      if (this.getCondition() == null) {
+        return null;
+      }
       if (expression == null) {
         expression = EXPRESSION_PARSER.parseExpression(this.getCondition());
       }
