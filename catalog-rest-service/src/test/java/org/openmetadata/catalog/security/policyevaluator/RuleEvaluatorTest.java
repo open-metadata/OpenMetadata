@@ -23,7 +23,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
-class PolicyEvaluationContextTest {
+class RuleEvaluatorTest {
   private static SpelExpressionParser expressionParser;
   private static Table table;
   private static User user;
@@ -48,9 +48,10 @@ class PolicyEvaluationContextTest {
 
   @Test
   void test_noOwner() {
-    // Set no owner to the entity and test noOwner method
-    PolicyEvaluationContext policyContext = new PolicyEvaluationContext(null, subjectContext, resourceContext);
+    RuleEvaluator policyContext = new RuleEvaluator(null, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(policyContext);
+
+    // Set no owner to the entity and test noOwner method
     table.setOwner(null);
     assertTrue(expressionParser.parseExpression("noOwner()").getValue(evaluationContext, Boolean.class));
     assertFalse(expressionParser.parseExpression("!noOwner()").getValue(evaluationContext, Boolean.class));
@@ -65,7 +66,7 @@ class PolicyEvaluationContextTest {
 
   @Test
   void test_isOwner() {
-    PolicyEvaluationContext policyContext = new PolicyEvaluationContext(null, subjectContext, resourceContext);
+    RuleEvaluator policyContext = new RuleEvaluator(null, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(policyContext);
 
     // Table owner is a different user (random ID) and hence isOwner returns false
@@ -103,7 +104,7 @@ class PolicyEvaluationContextTest {
 
   @Test
   void test_allTagsOrAnyTag() {
-    PolicyEvaluationContext policyContext = new PolicyEvaluationContext(null, subjectContext, resourceContext);
+    RuleEvaluator policyContext = new RuleEvaluator(null, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(policyContext);
 
     // All tags present

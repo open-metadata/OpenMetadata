@@ -31,8 +31,6 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.springframework.expression.Expression;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
@@ -82,31 +80,5 @@ public class PolicyCache {
       }
     }
     return rules;
-  }
-
-  /** This class is used in a single threaded model and hence does not have concurrency support */
-  public static class CompiledRule extends Rule {
-    private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
-    private Expression expression;
-
-    public CompiledRule(Rule rule) {
-      super();
-      this.withName(rule.getName())
-          .withDescription(rule.getDescription())
-          .withCondition(rule.getCondition())
-          .withEffect(rule.getEffect())
-          .withOperations(rule.getOperations())
-          .withResources(rule.getResources());
-    }
-
-    public Expression getExpression() {
-      if (this.getCondition() == null) {
-        return null;
-      }
-      if (expression == null) {
-        expression = EXPRESSION_PARSER.parseExpression(this.getCondition());
-      }
-      return expression;
-    }
   }
 }

@@ -1,7 +1,6 @@
 package org.openmetadata.catalog.security.policyevaluator;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
@@ -13,17 +12,16 @@ import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 
-class PolicyFunctionsTest {
-
+class CompiledRuleTest {
   @Test
   void testResourceMatchAll() throws IOException {
     // Rule with resource set to "all" matches all the resources
-    Rule rule = new Rule().withName("test").withResources(List.of("all"));
+    CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(List.of("all")));
     List<ResourceDescriptor> resourceDescriptors = listOrEmpty(PolicyResource.getResourceDescriptors());
     assertTrue(resourceDescriptors.size() > 0);
 
     for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
-      assertTrue(PolicyFunctions.matchResource(resourceDescriptor.getName(), rule));
+      assertTrue(CompiledRule.matchResource(rule, resourceDescriptor.getName()));
     }
   }
 
@@ -41,11 +39,11 @@ class PolicyFunctionsTest {
     }
     assertTrue(ruleResources.size() > 0); // Ensure we are setting at least one resource in a rule
 
-    Rule rule = new Rule().withName("test").withResources(ruleResources);
+    CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(ruleResources));
     for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
       String resourceName = resourceDescriptor.getName();
       assertEquals(
-          PolicyFunctions.matchResource(resourceName, rule),
+          CompiledRule.matchResource(rule, resourceName),
           ruleResources.contains(resourceName),
           "Resource name " + resourceName + " not matched");
     }

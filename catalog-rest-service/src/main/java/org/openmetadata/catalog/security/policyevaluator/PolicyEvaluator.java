@@ -13,9 +13,6 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
-import static org.openmetadata.catalog.security.policyevaluator.PolicyFunctions.matchOperations;
-import static org.openmetadata.catalog.security.policyevaluator.PolicyFunctions.matchResource;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -25,23 +22,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
-import org.openmetadata.catalog.security.policyevaluator.PolicyCache.CompiledRule;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
 
 /**
- * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link
- * Policy} format to make access decisions.
+ * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link Policy}
+ * format to make access decisions.
  *
  * <p>Policy Evaluation uses the following:
+ *
  * <ul>
- *   <li>{@link Policy} which is a collection of `Allow` and `Deny` rules {@link Rule}.</li>
- *   <li>PolicyEvaluator gets {@link OperationContext} with information about the operation,
- *   {@link ResourceContext} with information about the resource on which the operations is being performed, and
- *   {@link SubjectContext} with information about the user performing the operation.</li>
- *   <li>First, all the Deny rules are applied and if there is rule match, then the operation is denied.</li>
- *   <li>Second, all the Allow rules are applied and if there is rule match, then the operation is allowed.</li>
- *   <li>All operations that don't a match rule are not allowed.</li>
+ *   <li>{@link Policy} which is a collection of `Allow` and `Deny` rules {@link Rule}.
+ *   <li>PolicyEvaluator gets {@link OperationContext} with information about the operation, {@link ResourceContext}
+ *       with information about the resource on which the operations is being performed, and {@link SubjectContext} with
+ *       information about the user performing the operation.
+ *   <li>First, all the Deny rules are applied and if there is rule match, then the operation is denied.
+ *   <li>Second, all the Allow rules are applied and if there is rule match, then the operation is allowed.
+ *   <li>All operations that don't a match rule are not allowed.
  * </ul>
  */
 @Slf4j
@@ -66,12 +63,9 @@ public class PolicyEvaluator {
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (rule.getEffect() == Effect.DENY) {
-          if (matchResource(operationContext.getResource(), rule)
-              && matchOperations(operationContext.getOperations(), rule)
-              && Boolean.TRUE.equals(rule.getExpression().getValue(policyContext, Boolean.class))) {
-              return false;
-          }
+        if (rule.getEffect() == Effect.DENY
+            && CompiledRule.matchRule(rule, operationContext, subjectContext, resourceContext)) {
+          return false;
         }
       }
     }
@@ -80,12 +74,9 @@ public class PolicyEvaluator {
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (rule.getEffect() == Effect.ALLOW) {
-          if (matchResource(operationContext.getResource(), rule)
-                  && matchOperations(operationContext.getOperations(), rule)
-                  && Boolean.TRUE.equals(rule.getExpression().getValue(policyContext, Boolean.class))) {
-            return true;
-          }
+        if (rule.getEffect() == Effect.ALLOW
+            && CompiledRule.matchRule(rule, operationContext, subjectContext, resourceContext)) {
+          return true;
         }
       }
     }
@@ -101,7 +92,7 @@ public class PolicyEvaluator {
       // TODO clean up (add resource name and allow/deny)
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (matchResource("all", rule)) {
+        if (CompiledRule.matchResource(rule, "all")) {
           if (rule.getEffect() == Effect.ALLOW) {
             list.addAll(rule.getOperations());
           }
