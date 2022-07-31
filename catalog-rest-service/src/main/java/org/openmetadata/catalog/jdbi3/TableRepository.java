@@ -121,7 +121,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
+    table.setLatestTableProfile(fields.contains("latestTableProfile") ? getLatestTableProfile(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     table.setProfileSample(fields.contains("profileSample") ? table.getProfileSample() : null);
@@ -216,17 +216,53 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
+    TableProfile storedTableProfile = JsonUtils.readValue(daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(
+        tableId.toString(),
+        "table.tableProfile",
+        tableProfile.getTimestamp()
+    ), TableProfile.class);
+    if (storedTableProfile != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              tableId.toString(),
+              "table.tableProfile",
+              JsonUtils.pojoToJson(tableProfile),
+              tableProfile.getTimestamp()
+          );
+    } else {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .insert(
+              tableId.toString(),
+              table.getFullyQualifiedName(),
+              "table.tableProfile",
+              "tableProfile",
+              JsonUtils.pojoToJson(tableProfile));
+      setFields(table, Fields.EMPTY_FIELDS);
+    }
+    return table.withLatestTableProfile(getLatestTableProfile(table));
+  }
 
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .insert(
-            tableId.toString(),
-            table.getFullyQualifiedName(),
-            "table.tableProfile",
-            "tableProfile",
-            JsonUtils.pojoToJson(tableProfile));
-    setFields(table, Fields.EMPTY_FIELDS);
-    return table.withTableProfile(getTableProfile(table));
+  @Transaction
+  public Table deleteTableProfile(UUID tableId, Long timestamp) throws IOException {
+    // Validate the request content
+    Table table = dao.findEntityById(tableId);
+    TableProfile storedTableProfile = JsonUtils.readValue(daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(
+        tableId.toString(),
+        "table.tableProfile",
+        timestamp
+    ), TableProfile.class);
+    if (storedTableProfile != null) {
+      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(
+          tableId.toString(),
+          "table.tableProfile",
+          timestamp
+      );
+      table.setLatestTableProfile(storedTableProfile);
+      return table;
+    }
+    throw new EntityNotFoundException(String.format("Failed to find table profile for %s at %s", table.getName(), timestamp));
   }
 
   @Transaction
@@ -908,13 +944,10 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.sampleData"), TableData.class);
   }
 
-  private List<TableProfile> getTableProfile(Table table) throws IOException {
-    return List.of(
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getLatestExtension(table.getId().toString(), "table.tableProfile"),
-            TableProfile.class));
+  private TableProfile getLatestTableProfile(Table table) throws IOException {
+    return JsonUtils.readValue(
+        daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(table.getId().toString(), "table.tableProfile"),
+        TableProfile.class);
   }
 
   private List<SQLQuery> getQueries(Table table) throws IOException {
