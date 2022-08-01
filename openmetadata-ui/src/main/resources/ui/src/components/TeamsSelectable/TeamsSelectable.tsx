@@ -29,7 +29,6 @@ interface CustomOption extends SelectableOption {
 
 interface Props {
   showTeamsAlert?: boolean;
-  handleShowTeamsAlert?: (value: boolean) => void;
   onSelectionChange: (teams: string[]) => void;
   filterJoinable?: boolean;
   placeholder?: string;
@@ -37,12 +36,12 @@ interface Props {
 
 const TeamsSelectable = ({
   showTeamsAlert,
-  handleShowTeamsAlert,
   onSelectionChange,
   filterJoinable,
   placeholder = 'Search for teams',
 }: Props) => {
   const [teamSearchText, setTeamSearchText] = useState<string>('');
+  const [noTeam, setNoTeam] = useState<boolean>(false);
 
   const handleSelectionChange = (selectedOptions: SelectableOption[]) => {
     onSelectionChange(selectedOptions.map((option) => option.value));
@@ -77,9 +76,7 @@ const TeamsSelectable = ({
         }).then((res) => {
           const teams: Team[] =
             res.hits.hits.map((t: { _source: Team }) => t._source) || [];
-          if (handleShowTeamsAlert && teams.length === 0) {
-            handleShowTeamsAlert(true);
-          }
+          showTeamsAlert && setNoTeam(teams.length === 0);
           resolve(getOptions(teams));
         });
       }
@@ -108,7 +105,7 @@ const TeamsSelectable = ({
           setTeamSearchText(newText);
         }}
       />
-      {showTeamsAlert && (
+      {noTeam && (
         <div
           className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
           data-testid="toast">
