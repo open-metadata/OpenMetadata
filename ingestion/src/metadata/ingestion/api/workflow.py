@@ -241,7 +241,18 @@ class Workflow:
             click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
 
-    def _retrieve_service_connection_if_needed(self, metadata_config, service_type):
+    def _retrieve_service_connection_if_needed(
+        self, metadata_config: OpenMetadataConnection, service_type: ServiceType
+    ) -> None:
+        """
+        We override the current `serviceConnection` source config object if source workflow service already exists
+        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
+        from the service object itself through the default `SecretsManager`.
+
+        :param metadata_config: OpenMetadata connection config
+        :param service_type: source workflow service type
+        :return:
+        """
         # We override the current serviceConnection source object if source workflow service already exists in OM.
         # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
         # from the service object itself.

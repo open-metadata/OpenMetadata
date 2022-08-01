@@ -310,10 +310,14 @@ class ProfilerWorkflow:
         self.metadata.close()
         self.processor.close()
 
-    def _retrieve_service_connection_if_needed(self):
-        # We override the current serviceConnection source object if source workflow service already exists in OM.
-        # When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
-        # from the service object itself.
+    def _retrieve_service_connection_if_needed(self) -> None:
+        """
+        We override the current `serviceConnection` source config object if source workflow service already exists
+        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
+        from the service object itself through the default `SecretsManager`.
+
+        :return:
+        """
         if not self._is_sample_source(self.config.source.type):
             service_type: ServiceType = get_service_type_from_source_type(
                 self.config.source.type
