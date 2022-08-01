@@ -77,21 +77,7 @@ class Workflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
 
-        if not self.is_sample_source(self.config.source.type):
-            # We override the current serviceConnection source object if source workflow service already exists in OM.
-            # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
-            # from the service object itself.
-            metadata = OpenMetadata(config=metadata_config)
-            service = metadata.get_by_name(
-                get_service_class_from_service_type(service_type),
-                self.config.source.serviceName,
-            )
-            if service:
-                self.config.source.serviceConnection = (
-                    metadata.secrets_manager_client.retrieve_service_connection(
-                        service, service_type.name.lower()
-                    )
-                )
+        self._retrieve_service_connection_if_needed(metadata_config, service_type)
 
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
@@ -255,6 +241,23 @@ class Workflow:
             click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
 
+    def _retrieve_service_connection_if_needed(self, metadata_config, service_type):
+        # We override the current serviceConnection source object if source workflow service already exists in OM.
+        # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
+        # from the service object itself.
+        if not self._is_sample_source(self.config.source.type):
+            metadata = OpenMetadata(config=metadata_config)
+            service = metadata.get_by_name(
+                get_service_class_from_service_type(service_type),
+                self.config.source.serviceName,
+            )
+            if service:
+                self.config.source.serviceConnection = (
+                    metadata.secrets_manager_client.retrieve_service_connection(
+                        service, service_type.name.lower()
+                    )
+                )
+
     @staticmethod
-    def is_sample_source(service_type):
+    def _is_sample_source(service_type):
         return service_type == "sample-data" or service_type == "sample-usage"
