@@ -396,9 +396,11 @@ const EntityPageInfo = ({
             />
           </div>
           <div className="tw-text-left" data-testid="delete-button">
-            <p className="tw-font-medium">Delete table {entityName}</p>
+            <p className="tw-font-medium">
+              Delete {entityType} {entityName}
+            </p>
             <p className="tw-text-grey-muted tw-text-xs">
-              Deleting this Glossary Term will permanently remove its metadata
+              Deleting this {entityType} will permanently remove its metadata
               from OpenMetadata.
             </p>
           </div>
