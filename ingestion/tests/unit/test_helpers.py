@@ -20,6 +20,7 @@ class TestHelpers(TestCase):
     """
     Test helpers module
     """
+
     def test_list_to_dict(self):
         original = ["key=value", "a=b"]
 
