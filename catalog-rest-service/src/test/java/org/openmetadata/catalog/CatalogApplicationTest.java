@@ -29,6 +29,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
+import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
+import org.openmetadata.catalog.security.policyevaluator.RoleCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
@@ -87,13 +89,16 @@ public abstract class CatalogApplicationTest {
   }
 
   @AfterAll
-  public static void stopApplication() {
+  public static void stopApplication() throws Exception {
     // If BeforeAll causes and exception AfterAll still gets called before that exception is thrown.
     // If a NullPointerException is thrown during the cleanup of above it will eat the initial error
     if (APP != null) {
       APP.after();
+      APP.getEnvironment().getApplicationContext().getServer().stop();
     }
-    SubjectContext.cleanup();
+    SubjectContext.cleanUp();
+    PolicyCache.cleanUp();
+    RoleCache.cleanUp();
   }
 
   public static Client getClient() {

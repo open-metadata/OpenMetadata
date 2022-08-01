@@ -70,8 +70,9 @@ public class SubjectContext {
     }
   }
 
-  public static void cleanup() {
+  public static void cleanUp() {
     USER_CACHE.invalidateAll();
+    TEAM_CACHE.invalidateAll();
   }
 
   public static void invalidateUser(String userName) {
@@ -293,11 +294,14 @@ public class SubjectContext {
   }
 
   static class UserLoader extends CacheLoader<String, SubjectContext> {
-    private static final EntityRepository<User> USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
-    private static final Fields FIELDS = USER_REPOSITORY.getFields("roles, teams");
+    //    private static final EntityRepository<User> USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
+    //    private static final Fields FIELDS = USER_REPOSITORY.getFields("roles, teams");
 
     @Override
     public SubjectContext load(@CheckForNull String userName) throws IOException {
+      // TODO fix this
+      EntityRepository<User> USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
+      Fields FIELDS = USER_REPOSITORY.getFields("roles, teams");
       User user = USER_REPOSITORY.getByName(null, userName, FIELDS);
       LOG.info("Loaded user {}:{}", user.getName(), user.getId());
       return new SubjectContext(user);
@@ -305,11 +309,14 @@ public class SubjectContext {
   }
 
   static class TeamLoader extends CacheLoader<UUID, Team> {
-    private static final EntityRepository<Team> TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
-    private static final Fields FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
+    //    private static final EntityRepository<Team> TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
+    //    private static final Fields FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
 
     @Override
     public Team load(@NonNull UUID teamId) throws IOException {
+      // TODO fix this
+      EntityRepository<Team> TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
+      Fields FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
       Team team = TEAM_REPOSITORY.get(null, teamId.toString(), FIELDS);
       LOG.info("Loaded team {}:{}", team.getName(), team.getId());
       return team;

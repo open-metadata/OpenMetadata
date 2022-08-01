@@ -61,7 +61,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -75,7 +74,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Api(value = "Policies collection", tags = "Policies collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "policies")
+@Collection(name = "policies", order = 0)
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
 
@@ -91,9 +90,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @SuppressWarnings("unused") // Method is used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    // Set up the PolicyEvaluator, before loading seed data.
-    PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
-
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
     ResourceRegistry.add(listOrEmpty(PolicyResource.getResourceDescriptors()));

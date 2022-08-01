@@ -102,15 +102,15 @@ public class DefaultAuthorizer implements Authorizer {
 
     try {
       if (resourceContext == null) {
-        return PolicyEvaluator.getInstance().getAllowedOperations(subjectContext, null);
+        return PolicyEvaluator.getAllowedOperations(subjectContext, null);
       }
-      EntityReference owner = resourceContext.getOwner();
-      if (owner == null || subjectContext.isOwner(owner)) {
-        // Entity does not have an owner or is owned by the user - allow all operations.
-        return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
-      }
-      return PolicyEvaluator.getInstance().getAllowedOperations(subjectContext, resourceContext);
-    } catch (IOException | EntityNotFoundException ex) {
+      //      EntityReference owner = resourceContext.getOwner();
+      //      if (owner == null || subjectContext.isOwner(owner)) {
+      //        // Entity does not have an owner or is owned by the user - allow all operations.
+      //        return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+      //      }
+      return PolicyEvaluator.getAllowedOperations(subjectContext, resourceContext);
+    } catch (EntityNotFoundException ex) {
       return Collections.emptyList();
     }
   }
@@ -140,13 +140,9 @@ public class DefaultAuthorizer implements Authorizer {
       return;
     }
 
-    if (subjectContext.isOwner(resourceContext.getOwner())) {
-      return;
-    }
-
-    if (subjectContext.isOwner(resourceContext.getOwner())) {
-      return;
-    }
+    //    if (subjectContext.isOwner(resourceContext.getOwner())) {
+    //      return;
+    //    }
 
     // TODO view is currently allowed for everyone
     if (operationContext.getOperations().size() == 1
@@ -157,11 +153,11 @@ public class DefaultAuthorizer implements Authorizer {
 
     // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
     if (metadataOperations.isEmpty()) {
-      throw new AuthorizationException(noPermission(securityContext.getUserPrincipal()));
+      throw new AuthorizationException(noPermission(securityContext.getUserPrincipal().getName()));
     }
     for (MetadataOperation operation : metadataOperations) {
-      if (!PolicyEvaluator.getInstance().hasPermission(subjectContext, resourceContext, operationContext)) {
-        throw new AuthorizationException(noPermission(securityContext.getUserPrincipal(), operation.value()));
+      if (!PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext)) {
+        throw new AuthorizationException(noPermission(securityContext.getUserPrincipal().getName(), operation.value()));
       }
     }
   }
@@ -172,7 +168,7 @@ public class DefaultAuthorizer implements Authorizer {
     if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
       return;
     }
-    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal()));
+    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
   }
 
   private void addOrUpdateUser(User user) {

@@ -7,7 +7,7 @@
   "enabled": true,
   "rules": [
     {
-      "name": "DataStewardPolicy-editOperations",
+      "name": "DataStewardPolicy-EditRule",
       "resources" : ["all"],
       "operations": ["EditDescription", "EditLineage", "EditOwner", "EditTags"],
       "effect": "allow"

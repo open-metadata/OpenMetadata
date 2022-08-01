@@ -290,17 +290,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
-    runWebhookTests = new Random().nextBoolean();
-    if (runWebhookTests) {
-      webhookCallbackResource.clearEvents();
-      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-      webhookResourceTest.startWebhookSubscription();
-      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
-    }
-
+    new PolicyResourceTest().setupPolicies();
     new RoleResourceTest().setupRoles(test);
-    new UserResourceTest().setupUsers(test);
     new TeamResourceTest().setupTeams(test);
+    new UserResourceTest().setupUsers(test);
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();
@@ -312,10 +305,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
-    new PolicyResourceTest().setupPolicies();
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions(test);
     new TestCaseResourceTest().setupTestCase(test);
+
+    runWebhookTests = new Random().nextBoolean();
+    if (runWebhookTests) {
+      webhookCallbackResource.clearEvents();
+      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+      webhookResourceTest.startWebhookSubscription();
+      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
+    }
   }
 
   @AfterAll

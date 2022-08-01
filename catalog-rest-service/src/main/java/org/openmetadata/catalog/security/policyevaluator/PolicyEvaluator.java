@@ -43,17 +43,8 @@ import org.openmetadata.catalog.type.MetadataOperation;
  */
 @Slf4j
 public class PolicyEvaluator {
-  // Eager initialization of Singleton since PolicyEvaluator is lightweight.
-  private static final PolicyEvaluator policyEvaluator = new PolicyEvaluator();
-
-  private PolicyEvaluator() {}
-
-  public static PolicyEvaluator getInstance() {
-    return policyEvaluator;
-  }
-
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
-  public boolean hasPermission(
+  public static boolean hasPermission(
       @NonNull SubjectContext subjectContext,
       @NonNull ResourceContextInterface resourceContext,
       @NonNull OperationContext operationContext) {
@@ -84,7 +75,7 @@ public class PolicyEvaluator {
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
-  public List<MetadataOperation> getAllowedOperations(
+  public static List<MetadataOperation> getAllowedOperations(
       @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
     List<MetadataOperation> list = new ArrayList<>();
     Iterator<PolicyContext> policies = subjectContext.getPolicies();

@@ -81,4 +81,8 @@ public class PolicyCache {
     }
     return rules;
   }
+
+  public static void cleanUp() {
+    POLICY_CACHE.cleanUp();
+  }
 }

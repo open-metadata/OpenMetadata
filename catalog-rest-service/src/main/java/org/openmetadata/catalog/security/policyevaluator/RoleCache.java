@@ -61,4 +61,8 @@ public class RoleCache {
       return role;
     }
   }
+
+  public static void cleanUp() {
+    ROLE_CACHE.cleanUp();
+  }
 }
