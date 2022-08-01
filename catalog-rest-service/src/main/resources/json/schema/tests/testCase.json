@@ -59,6 +59,9 @@
         "$ref": "#/definitions/testCaseParameterValue"
       }
     },
+    "testCaseResult": {
+      "$ref": "./basic.json#/definitions/testCaseResult"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"
