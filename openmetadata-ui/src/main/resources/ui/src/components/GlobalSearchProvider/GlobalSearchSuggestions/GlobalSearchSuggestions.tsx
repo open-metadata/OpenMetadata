@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Select, Typography } from 'antd';
+import { Empty, Select } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { ReactComponent as NoDataFoundSVG } from '../../../assets/svg/empty-img-default.svg';
 import { getSuggestions } from '../../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FqnPart } from '../../../enums/entity.enum';
@@ -313,14 +312,7 @@ const GlobalSearchSuggestions = ({
         listHeight={220}
         notFoundContent={
           <div className="tw-flex tw-flex-col tw-w-full tw-h-56 tw-items-center tw-justify-center tw-pb-9">
-            {isSuggestionsLoading ? (
-              <Loader size="small" />
-            ) : (
-              <>
-                <NoDataFoundSVG />
-                <Typography>No Results Found</Typography>
-              </>
-            )}
+            {isSuggestionsLoading ? <Loader size="small" /> : <Empty />}
           </div>
         }
         open={!isEmpty(value)}
