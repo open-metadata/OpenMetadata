@@ -29,12 +29,6 @@ you can instead install the package with the backup plugin:
 pip install "openmetadata-ingestion[backup]"
 ```
 
-This tool acts as a wrapper around the powerful `mysqldump` utility with some commodity addons on top. `mysqldump` is part
-of the `mysql-client` package and can be installed on your machine as:
-
-- **macOS**: `brew install mysql-client`
-- **Ubuntu**: `sudo apt-get install mysql-client`
-
 ## Backup CLI
 
 After the installation, we can take a look at the different options to run the CLI:
@@ -43,13 +37,14 @@ After the installation, we can take a look at the different options to run the C
 > metadata backup --help
 Usage: metadata backup [OPTIONS]
 
-  Run a backup for the metadata DB. Requires mysqldump installed on the
-  host.
+  Run a backup for the metadata DB. Uses a custom dump strategy for
+  OpenMetadata tables.
 
-  We can pass as many options as required with `-o <opt1>, -o <opt2> [...]`
+  We can pass as many connection options as required with `-o <opt1>, -o
+  <opt2> [...]` Same with connection arguments `-a <arg1>, -a <arg2> [...]`
 
-  To run the upload, provide the information as `--upload endpoint bucket
-  key` and properly configure the environment variables AWS_ACCESS_KEY_ID &
+  To run the upload, provide the information as `--upload endpoint bucket key`
+  and properly configure the environment variables AWS_ACCESS_KEY_ID &
   AWS_SECRET_ACCESS_KEY
 
 Options:
@@ -62,6 +57,8 @@ Options:
   --upload <TEXT TEXT TEXT>...  S3 endpoint, bucket & key to upload the backup
                                 file
   -o, --options TEXT
+  -a, --arguments TEXT
+  --help                        Show this message and exit.
 ```
 
 ### Database Connection
@@ -83,13 +80,10 @@ We currently support uploading the backup files to S3. To run this, make sure to
 we can just use `--upload <endpoint> <bucket> <key>` to have the CLI upload the file. In this case, you'll get both the
 local dump file and the one in the cloud.
 
-### mysqldump options
+### Connection Options and Arguments
 
-`mysqldump` allows many options when running the command, and some of them might be required in different infrastructures.
-The `--options` parameters help us pass to `mysqldump` all of these required options via `-o <opt1>, -o <opt2> [...]`. An
-example of this could be the default values we have used for them: `--protocol=tcp` and `--no-tablespaces`, which are
-required to run the command pointing to the local Docker container with the database and the default `read-only` user
-OpenMetadata provides in the Docker Compose.
+You can pass any required connection options or arguments to the MySQL connection via `-o <opt1>, -o <opt2> [...]`
+or `-a <arg1>, -a <arg2> [...]`.
 
 ### Trying it out
 
@@ -125,4 +119,3 @@ Uploading dir1/dir2/openmetadata_202201250823_backup.sql to http://localhost:900
 If we now head to the minio console and check the `my-backup` bucket, we'll see our SQL dump in there.
 
 <Image src="/images/deployment/backup/minio-example.png" alt="minio"/>
-
