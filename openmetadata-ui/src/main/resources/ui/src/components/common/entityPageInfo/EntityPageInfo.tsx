@@ -383,29 +383,21 @@ const EntityPageInfo = ({
 
   const manageButtonContent = () => {
     return (
-      <>
-        <div
-          className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
-          id="manage-button"
-          onClick={() => setIsDelete(true)}>
-          <div>
-            <SVGIcons
-              alt="Delete"
-              className="tw-w-12"
-              icon={Icons.DELETE_GRADIANT}
-            />
-          </div>
-          <div className="tw-text-left" data-testid="delete-button">
-            <p className="tw-font-medium">
-              Delete {entityType} {entityName}
-            </p>
-            <p className="tw-text-grey-muted tw-text-xs">
-              Deleting this {entityType} will permanently remove its metadata
-              from OpenMetadata.
-            </p>
-          </div>
+      <div
+        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
+        id="manage-button"
+        onClick={() => setIsDelete(true)}>
+        <SVGIcons alt="Delete" icon={Icons.DELETE_GRADIANT} />
+        <div className="tw-text-left" data-testid="delete-button">
+          <p className="tw-font-medium">
+            Delete {entityType} {entityName}
+          </p>
+          <p className="tw-text-grey-muted tw-text-xs">
+            Deleting this {entityType} will permanently remove its metadata from
+            OpenMetadata.
+          </p>
         </div>
-      </>
+      </div>
     );
   };
 
