@@ -13,6 +13,7 @@
 
 import { Select, Typography } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as NoDataFoundSVG } from '../../../assets/svg/empty-img-default.svg';
@@ -27,6 +28,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CmdKIcon from '../../common/CmdKIcon/CmdKIcon.component';
+import Loader from '../../Loader/Loader';
 import {
   DashboardSource,
   GlobalSearchSuggestionsProp,
@@ -39,6 +41,8 @@ import {
 import './GlobalSearchSuggestions.less';
 
 const GlobalSearchSuggestions = ({
+  isSuggestionsLoading,
+  handleIsSuggestionsLoading,
   searchText,
   onOptionSelection,
   value,
@@ -275,6 +279,9 @@ const GlobalSearchSuggestions = ({
             err,
             jsonData['api-error-messages']['fetch-suggestions-error']
           );
+        })
+        .finally(() => {
+          handleIsSuggestionsLoading(false);
         });
     }
   }, [searchText]);
@@ -293,7 +300,6 @@ const GlobalSearchSuggestions = ({
       />
       <Select
         autoFocus
-        open
         showSearch
         bordered={false}
         className="global-search-input"
@@ -307,10 +313,17 @@ const GlobalSearchSuggestions = ({
         listHeight={220}
         notFoundContent={
           <div className="tw-flex tw-flex-col tw-w-full tw-h-56 tw-items-center tw-justify-center tw-pb-9">
-            <NoDataFoundSVG />
-            <Typography>No Results Found</Typography>
+            {isSuggestionsLoading ? (
+              <Loader size="small" />
+            ) : (
+              <>
+                <NoDataFoundSVG />
+                <Typography>No Results Found</Typography>
+              </>
+            )}
           </div>
         }
+        open={!isEmpty(value)}
         placeholder="Search"
         placement="bottomRight"
         ref={selectRef}
