@@ -2,7 +2,6 @@ package org.openmetadata.catalog.resources.util;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,7 +9,6 @@ import java.util.Objects;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -72,29 +70,5 @@ public class UtilResource {
       })
   public ServicesCount listServicesCount(@Context UriInfo uriInfo) {
     return utilRepository.getAllServicesCount();
-  }
-
-  @GET
-  @Path("/{entity}/count")
-  @Operation(
-      operationId = "listEntityCount",
-      summary = "List Individual Entity Count",
-      tags = "util",
-      description = "Get total count of an Entity",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of Services Count",
-            content = @Content(mediaType = "application/json"))
-      })
-  public Object listEntityCount(
-      @Context UriInfo uriInfo,
-      @Parameter(
-              description = "Entity type for which usage is requested",
-              required = true,
-              schema = @Schema(type = "string", example = "table, pipeline, topic, or dashboard"))
-          @PathParam("entity")
-          String entity) {
-    return utilRepository.getIndividualEntityCount(entity);
   }
 }
