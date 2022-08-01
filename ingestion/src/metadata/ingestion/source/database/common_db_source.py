@@ -12,6 +12,7 @@
 Generic source to build SQL connectors.
 """
 
+import time
 import traceback
 from abc import ABC
 from copy import deepcopy
@@ -190,6 +191,7 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
+        self.status.scan_timer_start = time.time()
         schema_name = self.context.database_schema.name.__root__
         if self.source_config.includeTables:
             for table_name in self.inspector.get_table_names(schema_name):
@@ -315,7 +317,6 @@ class CommonDbSourceService(
                 self.context.table_views.append(table_view)
 
             yield table_request
-
             self.register_record(table_request=table_request)
 
         except Exception as err:
