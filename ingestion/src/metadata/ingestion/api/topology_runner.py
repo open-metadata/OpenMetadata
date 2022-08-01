@@ -165,13 +165,14 @@ class TopologyRunnerMixin(Generic[C]):
                     stage=stage, entity_request=entity_request
                 )
 
+                # we get entity from OM if we do not want to overwrite existing data in OM
                 if not stage.overwrite:
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
                         fqn=entity_fqn,
                         fields=["*"],  # Get all the available data from the Entity
                     )
-
+                # if entity does not exist in OM, or we want to overwrite, we will yield the entity_request
                 if entity is None:
                     tries = 3
                     while not entity and tries > 0:

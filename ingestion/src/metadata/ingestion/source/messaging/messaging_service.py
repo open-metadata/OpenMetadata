@@ -59,7 +59,7 @@ class MessagingServiceTopology(ServiceTopology):
             NodeStage(
                 type_=MessagingService,
                 context="messaging_service",
-                processor="yield_messaging_service",
+                processor="yield_create_request_messaging_service",
                 overwrite=False,
             )
         ],
@@ -159,7 +159,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 continue
             yield topic_details
 
-    def yield_messaging_service(self, config: WorkflowSource):
+    def yield_create_request_messaging_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
             entity=MessagingService, config=config
         )

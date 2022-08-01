@@ -109,7 +109,7 @@ class DatabaseServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DatabaseService,
                 context="database_service",
-                processor="yield_database_create_request_service",
+                processor="yield_create_request_database_service",
                 overwrite=False,
             ),
             NodeStage(
