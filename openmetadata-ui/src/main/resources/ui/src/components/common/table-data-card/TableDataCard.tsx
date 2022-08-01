@@ -26,12 +26,45 @@ import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import './TableDataCard.style.css';
-import TableDataCardBody from './TableDataCardBody';
-import { ExploreSearchSource } from '../../../interface/search.interface';
+import TableDataCardBody, { TableDataCardBodyProps } from './TableDataCardBody';
+import {
+  DashboardSearchSource,
+  ExploreSearchSource,
+  MlmodelSearchSource,
+  TableSearchSource,
+} from '../../../interface/search.interface';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { EntityReference } from '../../../generated/entity/data/table';
 
-interface TableDataCardProps {
+type Fields =
+  | 'name'
+  | 'fullyQualifiedName'
+  | 'description'
+  | 'serviceType'
+  | 'deleted';
+
+type SourceType = (
+  | Pick<
+      TableSearchSource,
+      Fields | 'usageSummary' | 'database' | 'databaseSchema' | 'tableType'
+    >
+  | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
+  | Pick<
+      Exclude<
+        ExploreSearchSource,
+        TableSearchSource | DashboardSearchSource | MlmodelSearchSource
+      >,
+      Fields
+    >
+) & {
+  tier?: string | Pick<TagLabel, 'tagFQN'>;
+  tags?: TableDataCardBodyProps['tags'];
+  owner?: Partial<Pick<EntityReference, 'name' | 'displayName'>>;
+};
+
+export interface TableDataCardProps {
   id: string;
-  source: ExploreSearchSource;
+  source: SourceType;
   matches?: {
     key: string;
     value: number;
@@ -70,7 +103,7 @@ const TableDataCard: React.FC<TableDataCardProps> = ({
   if ('usageSummary' in source) {
     otherDetails.push({
       key: 'Usage',
-      value: source.usageSummary?.weeklyStats?.percentileRank, // getUsagePercentile(source.usageSummary, true),
+      value: source.usageSummary?.weeklyStats?.percentileRank, // Table, dashboard, mlmodel
     });
   }
 

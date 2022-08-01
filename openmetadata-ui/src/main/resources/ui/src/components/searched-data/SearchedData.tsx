@@ -19,18 +19,16 @@ import { Paging } from '../../generated/type/paging';
 import { pluralize } from '../../utils/CommonUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import TableDataCard from '../common/table-data-card/TableDataCard';
+import TableDataCard, {
+  TableDataCardProps,
+} from '../common/table-data-card/TableDataCard';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
-import {
-  ExploreSearchSource,
-  SearchHit,
-} from '../../interface/search.interface';
-import { SearchIndex } from '../../enums/search.enum';
+import { SearchHit } from '../../interface/search.interface';
 
 export interface SearchedDataProp {
   children?: ReactNode;
-  data: SearchHit<ExploreSearchSource>[];
+  data: SearchHit<TableDataCardProps['source']>[];
   currentPage: number;
   isLoading?: boolean;
   paginate: (value: string | number) => void;
@@ -55,7 +53,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   searchText,
   totalValue,
   isFilterSelected,
-}: SearchedDataProp) => {
+}) => {
   const highlightSearchResult = () => {
     return data.map(({ _index, _source, highlight }, idx) => {
       let { description, name } = _source;
@@ -100,7 +98,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
           <TableDataCard
             id={`tabledatacard${idx}`}
             matches={matches}
-            searchIndex={_index as SearchIndex}
+            searchIndex={_index}
             source={{ ..._source, name, description }}
           />
         </div>

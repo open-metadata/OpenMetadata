@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { FilterObject } from 'Models';
 import React, {
   Fragment,
@@ -30,9 +30,6 @@ import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
   getCurrentIndex,
   getCurrentTab,
-  getInitialFilter,
-  getQueryParam,
-  getSearchFilter,
   INITIAL_FROM,
   INITIAL_SORT_ORDER,
   tabsInfo,
@@ -40,7 +37,6 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import jsonData from '../../jsons/en';
 import { getTotalEntityCountByType } from '../../utils/EntityUtils';
-import { prepareQueryParams } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   ExploreSearchSource,
@@ -48,19 +44,27 @@ import {
   SearchResponse,
   SearchSource,
 } from '../../interface/search.interface';
-import { getPostFilter, searchQuery } from '../../axiosAPIs/searchAPI';
+import { getElasticsearchFilter, searchQuery } from '../../axiosAPIs/searchAPI';
+import Qs from 'qs';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
-  const initialFilter = useMemo(
-    () => getQueryParam(getInitialFilter(location.search)),
-    [location.search]
-  );
-  const searchFilter = useMemo(
-    () => getQueryParam(getSearchFilter(location.search)),
-    [location.search]
-  );
+
+  const postFilter: FilterObject = useMemo(() => {
+    const parsedSearch = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substr(1)
+        : location.search
+    );
+
+    if (!isNil(parsedSearch.postFilter)) {
+      return parsedSearch.postFilter as FilterObject;
+    }
+
+    return {};
+  }, [location.search]);
+
   const { searchQuery: searchQueryParam, tab } = useParams<UrlParams>();
   const [searchText, setSearchText] = useState<string>(searchQueryParam || '');
   const [tableCount, setTableCount] = useState<number>(0);
@@ -110,16 +114,12 @@ const ExplorePage: FunctionComponent = () => {
 
   /**
    * on filter change , change the route
-   * @param filterData - filter object
+   * @param postFilter - filter object
    */
-  const handleFilterChange = (filterData: FilterObject) => {
-    const params = prepareQueryParams(filterData, initialFilter);
-
-    const explorePath = getExplorePathWithSearch(searchQueryParam, tab);
-
+  const handleFilterChange = (postFilter: FilterObject) => {
     history.push({
-      pathname: explorePath,
-      search: params,
+      pathname: getExplorePathWithSearch(searchQueryParam, tab),
+      search: Qs.stringify({ postFilter }),
     });
   };
 
@@ -137,7 +137,7 @@ const ExplorePage: FunctionComponent = () => {
         query: searchText,
         from: 0,
         size: 0,
-        postFilter: getPostFilter(initialFilter),
+        postFilter: getElasticsearchFilter(postFilter),
         searchIndex: entity,
         includeDeleted: showDeleted,
         trackTotalHits: true,
@@ -201,7 +201,7 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchCounts();
-  }, [searchText, showDeleted, initialFilter]);
+  }, [searchText, showDeleted]);
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -213,38 +213,11 @@ const ExplorePage: FunctionComponent = () => {
       query: searchText,
       from: INITIAL_FROM,
       size: PAGE_SIZE,
-      postFilter: getPostFilter(initialFilter),
+      postFilter: getElasticsearchFilter(postFilter),
       sortField: initialSortField,
       sortOrder: INITIAL_SORT_ORDER,
       searchIndex: getCurrentIndex(tab),
     });
-    // {
-    //   query: searchText,
-    //   from: INITIAL_FROM,
-    //   size: ZERO_SIZE,
-    //   filters: getFilterString(initialFilter),
-    //   sortField: initialSortField,
-    //   sortOrder: INITIAL_SORT_ORDER,
-    //   searchIndex: getCurrentIndex(tab),
-    // },
-    // {
-    //   query: searchText,
-    //   from: INITIAL_FROM,
-    //   size: ZERO_SIZE,
-    //   filters: getFilterString(initialFilter),
-    //   sortField: initialSortField,
-    //   sortOrder: INITIAL_SORT_ORDER,
-    //   searchIndex: getCurrentIndex(tab),
-    // },
-    // {
-    //   query: searchText,
-    //   from: INITIAL_FROM,
-    //   size: ZERO_SIZE,
-    //   filters: getFilterString(initialFilter),
-    //   sortField: initialSortField,
-    //   sortOrder: INITIAL_SORT_ORDER,
-    //   searchIndex: getCurrentIndex(tab),
-    // },
   }, []);
 
   return (
@@ -256,9 +229,8 @@ const ExplorePage: FunctionComponent = () => {
           handleFilterChange={handleFilterChange}
           handlePathChange={handlePathChange}
           handleSearchText={handleSearchText}
-          initialFilter={initialFilter}
-          isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
-          searchFilter={searchFilter}
+          isFilterSelected={!isEmpty(postFilter)}
+          postFilter={postFilter}
           searchQuery={searchQueryParam}
           searchResult={searchResult}
           searchText={searchText}

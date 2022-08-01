@@ -13,7 +13,7 @@
 
 import { isNil, isString } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -21,32 +21,17 @@ import TagsViewer from '../../tags-viewer/tags-viewer';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
-type Props = {
+export interface TableDataCardBodyProps {
   description: string;
   extraInfo: Array<ExtraInfo>;
-  tags?: string[] | TagLabel[];
-};
+  tags?: string[] | Pick<TagLabel, 'tagFQN' | 'source' | 'description'>[];
+}
 
-const TableDataCardBody: FunctionComponent<Props> = ({
+const TableDataCardBody: React.FC<TableDataCardBodyProps> = ({
   description,
   extraInfo,
   tags,
-}: Props) => {
-  const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-    if (isString(tag)) {
-      return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-        ? tag.split(FQN_SEPARATOR_CHAR)[1]
-        : tag;
-    } else {
-      return {
-        ...tag,
-        tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-          ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-          : tag.tagFQN,
-      };
-    }
-  };
-
+}) => {
   return (
     <div data-testid="table-body">
       <div className="tw-mb-4 tw-flex tw-items-center tw-flex-wrap tw-text-xs">
@@ -89,7 +74,22 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <div className="tw-ml-4">
               <TagsViewer
                 sizeCap={-1}
-                tags={(tags || []).map((tag) => getTagValue(tag))}
+                tags={(tags ?? []).map((tag) => {
+                  if (isString(tag)) {
+                    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+                      ? tag.split(FQN_SEPARATOR_CHAR)[1]
+                      : tag;
+                  } else {
+                    return {
+                      ...tag,
+                      tagFQN: tag.tagFQN.startsWith(
+                        `Tier${FQN_SEPARATOR_CHAR}Tier`
+                      )
+                        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+                        : tag.tagFQN,
+                    };
+                  }
+                })}
               />
             </div>
           </div>

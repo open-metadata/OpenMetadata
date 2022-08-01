@@ -11,23 +11,21 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import { isNil } from 'lodash';
-import { EntityTags } from 'Models';
-import React, { Fragment, FunctionComponent } from 'react';
+import { isNil, isString } from 'lodash';
+import React, { Fragment } from 'react';
 import { LIST_SIZE } from '../../constants/constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import PopOver from '../common/popover/PopOver';
 import Tags from '../tags/tags';
 import { TagsViewerProps } from './tags-viewer.interface';
 
-const TagsViewer: FunctionComponent<TagsViewerProps> = ({
+const TagsViewer: React.FC<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
   type = 'label',
   showStartWith = true,
-}: TagsViewerProps) => {
-  const getTagsElement = (tag: EntityTags, index?: number) => {
+}) => {
+  const getTagsElement = (tag: TagsViewerProps['tags'][0], index?: number) => {
     const otherProps: Record<string, string | number> = {};
     if (!isNil(index)) {
       otherProps.key = index;
@@ -35,11 +33,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
     return (
       <Tags
-        className={classNames(
-          { 'diff-added tw-mx-1': tag?.added },
-          { 'diff-removed': tag?.removed }
-        )}
-        showOnlyName={tag.source === TagSource.Glossary}
+        showOnlyName={!isString(tag) && tag.source === TagSource.Glossary}
         startWith={showStartWith ? '#' : undefined}
         tag={tag}
         type={type}

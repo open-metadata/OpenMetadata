@@ -42,8 +42,8 @@ export type ExploreSearchSource =
   | TopicSearchSource
   | PipelineSearchSource;
 
-export interface SearchHit<T extends SearchSource> {
-  _index: string;
+export interface SearchHit<T> {
+  _index: SearchIndex;
   _type?: string;
   _id?: string;
   _score?: number;
@@ -78,6 +78,8 @@ export interface SuggestRequest {
 }
 
 export interface SearchResponse<T extends SearchSource> {
+  took?: number;
+  timed_out?: boolean;
   hits: {
     total: {
       value: number;

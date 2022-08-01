@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import { orderBy } from 'lodash';
-import { getTableDetails } from '../axiosAPIs/tableAPI';
-import { SearchIndex } from '../enums/search.enum';
-import { getRelativeTime } from './TimeUtils';
+import { isArray, isObject, transform } from 'lodash';
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
 export const formatDataResponse = (hits) => {
@@ -78,22 +75,6 @@ export const formatTeamsResponse = (hits) => {
   });
 };
 
-export const formatTeamsAndUsersResponse = (hits) => {
-  const data = hits.reduce(
-    (prev, curr) => {
-      return curr._index === SearchIndex.TEAM
-        ? { ...prev, teams: [...prev.teams, curr] }
-        : { ...prev, users: [...prev.users, curr] };
-    },
-    { users: [], teams: [] }
-  );
-
-  const users = formatUsersResponse(data.users);
-  const teams = formatTeamsResponse(data.teams);
-
-  return { users, teams };
-};
-
 export const formatSearchGlossaryTermResponse = (hits) => {
   const term = hits.map((d) => {
     return {
@@ -108,159 +89,16 @@ export const formatSearchGlossaryTermResponse = (hits) => {
   return term;
 };
 
-const formatPost = (post) => {
-  return {
-    title: post.from,
-    timestamp: post.postTs,
-    relativeTime: getRelativeTime(post.postTs),
-    message: post.message,
-  };
-};
-
-export const formatFeedDataResponse = (feedData) => {
-  const formattedFeed = orderBy(feedData, ['threadTs'], ['desc']).map(
-    (feed) => {
-      const { id: toEntity, type: entity } = feed.toEntity;
-      const { title, timestamp, relativeTime, message } = formatPost(
-        feed.posts[0]
-      );
-      const newFeed = {
-        title,
-        timestamp,
-        relativeTime,
-        toEntity,
-        entity,
-        message,
-      };
-      newFeed.subThreads = feed.posts.slice(1).map((post) => {
-        return formatPost(post);
-      });
-      newFeed.threadId = feed.id;
-
-      return newFeed;
+export const omitDeep = (obj, predicate) => {
+  return transform(obj, function (result, value, key) {
+    if (isObject(value)) {
+      value = omitDeep(value, predicate);
     }
-  );
-
-  return formattedFeed;
-};
-
-export const getDateFromTimestamp = (ts) => {
-  const newDate = new Date(ts);
-  let day = newDate.getDate();
-  let month = newDate.getMonth() + 1;
-  const year = newDate.getFullYear();
-  switch (day) {
-    case 1:
-    case 21:
-    case 31: {
-      day = `${day}st`;
-
-      break;
+    const doOmit = predicate(value, key);
+    if (!doOmit) {
+      isArray(obj) ? result.push(value) : (result[key] = value);
     }
-    case 2:
-    case 22: {
-      day = `${day}nd`;
-
-      break;
-    }
-    case 3:
-    case 23: {
-      day = `${day}rd`;
-
-      break;
-    }
-    default: {
-      day = `${day}th`;
-    }
-  }
-
-  switch (month) {
-    case 1: {
-      month = 'Jan';
-
-      break;
-    }
-    case 2: {
-      month = 'Feb';
-
-      break;
-    }
-    case 3: {
-      month = 'Mar';
-
-      break;
-    }
-    case 4: {
-      month = 'Apr';
-
-      break;
-    }
-    case 5: {
-      month = 'May';
-
-      break;
-    }
-    case 6: {
-      month = 'Jun';
-
-      break;
-    }
-    case 7: {
-      month = 'Jul';
-
-      break;
-    }
-    case 8: {
-      month = 'Aug';
-
-      break;
-    }
-    case 9: {
-      month = 'Sep';
-
-      break;
-    }
-    case 10: {
-      month = 'Oct';
-
-      break;
-    }
-    case 11: {
-      month = 'Nov';
-
-      break;
-    }
-    case 12: {
-      month = 'Dec';
-
-      break;
-    }
-    default: {
-      break;
-    }
-  }
-
-  let hours = newDate.getHours();
-  const amPm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours > 12 ? hours - 12 : hours;
-  let minutes = newDate.getMinutes();
-
-  hours = hours.toString().length === 1 ? `0${hours}` : hours.toString();
-  minutes =
-    minutes.toString().length === 1 ? `0${minutes}` : minutes.toString();
-
-  return `${day} ${month} ${year} ${hours}:${minutes} ${amPm}`;
-};
-
-export const getEntityByTypeAndId = (id, entityType) => {
-  switch (entityType) {
-    case 'Table': {
-      return getTableDetails(id);
-    }
-    default: {
-      return getTableDetails(id);
-    }
-  }
+  });
 };
 
 export const getURLWithQueryFields = (url, lstQueryFields, qParams = '') => {

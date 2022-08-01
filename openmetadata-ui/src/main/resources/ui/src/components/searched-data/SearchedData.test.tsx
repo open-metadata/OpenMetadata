@@ -20,14 +20,10 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import SearchedData from './SearchedData';
-import {
-  ExploreSearchSource,
-  SearchHit,
-} from '../../interface/search.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 
-const mockData: SearchHit<ExploreSearchSource>[] = [
+const mockData = [
   {
     _index: SearchIndex.TABLE,
     _source: {
@@ -37,14 +33,7 @@ const mockData: SearchHit<ExploreSearchSource>[] = [
       description: 'description1',
       fullyQualifiedName: 'fullyQualifiedName1',
       owner: {
-        deleted: false,
-        displayName: 'Customer_Support',
         name: 'Customer_Support',
-        description: 'This is Customer_Support description.',
-        id: '32a6706e-8862-48e5-b3f3-ff280045ae32',
-        href: 'http://localhost:8585/api/v1/teams/32a6706e-8862-48e5-b3f3-ff280045ae32',
-        type: 'team',
-        fullyQualifiedName: 'Customer_Support',
       },
       tags: [
         {
@@ -80,8 +69,8 @@ const mockData: SearchHit<ExploreSearchSource>[] = [
       name: 'name2',
       description: 'description2',
       fullyQualifiedName: 'fullyQualifiedName2',
-      owner: 'owner2',
-      tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+      owner: { name: 'owner2' },
+      tags: ['tags1', 'tags2', 'tags3'],
       tier: { tagFQN: 'tier2' },
       index: 'index1',
     },
@@ -92,8 +81,8 @@ const mockData: SearchHit<ExploreSearchSource>[] = [
       name: 'name3',
       description: 'description3',
       fullyQualifiedName: 'fullyQualifiedName3',
-      owner: 'owner3',
-      tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+      owner: { name: 'owner3' },
+      tags: ['tags1', 'tags2', 'tags3'],
       tier: { tagFQN: 'tier3' },
       index: 'index1',
     },

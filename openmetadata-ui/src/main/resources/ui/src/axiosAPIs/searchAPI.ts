@@ -9,18 +9,25 @@ import {
   SuggestRequest,
 } from '../interface/search.interface';
 import { FilterObject, FormattedTeamsData, FormattedUsersData } from 'Models';
+import { omitDeep } from '../utils/APIUtils';
+import { isNil } from 'lodash';
 
-export const getPostFilter: (f: FilterObject) => Record<string, unknown> = (
-  f
-) => ({
-  query: {
-    bool: {
-      must: Object.entries(f).map((entry) => ({
-        bool: { should: entry[1].map((value) => ({ [entry[0]]: value })) },
-      })),
-    },
-  },
-});
+export const getElasticsearchFilter: (
+  f: FilterObject
+) => Record<string, unknown> | undefined = (f) =>
+  Object.entries(f).length
+    ? {
+        query: {
+          bool: {
+            must: Object.entries(f).map(([key, values]) => ({
+              bool: {
+                should: values.map((value) => ({ term: { [key]: value } })),
+              },
+            })),
+          },
+        },
+      }
+    : undefined;
 
 export const searchQuery: (
   request: SearchRequest
@@ -44,14 +51,26 @@ export const searchQuery: (
       size,
       deleted: includeDeleted,
       /* eslint-disable @typescript-eslint/camelcase */
-      query_filter: JSON.stringify(postFilter),
-      post_filter: JSON.stringify(queryFilter),
+      query_filter: JSON.stringify(queryFilter),
+      post_filter: JSON.stringify(postFilter),
       sort_field: sortField,
       sort_order: sortOrder,
       track_total_hits: trackTotalHits,
       /* eslint-enable @typescript-eslint/camelcase */
     },
-  }).then((res) => res.data);
+    // Elasticsearch responses use 'null' for missing values, we want undefined
+  })
+    .then((res) => omitDeep(res.data, isNil))
+    // Aggregations start with 'sterms#' - this is from the Java library not Elasticsearch
+    .then((data) => ({
+      ...data,
+      aggregations: Object.fromEntries(
+        Object.entries(data.aggregations).map(([key, value]) => [
+          key.replace('sterms#', ''),
+          value,
+        ])
+      ),
+    }));
 
 export const getSearchedUsers = (
   query: string,
@@ -99,7 +118,10 @@ export const suggestQuery: (query: SuggestRequest) => Promise<SuggestOption[]> =
         exclude_source_fields: excludeSourceFields,
         /* eslint-enable @typescript-eslint/camelcase */
       },
-    }).then((res) => res.data.suggest['metadata-suggest'][0].options);
+      // Elasticsearch responses use 'null' for missing values, we want undefined
+    }).then((res) =>
+      omitDeep(res.data.suggest['metadata-suggest'][0].options, isNil)
+    );
 
 export const getTagSuggestions: Function = (
   term: string

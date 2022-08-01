@@ -26,6 +26,7 @@ import {
   TableType,
   TagSource,
 } from '../../generated/entity/data/table';
+import { SearchIndex } from '../../enums/search.enum';
 
 export const mockResponse: SearchResponse<TableSearchSource> = {
   hits: {
@@ -35,7 +36,7 @@ export const mockResponse: SearchResponse<TableSearchSource> = {
     },
     hits: [
       {
-        _index: 'table_search_index',
+        _index: SearchIndex.TABLE,
         _type: '_doc',
         _id: '343fe234-299e-42be-8f67-3359a87892fb',
         _source: {

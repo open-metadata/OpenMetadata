@@ -19,16 +19,17 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import TagsViewer from './tags-viewer';
+import { TagSource } from '../../generated/type/tagLabel';
 
 const tags = [
-  { tagFQN: `tags.tag 1`, source: 'Tag' },
-  { tagFQN: `tags.tag 2`, source: 'Tag' },
+  { tagFQN: `tags.tag 1`, source: TagSource.Tag },
+  { tagFQN: `tags.tag 2`, source: TagSource.Tag },
 ];
 
 const tagsWithTerm = [
-  { tagFQN: `tags.tag 1`, source: 'Tag' },
-  { tagFQN: `tags.tag 2`, source: 'Tag' },
-  { tagFQN: `test.tags.term`, source: 'Glossary' },
+  { tagFQN: `tags.tag 1`, source: TagSource.Tag },
+  { tagFQN: `tags.tag 2`, source: TagSource.Tag },
+  { tagFQN: `test.tags.term`, source: TagSource.Glossary },
 ];
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {

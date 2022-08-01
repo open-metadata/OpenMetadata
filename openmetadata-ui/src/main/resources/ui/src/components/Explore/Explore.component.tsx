@@ -18,8 +18,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import classNames from 'classnames';
-import { cloneDeep, lowerCase } from 'lodash';
-import { FilterObject } from 'Models';
+import { lowerCase } from 'lodash';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
@@ -28,13 +27,11 @@ import {
   getExplorePathWithSearch,
   PAGE_SIZE,
   ROUTES,
-  visibleFilters,
 } from '../../constants/constants';
 import {
   emptyValue,
   getCurrentIndex,
   getCurrentTab,
-  INITIAL_FILTERS,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tableSortingFields,
@@ -43,7 +40,6 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getFilterString } from '../../utils/FilterUtils';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { ExploreProps, QueryBuilderState } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
@@ -53,13 +49,14 @@ import {
   getQbConfigs,
 } from '../AdvancedSearch/AdvancesSearch.constants';
 import { elasticSearchFormat } from '../../utils/QueryBuilder';
-import { getPostFilter } from '../../axiosAPIs/searchAPI';
+import { getElasticsearchFilter } from '../../axiosAPIs/searchAPI';
+import { FacetProp } from '../common/facetfilter/FacetTypes';
+import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
-  initialFilter,
-  searchFilter,
+  postFilter,
   tab,
   searchQuery,
   searchResult,
@@ -80,18 +77,9 @@ const Explore: React.FC<ExploreProps> = ({
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
-  const filterObject: FilterObject = {
-    ...INITIAL_FILTERS,
-    ...initialFilter,
-  };
-  const [filters, setFilters] = useState<FilterObject>({
-    ...filterObject,
-    ...searchFilter,
-  });
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [searchTag, setSearchTag] = useState<string>(location.search);
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
   const [searchIndex, setSearchIndex] = useState<SearchIndex>(
@@ -120,34 +108,32 @@ const Explore: React.FC<ExploreProps> = ({
     ),
   } as Record<string, unknown>;
 
-  const handleSelectedFilter = (
-    checked: boolean,
-    selectedFilter: string,
-    type: keyof typeof filterObject
+  const handleSelectedFilter: FacetProp['onSelectHandler'] = (
+    checked,
+    value,
+    key
   ) => {
-    let filterData;
+    const currKeyFilters = postFilter[key] ?? [];
     if (checked) {
-      const filterType = filters[type];
-      if (filterType.includes(selectedFilter)) {
-        filterData = { ...filters };
-      } else {
-        filterData = {
-          ...filters,
-          [type]: [...filters[type], selectedFilter],
-        };
-      }
+      handleFilterChange({
+        ...postFilter,
+        [key]: unique([...currKeyFilters, value]),
+      });
     } else {
-      if (searchTag.includes(selectedFilter)) {
-        setSearchTag('');
+      const filteredKeyFilters = currKeyFilters.filter((v) => v !== value);
+      if (filteredKeyFilters.length) {
+        handleFilterChange({
+          ...postFilter,
+          [key]: filteredKeyFilters,
+        });
+      } else {
+        handleFilterChange(
+          Object.fromEntries(
+            Object.entries(postFilter).filter(([_key]) => _key !== key)
+          )
+        );
       }
-      const filter = filters[type];
-      const index = filter.indexOf(selectedFilter);
-      filter.splice(index, 1);
-
-      filterData = { ...filters, [type]: filter };
     }
-
-    handleFilterChange(filterData);
   };
 
   const handleFieldDropDown = (value: string) => {
@@ -161,39 +147,6 @@ const Explore: React.FC<ExploreProps> = ({
   const paginate = (pageNumber: string | number) => {
     setCurrentPage(pageNumber as number);
   };
-
-  // const updateAggregationCount = useCallback(
-  //   (newAggregations: Array<AggregationType>) => {
-  //     const oldAggs = cloneDeep(aggregations);
-  //     for (const newAgg of newAggregations) {
-  //       for (const oldAgg of oldAggs) {
-  //         if (newAgg.title === oldAgg.title) {
-  //           if (UPDATABLE_AGGREGATION.includes(newAgg.title)) {
-  //             const buckets = cloneDeep(oldAgg.buckets)
-  //               .map((item) => {
-  //                 // eslint-disable-next-line @typescript-eslint/camelcase
-  //                 return { ...item, doc_count: 0 };
-  //               })
-  //               .concat(newAgg.buckets);
-  //             const bucketHashmap = buckets.reduce((obj, item) => {
-  //               obj[item.key]
-  //                 ? // eslint-disable-next-line @typescript-eslint/camelcase
-  //                   (obj[item.key].doc_count += item.doc_count)
-  //                 : (obj[item.key] = { ...item });
-  //
-  //               return obj;
-  //             }, {} as { [key: string]: Bucket });
-  //             oldAgg.buckets = Object.values(bucketHashmap);
-  //           } else {
-  //             oldAgg.buckets = newAgg.buckets;
-  //           }
-  //         }
-  //       }
-  //     }
-  //     setAggregations(oldAggs);
-  //   },
-  //   [aggregations, filters]
-  // );
 
   const setCount = (count = 0, index = searchIndex) => {
     switch (index) {
@@ -231,21 +184,9 @@ const Explore: React.FC<ExploreProps> = ({
       sortField,
       sortOrder,
       searchIndex,
-      postFilter: getPostFilter(filters),
+      postFilter: getElasticsearchFilter(postFilter),
       queryFilter: elasticsearchFilter,
     });
-  };
-
-  const getFacetedFilter = () => {
-    const facetFilters: FilterObject = cloneDeep(filterObject);
-    for (const key in filters) {
-      if (visibleFilters.includes(key)) {
-        facetFilters[key as keyof typeof filterObject] =
-          filters[key as keyof typeof filterObject];
-      }
-    }
-
-    return facetFilters;
   };
 
   const handleOrder = (value: string) => {
@@ -375,23 +316,9 @@ const Explore: React.FC<ExploreProps> = ({
     });
     if (!isMounting.current) {
       fetchCount();
-      handleFilterChange(filterObject);
+      // handleFilterChange(filterObject);
     }
   }, [tab]);
-
-  useEffect(() => {
-    setFilters({
-      ...filterObject,
-      ...initialFilter,
-      ...searchFilter,
-    });
-  }, [initialFilter, searchFilter]);
-
-  useEffect(() => {
-    if (getFilterString(filters)) {
-      setCurrentPage(1);
-    }
-  }, [searchText, filters]);
 
   useEffect(() => {
     forceSetAgg.current = true;
@@ -424,7 +351,7 @@ const Explore: React.FC<ExploreProps> = ({
     } else {
       setCurrentPage(1);
     }
-  }, [filters]);
+  }, [postFilter]);
 
   /**
    * if search query is there then make sortfield as empty (Relevance)
@@ -443,30 +370,27 @@ const Explore: React.FC<ExploreProps> = ({
     isMounting.current = false;
   }, []);
 
-  const fetchLeftPanel = () => {
-    return (
-      <div className="tw-h-full">
-        <Card
-          data-testid="data-summary-container"
-          style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
-          <Fragment>
-            <div className="tw-filter-seperator" />
-            <FacetFilter
-              aggregations={searchResult?.aggregations ?? {}}
-              filters={getFacetedFilter()}
-              showDeletedOnly={showDeleted}
-              onSelectDeleted={handleShowDeleted}
-              onSelectHandler={handleSelectedFilter}
-            />
-          </Fragment>
-        </Card>
-      </div>
-    );
-  };
-
   return (
     <Fragment>
-      <PageLayout leftPanel={fetchLeftPanel()}>
+      <PageLayout
+        leftPanel={
+          <div className="tw-h-full">
+            <Card
+              data-testid="data-summary-container"
+              style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
+              <Fragment>
+                <div className="tw-filter-seperator" />
+                <FacetFilter
+                  aggregations={searchResult?.aggregations ?? {}}
+                  filters={postFilter}
+                  showDeletedOnly={showDeleted}
+                  onSelectDeleted={handleShowDeleted}
+                  onSelectHandler={handleSelectedFilter}
+                />
+              </Fragment>
+            </Card>
+          </div>
+        }>
         {getTabs()}
         <AdvancedSearch
           config={advancedSearchState.config}

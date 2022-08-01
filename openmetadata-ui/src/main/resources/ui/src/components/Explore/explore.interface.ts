@@ -45,8 +45,7 @@ export interface ExploreProps {
     mlModel: number;
   };
   searchText: string;
-  initialFilter?: FilterObject;
-  searchFilter?: FilterObject;
+  postFilter: FilterObject;
   sortValue: string;
   tab: string;
   searchQuery: string;

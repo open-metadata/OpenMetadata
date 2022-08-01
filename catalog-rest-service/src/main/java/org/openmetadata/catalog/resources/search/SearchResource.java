@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources.search;
 
+import io.dropwizard.util.Strings;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,6 +30,7 @@ import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
@@ -163,6 +165,10 @@ public class SearchResource {
 
     SearchSourceBuilder searchSourceBuilder;
 
+    if (Strings.isNullOrEmpty(query)) {
+      query = "*";
+    }
+
     switch (index) {
       case "topic_search_index":
         searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
@@ -227,14 +233,11 @@ public class SearchResource {
     LOG.debug(searchSourceBuilder.toString());
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    var response =
+        client
+            .search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
 
-    return Response.status(OK)
-        .entity(
-            client
-                .search(
-                    new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT)
-                .toString())
-        .build();
+    return Response.status(OK).entity(response).build();
   }
 
   @GET
@@ -332,10 +335,11 @@ public class SearchResource {
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryStringBuilder, hb, from, size);
+
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("Database").field("database.name.keyword"));
+        AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("DatabaseSchema").field("databaseSchema.name.keyword"));
+        AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
 
     return addAggregation(searchSourceBuilder);
   }
@@ -425,21 +429,21 @@ public class SearchResource {
 
   private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
-        .aggregation(AggregationBuilders.terms("Service").field("serviceType"))
+        .aggregation(AggregationBuilders.terms("serviceType").field("serviceType"))
         .size(MAX_AGGREGATE_SIZE)
         .aggregation(
-            AggregationBuilders.terms("ServiceName")
+            AggregationBuilders.terms("service.name.keyword")
                 .field("service.name.keyword")
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("ServiceCategory")
+            AggregationBuilders.terms("service.type")
                 .field("service.type")
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("EntityType").field("entityType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier.tagFQN"))
+            AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(
-            AggregationBuilders.terms("Tags").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
+            AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
 
     return builder;
   }

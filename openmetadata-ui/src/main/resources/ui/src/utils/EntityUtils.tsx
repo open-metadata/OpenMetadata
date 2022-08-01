@@ -46,15 +46,13 @@ export const getEntityTags = (
     Partial<Pipeline> &
     Partial<Dashboard> &
     Partial<Topic>
-): Array<TagLabel | undefined> => {
+): Array<TagLabel> => {
   switch (type) {
     case EntityType.TABLE: {
-      const tableTags: Array<TagLabel> = [
+      return [
         ...getTableTags(entityDetail.columns || []),
         ...(entityDetail.tags || []),
       ];
-
-      return tableTags;
     }
     case EntityType.PIPELINE: {
       return entityDetail.tags || [];

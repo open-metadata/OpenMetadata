@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
+import { TagLabel } from '../../generated/type/tagLabel';
 
 export interface TagsViewerProps {
-  tags: Array<EntityTags>;
+  tags: Array<Pick<TagLabel, 'tagFQN' | 'description' | 'source'> | string>;
   sizeCap?: number;
   showStartWith?: boolean;
   type?: 'label' | 'contained' | 'outlined' | 'border';

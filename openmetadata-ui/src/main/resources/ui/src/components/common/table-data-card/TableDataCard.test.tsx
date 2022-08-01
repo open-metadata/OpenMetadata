@@ -15,6 +15,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TableDataCard from './TableDataCard';
+import { SearchIndex } from '../../../enums/search.enum';
 
 jest.mock('../../../utils/TableUtils', () => ({
   getEntityLink: jest.fn().mockReturnValue('EntityLink'),
@@ -40,10 +41,11 @@ describe('Test TableDataCard Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(
       <TableDataCard
-        fullyQualifiedName="testFQN"
-        indexType="testIndex"
-        name="test card"
-        tags={[]}
+        id="1"
+        searchIndex={SearchIndex.TABLE}
+        source={{
+          name: 'Name1',
+        }}
       />,
       { wrapper: MemoryRouter }
     );
@@ -55,11 +57,12 @@ describe('Test TableDataCard Component', () => {
   it('Component should render for deleted', () => {
     const { getByTestId } = render(
       <TableDataCard
-        deleted
-        fullyQualifiedName="testFQN"
-        indexType="testIndex"
-        name="test card"
-        tags={[]}
+        id="1"
+        searchIndex={SearchIndex.TABLE}
+        source={{
+          name: 'Name2',
+          deleted: true,
+        }}
       />,
       { wrapper: MemoryRouter }
     );

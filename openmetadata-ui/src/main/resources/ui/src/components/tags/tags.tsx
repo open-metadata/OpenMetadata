@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import React from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import PopOver from '../common/popover/PopOver';
@@ -22,7 +22,7 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
 
-const Tags: FunctionComponent<TagProps> = ({
+const Tags: React.FC<TagProps> = ({
   className,
   editable,
   tag,
@@ -31,7 +31,7 @@ const Tags: FunctionComponent<TagProps> = ({
   removeTag,
   isRemovable = true,
   showOnlyName = false,
-}: TagProps) => {
+}) => {
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
   const textBaseStyle = tagStyles.text.base;
@@ -94,7 +94,7 @@ const Tags: FunctionComponent<TagProps> = ({
         getTag(tag, startWith)
       ) : (
         <>
-          {!editable && tag.description ? (
+          {!editable ? (
             <PopOver
               html={
                 <div className="tw-text-left tw-p-1">

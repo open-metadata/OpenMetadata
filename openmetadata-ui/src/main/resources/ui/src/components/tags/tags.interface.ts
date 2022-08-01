@@ -12,13 +12,14 @@
  */
 
 import { TagLabel } from '../../generated/type/tagLabel';
+import React from 'react';
 
 export type TagProps = {
   className?: string;
   editable?: boolean;
   type?: 'contained' | 'outlined' | 'label' | 'border';
   startWith?: '#' | '+ ';
-  tag: string | TagLabel;
+  tag: string | Pick<TagLabel, 'tagFQN' | 'description'>;
   isRemovable?: boolean;
   showOnlyName?: boolean;
   removeTag?: (

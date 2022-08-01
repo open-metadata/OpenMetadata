@@ -18,11 +18,7 @@ export type FacetProp = {
   aggregations: Aggregations;
   filters: FilterObject;
   showDeletedOnly?: boolean;
-  onSelectHandler: (
-    checked: boolean,
-    name: string,
-    type: keyof FilterObject
-  ) => void;
+  onSelectHandler: (checked: boolean, name: string, key: string) => void;
   onClearFilter?: (value: keyof FilterObject) => void;
   onSelectAllFilter?: (
     type: keyof FilterObject,

@@ -18,7 +18,6 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
 import Explore from '../../components/Explore/Explore.component';
-import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
 import { MyDataProps } from '../../components/MyData/MyData.interface';
 import NavBar from '../../components/nav-bar/NavBar';
@@ -156,14 +155,13 @@ const TourPage = () => {
         return (
           <Explore
             isFilterSelected
-            error=""
             fetchCount={handleCountChange}
             fetchData={() => setExploreSearchResult(exploreSearchData)}
             handleFilterChange={handleFilterChange}
             handlePathChange={handleCountChange}
             handleSearchText={() => setExploreSearchResult(exploreSearchData)}
             searchQuery=""
-            searchResult={exploreSearchResult as unknown as ExploreSearchData}
+            searchResult={exploreSearchResult}
             searchText=""
             showDeleted={false}
             sortValue=""
