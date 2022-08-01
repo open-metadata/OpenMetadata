@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.type.MetadataOperation.*;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -71,6 +69,7 @@ import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
+import org.openmetadata.catalog.type.TableProfilerConfig;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -123,8 +122,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,profileSample,profileQuery,customMetrics,"
-          + "tags,followers,joins,sampleData,viewDefinition,latestTableProfile,location,tableQueries,dataModel,tests,"
+      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfilerConfig,tableProfile,location,tableQueries,dataModel,tests,"
           + "extension";
 
   @GET
@@ -480,6 +479,76 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addSampleData(UUID.fromString(id), tableData);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/tableProfilerConfig")
+  @Operation(
+      operationId = "addDataProfilerConfig",
+      summary = "Add table profile Config",
+      tags = "tables",
+      description = "Add table profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table addDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Valid TableProfilerConfig tableProfilerConfig)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Table table = dao.addTableProfilerConfig(UUID.fromString(id), tableProfilerConfig);
+    return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/tableProfilerConfig")
+  @Operation(
+      operationId = "getDataProfilerConfig",
+      summary = "Get table profile Config",
+      tags = "tables",
+      description = "Get table profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table getDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    return addHref(uriInfo, table.withTableProfilerConfig(dao.getTableProfilerConfig(table)));
+  }
+
+  @DELETE
+  @Path("/{id}/tableProfilerConfig")
+  @Operation(
+      operationId = "delete DataProfilerConfig",
+      summary = "delete table profiler config",
+      tags = "tables",
+      description = "delete table profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Table profiler config",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table deleteDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Table table = dao.deleteTableProfilerConfig(UUID.fromString(id));
     return addHref(uriInfo, table);
   }
 
@@ -884,8 +953,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             .withTableType(create.getTableType())
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
-            .withProfileSample(create.getProfileSample())
-            .withProfileQuery(create.getProfileQuery())
+            .withTableProfilerConfig(create.getTableProfileConfig())
             .withDatabaseSchema(create.getDatabaseSchema()));
   }
 

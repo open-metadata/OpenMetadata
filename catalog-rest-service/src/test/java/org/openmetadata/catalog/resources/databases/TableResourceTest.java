@@ -119,6 +119,7 @@ import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.ColumnProfile;
+import org.openmetadata.catalog.type.ColumnProfilerConfig;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.DataModel.ModelType;
 import org.openmetadata.catalog.type.EntityReference;
@@ -131,6 +132,7 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TablePartition;
 import org.openmetadata.catalog.type.TableProfile;
+import org.openmetadata.catalog.type.TableProfilerConfig;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
@@ -1061,24 +1063,45 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_profileSample_200(TestInfo test) throws IOException {
+  void put_profileConfig_200(TestInfo test) throws IOException {
     CreateTable request = createRequest(test);
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("profileSample").withNewValue(80.0));
-
-    updateAndCheckEntity(request.withProfileSample(80.0), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-  }
-
-  @Test
-  void put_profileQuery_200(TestInfo test) throws IOException {
-    CreateTable request = createRequest(test);
-    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("profileQuery").withNewValue("SELECT * FROM dual"));
-
-    updateAndCheckEntity(
-        request.withProfileQuery("SELECT * FROM dual"), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    List<ColumnProfilerConfig> columnProfilerConfigs = new ArrayList<>();
+    columnProfilerConfigs.add(
+        new ColumnProfilerConfig()
+            .withColumnName("c1")
+            .withMetrics(List.of("valuesCount", "valuePercentage", "validCount", "duplicateCount")));
+    columnProfilerConfigs.add(
+        new ColumnProfilerConfig()
+            .withColumnName("\"c.3\"")
+            .withMetrics(List.of("duplicateCount", "nullCount", "missingCount")));
+    TableProfilerConfig tableProfilerConfig =
+        new TableProfilerConfig()
+            .withProfileQuery("SELECT * FROM dual")
+            .withExcludeColumns(List.of("c2"))
+            .withIncludeColumns(columnProfilerConfigs);
+    table = putTableProfilerConfig(table.getId(), tableProfilerConfig, ADMIN_AUTH_HEADERS);
+    assertEquals(tableProfilerConfig, table.getTableProfilerConfig());
+    Table storedTable = getEntity(table.getId(), "tableProfilerConfig", ADMIN_AUTH_HEADERS);
+    assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
+    columnProfilerConfigs.remove(0);
+    columnProfilerConfigs.add(
+        new ColumnProfilerConfig()
+            .withColumnName("c2")
+            .withMetrics(List.of("valuesCount", "valuePercentage", "validCount", "duplicateCount")));
+    tableProfilerConfig =
+        new TableProfilerConfig()
+            .withProfileQuery("SELECT * FROM dual1")
+            .withExcludeColumns(List.of("c1"))
+            .withIncludeColumns(columnProfilerConfigs);
+    table = putTableProfilerConfig(table.getId(), tableProfilerConfig, ADMIN_AUTH_HEADERS);
+    assertEquals(tableProfilerConfig, table.getTableProfilerConfig());
+    storedTable = getEntity(table.getId(), "tableProfilerConfig", ADMIN_AUTH_HEADERS);
+    assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
+    table = deleteTableProfilerConfig(table.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(table.getTableProfilerConfig());
+    storedTable = getEntity(table.getId(), "tableProfilerConfig", ADMIN_AUTH_HEADERS);
+    assertNull(storedTable.getTableProfilerConfig());
   }
 
   @Test
@@ -1096,7 +1119,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnProfile(columnProfiles)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
     Table putResponse = putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS);
-    verifyTableProfile(putResponse.getLatestTableProfile(), tableProfile);
+    verifyTableProfile(putResponse.getTableProfile(), tableProfile);
 
     ResultList<TableProfile> tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, List.of(tableProfile), 1);
@@ -1109,7 +1132,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnProfile(columnProfiles)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
     putResponse = putTableProfileData(table.getId(), newTableProfile, ADMIN_AUTH_HEADERS);
-    verifyTableProfile(putResponse.getLatestTableProfile(), newTableProfile);
+    verifyTableProfile(putResponse.getTableProfile(), newTableProfile);
 
     tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile, tableProfile), 2);
@@ -1122,10 +1145,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnProfile(columnProfiles)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
     putResponse = putTableProfileData(table.getId(), newTableProfile1, ADMIN_AUTH_HEADERS);
-    assertEquals(newTableProfile1.getTimestamp(), putResponse.getLatestTableProfile().getTimestamp());
-    verifyTableProfile(putResponse.getLatestTableProfile(), newTableProfile1);
+    assertEquals(newTableProfile1.getTimestamp(), putResponse.getTableProfile().getTimestamp());
+    verifyTableProfile(putResponse.getTableProfile(), newTableProfile1);
 
-    table = getEntity(table.getId(), "latestTableProfile", ADMIN_AUTH_HEADERS);
+    table = getEntity(table.getId(), "tableProfile", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
     tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile1, tableProfile), 2);
@@ -1850,14 +1873,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         table.getJoins(),
         table.getSampleData(),
         table.getViewDefinition(),
-        table.getLatestTableProfile(),
+        table.getTableProfile(),
         table.getLocation(),
         table.getTableQueries(),
         table.getDataModel());
 
     String fields =
         "tableConstraints,usageSummary,owner,"
-            + "tags,followers,joins,sampleData,viewDefinition,latestTableProfile,location,tableQueries,dataModel";
+            + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -1934,6 +1957,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/sampleData");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public static Table putTableProfilerConfig(UUID tableId, TableProfilerConfig data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public static Table deleteTableProfilerConfig(UUID tableId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
+    return TestUtils.delete(target, Table.class, authHeaders);
   }
 
   public static Table putTableProfileData(UUID tableId, TableProfile data, Map<String, String> authHeaders)
