@@ -51,7 +51,7 @@ Follow the sections in this guide to set up Auth0 SSO.
 
 <Collapse title="Create Service Account">
 
-This section will guide to to create the Ingestion Bot service account.
+This section will guide to create the Ingestion Bot service account.
 
 ### Step 1: Enable Client-Credential
 

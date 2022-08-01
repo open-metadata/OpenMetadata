@@ -30,11 +30,7 @@ public final class VersionUtils {
     return catalogVersion;
   }
 
-  public static String getVersionFromString(String input) {
-    if (input.contains("-")) {
-      return input.split(Pattern.quote("-"))[0];
-    } else {
-      throw new IllegalArgumentException("Invalid Version Given :" + input);
-    }
+  public static String[] getVersionFromString(String input) {
+    return input.split(Pattern.quote("."));
   }
 }
