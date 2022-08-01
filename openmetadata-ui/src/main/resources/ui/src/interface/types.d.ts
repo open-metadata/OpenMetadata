@@ -491,6 +491,7 @@ declare module 'Models' {
     fqn: string;
     serviceType?: string;
     timestamp: number;
+    id: number;
   }
 
   interface RecentlySearchedData {

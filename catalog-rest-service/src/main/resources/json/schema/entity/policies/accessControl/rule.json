@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.entity.policies.accessControl.Rule",
   "properties": {
     "name": {
-      "description": "Name for this Rule.",
+      "description": "Name of this Rule.",
       "type": "string"
     },
     "fullyQualifiedName": {
@@ -34,19 +34,12 @@
       "type": "boolean",
       "default": false
     },
-    "priority": {
-      "description": "Priority of this rule among all rules across all policies.",
-      "type": "integer",
-      "default": 250000
-    },
     "deleted": {
       "description": "Is the rule soft-deleted.",
       "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "name"
-  ],
+  "required": ["name", "operation"],
   "additionalProperties": false
 }

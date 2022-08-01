@@ -21,19 +21,15 @@ import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
-import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -87,7 +83,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   public void prepare(Policy policy) throws IOException {
     setFullyQualifiedName(policy);
-    isValid(policy);
+    validateRules(policy);
     policy.setLocation(getLocationReference(policy));
     // Check if owner is valid and set the relationship
     populateOwner(policy.getOwner());
@@ -122,37 +118,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return new PolicyUpdater(original, updated, operation);
   }
 
-  /**
-   * Validates policy schema beyond what json-schema validation supports. If policy is invalid, throws {@link
-   * IllegalArgumentException}
-   *
-   * <p>Example of validation that jsonschema2pojo does not support: <code>
-   *  "anyOf": [
-   *     {"required": ["entityTypeAttr"]},
-   *     {"required": ["entityTagAttr"]},
-   *     {"required": ["userRoleAttr"]}
-   *   ]
-   * </code>
-   */
-  public void isValid(Policy policy) throws IOException {
+  public void validateRules(Policy policy) throws IOException {
     if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
       return;
     }
-    LOG.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
-
-    Set<MetadataOperation> operations = new HashSet<>();
-    List<Rule> rules = EntityUtil.resolveRules(policy.getRules());
-    for (Rule rule : rules) {
-      if (rule.getOperation() == null) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidPolicyOperationNull(rule.getName(), policy.getName()));
-      }
-
-      if (!operations.add(rule.getOperation())) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidPolicyDuplicateOperation(rule.getOperation().value(), policy.getName()));
-      }
-    }
+    EntityUtil.resolveRules(policy.getRules()); // Resolve rules performs JSON schema constraint based validation
   }
 
   public List<Policy> getAccessControlPolicies() throws IOException {

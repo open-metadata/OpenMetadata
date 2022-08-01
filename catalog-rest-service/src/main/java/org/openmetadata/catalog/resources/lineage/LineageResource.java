@@ -246,5 +246,5 @@ public class LineageResource {
     public EntityInterface getEntity() throws IOException {
       return null;
     }
-  };
+  }
 }

@@ -16,6 +16,7 @@ This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
 
+import warnings
 from typing import Dict, Optional, Union
 
 from great_expectations.checkpoint.actions import ValidationAction
@@ -68,12 +69,28 @@ class OpenMetadataValidationAction(ValidationAction):
         data_context: DataContext,
         *,
         config_file_path: str = None,
+        database_service_name: Optional[str] = None,
         ometa_service_name: Optional[str] = None,
     ):
         super().__init__(data_context)
-        self.ometa_service_name = ometa_service_name
+        self._ometa_service_name = (
+            ometa_service_name  # will be deprecated in future release
+        )
+        self._database_service_name = database_service_name
         self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
+
+    @property
+    def database_service_name(self):
+        """Handle depracation warning"""
+        if self._ometa_service_name:
+            warnings.warn(
+                "`ometa_service_name` will be deperacted in future releases. Use `database_service_name` instead",
+                DeprecationWarning,
+            )
+
+            return self._ometa_service_name
+        return self._database_service_name
 
     # pylint: disable=arguments-differ,unused-argument
     def _run(
@@ -152,10 +169,10 @@ class OpenMetadataValidationAction(ValidationAction):
              ValueError: if 2 entities with the same
                          `database`.`schema`.`table` are found
         """
-        if self.ometa_service_name:
+        if self.database_service_name:
             return self.ometa_conn.get_by_name(
                 entity=Table,
-                fqn=f"{self.ometa_service_name}.{database}.{schema_name}.{table_name}",
+                fqn=f"{self.database_service_name}.{database}.{schema_name}.{table_name}",
             )
 
         table_entity = [

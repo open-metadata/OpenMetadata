@@ -193,7 +193,13 @@ public class FeedResource {
                   "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
               schema = @Schema(implementation = TaskStatus.class))
           @QueryParam("taskStatus")
-          TaskStatus taskStatus)
+          TaskStatus taskStatus,
+      @Parameter(
+              description =
+                  "Whether to filter results by announcements that are currently active. This filter will take effect only when type is set to Announcement",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("activeAnnouncement")
+          Boolean activeAnnouncement)
       throws IOException {
     RestUtil.validateCursors(before, after);
 
@@ -210,7 +216,8 @@ public class FeedResource {
               resolved,
               PaginationType.BEFORE,
               threadType,
-              taskStatus);
+              taskStatus,
+              activeAnnouncement);
     } else { // Forward paging or first page
       threads =
           dao.list(
@@ -223,7 +230,8 @@ public class FeedResource {
               resolved,
               PaginationType.AFTER,
               threadType,
-              taskStatus);
+              taskStatus,
+              activeAnnouncement);
     }
     addHref(uriInfo, threads.getData());
     return threads;
@@ -562,6 +570,7 @@ public class FeedResource {
         .withReactions(Collections.emptyList())
         .withType(create.getType())
         .withTask(getTaskDetails(create.getTaskDetails()))
+        .withAnnouncement(create.getAnnouncementDetails())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }

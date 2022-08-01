@@ -1,5 +1,32 @@
 [
   {
+    "name" : "all",
+    "operations" : [
+      "All",
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewUsage",
+      "ViewTests",
+      "ViewQueries",
+      "ViewDataProfile",
+      "ViewSampleData",
+      "EditAll",
+      "EditDescription",
+      "EditTags",
+      "EditOwner",
+      "EditTier",
+      "EditCustomFields",
+      "EditLineage",
+      "EditReviewers",
+      "EditTests",
+      "EditQueries",
+      "EditDataProfile",
+      "EditSampleData",
+      "EditUsers"
+    ]
+  },
+  {
     "name" : "bot",
     "operations" : [
       "Create",

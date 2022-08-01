@@ -9,26 +9,22 @@
     {
       "name": "DataStewardPolicy-editDescription",
       "operation": "EditDescription",
-      "allow": true,
-      "priority": 1000
+      "allow": true
     },
     {
       "name": "DataStewardPolicy-editLineage",
       "operation": "EditLineage",
-      "allow": true,
-      "priority": 1000
+      "allow": true
     },
     {
       "name": "DataStewardPolicy-editOwner",
       "operation": "EditOwner",
-      "allow": true,
-      "priority": 1000
+      "allow": true
     },
     {
       "name": "DataStewardPolicy-editTags",
       "operation": "EditTags",
-      "allow": true,
-      "priority": 1000
+      "allow": true
     }
   ]
 }
