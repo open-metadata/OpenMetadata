@@ -35,6 +35,7 @@ import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -853,7 +854,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
 
-    TestUtils.assertEntityReferenceList(expectedOwnedEntities, userAfterDeletion.getOwns());
+    assertEntityReferenceList(expectedOwnedEntities, userAfterDeletion.getOwns());
   }
 
   @Override
@@ -875,7 +876,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (UUID teamId : listOrEmpty(createRequest.getTeams())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
-    TestUtils.assertEntityReferenceList(expectedTeams, user.getTeams());
+    assertEntityReferenceList(expectedTeams, user.getTeams());
 
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
