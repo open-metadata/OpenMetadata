@@ -2,6 +2,7 @@
   "name": "ColumnValuesToBeInSet",
   "displayName": "ColumnValuesToBeInSet",
   "description": "This schema defines the test ColumnValuesToBeInSet. Test the column values are in the set.",
+  "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {

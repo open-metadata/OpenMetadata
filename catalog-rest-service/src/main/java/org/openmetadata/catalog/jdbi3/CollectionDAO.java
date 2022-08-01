@@ -2356,6 +2356,40 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String entityType = filter.getQueryParam("entityType");
+      String condition = filter.getCondition();
+
+      if (entityType == null) {
+        return EntityDAO.super.listBefore(filter, limit, before);
+      }
+      condition = String.format("%s AND entityType='%s' ", condition, entityType);
+      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String entityType = filter.getQueryParam("entityType");
+      String condition = filter.getCondition();
+      if (entityType == null) {
+        return EntityDAO.super.listAfter(filter, limit, after);
+      }
+      condition = String.format("%s AND entityType='%s' ", condition, entityType);
+      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String entityType = filter.getQueryParam("entityType");
+      String condition = filter.getCondition();
+      if (entityType == null) {
+        return EntityDAO.super.listCount(filter);
+      }
+      condition = String.format("%s AND entityType='%s' ", condition, entityType);
+      return listCount(getTableName(), getNameColumn(), condition);
+    }
   }
 
   interface TestSuiteDAO extends EntityDAO<TestSuite> {
