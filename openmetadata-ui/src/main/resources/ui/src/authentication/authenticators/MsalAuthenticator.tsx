@@ -13,6 +13,7 @@
 
 import { InteractionStatus } from '@azure/msal-browser';
 import { useAccount, useIsAuthenticated, useMsal } from '@azure/msal-react';
+import { AxiosError } from 'axios';
 import React, {
   forwardRef,
   Fragment,
@@ -32,11 +33,15 @@ import {
 interface Props {
   children: ReactNode;
   onLoginSuccess: (user: OidcUser) => void;
+  onLoginFailure: (error: AxiosError) => void;
   onLogoutSuccess: () => void;
 }
 
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLoginSuccess, onLogoutSuccess }: Props, ref) => {
+  (
+    { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
+    ref
+  ) => {
     const { setIsAuthenticated, loading, setLoadingIndicator } =
       useAuthContext();
     const { instance, accounts, inProgress } = useMsal();
@@ -115,6 +120,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
                 onLoginSuccess(user as OidcUser);
               }
             })
+            .catch(onLoginFailure)
             .finally(() => {
               if (loading) {
                 setLoadingIndicator(false);
