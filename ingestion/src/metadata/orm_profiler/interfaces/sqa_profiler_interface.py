@@ -84,7 +84,9 @@ class SQAProfilerInterface(InterfaceProtocol):
         return self._sampler
 
     def _session_factory(self):
-        """Create thread safe session"""
+        """Create thread safe session that will be automatically
+        garbage collected once the application thread ends
+        """
         engine = get_connection(self.service_connection_config)
         return create_and_bind_thread_safe_session(engine)
 
