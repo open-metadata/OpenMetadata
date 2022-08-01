@@ -32,7 +32,7 @@ After the applying these steps, you can update the configuration of your deploym
     bold="Docker Security"
     href="/deployment/security/custom-oidc/docker"
   >
-    Configure Auth0 SSO for your Docker Deployment.
+    Configure Custom OIDC SSO for your Docker Deployment.
   </InlineCallout>
   <InlineCallout
     color="violet-70"
@@ -40,7 +40,7 @@ After the applying these steps, you can update the configuration of your deploym
     bold="Bare Metal Security"
     href="/deployment/security/custom-oidc/bare-metal"
   >
-    Configure Auth0 SSO for your Bare Metal Deployment.
+    Configure Custom OIDC SSO for your Bare Metal Deployment.
   </InlineCallout>
   <InlineCallout
     color="violet-70"
@@ -48,7 +48,7 @@ After the applying these steps, you can update the configuration of your deploym
     bold="Kubernetes Security"
     href="/deployment/security/custom-oidc/kubernetes"
   >
-    Configure Auth0 SSO for your Kubernetes Deployment.
+    Configure Custom OIDC SSO for your Kubernetes Deployment.
   </InlineCallout>
 </InlineCalloutContainer>
 
@@ -63,7 +63,7 @@ When setting up the YAML config for the connector, update the `workflowConfig` a
 workflowConfig:
   openMetadataServerConfig:
     hostPort: 'http://localhost:8585/api'
-    authProvider: auth0
+    authProvider: custom-oidc
     securityConfig:
       clientId: '{your_client_id}'
       secretKey: '{your_client_secret}'
