@@ -1376,7 +1376,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withResult("Rows equal to 100")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("Rows == 100")
-            .withExecutionTime(100L);
+            .withTimestamp(100L);
     createTableTest.setResult(testCaseResult1);
     putResponse = putTableTest(table.getId(), createTableTest, ADMIN_AUTH_HEADERS);
     verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(createTableTest));
@@ -1386,7 +1386,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withResult("Rows equal to 100")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("Rows == 100")
-            .withExecutionTime(100L);
+            .withTimestamp(100L);
     createTableTest.setResult(testCaseResult2);
     table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
     verifyTableTest(table.getName(), table.getTableTests(), List.of(createTableTest));
@@ -1432,7 +1432,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withResult("min is > 100 and max < 1000")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("minValue is 100 and maxValue is 1000")
-            .withExecutionTime(100L);
+            .withTimestamp(100L);
     createColumnTest.setResult(colTestCaseResult);
     putResponse = putColumnTest(table.getId(), createColumnTest, ADMIN_AUTH_HEADERS);
     verifyColumnTest(putResponse, c1, List.of(createColumnTest));
@@ -1465,7 +1465,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withResult("min is > 100 and max < 1000")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("minValue is 100 and maxValue is 1000")
-            .withExecutionTime(100L);
+            .withTimestamp(100L);
     createColumnTest.setResult(colTestCaseResult1);
     putResponse = putColumnTest(table.getId(), createColumnTest, ADMIN_AUTH_HEADERS);
     createColumnTest.setResult(colTestCaseResult1);
@@ -2203,10 +2203,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Map<Long, TestCaseResult> actualResultMap = new HashMap<>();
     for (Object a : actual) {
       TestCaseResult result = JsonUtils.convertValue(a, TestCaseResult.class);
-      actualResultMap.put(result.getExecutionTime(), result);
+      actualResultMap.put(result.getTimestamp(), result);
     }
     TestCaseResult result = JsonUtils.convertValue(expected, TestCaseResult.class);
-    TestCaseResult actualResult = actualResultMap.get(result.getExecutionTime());
+    TestCaseResult actualResult = actualResultMap.get(result.getTimestamp());
     assertNotNull(actualResult);
     assertEquals(result.getResult(), actualResult.getResult());
     assertEquals(result.getSampleData(), actualResult.getSampleData());
