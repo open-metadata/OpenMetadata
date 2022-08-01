@@ -188,7 +188,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         if service:
             self.config.serviceConnection = (
                 self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "database"
+                    service, "pipeline"
                 )
             )
         self.service_connection = self.config.serviceConnection.__root__.config

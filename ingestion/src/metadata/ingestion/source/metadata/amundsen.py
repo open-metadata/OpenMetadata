@@ -123,7 +123,7 @@ class AmundsenSource(Source[Entity]):
         if service:
             self.config.serviceConnection = (
                 self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "database"
+                    service, "metadata"
                 )
             )
         self.service_connection = self.config.serviceConnection.__root__.config
