@@ -20,6 +20,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/type/entityReference';
 import { formatTeamsResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 
 interface CustomOption extends SelectableOption {
@@ -27,12 +28,16 @@ interface CustomOption extends SelectableOption {
 }
 
 interface Props {
+  showTeamsAlert?: boolean;
+  handleShowTeamsAlert?: (value: boolean) => void;
   onSelectionChange: (teams: string[]) => void;
   filterJoinable?: boolean;
   placeholder?: string;
 }
 
 const TeamsSelectable = ({
+  showTeamsAlert,
+  handleShowTeamsAlert,
   onSelectionChange,
   filterJoinable,
   placeholder = 'Search for teams',
@@ -72,6 +77,9 @@ const TeamsSelectable = ({
         }).then((res) => {
           const teams: Team[] =
             res.hits.hits.map((t: { _source: Team }) => t._source) || [];
+          if (handleShowTeamsAlert && teams.length === 0) {
+            handleShowTeamsAlert(true);
+          }
           resolve(getOptions(teams));
         });
       }
@@ -79,26 +87,40 @@ const TeamsSelectable = ({
   };
 
   return (
-    <AsyncSelect
-      cacheOptions
-      defaultOptions
-      isClearable
-      isMulti
-      aria-label="Select teams"
-      components={{
-        DropdownIndicator: null,
-      }}
-      inputValue={teamSearchText}
-      isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
-      loadOptions={loadOptions}
-      maxMenuHeight={200}
-      placeholder={placeholder}
-      styles={reactSingleSelectCustomStyle}
-      onChange={(value) => handleSelectionChange(value as SelectableOption[])}
-      onInputChange={(newText) => {
-        setTeamSearchText(newText);
-      }}
-    />
+    <>
+      <AsyncSelect
+        cacheOptions
+        defaultOptions
+        isClearable
+        isMulti
+        aria-label="Select teams"
+        components={{
+          DropdownIndicator: null,
+        }}
+        inputValue={teamSearchText}
+        isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
+        loadOptions={loadOptions}
+        maxMenuHeight={200}
+        placeholder={placeholder}
+        styles={reactSingleSelectCustomStyle}
+        onChange={(value) => handleSelectionChange(value as SelectableOption[])}
+        onInputChange={(newText) => {
+          setTeamSearchText(newText);
+        }}
+      />
+      {showTeamsAlert && (
+        <div
+          className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
+          data-testid="toast">
+          <div className="tw-font-semibold tw-flex-shrink-0">
+            <SVGIcons alt="info" icon="info" title="Info" width="16px" />
+          </div>
+          <div className="tw-font-semibold tw-px-1">
+            There is no team available.
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

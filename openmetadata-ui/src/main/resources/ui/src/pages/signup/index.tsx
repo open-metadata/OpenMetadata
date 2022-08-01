@@ -42,6 +42,7 @@ const Signup = () => {
     name: getNameFromEmail(appState.newUser.email),
     email: appState.newUser.email || '',
   });
+  const [showTeamsAlert, setShowTeamsAlert] = useState<boolean>(false);
 
   const history = useHistory();
 
@@ -110,6 +111,10 @@ const Signup = () => {
         },
       });
     }
+  };
+
+  const handleShowAlert = (value: boolean) => {
+    setShowTeamsAlert(value);
   };
 
   return (
@@ -198,6 +203,8 @@ const Signup = () => {
                     </label>
                     <TeamsSelectable
                       filterJoinable
+                      handleShowTeamsAlert={handleShowAlert}
+                      showTeamsAlert={showTeamsAlert}
                       onSelectionChange={setSelectedTeams}
                     />
                   </div>
