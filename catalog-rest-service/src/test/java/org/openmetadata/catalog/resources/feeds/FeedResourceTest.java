@@ -425,6 +425,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     LocalDateTime now = LocalDateTime.now();
     AnnouncementDetails announcementDetails =
         new AnnouncementDetails()
+            .withDescription("First announcement")
             .withStartTime(now.plusDays(1L).toEpochSecond(ZoneOffset.UTC))
             .withEndTime(now.plusDays(2L).toEpochSecond(ZoneOffset.UTC));
     CreateThread create =
@@ -455,6 +456,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // create one active announcement
     announcementDetails
+        .withDescription("Active Announcement")
         .withStartTime(now.minusDays(2L).toEpochSecond(ZoneOffset.UTC))
         .withEndTime(now.plusDays(5L).toEpochSecond(ZoneOffset.UTC));
     create =
@@ -479,6 +481,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     assertEquals(1, activeAnnouncementCount);
     assertEquals(1, announcements.getData().size());
+    assertEquals("Active Announcement", announcements.getData().get(0).getAnnouncement().getDescription());
 
     announcements = listAnnouncements(create.getAbout(), null, true, ADMIN_AUTH_HEADERS);
     assertEquals(activeAnnouncementCount, announcements.getPaging().getTotal());
