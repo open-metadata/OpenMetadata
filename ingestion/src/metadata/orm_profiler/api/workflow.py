@@ -72,24 +72,10 @@ class ProfilerWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
 
-        if not self.is_sample_source(self.config.source.type):
-            # We override the current serviceConnection source object if source workflow service already exists in OM.
-            # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
-            # from the service object itself.
-            service_type: ServiceType = get_service_type_from_source_type(
-                self.config.source.type
-            )
-            metadata = OpenMetadata(config=self.metadata_config)
-            service = metadata.get_by_name(
-                get_service_class_from_service_type(service_type),
-                self.config.source.serviceName,
-            )
-            if service:
-                self.config.source.serviceConnection = (
-                    metadata.secrets_manager_client.retrieve_service_connection(
-                        service, service_type.name.lower()
-                    )
-                )
+        # OpenMetadata client to fetch tables
+        self.metadata = OpenMetadata(self.metadata_config)
+
+        self._retrieve_service_connection_if_needed()
 
         # Prepare the connection to the source service
         # We don't need the whole Source class, as it is the OM Server
@@ -109,9 +95,6 @@ class ProfilerWorkflow:
                 metadata_config=self.metadata_config,
                 _from="orm_profiler",
             )
-
-        # OpenMetadata client to fetch tables
-        self.metadata = OpenMetadata(self.metadata_config)
 
         if not self._validate_service_name():
             raise ValueError(
@@ -327,6 +310,25 @@ class ProfilerWorkflow:
         self.metadata.close()
         self.processor.close()
 
+    def _retrieve_service_connection_if_needed(self):
+        # We override the current serviceConnection source object if source workflow service already exists in OM.
+        # When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
+        # from the service object itself.
+        if not self._is_sample_source(self.config.source.type):
+            service_type: ServiceType = get_service_type_from_source_type(
+                self.config.source.type
+            )
+            service = self.metadata.get_by_name(
+                get_service_class_from_service_type(service_type),
+                self.config.source.serviceName,
+            )
+            if service:
+                self.config.source.serviceConnection = (
+                    self.metadata.secrets_manager_client.retrieve_service_connection(
+                        service, service_type.name.lower()
+                    )
+                )
+
     @staticmethod
-    def is_sample_source(service_type):
+    def _is_sample_source(service_type):
         return service_type == "sample-data" or service_type == "sample-usage"
