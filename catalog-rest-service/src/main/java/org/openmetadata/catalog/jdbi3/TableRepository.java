@@ -216,11 +216,12 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    TableProfile storedTableProfile = JsonUtils.readValue(daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(
-        tableId.toString(),
-        "table.tableProfile",
-        tableProfile.getTimestamp()
-    ), TableProfile.class);
+    TableProfile storedTableProfile =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getExtensionAtTimestamp(tableId.toString(), "table.tableProfile", tableProfile.getTimestamp()),
+            TableProfile.class);
     if (storedTableProfile != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -228,8 +229,7 @@ public class TableRepository extends EntityRepository<Table> {
               tableId.toString(),
               "table.tableProfile",
               JsonUtils.pojoToJson(tableProfile),
-              tableProfile.getTimestamp()
-          );
+              tableProfile.getTimestamp());
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -248,21 +248,21 @@ public class TableRepository extends EntityRepository<Table> {
   public Table deleteTableProfile(UUID tableId, Long timestamp) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    TableProfile storedTableProfile = JsonUtils.readValue(daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(
-        tableId.toString(),
-        "table.tableProfile",
-        timestamp
-    ), TableProfile.class);
+    TableProfile storedTableProfile =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getExtensionAtTimestamp(tableId.toString(), "table.tableProfile", timestamp),
+            TableProfile.class);
     if (storedTableProfile != null) {
-      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(
-          tableId.toString(),
-          "table.tableProfile",
-          timestamp
-      );
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .deleteAtTimestamp(tableId.toString(), "table.tableProfile", timestamp);
       table.setLatestTableProfile(storedTableProfile);
       return table;
     }
-    throw new EntityNotFoundException(String.format("Failed to find table profile for %s at %s", table.getName(), timestamp));
+    throw new EntityNotFoundException(
+        String.format("Failed to find table profile for %s at %s", table.getName(), timestamp));
   }
 
   @Transaction
