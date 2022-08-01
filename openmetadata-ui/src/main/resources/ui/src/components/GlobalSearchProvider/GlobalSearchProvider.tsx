@@ -113,7 +113,7 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
         maskClosable
         bodyStyle={{
           padding: '20px',
-          height: '314px',
+          height: searchValue ? '314px' : '85px',
         }}
         closeIcon={<></>}
         footer={null}

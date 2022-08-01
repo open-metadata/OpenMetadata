@@ -322,6 +322,7 @@ const GlobalSearchSuggestions = ({
         size="large"
         style={{ width: '572px' }}
         suffixIcon={<CmdKIcon />}
+        transitionName=""
         value={value}
         onChange={(value) => {
           history.push(value);
