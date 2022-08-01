@@ -13,7 +13,7 @@
 
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover } from 'antd';
+import { Button, Popover } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
@@ -43,7 +43,6 @@ import {
   getUpdateTagsPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
-import { Button } from '../../buttons/Button/Button';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
@@ -383,27 +382,21 @@ const EntityPageInfo = ({
 
   const manageButtonContent = () => {
     return (
-      <>
-        <div
-          className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
-          id="manage-button"
-          onClick={() => setIsDelete(true)}>
-          <div>
-            <SVGIcons
-              alt="Delete"
-              className="tw-w-12"
-              icon={Icons.DELETE_GRADIANT}
-            />
-          </div>
-          <div className="tw-text-left" data-testid="delete-button">
-            <p className="tw-font-medium">Delete table {entityName}</p>
-            <p className="tw-text-grey-muted tw-text-xs">
-              Deleting this Glossary Term will permanently remove its metadata
-              from OpenMetadata.
-            </p>
-          </div>
+      <div
+        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
+        id="manage-button"
+        onClick={() => setIsDelete(true)}>
+        <SVGIcons alt="Delete" icon={Icons.DELETE_GRADIANT} />
+        <div className="tw-text-left" data-testid="delete-button">
+          <p className="tw-font-medium">
+            Delete {entityType} {entityName}
+          </p>
+          <p className="tw-text-grey-muted tw-text-xs">
+            Deleting this {entityType} will permanently remove its metadata from
+            OpenMetadata.
+          </p>
         </div>
-      </>
+      </div>
     );
   };
 
@@ -499,11 +492,10 @@ const EntityPageInfo = ({
               </div>
             ) : null}
             <Button
-              className="tw-rounded tw-mb-1 tw-flex bg-[#D9CEEE] tw-ml-2"
+              className="tw-rounded tw-mb-1 tw-flex bg-[#D9CEEE] tw-ml-2 tw-border tw-border-primary"
               data-testid="manage-button"
               size="small"
-              theme="primary"
-              variant="outlined"
+              type="default"
               onClick={() => setShowActions(true)}>
               <Tooltip
                 arrow
@@ -513,9 +505,10 @@ const EntityPageInfo = ({
                 position="bottom-end"
                 theme="light"
                 onRequestClose={() => setShowActions(false)}>
-                <span>
-                  <FontAwesomeIcon icon="ellipsis-vertical" />
-                </span>
+                <FontAwesomeIcon
+                  className="tw-text-primary"
+                  icon="ellipsis-vertical"
+                />
               </Tooltip>
             </Button>
           </div>
