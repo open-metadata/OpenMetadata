@@ -14,6 +14,8 @@
 import { BaseSelectRef } from 'rc-select';
 
 export interface GlobalSearchSuggestionsProp {
+  isSuggestionsLoading: boolean;
+  handleIsSuggestionsLoading: (value: boolean) => void;
   value: string;
   searchText: string;
   onOptionSelection: () => void;
