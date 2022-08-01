@@ -116,18 +116,7 @@ class AmundsenSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(self.metadata_config)
-
-        service = self.metadata.get_by_name(
-            entity=MetadataService, fqn=self.config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "metadata"
-                )
-            )
         self.service_connection = self.config.serviceConnection.__root__.config
-
         neo4j_config = Neo4JConfig(
             username=self.service_connection.username,
             password=self.service_connection.password.get_secret_value(),

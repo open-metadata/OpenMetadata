@@ -49,8 +49,8 @@ logger = ingestion_logger()
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
 
 # new typing type wrapping types from the '__root__' field of 'ServiceConnection' class
-ServiceType = NewType(
-    "ServiceType",
+ServiceWithConnectionType = NewType(
+    "ServiceWithConnectionType",
     Union[
         DashboardService,
         DatabaseService,
@@ -87,7 +87,7 @@ class SecretsManager(metaclass=Singleton):
     @abstractmethod
     def retrieve_service_connection(
         self,
-        service: ServiceType,
+        service: ServiceWithConnectionType,
         service_type: str,
     ) -> ServiceConnection:
         """
@@ -171,7 +171,7 @@ class LocalSecretsManager(SecretsManager):
 
     def retrieve_service_connection(
         self,
-        service: ServiceType,
+        service: ServiceWithConnectionType,
         service_type: str,
     ) -> ServiceConnection:
         """
@@ -191,7 +191,7 @@ class AWSSecretsManager(SecretsManager):
 
     def retrieve_service_connection(
         self,
-        service: ServiceType,
+        service: ServiceWithConnectionType,
         service_type: str,
     ) -> ServiceConnection:
         service_connection_type = service.serviceType.value

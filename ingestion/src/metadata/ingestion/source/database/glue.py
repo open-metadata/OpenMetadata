@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -35,7 +34,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -61,15 +59,6 @@ class GlueSource(DatabaseServiceSource):
         )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "database"
-                )
-            )
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
         self.connection = get_connection(self.service_connection)

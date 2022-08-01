@@ -26,7 +26,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.generated.schema.entity.teams.team import Team
@@ -75,21 +74,8 @@ class MetadataSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-
-        service = self.metadata.get_by_name(
-            entity=MetadataService, fqn=self.config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "metadata"
-                )
-            )
-        self.service_connection = self.config.serviceConnection.__root__.config
-
         self.status = MetadataSourceStatus()
         self.wrote_something = False
-        self.metadata = None
         self.tables = None
         self.topics = None
 

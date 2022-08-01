@@ -40,7 +40,6 @@ logger = ingestion_logger()
 
 
 class PowerbiSource(DashboardServiceSource):
-
     def __init__(
         self,
         config: WorkflowSource,

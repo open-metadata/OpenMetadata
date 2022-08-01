@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 import traceback
-from typing import Any, Iterable, Optional, List
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest

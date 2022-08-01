@@ -29,14 +29,6 @@ logger = ingestion_logger()
 
 
 class MssqlSource(CommonDbSourceService):
-    """MSSQL Source class
-
-    Args:
-        config:
-        metadata_config:
-        ctx
-    """
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""

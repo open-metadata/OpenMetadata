@@ -14,7 +14,6 @@ from metadata.generated.schema.entity.services.connections.database.dynamoDBConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -46,15 +45,6 @@ class DynamodbSource(DatabaseServiceSource):
         )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "database"
-                )
-            )
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
         self.dynamodb = self.connection.client

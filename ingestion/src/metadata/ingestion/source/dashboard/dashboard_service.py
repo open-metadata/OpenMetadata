@@ -80,7 +80,7 @@ class DashboardServiceTopology(ServiceTopology):
                 type_=DashboardService,
                 context="dashboard_service",
                 processor="yield_dashboard_service",
-                overwrite=False
+                overwrite=False,
             ),
             NodeStage(
                 type_=OMetaTagAndCategory,
@@ -248,18 +248,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-
-        service = self.metadata.get_by_name(
-            entity=DashboardService, fqn=self.config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "dashboard"
-                )
-            )
         self.service_connection = self.config.serviceConnection.__root__.config
-
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )

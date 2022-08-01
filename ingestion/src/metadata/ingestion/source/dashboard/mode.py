@@ -52,7 +52,6 @@ logger = ingestion_logger()
 
 
 class ModeSource(DashboardServiceSource):
-
     def __init__(
         self,
         config: WorkflowSource,

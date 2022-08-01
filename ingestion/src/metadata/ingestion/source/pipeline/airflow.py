@@ -42,10 +42,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.connections import (
-    create_and_bind_session,
-    test_connection,
-)
+from metadata.utils.connections import create_and_bind_session, test_connection
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 

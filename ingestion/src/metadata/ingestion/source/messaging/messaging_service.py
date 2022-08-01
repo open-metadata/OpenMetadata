@@ -16,8 +16,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional
 
-from confluent_kafka.admin import AdminClient, ConfigResource
-
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -62,7 +60,7 @@ class MessagingServiceTopology(ServiceTopology):
                 type_=MessagingService,
                 context="messaging_service",
                 processor="yield_messaging_service",
-                overwrite=False
+                overwrite=False,
             )
         ],
         children=["topic"],
@@ -143,19 +141,8 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: MessagingServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-
-        service = self.metadata.get_by_name(
-            entity=MessagingService, fqn=self.config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "messaging"
-                )
-            )
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
-
         self.test_connection()
         self.status = MessagingSourceStatus()
 

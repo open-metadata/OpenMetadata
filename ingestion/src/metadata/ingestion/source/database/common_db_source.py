@@ -75,12 +75,13 @@ class CommonDbSourceService(
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
+
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(self.metadata_config)
+
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
-
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
 
         self.engine: Engine = get_connection(self.service_connection)
         self.test_connection()

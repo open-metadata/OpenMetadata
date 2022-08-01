@@ -20,7 +20,6 @@ from typing import Iterable, Optional
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -45,15 +44,6 @@ class UsageSource(Source[TableQuery], ABC):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        service: DatabaseService = self.metadata.get_by_name(
-            DatabaseService, config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "database"
-                )
-            )
         self.connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)

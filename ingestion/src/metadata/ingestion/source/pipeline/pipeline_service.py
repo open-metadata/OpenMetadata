@@ -63,7 +63,7 @@ class PipelineServiceTopology(ServiceTopology):
                 type_=PipelineService,
                 context="pipeline_service",
                 processor="yield_pipeline_service",
-                overwrite=False
+                overwrite=False,
             ),
         ],
         children=["pipeline"],
@@ -181,18 +181,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-
-        service = self.metadata.get_by_name(
-            entity=PipelineService, fqn=self.config.serviceName
-        )
-        if service:
-            self.config.serviceConnection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service, "pipeline"
-                )
-            )
         self.service_connection = self.config.serviceConnection.__root__.config
-
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
