@@ -157,6 +157,7 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
         connect_args=get_connection_args(connection),
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
+        max_overflow=-1
     )
     listen(engine, "before_cursor_execute", inject_query_header, retval=True)
 
