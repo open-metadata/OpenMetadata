@@ -2454,20 +2454,27 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
-    @ConnectionAwareSqlUpdate(value = "UPDATE entity_extension_time_series set json = :json where entityId=:entityId and extension=:extension and timestamp=:timestamp", connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(value = "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityId=:entityId and extension=:extension and timestamp=:timestamp", connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series set json = :json where entityId=:entityId and extension=:extension and timestamp=:timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityId=:entityId and extension=:extension and timestamp=:timestamp",
+        connectionType = POSTGRES)
     void update(
         @Bind("entityId") String entityId,
         @Bind("extension") String extension,
         @Bind("json") String json,
-        @Bind("timestamp") Long timestamp
-    );
+        @Bind("timestamp") Long timestamp);
 
     @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension")
     String getExtension(@Bind("entityId") String entityId, @Bind("extension") String extension);
 
-    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension AND timestamp = :timestamp")
-    String getExtensionAtTimestamp(@Bind("entityId") String entityId, @Bind("extension") String extension, @Bind("timestamp") long timestamp);
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension AND timestamp = :timestamp")
+    String getExtensionAtTimestamp(
+        @Bind("entityId") String entityId, @Bind("extension") String extension, @Bind("timestamp") long timestamp);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension "
@@ -2487,8 +2494,10 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityId = :entityId")
     void deleteAll(@Bind("entityId") String entityId);
 
-    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension AND timestamp = :timestamp")
-    void deleteAtTimestamp(@Bind("entityId") String id, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
+    @SqlUpdate(
+        "DELETE FROM entity_extension_time_series WHERE entityId = :entityId AND extension = :extension AND timestamp = :timestamp")
+    void deleteAtTimestamp(
+        @Bind("entityId") String id, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series <condition> "

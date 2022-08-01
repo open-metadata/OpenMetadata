@@ -528,7 +528,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     RestUtil.validateCursors(before, after);
 
-    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("entityId", id).addQueryParam("extension", "table.tableProfile");
+    ListFilter filter =
+        new ListFilter(Include.ALL).addQueryParam("entityId", id).addQueryParam("extension", "table.tableProfile");
 
     if (startTs != null) {
       filter.addQueryParam("startTs", String.valueOf(startTs));
@@ -571,16 +572,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       tags = "tables",
       description = "Delete table profile data to the table.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully deleted the Table Profile",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfile.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Table Profile",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfile.class)))
       })
   public Table deleteDataProfiler(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Timestamp of the table profile", schema = @Schema(type = "long")) @PathParam("timestamp") Long timestamp)
+      @Parameter(description = "Timestamp of the table profile", schema = @Schema(type = "long"))
+          @PathParam("timestamp")
+          Long timestamp)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.deleteTableProfile(UUID.fromString(id), timestamp);

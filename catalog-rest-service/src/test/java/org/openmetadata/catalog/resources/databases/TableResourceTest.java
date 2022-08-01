@@ -1134,8 +1134,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<TableProfile> tableProfileList = new ArrayList<>();
     tableProfileList.add(tableProfile);
     tableProfileList.add(newTableProfile1);
-    for (int i=11; i <= 20; i++) {
-        tableProfile =
+    for (int i = 11; i <= 20; i++) {
+      tableProfile =
           new TableProfile()
               .withRowCount(21.0)
               .withColumnCount(3.0)
@@ -1147,11 +1147,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     tableProfiles = getTableProfiles(table.getId(), tableProfileList.size(), ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, tableProfileList, 12);
 
-    //create another table and add profiles
-    Table table1 = createAndCheckEntity(createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
+    // create another table and add profiles
+    Table table1 =
+        createAndCheckEntity(
+            createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
     List<TableProfile> table1ProfileList = new ArrayList<>();
     dateStr = "2021-10-";
-    for (int i=11; i <= 15; i++) {
+    for (int i = 11; i <= 15; i++) {
       tableProfile =
           new TableProfile()
               .withRowCount(21.0)
@@ -1166,7 +1168,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     deleteTableProfile(table1.getId(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
     table1ProfileList.remove(0);
     tableProfiles = getTableProfiles(table1.getId(), null, ADMIN_AUTH_HEADERS);
-    verifyTableProfiles(tableProfiles, table1ProfileList , 4);
+    verifyTableProfiles(tableProfiles, table1ProfileList, 4);
   }
 
   @Test
@@ -1940,11 +1942,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table deleteTableProfile(
-      UUID tableId, Long timestamp, Map<String, String> authHeaders)
+  public static Table deleteTableProfile(UUID tableId, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target =
-        CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile/" + timestamp);
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile/" + timestamp);
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
