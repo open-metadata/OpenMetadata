@@ -14,11 +14,10 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { UserProfile } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
@@ -43,13 +42,8 @@ const Signup = () => {
     name: getNameFromEmail(appState.newUser.email),
     email: appState.newUser.email || '',
   });
-  const [countTeams, setCountTeams] = useState<number>(0);
 
   const history = useHistory();
-
-  const setTeamCount = (count = 0) => {
-    setCountTeams(count);
-  };
 
   const getUserPermissions = () => {
     getLoggedInUserPermissions()
@@ -117,24 +111,6 @@ const Signup = () => {
       });
     }
   };
-
-  useEffect(() => {
-    getTeams('', 0)
-      .then((res) => {
-        if (res.data) {
-          setTeamCount(res.data.paging?.total || 0);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setTeamCount(0);
-      });
-  }, []);
 
   return (
     <>
@@ -222,26 +198,9 @@ const Signup = () => {
                     </label>
                     <TeamsSelectable
                       filterJoinable
+                      showTeamsAlert
                       onSelectionChange={setSelectedTeams}
                     />
-
-                    {countTeams === 0 ? (
-                      <div
-                        className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
-                        data-testid="toast">
-                        <div className="tw-font-semibold tw-flex-shrink-0">
-                          <SVGIcons
-                            alt="info"
-                            icon="info"
-                            title="Info"
-                            width="16px"
-                          />
-                        </div>
-                        <div className="tw-font-semibold tw-px-1">
-                          There is no team available.
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                   <div className="tw-flex tw-my-7 tw-justify-end">
                     <Button
