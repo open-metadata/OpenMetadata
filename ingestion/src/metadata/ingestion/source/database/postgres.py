@@ -44,7 +44,6 @@ class PostgresSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected PostgresConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:

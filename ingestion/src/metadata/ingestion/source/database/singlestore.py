@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
@@ -35,5 +34,4 @@ class SinglestoreSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected SingleStoreConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)

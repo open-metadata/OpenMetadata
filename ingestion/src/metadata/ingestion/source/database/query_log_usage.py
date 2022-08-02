@@ -30,6 +30,5 @@ class QueryLogUsageSource(UsageSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):
-        """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         return cls(config, metadata_config)
