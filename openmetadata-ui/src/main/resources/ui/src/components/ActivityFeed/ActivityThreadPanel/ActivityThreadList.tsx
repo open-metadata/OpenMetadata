@@ -27,6 +27,7 @@ import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
+import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
@@ -74,6 +75,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   reactions: thread.reactions,
                 } as Post;
                 const isTask = isEqual(thread.type, ThreadType.Task);
+                const isAnnouncement = thread.type === ThreadType.Announcement;
                 const postLength = thread?.posts?.length || 0;
                 const replies = thread.postsCount ? thread.postsCount - 1 : 0;
                 const repliedUsers = [
@@ -96,6 +98,8 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         paddingTop: isTask ? '8px' : '',
                         border: isTask
                           ? '1px solid #C6B5F6'
+                          : isAnnouncement
+                          ? '1px solid #FFC143'
                           : leftPanelAntCardStyle.border,
                       }}
                       onClick={() =>
@@ -106,6 +110,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           status={thread.task?.status as ThreadTaskStatus}
                         />
                       )}
+                      {isAnnouncement && <AnnouncementBadge />}
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed

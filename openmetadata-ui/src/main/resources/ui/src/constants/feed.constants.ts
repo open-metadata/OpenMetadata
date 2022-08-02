@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)::([^<>]+?)>/;
+export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)(?:::([^<>]+?))?>/;
 
 export const EntityRegEx = new RegExp(EntityRegExPattern);
 

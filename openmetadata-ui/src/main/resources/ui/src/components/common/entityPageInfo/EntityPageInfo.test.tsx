@@ -240,14 +240,6 @@ jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
     );
 });
 
-jest.mock('../DeleteWidget/DeleteWidgetModal', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <p data-testid="delete-entity">DeleteWidgetModal component</p>
-    );
-});
-
 jest.mock('../../tags/tags', () => {
   return jest.fn().mockReturnValue(<p data-testid="tier-tag">Tag</p>);
 });
@@ -626,17 +618,4 @@ describe('Test EntityPageInfo component', () => {
     expect(tag1).not.toBeInTheDocument();
     expect(glossaryTerm1).not.toBeInTheDocument();
   });
-});
-
-it('Should render delete widget modal', async () => {
-  const { getByTestId } = render(
-    <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-    {
-      wrapper: MemoryRouter,
-    }
-  );
-  const tagWrapper = getByTestId('delete-entity');
-  fireEvent.click(tagWrapper);
-
-  expect(tagWrapper).toBeInTheDocument();
 });
