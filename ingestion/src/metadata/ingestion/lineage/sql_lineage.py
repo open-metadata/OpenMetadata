@@ -13,7 +13,7 @@ Helper functions to handle SQL lineage operations
 """
 import traceback
 from logging.config import DictConfigurator
-from typing import Any, Generator, List, Optional, Iterator
+from typing import Any, Iterator, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
