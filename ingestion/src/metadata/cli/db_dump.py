@@ -4,7 +4,6 @@ from typing import List
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
-
 TABLES_DUMP_ALL = {
     "task_sequence",
     "entity_usage",

@@ -279,7 +279,9 @@ def backup(
     of a MySQL backup. This is the value of the schema containing the OpenMetadata
     tables.
     """
-    run_backup(host, user, password, database, port, output, upload, options, arguments, schema)
+    run_backup(
+        host, user, password, database, port, output, upload, options, arguments, schema
+    )
 
 
 metadata.add_command(check)
