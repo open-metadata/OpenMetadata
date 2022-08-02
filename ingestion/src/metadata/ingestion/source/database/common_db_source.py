@@ -56,6 +56,7 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -261,6 +262,7 @@ class CommonDbSourceService(
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
+    @calculate_execution_time
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Optional[CreateTableRequest]]:

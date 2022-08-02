@@ -11,7 +11,6 @@
 """
 Base class for ingesting database services
 """
-import time
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional, Set, Tuple
 
@@ -196,17 +195,10 @@ class SQLSourceStatus(SourceStatus):
     failures: List[str] = list()
     warnings: List[str] = list()
     filtered: List[str] = list()
-    scan_timer_start: int = 0
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
-        if not self.scan_timer_start:
-            logger.info(f"Scanned [{record}]")
-        else:
-            logger.info(
-                f"Scanned [{record}] - took {pretty_print_time_duration(time.time()-self.scan_timer_start)}"
-            )
-            self.scan_timer_start = time.time()
+        logger.info(f"Scanned [{record}]")
 
     def filter(self, record: str, err: str) -> None:
         self.filtered.append(record)

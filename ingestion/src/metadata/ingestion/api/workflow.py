@@ -237,13 +237,6 @@ class Workflow:
                 fg="bright_cyan",
                 bold=True,
             )
-            source_sucess = len(self.source.get_status().success)
-            source_failed = len(self.source.get_status().failures)
-            click.secho(
-                f"Success % : {round(source_sucess*100/(source_sucess+source_failed),2)}",
-                fg="bright_cyan",
-                bold=True,
-            )
 
         if self.source.get_status().failures or (
             hasattr(self, "sink") and self.sink.get_status().failures

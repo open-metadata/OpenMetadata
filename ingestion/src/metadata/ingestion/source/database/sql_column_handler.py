@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -150,6 +151,7 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
+    @calculate_execution_time
     def get_columns_and_constraints(
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
     ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]]]:

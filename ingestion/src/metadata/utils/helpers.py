@@ -70,7 +70,9 @@ def calculate_execution_time(func):
         start = time.time()
         func(*args, **kwargs)
         end = time.time()
-        logger.debug(f"{func.__name__} executed in { end - start }")
+        logger.debug(
+            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
+        )
 
     return calculate_debug_time
 
