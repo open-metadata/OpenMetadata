@@ -101,7 +101,6 @@ class BigquerySource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def standardize_table_name(self, schema: str, table: str) -> str:

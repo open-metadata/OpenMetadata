@@ -1,12 +1,10 @@
 import traceback
 import uuid
 from dataclasses import dataclass, field
-from distutils.command.config import config
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 import yaml
-from importlib_metadata import SelectableGroups
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -22,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -52,7 +51,7 @@ class AtlasSourceStatus(SourceStatus):
 
 @dataclass
 class AtlasSource(Source):
-    config: AtlasConnection
+    config: WorkflowSource
     atlas_client: AtlasClient
     status: AtlasSourceStatus
     tables: Dict[str, Any]
@@ -60,15 +59,14 @@ class AtlasSource(Source):
 
     def __init__(
         self,
-        config: AtlasConnection,
+        config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.service_connection = config.serviceConnection.__root__.config
-
         self.metadata = OpenMetadata(metadata_config)
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.status = AtlasSourceStatus()
 
         self.schema_registry_url = "http://localhost:8081"

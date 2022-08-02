@@ -65,7 +65,8 @@ class MlModelServiceTopology(ServiceTopology):
             NodeStage(
                 type_=MlModelService,
                 context="mlmodel_service",
-                processor="yield_mlmodel_service",
+                processor="yield_create_request_mlmodel_service",
+                overwrite=False,
             ),
         ],
         children=["mlmodel"],
@@ -153,7 +154,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
-    def yield_mlmodel_service(self, config: WorkflowSource):
+    def yield_create_request_mlmodel_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
             entity=MlModelService, config=config
         )

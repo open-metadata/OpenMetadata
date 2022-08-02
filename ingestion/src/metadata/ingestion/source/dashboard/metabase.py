@@ -56,20 +56,6 @@ logger = ingestion_logger()
 
 
 class MetabaseSource(DashboardServiceSource):
-    """Metabase entity class
-
-    Args:
-        config:
-        metadata_config:
-    Attributes:
-        config:
-        metadata_config:
-        status:
-        metabase_session:
-        dashboard_service:
-        charts:
-        metric_charts:
-    """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
@@ -81,19 +67,10 @@ class MetabaseSource(DashboardServiceSource):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.connection = get_connection(self.service_connection)
         self.metabase_session = self.connection.client["metabase_session"]
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        """Instantiate object
-
-        Args:
-            config_dict:
-            metadata_config:
-        Returns:
-            MetabaseSource
-        """
         config = WorkflowSource.parse_obj(config_dict)
         connection: MetabaseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MetabaseConnection):
