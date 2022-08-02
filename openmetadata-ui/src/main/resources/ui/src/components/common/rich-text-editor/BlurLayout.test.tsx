@@ -104,9 +104,12 @@ describe('Test BlurLayout Component', () => {
   });
 
   it('Should toggle between `Read more` and `Read less` when button click', async () => {
-    const { container } = render(<BlurLayout {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <BlurLayout {...mockProp} displayMoreText={false} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const blurLayout = await findByTestId(container, 'blur-layout');
 
