@@ -152,7 +152,7 @@ def get_column_lineage(
     from_entity: Table,
     to_table_raw_name: str,
     from_table_raw_name: str,
-    column_lineage_map: dict
+    column_lineage_map: dict,
 ) -> List[ColumnLineage]:
     column_lineage = []
     if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(
@@ -215,7 +215,7 @@ def _create_lineage_by_table_name(
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
-    column_lineage_map: dict
+    column_lineage_map: dict,
 ) -> Optional[Iterable[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
@@ -247,7 +247,7 @@ def _create_lineage_by_table_name(
                     from_table_raw_name=from_table,
                     query=query,
                     from_table_raw_name=str(from_table),
-                    column_lineage_map=column_lineage_map
+                    column_lineage_map=column_lineage_map,
                 )
 
     except Exception as err:
@@ -316,7 +316,7 @@ def get_lineage_by_query(
                     database_name=database_name,
                     schema_name=schema_name,
                     query=query,
-                    column_lineage_map=column_lineage
+                    column_lineage_map=column_lineage,
                 )
             for target_table in result.target_tables:
                 yield from _create_lineage_by_table_name(
@@ -327,7 +327,7 @@ def get_lineage_by_query(
                     database_name=database_name,
                     schema_name=schema_name,
                     query=query,
-                    column_lineage_map=column_lineage
+                    column_lineage_map=column_lineage,
                 )
         if not result.intermediate_tables:
             for target_table in result.target_tables:
@@ -340,7 +340,7 @@ def get_lineage_by_query(
                         database_name=database_name,
                         schema_name=schema_name,
                         query=query,
-                        column_lineage_map=column_lineage
+                        column_lineage_map=column_lineage,
                     )
     except Exception as err:
         logger.debug(str(err))
