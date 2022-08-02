@@ -34,8 +34,11 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.catalog.security.policyevaluator.RoleCache;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -55,6 +58,10 @@ public class DefaultAuthorizer implements Authorizer {
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.testUsers = new HashSet<>(config.getTestPrincipals());
     this.principalDomain = config.getPrincipalDomain();
+
+    SubjectCache.getInstance().initialize();
+    PolicyCache.getInstance().initialize();
+    RoleCache.getInstance().initialize();
     LOG.debug("Admin users: {}", adminUsers);
     initializeUsers();
   }
@@ -178,6 +185,6 @@ public class DefaultAuthorizer implements Authorizer {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
-    return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
+    return SubjectCache.getInstance().getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
   }
 }

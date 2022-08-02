@@ -72,7 +72,7 @@ public class SubjectContextTest {
     List<Role> userRoles = getRoles("user", 3);
     List<EntityReference> userRolesRef = toEntityReferences(userRoles);
     User user = new User().withName("user").withRoles(userRolesRef).withTeams(List.of(team111.getEntityReference()));
-    SubjectContext.USER_CACHE.put("user", new SubjectContext(user));
+    SubjectCache.USER_CACHE.put("user", new SubjectContext(user));
 
     //
     // Check iteration order of the policies
@@ -88,7 +88,7 @@ public class SubjectContextTest {
     expectedPolicyOrder.addAll(getPolicyListFromRoles(team12Roles)); // Next parent of team111 team12 roles next
     expectedPolicyOrder.addAll(getPolicyList(team12Policies)); // Next parent of team111 team12 policies next
 
-    SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
     Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies();
     int count = 0;
     while (policyContextIterator.hasNext()) {
@@ -118,7 +118,7 @@ public class SubjectContextTest {
       String name = prefix + "_policy_" + i;
       Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name, 3));
       policies.add(policy);
-      PolicyCache.POLICY_CACHE.put(policy.getId(), PolicyCache.getRules(policy));
+      PolicyCache.POLICY_CACHE.put(policy.getId(), PolicyCache.getInstance().getRules(policy));
     }
     return policies;
   }
@@ -166,7 +166,7 @@ public class SubjectContextTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    SubjectContext.TEAM_CACHE.put(team.getId(), team);
+    SubjectCache.TEAM_CACHE.put(team.getId(), team);
     return team;
   }
 }

@@ -35,10 +35,28 @@ import org.openmetadata.catalog.util.JsonUtils;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class PolicyCache {
-  protected static final LoadingCache<UUID, List<CompiledRule>> POLICY_CACHE =
-      CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
+  private static final PolicyCache INSTANCE = new PolicyCache();
+  private static volatile boolean INITIALIZED = false;
 
-  public static List<CompiledRule> getPolicyRules(UUID policyId) {
+  protected static LoadingCache<UUID, List<CompiledRule>> POLICY_CACHE;
+  private static EntityRepository<Policy> POLICY_REPOSITORY;
+  private static Fields FIELDS;
+
+  public static PolicyCache getInstance() {
+    return INSTANCE;
+  }
+
+  /** To be called during application startup by Default Authorizer */
+  public void initialize() {
+    if (!INITIALIZED) {
+      POLICY_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
+      POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
+      FIELDS = POLICY_REPOSITORY.getFields("rules");
+      INITIALIZED = true;
+    }
+  }
+
+  public List<CompiledRule> getPolicyRules(UUID policyId) {
     try {
       return POLICY_CACHE.get(policyId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -46,7 +64,7 @@ public class PolicyCache {
     }
   }
 
-  public static void invalidatePolicy(UUID policyId) {
+  public void invalidatePolicy(UUID policyId) {
     try {
       POLICY_CACHE.invalidate(policyId);
     } catch (Exception ex) {
@@ -54,19 +72,7 @@ public class PolicyCache {
     }
   }
 
-  static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
-    private static final EntityRepository<Policy> POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
-    private static final Fields FIELDS = POLICY_REPOSITORY.getFields("rules");
-
-    @Override
-    public List<CompiledRule> load(@CheckForNull UUID policyId) throws IOException {
-      Policy policy = POLICY_REPOSITORY.get(null, policyId.toString(), FIELDS);
-      LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
-      return getRules(policy);
-    }
-  }
-
-  protected static List<CompiledRule> getRules(Policy policy) {
+  protected List<CompiledRule> getRules(Policy policy) {
     List<CompiledRule> rules = new ArrayList<>();
     for (Object r : policy.getRules()) {
       try {
@@ -82,7 +88,17 @@ public class PolicyCache {
     return rules;
   }
 
-  public static void cleanUp() {
+  public void cleanUp() {
     POLICY_CACHE.cleanUp();
+    INITIALIZED = false;
+  }
+
+  static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
+    @Override
+    public List<CompiledRule> load(@CheckForNull UUID policyId) throws IOException {
+      Policy policy = POLICY_REPOSITORY.get(null, policyId.toString(), FIELDS);
+      LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
+      return PolicyCache.getInstance().getRules(policy);
+    }
   }
 }

@@ -30,7 +30,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -123,7 +123,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   protected void postDelete(User entity) {
-    SubjectContext.invalidateUser(entity.getName());
+    SubjectCache.getInstance().invalidateUser(entity.getName());
   }
 
   @Override

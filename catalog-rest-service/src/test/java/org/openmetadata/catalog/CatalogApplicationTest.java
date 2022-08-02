@@ -31,7 +31,7 @@ import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
 import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
 import org.openmetadata.catalog.security.policyevaluator.RoleCache;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 @Slf4j
@@ -96,8 +96,8 @@ public abstract class CatalogApplicationTest {
       APP.after();
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
-    SubjectContext.cleanUp();
-    PolicyCache.cleanUp();
+    SubjectCache.getInstance().cleanUp();
+    PolicyCache.getInstance().cleanUp();
     RoleCache.cleanUp();
   }
 
