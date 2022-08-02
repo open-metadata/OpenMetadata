@@ -75,15 +75,15 @@ public class PolicyEvaluator {
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
-  public static List<MetadataOperation> getAllowedOperations(
-      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+  public static List<MetadataOperation> getAllowedOperations(@NonNull SubjectContext subjectContext) {
     List<MetadataOperation> list = new ArrayList<>();
     Iterator<PolicyContext> policies = subjectContext.getPolicies();
+
     while (policies.hasNext()) {
       // TODO clean up (add resource name and allow/deny)
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (CompiledRule.matchResource(rule, "all")) {
+        if (CompiledRule.matchRuleForPermissions(rule, subjectContext)) {
           if (rule.getEffect() == Effect.ALLOW) {
             list.addAll(rule.getOperations());
           }

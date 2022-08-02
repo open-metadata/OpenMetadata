@@ -91,28 +91,19 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(
-      SecurityContext securityContext, ResourceContextInterface resourceContext) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
+  public List<MetadataOperation> listPermissions(SecurityContext securityContext) {
+    SubjectContext subjectContext;
+    try {
+      subjectContext = getSubjectContext(securityContext);
+    } catch (EntityNotFoundException ex) {
+      return Collections.emptyList();
+    }
 
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
       // Admins and bots have permissions to do all operations.
       return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
     }
-
-    try {
-      if (resourceContext == null) {
-        return PolicyEvaluator.getAllowedOperations(subjectContext, null);
-      }
-      //      EntityReference owner = resourceContext.getOwner();
-      //      if (owner == null || subjectContext.isOwner(owner)) {
-      //        // Entity does not have an owner or is owned by the user - allow all operations.
-      //        return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
-      //      }
-      return PolicyEvaluator.getAllowedOperations(subjectContext, resourceContext);
-    } catch (EntityNotFoundException ex) {
-      return Collections.emptyList();
-    }
+    return PolicyEvaluator.getAllowedOperations(subjectContext);
   }
 
   @Override

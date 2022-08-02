@@ -47,6 +47,10 @@ public class CompiledRule extends Rule {
     return expression == null ? true : rule.getExpression().getValue(evaluationContext, Boolean.class);
   }
 
+  public static boolean matchRuleForPermissions(CompiledRule rule, SubjectContext subjectContext) {
+    return matchResource(rule, "all") && rule.getCondition() == null;
+  }
+
   public static boolean matchResource(CompiledRule rule, String resource) {
     return (rule.getResources().get(0).equalsIgnoreCase("all") || rule.getResources().contains(resource));
   }
