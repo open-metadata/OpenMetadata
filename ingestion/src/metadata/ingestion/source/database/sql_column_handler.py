@@ -151,7 +151,6 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
-    @calculate_execution_time
     def get_columns_and_constraints(
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
     ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]]]:

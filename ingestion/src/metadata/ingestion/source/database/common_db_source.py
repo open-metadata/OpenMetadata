@@ -12,7 +12,6 @@
 Generic source to build SQL connectors.
 """
 
-import time
 import traceback
 from abc import ABC
 from copy import deepcopy
@@ -56,7 +55,7 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.helpers import calculate_execution_time
+from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -192,7 +191,6 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
-        self.status.scan_timer_start = time.time()
         schema_name = self.context.database_schema.name.__root__
         if self.source_config.includeTables:
             for table_name in self.inspector.get_table_names(schema_name):
@@ -262,7 +260,7 @@ class CommonDbSourceService(
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
-    @calculate_execution_time
+    @calculate_execution_time_generator
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Optional[CreateTableRequest]]:

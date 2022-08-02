@@ -13,7 +13,7 @@ import re
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional
-
+from types import GeneratorType
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -73,7 +73,18 @@ def calculate_execution_time(func):
         logger.debug(
             f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
         )
+    return calculate_debug_time
 
+
+
+def calculate_execution_time_generator(func):
+    def calculate_debug_time(*args, **kwargs):
+        start = time.time()
+        yield from func(*args, **kwargs)
+        end = time.time()
+        logger.debug(
+            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
+        )
     return calculate_debug_time
 
 
