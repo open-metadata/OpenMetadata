@@ -37,6 +37,7 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
+import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -45,7 +46,6 @@ import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.catalog.type.Status;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension";
