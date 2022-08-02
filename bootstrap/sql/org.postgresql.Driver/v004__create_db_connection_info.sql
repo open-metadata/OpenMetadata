@@ -12,6 +12,10 @@ UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,connectionOptions}'
 where serviceType = 'DeltaLake';
 
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsProfiler}'
+where serviceType = 'DeltaLake';
+
 UPDATE dashboard_service_entity
 SET json = jsonb_set(json, '{connection,config,clientId}', json#>'{connection,config,username}')
 WHERE serviceType = 'Looker'
