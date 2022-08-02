@@ -364,6 +364,8 @@ def get_lineage_via_table_entity(
 
     # Reverting changes after import is done
     DictConfigurator.configure = configure
+    column_lineage = {}
+
     try:
         parser = LineageRunner(query)
         to_table_name = table_entity.name.__root__
@@ -377,6 +379,7 @@ def get_lineage_via_table_entity(
                 database_name=database_name,
                 schema_name=schema_name,
                 query=query,
+                column_lineage_map=column_lineage,
             ) or []
     except Exception:  # pylint: disable=broad-except
         logger.warn("Failed to create view lineage")
