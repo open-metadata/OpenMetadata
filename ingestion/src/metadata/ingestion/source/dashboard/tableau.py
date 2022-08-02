@@ -59,17 +59,6 @@ TABLEAU_TAG_CATEGORY = "TableauTags"
 
 
 class TableauSource(DashboardServiceSource):
-    """Tableau source entity class
-
-    Args:
-        config:
-        metadata_config:
-
-    Attributes:
-        config:
-        metadata_config:
-        all_dashboard_details:
-    """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection

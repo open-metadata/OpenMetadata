@@ -2014,7 +2014,7 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
         }
       }
       if (team == null && isAdmin == null && isBot == null) {
@@ -2061,7 +2061,7 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
         }
       }
       if (team == null && isAdmin == null && isBot == null) {
@@ -2115,7 +2115,7 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
         }
       }
       if (team == null && isAdmin == null && isBot == null) {
@@ -2473,7 +2473,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_service_entity)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM user_entity WHERE JSON_EXTRACT(json, '$.isBot') is NULL) as userCount, "
+                + "(SELECT COUNT(*) FROM user_entity WHERE JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity) as teamCount",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -2488,7 +2488,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_service_entity)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM user_entity WHERE json#>'{isBot}' is NULL) as userCount, "
+                + "(SELECT COUNT(*) FROM user_entity WHERE json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity) as teamCount",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntitiesCountRowMapper.class)

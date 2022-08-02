@@ -28,6 +28,7 @@ from sqlalchemy.event import listen
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session
+from sqlalchemy.pool import QueuePool
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
@@ -155,8 +156,10 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     engine = create_engine(
         get_connection_url(connection),
         connect_args=get_connection_args(connection),
+        poolclass=QueuePool,
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
+        max_overflow=-1,
     )
     listen(engine, "before_cursor_execute", inject_query_header, retval=True)
 

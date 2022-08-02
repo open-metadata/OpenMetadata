@@ -10,7 +10,6 @@
 #  limitations under the License.
 """Metadata source module"""
 
-
 from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
     MetadataESConnection,
 )
@@ -21,7 +20,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.metadata import MetadataSource
 from metadata.utils.logger import ingestion_logger
 
@@ -29,22 +27,6 @@ logger = ingestion_logger()
 
 
 class MetadataElasticsearchSource(MetadataSource):
-    """MetadataElasticsearch class
-
-    Args:
-        config:
-        metadata_config:
-
-    Attributes:
-        config:
-        report:
-        metadata_config:
-        status:
-        wrote_something:
-        metadata:
-        tables:
-        topics:
-    """
 
     config: WorkflowSource
     report: SourceStatus
@@ -55,7 +37,6 @@ class MetadataElasticsearchSource(MetadataSource):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config=config, metadata_config=metadata_config)
-        self.metadata = OpenMetadata(self.metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

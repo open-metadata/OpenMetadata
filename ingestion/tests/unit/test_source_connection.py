@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (

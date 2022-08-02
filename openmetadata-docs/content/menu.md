@@ -93,6 +93,14 @@ site_menu:
     url: /deployment/security/amazon-cognito/bare-metal
   - category: Deployment / Enable Security / Amazon Cognito SSO / Kubernetes
     url: /deployment/security/amazon-cognito/kubernetes
+  - category: Deployment / Enable Security / One Login SSO
+    url: /deployment/security/one-login
+  - category: Deployment / Enable Security / One Login SSO / Docker
+    url: /deployment/security/one-login/docker
+  - category: Deployment / Enable Security / One Login SSO / Bare Metal
+    url: /deployment/security/one-login/bare-metal
+  - category: Deployment / Enable Security / One Login SSO / Kubernetes
+    url: /deployment/security/one-login/kubernetes
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx

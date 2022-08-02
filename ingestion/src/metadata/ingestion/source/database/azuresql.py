@@ -24,13 +24,6 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 
 
 class AzuresqlSource(CommonDbSourceService):
-    """Azure SQL Source class
-
-    Args:
-        config:
-        metadata_config:
-    """
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

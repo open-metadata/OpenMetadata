@@ -54,7 +54,7 @@ jobs:
           make install_all install_apis
 
       - name: Maven build
-        run: mvn -DskipTests clean package
+        run: mvn -DskipTests clean install
 
       - name: Run Scan
         run: |

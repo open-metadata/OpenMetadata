@@ -52,16 +52,6 @@ logger = ingestion_logger()
 
 
 class ModeSource(DashboardServiceSource):
-    """Mode entity class
-    Args:
-        config:
-        metadata_config:
-    Attributes:
-        config:
-        metadata_config:
-        charts:
-    """
-
     def __init__(
         self,
         config: WorkflowSource,
@@ -73,13 +63,6 @@ class ModeSource(DashboardServiceSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        """Instantiate object
-        Args:
-            config_dict:
-            metadata_config:
-        Returns:
-            ModeSource
-        """
         config = WorkflowSource.parse_obj(config_dict)
         connection: ModeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ModeConnection):

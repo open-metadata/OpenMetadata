@@ -34,5 +34,4 @@ class MysqlSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected MysqlConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
