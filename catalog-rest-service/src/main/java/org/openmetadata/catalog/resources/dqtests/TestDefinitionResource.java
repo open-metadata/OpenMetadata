@@ -157,11 +157,10 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-          description =  "Filter by entityType.",
-          schema = @Schema(implementation = TestDefinitionEntityType.class))
+              description = "Filter by entityType.",
+              schema = @Schema(implementation = TestDefinitionEntityType.class))
           @QueryParam("entityType")
-          String entityType
-      )
+          String entityType)
       throws IOException {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
