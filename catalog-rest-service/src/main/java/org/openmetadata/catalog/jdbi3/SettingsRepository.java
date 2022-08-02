@@ -5,7 +5,6 @@ import java.util.List;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;

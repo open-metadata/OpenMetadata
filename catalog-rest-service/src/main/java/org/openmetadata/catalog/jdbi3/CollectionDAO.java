@@ -2523,6 +2523,7 @@ public interface CollectionDAO {
     public Settings map(ResultSet rs, StatementContext ctx) throws SQLException {
       return getSettings(SettingsType.fromValue(rs.getString("config_type")), rs.getString("json"));
     }
+
     public static Settings getSettings(SettingsType configType, String json) {
       Settings settings = new Settings();
       settings.setConfigType(configType);
