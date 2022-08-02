@@ -510,7 +510,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/columnProfilerConfig"
-          }
+          },
+          "default": null
         }
       }
     },
