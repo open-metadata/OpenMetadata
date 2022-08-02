@@ -36,9 +36,6 @@ logger = ingestion_logger()
 
 
 class BigqueryUsageSource(UsageSource):
-    SERVICE_TYPE = DatabaseServiceType.BigQuery.value
-    scheme = "bigquery"
-
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
 
