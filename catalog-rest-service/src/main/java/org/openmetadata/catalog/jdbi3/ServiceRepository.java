@@ -59,9 +59,6 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
     setFullyQualifiedName(service);
     // Check if owner is valid and set the relationship
     service.setOwner(Entity.getEntityReference(service.getOwner()));
-    // encrypt service connection
-    secretsManager.encryptOrDecryptServiceConnection(
-        service.getConnection(), getServiceType(service), service.getName(), true);
   }
 
   protected abstract String getServiceType(T service);
@@ -74,7 +71,25 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
     // Don't store owner, service, href and tags as JSON. Build it on the fly based on relationships
     service.withOwner(null).withHref(null);
 
+    Object connectionConfig = service.getConnection().getConfig();
+
+    // encrypt connection config in case of local secret manager, otherwise, nullify since it will be kept outside OM
+    // server
+    if (secretsManager.isLocal()) {
+      secretsManager.encryptOrDecryptServiceConnection(
+          service.getConnection(), getServiceType(service), service.getName(), true);
+    } else {
+      service.getConnection().setConfig(null);
+    }
+
     store(service.getId(), service, update);
+
+    // save connection using the secret manager when it is not local after ensuring the service was stored
+    if (!secretsManager.isLocal()) {
+      service.getConnection().setConfig(connectionConfig);
+      secretsManager.encryptOrDecryptServiceConnection(
+          service.getConnection(), getServiceType(service), service.getName(), true);
+    }
 
     // Restore the relationships
     service.withOwner(owner);
@@ -116,6 +131,16 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
             decryptedUpdatedConn, getServiceType(updated), updated.getName(), false);
         if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
           recordChange("connection", origConn, updatedConn, true);
+        }
+      } else {
+        secretsManager.encryptOrDecryptServiceConnection(
+            original.getConnection(), getServiceType(original), original.getName(), false);
+        String origJson = JsonUtils.pojoToJson(original.getConnection());
+        String updatedJson = JsonUtils.pojoToJson(updated.getConnection());
+        original.getConnection().setConfig(null);
+        if (!objectMatch.test(origJson, updatedJson)) {
+          // we don't want save connection config details in our database in case the secret manager is not local
+          recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
         }
       }
     }
