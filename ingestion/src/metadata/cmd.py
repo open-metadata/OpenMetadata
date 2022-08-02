@@ -247,6 +247,12 @@ def docker(
     multiple=True,
     default=None,
 )
+@click.option(
+    "-s",
+    "--schema",
+    default=None,
+    required=False,
+)
 def backup(
     host: str,
     user: str,
@@ -257,6 +263,7 @@ def backup(
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
     arguments: List[str],
+    schema: str,
 ) -> None:
     """
     Run a backup for the metadata DB. Uses a custom dump strategy for OpenMetadata tables.
@@ -266,9 +273,13 @@ def backup(
 
     To run the upload, provide the information as
     `--upload endpoint bucket key` and properly configure the environment
-    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY
+    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY.
+
+    If `-s` or `--schema` is provided, we will trigger a Postgres backup instead
+    of a MySQL backup. This is the value of the schema containing the OpenMetadata
+    tables.
     """
-    run_backup(host, user, password, database, port, output, upload, options, arguments)
+    run_backup(host, user, password, database, port, output, upload, options, arguments, schema)
 
 
 metadata.add_command(check)

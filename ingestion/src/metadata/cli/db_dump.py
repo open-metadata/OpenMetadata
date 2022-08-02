@@ -4,10 +4,6 @@ from typing import List
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.utils.connections import get_connection
 
 TABLES_DUMP_ALL = {
     "task_sequence",
@@ -51,12 +47,12 @@ def dump_json(tables: List[str], engine: Engine, output: Path) -> None:
                 file.write(insert)
 
 
-def dump_all(engine: Engine, output: Path) -> None:
+def dump_all(tables: List[str], engine: Engine, output: Path) -> None:
     """
     Dump tables that need to store all data
     """
     with open(output, "a") as file:
-        for table in TABLES_DUMP_ALL:
+        for table in tables:
 
             truncate = STATEMENT_TRUNCATE.format(table=table)
             file.write(truncate)
@@ -69,15 +65,15 @@ def dump_all(engine: Engine, output: Path) -> None:
                 file.write(insert)
 
 
-def dump(connection: MysqlConnection, output: Path) -> None:
+def dump(engine: Engine, output: Path, schema: str = None) -> None:
     """
     Get all tables from the database and dump
     only the JSON column for the required tables
     """
-    engine: Engine = get_connection(connection)
     inspector = inspect(engine)
-    tables = inspector.get_table_names()
-    print(tables)
+    tables = (
+        inspector.get_table_names(schema) if schema else inspector.get_table_names()
+    )
 
     dump_json_tables = [
         table
@@ -85,5 +81,5 @@ def dump(connection: MysqlConnection, output: Path) -> None:
         if table not in TABLES_DUMP_ALL and table not in NOT_MIGRATE
     ]
 
-    dump_all(engine=engine, output=output)
+    dump_all(tables=TABLES_DUMP_ALL, engine=engine, output=output)
     dump_json(tables=dump_json_tables, engine=engine, output=output)
