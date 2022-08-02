@@ -102,4 +102,26 @@ describe('Test BlurLayout Component', () => {
 
     expect(displayMoreHandler).toBeCalled();
   });
+
+  it('Should toggle between `Read more` and `Read less` when button click', async () => {
+    const { container } = render(<BlurLayout {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const blurLayout = await findByTestId(container, 'blur-layout');
+
+    const displayButton = await findByTestId(container, 'display-button');
+
+    expect(blurLayout).toBeInTheDocument();
+
+    expect(displayButton).toBeInTheDocument();
+
+    // default will be `Read more`
+    expect(displayButton).toHaveTextContent('Read more');
+
+    fireEvent.click(displayButton);
+
+    // after click text should be `Read less`
+    expect(displayButton).toHaveTextContent('Read less');
+  });
 });
