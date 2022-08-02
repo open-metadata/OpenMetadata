@@ -113,11 +113,11 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
-    FivetranConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
+    FivetranConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
     GlueConnection as GluePipelineConnection,
