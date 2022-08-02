@@ -89,7 +89,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    dao.initOrganization("organization");
+    dao.initOrganization();
   }
 
   public static class TeamList extends ResultList<Team> {

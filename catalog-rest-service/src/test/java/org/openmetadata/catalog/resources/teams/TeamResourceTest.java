@@ -25,7 +25,6 @@ import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -95,13 +94,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     TEAM_OWNER1 = TEAM1.getEntityReference();
 
-    ORG_TEAM = teamResourceTest.getEntityByName("organization", "", ADMIN_AUTH_HEADERS);
+    ORG_TEAM = teamResourceTest.getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void test_organization() throws HttpResponseException {
     // Ensure getting organization from team hierarchy is successful
-    Team org = getEntityByName("organization", "", ADMIN_AUTH_HEADERS);
+    Team org = getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
 
     // Organization can't be deleted
     assertResponse(
