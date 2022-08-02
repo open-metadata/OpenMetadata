@@ -10,10 +10,10 @@
 #  limitations under the License.
 
 import re
-import time
 from datetime import datetime, timedelta
+from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional
-from types import GeneratorType
+
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -67,24 +67,25 @@ om_chart_type_dict = {
 
 def calculate_execution_time(func):
     def calculate_debug_time(*args, **kwargs):
-        start = time.time()
+        start = perf_counter()
         func(*args, **kwargs)
-        end = time.time()
+        end = perf_counter()
         logger.debug(
             f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
         )
-    return calculate_debug_time
 
+    return calculate_debug_time
 
 
 def calculate_execution_time_generator(func):
     def calculate_debug_time(*args, **kwargs):
-        start = time.time()
+        start = perf_counter()
         yield from func(*args, **kwargs)
-        end = time.time()
+        end = perf_counter()
         logger.debug(
             f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
         )
+
     return calculate_debug_time
 
 
