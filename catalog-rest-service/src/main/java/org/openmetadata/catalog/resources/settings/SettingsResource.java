@@ -1,5 +1,7 @@
 package org.openmetadata.catalog.resources.settings;
 
+import static org.openmetadata.catalog.settings.SettingsType.*;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,11 +21,22 @@ import javax.ws.rs.core.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.catalog.events.EventHandlerConfiguration;
+import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.SettingsRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
+import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.settings.Settings;
+import org.openmetadata.catalog.settings.SettingsType;
+import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -91,7 +104,7 @@ public class SettingsResource {
   @Operation(
       operationId = "listSettings",
       summary = "List All Settings",
-      tags = "feeds",
+      tags = "settings",
       description = "Get a List of all OpenMetadata Settings",
       responses = {
         @ApiResponse(
@@ -141,21 +154,226 @@ public class SettingsResource {
     return settingsRepository.createOrUpdate(settingName);
   }
 
-  @POST
+  @PUT
+  @Path("/authenticationConfiguration")
   @Operation(
-      operationId = "createNewSetting",
-      summary = "Create Setting",
+      operationId = "createOrUpdateAuthenticationConfiguration",
+      summary = "Create or Update a Authentication Setting",
       tags = "settings",
-      description = "Create a new Setting",
+      description = "Create or Update Authentication Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid AuthenticationConfiguration authenticationConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(AUTHENTICATION_CONFIGURATION, authenticationConfiguration));
+  }
+
+  @PUT
+  @Path("/authorizerConfiguration")
+  @Operation(
+      operationId = "createOrUpdateAuthorizationConfiguration",
+      summary = "Create or Update a Authorization Setting",
+      tags = "settings",
+      description = "Create or Update Authorization Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthorizerConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid AuthorizerConfiguration authorizerConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(AUTHORIZER_CONFIGURATION, authorizerConfiguration));
+  }
+
+  @PUT
+  @Path("/jwtTokenConfiguration")
+  @Operation(
+      operationId = "createOrUpdateJWTConfiguration",
+      summary = "Create or Update a JWT Setting",
+      tags = "settings",
+      description = "Create or Update JWT Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = JWTTokenConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid JWTTokenConfiguration jwtTokenConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(JWT_TOKEN_CONFIGURATION, jwtTokenConfiguration));
+  }
+
+  @PUT
+  @Path("/airflowConfiguration")
+  @Operation(
+      operationId = "createOrUpdateAirflowSettings",
+      summary = "Create or Update a Airflow Setting",
+      tags = "settings",
+      description = "Create or Update Existing Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Settings",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Settings.class)))
       })
-  public Response updateSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Settings settingName) {
-    return settingsRepository.createNewSetting(settingName);
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid AirflowConfiguration airflowConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(AIRFLOW_CONFIGURATION, airflowConfiguration));
+  }
+
+  @PUT
+  @Path("/elasticsearch")
+  @Operation(
+      operationId = "createOrUpdateElasticSearchConfiguration",
+      summary = "Create or Update a ES Setting",
+      tags = "settings",
+      description = "Create or Update ES Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ElasticSearchConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid ElasticSearchConfiguration elasticSearchConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(ELASTICSEARCH, elasticSearchConfiguration));
+  }
+
+  @PUT
+  @Path("/eventHandlerConfiguration")
+  @Operation(
+      operationId = "createOrUpdateEventHandlerConfiguration",
+      summary = "Create or Update a Event Handler Setting",
+      tags = "settings",
+      description = "Create or Update Event Handler Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventHandlerConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid EventHandlerConfiguration eventHandlerConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(EVENT_HANDLER_CONFIGURATION, eventHandlerConfiguration));
+  }
+
+  @PUT
+  @Path("/slackEventPublishers")
+  @Operation(
+      operationId = "createOrUpdateSlackPublisherConfiguration",
+      summary = "Create or Update a Slack Publisher Setting",
+      tags = "settings",
+      description = "Create or Update Slack Publisher Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackPublisherConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SlackPublisherConfiguration slackPublisherConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(SLACK_EVENT_PUBLISHERS, slackPublisherConfiguration));
+  }
+
+  @PUT
+  @Path("/activityFeedFilterSetting")
+  @Operation(
+      operationId = "createOrUpdateActivityFeedConfiguration",
+      summary = "Create or Update activity feed Setting",
+      tags = "settings",
+      description = "Create or Update activity feed Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Filter.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Filter filter) {
+    return settingsRepository.createOrUpdate(getSettings(ACTIVITY_FEED_FILTER_SETTING, filter));
+  }
+
+  @PUT
+  @Path("/secretsManagerConfiguration")
+  @Operation(
+      operationId = "createOrUpdateSecretManagerConfiguration",
+      summary = "Create or Update a Secret Manager Setting",
+      tags = "settings",
+      description = "Create or Update Secret Manager Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecretsManagerConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SecretsManagerConfiguration secretsManagerConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(SECRETS_MANAGER_CONFIGURATION, secretsManagerConfiguration));
+  }
+
+  @PUT
+  @Path("/slackChat")
+  @Operation(
+      operationId = "createOrUpdateSlackChatConfiguration",
+      summary = "Create or Update a Slack Chat Setting",
+      tags = "settings",
+      description = "Create or Update Slack Chat Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackChatConfiguration.class)))
+      })
+  public Response createOrUpdateSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SlackChatConfiguration slackChatConfiguration) {
+    return settingsRepository.createOrUpdate(getSettings(SLACK_CHAT, slackChatConfiguration));
   }
 
   @PATCH
@@ -183,5 +401,9 @@ public class SettingsResource {
           JsonPatch patch)
       throws IOException {
     return settingsRepository.patchSetting(settingName, patch);
+  }
+
+  private Settings getSettings(SettingsType configType, Object configValue) {
+    return new Settings().withConfigType(configType).withConfigValue(configValue);
   }
 }

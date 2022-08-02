@@ -1,14 +1,11 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
-import org.openmetadata.catalog.filter.Filter;
-import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -25,8 +22,7 @@ public class SettingsRepository {
   public ResultList<Settings> listAllConfigs() {
     List<Settings> settingsList = null;
     try {
-      List<String> jsons = dao.getSettingsDAO().getAllConfig();
-      settingsList = JsonUtils.readObjects(jsons, Settings.class);
+      settingsList = dao.getSettingsDAO().getAllConfig();
     } catch (Exception ex) {
       LOG.error("Error while trying fetch all Settings " + ex.getMessage());
     }
@@ -40,8 +36,7 @@ public class SettingsRepository {
   public Settings getConfigWithKey(String key) {
     Settings settings = null;
     try {
-      String json = dao.getSettingsDAO().getConfigWithKey(key);
-      settings = JsonUtils.readValue(json, Settings.class);
+      settings = dao.getSettingsDAO().getConfigWithKey(key);
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings " + ex.getMessage());
     }
@@ -73,11 +68,11 @@ public class SettingsRepository {
     return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
   }
 
-  // TODO: Need to add Json Patch , not sure if that will be possible
   public Response patchSetting(String settingName, JsonPatch patch) throws JsonProcessingException {
     Settings original = getConfigWithKey(settingName);
     // Apply JSON patch to the original entity to get the updated entity
-    Settings updated = JsonUtils.applyPatch(original, patch, Settings.class);
+    Object updated = JsonUtils.applyPatch(original.getConfigValue(), patch, Object.class);
+    original.setConfigValue(updated);
     try {
       updateSetting(original);
     } catch (Exception ex) {
@@ -89,20 +84,8 @@ public class SettingsRepository {
 
   public void updateSetting(Settings setting) {
     try {
-      switch (setting.getConfigType()) {
-        case AIRFLOW_CONFIGURATION:
-          AirflowConfiguration airflowConfiguration =
-              JsonUtils.convertValue(setting.getConfigValue(), AirflowConfiguration.class);
-          dao.getSettingsDAO().insertSettings(JsonUtils.pojoToJson(airflowConfiguration));
-          break;
-        case ACTIVITY_FEED_FILTER_SETTING:
-          List<Filter> filterDetails = JsonUtils.convertValue(setting.getConfigValue(), ArrayList.class);
-          dao.getSettingsDAO().insertSettings(JsonUtils.pojoToJson(filterDetails));
-          FilterRegistry.add(filterDetails);
-          break;
-        default:
-          throw new RuntimeException("Only Airflow and Activity Feed Filter Settings update allowed.");
-      }
+      dao.getSettingsDAO()
+          .insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }

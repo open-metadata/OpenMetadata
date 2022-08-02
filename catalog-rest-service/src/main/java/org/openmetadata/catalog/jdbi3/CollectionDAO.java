@@ -16,12 +16,10 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Triple;
@@ -36,6 +34,8 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.entity.Bot;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.data.Chart;
@@ -63,10 +63,20 @@ import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.events.EventHandlerConfiguration;
+import org.openmetadata.catalog.fernet.FernetConfiguration;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
+import org.openmetadata.catalog.security.AuthenticationConfiguration;
+import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.catalog.settings.Settings;
+import org.openmetadata.catalog.settings.SettingsType;
+import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.tests.TestSuite;
@@ -80,6 +90,7 @@ import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntitiesCount;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ServicesCount;
 import org.openmetadata.common.utils.CommonUtil;
 
@@ -2507,21 +2518,78 @@ public interface CollectionDAO {
     ServicesCount getAggregatedServicesCount() throws StatementException;
   }
 
-  interface SettingsDAO {
-    @SqlQuery("SELECT json FROM openmetadata_settings")
-    List<String> getAllConfig() throws StatementException;
+  class SettingsRowMapper implements RowMapper<Settings> {
+    @Override
+    public Settings map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return getSettings(SettingsType.fromValue(rs.getString("config_type")), rs.getString("json"));
+    }
+    public static Settings getSettings(SettingsType configType, String json) {
+      Settings settings = new Settings();
+      settings.setConfigType(configType);
+      Object value = null;
+      try {
+        switch (configType) {
+          case AUTHENTICATION_CONFIGURATION:
+            value = JsonUtils.readValue(json, AuthenticationConfiguration.class);
+            break;
+          case AUTHORIZER_CONFIGURATION:
+            value = JsonUtils.readValue(json, AuthorizerConfiguration.class);
+            break;
+          case JWT_TOKEN_CONFIGURATION:
+            value = JsonUtils.readValue(json, JWTTokenConfiguration.class);
+            break;
+          case AIRFLOW_CONFIGURATION:
+            value = JsonUtils.readValue(json, AirflowConfiguration.class);
+            break;
+          case ELASTICSEARCH:
+            value = JsonUtils.readValue(json, ElasticSearchConfiguration.class);
+            break;
+          case EVENT_HANDLER_CONFIGURATION:
+            value = JsonUtils.readValue(json, EventHandlerConfiguration.class);
+            break;
+          case SLACK_EVENT_PUBLISHERS:
+            value = JsonUtils.readValue(json, SlackWebhookEventPublisher.class);
+            break;
+          case ACTIVITY_FEED_FILTER_SETTING:
+            value = JsonUtils.readValue(json, ArrayList.class);
+            break;
+          case SLACK_CHAT:
+            value = JsonUtils.readValue(json, SlackChatConfiguration.class);
+            break;
+          case FERNET_CONFIGURATION:
+            value = JsonUtils.readValue(json, FernetConfiguration.class);
+            break;
+          case SECRETS_MANAGER_CONFIGURATION:
+            value = JsonUtils.readValue(json, SecretsManagerConfiguration.class);
+            break;
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      settings.setConfigValue(value);
+      return settings;
+    }
+  }
 
-    @SqlQuery("SELECT json FROM openmetadata_settings WHERE config_type = :config_type")
-    String getConfigWithKey(@Bind("config_type") String config_type) throws StatementException;
+  interface SettingsDAO {
+    @SqlQuery("SELECT config_type,json FROM openmetadata_settings")
+    @RegisterRowMapper(SettingsRowMapper.class)
+    List<Settings> getAllConfig() throws StatementException;
+
+    @SqlQuery("SELECT config_type, json FROM openmetadata_settings WHERE config_type = :config_type")
+    @RegisterRowMapper(SettingsRowMapper.class)
+    Settings getConfigWithKey(@Bind("config_type") String config_type) throws StatementException;
 
     @ConnectionAwareSqlUpdate(
-        value = "INSERT into openmetadata_settings (json)" + "VALUES (:json) ON DUPLICATE KEY UPDATE json = :json",
+        value =
+            "INSERT into openmetadata_settings (config_type, json)"
+                + "VALUES (:config_type, :json) ON DUPLICATE KEY UPDATE json = :json",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT into openmetadata_settings (json)"
-                + "VALUES (:json :: jsonb) ON CONFLICT (config_type) DO UPDATE SET json = EXCLUDED.json",
+            "INSERT into openmetadata_settings (config_type, json)"
+                + "VALUES (:config_type, :json :: jsonb) ON CONFLICT (config_type) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
-    void insertSettings(@Bind("json") String json);
+    void insertSettings(@Bind("config_type") String config_type, @Bind("json") String json);
   }
 }

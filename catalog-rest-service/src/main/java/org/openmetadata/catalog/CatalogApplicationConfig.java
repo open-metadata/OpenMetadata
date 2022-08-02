@@ -23,17 +23,24 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.StatementException;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.SettingsRepository;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.validators.AirflowConfigValidation;
 
 @Getter
@@ -91,6 +98,27 @@ public class CatalogApplicationConfig extends Configuration {
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
+
+  public List<Settings> fetchConfigurationFromDB(Jdbi jdbi) {
+    try {
+      CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);
+      SettingsRepository repository = new SettingsRepository(dao);
+      ResultList<Settings> settings = repository.listAllConfigs();
+      return settings.getData();
+    } catch (StatementException e) {
+      throw new IllegalArgumentException("Exception encountered when trying to obtain configuration from Database.", e);
+    }
+  }
+
+  public void setConfigFromDB(List<Settings> dbConfig) {
+    dbConfig.forEach(
+        (config) -> {
+          switch (config.getConfigType()) {
+            case AIRFLOW_CONFIGURATION:
+              airflowConfiguration = JsonUtils.convertValue(config.getConfigValue(), AirflowConfiguration.class);
+          }
+        });
+  }
 
   @Override
   public String toString() {
