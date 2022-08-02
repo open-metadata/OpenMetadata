@@ -220,7 +220,7 @@ const EntityPageInfo = ({
           'tw-border tw-border-primary tw-rounded',
           !isUndefined(isVersionSelected) ? 'tw-text-white' : 'tw-text-primary'
         )}
-        data-testid="version"
+        data-testid="version-button"
         size="small"
         type={!isUndefined(isVersionSelected) ? 'primary' : 'default'}
         onClick={versionHandler}>
