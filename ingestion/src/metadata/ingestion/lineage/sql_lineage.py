@@ -13,7 +13,7 @@ Helper functions to handle SQL lineage operations
 """
 import traceback
 from logging.config import DictConfigurator
-from typing import Any, Iterator, List, Optional
+from typing import Any, Iterator, List, Optional, Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -29,8 +29,6 @@ from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRUCache
 
 logger = utils_logger()
-column_lineage_map = {}
-
 LRU_CACHE_SIZE = 4096
 
 
@@ -154,6 +152,7 @@ def get_column_lineage(
     from_entity: Table,
     to_table_raw_name: str,
     from_table_raw_name: str,
+    column_lineage_map: dict
 ) -> List[ColumnLineage]:
     column_lineage = []
     if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(
@@ -216,7 +215,8 @@ def _create_lineage_by_table_name(
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
-) -> Optional[Iterator[AddLineageRequest]]:
+    column_lineage_map: dict
+) -> Optional[Iterable[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
     """
@@ -246,6 +246,8 @@ def _create_lineage_by_table_name(
                     to_table_raw_name=to_table,
                     from_table_raw_name=from_table,
                     query=query,
+                    from_table_raw_name=str(from_table),
+                    column_lineage_map=column_lineage_map
                 )
 
     except Exception as err:
@@ -296,13 +298,13 @@ def get_lineage_by_query(
 
     # Reverting changes after import is done
     DictConfigurator.configure = configure
-    column_lineage_map.clear()
+    column_lineage = {}
 
     try:
         result = LineageRunner(query)
 
         raw_column_lineage = result.get_column_lineage()
-        column_lineage_map.update(populate_column_lineage_map(raw_column_lineage))
+        column_lineage.update(populate_column_lineage_map(raw_column_lineage))
 
         for intermediate_table in result.intermediate_tables:
             for source_table in result.source_tables:
@@ -314,6 +316,7 @@ def get_lineage_by_query(
                     database_name=database_name,
                     schema_name=schema_name,
                     query=query,
+                    column_lineage_map=column_lineage
                 )
             for target_table in result.target_tables:
                 yield from _create_lineage_by_table_name(
@@ -324,6 +327,7 @@ def get_lineage_by_query(
                     database_name=database_name,
                     schema_name=schema_name,
                     query=query,
+                    column_lineage_map=column_lineage
                 )
         if not result.intermediate_tables:
             for target_table in result.target_tables:
@@ -336,6 +340,7 @@ def get_lineage_by_query(
                         database_name=database_name,
                         schema_name=schema_name,
                         query=query,
+                        column_lineage_map=column_lineage
                     )
     except Exception as err:
         logger.debug(str(err))
@@ -359,7 +364,6 @@ def get_lineage_via_table_entity(
 
     # Reverting changes after import is done
     DictConfigurator.configure = configure
-    column_lineage_map.clear()
     try:
         parser = LineageRunner(query)
         to_table_name = table_entity.name.__root__
