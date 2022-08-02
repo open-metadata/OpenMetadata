@@ -15,7 +15,6 @@ import { SelectableOption } from 'Models';
 import React, { useState } from 'react';
 import AsyncSelect from 'react-select/async';
 import { getSuggestedTeams, getTeamsByQuery } from '../../axiosAPIs/miscAPI';
-import { PAGE_SIZE } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/type/entityReference';
 import { formatTeamsResponse } from '../../utils/APIUtils';
@@ -33,6 +32,8 @@ interface Props {
   filterJoinable?: boolean;
   placeholder?: string;
 }
+
+const TEAM_OPTION_PAGE_LIMIT = 100;
 
 const TeamsSelectable = ({
   showTeamsAlert,
@@ -71,7 +72,7 @@ const TeamsSelectable = ({
         getTeamsByQuery({
           q: '*',
           from: 0,
-          size: PAGE_SIZE,
+          size: TEAM_OPTION_PAGE_LIMIT,
           isJoinable: filterJoinable,
         }).then((res) => {
           const teams: Team[] =
