@@ -81,5 +81,5 @@ def dump(engine: Engine, output: Path, schema: str = None) -> None:
         if table not in TABLES_DUMP_ALL and table not in NOT_MIGRATE
     ]
 
-    dump_all(tables=TABLES_DUMP_ALL, engine=engine, output=output)
+    dump_all(tables=list(TABLES_DUMP_ALL), engine=engine, output=output)
     dump_json(tables=dump_json_tables, engine=engine, output=output)

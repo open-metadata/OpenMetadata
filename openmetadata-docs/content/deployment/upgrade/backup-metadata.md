@@ -29,6 +29,30 @@ you can instead install the package with the backup plugin:
 pip install "openmetadata-ingestion[backup]"
 ```
 
+## Requirements & Considerations
+
+This is a custom utility. As almost all tables contain `GENERATED` columns, directly using `mysqldump` is not an
+option out of the box, as it would require some further cleaning steps to get the data right.
+
+Instead, we have created a utility that will just dump the necessary data.
+
+The requirement for running the process is that the target database should have the Flyway migrations executed.
+
+The backup utility will provide an SQL file which will do two things:
+1. TRUNCATE the OpenMetadata tables
+2. INSERT the data that has been saved
+
+You can then run the script's statements to restore the data.
+
+<Note>
+
+Make sure that the migrations have been run correctly (find out how [here](/deployment/bare-metal#4-prepare-the-openmetadata-database-and-indexes)).
+
+Also, make sure that the target database does not already have any OpenMetadata data, or if it does, that you are OK
+replacing it with whatever comes from the SQL script.
+
+</Note>
+
 ## Backup CLI
 
 After the installation, we can take a look at the different options to run the CLI:
@@ -84,6 +108,11 @@ local dump file and the one in the cloud.
 
 You can pass any required connection options or arguments to the MySQL connection via `-o <opt1>, -o <opt2> [...]`
 or `-a <arg1>, -a <arg2> [...]`.
+
+### Backup Postgres
+
+If you are saving the data from Postgres, pass the argument `-s <schema>` or `--schema=<schema>` to indicate the
+schema containing the OpenMetadata tables. E.g., `-s public`.
 
 ### Trying it out
 
