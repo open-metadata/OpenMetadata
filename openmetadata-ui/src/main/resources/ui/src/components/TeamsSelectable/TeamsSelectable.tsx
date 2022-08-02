@@ -14,10 +14,9 @@
 import { SelectableOption } from 'Models';
 import React, { useState } from 'react';
 import AsyncSelect from 'react-select/async';
-import { getSuggestedTeams, getTeamsByQuery } from '../../axiosAPIs/miscAPI';
+import { getTeamsByQuery } from '../../axiosAPIs/miscAPI';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/type/entityReference';
-import { formatTeamsResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
@@ -49,11 +48,7 @@ const TeamsSelectable = ({
   };
 
   const getOptions = (teams: Team[]) => {
-    const filteredTeams = filterJoinable
-      ? teams.filter((team) => team.isJoinable)
-      : teams;
-
-    return filteredTeams.map((team) => ({
+    return teams.map((team) => ({
       label: getEntityName(team as EntityReference),
       value: team.id,
     }));
@@ -61,26 +56,19 @@ const TeamsSelectable = ({
 
   const loadOptions = (text: string) => {
     return new Promise<SelectableOption[]>((resolve) => {
-      if (text) {
-        getSuggestedTeams(text).then((res) => {
-          const teams: Team[] = formatTeamsResponse(
-            res.data.suggest['metadata-suggest'][0].options
-          );
-          resolve(getOptions(teams));
-        });
-      } else {
-        getTeamsByQuery({
-          q: '*',
-          from: 0,
-          size: TEAM_OPTION_PAGE_LIMIT,
-          isJoinable: filterJoinable,
-        }).then((res) => {
-          const teams: Team[] =
-            res.hits.hits.map((t: { _source: Team }) => t._source) || [];
-          showTeamsAlert && setNoTeam(teams.length === 0);
-          resolve(getOptions(teams));
-        });
-      }
+      const trimmedText = text.trim();
+      getTeamsByQuery({
+        q:
+          (trimmedText ? `*${trimmedText}*` : '*') +
+          (filterJoinable ? ` AND isJoinable:true` : ''),
+        from: 0,
+        size: TEAM_OPTION_PAGE_LIMIT,
+      }).then((res) => {
+        const teams: Team[] =
+          res.hits.hits.map((t: { _source: Team }) => t._source) || [];
+        showTeamsAlert && setNoTeam(teams.length === 0);
+        resolve(getOptions(teams));
+      });
     });
   };
 
