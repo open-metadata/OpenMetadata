@@ -226,12 +226,16 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityById(tableId);
 
     // Validate all the columns
-    for (String columnName : tableProfilerConfig.getExcludeColumns()) {
-      validateColumn(table, columnName);
+    if (tableProfilerConfig.getExcludeColumns() != null) {
+      for (String columnName : tableProfilerConfig.getExcludeColumns()) {
+        validateColumn(table, columnName);
+      }
     }
 
-    for (ColumnProfilerConfig columnProfilerConfig : tableProfilerConfig.getIncludeColumns()) {
-      validateColumn(table, columnProfilerConfig.getColumnName());
+    if (tableProfilerConfig.getIncludeColumns() != null) {
+      for (ColumnProfilerConfig columnProfilerConfig : tableProfilerConfig.getIncludeColumns()) {
+        validateColumn(table, columnProfilerConfig.getColumnName());
+      }
     }
 
     daoCollection
