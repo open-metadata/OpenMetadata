@@ -5,7 +5,7 @@
   <parent>
     <artifactId>catalog</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>0.12.0-SNAPSHOT</version>
+    <version>0.11.4</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -104,6 +104,20 @@
               <arguments>run build</arguments>
               <!--arguments>build</arguments-->
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
