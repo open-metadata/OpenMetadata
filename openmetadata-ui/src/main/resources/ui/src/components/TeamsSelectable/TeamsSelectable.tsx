@@ -48,11 +48,7 @@ const TeamsSelectable = ({
   };
 
   const getOptions = (teams: Team[]) => {
-    const filteredTeams = filterJoinable
-      ? teams.filter((team) => team.isJoinable)
-      : teams;
-
-    return filteredTeams.map((team) => ({
+    return teams.map((team) => ({
       label: getEntityName(team as EntityReference),
       value: team.id,
     }));
@@ -62,10 +58,11 @@ const TeamsSelectable = ({
     return new Promise<SelectableOption[]>((resolve) => {
       const trimmedText = text.trim();
       getTeamsByQuery({
-        q: trimmedText ? `*${trimmedText}*` : '*',
+        q:
+          (trimmedText ? `*${trimmedText}*` : '*') +
+          (filterJoinable ? ` AND isJoinable:true` : ''),
         from: 0,
         size: TEAM_OPTION_PAGE_LIMIT,
-        isJoinable: filterJoinable,
       }).then((res) => {
         const teams: Team[] =
           res.hits.hits.map((t: { _source: Team }) => t._source) || [];

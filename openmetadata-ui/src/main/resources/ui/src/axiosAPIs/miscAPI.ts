@@ -148,7 +148,6 @@ export const getTeamsByQuery = async (params: {
   q: string;
   from?: number;
   size?: number;
-  isJoinable?: boolean;
 }) => {
   const response = await APIClient.get(`/search/query`, {
     params: {
