@@ -1102,6 +1102,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertNull(table.getTableProfilerConfig());
     storedTable = getEntity(table.getId(), "tableProfilerConfig", ADMIN_AUTH_HEADERS);
     assertNull(storedTable.getTableProfilerConfig());
+    tableProfilerConfig =
+        new TableProfilerConfig()
+            .withProfileSample(80.0);
+    table = putTableProfilerConfig(table.getId(), tableProfilerConfig, ADMIN_AUTH_HEADERS);
+    assertEquals(tableProfilerConfig, table.getTableProfilerConfig());
+    storedTable = getEntity(table.getId(), "tableProfilerConfig", ADMIN_AUTH_HEADERS);
+    assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
   }
 
   @Test
