@@ -138,6 +138,13 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  protected void preDelete(Team entity) {
+    if (entity.getId().equals(organization.getId())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deleteOrganization());
+    }
+  }
+
+  @Override
   protected void cleanup(Team team) throws IOException {
     // When a parent team is deleted, if the children team don't have a parent, set Organization as the parent
     getParents(team);
