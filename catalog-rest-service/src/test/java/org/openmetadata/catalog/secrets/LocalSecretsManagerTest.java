@@ -16,13 +16,14 @@ import static org.openmetadata.catalog.services.connections.metadata.OpenMetadat
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.OPENMETADATA;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
@@ -43,17 +44,21 @@ public class LocalSecretsManagerTest {
   private static final boolean DECRYPT = false;
   private static final String ENCRYPTED_VALUE = "fernet:abcdef";
   private static final String DECRYPTED_VALUE = "123456";
+  private static LocalSecretsManager secretsManager;
 
-  @Mock private Fernet fernet;
-
-  private LocalSecretsManager secretsManager;
-
-  @BeforeEach
-  void setUp() {
+  @BeforeAll
+  static void setUp() {
     secretsManager = LocalSecretsManager.getInstance();
+    Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
     secretsManager.setFernet(fernet);
+  }
+
+  @AfterAll
+  static void teardown() {
+    // At the end of the test, remove mocked fernet instance so other tests run fine
+    secretsManager.setFernet(Fernet.getInstance());
   }
 
   @Test
