@@ -22,7 +22,19 @@ const dashboards = Object.values(SEARCH_ENTITY_DASHBOARD);
 const pipelines = Object.values(SEARCH_ENTITY_PIPELINE);
 
 describe('MyData page should work', () => {
+  let userObject = {};
+  let name = '';
+
   beforeEach(() => {
+    cy.intercept('/api/v1/users?fields=profile*', (req) => {
+      req.continue((response) => {
+        if (response.body.data) {
+          userObject = response.body.data[0];
+          name = userObject.displayName;
+        }
+      });
+    }).as('users');
+
     cy.goToHomePage();
   });
 
@@ -73,62 +85,56 @@ describe('MyData page should work', () => {
     cy.contains(NO_SEARCHED_TERMS).scrollIntoView().should('be.visible');
   };
 
-  const followAndOwnTheEntity = (termObj) => {
+  const followAndOwnTheEntity = (termObj, index, dataTestId) => {
+    if (index === 0) {
+      cy.wait('@users');
+    }
+
+    cy.intercept('/api/v1/feed?userId*').as('feedApi');
+    cy.intercept('/api/v1/search/query?q*').as('searchQuery');
+    cy.intercept(`/api/v1/search/*?q=${termObj.term}&index=*`).as('suggestApi');
+    cy.intercept(`/api/v1/${termObj.entity}/name/*`).as('entityName');
     // search for the term and redirect to the respective entity tab
     searchEntity(termObj.term);
 
-    cy.get(`[data-testid="${termObj.entity}-tab"]`)
-      .should('be.visible')
-      .click();
+    cy.get(`[data-testid=${dataTestId}]`).click();
+    cy.get('[data-testid="table-link"]').first().click();
 
-    cy.get(`[data-testid="${termObj.entity}-tab"]`)
-      .should('be.visible')
-      .should('have.class', 'active');
+    cy.wait('@entityName');
 
-    // click on the 1st result and go to entity details page and follow the entity
-    cy.wait(500);
-    cy.get('[data-testid="table-link"]').first().contains(termObj.term).click();
-    cy.wait(500);
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
     // go to manage tab and search for logged in user and set the owner
     cy.get('[data-testid="Manage"]').should('be.visible').click();
 
-    cy.get(
-      '[data-testid="dropdown-profile"] > [data-testid="dropdown-item"] > :nth-child(1) > [data-testid="menu-button"]'
-    )
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="greeting-text"] > a > :nth-child(1)')
-      .should('be.visible')
-      .invoke('text')
-      .then((name) => {
-        cy.get('.tw-z-10').click();
+    cy.get('[data-testid="manage-tab"]')
+      .should('exist')
+      .within(() => {
         cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-        cy.get('[data-testid="dropdown-tab"]').eq(1).should('exist').click();
-        cy.get('[data-testid="list-item"]').should('be.visible').click();
-        cy.wait(500);
-        cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
-          .invoke('text')
-          .then((text) => {
-            expect(text).equal(name);
-          });
-        cy.clickOnLogo();
-
-        // checks newly generated feed for follow and setting owner
-        cy.get('[data-testid="message-container"]')
-          .first()
-          .contains(`Added owner: ${name}`)
-          .should('be.visible');
-
-        cy.get('[data-testid="message-container"]')
-          .eq(1)
-          .scrollIntoView()
-          .contains(`Followed ${termObj.entity.slice(0, -1)}`)
-          .should('be.visible');
+      });
+    cy.get('[data-testid="dropdown-tab"]').eq(1).should('exist').click();
+    cy.get('[data-testid="list-item"]')
+      .should('be.visible')
+      .within(() => {
+        cy.contains(name).click();
       });
 
     cy.clickOnLogo();
+
+    // checks newly generated feed for follow and setting owner
+    cy.get('[data-testid="message-container"]')
+      .first()
+      .contains(`Added owner: ${name}`)
+      .should('be.visible');
+
+    cy.get('[data-testid="message-container"]')
+      .eq(1)
+      .scrollIntoView()
+      .contains(`Followed ${termObj.entity.slice(0, -1)}`)
+      .should('be.visible');
+    cy.clickOnLogo();
+
+    cy.wait(['@searchQuery', '@feedApi']);
   };
 
   it('MyData Page should render properly with all the required components', () => {
@@ -175,26 +181,26 @@ describe('MyData page should work', () => {
   });
 
   it('My data, following & feed section should work properly for table entity', () => {
-    tables.forEach((table) => {
-      followAndOwnTheEntity(table);
+    tables.forEach((table, index) => {
+      followAndOwnTheEntity(table, index, 'tables-tab');
     });
   });
 
   it('My data, following & feed section should work properly for topic entity', () => {
-    topics.forEach((topic) => {
-      followAndOwnTheEntity(topic);
+    topics.forEach((topic, index) => {
+      followAndOwnTheEntity(topic, index, 'topics-tab');
     });
   });
 
   it('My data, following & feed section should work properly for dashboard entity', () => {
-    dashboards.forEach((dashboard) => {
-      followAndOwnTheEntity(dashboard);
+    dashboards.forEach((dashboard, index) => {
+      followAndOwnTheEntity(dashboard, index, 'dashboards-tab');
     });
   });
 
   it('My data, following & feed section should work properly for pipeline entity', () => {
-    pipelines.forEach((pipeline) => {
-      followAndOwnTheEntity(pipeline);
+    pipelines.forEach((pipeline, index) => {
+      followAndOwnTheEntity(pipeline, index, 'pipelines-tab');
     });
   });
 
