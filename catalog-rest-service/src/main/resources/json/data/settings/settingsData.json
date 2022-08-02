@@ -1,0 +1,387 @@
+[
+  {
+    "config_type": "airflowConfiguration",
+    "config_value": {
+      "apiEndpoint": "http://localhost:8080",
+      "username": "admin",
+      "password": "admin",
+      "metadataApiEndpoint": "http://localhost:8585/api",
+      "authProvider": "no-auth",
+      "authConfig": {
+        "azure": {
+          "clientSecret": "",
+          "authority": "",
+          "scopes": [
+
+          ],
+          "clientId": ""
+        },
+        "google": {
+          "secretKey": "",
+          "audience": "https://www.googleapis.com/oauth2/v4/token"
+        },
+        "okta": {
+          "clientId": "",
+          "orgURL": "",
+          "privateKey": "",
+          "email": "",
+          "scopes": [
+          ]
+        },
+        "auth0": {
+          "clientId": "",
+          "secretKey": "",
+          "domain": ""
+        },
+        "customOidc": {
+          "clientId": "",
+          "secretKey": "",
+          "tokenEndpoint": ""
+        },
+        "openmetadata": {
+          "jwtToken": ""
+        }
+      }
+    }
+  },
+  {
+    "config_type": "activityFeedFilterSetting",
+    "config_value": [
+      {
+        "entityType": "table",
+        "eventFilter": {
+          "create": {
+            "filterName": "Create Filter",
+            "filterType": "entityCreated"
+          },
+          "updates": {
+            "followEntity": {
+              "filterName": "Follow Entity",
+              "filterType": "followEntity"
+            },
+            "unfollowEntity": {
+              "filterName": "UnFollow Entity",
+              "filterType": "unfollowEntity"
+            },
+            "updatedescription": {
+              "filterName": "Update Description",
+              "filterType": "updatedescription"
+            },
+            "updatetier": {
+              "filterName": "Update Tier",
+              "filterType": "updatetier"
+            },
+            "addtags": {
+              "filterName": "Added Tags",
+              "filterType": "addtags"
+            },
+            "removetags": {
+              "filterName": "Removed Tags",
+              "filterType": "removetags"
+            },
+            "softdeleteentity": {
+              "filterName": "Soft Deleted Entity",
+              "filterType": "softdeleteentity"
+            },
+            "testcases": {
+              "filterName": "Test Cases",
+              "filterType": "testcases"
+            },
+            "usagesummary": {
+              "filterName": "Usage Summary",
+              "filterType": "usagesummary"
+            },
+            "sampledata": {
+              "filterName": "Sample Data",
+              "filterType": "sampledata"
+            },
+            "queries": {
+              "filterName": "Queries",
+              "filterType": "queries"
+            },
+            "updateowner": {
+              "filterName": "Update Owner",
+              "filterType": "updateowner"
+            }
+          },
+          "delete": {
+            "filterName": "Entity Deleted",
+            "filterType": "entityDeleted"
+          },
+          "excludefrombots": {
+            "filterName": "Exclude From Bots",
+            "filterType": "excludeFromBots"
+          }
+        }
+      },
+      {
+        "entityType": "topic",
+        "eventFilter": {
+          "create": {
+            "filterName": "Create Filter",
+            "filterType": "entityCreated"
+          },
+          "updates": {
+            "followEntity": {
+              "filterName": "Follow Entity",
+              "filterType": "followEntity"
+            },
+            "unfollowEntity": {
+              "filterName": "UnFollow Entity",
+              "filterType": "unfollowEntity"
+            },
+            "updatedescription": {
+              "filterName": "Update Description",
+              "filterType": "updatedescription"
+            },
+            "updatetier": {
+              "filterName": "Update Tier",
+              "filterType": "updatetier"
+            },
+            "addtags": {
+              "filterName": "Added Tags",
+              "filterType": "addtags"
+            },
+            "removetags": {
+              "filterName": "Removed Tags",
+              "filterType": "removetags"
+            },
+            "softdeleteentity": {
+              "filterName": "Soft Deleted Entity",
+              "filterType": "softdeleteentity"
+            },
+            "testcases": {
+              "filterName": "Test Cases",
+              "filterType": "testcases"
+            },
+            "usagesummary": {
+              "filterName": "Usage Summary",
+              "filterType": "usagesummary"
+            },
+            "sampledata": {
+              "filterName": "Sample Data",
+              "filterType": "sampledata"
+            },
+            "queries": {
+              "filterName": "Queries",
+              "filterType": "queries"
+            },
+            "updateowner": {
+              "filterName": "Update Owner",
+              "filterType": "updateowner"
+            }
+          },
+          "delete": {
+            "filterName": "Entity Deleted",
+            "filterType": "entityDeleted"
+          },
+          "excludefrombots": {
+            "filterName": "Exclude From Bots",
+            "filterType": "excludeFromBots"
+          }
+        }
+      },
+      {
+        "entityType": "dashboard",
+        "eventFilter": {
+          "create": {
+            "filterName": "Create Filter",
+            "filterType": "entityCreated"
+          },
+          "updates": {
+            "followEntity": {
+              "filterName": "Follow Entity",
+              "filterType": "followEntity"
+            },
+            "unfollowEntity": {
+              "filterName": "UnFollow Entity",
+              "filterType": "unfollowEntity"
+            },
+            "updatedescription": {
+              "filterName": "Update Description",
+              "filterType": "updatedescription"
+            },
+            "updatetier": {
+              "filterName": "Update Tier",
+              "filterType": "updatetier"
+            },
+            "addtags": {
+              "filterName": "Added Tags",
+              "filterType": "addtags"
+            },
+            "removetags": {
+              "filterName": "Removed Tags",
+              "filterType": "removetags"
+            },
+            "softdeleteentity": {
+              "filterName": "Soft Deleted Entity",
+              "filterType": "softdeleteentity"
+            },
+            "testcases": {
+              "filterName": "Test Cases",
+              "filterType": "testcases"
+            },
+            "usagesummary": {
+              "filterName": "Usage Summary",
+              "filterType": "usagesummary"
+            },
+            "sampledata": {
+              "filterName": "Sample Data",
+              "filterType": "sampledata"
+            },
+            "queries": {
+              "filterName": "Queries",
+              "filterType": "queries"
+            },
+            "updateowner": {
+              "filterName": "Update Owner",
+              "filterType": "updateowner"
+            }
+          },
+          "delete": {
+            "filterName": "Entity Deleted",
+            "filterType": "entityDeleted"
+          },
+          "excludefrombots": {
+            "filterName": "Exclude From Bots",
+            "filterType": "excludeFromBots"
+          }
+        }
+      },
+      {
+        "entityType": "pipeline",
+        "eventFilter": {
+          "create": {
+            "filterName": "Create Filter",
+            "filterType": "entityCreated"
+          },
+          "updates": {
+            "followEntity": {
+              "filterName": "Follow Entity",
+              "filterType": "followEntity"
+            },
+            "unfollowEntity": {
+              "filterName": "UnFollow Entity",
+              "filterType": "unfollowEntity"
+            },
+            "updatedescription": {
+              "filterName": "Update Description",
+              "filterType": "updatedescription"
+            },
+            "updatetier": {
+              "filterName": "Update Tier",
+              "filterType": "updatetier"
+            },
+            "addtags": {
+              "filterName": "Added Tags",
+              "filterType": "addtags"
+            },
+            "removetags": {
+              "filterName": "Removed Tags",
+              "filterType": "removetags"
+            },
+            "softdeleteentity": {
+              "filterName": "Soft Deleted Entity",
+              "filterType": "softdeleteentity"
+            },
+            "testcases": {
+              "filterName": "Test Cases",
+              "filterType": "testcases"
+            },
+            "usagesummary": {
+              "filterName": "Usage Summary",
+              "filterType": "usagesummary"
+            },
+            "sampledata": {
+              "filterName": "Sample Data",
+              "filterType": "sampledata"
+            },
+            "queries": {
+              "filterName": "Queries",
+              "filterType": "queries"
+            },
+            "updateowner": {
+              "filterName": "Update Owner",
+              "filterType": "updateowner"
+            }
+          },
+          "delete": {
+            "filterName": "Entity Deleted",
+            "filterType": "entityDeleted"
+          },
+          "excludefrombots": {
+            "filterName": "Exclude From Bots",
+            "filterType": "excludeFromBots"
+          }
+        }
+      },
+      {
+        "entityType": "mlmodel",
+        "eventFilter": {
+          "create": {
+            "filterName": "Create Filter",
+            "filterType": "entityCreated"
+          },
+          "updates": {
+            "followEntity": {
+              "filterName": "Follow Entity",
+              "filterType": "followEntity"
+            },
+            "unfollowEntity": {
+              "filterName": "UnFollow Entity",
+              "filterType": "unfollowEntity"
+            },
+            "updatedescription": {
+              "filterName": "Update Description",
+              "filterType": "updatedescription"
+            },
+            "updatetier": {
+              "filterName": "Update Tier",
+              "filterType": "updatetier"
+            },
+            "addtags": {
+              "filterName": "Added Tags",
+              "filterType": "addtags"
+            },
+            "removetags": {
+              "filterName": "Removed Tags",
+              "filterType": "removetags"
+            },
+            "softdeleteentity": {
+              "filterName": "Soft Deleted Entity",
+              "filterType": "softdeleteentity"
+            },
+            "testcases": {
+              "filterName": "Test Cases",
+              "filterType": "testcases"
+            },
+            "usagesummary": {
+              "filterName": "Usage Summary",
+              "filterType": "usagesummary"
+            },
+            "sampledata": {
+              "filterName": "Sample Data",
+              "filterType": "sampledata"
+            },
+            "queries": {
+              "filterName": "Queries",
+              "filterType": "queries"
+            },
+            "updateowner": {
+              "filterName": "Update Owner",
+              "filterType": "updateowner"
+            }
+          },
+          "delete": {
+            "filterName": "Entity Deleted",
+            "filterType": "entityDeleted"
+          },
+          "excludefrombots": {
+            "filterName": "Exclude From Bots",
+            "filterType": "excludeFromBots"
+          }
+        }
+      }
+    ]
+  }
+]

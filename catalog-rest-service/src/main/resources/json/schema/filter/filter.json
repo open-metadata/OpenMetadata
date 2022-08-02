@@ -1,0 +1,91 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/policies/filter.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Filter",
+  "description": "This schema defines the Filter entity. A filter controls the publishing of different change events in OpenMetadata",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.filter.Filter",
+  "definitions": {
+    "metadataFiltersEnum": {
+      "javaType": "org.openmetadata.catalog.filter.MetadataFiltersEnum",
+      "description": "This schema defines all possible filters enum in OpenMetadata.",
+      "type": "string",
+      "enum": [
+        "entityCreated",
+        "followEntity",
+        "unfollowEntity",
+        "updatedescription",
+        "updatetags",
+        "updateowner",
+        "updatetier",
+        "addtags",
+        "removetags",
+        "softdeleteentity",
+        "testcases",
+        "usagesummary",
+        "sampledata",
+        "queries",
+        "excludeFromBots",
+        "entityDeleted"
+      ]
+    },
+    "basicFilter": {
+      "javaType": "org.openmetadata.catalog.filter.BasicFilter",
+      "description": "Represents a basic filter which has a Name and a flag to indicate if enabled",
+      "type": "object",
+      "properties": {
+        "filterName": {
+          "description": "Name of the filter",
+          "type": "string"
+        },
+        "filterType": {
+          "description": "Type of the filter",
+          "$ref": "#/definitions/metadataFiltersEnum"
+        },
+        "enabled": {
+          "description": "Is the Filter Enabled",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "filters": {
+      "javaType": "org.openmetadata.catalog.filter.Filters",
+      "description": "This schema defines all possible filters in OpenMetadata.",
+      "type": "object",
+      "properties": {
+        "create": {
+          "description": "List of Filters for Create Events",
+          "$ref": "#/definitions/basicFilter"
+        },
+        "updates": {
+          "description": "List of Filters for Update Events",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/basicFilter"
+          }
+        },
+        "delete": {
+          "description": "List of Filters for Delete Events",
+          "$ref": "#/definitions/basicFilter"
+        },
+        "excludefrombots": {
+          "description": "List of Filters Exclude from bots",
+          "$ref": "#/definitions/basicFilter"
+        }
+      }
+    }
+  },
+  "properties": {
+    "entityType": {
+      "description": "Entity type for filter , example : topic , table, dashboard, mlmodel , etc",
+      "type": "string"
+    },
+    "eventFilter": {
+      "description": "List of operations supported by the resource.",
+      "$ref": "#/definitions/filters"
+    }
+  },
+  "required": ["entityType"],
+  "additionalProperties": false
+}

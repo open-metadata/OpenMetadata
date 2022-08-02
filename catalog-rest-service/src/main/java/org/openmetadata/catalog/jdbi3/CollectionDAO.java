@@ -190,6 +190,9 @@ public interface CollectionDAO {
   WebhookDAO webhookDAO();
 
   @CreateSqlObject
+  SettingsDAO getSettingsDAO();
+
+  @CreateSqlObject
   TypeEntityDAO typeEntityDAO();
 
   @CreateSqlObject
@@ -2502,5 +2505,23 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM mlmodel_service_entity) as mlModelServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount() throws StatementException;
+  }
+
+  interface SettingsDAO {
+    @SqlQuery("SELECT json FROM openmetadata_settings")
+    List<String> getAllConfig() throws StatementException;
+
+    @SqlQuery("SELECT json FROM openmetadata_settings WHERE config_type = :config_type")
+    String getConfigWithKey(@Bind("config_type") String config_type) throws StatementException;
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT into openmetadata_settings (json)" + "VALUES (:json) ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into openmetadata_settings (json)"
+                + "VALUES (:json :: jsonb) ON CONFLICT (config_type) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertSettings(@Bind("json") String json);
   }
 }

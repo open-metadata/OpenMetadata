@@ -60,8 +60,8 @@ import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
-import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
+import org.openmetadata.catalog.events.ResponseFilter;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
@@ -239,7 +239,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
-      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
+      ContainerResponseFilter eventFilter = new ResponseFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
     }
   }
