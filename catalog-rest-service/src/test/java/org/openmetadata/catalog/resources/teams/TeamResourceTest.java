@@ -374,6 +374,24 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).collect(Collectors.toList()).get(0);
     assertEquals(3, t1.getChildrenCount());
     assertEquals(0, t1.getUserCount());
+
+    //
+    // Creating a parent with invalid children type is not allowed
+    // Department can't have Business unit as a child
+    assertResponse(
+        () -> createWithChildren("invalidTeam", DEPARTMENT, bu11.getEntityReference()),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, bu11));
+    // Department can't have Division as a child
+    assertResponse(
+        () -> createWithChildren("invalidTeam", DEPARTMENT, div12.getEntityReference()),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, div12));
+    // Division can't have BU as a child
+    assertResponse(
+        () -> createWithChildren("invalidTeam", DIVISION, bu11.getEntityReference()),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidChild("invalidTeam", DIVISION, bu11));
   }
 
   @Test
