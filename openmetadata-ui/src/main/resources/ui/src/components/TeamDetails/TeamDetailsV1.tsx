@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,24 +12,38 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  Button as ButtonAntd,
+  Col,
+  Row,
+  Space,
+  Switch,
+  Table,
+  Tooltip,
+} from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Tooltip as TooltipTippy } from 'react-tippy';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
-import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
-import { Team } from '../../generated/entity/teams/team';
+import { Team, TeamType } from '../../generated/entity/teams/team';
 import {
   EntityReference as UserTeams,
   User,
@@ -38,10 +52,16 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import UserCard from '../../pages/teams/UserCard';
-import { hasEditAccess } from '../../utils/CommonUtils';
+import {
+  getEntityName,
+  getTeamsText,
+  hasEditAccess,
+} from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
+import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import Description from '../common/description/Description';
 import Ellipses from '../common/Ellipses/Ellipses';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
@@ -50,13 +70,15 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import TabsPane from '../common/TabsPane/TabsPane';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../Loader/Loader';
-import ManageTab from '../ManageTab/ManageTab.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import TeamHierarchy from './TeamHierarchy';
+import './teams.less';
 
-const TeamDetails = ({
+const TeamDetailsV1 = ({
   hasAccess,
-  teams,
   currentTeam,
   currentTeamUsers,
   teamUserPagin,
@@ -76,7 +98,8 @@ const TeamDetails = ({
   removeUserFromTeam,
   afterDeleteAction,
 }: TeamDetailsProp) => {
-  const history = useHistory();
+  const isOrganization =
+    currentTeam.name === TeamType.Organization.toLowerCase();
   const DELETE_USER_INITIAL_STATE = {
     user: undefined,
     state: false,
@@ -94,6 +117,13 @@ const TeamDetails = ({
     state: boolean;
     leave: boolean;
   }>(DELETE_USER_INITIAL_STATE);
+  const [showAction, setShowAction] = useState(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [table, setTable] = useState<EntityReference[]>([]);
+  const [slashedDatabaseName, setSlashedDatabaseName] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
 
   /**
    * Check if current team is the owner or not
@@ -106,36 +136,124 @@ const TeamDetails = ({
     );
   };
 
+  /**
+   * Take user id as input to find out the user data and set it for delete
+   * @param id - user id
+   * @param leave - if "Leave Team" action is in progress
+   */
+  const deleteUserHandler = (id: string, leave = false) => {
+    const user = [...(currentTeam?.users as Array<UserTeams>)].find(
+      (u) => u.id === id
+    );
+    setDeletingUser({ user, state: true, leave });
+  };
+
   const tabs = [
+    {
+      name: 'Teams',
+      isProtected: false,
+      position: 1,
+      count: currentTeam.children?.length || 0,
+    },
     {
       name: 'Users',
       isProtected: false,
-      position: 1,
-      count: currentTeam?.users?.length,
+      position: 2,
+      count: teamUserPagin?.total,
     },
     {
       name: 'Assets',
       isProtected: false,
-      position: 2,
+      position: 3,
       count: filterEntityAssets(currentTeam?.owns || []).length,
     },
     {
       name: 'Roles',
       isProtected: false,
-      position: 3,
+      position: 4,
       count: currentTeam?.defaultRoles?.length,
     },
-    {
-      name: 'Manage',
-      isProtected: false,
-      isHidden: !(
-        hasAccess ||
-        isOwner() ||
-        userPermissions[Operation.EditOwner]
-      ),
-      position: 4,
-    },
   ];
+
+  const columns: ColumnsType<User> = useMemo(() => {
+    return [
+      {
+        title: 'Username',
+        dataIndex: 'username',
+        key: 'username',
+        render: (_, record) => (
+          <Link
+            className="hover:tw-underline tw-cursor-pointer"
+            to={getUserPath(record.fullyQualifiedName || record.name)}>
+            {getEntityName(record)}
+          </Link>
+        ),
+      },
+      {
+        title: 'Email',
+        dataIndex: 'email',
+        key: 'email',
+      },
+      {
+        title: 'Teams',
+        dataIndex: 'teams',
+        key: 'teams',
+        render: (teams: EntityReference[]) => getTeamsText(teams),
+      },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 90,
+        render: (_, record) => (
+          <Space
+            align="center"
+            className="tw-w-full tw-justify-center"
+            size={8}>
+            <Tooltip placement="bottom" title="Remove">
+              <ButtonAntd
+                icon={
+                  <SVGIcons
+                    alt="Remove"
+                    className="tw-w-4"
+                    icon={Icons.DELETE}
+                  />
+                }
+                type="text"
+                onClick={() => deleteUserHandler(record.id)}
+              />
+            </Tooltip>
+          </Space>
+        ),
+      },
+    ];
+  }, []);
+
+  const manageButtonContent = () => {
+    return (
+      <div
+        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
+        id="manage-button"
+        onClick={() => setIsDelete(true)}>
+        <div>
+          <SVGIcons
+            alt="Delete"
+            className="tw-w-12"
+            icon={Icons.DELETE_GRADIANT}
+          />
+        </div>
+        <div className="tw-text-left" data-testid="delete-button">
+          <p className="tw-font-medium">
+            Delete Team “{getEntityName(currentTeam)}”
+          </p>
+          <p className="tw-text-grey-muted tw-text-xs">
+            Deleting this Team {getEntityName(currentTeam)} will permanently
+            remove its metadata from OpenMetadata.
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   const extraInfo: ExtraInfo = {
     key: 'Owner',
@@ -252,35 +370,55 @@ const TeamDetails = ({
     return Promise.reject();
   };
 
-  /**
-   * Redirects user to profile page.
-   * @param name user name
-   */
-  const handleUserRedirection = (name: string) => {
-    history.push(getUserPath(name));
+  const handleTeamSearch = (value: string) => {
+    setSearchTerm(value);
+    if (value) {
+      setTable(
+        currentTeam.children?.filter(
+          (team) =>
+            team?.name?.toLowerCase().includes(value.toLowerCase()) ||
+            team?.displayName?.toLowerCase().includes(value.toLowerCase())
+        ) || []
+      );
+    } else {
+      setTable(currentTeam.children ?? []);
+    }
   };
 
   useEffect(() => {
     if (currentTeam) {
+      const perents =
+        currentTeam?.parents && !isOrganization
+          ? currentTeam?.parents.map((parent) => ({
+              name: getEntityName(parent),
+              url: getTeamsWithFqnPath(
+                parent.name || parent.fullyQualifiedName || ''
+              ),
+            }))
+          : [];
+      const breadcrumb = [
+        {
+          name: 'Team',
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingOptions.TEAMS
+          ),
+        },
+        ...perents,
+        {
+          name: getEntityName(currentTeam),
+          url: '',
+        },
+      ];
+      setSlashedDatabaseName(breadcrumb);
       setHeading(currentTeam.displayName);
+      setTable(currentTeam.children ?? []);
     }
   }, [currentTeam]);
 
   useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
   }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
-
-  /**
-   * Take user id as input to find out the user data and set it for delete
-   * @param id - user id
-   * @param leave - if "Leave Team" action is in progress
-   */
-  const deleteUserHandler = (id: string, leave = false) => {
-    const user = [...(currentTeam?.users as Array<UserTeams>)].find(
-      (u) => u.id === id
-    );
-    setDeletingUser({ user, state: true, leave });
-  };
 
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
@@ -360,36 +498,18 @@ const TeamDetails = ({
               </div>
             ) : (
               <Fragment>
-                <div
-                  className="tw-grid lg:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
-                  data-testid="user-data-container">
-                  {sortedUser.map((user, index) => {
-                    const User = {
-                      displayName: user.displayName || user.name,
-                      fqn: user.name || '',
-                      type: 'user',
-                      id: user.id,
-                      name: user.name,
-                    };
-
-                    return (
-                      <UserCard
-                        isActionVisible
-                        isIconVisible
-                        isOwner={isActionAllowed()}
-                        item={User}
-                        key={index}
-                        onRemove={deleteUserHandler}
-                        onTitleClick={handleUserRedirection}
-                      />
-                    );
-                  })}
-                </div>
-                {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
+                <Table
+                  className="teams-list-table"
+                  columns={columns}
+                  dataSource={sortedUser}
+                  pagination={false}
+                  size="small"
+                />
+                {teamUserPagin.total > PAGE_SIZE && (
                   <NextPrevious
                     currentPage={currentTeamUserPage}
                     isNumberBased={Boolean(teamUsersSearchText)}
-                    pageSize={PAGE_SIZE_MEDIUM}
+                    pageSize={PAGE_SIZE}
                     paging={teamUserPagin}
                     pagingHandler={teamUserPaginHandler}
                     totalCount={teamUserPagin.total}
@@ -512,7 +632,7 @@ const TeamDetails = ({
 
   const getTeamHeading = () => {
     return (
-      <div className="tw-heading tw-text-link tw-text-base">
+      <div className="tw-heading tw-text-link tw-text-base tw-mb-0">
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
@@ -580,8 +700,9 @@ const TeamDetails = ({
     <div
       className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
       data-testid="team-details-container">
-      {teams && teams.length && !isEmpty(currentTeam) ? (
+      {!isEmpty(currentTeam) ? (
         <Fragment>
+          <TitleBreadcrumb titleLinks={slashedDatabaseName} />
           <div
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
@@ -592,12 +713,48 @@ const TeamDetails = ({
                   !isAlreadyJoinedTeam(currentTeam.id),
                   currentTeam.isJoinable || false
                 )}
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  className="tw-h-8 tw-rounded tw-mb-1 tw-ml-2 tw-flex"
+                  data-testid="manage-button"
+                  disabled={!hasAccess}
+                  size="small"
+                  theme="primary"
+                  variant="outlined"
+                  onClick={() => setIsDelete(true)}>
+                  <TooltipTippy
+                    arrow
+                    arrowSize="big"
+                    disabled={!hasAccess}
+                    html={manageButtonContent()}
+                    open={showAction}
+                    position="bottom-end"
+                    theme="light"
+                    onRequestClose={() => setShowAction(false)}>
+                    <span>
+                      <FontAwesomeIcon icon="ellipsis-vertical" />
+                    </span>
+                  </TooltipTippy>
+                </Button>
+              </NonAdminAction>
             </div>
           </div>
-          <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
-            <EntitySummaryDetails data={extraInfo} updateOwner={updateOwner} />
+          <div className="tw-mb-3">
+            <Switch
+              checked={currentTeam.isJoinable}
+              className="tw-mr-2"
+              size="small"
+              title="Open Group"
+              onChange={handleOpenToJoinToggle}
+            />
+            <span>Open Group</span>
           </div>
-          <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
+          <EntitySummaryDetails data={extraInfo} updateOwner={updateOwner} />
+          <div
+            className="tw-mb-3 tw--ml-5 tw-mt-2"
+            data-testid="description-container">
             <Description
               blurWithBodyBG
               description={currentTeam?.description || ''}
@@ -618,32 +775,39 @@ const TeamDetails = ({
             />
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
-              {currentTab === 1 && getUserCards()}
-
-              {currentTab === 2 && getDatasetCards()}
-
-              {currentTab === 3 && getDefaultRoles()}
-
-              {currentTab === 4 && (
-                <div className="tw-bg-white tw-shadow-md tw-py-4 tw-flex-grow">
-                  <ManageTab
-                    allowDelete
-                    allowSoftDelete
-                    hasEditAccess
-                    hideTier
-                    afterDeleteAction={afterDeleteAction}
-                    allowTeamOwner={false}
-                    currentUser={currentTeam.owner}
-                    entityId={currentTeam.id}
-                    entityName={currentTeam.displayName || currentTeam.name}
-                    entityType="team"
-                    handleIsJoinable={handleOpenToJoinToggle}
-                    isJoinable={currentTeam.isJoinable}
-                    manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.TEAM}
-                    onSave={updateOwner}
-                  />
-                </div>
+              {currentTab === 1 && (
+                <Row className="team-list-container" gutter={[16, 16]}>
+                  <Col span={8}>
+                    <Searchbar
+                      removeMargin
+                      placeholder="Search for team..."
+                      searchValue={searchTerm}
+                      typingInterval={500}
+                      onSearch={handleTeamSearch}
+                    />
+                  </Col>
+                  <Col span={16}>
+                    <Space
+                      align="end"
+                      className="tw-w-full"
+                      direction="vertical">
+                      <ButtonAntd
+                        type="primary"
+                        onClick={() => handleAddTeam(true)}>
+                        Add Team
+                      </ButtonAntd>
+                    </Space>
+                  </Col>
+                  <Col span={24}>
+                    <TeamHierarchy data={table as Team[]} />
+                  </Col>
+                </Row>
               )}
+              {currentTab === 2 && getUserCards()}
+
+              {currentTab === 3 && getDatasetCards()}
+
+              {currentTab === 4 && getDefaultRoles()}
             </div>
           </div>
         </Fragment>
@@ -678,8 +842,17 @@ const TeamDetails = ({
           onConfirm={handleRemoveUser}
         />
       )}
+
+      <DeleteWidgetModal
+        afterDeleteAction={afterDeleteAction}
+        entityId={currentTeam.id}
+        entityName={currentTeam.fullyQualifiedName || currentTeam.name}
+        entityType="team"
+        visible={isDelete}
+        onCancel={() => setIsDelete(false)}
+      />
     </div>
   );
 };
 
-export default TeamDetails;
+export default TeamDetailsV1;
