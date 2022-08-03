@@ -290,6 +290,7 @@ def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str
     if not original:
         return {}
 
-    split_original = [(elem.split(sep)) for elem in original if sep in elem]
-
-    return {elem[0]: elem[1] for elem in split_original}
+    split_original = [
+        (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
+    ]
+    return dict(split_original)
