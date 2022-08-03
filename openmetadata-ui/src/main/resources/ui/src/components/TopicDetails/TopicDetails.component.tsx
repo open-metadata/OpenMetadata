@@ -401,6 +401,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             entityFieldThreadCount
           )}
           entityFqn={topicFQN}
+          entityId={topicDetails.id}
           entityName={entityName}
           entityType={EntityType.TOPIC}
           extraInfo={extraInfo}

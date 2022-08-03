@@ -30,6 +30,7 @@ import React, {
   useState,
 } from 'react';
 import AppState from '../../AppState';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
@@ -146,6 +147,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         mlModelDetail.owner?.type === OwnerType.USER
           ? mlModelDetail.owner?.name
           : undefined,
+    },
+    {
+      key: 'Tier',
+      value: mlModelTier?.tagFQN
+        ? mlModelTier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : '',
     },
     {
       key: 'Algorithm',
@@ -430,6 +437,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           isTagEditable
           deleted={mlModelDetail.deleted}
           entityFqn={mlModelDetail.fullyQualifiedName}
+          entityId={mlModelDetail.id}
           entityName={mlModelDetail.name}
           entityType={EntityType.MLMODEL}
           extraInfo={mlModelPageInfo}

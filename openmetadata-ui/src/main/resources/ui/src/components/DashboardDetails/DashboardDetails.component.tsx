@@ -459,6 +459,7 @@ const DashboardDetails = ({
             entityFieldThreadCount
           )}
           entityFqn={dashboardFQN}
+          entityId={dashboardDetails.id}
           entityName={entityName}
           entityType={EntityType.DASHBOARD}
           extraInfo={extraInfo}

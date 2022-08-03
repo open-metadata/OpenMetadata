@@ -372,6 +372,7 @@ const PipelineDetails = ({
             entityFieldThreadCount
           )}
           entityFqn={pipelineFQN}
+          entityId={pipelineDetails.id}
           entityName={entityName}
           entityType={EntityType.PIPELINE}
           extraInfo={extraInfo}

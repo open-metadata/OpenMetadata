@@ -49,7 +49,9 @@ const EntitySummaryDetails = ({
           ) : (
             <>
               No Owner
-              <span onClick={() => setshow(!show)}>
+              <span
+                data-testid={`edit-${data.key}-icon`}
+                onClick={() => setshow(!show)}>
                 {updateOwner ? (
                   <SVGIcons
                     alt="edit"
@@ -78,7 +80,9 @@ const EntitySummaryDetails = ({
                   />
                 }
                 trigger={['click']}>
-                <span style={{ marginLeft: '5px' }}>
+                <span
+                  data-testid={`edit-${data.key}-icon`}
+                  style={{ marginLeft: '5px' }}>
                   {updateTier ? (
                     <SVGIcons
                       alt="edit"
@@ -147,7 +151,10 @@ const EntitySummaryDetails = ({
                   )}
                 </>
               </a>
-              <span style={{ marginLeft: '5px' }} onClick={() => setshow(true)}>
+              <span
+                data-testid={`edit-${data.key}-icon`}
+                style={{ marginLeft: '5px' }}
+                onClick={() => setshow(true)}>
                 <SVGIcons
                   alt="edit"
                   icon={Icons.EDIT}
@@ -175,6 +182,7 @@ const EntitySummaryDetails = ({
                       {displayVal}
                     </Button>
                     <span
+                      data-testid={`edit-${data.key}-icon`}
                       style={{ marginLeft: '5px' }}
                       onClick={() => setshow(true)}>
                       {updateOwner ? (
@@ -215,7 +223,9 @@ const EntitySummaryDetails = ({
                               />
                             }
                             trigger={['click']}>
-                            <span style={{ marginLeft: '5px' }}>
+                            <span
+                              data-testid={`edit-${data.key}-icon`}
+                              style={{ marginLeft: '5px' }}>
                               {updateTier ? (
                                 <SVGIcons
                                   alt="edit"
