@@ -29,9 +29,9 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.events.EventPubSub.ChangeEventHolder;
 import org.openmetadata.catalog.events.WebhookPublisher;
+import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.resources.events.WebhookResource;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
-import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -164,10 +164,10 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     private void updateEventFilters() throws JsonProcessingException {
-      List<EventFilter> origFilter = original.getEventFilters();
-      List<EventFilter> updatedFilter = updated.getEventFilters();
-      List<EventFilter> added = new ArrayList<>();
-      List<EventFilter> deleted = new ArrayList<>();
+      List<Filter> origFilter = original.getEventFilters();
+      List<Filter> updatedFilter = updated.getEventFilters();
+      List<Filter> added = new ArrayList<>();
+      List<Filter> deleted = new ArrayList<>();
       recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);
     }
   }

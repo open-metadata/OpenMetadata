@@ -29,16 +29,17 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.events.CreateWebhook;
+import org.openmetadata.catalog.filter.*;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource.EventDetails;
 import org.openmetadata.catalog.resources.events.WebhookResource.WebhookList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
@@ -50,14 +51,44 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
 public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebhook> {
-  public static final List<EventFilter> ALL_EVENTS_FILTER;
+  public static List<Filter> ALL_EVENTS_FILTER = new ArrayList<>();
+  public static List<FiltersType> CREATEFILTERS = List.of(FiltersType.ENTITY_CREATED);
+  public static List<FiltersType> UPDATEFILTERS =
+      List.of(
+          FiltersType.FOLLOW_ENTITY,
+          FiltersType.UNFOLLOW_ENTITY,
+          FiltersType.UPDATEDESCRIPTION,
+          FiltersType.UPDATETAGS,
+          FiltersType.UPDATEOWNER,
+          FiltersType.UPDATETIER,
+          FiltersType.ADDTAGS,
+          FiltersType.REMOVETAGS,
+          FiltersType.SOFTDELETEENTITY,
+          FiltersType.TESTCASES,
+          FiltersType.USAGESUMMARY,
+          FiltersType.SAMPLEDATA,
+          FiltersType.QUERIES);
+  public static List<FiltersType> DELETEFILTERS = List.of(FiltersType.ENTITY_DELETED);
+  public static List<FiltersType> BOTSFILTERS = List.of(FiltersType.EXCLUDE_FROM_BOTS);
+  public static List<String> ENTITYLISTS = List.of("table", "topic", "dashboard", "pipeline", "mlmodel");
 
   static {
-    ALL_EVENTS_FILTER =
-        List.of(
-            new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*")),
-            new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*")),
-            new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*")));
+    try {
+      List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/filter/eventFilters.json$");
+      if (jsonDataFiles.size() != 1) {
+        LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
+        throw new RuntimeException("Invalid Json Data");
+      }
+      String jsonDataFile = jsonDataFiles.get(0);
+      try {
+        String json = IOUtil.toString(WebhookResourceTest.class.getClassLoader().getResourceAsStream(jsonDataFile));
+        ALL_EVENTS_FILTER = JsonUtils.readObjects(json, Filter.class);
+      } catch (Exception e) {
+        LOG.warn("Failed to initialize the {} from file {}", "filters", jsonDataFile, e);
+      }
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public WebhookResourceTest() {
@@ -179,38 +210,98 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
   }
 
+  public List<Filter> getFiltersForTest(List<String> entityType, List<FiltersType> filterToAdd) {
+    List<Filter> filtersList = new ArrayList<>();
+    entityType.forEach(
+        (type) -> {
+          Filter filter = new Filter();
+          filter.setEntityType(type);
+          EventFilters eventFilter = new EventFilters();
+          Updates updateFilter = new Updates();
+          filterToAdd.forEach(
+              (specificFilter) -> {
+                switch (specificFilter) {
+                  case ENTITY_CREATED:
+                    BasicFilter createEventFilter =
+                        new BasicFilter()
+                            .withFilterName("Entity Created")
+                            .withFilterType(FiltersType.ENTITY_CREATED)
+                            .withEnabled(true);
+                    eventFilter.setCreate(createEventFilter);
+                    break;
+                  case ENTITY_DELETED:
+                    BasicFilter deleteEventFilter =
+                        new BasicFilter()
+                            .withFilterName("Entity Deleted")
+                            .withFilterType(FiltersType.ENTITY_DELETED)
+                            .withEnabled(true);
+                    eventFilter.setDelete(deleteEventFilter);
+                    break;
+                  case EXCLUDE_FROM_BOTS:
+                    BasicFilter excluded_from_bots =
+                        new BasicFilter()
+                            .withFilterName("Excluded From Bots")
+                            .withFilterType(FiltersType.ENTITY_DELETED)
+                            .withEnabled(true);
+                    eventFilter.setExcludefrombots(excluded_from_bots);
+                    break;
+                  default:
+                    BasicFilter upFilter =
+                        new BasicFilter()
+                            .withFilterName(specificFilter.toString())
+                            .withFilterType(specificFilter)
+                            .withEnabled(true);
+                    updateFilter.setAdditionalProperty(specificFilter.toString(), upFilter);
+                }
+              });
+          eventFilter.setUpdates(updateFilter);
+          filter.setEventFilter(eventFilter);
+          filtersList.add(filter);
+        });
+    return filtersList;
+  }
+
   @Test
   void put_updateWebhookFilter(TestInfo test) throws IOException {
     String endpoint =
         "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter/" + test.getDisplayName();
-    EventFilter f1 = new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*"));
-    EventFilter f2 = new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*"));
-    EventFilter f3 = new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*"));
-    EventFilter f4 = new EventFilter().withEventType(EventType.ENTITY_SOFT_DELETED).withEntities(List.of("*"));
 
+    List<Filter> onlyCreate = getFiltersForTest(List.of("table"), CREATEFILTERS);
+    // Create a filter for all
+    List<FiltersType> createUpdateDeleteList = new ArrayList<>();
+    createUpdateDeleteList.addAll(CREATEFILTERS);
+    createUpdateDeleteList.addAll(UPDATEFILTERS);
+    createUpdateDeleteList.addAll(DELETEFILTERS);
+    List<Filter> createUpdateDelete = getFiltersForTest(List.of("table"), createUpdateDeleteList);
+    // Create a filter for Updated and Deleted
+    List<FiltersType> updateDeleteList = new ArrayList<>();
+    updateDeleteList.addAll(UPDATEFILTERS);
+    updateDeleteList.addAll(DELETEFILTERS);
+    List<Filter> updateDelete = getFiltersForTest(List.of("table"), updateDeleteList);
+    List<Filter> delete = getFiltersForTest(List.of("table"), DELETEFILTERS);
     CreateWebhook create =
         createRequest("filterUpdate", "", "", null)
             .withEnabled(false)
             .withEndpoint(URI.create(endpoint))
-            .withEventFilters(List.of(f1));
+            .withEventFilters(onlyCreate);
     Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Now update the filter to include entity updated and deleted events
-    create.setEventFilters(List.of(f1, f2, f3));
+    create.setEventFilters(createUpdateDelete);
     ChangeDescription change = getChangeDescription(webhook.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f2, f3, f4)));
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(updateDelete));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityCreated
-    create.setEventFilters(List.of(f2, f3));
+    create.setEventFilters(updateDelete);
     change = getChangeDescription(webhook.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f1)));
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(createUpdateDelete)));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityDeleted
-    create.setEventFilters(List.of(f2));
+    create.setEventFilters(delete);
     change = getChangeDescription(webhook.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f3, f4)));
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(updateDelete));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
@@ -232,8 +323,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   public void validateCreatedEntity(Webhook webhook, CreateWebhook createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(createRequest.getName(), webhook.getName());
-    ArrayList<EventFilter> filters = new ArrayList<>(createRequest.getEventFilters());
-    EntityUtil.addSoftDeleteFilter(filters);
+    ArrayList<Filter> filters = new ArrayList<>(createRequest.getEventFilters());
+    // EntityUtil.addSoftDeleteFilter(filters);
     assertEquals(filters, webhook.getEventFilters());
   }
 
@@ -254,8 +345,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
       return;
     }
     if (fieldName.equals("eventFilters")) {
-      List<EventFilter> expectedFilters = (List<EventFilter>) expected;
-      List<EventFilter> actualFilters = JsonUtils.readObjects(actual.toString(), EventFilter.class);
+      List<Filter> expectedFilters = (List<Filter>) expected;
+      List<Filter> actualFilters = JsonUtils.readObjects(actual.toString(), Filter.class);
       assertEquals(expectedFilters, actualFilters);
     } else if (fieldName.equals("endPoint")) {
       URI expectedEndpoint = (URI) expected;
@@ -285,14 +376,13 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     // Create webhook with endpoint api/v1/test/webhook/entityCreated/<entity> to receive entityCreated events
     String name = EventType.ENTITY_CREATED + ":" + entity;
     String uri = baseUri + "/" + EventType.ENTITY_CREATED + "/" + entity;
-    List<EventFilter> filters =
-        List.of(new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of(entity)));
+    List<Filter> filters = getFiltersForTest(ENTITYLISTS, CREATEFILTERS);
     createWebhook(name, uri, filters);
 
     // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive entityUpdated events
     name = EventType.ENTITY_UPDATED + ":" + entity;
     uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
-    filters = List.of(new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of(entity)));
+    filters = getFiltersForTest(ENTITYLISTS, UPDATEFILTERS);
     createWebhook(name, uri, filters);
 
     // TODO entity deleted events
@@ -373,7 +463,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     return createWebhook(name, uri, ALL_EVENTS_FILTER);
   }
 
-  public Webhook createWebhook(String name, String uri, List<EventFilter> filters) throws IOException {
+  public Webhook createWebhook(String name, String uri, List<Filter> filters) throws IOException {
     CreateWebhook createWebhook =
         createRequest(name, "", "", null).withEndpoint(URI.create(uri)).withEventFilters(filters).withEnabled(true);
     return createAndCheckEntity(createWebhook, ADMIN_AUTH_HEADERS);

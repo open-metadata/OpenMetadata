@@ -24,7 +24,6 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
@@ -46,6 +45,7 @@ import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
@@ -53,8 +53,6 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.EventFilter;
-import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlFeature;
@@ -124,9 +122,10 @@ public final class EntityUtil {
           Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
               && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
 
-  public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
+  public static final BiPredicate<Filter, Filter> eventFilterMatch =
       (filter1, filter2) ->
-          filter1.getEventType().equals(filter2.getEventType()) && filter1.getEntities().equals(filter2.getEntities());
+          filter1.getEntityType().equals(filter2.getEntityType())
+              && filter1.getEventFilter().equals(filter2.getEventFilter());
 
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
@@ -358,17 +357,18 @@ public final class EntityUtil {
     return Math.round((version + 1.0) * 10.0) / 10.0;
   }
 
-  public static void addSoftDeleteFilter(List<EventFilter> filters) {
-    // Add filter for soft delete events if delete event type is requested
-    Optional<EventFilter> deleteFilter =
-        filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
-    deleteFilter.ifPresent(
-        eventFilter ->
-            filters.add(
-                new EventFilter()
-                    .withEventType(EventType.ENTITY_SOFT_DELETED)
-                    .withEntities(eventFilter.getEntities())));
-  }
+  //  public static void addSoftDeleteFilter(List<EventFilter> filters) {
+  //    // Add filter for soft delete events if delete event type is requested
+  //    Optional<EventFilter> deleteFilter =
+  //        filters.stream().filter(eventFilter ->
+  // eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
+  //    deleteFilter.ifPresent(
+  //        eventFilter ->
+  //            filters.add(
+  //                new EventFilter()
+  //                    .withEventType(EventType.ENTITY_SOFT_DELETED)
+  //                    .withEntities(eventFilter.getEntities())));
+  //  }
 
   public static EntityReference copy(EntityReference from, EntityReference to) {
     return to.withType(from.getType())

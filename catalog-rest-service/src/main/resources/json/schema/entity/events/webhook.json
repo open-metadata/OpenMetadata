@@ -50,7 +50,7 @@
       "description": "Endpoint to receive the webhook events over POST requests.",
       "type": "array",
       "items": {
-        "$ref": "../../type/changeEvent.json#/definitions/eventFilter"
+        "$ref": "../../filter/filter.json"
       }
     },
     "batchSize": {

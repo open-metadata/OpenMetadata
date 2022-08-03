@@ -52,65 +52,80 @@
         "eventFilter": {
           "create": {
             "filterName": "Create Filter",
-            "filterType": "entityCreated"
+            "filterType": "entityCreated",
+            "enabled" : true
           },
           "updates": {
             "followEntity": {
               "filterName": "Follow Entity",
-              "filterType": "followEntity"
+              "filterType": "followEntity",
+              "enabled" : true
             },
             "unfollowEntity": {
               "filterName": "UnFollow Entity",
-              "filterType": "unfollowEntity"
+              "filterType": "unfollowEntity",
+              "enabled" : true
             },
             "updatedescription": {
               "filterName": "Update Description",
-              "filterType": "updatedescription"
+              "filterType": "updatedescription",
+              "enabled" : true
             },
             "updatetier": {
               "filterName": "Update Tier",
-              "filterType": "updatetier"
+              "filterType": "updatetier",
+              "enabled" : true
             },
             "addtags": {
               "filterName": "Added Tags",
-              "filterType": "addtags"
+              "filterType": "addtags",
+              "enabled" : true
             },
             "removetags": {
               "filterName": "Removed Tags",
-              "filterType": "removetags"
+              "filterType": "removetags",
+              "enabled" : true
             },
             "softdeleteentity": {
               "filterName": "Soft Deleted Entity",
-              "filterType": "softdeleteentity"
+              "filterType": "softdeleteentity",
+              "enabled" : true
             },
             "testcases": {
               "filterName": "Test Cases",
-              "filterType": "testcases"
+              "filterType": "testcases",
+              "enabled" : true
             },
             "usagesummary": {
               "filterName": "Usage Summary",
-              "filterType": "usagesummary"
+              "filterType": "usagesummary",
+              "enabled" : true
             },
             "sampledata": {
               "filterName": "Sample Data",
-              "filterType": "sampledata"
+              "filterType": "sampledata",
+              "enabled" : true
             },
             "queries": {
               "filterName": "Queries",
-              "filterType": "queries"
+              "filterType": "queries",
+              "enabled" : true
             },
             "updateowner": {
               "filterName": "Update Owner",
-              "filterType": "updateowner"
+              "filterType": "updateowner",
+              "enabled" : true
             }
           },
           "delete": {
             "filterName": "Entity Deleted",
-            "filterType": "entityDeleted"
+            "filterType": "entityDeleted",
+            "enabled" : true
           },
           "excludefrombots": {
             "filterName": "Exclude From Bots",
-            "filterType": "excludeFromBots"
+            "filterType": "excludeFromBots",
+            "enabled" : true
           }
         }
       },
@@ -119,65 +134,80 @@
         "eventFilter": {
           "create": {
             "filterName": "Create Filter",
-            "filterType": "entityCreated"
+            "filterType": "entityCreated",
+            "enabled" : true
           },
           "updates": {
             "followEntity": {
               "filterName": "Follow Entity",
-              "filterType": "followEntity"
+              "filterType": "followEntity",
+              "enabled" : true
             },
             "unfollowEntity": {
               "filterName": "UnFollow Entity",
-              "filterType": "unfollowEntity"
+              "filterType": "unfollowEntity",
+              "enabled" : true
             },
             "updatedescription": {
               "filterName": "Update Description",
-              "filterType": "updatedescription"
+              "filterType": "updatedescription",
+              "enabled" : true
             },
             "updatetier": {
               "filterName": "Update Tier",
-              "filterType": "updatetier"
+              "filterType": "updatetier",
+              "enabled" : true
             },
             "addtags": {
               "filterName": "Added Tags",
-              "filterType": "addtags"
+              "filterType": "addtags",
+              "enabled" : true
             },
             "removetags": {
               "filterName": "Removed Tags",
-              "filterType": "removetags"
+              "filterType": "removetags",
+              "enabled" : true
             },
             "softdeleteentity": {
               "filterName": "Soft Deleted Entity",
-              "filterType": "softdeleteentity"
+              "filterType": "softdeleteentity",
+              "enabled" : true
             },
             "testcases": {
               "filterName": "Test Cases",
-              "filterType": "testcases"
+              "filterType": "testcases",
+              "enabled" : true
             },
             "usagesummary": {
               "filterName": "Usage Summary",
-              "filterType": "usagesummary"
+              "filterType": "usagesummary",
+              "enabled" : true
             },
             "sampledata": {
               "filterName": "Sample Data",
-              "filterType": "sampledata"
+              "filterType": "sampledata",
+              "enabled" : true
             },
             "queries": {
               "filterName": "Queries",
-              "filterType": "queries"
+              "filterType": "queries",
+              "enabled" : true
             },
             "updateowner": {
               "filterName": "Update Owner",
-              "filterType": "updateowner"
+              "filterType": "updateowner",
+              "enabled" : true
             }
           },
           "delete": {
             "filterName": "Entity Deleted",
-            "filterType": "entityDeleted"
+            "filterType": "entityDeleted",
+            "enabled" : true
           },
           "excludefrombots": {
             "filterName": "Exclude From Bots",
-            "filterType": "excludeFromBots"
+            "filterType": "excludeFromBots",
+            "enabled" : true
           }
         }
       },
@@ -186,65 +216,80 @@
         "eventFilter": {
           "create": {
             "filterName": "Create Filter",
-            "filterType": "entityCreated"
+            "filterType": "entityCreated",
+            "enabled" : true
           },
           "updates": {
             "followEntity": {
               "filterName": "Follow Entity",
-              "filterType": "followEntity"
+              "filterType": "followEntity",
+              "enabled" : true
             },
             "unfollowEntity": {
               "filterName": "UnFollow Entity",
-              "filterType": "unfollowEntity"
+              "filterType": "unfollowEntity",
+              "enabled" : true
             },
             "updatedescription": {
               "filterName": "Update Description",
-              "filterType": "updatedescription"
+              "filterType": "updatedescription",
+              "enabled" : true
             },
             "updatetier": {
               "filterName": "Update Tier",
-              "filterType": "updatetier"
+              "filterType": "updatetier",
+              "enabled" : true
             },
             "addtags": {
               "filterName": "Added Tags",
-              "filterType": "addtags"
+              "filterType": "addtags",
+              "enabled" : true
             },
             "removetags": {
               "filterName": "Removed Tags",
-              "filterType": "removetags"
+              "filterType": "removetags",
+              "enabled" : true
             },
             "softdeleteentity": {
               "filterName": "Soft Deleted Entity",
-              "filterType": "softdeleteentity"
+              "filterType": "softdeleteentity",
+              "enabled" : true
             },
             "testcases": {
               "filterName": "Test Cases",
-              "filterType": "testcases"
+              "filterType": "testcases",
+              "enabled" : true
             },
             "usagesummary": {
               "filterName": "Usage Summary",
-              "filterType": "usagesummary"
+              "filterType": "usagesummary",
+              "enabled" : true
             },
             "sampledata": {
               "filterName": "Sample Data",
-              "filterType": "sampledata"
+              "filterType": "sampledata",
+              "enabled" : true
             },
             "queries": {
               "filterName": "Queries",
-              "filterType": "queries"
+              "filterType": "queries",
+              "enabled" : true
             },
             "updateowner": {
               "filterName": "Update Owner",
-              "filterType": "updateowner"
+              "filterType": "updateowner",
+              "enabled" : true
             }
           },
           "delete": {
             "filterName": "Entity Deleted",
-            "filterType": "entityDeleted"
+            "filterType": "entityDeleted",
+            "enabled" : true
           },
           "excludefrombots": {
             "filterName": "Exclude From Bots",
-            "filterType": "excludeFromBots"
+            "filterType": "excludeFromBots",
+            "enabled" : true
           }
         }
       },
@@ -253,65 +298,80 @@
         "eventFilter": {
           "create": {
             "filterName": "Create Filter",
-            "filterType": "entityCreated"
+            "filterType": "entityCreated",
+            "enabled" : true
           },
           "updates": {
             "followEntity": {
               "filterName": "Follow Entity",
-              "filterType": "followEntity"
+              "filterType": "followEntity",
+              "enabled" : true
             },
             "unfollowEntity": {
               "filterName": "UnFollow Entity",
-              "filterType": "unfollowEntity"
+              "filterType": "unfollowEntity",
+              "enabled" : true
             },
             "updatedescription": {
               "filterName": "Update Description",
-              "filterType": "updatedescription"
+              "filterType": "updatedescription",
+              "enabled" : true
             },
             "updatetier": {
               "filterName": "Update Tier",
-              "filterType": "updatetier"
+              "filterType": "updatetier",
+              "enabled" : true
             },
             "addtags": {
               "filterName": "Added Tags",
-              "filterType": "addtags"
+              "filterType": "addtags",
+              "enabled" : true
             },
             "removetags": {
               "filterName": "Removed Tags",
-              "filterType": "removetags"
+              "filterType": "removetags",
+              "enabled" : true
             },
             "softdeleteentity": {
               "filterName": "Soft Deleted Entity",
-              "filterType": "softdeleteentity"
+              "filterType": "softdeleteentity",
+              "enabled" : true
             },
             "testcases": {
               "filterName": "Test Cases",
-              "filterType": "testcases"
+              "filterType": "testcases",
+              "enabled" : true
             },
             "usagesummary": {
               "filterName": "Usage Summary",
-              "filterType": "usagesummary"
+              "filterType": "usagesummary",
+              "enabled" : true
             },
             "sampledata": {
               "filterName": "Sample Data",
-              "filterType": "sampledata"
+              "filterType": "sampledata",
+              "enabled" : true
             },
             "queries": {
               "filterName": "Queries",
-              "filterType": "queries"
+              "filterType": "queries",
+              "enabled" : true
             },
             "updateowner": {
               "filterName": "Update Owner",
-              "filterType": "updateowner"
+              "filterType": "updateowner",
+              "enabled" : true
             }
           },
           "delete": {
             "filterName": "Entity Deleted",
-            "filterType": "entityDeleted"
+            "filterType": "entityDeleted",
+            "enabled" : true
           },
           "excludefrombots": {
             "filterName": "Exclude From Bots",
-            "filterType": "excludeFromBots"
+            "filterType": "excludeFromBots",
+            "enabled" : true
           }
         }
       },
@@ -320,65 +380,80 @@
         "eventFilter": {
           "create": {
             "filterName": "Create Filter",
-            "filterType": "entityCreated"
+            "filterType": "entityCreated",
+            "enabled" : true
           },
           "updates": {
             "followEntity": {
               "filterName": "Follow Entity",
-              "filterType": "followEntity"
+              "filterType": "followEntity",
+              "enabled" : true
             },
             "unfollowEntity": {
               "filterName": "UnFollow Entity",
-              "filterType": "unfollowEntity"
+              "filterType": "unfollowEntity",
+              "enabled" : true
             },
             "updatedescription": {
               "filterName": "Update Description",
-              "filterType": "updatedescription"
+              "filterType": "updatedescription",
+              "enabled" : true
             },
             "updatetier": {
               "filterName": "Update Tier",
-              "filterType": "updatetier"
+              "filterType": "updatetier",
+              "enabled" : true
             },
             "addtags": {
               "filterName": "Added Tags",
-              "filterType": "addtags"
+              "filterType": "addtags",
+              "enabled" : true
             },
             "removetags": {
               "filterName": "Removed Tags",
-              "filterType": "removetags"
+              "filterType": "removetags",
+              "enabled" : true
             },
             "softdeleteentity": {
               "filterName": "Soft Deleted Entity",
-              "filterType": "softdeleteentity"
+              "filterType": "softdeleteentity",
+              "enabled" : true
             },
             "testcases": {
               "filterName": "Test Cases",
-              "filterType": "testcases"
+              "filterType": "testcases",
+              "enabled" : true
             },
             "usagesummary": {
               "filterName": "Usage Summary",
-              "filterType": "usagesummary"
+              "filterType": "usagesummary",
+              "enabled" : true
             },
             "sampledata": {
               "filterName": "Sample Data",
-              "filterType": "sampledata"
+              "filterType": "sampledata",
+              "enabled" : true
             },
             "queries": {
               "filterName": "Queries",
-              "filterType": "queries"
+              "filterType": "queries",
+              "enabled" : true
             },
             "updateowner": {
               "filterName": "Update Owner",
-              "filterType": "updateowner"
+              "filterType": "updateowner",
+              "enabled" : true
             }
           },
           "delete": {
             "filterName": "Entity Deleted",
-            "filterType": "entityDeleted"
+            "filterType": "entityDeleted",
+            "enabled" : true
           },
           "excludefrombots": {
             "filterName": "Exclude From Bots",
-            "filterType": "excludeFromBots"
+            "filterType": "excludeFromBots",
+            "enabled" : true
           }
         }
       }

@@ -39,6 +39,8 @@ import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
@@ -47,6 +49,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
 import org.openmetadata.catalog.type.*;
 import org.openmetadata.catalog.util.ChangeEventParser;
+import org.openmetadata.catalog.util.FilterUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 
@@ -90,13 +93,10 @@ public class ChangeEventHandler implements EventHandler {
       // for the event to appear in activity feeds
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
         // ignore usageSummary updates in the feed
-        boolean shouldIgnore = false;
-        if (List.of(Entity.TABLE, Entity.DASHBOARD).contains(changeEvent.getEntityType())
-            && changeEvent.getChangeDescription() != null) {
-          List<FieldChange> fields = changeEvent.getChangeDescription().getFieldsUpdated();
-          shouldIgnore = fields.stream().anyMatch(field -> field.getName().equals("usageSummary"));
-        }
-        if (!shouldIgnore) {
+        boolean filterEnabled = true;
+        Filter filter = FilterRegistry.getFilterForEntity(changeEvent.getEntityType());
+        filterEnabled = FilterUtil.shouldProcessRequest(changeEvent, filter);
+        if (filterEnabled) {
           for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message
             if (!thread.getMessage().isEmpty()) {

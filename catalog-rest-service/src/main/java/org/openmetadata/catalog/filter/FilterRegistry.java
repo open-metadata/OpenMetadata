@@ -1,10 +1,11 @@
 package org.openmetadata.catalog.filter;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FilterRegistry {
   private static final FilterRegistry registry = new FilterRegistry();
-  private static final Map<String, Filter> FILTER_LIST = new HashMap<>();
+  private static final ConcurrentHashMap<String, Filter> FILTER_LIST = new ConcurrentHashMap<>();
 
   private FilterRegistry() {}
 

@@ -6,8 +6,8 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.filter.Filter",
   "definitions": {
-    "metadataFiltersEnum": {
-      "javaType": "org.openmetadata.catalog.filter.MetadataFiltersEnum",
+    "filtersType": {
+      "javaType": "org.openmetadata.catalog.filter.FiltersType",
       "description": "This schema defines all possible filters enum in OpenMetadata.",
       "type": "string",
       "enum": [
@@ -40,17 +40,18 @@
         },
         "filterType": {
           "description": "Type of the filter",
-          "$ref": "#/definitions/metadataFiltersEnum"
+          "$ref": "#/definitions/filtersType"
         },
         "enabled": {
           "description": "Is the Filter Enabled",
           "type": "boolean",
           "default": true
         }
-      }
+      },
+      "additionalProperties": false
     },
-    "filters": {
-      "javaType": "org.openmetadata.catalog.filter.Filters",
+    "eventFilter": {
+      "javaType": "org.openmetadata.catalog.filter.EventFilters",
       "description": "This schema defines all possible filters in OpenMetadata.",
       "type": "object",
       "properties": {
@@ -73,7 +74,8 @@
           "description": "List of Filters Exclude from bots",
           "$ref": "#/definitions/basicFilter"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -83,7 +85,7 @@
     },
     "eventFilter": {
       "description": "List of operations supported by the resource.",
-      "$ref": "#/definitions/filters"
+      "$ref": "#/definitions/eventFilter"
     }
   },
   "required": ["entityType"],

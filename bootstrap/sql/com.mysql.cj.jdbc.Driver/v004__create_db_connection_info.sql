@@ -72,3 +72,11 @@ SET json = JSON_INSERT(json, '$.webhookType', 'generic');
 ALTER TABLE thread_entity
     ADD announcementStart BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.startTime'),
     ADD announcementEnd BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.endTime');
+
+CREATE TABLE IF NOT EXISTS openmetadata_settings (
+     id MEDIUMINT NOT NULL AUTO_INCREMENT,
+     config_type VARCHAR(36) NOT NULL,
+     json JSON NOT NULL,
+     PRIMARY KEY (id, config_type),
+     UNIQUE(config_type)
+ );

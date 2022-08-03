@@ -17,25 +17,6 @@
         "entitySoftDeleted",
         "entityDeleted"
       ]
-    },
-    "eventFilter": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.type.EventFilter",
-      "properties": {
-        "eventType": {
-          "description": "Event type that is being requested.",
-          "$ref": "#/definitions/eventType"
-        },
-        "entities": {
-          "description": "Entities for which the events are needed. Example - `table`, `topic`, etc. **When not set, events for all the entities will be provided**.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": ["eventType"],
-      "additionalProperties": false
     }
   },
   "properties": {

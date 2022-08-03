@@ -22,7 +22,7 @@
       "description": "Filters",
       "type": "array",
       "items": {
-        "$ref": "../type/changeEvent.json#/definitions/eventFilter"
+        "$ref": "../filter/filter.json"
       },
       "default": null
     },

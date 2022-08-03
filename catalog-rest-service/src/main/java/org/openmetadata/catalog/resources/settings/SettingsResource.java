@@ -140,9 +140,9 @@ public class SettingsResource {
   @PUT
   @Operation(
       operationId = "createOrUpdate",
-      summary = "Create or Update a Setting",
+      summary = "Update Setting",
       tags = "settings",
-      description = "Create or Update Existing Settings",
+      description = "Update Existing Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -158,9 +158,9 @@ public class SettingsResource {
   @Path("/authenticationConfiguration")
   @Operation(
       operationId = "createOrUpdateAuthenticationConfiguration",
-      summary = "Create or Update a Authentication Setting",
+      summary = "Update Authentication Setting",
       tags = "settings",
-      description = "Create or Update Authentication Settings",
+      description = "Update Authentication Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -181,9 +181,9 @@ public class SettingsResource {
   @Path("/authorizerConfiguration")
   @Operation(
       operationId = "createOrUpdateAuthorizationConfiguration",
-      summary = "Create or Update a Authorization Setting",
+      summary = "Update Authorization Setting",
       tags = "settings",
-      description = "Create or Update Authorization Settings",
+      description = "Update Authorization Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -204,9 +204,9 @@ public class SettingsResource {
   @Path("/jwtTokenConfiguration")
   @Operation(
       operationId = "createOrUpdateJWTConfiguration",
-      summary = "Create or Update a JWT Setting",
+      summary = "Update JWT Setting",
       tags = "settings",
-      description = "Create or Update JWT Settings",
+      description = "Update JWT Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -227,9 +227,9 @@ public class SettingsResource {
   @Path("/airflowConfiguration")
   @Operation(
       operationId = "createOrUpdateAirflowSettings",
-      summary = "Create or Update a Airflow Setting",
+      summary = "Update Airflow Setting",
       tags = "settings",
-      description = "Create or Update Existing Settings",
+      description = "Update Existing Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -247,9 +247,9 @@ public class SettingsResource {
   @Path("/elasticsearch")
   @Operation(
       operationId = "createOrUpdateElasticSearchConfiguration",
-      summary = "Create or Update a ES Setting",
+      summary = "Update ES Setting",
       tags = "settings",
-      description = "Create or Update ES Settings",
+      description = "Update ES Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -270,9 +270,9 @@ public class SettingsResource {
   @Path("/eventHandlerConfiguration")
   @Operation(
       operationId = "createOrUpdateEventHandlerConfiguration",
-      summary = "Create or Update a Event Handler Setting",
+      summary = "Update Event Handler Setting",
       tags = "settings",
-      description = "Create or Update Event Handler Settings",
+      description = "Update Event Handler Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -293,9 +293,9 @@ public class SettingsResource {
   @Path("/slackEventPublishers")
   @Operation(
       operationId = "createOrUpdateSlackPublisherConfiguration",
-      summary = "Create or Update a Slack Publisher Setting",
+      summary = "Update Slack Publisher Setting",
       tags = "settings",
-      description = "Create or Update Slack Publisher Settings",
+      description = "Update Slack Publisher Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -316,9 +316,9 @@ public class SettingsResource {
   @Path("/activityFeedFilterSetting")
   @Operation(
       operationId = "createOrUpdateActivityFeedConfiguration",
-      summary = "Create or Update activity feed Setting",
+      summary = "Update activity feed Setting",
       tags = "settings",
-      description = "Create or Update activity feed Settings",
+      description = "Update activity feed Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -334,9 +334,9 @@ public class SettingsResource {
   @Path("/secretsManagerConfiguration")
   @Operation(
       operationId = "createOrUpdateSecretManagerConfiguration",
-      summary = "Create or Update a Secret Manager Setting",
+      summary = "Update Secret Manager Setting",
       tags = "settings",
-      description = "Create or Update Secret Manager Settings",
+      description = "Update Secret Manager Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -357,9 +357,9 @@ public class SettingsResource {
   @Path("/slackChat")
   @Operation(
       operationId = "createOrUpdateSlackChatConfiguration",
-      summary = "Create or Update a Slack Chat Setting",
+      summary = "Update Slack Chat Setting",
       tags = "settings",
-      description = "Create or Update Slack Chat Settings",
+      description = "Update Slack Chat Settings",
       responses = {
         @ApiResponse(
             responseCode = "200",

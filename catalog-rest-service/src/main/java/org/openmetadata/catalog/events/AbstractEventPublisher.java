@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.events.errors.RetriableException;
+import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.EventFilter;
-import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.util.FilterUtil;
 
 @Slf4j
 public abstract class AbstractEventPublisher implements EventPublisher {
@@ -22,11 +22,11 @@ public abstract class AbstractEventPublisher implements EventPublisher {
 
   protected int currentBackoffTime = BACKOFF_NORMAL;
   protected final List<ChangeEvent> batch = new ArrayList<>();
-  protected final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
+  protected final ConcurrentHashMap<String, Filter> filter = new ConcurrentHashMap<>();
   private final int batchSize;
 
-  protected AbstractEventPublisher(int batchSize, List<EventFilter> filters) {
-    filters.forEach(f -> filter.put(f.getEventType(), f.getEntities()));
+  protected AbstractEventPublisher(int batchSize, List<Filter> filters) {
+    filters.forEach(f -> filter.put(f.getEntityType(), f));
     this.batchSize = batchSize;
   }
 
@@ -36,8 +36,8 @@ public abstract class AbstractEventPublisher implements EventPublisher {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.get();
     if (!filter.isEmpty()) {
-      List<String> entities = filter.get(changeEvent.getEventType());
-      if (entities == null || (!entities.get(0).equals("*") && !entities.contains(changeEvent.getEntityType()))) {
+      Filter entityFilter = filter.get(changeEvent.getEntityType());
+      if (entityFilter != null && !FilterUtil.shouldProcessRequest(changeEvent, entityFilter)) {
         return;
       }
     }

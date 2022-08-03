@@ -1,11 +1,17 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonPatch;
+import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.settings.Settings;
+import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -70,7 +76,7 @@ public class SettingsRepository {
   public Response patchSetting(String settingName, JsonPatch patch) throws JsonProcessingException {
     Settings original = getConfigWithKey(settingName);
     // Apply JSON patch to the original entity to get the updated entity
-    Object updated = JsonUtils.applyPatch(original.getConfigValue(), patch, Object.class);
+    JsonValue updated = JsonUtils.applyPatch(original.getConfigValue(), patch);
     original.setConfigValue(updated);
     try {
       updateSetting(original);
@@ -85,6 +91,11 @@ public class SettingsRepository {
     try {
       dao.getSettingsDAO()
           .insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
+      if (setting.getConfigType() == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
+        List<Filter> filterDetails =
+            JsonUtils.convertValue(setting.getConfigValue(), new TypeReference<ArrayList<Filter>>() {});
+        FilterRegistry.add(filterDetails);
+      }
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }

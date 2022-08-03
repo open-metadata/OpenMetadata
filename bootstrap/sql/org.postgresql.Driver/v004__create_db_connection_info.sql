@@ -66,3 +66,11 @@ SET json = JSONB_SET(json::jsonb, '{webhookType}', '"generic"', true);
 ALTER TABLE thread_entity
     ADD announcementStart BIGINT GENERATED ALWAYS AS ((json#>'{announcement,startTime}')::bigint) STORED,
     ADD announcementEnd BIGINT GENERATED ALWAYS AS ((json#>'{announcement,endTime}')::bigint) STORED;
+
+CREATE TABLE IF NOT EXISTS openmetadata_settings (
+     id MEDIUMINT NOT NULL AUTO_INCREMENT,
+     config_type VARCHAR(36) NOT NULL,
+     json JSONB NOT NULL,
+     PRIMARY KEY (id, config_type),
+     UNIQUE(config_type)
+ );
