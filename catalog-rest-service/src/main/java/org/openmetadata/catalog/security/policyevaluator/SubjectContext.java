@@ -15,72 +15,25 @@ package org.openmetadata.catalog.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import javax.annotation.CheckForNull;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jeasy.rules.api.Rules;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectContext {
-  // Cache used for caching subject context for a user
-  protected static final LoadingCache<String, SubjectContext> USER_CACHE =
-      CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new UserLoader());
-
-  protected static final LoadingCache<UUID, Team> TEAM_CACHE =
-      CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new TeamLoader());
   protected final User user;
 
   protected SubjectContext(User user) {
     this.user = user;
-  }
-
-  public static SubjectContext getSubjectContext(String userName) throws EntityNotFoundException {
-    try {
-      return USER_CACHE.get(userName);
-    } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
-    }
-  }
-
-  public static Team getTeam(UUID teamId) throws EntityNotFoundException {
-    try {
-      return TEAM_CACHE.get(teamId);
-    } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
-    }
-  }
-
-  public static void cleanup() {
-    USER_CACHE.invalidateAll();
-  }
-
-  public static void invalidateUser(String userName) {
-    try {
-      USER_CACHE.invalidate(userName);
-    } catch (Exception ex) {
-      LOG.error("Failed to invalidate cache for user {}", userName, ex);
-    }
   }
 
   public boolean isAdmin() {
@@ -118,9 +71,9 @@ public class SubjectContext {
     private final String entityName;
     private final String roleName;
     private final String policyName;
-    private final Rules rules;
+    private final List<CompiledRule> rules;
 
-    PolicyContext(String entity, String role, String policy, Rules rules) {
+    PolicyContext(String entity, String role, String policy, List<CompiledRule> rules) {
       this.entityName = entity;
       this.roleName = role;
       this.policyName = policy;
@@ -152,7 +105,8 @@ public class SubjectContext {
         throw new NoSuchElementException();
       }
       EntityReference policy = policies.get(policyIndex++);
-      return new PolicyContext(entityName, roleName, policy.getName(), PolicyCache.getPolicyRules(policy.getId()));
+      return new PolicyContext(
+          entityName, roleName, policy.getName(), PolicyCache.getInstance().getPolicyRules(policy.getId()));
     }
   }
 
@@ -179,7 +133,7 @@ public class SubjectContext {
             new PolicyIterator(
                 entityName,
                 roles.get(roleIndex).getName(),
-                RoleCache.getRole(roles.get(roleIndex).getId()).getPolicies());
+                RoleCache.getInstance().getRole(roles.get(roleIndex).getId()).getPolicies());
         roleIndex++;
       }
       return policyIterator.hasNext();
@@ -254,7 +208,7 @@ public class SubjectContext {
     TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited) {
       this.teamId = teamId;
       this.teamsVisited = teamsVisited;
-      this.team = SubjectContext.getTeam(teamId);
+      this.team = SubjectCache.getInstance().getTeam(teamId);
       iterators.add(new RolePolicyIterator(team.getName(), team.getDefaultRoles()));
       iterators.add(new PolicyIterator(team.getName(), null, team.getPolicies()));
     }
@@ -290,30 +244,6 @@ public class SubjectContext {
         throw new NoSuchElementException();
       }
       return iterators.get(iteratorIndex).next();
-    }
-  }
-
-  static class UserLoader extends CacheLoader<String, SubjectContext> {
-    private static final EntityRepository<User> USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
-    private static final Fields FIELDS = USER_REPOSITORY.getFields("roles, teams");
-
-    @Override
-    public SubjectContext load(@CheckForNull String userName) throws IOException {
-      User user = USER_REPOSITORY.getByName(null, userName, FIELDS);
-      LOG.info("Loaded user {}:{}", user.getName(), user.getId());
-      return new SubjectContext(user);
-    }
-  }
-
-  static class TeamLoader extends CacheLoader<UUID, Team> {
-    private static final EntityRepository<Team> TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
-    private static final Fields FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
-
-    @Override
-    public Team load(@NonNull UUID teamId) throws IOException {
-      Team team = TEAM_REPOSITORY.get(null, teamId.toString(), FIELDS);
-      LOG.info("Loaded team {}:{}", team.getName(), team.getId());
-      return team;
     }
   }
 }

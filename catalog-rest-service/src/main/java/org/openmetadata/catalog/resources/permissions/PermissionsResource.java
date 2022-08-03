@@ -53,6 +53,6 @@ public class PermissionsResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Permissions.class)))
       })
   public Permissions getPermissions(@Context SecurityContext securityContext) {
-    return new Permissions(authorizer.listPermissions(securityContext, null));
+    return new Permissions(authorizer.listPermissions(securityContext));
   }
 }

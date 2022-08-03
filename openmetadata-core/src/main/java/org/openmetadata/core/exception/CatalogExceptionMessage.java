@@ -13,7 +13,6 @@
 
 package org.openmetadata.core.exception;
 
-import java.security.Principal;
 import java.util.UUID;
 
 public final class CatalogExceptionMessage {
@@ -31,10 +30,6 @@ public final class CatalogExceptionMessage {
 
   public static String entityNotFound(String entityType, UUID id) {
     return entityNotFound(entityType, id.toString());
-  }
-
-  public static String entitiesNotFound(String entityType) {
-    return String.format("%s instances not found", entityType);
   }
 
   public static String readOnlyAttribute(String entityType, String attribute) {
@@ -57,67 +52,12 @@ public final class CatalogExceptionMessage {
     return String.format("User %s is deleted", id);
   }
 
-  public static String userAlreadyPartOfTeam(String userName, String teamName) {
-    return String.format("User '%s' is already part of the team '%s'", userName, teamName);
-  }
-
-  public static String invalidColumnFQN(String fqn) {
-    return String.format("Invalid fully qualified column name %s", fqn);
-  }
-
   public static String entityVersionNotFound(String entityType, String id, Double version) {
     return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
 
-  public static String invalidServiceEntity(String serviceType, String entityType, String expected) {
-    return String.format("Invalid service type `%s` for %s. Expected %s.", serviceType, entityType, expected);
-  }
-
-  public static String glossaryTermMismatch(String parentId, String glossaryId) {
-    return String.format(
-        "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s", parentId, glossaryId);
-  }
-
-  public static String notAdmin(Principal principal) {
-    return notAdmin(principal.getName());
-  }
-
-  public static String notAdmin(String name) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
-  }
-
-  public static String noPermission(Principal principal) {
-    return noPermission(principal.getName());
-  }
-
-  public static String noPermission(String name) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
-  }
-
-  public static String noPermission(Principal principal, String operation) {
-    return noPermission(principal.getName(), operation);
-  }
-
-  public static String noPermission(String name, String operation) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions to %s", name, operation);
-  }
-
-  public static String invalidPolicyOperationNull(String rule, String policy) {
-    return String.format("Found invalid rule %s within policy %s. Please ensure operation is non-null", rule, policy);
-  }
-
-  public static String invalidPolicyDuplicateOperation(String operation, String policy) {
-    return String.format(
-        "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
-        operation, policy);
-  }
-
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
-  }
-
-  public static String invalidEntity(String entity) {
-    return String.format("Invalid entity %s", entity);
   }
 
   public static String unknownCustomField(String fieldName) {

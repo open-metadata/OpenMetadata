@@ -11,35 +11,41 @@
       "type": "string"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName same as `name`.",
+      "description": "FullyQualifiedName in the form `policyName.ruleName`.",
       "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "entityTypeAttr": {
-      "description": "Entity type that the rule should match on.",
-      "type": "string",
-      "default": null
+    "description" : {
+      "description": "Description of the rule.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
     },
-    "entityTagAttr": {
-      "description": "Entity tag that the rule should match on.",
-      "$ref": "../../../type/tagLabel.json#/definitions/tagFQN",
-      "default": null
+    "effect" : {
+      "type" : "string",
+      "enum" : [
+        "allow",
+        "deny"
+      ]
     },
-    "operation": {
-      "description": "Operation on the entity.",
-      "$ref": "resourceDescriptor.json#/definitions/operation",
-      "default": null
+    "operations" : {
+      "description": "List of operation names related to the `resources`. Use `*` to include all the operations.",
+      "type" : "array",
+      "items" : {
+        "$ref": "resourceDescriptor.json#/definitions/operation"
+      },
+      "default" : null
     },
-    "allow": {
-      "description": "Allow or Deny operation on the entity.",
-      "type": "boolean",
-      "default": false
+    "resources": {
+      "description": "Resources/objects related to this rule. Resources are typically `entityTypes` such as `table`, `database`, etc. It also includes `non-entityType` resources such as `lineage`. Use `*` to include all the resources.",
+      "type": "array",
+      "items": {
+        "type" : "string"
+      },
+      "default" : null
     },
-    "deleted": {
-      "description": "Is the rule soft-deleted.",
-      "type": "boolean",
-      "default": false
+    "condition" : {
+      "description": "Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes.",
+      "$ref" : "../../../type/basic.json#/definitions/expression"
     }
   },
-  "required": ["name", "operation"],
+  "required": ["name", "effect", "operations", "resources"],
   "additionalProperties": false
 }

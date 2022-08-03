@@ -37,7 +37,7 @@ public class OperationContext {
     return operations;
   }
 
-  public boolean isEditOperation() {
+  public static boolean isEditOperation(List<MetadataOperation> operations) {
     for (MetadataOperation operation : operations) {
       if (!operation.value().startsWith("Edit")) {
         return false;
@@ -46,7 +46,7 @@ public class OperationContext {
     return true;
   }
 
-  public boolean isViewOperation() {
+  public static boolean isViewOperation(List<MetadataOperation> operations) {
     for (MetadataOperation operation : operations) {
       if (!operation.value().startsWith("View")) {
         return false;

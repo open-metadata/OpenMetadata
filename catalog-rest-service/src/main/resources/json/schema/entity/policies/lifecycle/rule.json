@@ -22,7 +22,6 @@
     "actions": {
       "description": "A set of actions to take on the entities.",
       "type": "array",
-      "minItems": 1,
       "items": {
         "anyOf": [
           {
