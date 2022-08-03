@@ -434,10 +434,6 @@ export const servicePageTabs = (entity: string) => [
     name: 'Connection',
     path: 'connection',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentServiceTab = (tab: string) => {
@@ -450,11 +446,6 @@ export const getCurrentServiceTab = (tab: string) => {
 
     case 'connection':
       currentTab = 3;
-
-      break;
-
-    case 'manage':
-      currentTab = 4;
 
       break;
 

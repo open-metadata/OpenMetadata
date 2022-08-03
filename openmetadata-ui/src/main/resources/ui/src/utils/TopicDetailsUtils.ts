@@ -41,10 +41,6 @@ export const topicDetailsTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentTopicTab = (tab: string) => {

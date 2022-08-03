@@ -41,10 +41,6 @@ export const pipelineDetailsTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentPipelineTab = (tab: string) => {

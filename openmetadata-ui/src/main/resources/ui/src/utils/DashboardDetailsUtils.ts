@@ -35,10 +35,6 @@ export const dashboardDetailsTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentDashboardTab = (tab: string) => {

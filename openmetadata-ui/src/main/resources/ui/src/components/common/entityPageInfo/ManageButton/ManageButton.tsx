@@ -25,6 +25,7 @@ interface Props {
   entityId?: string;
   entityType?: string;
   entityFQN?: string;
+  isRecursiveDelete?: boolean;
 }
 
 const ManageButton: FC<Props> = ({
@@ -32,6 +33,7 @@ const ManageButton: FC<Props> = ({
   entityType,
   entityId,
   entityFQN,
+  isRecursiveDelete,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -124,6 +126,7 @@ const ManageButton: FC<Props> = ({
           entityId={entityId || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}
+          isRecursiveDelete={isRecursiveDelete}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
         />
