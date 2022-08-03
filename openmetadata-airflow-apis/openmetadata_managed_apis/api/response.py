@@ -81,7 +81,7 @@ class ResponseFormat:
             runId=dag_run.run_id,
             startDate=datetime_to_ts(dag_run.start_date),
             endDate=datetime_to_ts(dag_run.end_date),
-            executionDate=datetime_to_ts(dag_run.execution_date),
+            timestamp=datetime_to_ts(dag_run.execution_date),
         )
 
     @staticmethod

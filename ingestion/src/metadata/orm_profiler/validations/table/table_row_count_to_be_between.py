@@ -21,13 +21,16 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
     TableRowCountToBeBetween,
 )
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
 def table_row_count_to_be_between(
-    test_case: TableRowCountToBeBetween,
+    test_case: TestCase,
+    test_definition: TestDefinition,
     table_profile: TableProfile,
     execution_date: datetime,
     **__,
@@ -44,18 +47,30 @@ def table_row_count_to_be_between(
         msg = "rowCount should not be None for TableRowCountToBeBetween"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
 
+    min_ = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "minValue"
+    )
+    max_ = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "maxValue"
+    )
+
     status = (
         TestCaseStatus.Success
-        if test_case.minValue <= table_profile.rowCount <= test_case.maxValue
+        if min_ <= table_profile.rowCount <= max_
         else TestCaseStatus.Failed
     )
-    result = f"Found {table_profile.rowCount} rows vs. the expected range [{test_case.minValue}, {test_case.maxValue}]."
-
+    result = (
+        f"Found {table_profile.rowCount} rows vs. the expected range [{min_}, {max_}]."
+    )
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

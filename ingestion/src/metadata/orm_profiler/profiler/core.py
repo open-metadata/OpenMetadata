@@ -14,8 +14,7 @@ Main Profile definition and queries to execute
 """
 import warnings
 from datetime import datetime
-from itertools import product
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type
+from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
@@ -23,12 +22,17 @@ from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from typing_extensions import Self
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
+    Table,
+    TableProfile,
+)
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
+    Metric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
@@ -67,6 +71,7 @@ class Profiler(Generic[TMetric]):
         *metrics: Type[TMetric],
         profiler_interface: InterfaceProtocol,
         table: DeclarativeMeta,
+        table_entity: Table,
         profile_date: datetime = datetime.now(),
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
@@ -88,6 +93,7 @@ class Profiler(Generic[TMetric]):
 
         self.profiler_interface = profiler_interface
         self._table = table
+        self.table_entity = table_entity
         self._metrics = metrics
         self._ignore_cols = ignore_cols
         self._use_cols = use_cols
@@ -154,17 +160,50 @@ class Profiler(Generic[TMetric]):
         by skipping the columns to ignore.
         """
 
-        if self.use_cols:
-            return self.use_cols
+        if self._columns:
+            return self._columns
 
-        ignore = self.ignore_cols if self.ignore_cols else {}
-
-        if not self._columns:
+        if self._get_included_columns():
             self._columns = [
-                column for column in inspect(self.table).c if column.name not in ignore
+                column
+                for column in inspect(self.table).c
+                if column.name in self._get_included_columns()
+            ]
+
+        if not self._get_included_columns():
+            self._columns = [
+                column
+                for column in inspect(self.table).c
+                if column.name not in self._get_excluded_columns()
             ]
 
         return self._columns
+
+    def _get_excluded_columns(self) -> Set[str]:
+        """Get excluded  columns from table"""
+        if (
+            self.table_entity.tableProfilerConfig
+            and self.table_entity.tableProfilerConfig.excludeColumns
+        ):
+            return {
+                excl_cln
+                for excl_cln in self.table_entity.tableProfilerConfig.excludeColumns
+            }
+
+        return {}
+
+    def _get_included_columns(self) -> Optional[Set[str]]:
+        if (
+            self.table_entity.tableProfilerConfig
+            and self.table_entity.tableProfilerConfig.includeColumns
+        ):
+            return {
+                incl_cln.columnName
+                for incl_cln in self.table_entity.tableProfilerConfig.includeColumns
+                if incl_cln.columnName not in self._get_excluded_columns()
+            }
+
+        return None
 
     def _filter_metrics(self, _type: Type[TMetric]) -> List[Type[TMetric]]:
         """
@@ -188,11 +227,28 @@ class Profiler(Generic[TMetric]):
     def query_metrics(self) -> List[Type[QueryMetric]]:
         return self._filter_metrics(QueryMetric)
 
-    @staticmethod
-    def get_col_metrics(metrics: List[Type[TMetric]]) -> List[Type[TMetric]]:
+    def get_col_metrics(
+        self, metrics: List[Type[TMetric]], column: Optional[Column] = None
+    ) -> List[Type[TMetric]]:
         """
         Filter list of metrics for column metrics with allowed types
         """
+
+        if column is None:
+            return [metric for metric in metrics if metric.is_col_metric()]
+
+        if (
+            self.table_entity.tableProfilerConfig
+            and self.table_entity.tableProfilerConfig.includeColumns
+        ):
+            metric_names = (
+                metric_array
+                for col_name, metric_array in self.table_entity.tableProfilerConfig.includeColumns
+                if col_name == column
+            )
+            if metric_names:
+                metrics = [Metric.get(metric_name) for metric_name in metric_names]
+
         return [metric for metric in metrics if metric.is_col_metric()]
 
     @property
@@ -271,7 +327,7 @@ class Profiler(Generic[TMetric]):
         column_metrics_for_thread_pool = [
             *[
                 (
-                    self.get_col_metrics(self.static_metrics),
+                    self.get_col_metrics(self.static_metrics, column),
                     MetricTypes.Static,
                     column,
                     self.table,
@@ -283,27 +339,33 @@ class Profiler(Generic[TMetric]):
             ],
             *[
                 (
-                    p[1],
+                    metric,
                     MetricTypes.Query,
-                    p[0],
+                    column,
                     self.table,
                     self._profile_sample,
                     self._partition_details,
                     self._profile_sample_query,
                 )
-                for p in product(self.columns, self.get_col_metrics(self.query_metrics))
+                for column in self.columns
+                for metric in self.get_col_metrics(self.query_metrics, column)
             ],
             *[
                 (
-                    p[1],
+                    metric,
                     MetricTypes.Window,
-                    p[0],
+                    column,
                     self.table,
                     self._profile_sample,
                     self._partition_details,
                     self._profile_sample_query,
                 )
-                for p in product(self.columns, window_metrics)
+                for column in self.columns
+                for metric in [
+                    metric
+                    for metric in self.get_col_metrics(self.static_metrics, column)
+                    if metric.is_window_metric()
+                ]
             ],
         ]
 
@@ -368,10 +430,9 @@ class Profiler(Generic[TMetric]):
             ]
 
             profile = TableProfile(
-                profileDate=self.profile_date.strftime("%Y-%m-%d"),
+                timestamp=self.profile_date.timestamp(),
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                columnNames=self._table_results.get(ColumnNames.name(), "").split(","),
                 columnProfile=computed_profiles,
                 profileQuery=self._profile_sample_query,
                 profileSample=self._profile_sample,

@@ -16,8 +16,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import Metric, add_props
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -62,6 +62,7 @@ class DefaultProfiler(Profiler):
         self,
         profiler_interface: SQAProfilerInterface,
         table: DeclarativeMeta,
+        table_entity: Table,
         ignore_cols: Optional[List[str]] = None,
         profile_date: datetime = datetime.now(),
         profile_sample: Optional[float] = None,
@@ -76,6 +77,7 @@ class DefaultProfiler(Profiler):
             *_metrics,
             profiler_interface=profiler_interface,
             table=table,
+            table_entity=table_entity,
             ignore_cols=ignore_cols,
             profile_date=profile_date,
             profile_sample=profile_sample,

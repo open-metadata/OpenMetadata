@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     Task,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
 
@@ -47,6 +48,7 @@ class OMetaPipelineMixin:
             f"{self.get_suffix(Pipeline)}/{pipeline.id.__root__}/status",
             data=status.json(),
         )
+
         return Pipeline(**resp)
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:
