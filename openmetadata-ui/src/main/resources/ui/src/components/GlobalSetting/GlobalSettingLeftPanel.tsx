@@ -27,10 +27,12 @@ const GlobalSettingLeftPanel = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
+  const isHasAccess = isAdminUser || isAuthDisabled;
+
   const history = useHistory();
   const items: ItemType[] = GLOBAL_SETTINGS_MENU.filter(({ isProtected }) => {
-    if (isAdminUser || isAuthDisabled) {
-      return true;
+    if (isHasAccess) {
+      return isHasAccess;
     }
 
     return !isProtected;
@@ -42,7 +44,7 @@ const GlobalSettingLeftPanel = () => {
       '',
       items,
       'group',
-      isAdminUser || isAuthDisabled
+      isHasAccess
     );
   });
 
