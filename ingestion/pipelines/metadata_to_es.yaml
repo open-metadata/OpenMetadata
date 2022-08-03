@@ -1,0 +1,18 @@
+source:
+  type: metadata_elasticsearch
+  serviceName: openMetadata
+  serviceConnection:
+    config:
+      type: MetadataES
+  sourceConfig:
+    config: {}
+sink:
+  type: elasticsearch
+  config:
+    es_host: localhost
+    es_port: 9200
+    recreate_indexes: true
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: no-auth

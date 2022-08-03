@@ -4,6 +4,9 @@ from typing import Type
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 def _clean(source_type: str):
@@ -12,6 +15,8 @@ def _clean(source_type: str):
     source_type = source_type.replace("_", "")
     if source_type == "sample":
         source_type = "sampledata"
+    if source_type == "metadataelasticsearch":
+        source_type = "metadataes"
     return source_type
 
 
