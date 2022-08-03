@@ -22,8 +22,8 @@ import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
-import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
-import IconAnnouncement from '../assets/svg/announcements.svg';
+import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
+import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
@@ -110,6 +110,7 @@ import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconUp from '../assets/svg/icon-up.svg';
@@ -289,7 +290,7 @@ export const Icons = {
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
-  ANNOUNCEMENT_WHITE: 'icon-announcement-white',
+  ANNOUNCEMENT_BLACK: 'icon-announcement-black',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -323,6 +324,7 @@ export const Icons = {
   TASK_CLOSED: 'task-closed',
   TASK_OPEN: 'task-open',
   FOREGIN_KEY: 'foreign-key',
+  ROLE_GREY: 'role-grey',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -379,6 +381,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO:
       IconComponent = Logo;
+
+      break;
+    case Icons.ROLE_GREY:
+      IconComponent = IconRoleGrey;
 
       break;
     case Icons.LOGO_SMALL:
@@ -800,15 +806,15 @@ const SVGIcons: FunctionComponent<Props> = ({
 
       break;
     case Icons.ANNOUNCEMENT:
-      IconComponent = IconAnnouncement;
+      IconComponent = IconAnnouncements;
+
+      break;
+    case Icons.ANNOUNCEMENT_BLACK:
+      IconComponent = IconAnnouncementsBlack;
 
       break;
     case Icons.REQUEST:
       IconComponent = IconRequest;
-
-      break;
-    case Icons.ANNOUNCEMENT_WHITE:
-      IconComponent = IconAnnouncementWhite;
 
       break;
     case Icons.CHEVRON_DOWN:

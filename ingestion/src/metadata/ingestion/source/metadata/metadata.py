@@ -74,6 +74,7 @@ class MetadataSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        self.service_connection = config.serviceConnection.__root__.config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
         self.tables = None

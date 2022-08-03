@@ -11,29 +11,25 @@
  *  limitations under the License.
  */
 
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { camelCase } from 'lodash';
+.team-list-container {
+  .ant-btn {
+    border-radius: 4px;
+  }
+}
 
-export const getGlobalSettingMenus = (
-  label: string,
-  key: string,
-  category?: string,
-  children?: string[],
-  type?: string
-): {
-  key: string;
-  children: ItemType[] | undefined;
-  label: string;
-  type: string | undefined;
-} => {
-  return {
-    key: `${category}.${key}`,
-    children: children
-      ? children.map((child) =>
-          getGlobalSettingMenus(child, camelCase(child), key)
-        )
-      : undefined,
-    label,
-    type,
-  };
-};
+.teams-list-table {
+  .ant-table-thead > tr > th {
+    font-weight: bold;
+    background: #fff;
+  }
+
+  .ant-table-row .ant-table-cell:first-child,
+  .ant-table-thead .ant-table-cell:first-child {
+    padding-left: 16px;
+  }
+
+  table {
+    border: 1px solid #dde3ea;
+    box-shadow: 1px 1px 3px 0px rgba(0, 0, 0, 0.12);
+  }
+}

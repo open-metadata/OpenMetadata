@@ -17,29 +17,20 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createChart import CreateChartRequest
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
-from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceRequest,
-)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -49,6 +40,10 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.lineage.sql_lineage import (
+    _create_lineage_by_table_name,
+    get_lineage_by_query,
+)
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
@@ -65,10 +60,6 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import (
-    _create_lineage_by_table_name,
-    get_lineage_by_query,
-)
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner

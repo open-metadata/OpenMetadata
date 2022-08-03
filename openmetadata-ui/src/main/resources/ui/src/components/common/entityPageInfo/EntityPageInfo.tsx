@@ -13,13 +13,12 @@
 
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Popover } from 'antd';
+import { Button, Popover, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { Tooltip } from 'react-tippy';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
@@ -46,14 +45,13 @@ import {
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
-import DeleteWidgetModal from '../DeleteWidget/DeleteWidgetModal';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
-import PopOver from '../popover/PopOver';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
+import ManageButton from './ManageButton/ManageButton';
 
 interface Props {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
@@ -119,12 +117,10 @@ const EntityPageInfo = ({
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-  const [showActions, setShowActions] = useState(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
     document.getElementById('version-and-follow-section')?.offsetWidth
   );
-  const [isDelete, setIsDelete] = useState<boolean>(false);
 
   const handleRequestTags = () => {
     history.push(getRequestTagsPath(entityType as string, entityFqn as string));
@@ -219,39 +215,33 @@ const EntityPageInfo = ({
 
   const getVersionButton = (version: string) => {
     return (
-      <div
-        className="tw-flex tw-h-6 tw-ml-2"
-        data-testid="version"
+      <Button
+        className={classNames(
+          'tw-border tw-border-primary tw-rounded',
+          !isUndefined(isVersionSelected) ? 'tw-text-white' : 'tw-text-primary'
+        )}
+        data-testid="version-button"
+        size="small"
+        type={!isUndefined(isVersionSelected) ? 'primary' : 'default'}
         onClick={versionHandler}>
-        <span
-          className={classNames(
-            'tw-flex tw-border tw-border-primary tw-rounded',
-            !isUndefined(isVersionSelected)
-              ? 'tw-bg-primary tw-text-white'
-              : 'tw-text-primary'
-          )}>
-          <button
-            className={classNames(
-              'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center tw-h-full tw-flex tw-items-center',
-              !isUndefined(isVersionSelected)
-                ? 'tw-border-white'
-                : 'tw-border-primary'
-            )}
-            data-testid="version-button">
+        <Space>
+          <span>
             <SVGIcons
               alt="version icon"
               icon={isVersionSelected ? 'icon-version-white' : 'icon-version'}
-            />{' '}
-            Versions
-          </button>
-
+            />
+            <span>Versions</span>
+          </span>
           <span
-            className="tw-text-xs tw-border-l-0 tw-font-medium tw-p-2 tw-rounded-r tw-cursor-pointer hover:tw-underline tw-flex tw-self-center"
+            className={classNames(
+              'tw-border-l tw-font-medium tw-cursor-pointer hover:tw-underline tw-pl-1',
+              { 'tw-border-primary': isUndefined(isVersionSelected) }
+            )}
             data-testid="version-value">
             {parseFloat(version).toFixed(1)}
           </span>
-        </span>
-      </div>
+        </Space>
+      </Button>
     );
   };
 
@@ -380,140 +370,100 @@ const EntityPageInfo = ({
     );
   });
 
-  const manageButtonContent = () => {
-    return (
-      <div
-        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
-        id="manage-button"
-        onClick={() => setIsDelete(true)}>
-        <SVGIcons alt="Delete" icon={Icons.DELETE_GRADIANT} />
-        <div className="tw-text-left" data-testid="delete-button">
-          <p className="tw-font-medium">
-            Delete {entityType} {entityName}
-          </p>
-          <p className="tw-text-grey-muted tw-text-xs">
-            Deleting this {entityType} will permanently remove its metadata from
-            OpenMetadata.
-          </p>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div data-testid="entity-page-info">
-      <div className="tw-flex tw-flex-col">
-        <div className="tw-flex tw-flex-initial tw-justify-between tw-items-start">
-          <div className="tw-flex tw-items-center">
-            <TitleBreadcrumb
-              titleLinks={titleLinks}
-              widthDeductions={
-                (versionFollowButtonWidth ? versionFollowButtonWidth : 0) + 30
-              }
-            />
-            {deleted && (
-              <>
-                <div
-                  className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
-                  data-testid="deleted-badge">
-                  <FontAwesomeIcon
-                    className="tw-mr-1"
-                    icon={faExclamationCircle}
-                  />
-                  Deleted
-                </div>
-              </>
-            )}
-          </div>
-          <div
-            className="tw-flex tw-py-1 tw-mt-1 tw-mr-4"
-            id="version-and-follow-section">
-            {!isUndefined(version) ? (
-              <>
-                {!isUndefined(isVersionSelected) ? (
-                  <PopOver
-                    html={
-                      <p className="tw-text-xs">
-                        Viewing older version <br />
-                        Go to latest to update details
-                      </p>
-                    }
-                    position="top"
-                    trigger="mouseenter">
-                    {getVersionButton(version)}
-                  </PopOver>
-                ) : (
-                  <>{getVersionButton(version as string)}</>
-                )}
-              </>
-            ) : null}
-            {!isUndefined(isFollowing) ? (
-              <div className="tw-flex tw-h-6 tw-ml-2">
-                <span
-                  className={classNames(
-                    'tw-flex tw-border tw-border-primary tw-rounded',
-                    isFollowing
-                      ? 'tw-bg-primary tw-text-white'
-                      : 'tw-text-primary'
-                  )}>
-                  <button
-                    className={classNames(
-                      'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center',
-                      isFollowing ? 'tw-border-white' : 'tw-border-primary',
-                      { 'tw-cursor-not-allowed': deleted }
-                    )}
-                    data-testid="follow-button"
-                    onClick={() => {
-                      !deleted && followHandler?.();
-                    }}>
-                    {isFollowing ? (
-                      <>
-                        <FontAwesomeIcon icon={faStar} /> Unfollow
-                      </>
-                    ) : (
-                      <>
-                        <FontAwesomeIcon icon={faStar} /> Follow
-                      </>
-                    )}
-                  </button>
-                  <PopOver
-                    className="tw-justify-center tw-items-center"
-                    html={getFollowers()}
-                    position="bottom"
-                    theme="light"
-                    trigger="click">
-                    <span
-                      className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
-                      data-testid="follower-value">
-                      {followers}
-                    </span>
-                  </PopOver>
-                </span>
-              </div>
-            ) : null}
-            <Button
-              className="tw-rounded tw-mb-1 tw-flex bg-[#D9CEEE] tw-ml-2 tw-border tw-border-primary"
-              data-testid="manage-button"
-              size="small"
-              type="default"
-              onClick={() => setShowActions(true)}>
-              <Tooltip
-                arrow
-                arrowSize="big"
-                html={manageButtonContent()}
-                open={showActions}
-                position="bottom-end"
-                theme="light"
-                onRequestClose={() => setShowActions(false)}>
+      <Space
+        align="start"
+        className="tw-justify-between"
+        style={{ width: '100%' }}>
+        <Space align="center">
+          <TitleBreadcrumb
+            titleLinks={titleLinks}
+            widthDeductions={
+              (versionFollowButtonWidth ? versionFollowButtonWidth : 0) + 30
+            }
+          />
+          {deleted && (
+            <>
+              <div
+                className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
+                data-testid="deleted-badge">
                 <FontAwesomeIcon
-                  className="tw-text-primary"
-                  icon="ellipsis-vertical"
+                  className="tw-mr-1"
+                  icon={faExclamationCircle}
                 />
-              </Tooltip>
+                Deleted
+              </div>
+            </>
+          )}
+        </Space>
+        <Space align="center" id="version-and-follow-section">
+          {!isUndefined(version) ? (
+            <>
+              {!isUndefined(isVersionSelected) ? (
+                <Tooltip
+                  placement="bottom"
+                  title={
+                    <p className="tw-text-xs">
+                      Viewing older version <br />
+                      Go to latest to update details
+                    </p>
+                  }
+                  trigger="hover">
+                  {getVersionButton(version)}
+                </Tooltip>
+              ) : (
+                <>{getVersionButton(version)}</>
+              )}
+            </>
+          ) : null}
+          {!isUndefined(isFollowing) ? (
+            <Button
+              className={classNames(
+                'tw-border tw-border-primary tw-rounded',
+                isFollowing ? 'tw-text-white' : 'tw-text-primary'
+              )}
+              data-testid="follow-button"
+              size="small"
+              type={isFollowing ? 'primary' : 'default'}
+              onClick={() => {
+                !deleted && followHandler?.();
+              }}>
+              <Space>
+                {isFollowing ? (
+                  <>
+                    <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
+                    Unfollow
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon className="tw-text-xs" icon={faStar} />
+                    Follow
+                  </>
+                )}
+                <Popover content={getFollowers()} trigger="click">
+                  <span
+                    className={classNames(
+                      'tw-border-l tw-font-medium tw-cursor-pointer hover:tw-underline tw-pl-1',
+                      { 'tw-border-primary': !isFollowing }
+                    )}
+                    data-testid="follower-value"
+                    onClick={(e) => e.stopPropagation()}>
+                    {followers}
+                  </span>
+                </Popover>
+              </Space>
             </Button>
-          </div>
-        </div>
-      </div>
+          ) : null}
+          <ManageButton
+            entityFQN={entityFqn}
+            entityId={entityId}
+            entityName={entityName}
+            entityType={entityType}
+          />
+        </Space>
+      </Space>
+
       <div
         className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap tw-items-center"
         data-testid="extrainfo">
@@ -632,13 +582,6 @@ const EntityPageInfo = ({
           onCancel={() => setIsViewMore(false)}
         />
       )}
-      <DeleteWidgetModal
-        entityId={entityId || ''}
-        entityName={entityName || ''}
-        entityType={entityType || ''}
-        visible={isDelete}
-        onCancel={() => setIsDelete(false)}
-      />
     </div>
   );
 };

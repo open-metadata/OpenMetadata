@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 
@@ -27,7 +28,8 @@ public class DatabaseServiceRepository extends ServiceRepository<DatabaseService
         dao,
         dao.dbServiceDAO(),
         secretsManager,
-        DatabaseConnection.class);
+        DatabaseConnection.class,
+        ServiceType.DATABASE);
   }
 
   @Override

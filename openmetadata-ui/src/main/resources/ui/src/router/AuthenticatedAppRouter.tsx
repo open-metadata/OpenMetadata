@@ -357,6 +357,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.SETTINGS_WITH_TAB}>
         {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
       </Route>
+      <Route
+        exact
+        component={GlobalSettingPage}
+        path={ROUTES.SETTINGS_WITH_TAB_FQN}>
+        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
+      </Route>
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

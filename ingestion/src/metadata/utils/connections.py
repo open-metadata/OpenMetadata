@@ -16,7 +16,6 @@ import json
 import logging
 import os
 import traceback
-from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
@@ -30,6 +29,25 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session
 from sqlalchemy.pool import QueuePool
 
+from metadata.clients.connection_clients import (
+    AirByteClient,
+    DatalakeClient,
+    DeltaLakeClient,
+    DynamoClient,
+    FivetranClient,
+    GlueDBClient,
+    GluePipelineClient,
+    KafkaClient,
+    LookerClient,
+    MetabaseClient,
+    MlflowClientWrapper,
+    ModeClient,
+    PowerBiClient,
+    RedashClient,
+    SalesforceClient,
+    SupersetClient,
+    TableauClient,
+)
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
 )
@@ -102,25 +120,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.glueConnecti
     GlueConnection as GluePipelineConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
-from metadata.utils.connection_clients import (
-    AirByteClient,
-    DatalakeClient,
-    DeltaLakeClient,
-    DynamoClient,
-    FivetranClient,
-    GlueDBClient,
-    GluePipelineClient,
-    KafkaClient,
-    LookerClient,
-    MetabaseClient,
-    MlflowClientWrapper,
-    ModeClient,
-    PowerBiClient,
-    RedashClient,
-    SalesforceClient,
-    SupersetClient,
-    TableauClient,
-)
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
@@ -241,7 +240,7 @@ def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
 
 @get_connection.register
 def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
-    from metadata.utils.aws_client import AWSClient
+    from metadata.clients.aws_client import AWSClient
 
     dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
     return dynomo_connection
@@ -249,7 +248,7 @@ def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
 
 @get_connection.register
 def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
-    from metadata.utils.aws_client import AWSClient
+    from metadata.clients.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_db_client()
     return glue_connection
@@ -259,7 +258,7 @@ def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
 def _(
     connection: GluePipelineConnection, verbose: bool = False
 ) -> GluePipelineConnection:
-    from metadata.utils.aws_client import AWSClient
+    from metadata.clients.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_pipeline_client()
     return glue_connection
@@ -325,7 +324,7 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
-    from confluent_kafka.admin import AdminClient, ConfigResource
+    from confluent_kafka.admin import AdminClient
     from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.schema_registry.schema_registry_client import (
         SchemaRegistryClient,
@@ -573,7 +572,7 @@ def _(connection: AirflowConnection) -> None:
 
 @get_connection.register
 def _(connection: AirbyteConnection, verbose: bool = False):
-    from metadata.utils.airbyte_client import AirbyteClient
+    from metadata.clients.airbyte_client import AirbyteClient
 
     return AirByteClient(AirbyteClient(connection))
 
@@ -590,7 +589,7 @@ def _(connection: AirByteClient) -> None:
 
 @get_connection.register
 def _(connection: FivetranConnection, verbose: bool = False):
-    from metadata.utils.fivetran_client import FivetranClient as FivetranRestClient
+    from metadata.clients.fivetran_client import FivetranClient as FivetranRestClient
 
     return FivetranClient(FivetranRestClient(connection))
 
@@ -690,8 +689,6 @@ def _(connection: TableauConnection, verbose: bool = False):
 
 @test_connection.register
 def _(connection: TableauClient) -> None:
-    from tableau_api_lib.utils.querying import get_workbooks_dataframe
-
     try:
         connection.client.server_info()
 
@@ -703,7 +700,7 @@ def _(connection: TableauClient) -> None:
 
 @get_connection.register
 def _(connection: PowerBIConnection, verbose: bool = False):
-    from metadata.utils.powerbi_client import PowerBiApiClient
+    from metadata.clients.powerbi_client import PowerBiApiClient
 
     return PowerBiClient(PowerBiApiClient(connection))
 
@@ -789,7 +786,7 @@ def _(connection: DatalakeConnection, verbose: bool = False) -> DatalakeClient:
 
 @get_datalake_client.register
 def _(config: S3Config):
-    from metadata.utils.aws_client import AWSClient
+    from metadata.clients.aws_client import AWSClient
 
     s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
     return s3_client
@@ -806,7 +803,7 @@ def _(config: GCSConfig):
 
 @get_connection.register
 def _(connection: ModeConnection, verbose: bool = False):
-    from metadata.utils.mode_client import ModeApiClient
+    from metadata.clients.mode_client import ModeApiClient
 
     return ModeClient(ModeApiClient(connection))
 

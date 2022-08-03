@@ -17,6 +17,7 @@ import { UserProfile } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
@@ -42,6 +43,7 @@ const Signup = () => {
     name: getNameFromEmail(appState.newUser.email),
     email: appState.newUser.email || '',
   });
+  const { setIsSigningIn } = useAuthContext();
 
   const history = useHistory();
 
@@ -73,6 +75,7 @@ const Signup = () => {
           fetchAllUsers();
           getUserPermissions();
           cookieStorage.removeItem(REDIRECT_PATHNAME);
+          setIsSigningIn(false);
           history.push(ROUTES.HOME);
         } else {
           setLoading(false);

@@ -14,6 +14,7 @@ import traceback
 from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
+from metadata.clients import mode_client
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -33,11 +34,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn, mode_client
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import search_table_entities
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner

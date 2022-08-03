@@ -85,7 +85,7 @@ export interface TeamsAndUsersProps {
 
 export interface TeamDetailsProp {
   currentTeam: Team;
-  teams: Team[];
+  teams?: Team[];
   currentTeamUsers: User[];
   teamUserPagin: Paging;
   currentTeamUserPage: number;

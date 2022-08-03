@@ -1252,15 +1252,15 @@ code {
 }
 
 .data-box.Successful {
-  background-color: #07a35a;
+  background-color: #28a745;
 }
 
 .data-box.Failed {
-  background-color: #e54937;
+  background-color: #cb2431;
 }
 
 .data-box.Pending {
-  background-color: #276ef1;
+  background-color: #1890ff;
 }
 
 .exec-date-time {
