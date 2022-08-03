@@ -104,10 +104,6 @@ export const getCurrentDatasetTab = (tab: string) => {
       currentTab = 9;
 
       break;
-    case 'manage':
-      currentTab = 10;
-
-      break;
 
     case 'schema':
     default:

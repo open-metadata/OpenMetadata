@@ -55,10 +55,7 @@ export const getCurrentMlModelTab = (tab: string) => {
       currentTab = 4;
 
       break;
-    case 'manage':
-      currentTab = 5;
 
-      break;
     case 'features':
       currentTab = 1;
 

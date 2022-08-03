@@ -166,9 +166,6 @@ const DatasetDetailsProps = {
   handleExtentionUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
 };
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
-});
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
@@ -239,7 +236,6 @@ describe('Test MyDataDetailsPage page', () => {
     const profilerTab = await findByTestId(tabs, 'Profiler');
     const dataQualityTab = await findByTestId(tabs, 'Data Quality');
     const lineageTab = await findByTestId(tabs, 'Lineage');
-    const manageTab = await findByTestId(tabs, 'Manage');
     const dbtTab = queryByTestId(tabs, 'DBT');
 
     expect(relatedTables).toBeInTheDocument();
@@ -253,7 +249,6 @@ describe('Test MyDataDetailsPage page', () => {
     expect(profilerTab).toBeInTheDocument();
     expect(dataQualityTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
     expect(dbtTab).not.toBeInTheDocument();
   });
 
@@ -336,18 +331,6 @@ describe('Test MyDataDetailsPage page', () => {
     const lineage = await findByTestId(container, 'lineage');
 
     expect(lineage).toBeInTheDocument();
-  });
-
-  it('Check if active tab is manage', async () => {
-    const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={10} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const manage = await findByTestId(container, 'manage');
-
-    expect(manage).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {

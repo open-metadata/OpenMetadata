@@ -70,10 +70,6 @@ export const getCurrentTopicTab = (tab: string) => {
       currentTab = 6;
 
       break;
-    case 'manage':
-      currentTab = 7;
-
-      break;
 
     case 'schema':
     default:

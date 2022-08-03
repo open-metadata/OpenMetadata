@@ -59,11 +59,6 @@ export const getCurrentDashboardTab = (tab: string) => {
 
       break;
 
-    case 'manage':
-      currentTab = 5;
-
-      break;
-
     case 'details':
     default:
       currentTab = 1;
