@@ -27,6 +27,7 @@ import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
@@ -58,8 +59,13 @@ public class MessagingServiceResourceUnitTest
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreateMessagingService.MessagingServiceType.Kafka.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.MESSAGING;
   }
 
   @Override

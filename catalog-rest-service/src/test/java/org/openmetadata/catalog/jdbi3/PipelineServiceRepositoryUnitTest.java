@@ -6,12 +6,17 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType.Airflow;
 
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.type.PipelineConnection;
 
 public class PipelineServiceRepositoryUnitTest
     extends ServiceRepositoryTest<PipelineServiceRepository, PipelineService, PipelineConnection> {
+
+  protected PipelineServiceRepositoryUnitTest() {
+    super(ServiceType.PIPELINE);
+  }
 
   @Override
   protected PipelineServiceRepository newServiceRepository(CollectionDAO collectionDAO, SecretsManager secretsManager) {

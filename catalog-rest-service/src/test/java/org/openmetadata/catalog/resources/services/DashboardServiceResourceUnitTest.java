@@ -27,6 +27,7 @@ import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
@@ -58,8 +59,13 @@ public class DashboardServiceResourceUnitTest
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreateDashboardService.DashboardServiceType.Tableau.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.DASHBOARD;
   }
 
   @Override

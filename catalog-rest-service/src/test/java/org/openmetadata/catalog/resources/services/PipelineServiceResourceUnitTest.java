@@ -29,6 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
@@ -61,8 +62,13 @@ public class PipelineServiceResourceUnitTest
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreatePipelineService.PipelineServiceType.Airflow.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.PIPELINE;
   }
 
   @Override

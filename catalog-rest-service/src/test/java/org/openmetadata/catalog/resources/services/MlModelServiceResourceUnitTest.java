@@ -29,6 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
 import org.openmetadata.catalog.entity.services.MlModelService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MlModelServiceRepository;
 import org.openmetadata.catalog.resources.services.mlmodel.MlModelServiceResource;
@@ -60,8 +61,13 @@ public class MlModelServiceResourceUnitTest
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreateMlModelService.MlModelServiceType.Mlflow.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.ML_MODEL;
   }
 
   @Override

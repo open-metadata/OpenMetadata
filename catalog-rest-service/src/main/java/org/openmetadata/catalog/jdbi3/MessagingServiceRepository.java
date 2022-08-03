@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.MessagingConnection;
@@ -30,7 +31,8 @@ public class MessagingServiceRepository extends ServiceRepository<MessagingServi
         dao.messagingServiceDAO(),
         secretsManager,
         MessagingConnection.class,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        ServiceType.MESSAGING);
   }
 
   @Override

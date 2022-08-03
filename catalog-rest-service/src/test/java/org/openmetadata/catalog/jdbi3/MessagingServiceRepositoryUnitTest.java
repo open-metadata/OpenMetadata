@@ -6,12 +6,17 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType.Kafka;
 
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.type.MessagingConnection;
 
 public class MessagingServiceRepositoryUnitTest
     extends ServiceRepositoryTest<MessagingServiceRepository, MessagingService, MessagingConnection> {
+
+  protected MessagingServiceRepositoryUnitTest() {
+    super(ServiceType.MESSAGING);
+  }
 
   @Override
   protected MessagingServiceRepository newServiceRepository(

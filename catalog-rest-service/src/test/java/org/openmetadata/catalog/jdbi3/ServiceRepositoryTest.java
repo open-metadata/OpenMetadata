@@ -1,11 +1,9 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.secrets.SecretsManager;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +35,12 @@ public abstract class ServiceRepositoryTest<
   protected R service;
 
   protected S serviceConnection;
+
+  private final ServiceType expectedServiceType;
+
+  protected ServiceRepositoryTest(ServiceType serviceType) {
+    this.expectedServiceType = serviceType;
+  }
 
   @BeforeEach
   void beforeEach() {
@@ -57,28 +62,33 @@ public abstract class ServiceRepositoryTest<
     when(service.getName()).thenReturn("local");
     when(secretsManager.isLocal()).thenReturn(true);
     ArgumentCaptor<String> serviceNameCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<ServiceType> serviceTypeCaptor = ArgumentCaptor.forClass(ServiceType.class);
 
     serviceRepository.storeEntity(service, true);
 
     verify(serviceConnection, times(2)).getConfig();
-    verify(serviceConnection, never()).setConfig(any());
-    verify(secretsManager).encryptOrDecryptServiceConnection(any(), any(), serviceNameCaptor.capture(), anyBoolean());
+    verify(serviceConnection).setConfig(isNull());
+    verify(secretsManager)
+        .encryptOrDecryptServiceConnectionConfig(
+            any(), any(), serviceNameCaptor.capture(), serviceTypeCaptor.capture(), anyBoolean());
     assertEquals("local", serviceNameCaptor.getValue());
+    assertEquals(expectedServiceType, serviceTypeCaptor.getValue());
   }
 
   @Test
   void testStoreEntityCallCorrectlyNotLocalSecretManager() throws IOException {
     when(service.getName()).thenReturn("not-local");
-    ArgumentCaptor<Object> configCaptor = ArgumentCaptor.forClass(Object.class);
     ArgumentCaptor<String> serviceNameCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<ServiceType> serviceTypeCaptor = ArgumentCaptor.forClass(ServiceType.class);
 
     serviceRepository.storeEntity(service, true);
 
     verify(serviceConnection, times(2)).getConfig();
-    verify(serviceConnection, times(2)).setConfig(configCaptor.capture());
-    verify(secretsManager).encryptOrDecryptServiceConnection(any(), any(), serviceNameCaptor.capture(), anyBoolean());
-    assertNull(configCaptor.getAllValues().get(0));
-    assertNotNull(configCaptor.getAllValues().get(1));
+    verify(serviceConnection, times(2)).setConfig(isNull());
+    verify(secretsManager)
+        .encryptOrDecryptServiceConnectionConfig(
+            any(), any(), serviceNameCaptor.capture(), serviceTypeCaptor.capture(), anyBoolean());
     assertEquals("not-local", serviceNameCaptor.getValue());
+    assertEquals(expectedServiceType, serviceTypeCaptor.getValue());
   }
 }

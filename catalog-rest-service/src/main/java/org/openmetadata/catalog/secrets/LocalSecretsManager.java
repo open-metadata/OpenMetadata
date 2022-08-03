@@ -7,6 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
@@ -30,13 +31,9 @@ public class LocalSecretsManager extends SecretsManager {
 
   @Override
   public Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig,
-      String connectionType,
-      String connectionName,
-      String connectionPackage,
-      boolean encrypt) {
+      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
     try {
-      Class<?> clazz = createConnectionConfigClass(connectionType, connectionPackage);
+      Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
       Object newConnectionConfig = JsonUtils.convertValue(connectionConfig, clazz);
       encryptOrDecryptField(newConnectionConfig, "Password", clazz, encrypt);
       return newConnectionConfig;

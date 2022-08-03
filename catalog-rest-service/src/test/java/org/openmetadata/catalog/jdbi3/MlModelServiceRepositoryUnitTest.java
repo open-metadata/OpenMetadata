@@ -6,12 +6,17 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.catalog.api.services.CreateMlModelService.MlModelServiceType.Mlflow;
 
 import org.openmetadata.catalog.entity.services.MlModelService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.type.MlModelConnection;
 
 public class MlModelServiceRepositoryUnitTest
     extends ServiceRepositoryTest<MlModelServiceRepository, MlModelService, MlModelConnection> {
+
+  protected MlModelServiceRepositoryUnitTest() {
+    super(ServiceType.ML_MODEL);
+  }
 
   @Override
   protected MlModelServiceRepository newServiceRepository(CollectionDAO collectionDAO, SecretsManager secretsManager) {

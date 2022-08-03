@@ -7,11 +7,16 @@ import static org.openmetadata.catalog.api.services.CreateDatabaseService.Databa
 
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 
 public class DatabaseServiceRepositoryUnitTest
     extends ServiceRepositoryTest<DatabaseServiceRepository, DatabaseService, DatabaseConnection> {
+
+  protected DatabaseServiceRepositoryUnitTest() {
+    super(ServiceType.DATABASE);
+  }
 
   @Override
   protected DatabaseServiceRepository newServiceRepository(CollectionDAO collectionDAO, SecretsManager secretsManager) {

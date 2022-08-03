@@ -28,6 +28,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
@@ -58,8 +59,13 @@ public class DatabaseServiceResourceUnitTest
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreateDatabaseService.DatabaseServiceType.Mysql.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.DATABASE;
   }
 
   @Override

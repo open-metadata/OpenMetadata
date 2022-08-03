@@ -7,6 +7,7 @@ import java.io.IOException;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -20,17 +21,21 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
 
   protected final SecretsManager secretsManager;
 
+  private final ServiceType serviceType;
+
   protected ServiceRepository(
       String collectionPath,
       String service,
       CollectionDAO dao,
       EntityDAO<T> entityDAO,
       SecretsManager secretsManager,
-      Class<S> serviceConnectionClass) {
+      Class<S> serviceConnectionClass,
+      ServiceType serviceType) {
     super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", UPDATE_FIELDS);
     this.allowEdits = true;
     this.secretsManager = secretsManager;
     this.serviceConnectionClass = serviceConnectionClass;
+    this.serviceType = serviceType;
   }
 
   protected ServiceRepository(
@@ -40,11 +45,13 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
       EntityDAO<T> entityDAO,
       SecretsManager secretsManager,
       Class<S> serviceConnectionClass,
-      String updatedFields) {
+      String updatedFields,
+      ServiceType serviceType) {
     super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
     this.allowEdits = true;
     this.secretsManager = secretsManager;
     this.serviceConnectionClass = serviceConnectionClass;
+    this.serviceType = serviceType;
   }
 
   @Override
@@ -71,24 +78,25 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
     // Don't store owner, service, href and tags as JSON. Build it on the fly based on relationships
     service.withOwner(null).withHref(null);
 
-    Object connectionConfig = service.getConnection().getConfig();
-
-    // encrypt connection config in case of local secret manager, otherwise, nullify since it will be kept outside OM
-    // server
+    // encrypt connection config in case of local secret manager
     if (secretsManager.isLocal()) {
-      secretsManager.encryptOrDecryptServiceConnection(
-          service.getConnection(), getServiceType(service), service.getName(), true);
+      service
+          .getConnection()
+          .setConfig(
+              secretsManager.encryptOrDecryptServiceConnectionConfig(
+                  service.getConnection().getConfig(), getServiceType(service), service.getName(), serviceType, true));
+      store(service.getId(), service, update);
     } else {
+      // otherwise, nullify the config since it will be kept outside OM
+      Object connectionConfig = service.getConnection().getConfig();
       service.getConnection().setConfig(null);
-    }
-
-    store(service.getId(), service, update);
-
-    // save connection using the secret manager when it is not local after ensuring the service was stored
-    if (!secretsManager.isLocal()) {
-      service.getConnection().setConfig(connectionConfig);
-      secretsManager.encryptOrDecryptServiceConnection(
-          service.getConnection(), getServiceType(service), service.getName(), true);
+      store(service.getId(), service, update);
+      // save connection in the secret manager after storing the service
+      service
+          .getConnection()
+          .setConfig(
+              secretsManager.encryptOrDecryptServiceConnectionConfig(
+                  connectionConfig, getServiceType(service), service.getName(), serviceType, true));
     }
 
     // Restore the relationships
@@ -125,16 +133,25 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
         String updatedJson = JsonUtils.pojoToJson(updatedConn);
         S decryptedOrigConn = JsonUtils.readValue(origJson, serviceConnectionClass);
         S decryptedUpdatedConn = JsonUtils.readValue(updatedJson, serviceConnectionClass);
-        secretsManager.encryptOrDecryptServiceConnection(
-            decryptedOrigConn, getServiceType(original), original.getName(), false);
-        secretsManager.encryptOrDecryptServiceConnection(
-            decryptedUpdatedConn, getServiceType(updated), updated.getName(), false);
+        decryptedOrigConn.setConfig(
+            secretsManager.encryptOrDecryptServiceConnectionConfig(
+                decryptedOrigConn.getConfig(), getServiceType(original), original.getName(), serviceType, false));
+        decryptedUpdatedConn.setConfig(
+            secretsManager.encryptOrDecryptServiceConnectionConfig(
+                decryptedUpdatedConn.getConfig(), getServiceType(updated), updated.getName(), serviceType, false));
         if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
           recordChange("connection", origConn, updatedConn, true);
         }
       } else {
-        secretsManager.encryptOrDecryptServiceConnection(
-            original.getConnection(), getServiceType(original), original.getName(), false);
+        original
+            .getConnection()
+            .setConfig(
+                secretsManager.encryptOrDecryptServiceConnectionConfig(
+                    original.getConnection().getConfig(),
+                    getServiceType(original),
+                    original.getName(),
+                    serviceType,
+                    false));
         String origJson = JsonUtils.pojoToJson(original.getConnection());
         String updatedJson = JsonUtils.pojoToJson(updated.getConnection());
         original.getConnection().setConfig(null);
