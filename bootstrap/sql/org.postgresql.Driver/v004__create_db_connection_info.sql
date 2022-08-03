@@ -68,9 +68,9 @@ ALTER TABLE thread_entity
     ADD announcementEnd BIGINT GENERATED ALWAYS AS ((json#>'{announcement,endTime}')::bigint) STORED;
 
 CREATE TABLE IF NOT EXISTS openmetadata_settings (
-     id MEDIUMINT NOT NULL AUTO_INCREMENT,
+     id SERIAL NOT NULL ,
      config_type VARCHAR(36) NOT NULL,
-     json JSONB NOT NULL,
+     json JSON NOT NULL,
      PRIMARY KEY (id, config_type),
      UNIQUE(config_type)
  );
