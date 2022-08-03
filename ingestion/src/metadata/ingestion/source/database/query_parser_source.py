@@ -11,11 +11,13 @@
 """
 Usage Souce Module
 """
-from abc import ABC
+from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Iterator, Optional, Union
 
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -34,7 +36,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class QueryParserSource(Source[TableQuery], ABC):
+class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
     """
     Core class to be inherited for sources that
     parse query logs, be it for usage or lineage.
@@ -61,6 +63,12 @@ class QueryParserSource(Source[TableQuery], ABC):
         By default, there's nothing to prepare
         """
 
+    @abstractmethod
+    def get_table_query(self) -> Optional[Iterator[TableQuery]]:
+        """
+        Overwrite to load table queries from log files
+        """
+
     @staticmethod
     def get_database_name(data: dict) -> str:
         """
@@ -84,7 +92,9 @@ class QueryParserSource(Source[TableQuery], ABC):
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """
-        returns sql statement to fetch query logs
+        returns sql statement to fetch query logs.
+
+        Override if we have specific parameters
         """
         return self.sql_stmt.format(start_time=start_time, end_time=end_time)
 

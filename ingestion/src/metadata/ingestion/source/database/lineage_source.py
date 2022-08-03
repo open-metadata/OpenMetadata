@@ -9,13 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Usage Souce Module
+Lineage Source Module
 """
 import csv
 import traceback
 from abc import ABC
-from typing import Generator, Optional
+from typing import Iterable, Iterator, Optional
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -24,6 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
@@ -47,10 +49,12 @@ class LineageSource(QueryParserSource, ABC):
     - schema
     """
 
-    def next_record(self) -> Optional[Generator[TableQuery]]:
+    def get_table_query(self) -> Optional[Iterator[TableQuery]]:
         """
         If queryLogFilePath available in config iterate through log file
-        otherwise execute the sql query to fetch TableQuery data
+        otherwise execute the sql query to fetch TableQuery data.
+
+        This is a simplified version of the UsageSource query parsing.
         """
         if self.config.sourceConfig.config.queryLogFilePath:
             with open(self.config.sourceConfig.config.queryLogFilePath, "r") as file:
@@ -82,7 +86,7 @@ class LineageSource(QueryParserSource, ABC):
                             self.get_database_name(row),
                         ) or filter_by_schema(
                             self.source_config.schemaFilterPattern,
-                            schema_name=row["schema_name"],
+                            schema_name=self.get_schema_name(query_dict),
                         ):
                             continue
                         yield TableQuery(
@@ -92,9 +96,28 @@ class LineageSource(QueryParserSource, ABC):
                             databaseSchema=self.get_schema_name(query_dict),
                         )
                     except Exception as err:
+                        logger.error(
+                            f"Error processing query_dict {query_dict} - {err}"
+                        )
                         logger.debug(traceback.format_exc())
-                        logger.error(str(err))
-
             except Exception as err:
+                logger.error(f"Source usage processing error - {err}")
                 logger.debug(traceback.format_exc())
-                logger.error(str(err))
+
+    def next_record(self) -> Iterable[AddLineageRequest]:
+        """
+        Based on the query logs, prepare the lineage
+        and send it to the sink
+        """
+        for table_query in self.get_table_query():
+
+            lineages = get_lineage_by_query(
+                self.metadata,
+                query=table_query.query,
+                service_name=table_query.serviceName,
+                database_name=table_query.databaseName,
+                schema_name=table_query.databaseSchema,
+            )
+
+            for lineage_request in lineages or []:
+                yield lineage_request

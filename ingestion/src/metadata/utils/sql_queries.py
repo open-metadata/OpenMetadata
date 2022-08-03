@@ -172,7 +172,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
             ORDER BY "schema", "table_name", "attnum";
             """
 
-SNOWFLAKE_SQL_STATEMENT = """
+SNOWFLAKE_USAGE_SQL_STATEMENT = """
         SELECT 
           query_type,
           query_text,
@@ -192,6 +192,25 @@ SNOWFLAKE_SQL_STATEMENT = """
           AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
         """
+
+SNOWFLAKE_LINEAGE_SQL_STATEMENT = """
+        SELECT 
+          query_type,
+          query_text,
+          database_name,
+          schema_name,
+        FROM table(
+          information_schema.query_history(
+            end_time_range_start => to_timestamp_ltz('{start_time}'),
+            end_time_range_end => to_timestamp_ltz('{end_time}'),
+            RESULT_LIMIT => {result_limit}
+            )
+        )
+        WHERE QUERY_TYPE IN ()
+          AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
+        """
+
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
 NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(

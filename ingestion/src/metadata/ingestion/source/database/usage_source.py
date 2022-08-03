@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Usage Souce Module
+Usage Source Module
 """
 import csv
 import traceback
@@ -37,7 +37,13 @@ logger = ingestion_logger()
 
 
 class UsageSource(QueryParserSource, ABC):
-    def _get_raw_extract_iter(self) -> Optional[Iterable[TableQuery]]:
+    """
+    Base class for all usage ingestion.
+
+    Parse a query log to extract a `TableQuery` object
+    """
+
+    def get_table_query(self) -> Optional[Iterable[TableQuery]]:
         """
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data
@@ -114,10 +120,10 @@ class UsageSource(QueryParserSource, ABC):
                                 logger.error(str(err))
                     yield TableQueries(queries=queries)
                 except Exception as err:
+                    logger.error(f"Source usage processing error - {err}")
                     logger.debug(traceback.format_exc())
-                    logger.error(str(err))
 
     def next_record(self) -> Iterable[TableQuery]:
-        for table_queries in self._get_raw_extract_iter():
+        for table_queries in self.get_table_query():
             if table_queries:
                 yield table_queries
