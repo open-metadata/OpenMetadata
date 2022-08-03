@@ -48,7 +48,7 @@ export const getGlobalSettingMenus = (
               label,
               camelCase(label),
               key,
-              <SVGIcons alt={label} className="tw-w-3" icon={icon} />
+              <SVGIcons alt={label} className="tw-w-4" icon={icon} />
             )
           )
       : undefined,

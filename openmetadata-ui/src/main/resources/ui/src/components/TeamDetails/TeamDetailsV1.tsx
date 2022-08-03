@@ -632,7 +632,7 @@ const TeamDetailsV1 = ({
 
   const getTeamHeading = () => {
     return (
-      <div className="tw-heading tw-text-link tw-text-base">
+      <div className="tw-heading tw-text-link tw-text-base tw-mb-0">
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
