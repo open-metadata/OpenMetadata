@@ -19,7 +19,7 @@ from logging.config import DictConfigurator
 from unittest import TestCase
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
-from metadata.ingestion.processor.query_parser import (
+from metadata.ingestion.lineage.parser import (
     get_clean_parser_table_list,
     get_involved_tables_from_parser,
     get_parser_table_aliases,

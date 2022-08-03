@@ -42,6 +42,7 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
+import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { DataService } from '../interface/service.interface';
@@ -614,7 +615,7 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @returns - entity name
  */
 export const getEntityName = (
-  entity?: EntityReference | DataService | User
+  entity?: EntityReference | DataService | User | Team
 ) => {
   return entity?.displayName || entity?.name || '';
 };

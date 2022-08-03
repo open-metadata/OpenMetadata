@@ -13,12 +13,12 @@ from typing import Any
 
 from boto3 import Session
 
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.utils.connection_clients import (
+from metadata.clients.connection_clients import (
     DynamoClient,
     GlueDBClient,
     GluePipelineClient,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
 
 class AWSClient:
