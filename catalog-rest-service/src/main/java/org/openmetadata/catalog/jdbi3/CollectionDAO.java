@@ -80,6 +80,7 @@ import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntitiesCount;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.ServicesCount;
 import org.openmetadata.common.utils.CommonUtil;
 
@@ -1814,6 +1815,86 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String parentTeam = filter.getQueryParam("parentTeam");
+      String condition = filter.getCondition();
+      if (parentTeam != null) {
+        // validate parent team
+        Team team = EntityDAO.super.findEntityByName(parentTeam);
+        condition =
+            String.format(
+                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                condition, team.getId(), Relationship.PARENT_OF.ordinal());
+      }
+
+      return listCount(getTableName(), getNameColumn(), condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String parentTeam = filter.getQueryParam("parentTeam");
+      String condition = filter.getCondition();
+      if (parentTeam != null) {
+        // validate parent team
+        Team team = EntityDAO.super.findEntityByName(parentTeam);
+        condition =
+            String.format(
+                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                condition, team.getId(), Relationship.PARENT_OF.ordinal());
+      }
+
+      // Quoted name is stored in fullyQualifiedName column and not in the name column
+      before = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(before) : before;
+      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String parentTeam = filter.getQueryParam("parentTeam");
+      String condition = filter.getCondition();
+      if (parentTeam != null) {
+        // validate parent team
+        Team team = EntityDAO.super.findEntityByName(parentTeam);
+        condition =
+            String.format(
+                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                condition, team.getId(), Relationship.PARENT_OF.ordinal());
+      }
+
+      // Quoted name is stored in fullyQualifiedName column and not in the name column
+      after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
+      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
+    }
+
+    @SqlQuery("SELECT count(*) FROM <table> <cond>")
+    int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
+
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT <nameColumn>, json FROM <table> <cond> AND "
+            + "<nameColumn> < :before "
+            + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+            "ORDER BY <nameColumn> DESC "
+            + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+            "LIMIT :limit"
+            + ") last_rows_subquery ORDER BY <nameColumn>")
+    List<String> listBefore(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @SqlQuery(
+        "SELECT json FROM <table> <cond> AND " + "<nameColumn> > :after " + "ORDER BY <nameColumn> " + "LIMIT :limit")
+    List<String> listAfter(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
   }
 
   interface TopicDAO extends EntityDAO<Topic> {

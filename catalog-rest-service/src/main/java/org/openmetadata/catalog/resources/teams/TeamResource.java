@@ -99,7 +99,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     }
   }
 
-  static final String FIELDS = "owner,profile,users,owns,defaultRoles,parents,children,policies";
+  static final String FIELDS =
+      "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount";
 
   @GET
   @Valid
@@ -137,6 +138,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Parameter(description = "Returns list of teams after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Filter the results by parent team name", schema = @Schema(type = "string"))
+          @QueryParam("parentTeam")
+          String parentTeam,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -144,7 +148,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("parentTeam", parentTeam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

@@ -76,6 +76,14 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
       "default": null
     },
+    "childrenCount": {
+      "description" : "Total count of Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
+      "type": "integer"
+    },
+    "userCount": {
+      "description": "Total count of users that are part of the team.",
+      "type": "integer"
+    },
     "owns": {
       "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"

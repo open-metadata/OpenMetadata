@@ -65,8 +65,10 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setDefaultRoles(fields.contains("defaultRoles") ? getDefaultRoles(team) : null);
     team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
     team.setParents(fields.contains("parents") ? getParents(team) : null);
-    team.setChildren(fields.contains("children") ? getChildren(team) : null);
+    team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
     team.setPolicies(fields.contains("policies") ? getPolicies(team) : null);
+    team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : null);
+    team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : null);
     return team;
   }
 
@@ -157,6 +159,16 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(userIds, Entity.USER);
   }
 
+  private Integer getUserCount(UUID teamId) throws IOException {
+    List<EntityRelationshipRecord> userIds = findTo(teamId, TEAM, Relationship.HAS, Entity.USER);
+    int userCount = userIds.size();
+    List<EntityReference> children = getChildren(teamId);
+    for (EntityReference child : children) {
+      userCount += getUserCount(child.getId());
+    }
+    return userCount;
+  }
+
   private List<EntityReference> getOwns(Team team) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.getEntityReferences(
@@ -173,9 +185,14 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(parents, TEAM);
   }
 
-  private List<EntityReference> getChildren(Team team) throws IOException {
-    List<EntityRelationshipRecord> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+  private List<EntityReference> getChildren(UUID teamId) throws IOException {
+    List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
     return EntityUtil.populateEntityReferences(children, TEAM);
+  }
+
+  private Integer getChildrenCount(Team team) throws IOException {
+    List<EntityRelationshipRecord> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+    return children.size();
   }
 
   private List<EntityReference> getPolicies(Team team) throws IOException {
@@ -207,6 +224,10 @@ public class TeamRepository extends EntityRepository<Team> {
   private void populateParents(Team team) throws IOException {
     // Teams created without parents has the top Organization as the default parent
     List<EntityReference> parentRefs = team.getParents();
+    // The default organization does not have parents
+    if (team.getTeamType().equals(ORGANIZATION) && team.getName().equals(organization.getName())) {
+      return;
+    }
     if (parentRefs == null) {
       team.setParents(new ArrayList<>());
       team.getParents().add(organization.getEntityReference());

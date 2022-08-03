@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
@@ -43,6 +44,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -78,6 +80,7 @@ import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
@@ -358,23 +361,22 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             "t1", BUSINESS_UNIT, bu11.getEntityReference(), div12.getEntityReference(), dep13.getEntityReference());
     assertEntityReferencesContain(t1.getParents(), ORG_TEAM.getEntityReference());
 
-    //
-    // Creating a parent with invalid children type is not allowed
-    // Department can't have Business unit as a child
-    assertResponse(
-        () -> createWithChildren("invalidTeam", DEPARTMENT, bu11.getEntityReference()),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, bu11));
-    // Department can't have Division as a child
-    assertResponse(
-        () -> createWithChildren("invalidTeam", DEPARTMENT, div12.getEntityReference()),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, div12));
-    // Division can't have BU as a child
-    assertResponse(
-        () -> createWithChildren("invalidTeam", DIVISION, bu11.getEntityReference()),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidChild("invalidTeam", DIVISION, bu11));
+    // assert children count for the newly created bu team
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parentTeam", "t1");
+    queryParams.put("fields", "childrenCount,userCount");
+    ResultList<Team> teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, teams.getData().size());
+    assertEquals(3, teams.getPaging().getTotal());
+    assertEquals(0, teams.getData().get(0).getChildrenCount());
+    assertEquals(0, teams.getData().get(0).getUserCount());
+
+    queryParams.put("parentTeam", "organization");
+    teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertTrue(teams.getData().stream().anyMatch(t -> t.getName().equals("t1")));
+    t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).collect(Collectors.toList()).get(0);
+    assertEquals(3, t1.getChildrenCount());
+    assertEquals(0, t1.getUserCount());
   }
 
   @Test
