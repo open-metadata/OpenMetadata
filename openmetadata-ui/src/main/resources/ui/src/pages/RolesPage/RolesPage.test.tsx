@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-disabled-tests */
 import {
   act,
   findAllByTestId,
@@ -110,9 +111,8 @@ jest.mock('../teams/UserCard', () => {
 });
 
 // skipping this test for now as we are going to change roles and policy structure from UI
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip('Test RolesPage component', () => {
-  it('RolesPage component should render properly', async () => {
+describe('Test RolesPage component', () => {
+  it.skip('RolesPage component should render properly', async () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
@@ -157,7 +157,7 @@ describe.skip('Test RolesPage component', () => {
     expect(description).toBeInTheDocument();
   });
 
-  it('Check no rule, no user and no teams behaviour', async () => {
+  it.skip('Check no rule, no user and no teams behaviour', async () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
@@ -177,7 +177,7 @@ describe.skip('Test RolesPage component', () => {
     expect(await findByText(container, /No Teams Added./i)).toBeInTheDocument();
   });
 
-  it('Check behaviour when there is data in policy and user', async () => {
+  it.skip('Check behaviour when there is data in policy and user', async () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
@@ -213,7 +213,7 @@ describe.skip('Test RolesPage component', () => {
     expect(users.length).toBe(mockGetRole.data[1].users.length);
   });
 
-  it('CTA should work', async () => {
+  it.skip('CTA should work', async () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
@@ -238,7 +238,7 @@ describe.skip('Test RolesPage component', () => {
     ).toBeInTheDocument();
   });
 
-  it('Should render error placeholder if roles api fails', async () => {
+  it.skip('Should render error placeholder if roles api fails', async () => {
     (getRoles as jest.Mock).mockImplementationOnce(() =>
       Promise.reject({
         response: {
