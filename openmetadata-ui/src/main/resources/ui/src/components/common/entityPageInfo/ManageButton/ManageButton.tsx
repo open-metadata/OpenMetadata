@@ -101,7 +101,7 @@ const ManageButton: FC<Props> = ({
         arrow
         align={{ targetOffset: [-12, 8] }}
         overlay={menu}
-        overlayStyle={{ width: '500px' }}
+        overlayStyle={{ width: '400px' }}
         placement="bottomRight"
         trigger={['click']}
         visible={showActions}

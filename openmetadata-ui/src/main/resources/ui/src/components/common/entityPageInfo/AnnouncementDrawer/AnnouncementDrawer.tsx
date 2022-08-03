@@ -14,6 +14,9 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Typography } from 'antd';
 import React, { FC, useState } from 'react';
+import { ThreadType } from '../../../../generated/api/feed/createThread';
+import { getEntityFeedLink } from '../../../../utils/EntityUtils';
+import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnouncementModal';
 
 interface Props {
@@ -35,10 +38,16 @@ const AnnouncementDrawer: FC<Props> = ({
 
   const title = (
     <Space className="tw-justify-between" style={{ width: '100%' }}>
-      <Typography.Text>Announcement on {entityName}</Typography.Text>
+      <Typography.Text className="tw-font-medium">
+        Announcement on {entityName}
+      </Typography.Text>
       <CloseOutlined onClick={onClose} />
     </Space>
   );
+
+  const fn = () => {
+    return;
+  };
 
   return (
     <>
@@ -54,6 +63,17 @@ const AnnouncementDrawer: FC<Props> = ({
             Add Announcement
           </Button>
         </div>
+
+        <ActivityThreadPanelBody
+          className="tw-p-0"
+          createThread={fn}
+          deletePostHandler={fn}
+          postFeedHandler={fn}
+          showHeader={false}
+          threadLink={getEntityFeedLink(entityType, entityFQN)}
+          threadType={ThreadType.Announcement}
+          updateThreadHandler={fn}
+        />
       </Drawer>
 
       {isAnnouncement && (

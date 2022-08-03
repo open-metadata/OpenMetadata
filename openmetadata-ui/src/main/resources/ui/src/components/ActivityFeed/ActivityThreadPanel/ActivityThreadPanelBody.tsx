@@ -78,6 +78,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const isTaskClosed = isEqual(taskStatus, ThreadTaskStatus.Closed);
 
+  const isAnnouncementType = threadType === ThreadType.Announcement;
+
   const getThreads = (after?: string) => {
     const status = isTaskType ? taskStatus : undefined;
     setIsThreadLoading(true);
@@ -262,7 +264,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Fragment>
             {showNewConversation || isEqual(threads.length, 0) ? (
               <Fragment>
-                {isConversationType ? (
+                {isConversationType && (
                   <Fragment>
                     <p className="tw-ml-9 tw-mr-2 tw-mb-2 tw-mt-1">
                       You are starting a new conversation
@@ -274,12 +276,19 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                       onSave={onPostThread}
                     />
                   </Fragment>
-                ) : (
+                )}
+                {isTaskType && (
                   <Empty
                     className="ant-empty-tasks"
                     description={
                       isTaskClosed ? 'No Closed Tasks' : 'No Open Tasks'
                     }
+                  />
+                )}
+                {isAnnouncementType && (
+                  <Empty
+                    className="ant-empty-tasks"
+                    description="No Announcements, Click on add announcement to add one."
                   />
                 )}
               </Fragment>

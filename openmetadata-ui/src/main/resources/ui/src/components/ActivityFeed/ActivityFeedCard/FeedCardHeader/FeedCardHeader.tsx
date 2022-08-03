@@ -114,17 +114,20 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   const getAnnouncementLinkElement = () => {
     return (
-      <span className="tw-mx-1">
-        made an announcement for {entityType}{' '}
-        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <Link
-            className="tw-break-all"
-            data-testid="entitylink"
-            to={prepareFeedLink(entityType, entityFQN)}>
-            {entityDisplayName(entityType, entityFQN)}
-          </Link>
-        </EntityPopOverCard>
-      </span>
+      !isUndefined(entityFQN) &&
+      !isUndefined(entityType) && (
+        <span className="tw-mx-1">
+          made an announcement for {entityType}{' '}
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="tw-break-all"
+              data-testid="entitylink"
+              to={prepareFeedLink(entityType, entityFQN)}>
+              {entityDisplayName(entityType, entityFQN)}
+            </Link>
+          </EntityPopOverCard>
+        </span>
+      )
     );
   };
 
