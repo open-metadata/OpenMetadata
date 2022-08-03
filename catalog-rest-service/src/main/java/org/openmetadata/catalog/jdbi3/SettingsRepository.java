@@ -63,6 +63,14 @@ public class SettingsRepository {
     }
   }
 
+  public Response addNewFilter(Filter filter) {
+    Settings oldValue = getConfigWithKey(SettingsType.ACTIVITY_FEED_FILTER_SETTING.toString());
+    List<Filter> existingFilters = (List<Filter>) oldValue.getConfigValue();
+    existingFilters.add(filter);
+    oldValue.setConfigValue(existingFilters);
+    return createOrUpdate(oldValue);
+  }
+
   public Response createNewSetting(Settings setting) {
     try {
       updateSetting(setting);

@@ -376,6 +376,24 @@ public class SettingsResource {
     return settingsRepository.createOrUpdate(getSettings(SLACK_CHAT, slackChatConfiguration));
   }
 
+  @POST
+  @Path("/addfilter")
+  @Operation(
+      operationId = "addNewFilter",
+      summary = "Add new Filter",
+      tags = "settings",
+      description = "Add New Filter",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Filter.class)))
+      })
+  public Response addNewFilter(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Filter newFilter) {
+    return settingsRepository.addNewFilter(newFilter);
+  }
+
   @PATCH
   @Path("/{settingName}")
   @Operation(
