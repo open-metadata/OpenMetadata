@@ -109,7 +109,7 @@ def _(config: DbtCloudConfig):
 def _(config: DbtS3Config):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from metadata.utils.aws_client import AWSClient
+        from metadata.clients.aws_client import AWSClient
 
         aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
 
