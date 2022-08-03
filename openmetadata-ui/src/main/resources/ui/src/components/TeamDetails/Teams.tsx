@@ -34,9 +34,9 @@ const Teams: FC<TeamsProps> = ({
     const orgnization = teams
       .filter((team) => team.teamType === TeamType.Organization)
       .map((team) => {
-        const children = team.children?.map((c) => {
+        const children = team.children?.map((child) => {
           const updatedChildren: Team =
-            teams.find((dd: Team) => dd.id === c.id) || ({} as Team);
+            teams.find((team: Team) => team.id === child.id) || ({} as Team);
           if (updatedChildren.children?.length === 0) {
             delete updatedChildren.children;
           }
