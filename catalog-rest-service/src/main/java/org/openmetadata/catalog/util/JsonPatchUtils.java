@@ -24,6 +24,7 @@ public class JsonPatchUtils {
     Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
     String path = jsonPatchMap.get("path").toString();
 
+    // TODO clean this up
     if (path.contains(FIELD_DESCRIPTION)) {
       return MetadataOperation.EDIT_DESCRIPTION;
     }

@@ -137,7 +137,7 @@ public class DashboardServiceResource
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<DashboardService> dashboardServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
   }
 

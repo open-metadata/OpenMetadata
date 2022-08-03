@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.policies;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.ALLOW;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -28,6 +29,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
@@ -42,11 +44,11 @@ import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.catalog.resources.policies.PolicyResource.ResourceDescriptorList;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContextTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -55,7 +57,6 @@ import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -133,8 +134,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.EDIT_DESCRIPTION, true));
-    rules.add(PolicyUtils.accessControlRule(null, "DataConsumer", MetadataOperation.EDIT_TAGS, true));
+    rules.add(accessControlRule(List.of("all"), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW));
+    rules.add(accessControlRule(List.of("all"), List.of(MetadataOperation.EDIT_TAGS), ALLOW));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -143,11 +144,17 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
     // Adding a rule without operation should be disallowed
     String policyName = getEntityName(test);
-    String ruleName = "rule21";
     List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule(ruleName, null, null, null, true));
-    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
-    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[operation must not be null]");
+    rules.add(accessControlRule(List.of("all"), null, ALLOW));
+    CreatePolicy create1 = createAccessControlPolicyWithRules(policyName, rules);
+    assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[operations must not be null]");
+
+    // Adding a rule without resources should be disallowed
+    policyName = getEntityName(test, 1);
+    rules = new ArrayList<>();
+    rules.add(accessControlRule(null, List.of(MetadataOperation.DELETE), ALLOW));
+    CreatePolicy create2 = createAccessControlPolicyWithRules(policyName, rules);
+    assertResponse(() -> createEntity(create2, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[resources must not be null]");
   }
 
   @Test
@@ -185,12 +192,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
           actualResourceDescriptors.getData().stream().filter(rd -> rd.getName().equals(entity)).findFirst().get();
       assertNotNull(resourceDescriptor);
     }
-  }
-
-  @Test
-  void test_subjectContextPolicyIterator() {
-    SubjectContextTest subjectContextTest = new SubjectContextTest();
-    subjectContextTest.testPolicyIterator();
   }
 
   @Override
@@ -232,5 +233,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   public final ResourceDescriptorList getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/resources");
     return TestUtils.get(target, ResourceDescriptorList.class, authHeaders);
+  }
+
+  private static Rule accessControlRule(List<String> resources, List<MetadataOperation> operations, Effect effect) {
+    String name = "rule" + new Random().nextInt(21);
+    return new Rule().withName(name).withResources(resources).withOperations(operations).withEffect(effect);
   }
 }

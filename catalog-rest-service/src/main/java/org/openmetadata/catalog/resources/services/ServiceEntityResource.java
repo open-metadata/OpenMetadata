@@ -1,7 +1,7 @@
 package org.openmetadata.catalog.resources.services;
 
-import java.util.Collections;
-import java.util.Optional;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
@@ -51,9 +51,7 @@ public abstract class ServiceEntityResource<
   }
 
   protected ResultList<T> decryptOrNullify(SecurityContext securityContext, ResultList<T> services) {
-    Optional.ofNullable(services.getData())
-        .orElse(Collections.emptyList())
-        .forEach(mlModelService -> decryptOrNullify(securityContext, mlModelService));
+    listOrEmpty(services.getData()).forEach(service -> decryptOrNullify(securityContext, service));
     return services;
   }
 

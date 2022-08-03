@@ -28,7 +28,7 @@ public interface Authorizer {
   void init(AuthorizerConfiguration config, Jdbi jdbi);
 
   /** Returns a list of operations that the authenticated user (subject) can perform on the target entity (object). */
-  List<MetadataOperation> listPermissions(SecurityContext securityContext, ResourceContextInterface resourceContext);
+  List<MetadataOperation> listPermissions(SecurityContext securityContext);
 
   boolean isOwner(SecurityContext ctx, EntityReference entityReference);
 
