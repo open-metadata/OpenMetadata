@@ -237,7 +237,7 @@ class Workflow:
                 fg="bright_cyan",
                 bold=True,
             )
-            
+
             click.secho(
                 f"Success % : {self.source.get_status().calculate_success()}",
                 fg="bright_cyan",
