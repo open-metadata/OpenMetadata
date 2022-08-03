@@ -1822,7 +1822,7 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = EntityDAO.super.findEntityByName(parentTeam);
+        Team team = findEntityByName(parentTeam);
         condition =
             String.format(
                 "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",

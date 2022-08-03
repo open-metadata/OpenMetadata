@@ -77,7 +77,7 @@
       "default": null
     },
     "childrenCount": {
-      "description" : "Total count of Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
+      "description" : "Total count of Children teams.",
       "type": "integer"
     },
     "userCount": {
