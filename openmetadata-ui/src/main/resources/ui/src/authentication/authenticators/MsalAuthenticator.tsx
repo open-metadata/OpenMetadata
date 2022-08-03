@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { InteractionStatus } from '@azure/msal-browser';
+import {
+  AuthenticationResult,
+  InteractionRequiredAuthError,
+  InteractionStatus,
+} from '@azure/msal-browser';
 import { useAccount, useIsAuthenticated, useMsal } from '@azure/msal-react';
+import { AxiosError } from 'axios';
 import React, {
   forwardRef,
   Fragment,
@@ -32,11 +37,15 @@ import {
 interface Props {
   children: ReactNode;
   onLoginSuccess: (user: OidcUser) => void;
+  onLoginFailure: (error: AxiosError) => void;
   onLogoutSuccess: () => void;
 }
 
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLoginSuccess, onLogoutSuccess }: Props, ref) => {
+  (
+    { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
+    ref
+  ) => {
     const { setIsAuthenticated, loading, setLoadingIndicator } =
       useAuthContext();
     const { instance, accounts, inProgress } = useMsal();
@@ -58,45 +67,65 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       setLoadingIndicator(true);
       instance.loginPopup(msalLoginRequest);
     };
+
     const logout = () => {
       setLoadingIndicator(false);
       handleOnLogoutSuccess();
     };
 
-    const fetchIdToken = (): Promise<OidcUser> => {
+    const parseResponse = (response: AuthenticationResult): OidcUser => {
+      // Call your API with the access token and return the data you need to save in state
+      const { idToken, scopes, account } = response;
+      const user = {
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        id_token: idToken,
+        scope: scopes.join(),
+        profile: {
+          email: account?.username || '',
+          name: account?.name || '',
+          picture: '',
+        },
+      };
+
+      setIsAuthenticated(isMsalAuthenticated);
+      localStorage.setItem(oidcTokenKey, idToken);
+
+      return user;
+    };
+
+    const fetchIdToken = async (
+      shouldFaullbackToPopup = false
+    ): Promise<OidcUser> => {
       const tokenRequest = {
         account: account || accounts[0], // This is an example - Select account based on your app's requirements
         scopes: msalLoginRequest.scopes,
       };
+      try {
+        const response = await instance.ssoSilent(tokenRequest);
 
-      return new Promise<OidcUser>((resolve, reject) => {
-        // Acquire access token
-        instance
-          .ssoSilent(tokenRequest)
-          .then((response) => {
-            // Call your API with the access token and return the data you need to save in state
-            const { idToken, scopes, account } = response;
-            const user = {
-              // eslint-disable-next-line @typescript-eslint/camelcase
-              id_token: idToken,
-              scope: scopes.join(),
-              profile: {
-                email: account?.username || '',
-                name: account?.name || '',
-                picture: '',
-              },
-            };
-            setIsAuthenticated(isMsalAuthenticated);
-            localStorage.setItem(oidcTokenKey, idToken);
-            resolve(user);
-          })
-          .catch((e) => {
-            // eslint-disable-next-line no-console
-            console.error(e);
+        return parseResponse(response);
+      } catch (error) {
+        if (
+          error instanceof InteractionRequiredAuthError &&
+          shouldFaullbackToPopup
+        ) {
+          const response = await instance
+            .loginPopup(tokenRequest)
+            .catch((e) => {
+              // eslint-disable-next-line no-console
+              console.error(e);
 
-            reject(e);
-          });
-      });
+              throw e;
+            });
+
+          return parseResponse(response);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error(error);
+
+          throw error;
+        }
+      }
     };
 
     useEffect(() => {
@@ -108,13 +137,14 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       ) {
         mutex.run(async () => {
           mutex.lock();
-          fetchIdToken()
+          fetchIdToken(true)
             .then((user) => {
               if ((user as OidcUser).id_token) {
                 setLoadingIndicator(false);
                 onLoginSuccess(user as OidcUser);
               }
             })
+            .catch(onLoginFailure)
             .finally(() => {
               if (loading) {
                 setLoadingIndicator(false);

@@ -86,9 +86,6 @@ class PrestoSource(CommonDbSourceService):
     """
 
     def __init__(self, config, metadata_config):
-        self.presto_connection: PrestoConnection = (
-            config.serviceConnection.__root__.config
-        )
         super().__init__(config, metadata_config)
 
     @classmethod
@@ -103,4 +100,4 @@ class PrestoSource(CommonDbSourceService):
 
     def get_database_names(self) -> Iterable[str]:
         self.inspector = inspect(self.engine)
-        yield self.presto_connection.catalog
+        yield self.service_connection.catalog

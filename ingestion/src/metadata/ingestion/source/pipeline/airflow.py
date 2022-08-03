@@ -17,7 +17,6 @@ from typing import Any, Iterable, List, Optional, cast
 from airflow.models import BaseOperator, DagRun
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -43,11 +42,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.connections import (
-    create_and_bind_session,
-    get_connection,
-    test_connection,
-)
+from metadata.utils.connections import create_and_bind_session, test_connection
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
@@ -73,11 +68,8 @@ class AirflowSource(PipelineServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        self._session = None
-        self.service_connection = config.serviceConnection.__root__.config
-        self.engine: Engine = get_connection(self.service_connection.connection)
         super().__init__(config, metadata_config)
-        # Create the connection to the database
+        self._session = None
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

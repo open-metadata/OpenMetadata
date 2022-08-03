@@ -20,6 +20,7 @@ from flask import Response
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineStatus,
 )
+from metadata.utils.helpers import datetime_to_ts
 
 
 class ApiResponse:
@@ -78,12 +79,9 @@ class ResponseFormat:
         return PipelineStatus(
             state=dag_run.get_state(),
             runId=dag_run.run_id,
-            startDate=None
-            if not dag_run.start_date
-            else dag_run.start_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
-            endDate=None
-            if not dag_run.end_date
-            else dag_run.end_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+            startDate=datetime_to_ts(dag_run.start_date),
+            endDate=datetime_to_ts(dag_run.end_date),
+            executionDate=datetime_to_ts(dag_run.execution_date),
         )
 
     @staticmethod

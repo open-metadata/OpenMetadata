@@ -62,7 +62,8 @@ class SQAProfilerInterface(InterfaceProtocol):
         self._runner = None
         self._thread_count = thread_count
         self.service_connection_config = service_connection_config
-        self.session: Session = self._session_factory()
+        self.session_factory = self._session_factory()
+        self.session: Session = self.session_factory()
 
     @property
     def sample(self):
@@ -85,9 +86,11 @@ class SQAProfilerInterface(InterfaceProtocol):
         return self._sampler
 
     def _session_factory(self):
-        """Create thread safe session"""
+        """Create thread safe session that will be automatically
+        garbage collected once the application thread ends
+        """
         engine = get_connection(self.service_connection_config)
-        return create_and_bind_thread_safe_session(engine)()
+        return create_and_bind_thread_safe_session(engine)
 
     def _create_thread_safe_sampler(
         self, session, table, profile_sample, partition_details, profile_sample_query
@@ -134,7 +137,8 @@ class SQAProfilerInterface(InterfaceProtocol):
         logger.debug(
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
-        session = self._session_factory()
+        Session = self.session_factory
+        session = Session()
         sampler = self._create_thread_safe_sampler(
             session, table, profile_sample, partition_details, profile_sample_query
         )

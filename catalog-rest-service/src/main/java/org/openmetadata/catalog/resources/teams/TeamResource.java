@@ -48,7 +48,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
@@ -87,7 +89,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    dao.initOrganization("organization");
+    dao.initOrganization();
   }
 
   public static class TeamList extends ResultList<Team> {
@@ -354,6 +356,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   private Team getTeam(CreateTeam ct, String user) {
+    if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.createOrganization());
+    }
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())

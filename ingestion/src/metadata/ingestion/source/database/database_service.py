@@ -109,7 +109,8 @@ class DatabaseServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DatabaseService,
                 context="database_service",
-                processor="yield_database_service",
+                processor="yield_create_request_database_service",
+                overwrite=False,
             ),
             NodeStage(
                 type_=StorageService,
@@ -247,7 +248,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
-    def yield_database_service(self, config: WorkflowSource):
+    def yield_create_request_database_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
             entity=DatabaseService, config=config
         )

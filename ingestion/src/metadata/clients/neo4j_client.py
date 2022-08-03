@@ -28,7 +28,7 @@ class Neo4JConfig(ConfigModel):
     max_connection_life_time: int = 50
     neo4j_encrypted: bool = True
     neo4j_validate_ssl: bool = False
-    model_class: str = None
+    model_class: Optional[str] = None
 
 
 class Neo4jHelper:

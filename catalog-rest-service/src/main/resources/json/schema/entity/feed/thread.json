@@ -116,6 +116,10 @@
       "description": "Details about the announcement. This is only applicable if thread is of type announcement.",
       "type": "object",
       "properties": {
+        "description": {
+          "description": "Announcement description in markdown format. See markdown support for more details.",
+          "type": "string"
+        },
         "startTime": {
           "description": "Timestamp of the start time from when the announcement should be shown.",
           "$ref": "../../type/basic.json#/definitions/timestamp"

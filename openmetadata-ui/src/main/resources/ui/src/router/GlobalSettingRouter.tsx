@@ -17,6 +17,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
+import TeamsPage from '../pages/teams/TeamsPage';
 import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -54,9 +55,19 @@ const GlobalSettingRouter = () => {
       </Route>
       <Route
         exact
+        component={TeamsPage}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.TEAMS
+        )}
+      />
+      <Route
+        exact
+        component={TeamsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.TEAMS,
+          true
         )}
       />
       <Route

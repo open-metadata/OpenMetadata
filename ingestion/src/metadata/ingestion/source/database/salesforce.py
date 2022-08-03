@@ -25,7 +25,6 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -71,7 +70,6 @@ class SalesforceSource(DatabaseServiceSource):
             raise InvalidSourceException(
                 f"Expected SalesforceConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:

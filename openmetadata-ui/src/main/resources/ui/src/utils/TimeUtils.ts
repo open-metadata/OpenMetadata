@@ -107,3 +107,16 @@ export const getTimeByTimeStamp = (timeStamp: number): string => {
 export const getDayTimeByTimeStamp = (timeStamp: number): string => {
   return moment(timeStamp, 'x').calendar();
 };
+
+export const getUTCDateTime = (dateTime: string) => {
+  const dateObject = new Date(dateTime);
+
+  return Date.UTC(
+    dateObject.getUTCFullYear(),
+    dateObject.getUTCMonth(),
+    dateObject.getUTCDate(),
+    dateObject.getUTCHours(),
+    dateObject.getUTCMinutes(),
+    dateObject.getUTCSeconds()
+  );
+};

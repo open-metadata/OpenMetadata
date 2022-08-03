@@ -40,16 +40,6 @@ logger = ingestion_logger()
 
 
 class PowerbiSource(DashboardServiceSource):
-    """PowerBi entity class
-    Args:
-        config:
-        metadata_config:
-    Attributes:
-        config:
-        metadata_config:
-        charts:
-    """
-
     def __init__(
         self,
         config: WorkflowSource,
@@ -59,13 +49,6 @@ class PowerbiSource(DashboardServiceSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        """Instantiate object
-        Args:
-            config_dict:
-            metadata_config:
-        Returns:
-            PowerBiSource
-        """
         config = WorkflowSource.parse_obj(config_dict)
         connection: PowerBIConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PowerBIConnection):

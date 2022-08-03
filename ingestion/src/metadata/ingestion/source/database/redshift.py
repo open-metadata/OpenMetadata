@@ -441,27 +441,11 @@ STANDARD_TABLE_TYPES = {
 
 # pylint: disable=useless-super-delegation
 class RedshiftSource(CommonDbSourceService):
-    """
-    Redshift source cloass
-
-    Args:
-        confi:
-        metadata_config:
-    """
-
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        """
-        Create source
-
-        Args:
-            config_dict:
-            metadata_config:
-        Returns:
-        """
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedshiftConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedshiftConnection):

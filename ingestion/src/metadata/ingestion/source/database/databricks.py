@@ -130,5 +130,4 @@ class DatabricksSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)

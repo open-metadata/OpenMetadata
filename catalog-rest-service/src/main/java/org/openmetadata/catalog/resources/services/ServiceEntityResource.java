@@ -5,6 +5,7 @@ import java.util.Optional;
 import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.ServiceRepository;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
@@ -18,10 +19,17 @@ public abstract class ServiceEntityResource<
 
   private final SecretsManager secretsManager;
 
+  private final ServiceType serviceType;
+
   protected ServiceEntityResource(
-      Class<T> entityClass, R serviceRepository, Authorizer authorizer, SecretsManager secretsManager) {
+      Class<T> entityClass,
+      R serviceRepository,
+      Authorizer authorizer,
+      SecretsManager secretsManager,
+      ServiceType serviceType) {
     super(entityClass, serviceRepository, authorizer);
     this.secretsManager = secretsManager;
+    this.serviceType = serviceType;
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
@@ -30,8 +38,15 @@ public abstract class ServiceEntityResource<
     } catch (AuthorizationException e) {
       return nullifyConnection(service);
     }
-    secretsManager.encryptOrDecryptServiceConnection(
-        service.getConnection(), extractServiceType(service), service.getName(), false);
+    service
+        .getConnection()
+        .setConfig(
+            secretsManager.encryptOrDecryptServiceConnectionConfig(
+                service.getConnection().getConfig(),
+                extractServiceType(service),
+                service.getName(),
+                serviceType,
+                false));
     return service;
   }
 

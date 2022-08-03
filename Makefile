@@ -107,7 +107,7 @@ run_apis_tests:  ## Run the openmetadata airflow apis tests
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	$(MAKE) run_apis_tests
 	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
 ## Ingestion publish
 .PHONY: publish
