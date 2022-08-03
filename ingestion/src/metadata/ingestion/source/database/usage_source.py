@@ -25,6 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema
@@ -42,7 +43,8 @@ class UsageSource(Source[TableQuery], ABC):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.connection = config.serviceConnection.__root__.config
+        self.metadata = OpenMetadata(metadata_config)
+        self.connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.analysis_date = self.end

@@ -98,6 +98,8 @@ describe('Test BlurLayout Component', () => {
 
     expect(displayButton).toBeInTheDocument();
 
+    expect(displayButton).toHaveTextContent('Read less');
+
     fireEvent.click(displayButton);
 
     expect(displayMoreHandler).toBeCalled();

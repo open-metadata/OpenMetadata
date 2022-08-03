@@ -16,8 +16,6 @@ import json
 import traceback
 from typing import Iterable, List, Optional
 
-import dateutil.parser as dateparser
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -87,22 +85,6 @@ def get_filter_name(filter_obj):
 
 
 class SupersetSource(DashboardServiceSource):
-    """
-    Superset source class
-
-    Args:
-        config:
-        metadata_config:
-
-    Attributes:
-        config:
-        metadata_config:
-        status:
-        platform:
-        service_type:
-        service:
-
-    """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection

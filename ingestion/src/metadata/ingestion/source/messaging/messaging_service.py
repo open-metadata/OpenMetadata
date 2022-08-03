@@ -16,8 +16,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional
 
-from confluent_kafka.admin import AdminClient, ConfigResource
-
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -61,7 +59,8 @@ class MessagingServiceTopology(ServiceTopology):
             NodeStage(
                 type_=MessagingService,
                 context="messaging_service",
-                processor="yield_messaging_service",
+                processor="yield_create_request_messaging_service",
+                overwrite=False,
             )
         ],
         children=["topic"],
@@ -139,10 +138,10 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: MessagingServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
         self.test_connection()
         self.status = MessagingSourceStatus()
@@ -160,7 +159,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 continue
             yield topic_details
 
-    def yield_messaging_service(self, config: WorkflowSource):
+    def yield_create_request_messaging_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
             entity=MessagingService, config=config
         )

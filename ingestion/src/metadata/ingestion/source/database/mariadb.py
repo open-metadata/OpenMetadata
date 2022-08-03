@@ -9,9 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-
-from sqlalchemy.engine.reflection import Inspector
-
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
@@ -37,5 +34,4 @@ class MariadbSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected MariaDBConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)

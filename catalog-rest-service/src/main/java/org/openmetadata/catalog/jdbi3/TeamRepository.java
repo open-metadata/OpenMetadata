@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.Entity.POLICY;
 import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
@@ -49,7 +50,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class TeamRepository extends EntityRepository<Team> {
   static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
   static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies";
-  Team organization = null;
+  private Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
@@ -140,6 +141,13 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  protected void preDelete(Team entity) {
+    if (entity.getId().equals(organization.getId())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deleteOrganization());
+    }
+  }
+
+  @Override
   protected void cleanup(Team team) throws IOException {
     // When a parent team is deleted, if the children team don't have a parent, set Organization as the parent
     getParents(team);
@@ -223,12 +231,10 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private void populateParents(Team team) throws IOException {
     // Teams created without parents has the top Organization as the default parent
-    List<EntityReference> parentRefs = team.getParents();
-    // The default organization does not have parents
-    if (team.getTeamType().equals(ORGANIZATION) && team.getName().equals(organization.getName())) {
-      return;
-    }
-    if (parentRefs == null) {
+    List<EntityReference> parentRefs = listOrEmpty(team.getParents());
+
+    // When there are no parents for a team, add organization as the default parent
+    if (parentRefs.isEmpty() && !team.getName().equals(ORGANIZATION_NAME)) {
       team.setParents(new ArrayList<>());
       team.getParents().add(organization.getEntityReference());
       return;
@@ -247,7 +253,9 @@ public class TeamRepository extends EntityRepository<Team> {
         validateParents(team, parents, BUSINESS_UNIT, ORGANIZATION);
         break;
       case ORGANIZATION:
-        throw new IllegalArgumentException(CatalogExceptionMessage.unexpectedParent());
+        if (!parentRefs.isEmpty()) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.unexpectedParent());
+        }
     }
     populateTeamRefs(parentRefs, parents);
   }
@@ -293,24 +301,25 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
-  public void initOrganization(String orgName) throws IOException {
-    String json = dao.findJsonByFqn("Organization", Include.ALL);
+  public void initOrganization() throws IOException {
+    String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
     if (json == null) {
-      LOG.info("Organization {} is not initialized", orgName);
-      organization =
+      LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
+      Team team =
           new Team()
               .withId(UUID.randomUUID())
-              .withName(orgName)
-              .withDisplayName(orgName)
+              .withName(ORGANIZATION_NAME)
+              .withDisplayName(ORGANIZATION_NAME)
               .withDescription("Organization under which all the other team hierarchy is created")
               .withTeamType(ORGANIZATION)
               .withUpdatedBy("admin")
               .withUpdatedAt(System.currentTimeMillis());
       // Teams
       try {
-        create(null, organization);
+        organization = create(null, team);
+        LOG.info("Organization {}:{} is successfully initialized", ORGANIZATION_NAME, organization.getId());
       } catch (Exception e) {
-        LOG.info("Failed to initialize organization", e);
+        LOG.error("Failed to initialize organization", e);
         throw e;
       }
     } else {

@@ -15,10 +15,10 @@ from typing import Type, TypeVar
 import click
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_source_dir
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -28,6 +28,11 @@ from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.class_helper import (
+    get_service_class_from_service_type,
+    get_service_type_from_source_type,
+)
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 
 logger = ingestion_logger()
@@ -56,9 +61,14 @@ class Workflow:
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 
         source_type = self.config.source.type.lower()
+
+        service_type: ServiceType = get_service_type_from_source_type(
+            self.config.source.type
+        )
+
         source_class = self.get(
             "metadata.ingestion.source.{}.{}.{}Source".format(
-                get_source_dir(type(self.config.source.serviceConnection.__root__)),
+                service_type.name.lower(),
                 self.typeClassFetch(source_type, True),
                 self.typeClassFetch(source_type, False),
             )
@@ -66,6 +76,8 @@ class Workflow:
         metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
+
+        self._retrieve_service_connection_if_needed(metadata_config, service_type)
 
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
@@ -228,3 +240,35 @@ class Workflow:
         else:
             click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
+
+    def _retrieve_service_connection_if_needed(
+        self, metadata_config: OpenMetadataConnection, service_type: ServiceType
+    ) -> None:
+        """
+        We override the current `serviceConnection` source config object if source workflow service already exists
+        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
+        from the service object itself through the default `SecretsManager`.
+
+        :param metadata_config: OpenMetadata connection config
+        :param service_type: source workflow service type
+        :return:
+        """
+        # We override the current serviceConnection source object if source workflow service already exists in OM.
+        # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
+        # from the service object itself.
+        if not self._is_sample_source(self.config.source.type):
+            metadata = OpenMetadata(config=metadata_config)
+            service = metadata.get_by_name(
+                get_service_class_from_service_type(service_type),
+                self.config.source.serviceName,
+            )
+            if service:
+                self.config.source.serviceConnection = (
+                    metadata.secrets_manager_client.retrieve_service_connection(
+                        service, service_type.name.lower()
+                    )
+                )
+
+    @staticmethod
+    def _is_sample_source(service_type):
+        return service_type == "sample-data" or service_type == "sample-usage"

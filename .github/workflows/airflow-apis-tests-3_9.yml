@@ -76,7 +76,7 @@ jobs:
         make coverage_apis
         rm pom.xml
         # fix coverage xml report for github
-        sed -i 's/src\/openmetadata/\/github\/workspace\/openmetadata-airflow-apis\/src\/openmetadata/g' openmetadata-airflow-apis/ci-coverage.xml
+        sed -i 's/openmetadata_managed_apis/\/github\/workspace\/openmetadata-airflow-apis\/openmetadata_managed_apis/g' openmetadata-airflow-apis/ci-coverage.xml
 
     - name: Push Results in PR to Sonar
       uses: sonarsource/sonarcloud-github-action@master

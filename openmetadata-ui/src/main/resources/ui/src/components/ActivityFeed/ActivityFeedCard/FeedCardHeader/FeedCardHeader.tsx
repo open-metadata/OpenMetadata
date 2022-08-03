@@ -112,6 +112,22 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     }
   };
 
+  const getAnnouncementLinkElement = () => {
+    return (
+      <span className="tw-mx-1">
+        made an announcement for {entityType}{' '}
+        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+          <Link
+            className="tw-break-all"
+            data-testid="entitylink"
+            to={prepareFeedLink(entityType, entityFQN)}>
+            {entityDisplayName(entityType, entityFQN)}
+          </Link>
+        </EntityPopOverCard>
+      </span>
+    );
+  };
+
   return (
     <div className={classNames('tw-inline-block', className)}>
       <UserPopOverCard userName={createdBy}>
@@ -125,9 +141,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         </span>
       </UserPopOverCard>
 
-      {feedType === ThreadType.Conversation
-        ? getFeedLinkElement()
-        : getTaskLinkElement()}
+      {feedType === ThreadType.Conversation && getFeedLinkElement()}
+      {feedType === ThreadType.Task && getTaskLinkElement()}
+      {feedType === ThreadType.Announcement && getAnnouncementLinkElement()}
 
       <span className="tw-text-grey-muted" data-testid="timestamp">
         {timeStamp && ' - ' + getDayTimeByTimeStamp(timeStamp)}
