@@ -523,6 +523,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
+  protected void preDelete(T entity) {
+    // Override this method to perform any operation required after deletion.
+    // For example ingestion pipeline deletes a pipeline in AirFlow.
+  }
+
   protected void postDelete(T entity) {
     // Override this method to perform any operation required after deletion.
     // For example ingestion pipeline deletes a pipeline in AirFlow.
@@ -531,7 +536,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private DeleteResponse<T> delete(String updatedBy, String json, String id, boolean recursive, boolean hardDelete)
       throws IOException {
     T original = JsonUtils.readValue(json, entityClass);
-    setFields(original, putFields); // TODO why this?
+    preDelete(original);
+    setFields(original, putFields);
 
     deleteChildren(id, recursive, hardDelete, updatedBy);
 
