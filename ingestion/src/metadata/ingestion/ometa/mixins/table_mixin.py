@@ -103,6 +103,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_profile: Profile data to add
         """
+        print(table_profile.json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfile",
             data=table_profile.json(),
@@ -176,7 +177,6 @@ class OMetaTableMixin:
         self,
         table: Table,
         table_profiler_config: TableProfilerConfig,
-        path: str,
     ):
         """create or update profler config
 
@@ -189,10 +189,10 @@ class OMetaTableMixin:
 
         """
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/{path}",
+            f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfilerConfig",
             data=table_profiler_config.json(),
         )
-        return resp
+        return Table(**resp)
 
     def _add_tests(
         self,

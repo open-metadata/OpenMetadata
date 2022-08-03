@@ -161,7 +161,7 @@ class AirbyteSource(PipelineServiceSource):
                         attempt["status"].lower(), StatusType.Pending
                     ).value,
                     taskStatus=task_status,
-                    executionDate=attempt["createdAt"],
+                    timestamp=attempt["createdAt"],
                 )
                 yield OMetaPipelineStatus(
                     pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,

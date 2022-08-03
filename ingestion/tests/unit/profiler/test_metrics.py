@@ -15,10 +15,13 @@ Test Metrics behavior
 import datetime
 import os
 from unittest import TestCase
+from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -59,6 +62,16 @@ class MetricsTest(TestCase):
     )
     sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
     engine = sqa_profiler_interface.session.get_bind()
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -116,6 +129,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.name],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -132,6 +146,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.age],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -148,6 +163,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.age],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         # SQLITE STD custom implementation returns the squared STD.
@@ -164,6 +180,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.dob, User.tob, User.doe],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         assert (
@@ -182,6 +199,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.dob, User.tob, User.doe],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         assert (
@@ -200,6 +218,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.nickname],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -222,6 +241,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.nickname],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         assert (
@@ -235,7 +255,10 @@ class MetricsTest(TestCase):
         """
         table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
-            table_count, profiler_interface=self.sqa_profiler_interface, table=User
+            table_count,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 3
@@ -246,7 +269,10 @@ class MetricsTest(TestCase):
         """
         col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
         profiler = Profiler(
-            col_count, profiler_interface=self.sqa_profiler_interface, table=User
+            col_count,
+            profiler_interface=self.sqa_profiler_interface,
+            table=User,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._table_results
         assert res.get(Metrics.COLUMN_COUNT.name) == 9
@@ -264,6 +290,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -279,6 +306,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -294,6 +322,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.comments],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -316,6 +345,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -335,6 +365,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -359,6 +390,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -373,6 +405,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -400,6 +433,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -414,21 +448,13 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
         )
 
         assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 1
-
-        # Running safely
-        # with pytest.raises(AttributeError):
-        #     Profiler(
-        #         Metrics.ILIKE_COUNT.value,
-        #         profiler_interface=self.sqa_profiler_interface,
-        #         table=User,
-        #         use_cols=[User.age],
-        #     ).execute()
 
     def test_like_ratio(self):
         """
@@ -445,6 +471,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -469,6 +496,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -488,21 +516,13 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
         )
 
         assert res.get(User.age.name)[Metrics.MAX.name] == 31
-
-        # TMP disable min/max on strings
-        # res = (
-        #     Profiler(_max, profiler_interface=self.sqa_profiler_interface, table=User, use_cols=[User.name])
-        #     .execute()
-        #     ._column_results
-        # )
-
-        # assert res.get(User.name.name)[Metrics.MAX.name] == "John"
 
     def test_min_length(self):
         """
@@ -518,6 +538,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -532,6 +553,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -546,6 +568,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.comments],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -566,6 +589,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -580,6 +604,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -594,6 +619,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.comments],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -613,6 +639,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -626,6 +653,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -644,6 +672,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -666,6 +695,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -686,6 +716,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -708,6 +739,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -730,6 +762,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -744,6 +777,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.name],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -777,6 +811,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=EmptyUser,
                 use_cols=[EmptyUser.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results
@@ -809,6 +844,7 @@ class MetricsTest(TestCase):
                         profiler_interface=self.sqa_profiler_interface,
                         table=User,
                         use_cols=[User.name],
+                        table_entity=self.table_entity,
                     )
                     .execute()
                     ._column_results
@@ -828,6 +864,7 @@ class MetricsTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
             .execute()
             ._column_results

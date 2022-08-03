@@ -73,7 +73,7 @@ def column_values_to_not_match_regex(
         msg = f"Error computing ColumnValuesToMatchRegex for {col_profile.name} - {err}"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -86,5 +86,5 @@ def column_values_to_not_match_regex(
     )
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

@@ -210,10 +210,8 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
         ]
 
         table_profile = TableProfile(
-            profileDate="2022-07-26",
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            columnNames=profile_results["table"].get(ColumnNames.name(), "").split(","),
             columnProfile=column_profile,
             profileQuery=None,
             profileSample=None,

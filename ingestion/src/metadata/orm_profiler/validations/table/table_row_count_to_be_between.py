@@ -47,7 +47,7 @@ def table_row_count_to_be_between(
         msg = "rowCount should not be None for TableRowCountToBeBetween"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -71,7 +71,6 @@ def table_row_count_to_be_between(
     result = (
         f"Found {table_profile.rowCount} rows vs. the expected range [{min_}, {max_}]."
     )
-
     return TestCaseResult(
         timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

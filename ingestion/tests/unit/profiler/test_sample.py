@@ -14,10 +14,13 @@ Test Sample behavior
 """
 import os
 from unittest import TestCase
+from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -56,6 +59,17 @@ class SampleTest(TestCase):
     sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
+
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -115,6 +129,7 @@ class SampleTest(TestCase):
             table_count,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
+            table_entity=self.table_entity,
         )
 
         res = self.session.query(func.count()).select_from(profiler.sample).first()
@@ -131,6 +146,7 @@ class SampleTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             profile_sample=50.0,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
@@ -150,6 +166,7 @@ class SampleTest(TestCase):
             table=User,
             use_cols=[User.name],
             profile_sample=50,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
@@ -160,6 +177,7 @@ class SampleTest(TestCase):
             table=User,
             profile_sample=100.0,
             use_cols=[User.name],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] == 30
@@ -175,6 +193,7 @@ class SampleTest(TestCase):
             table=User,
             use_cols=[User.id],
             profile_sample=50.0,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -187,6 +206,7 @@ class SampleTest(TestCase):
             table=User,
             use_cols=[User.id],
             profile_sample=100.0,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -210,6 +230,7 @@ class SampleTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.name],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -228,6 +249,7 @@ class SampleTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.name],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 

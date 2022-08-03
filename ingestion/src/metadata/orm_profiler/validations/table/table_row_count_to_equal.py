@@ -47,7 +47,7 @@ def table_row_count_to_equal(
         msg = "rowCount should not be None for TableRowCountToEqual"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )

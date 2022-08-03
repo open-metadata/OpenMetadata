@@ -778,7 +778,7 @@ class OrmProfilerProcessor(Processor[Table]):
         entity_profile = self.profile_entity(orm=orm_table, table=record)
 
         # First, check if we have any tests directly configured in the workflow
-        config_tests = None
+        test_results = None
         if self.config.testSuites:
             test_results = self.validate_config_tests(
                 orm=orm_table, table=record, profiler_results=entity_profile

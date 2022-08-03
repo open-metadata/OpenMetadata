@@ -45,27 +45,20 @@ def table_column_count_to_equal(
         msg = "columnCount should not be None for TableColumnCountToEqual"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
 
     count = next(
-        param_value.value
+        int(param_value.value)
         for param_value in test_case.parameterValues
         if param_value.name == "columnCount"
     )
-    count_type = TEST_DATA_TYPE_MAPPING[
-        next(
-            param_value.dataType
-            for param_value in test_definition.parameterDefinition
-            if param_value.name == "columnCount"
-        )
-    ]
 
     status = (
         TestCaseStatus.Success
-        if table_profile.columnCount == count_type(count)
+        if table_profile.columnCount == count
         else TestCaseStatus.Failed
     )
     result = f"Found {table_profile.columnCount} columns vs. the expected {count}"
