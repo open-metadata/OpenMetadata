@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
@@ -97,13 +98,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     TEAM_OWNER1 = TEAM1.getEntityReference();
 
-    ORG_TEAM = teamResourceTest.getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
+    ORG_TEAM = teamResourceTest.getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void test_organization() throws HttpResponseException {
     // Ensure getting organization from team hierarchy is successful
-    Team org = getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
+    Team org = getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
 
     // Organization can't be deleted
     assertResponse(
@@ -368,7 +369,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(0, teams.getData().get(0).getChildrenCount());
     assertEquals(0, teams.getData().get(0).getUserCount());
 
-    queryParams.put("parentTeam", "organization");
+    queryParams.put("parentTeam", ORGANIZATION_NAME);
     teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertTrue(teams.getData().stream().anyMatch(t -> t.getName().equals("t1")));
     t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).collect(Collectors.toList()).get(0);
