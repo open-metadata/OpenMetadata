@@ -20,6 +20,7 @@ import {
   waitForDomChange,
 } from '@testing-library/react';
 import React from 'react';
+import { searchData } from '../../axiosAPIs/miscAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
 import { MOCK_USER_DATA } from './mockUserData';
@@ -47,31 +48,23 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
   ),
 }));
 
-const mockFunction = jest.fn().mockImplementation((fn, value = []) => {
-  fn(...value);
-});
-
 jest.mock('../../components/UserList/UserListV1', () => {
   return jest.fn().mockImplementation((prop) => (
     <div>
       <p>UserList.component</p>
-      <button onClick={() => mockFunction(prop.afterDeleteAction)}>
-        afterDeleteAction
-      </button>
-      <button onClick={() => mockFunction(prop.onPagingChange, ['next', 2])}>
+      <button onClick={prop.afterDeleteAction}>afterDeleteAction</button>
+      <button onClick={() => prop.onPagingChange('next', 2)}>
         onPagingChange
       </button>
       <input
         data-testid="search-input"
         type="text"
-        onChange={(e) => mockFunction(prop.onSearch, [e.target.value])}
+        onChange={(e) => prop.onSearch(e.target.value)}
       />
       <input
         data-testid="show-deleted-toggle"
         type="checkbox"
-        onChange={(e) =>
-          mockFunction(prop.onShowDeletedUserChange, [e.target.checked])
-        }
+        onChange={(e) => prop.onShowDeletedUserChange(e.target.checked)}
       />
     </div>
   ));
@@ -117,6 +110,7 @@ describe('Test UserListPage component', () => {
   });
 
   it('handleFetch function should work properly', async () => {
+    const userAPI = getUsers as jest.Mock;
     render(<UserListPageV1 />);
     const afterDeleteAction = await screen.findByText('afterDeleteAction');
     const userlist = await screen.findByText('UserList.component');
@@ -127,12 +121,14 @@ describe('Test UserListPage component', () => {
       fireEvent.click(afterDeleteAction);
     });
 
-    expect(mockFunction).toHaveBeenCalled();
+    expect(userAPI).toHaveBeenCalled();
     expect(userlist).toBeInTheDocument();
   });
 
   it('handleSearch function should work properly', async () => {
     mockParam.tab = GlobalSettingOptions.ADMINS;
+    const userAPI = getUsers as jest.Mock;
+    const searchAPI = searchData as jest.Mock;
     render(<UserListPageV1 />);
     const searchBox = await screen.findByTestId('search-input');
     const userlist = await screen.findByText('UserList.component');
@@ -144,7 +140,7 @@ describe('Test UserListPage component', () => {
     });
 
     expect(searchBox).toHaveValue('test');
-    expect(mockFunction).toHaveBeenCalled();
+    expect(searchAPI).toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.change(searchBox, { target: { value: '' } });
@@ -153,11 +149,12 @@ describe('Test UserListPage component', () => {
     waitForDomChange();
 
     expect(searchBox).toHaveValue('');
-    expect(mockFunction).toHaveBeenCalled();
+    expect(userAPI).toHaveBeenCalled();
     expect(userlist).toBeInTheDocument();
   });
 
   it('handleShowDeletedUserChange function should work properly', async () => {
+    const userAPI = getUsers as jest.Mock;
     render(<UserListPageV1 />);
     const toggle = await screen.findByTestId('show-deleted-toggle');
     const userlist = await screen.findByText('UserList.component');
@@ -169,11 +166,12 @@ describe('Test UserListPage component', () => {
     });
 
     expect(toggle).toBeChecked();
-    expect(mockFunction).toHaveBeenCalled();
+    expect(userAPI).toHaveBeenCalled();
     expect(userlist).toBeInTheDocument();
   });
 
   it('handlePagingChange function should work properly', async () => {
+    const userAPI = getUsers as jest.Mock;
     render(<UserListPageV1 />);
 
     const userlist = await screen.findByText('UserList.component');
@@ -185,7 +183,7 @@ describe('Test UserListPage component', () => {
       fireEvent.click(pagin);
     });
 
-    expect(mockFunction).toHaveBeenCalled();
+    expect(userAPI).toHaveBeenCalled();
     expect(userlist).toBeInTheDocument();
   });
 });
