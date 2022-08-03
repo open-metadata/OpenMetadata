@@ -16,6 +16,7 @@ from typing import Tuple
 
 import msal
 
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.logger import utils_logger
 
@@ -62,7 +63,7 @@ class PowerBiApiClient:
             logger.error(
                 "Failed to generate the PowerBi access token. Please check provided config"
             )
-            raise Exception(
+            raise InvalidSourceException(
                 "Failed to generate the PowerBi access token. Please check provided config"
             )
 

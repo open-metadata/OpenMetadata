@@ -27,11 +27,13 @@ import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MessagingConnection;
 
@@ -48,18 +50,25 @@ public class MessagingServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(MessagingService.class);
+    MessagingConnection serviceConnection = mock(MessagingConnection.class);
+    lenient().when(serviceConnection.getConfig()).thenReturn(mock(KafkaConnection.class));
     CollectionDAO.MessagingServiceDAO entityDAO = mock(CollectionDAO.MessagingServiceDAO.class);
     when(collectionDAO.messagingServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateMessagingService.MessagingServiceType.Kafka);
-    lenient().when(service.getConnection()).thenReturn(mock(MessagingConnection.class));
+    lenient().when(service.getConnection()).thenReturn(serviceConnection);
     lenient().when(service.withConnection(isNull())).thenReturn(service);
     when(entityDAO.findEntityById(any(), any())).thenReturn(service);
     when(entityDAO.getEntityClass()).thenReturn(MessagingService.class);
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreateMessagingService.MessagingServiceType.Kafka.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.MESSAGING;
   }
 
   @Override

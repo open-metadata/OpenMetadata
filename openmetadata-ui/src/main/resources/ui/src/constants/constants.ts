@@ -71,6 +71,7 @@ export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
+export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLAEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
@@ -162,6 +163,7 @@ export const ROUTES = {
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
   SETTINGS: `/settings`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
+  SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',

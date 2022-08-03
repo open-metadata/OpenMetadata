@@ -45,6 +45,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
@@ -78,7 +79,12 @@ public class MessagingServiceResource
   }
 
   public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(MessagingService.class, new MessagingServiceRepository(dao, secretsManager), authorizer, secretsManager);
+    super(
+        MessagingService.class,
+        new MessagingServiceRepository(dao, secretsManager),
+        authorizer,
+        secretsManager,
+        ServiceType.MESSAGING);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {

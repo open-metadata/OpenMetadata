@@ -40,6 +40,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.sql_lineage import (
+    get_lineage_by_query,
+    get_lineage_via_table_entity,
+)
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import (
@@ -51,10 +55,6 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import (
-    get_lineage_by_query,
-    get_lineage_via_table_entity,
-)
 
 logger = ingestion_logger()
 
