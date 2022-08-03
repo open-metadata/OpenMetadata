@@ -81,6 +81,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
                 use_db_query = f"USE DATABASE {row[1]}"
                 self.engine.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
+                self.config.serviceConnection.__root__.config.database = row[1]
                 self.engine = get_connection(self.connection)
                 yield from super().get_table_query()
 
