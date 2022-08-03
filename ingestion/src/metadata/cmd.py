@@ -237,7 +237,22 @@ def docker(
     required=False,
 )
 @click.option(
-    "-o", "--options", multiple=True, default=["--protocol=tcp", "--no-tablespaces"]
+    "-o",
+    "--options",
+    multiple=True,
+    default=None,
+)
+@click.option(
+    "-a",
+    "--arguments",
+    multiple=True,
+    default=None,
+)
+@click.option(
+    "-s",
+    "--schema",
+    default=None,
+    required=False,
 )
 def backup(
     host: str,
@@ -248,18 +263,26 @@ def backup(
     output: Optional[str],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
+    arguments: List[str],
+    schema: str,
 ) -> None:
     """
-    Run a backup for the metadata DB.
-    Requires mysqldump installed on the host.
+    Run a backup for the metadata DB. Uses a custom dump strategy for OpenMetadata tables.
 
-    We can pass as many options as required with `-o <opt1>, -o <opt2> [...]`
+    We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
+    Same with connection arguments `-a <arg1>, -a <arg2> [...]`
 
     To run the upload, provide the information as
     `--upload endpoint bucket key` and properly configure the environment
-    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY
+    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY.
+
+    If `-s` or `--schema` is provided, we will trigger a Postgres backup instead
+    of a MySQL backup. This is the value of the schema containing the OpenMetadata
+    tables.
     """
-    run_backup(host, user, password, database, port, output, upload, options)
+    run_backup(
+        host, user, password, database, port, output, upload, options, arguments, schema
+    )
 
 
 metadata.add_command(check)
