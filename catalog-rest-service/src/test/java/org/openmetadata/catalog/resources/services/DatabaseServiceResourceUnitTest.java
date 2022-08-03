@@ -28,11 +28,13 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.type.Include;
 
 public class DatabaseServiceResourceUnitTest
@@ -48,18 +50,25 @@ public class DatabaseServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(DatabaseService.class);
+    DatabaseConnection serviceConnection = mock(DatabaseConnection.class);
+    lenient().when(serviceConnection.getConfig()).thenReturn(mock(MysqlConnection.class));
     CollectionDAO.DatabaseServiceDAO entityDAO = mock(CollectionDAO.DatabaseServiceDAO.class);
     when(collectionDAO.dbServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateDatabaseService.DatabaseServiceType.Mysql);
-    lenient().when(service.getConnection()).thenReturn(mock(DatabaseConnection.class));
+    lenient().when(service.getConnection()).thenReturn(serviceConnection);
     lenient().when(service.withConnection(isNull())).thenReturn(service);
     when(entityDAO.findEntityById(any(), any())).thenReturn(service);
     when(entityDAO.getEntityClass()).thenReturn(DatabaseService.class);
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreateDatabaseService.DatabaseServiceType.Mysql.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.DATABASE;
   }
 
   @Override

@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.DashboardConnection;
@@ -28,7 +29,8 @@ public class DashboardServiceRepository extends ServiceRepository<DashboardServi
         dao,
         dao.dashboardServiceDAO(),
         secretsManager,
-        DashboardConnection.class);
+        DashboardConnection.class,
+        ServiceType.DASHBOARD);
   }
 
   @Override

@@ -29,11 +29,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
 import org.openmetadata.catalog.entity.services.MlModelService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MlModelServiceRepository;
 import org.openmetadata.catalog.resources.services.mlmodel.MlModelServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.services.connections.mlModel.MlflowConnection;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlModelConnection;
 
@@ -50,18 +52,25 @@ public class MlModelServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(MlModelService.class);
+    MlModelConnection serviceConnection = mock(MlModelConnection.class);
+    lenient().when(serviceConnection.getConfig()).thenReturn(mock(MlflowConnection.class));
     CollectionDAO.MlModelServiceDAO entityDAO = mock(CollectionDAO.MlModelServiceDAO.class);
     when(collectionDAO.mlModelServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateMlModelService.MlModelServiceType.Mlflow);
-    lenient().when(service.getConnection()).thenReturn(mock(MlModelConnection.class));
+    lenient().when(service.getConnection()).thenReturn(serviceConnection);
     lenient().when(service.withConnection(isNull())).thenReturn(service);
     when(entityDAO.findEntityById(any(), any())).thenReturn(service);
     when(entityDAO.getEntityClass()).thenReturn(MlModelService.class);
   }
 
   @Override
-  protected String serviceType() {
+  protected String serviceConnectionType() {
     return CreateMlModelService.MlModelServiceType.Mlflow.value();
+  }
+
+  @Override
+  protected ServiceType serviceType() {
+    return ServiceType.ML_MODEL;
   }
 
   @Override
