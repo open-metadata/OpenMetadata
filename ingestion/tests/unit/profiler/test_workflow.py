@@ -20,8 +20,6 @@ import sqlalchemy as sqa
 from pytest import raises
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
@@ -34,20 +32,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
-from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
-    ColumnValuesToBeBetween,
-)
-from metadata.generated.schema.tests.columnTest import ColumnTestCase, ColumnTestType
-from metadata.generated.schema.tests.table.tableRowCountToEqual import (
-    TableRowCountToEqual,
-)
-from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.orm_profiler.profiler.models import ProfilerDef
-from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 config = {
     "source": {

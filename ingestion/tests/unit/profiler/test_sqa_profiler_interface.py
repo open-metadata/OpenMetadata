@@ -33,7 +33,6 @@ from metadata.orm_profiler.metrics.core import (
     QueryMetric,
     StaticMetric,
 )
-from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.profiler.default import get_default_metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner

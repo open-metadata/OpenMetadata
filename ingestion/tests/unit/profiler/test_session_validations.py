@@ -39,9 +39,6 @@ from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
 from metadata.generated.schema.tests.column.columnValuesToNotMatchRegex import (
     ColumnValuesToNotMatchRegex,
 )
-from metadata.generated.schema.tests.table.tableCustomSQLQuery import (
-    TableCustomSQLQuery,
-)
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.validations.core import validation_enum_registry
