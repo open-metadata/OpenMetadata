@@ -30,7 +30,7 @@
           "description": "startDate of the pipeline run for this particular execution.",
           "$ref": "../../../type/basic.json#/definitions/timestamp"
         },
-        "executionDate": {
+        "timestamp": {
           "description": "executionDate of the pipeline run for this particular execution.",
           "$ref": "../../../type/basic.json#/definitions/timestamp"
         },
