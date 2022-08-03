@@ -1,0 +1,15 @@
+{
+  "name": "TableRowCountToEqual",
+  "displayName": "TableRowCountToEqual",
+  "description": "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+  "testPlatforms": ["OpenMetadata", "GreatExpectations"],
+  "parameterDefinition": [
+    {
+      "name": "value",
+      "displayName": "Value",
+      "description": "Expected number of rows {value}",
+      "dataType": "INT",
+      "required": true
+    }
+  ]
+}

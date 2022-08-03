@@ -17,7 +17,7 @@ import React, { Fragment, useRef, useState } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getSeparator, errorMsg } from '../../../utils/CommonUtils';
+import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -54,6 +54,7 @@ const ConfigureIngestion = ({
   showFqnFilter,
   queryLogDuration,
   stageFileLocation,
+  threadCount,
   resultLimit,
   enableDebugLog,
   profileSample,
@@ -73,6 +74,7 @@ const ConfigureIngestion = ({
   handleProfileSample,
   handleStageFileLocation,
   handleResultLimit,
+  handleThreadCount,
   onCancel,
   onNext,
 }: ConfigureIngestionProps) => {
@@ -148,6 +150,28 @@ const ConfigureIngestion = ({
           }
         />
         {profileSampleError && errorMsg('Value must be between 0 and 99.')}
+      </div>
+    );
+  };
+
+  const getThreadCount = () => {
+    return (
+      <div>
+        <label>Thread Count</label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          Set the number of threads to use when computing the metrics. If left
+          blank, it will default to 5.
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
+          data-testid="threadCount"
+          id="threadCount"
+          name="threadCount"
+          placeholder="5"
+          type="number"
+          value={threadCount}
+          onChange={(e) => handleThreadCount(parseInt(e.target.value))}
+        />
       </div>
     );
   };
@@ -500,6 +524,8 @@ const ConfigureIngestion = ({
         <div>{getProfilerFilterPatternField()}</div>
         {getSeparator('')}
         {getProfileSample()}
+        {getSeparator('')}
+        {getThreadCount()}
         {getSeparator('')}
         {getIngestSampleToggle(
           'Ingest Sample Data',

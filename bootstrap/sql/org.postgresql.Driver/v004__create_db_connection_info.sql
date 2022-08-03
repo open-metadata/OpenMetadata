@@ -12,6 +12,10 @@ UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,connectionOptions}'
 where serviceType = 'DeltaLake';
 
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsProfiler}'
+where serviceType = 'DeltaLake';
+
 UPDATE dashboard_service_entity
 SET json = jsonb_set(json, '{connection,config,clientId}', json#>'{connection,config,username}')
 WHERE serviceType = 'Looker'
@@ -25,3 +29,40 @@ WHERE serviceType = 'Looker'
 UPDATE dashboard_service_entity
 SET json = json::jsonb #- '{connection,config,username}' #- '{connection,config,password}' #- '{connection,config,env}'
 WHERE serviceType = 'Looker';
+
+CREATE TABLE IF NOT EXISTS test_definition (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    UNIQUE (name)
+);
+
+CREATE TABLE IF NOT EXISTS test_suite (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    UNIQUE (name)
+);
+
+CREATE TABLE IF NOT EXISTS test_case (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(512) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    UNIQUE (fullyQualifiedName)
+);
+
+UPDATE webhook_entity
+SET json = JSONB_SET(json::jsonb, '{webhookType}', '"generic"', true);
+
+ALTER TABLE thread_entity
+    ADD announcementStart BIGINT GENERATED ALWAYS AS ((json#>'{announcement,startTime}')::bigint) STORED,
+    ADD announcementEnd BIGINT GENERATED ALWAYS AS ((json#>'{announcement,endTime}')::bigint) STORED;

@@ -83,6 +83,7 @@ export interface ConfigureIngestionProps {
   showChartFilter: boolean;
   showPipelineFilter: boolean;
   showFqnFilter: boolean;
+  threadCount: number;
   queryLogDuration: number;
   stageFileLocation: string;
   resultLimit: number;
@@ -102,6 +103,7 @@ export interface ConfigureIngestionProps {
   handleQueryLogDuration: (value: number) => void;
   handleStageFileLocation: (value: string) => void;
   handleResultLimit: (value: number) => void;
+  handleThreadCount: (value: number) => void;
   onCancel: () => void;
   onNext: () => void;
 }

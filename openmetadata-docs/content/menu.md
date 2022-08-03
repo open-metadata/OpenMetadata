@@ -3,7 +3,7 @@ site_menu:
   - category: Quickstart
     url: /quick-start
     color: violet-70
-    icon: av_timer
+    icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
     url: /quick-start/local-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
@@ -12,7 +12,7 @@ site_menu:
   - category: Overview
     url: /overview
     color: violet-70
-    icon: map
+    icon: overview
   - category: Overview / Latest Release
     url: /overview/latest-release
   - category: Overview / Features
@@ -25,7 +25,7 @@ site_menu:
   - category: Deployment
     url: /deployment
     color: violet-70
-    icon: cloud_download
+    icon: deployment
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
@@ -85,6 +85,22 @@ site_menu:
     url: /deployment/security/okta/bare-metal
   - category: Deployment / Enable Security / Okta SSO / Kubernetes
     url: /deployment/security/okta/kubernetes
+  - category: Deployment / Enable Security / Amazon Cognito SSO
+    url: /deployment/security/amazon-cognito
+  - category: Deployment / Enable Security / Amazon Cognito SSO / Docker
+    url: /deployment/security/amazon-cognito/docker
+  - category: Deployment / Enable Security / Amazon Cognito SSO / Bare Metal
+    url: /deployment/security/amazon-cognito/bare-metal
+  - category: Deployment / Enable Security / Amazon Cognito SSO / Kubernetes
+    url: /deployment/security/amazon-cognito/kubernetes
+  - category: Deployment / Enable Security / One Login SSO
+    url: /deployment/security/one-login
+  - category: Deployment / Enable Security / One Login SSO / Docker
+    url: /deployment/security/one-login/docker
+  - category: Deployment / Enable Security / One Login SSO / Bare Metal
+    url: /deployment/security/one-login/bare-metal
+  - category: Deployment / Enable Security / One Login SSO / Kubernetes
+    url: /deployment/security/one-login/kubernetes
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
@@ -121,7 +137,7 @@ site_menu:
   - category: OpenMetadata
     url: /openmetadata
     color: violet-70
-    icon: storage
+    icon: openmetadata
 
   - category: OpenMetadata / Connectors
     url: /openmetadata/connectors
@@ -288,6 +304,8 @@ site_menu:
     url: /openmetadata/connectors/dashboard/tableau/cli
   - category: OpenMetadata / Connectors / Dashboard / PowerBI
     url: /openmetadata/connectors/dashboard/powerbi
+  - category: OpenMetadata / Connectors / Dashboard / PowerBI / PowerBI Account Setup
+    url: /openmetadata/connectors/dashboard/powerbi/powerbi-account-setup
   - category: OpenMetadata / Connectors / Dashboard / PowerBI / Airflow
     url: /openmetadata/connectors/dashboard/powerbi/airflow
   - category: OpenMetadata / Connectors / Dashboard / PowerBI / CLI
@@ -336,6 +354,12 @@ site_menu:
     url: /openmetadata/connectors/pipeline/glue/airflow
   - category: OpenMetadata / Connectors / Pipeline / Glue / CLI
     url: /openmetadata/connectors/pipeline/glue/cli
+  - category: OpenMetadata / Connectors / Pipeline / Fivetran
+    url: /openmetadata/connectors/pipeline/fivetran
+  - category: OpenMetadata / Connectors / Pipeline / Fivetran / Airflow
+    url: /openmetadata/connectors/pipeline/fivetran/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Fivetran / CLI
+    url: /openmetadata/connectors/pipeline/fivetran/cli
 
   - category: OpenMetadata / Connectors / Metadata
     url: /openmetadata/connectors/metadata
@@ -401,7 +425,7 @@ site_menu:
   - category: Main Concepts
     url: /main-concepts
     color: violet-70
-    icon: public
+    icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
   - category: Main Concepts / Metadata Standard
@@ -873,7 +897,7 @@ site_menu:
   - category: Developers
     url: /developers
     color: violet-70
-    icon: developer_mode
+    icon: developers
   - category: Developers / Architecture
     url: /developers/architecture
   - category: Developers / Architecture / Understand Code Layout
@@ -904,7 +928,7 @@ site_menu:
   - category: SDK
     url: /sdk
     color: violet-70
-    icon: developer_board
+    icon: sdk
   - category: SDK / Python SDK
     url: /sdk/python
   - category: SDK / Python SDK / Entities

@@ -70,7 +70,7 @@ class SampleUsageSource(UsageSource):
         connection: SampleDataConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SampleDataConnection):
             raise InvalidSourceException(
-                f"Expected MssqlConnection, but got {connection}"
+                f"Expected SampleDataConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 

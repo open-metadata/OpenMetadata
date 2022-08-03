@@ -557,6 +557,7 @@ export const AuthProvider = ({
           <MsalProvider instance={msalInstance}>
             <MsalAuthenticator
               ref={authenticatorRef}
+              onLoginFailure={handleFailedLogin}
               onLoginSuccess={handleSuccessfulLogin}
               onLogoutSuccess={handleSuccessfulLogout}>
               {children}

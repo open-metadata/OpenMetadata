@@ -35,7 +35,6 @@ import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityReferences;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -450,6 +449,46 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(initialUserCount - initialAdminCount + 2, users.getPaging().getTotal());
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
+  }
+
+  @Test
+  void get_listUsersWithBotFilter_200_ok(TestInfo test) throws IOException {
+    ResultList<User> users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    int initialUserCount = users.getPaging().getTotal();
+    Map<String, String> botQueryParams = new HashMap<>();
+    botQueryParams.put("isBot", "true");
+    ResultList<User> bots = listEntities(botQueryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    int initialBotCount = bots.getPaging().getTotal();
+
+    // Create 3 bot users
+    CreateUser create = createRequest(test, 0).withIsBot(true);
+    User bot0 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    create = createRequest(test, 1).withIsBot(true);
+    User bot1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    create = createRequest(test, 2).withIsBot(true);
+    User bot2 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    Predicate<User> isBot0 = u -> u.getId().equals(bot0.getId());
+    Predicate<User> isBot1 = u -> u.getId().equals(bot1.getId());
+    Predicate<User> isBot2 = u -> u.getId().equals(bot2.getId());
+
+    users = listEntities(null, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(initialUserCount + 3, users.getPaging().getTotal());
+
+    // list bot users
+    bots = listEntities(botQueryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(initialBotCount + 3, bots.getData().size());
+    assertEquals(initialBotCount + 3, bots.getPaging().getTotal());
+    assertTrue(bots.getData().stream().anyMatch(isBot0));
+    assertTrue(bots.getData().stream().anyMatch(isBot1));
+    assertTrue(bots.getData().stream().anyMatch(isBot2));
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("isBot", "false");
+
+    // list users (not bots)
+    users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(initialUserCount - initialBotCount, users.getPaging().getTotal());
   }
 
   @Test

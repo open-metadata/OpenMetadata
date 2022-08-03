@@ -54,14 +54,8 @@ base_requirements = {
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        "apache-airflow==2.1.4"
+        "apache-airflow==2.3.3"
     },  # Same as ingestion container. For development.
-    "airflow-container": {
-        "marshmallow-sqlalchemy>=0.26.0",
-        "SQLAlchemy-Utils>=0.38.0",
-        "pymysql>=1.0.2",
-        "requests==2.26.0",
-    },
     "airflow-container-1.10.15": {"markupsafe==2.0.1 ", "requests==2.23.0"},
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
@@ -157,11 +151,7 @@ test = {
     # great_expectations tests
     "great-expectations~=0.15.0",
     # Airflow tests
-    "apache-airflow==2.1.4",
-    "marshmallow-sqlalchemy>=0.26.0",
-    "SQLAlchemy-Utils>=0.38.0",
-    "pymysql>=1.0.2",
-    "requests==2.26.0",
+    "apache-airflow==2.3.3",
 }
 
 build_options = {"includes": ["_cffi_backend"]}

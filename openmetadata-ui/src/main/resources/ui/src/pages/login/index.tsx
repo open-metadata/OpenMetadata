@@ -12,11 +12,9 @@
  */
 
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import appState from '../../AppState';
 import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Loader from '../../components/Loader/Loader';
@@ -28,11 +26,16 @@ import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
   const history = useHistory();
-  const { isAuthDisabled, authConfig, onLoginHandler, onLogoutHandler } =
-    useAuthContext();
+  const {
+    isAuthDisabled,
+    authConfig,
+    onLoginHandler,
+    onLogoutHandler,
+    isAuthenticated,
+  } = useAuthContext();
   const isAlreadyLoggedIn = useMemo(() => {
-    return isAuthDisabled || !isEmpty(appState.userDetails);
-  }, [isAuthDisabled, appState.userDetails]);
+    return isAuthDisabled || isAuthenticated;
+  }, [isAuthDisabled, isAuthenticated]);
 
   const isTokenExpired = () => {
     const token = localStorage.getItem(oidcTokenKey);

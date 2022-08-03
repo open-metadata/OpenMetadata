@@ -153,4 +153,12 @@ public final class CatalogExceptionMessage {
   public static String invalidParentCount(int validParentCount, TeamType teamType) {
     return String.format("Team of type %s can have only %s parents", teamType, validParentCount);
   }
+
+  public static String deleteOrganization() {
+    return "Organization team type can't be deleted";
+  }
+
+  public static String createOrganization() {
+    return "Only one Organization is allowed. New Organization type can't be created";
+  }
 }

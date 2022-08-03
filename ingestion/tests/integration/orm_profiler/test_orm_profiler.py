@@ -34,7 +34,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.connections import create_and_bind_session
 
-sqlite_shared = "file:cachedb?mode=memory&cache=shared"
+sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 
 ingestion_config = {
     "source": {
@@ -84,7 +84,7 @@ class ProfilerWorkflowTest(TestCase):
     """
 
     engine = create_engine(
-        f"sqlite+pysqlite:///{sqlite_shared}", echo=True, future=True
+        f"sqlite+pysqlite:///{sqlite_shared}",
     )
     session = create_and_bind_session(engine)
 

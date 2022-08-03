@@ -1,5 +1,32 @@
 [
   {
+    "name" : "all",
+    "operations" : [
+      "All",
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewUsage",
+      "ViewTests",
+      "ViewQueries",
+      "ViewDataProfile",
+      "ViewSampleData",
+      "EditAll",
+      "EditDescription",
+      "EditTags",
+      "EditOwner",
+      "EditTier",
+      "EditCustomFields",
+      "EditLineage",
+      "EditReviewers",
+      "EditTests",
+      "EditQueries",
+      "EditDataProfile",
+      "EditSampleData",
+      "EditUsers"
+    ]
+  },
+  {
     "name" : "bot",
     "operations" : [
       "Create",
@@ -352,6 +379,30 @@
   },
   {
     "name" : "feed",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
+    "name" : "testSuite",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
+    "name" : "testDefinition",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
+    "name" : "testCase",
     "operations" : [
       "Create",
       "Delete",

@@ -43,13 +43,11 @@ class Timer:
     Helper to test timeouts
     """
 
-    @staticmethod
-    def slow():
+    def slow(self):
         time.sleep(10)
         return 1
 
-    @staticmethod
-    def fast():
+    def fast(self):
         return 1
 
 
@@ -65,7 +63,6 @@ class RunnerTest(TestCase):
     sample = sampler.random_sample()
 
     raw_runner = QueryRunner(session=session, table=User, sample=sample)
-
     timeout_runner: Timer = cls_timeout(1)(Timer())
 
     @classmethod

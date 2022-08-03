@@ -148,10 +148,16 @@ export const getTeamsByQuery = async (params: {
   q: string;
   from?: number;
   size?: number;
-  isJoinable?: boolean;
 }) => {
   const response = await APIClient.get(`/search/query`, {
-    params: { index: SearchIndex.TEAM, ...params },
+    params: {
+      index: SearchIndex.TEAM,
+      ...params,
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      sort_field: 'name.keyword',
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      sort_order: 'asc',
+    },
   });
 
   return response.data;

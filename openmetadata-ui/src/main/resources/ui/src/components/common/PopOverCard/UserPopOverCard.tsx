@@ -14,7 +14,13 @@
 import { Popover } from 'antd';
 import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
+import React, {
+  FC,
+  Fragment,
+  HTMLAttributes,
+  useEffect,
+  useState,
+} from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
@@ -119,7 +125,10 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         <div className="tw-self-center">
           <button
             className="tw-text-info"
-            onClick={() => onTitleClickHandler(getUserPath(name))}>
+            onClick={(e) => {
+              e.stopPropagation();
+              onTitleClickHandler(getUserPath(name));
+            }}>
             <span className="tw-font-medium tw-mr-2">{displayName}</span>
           </button>
           {displayName !== name ? (
@@ -132,6 +141,10 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
   };
 
   const PopoverContent = () => {
+    useEffect(() => {
+      getData();
+    }, []);
+
     return (
       <Fragment>
         {isLoading ? (
@@ -161,7 +174,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
       title={<PopoverTitle />}
       trigger="hover"
       zIndex={9999}>
-      <div onMouseOver={getData}>{children}</div>
+      {children}
     </Popover>
   );
 };

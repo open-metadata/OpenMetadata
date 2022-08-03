@@ -14,7 +14,7 @@
 import { Modal, Radio, RadioChangeEvent } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { startCase } from 'lodash';
-import React, { ChangeEvent, useCallback, useState } from 'react';
+import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { deleteEntity } from '../../../axiosAPIs/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
@@ -28,6 +28,7 @@ import Loader from '../../Loader/Loader';
 import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
 const DeleteWidgetV1 = ({
+  allowSoftDelete = true,
   visible,
   entityName,
   entityType,
@@ -40,7 +41,9 @@ const DeleteWidgetV1 = ({
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
   const [name, setName] = useState<string>('');
-  const [value, setValue] = useState<DeleteType>(DeleteType.SOFT_DELETE);
+  const [value, setValue] = useState<DeleteType>(
+    allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
+  );
 
   const prepareDeleteMessage = (softDelete = false) => {
     const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
@@ -54,11 +57,13 @@ const DeleteWidgetV1 = ({
       title: `Delete ${entityType} “${entityName}”`,
       description: prepareDeleteMessage(true),
       type: DeleteType.SOFT_DELETE,
+      isAllowd: allowSoftDelete,
     },
     {
       title: `Permanently Delete ${entityType} “${entityName}”`,
       description: prepareDeleteMessage(),
       type: DeleteType.HARD_DELETE,
+      isAllowd: true,
     },
   ];
 
@@ -154,6 +159,14 @@ const DeleteWidgetV1 = ({
     handleOnEntityDelete(value === DeleteType.SOFT_DELETE);
   };
 
+  useEffect(() => {
+    setValue(allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE);
+    setEntityDeleteState({
+      ...ENTITY_DELETE_STATE,
+      softDelete: allowSoftDelete,
+    });
+  }, [allowSoftDelete]);
+
   const Footer = () => {
     return (
       <div className="tw-justify-end" data-testid="footer">
@@ -202,17 +215,22 @@ const DeleteWidgetV1 = ({
       visible={visible}
       onCancel={handleOnEntityDeleteCancel}>
       <Radio.Group value={value} onChange={onChange}>
-        {DELETE_OPTION.map((option) => (
-          <Radio
-            data-testid={option.type}
-            key={option.type}
-            value={option.type}>
-            <p className="tw-text-sm tw-mb-1 tw-font-medium">{option.title}</p>
-            <p className="tw-text-grey-muted tw-text-xs tw-mb-2">
-              {option.description}
-            </p>
-          </Radio>
-        ))}
+        {DELETE_OPTION.map(
+          (option) =>
+            option.isAllowd && (
+              <Radio
+                data-testid={option.type}
+                key={option.type}
+                value={option.type}>
+                <p className="tw-text-sm tw-mb-1 tw-font-medium">
+                  {option.title}
+                </p>
+                <p className="tw-text-grey-muted tw-text-xs tw-mb-2">
+                  {option.description}
+                </p>
+              </Radio>
+            )
+        )}
       </Radio.Group>
       <div>
         <p className="tw-mb-2">

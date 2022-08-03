@@ -13,18 +13,21 @@
 import { Card } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
+import { useHistory } from 'react-router-dom';
 import {
   Post,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
+import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
@@ -38,11 +41,18 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   onConfirmation,
   updateThreadHandler,
 }) => {
+  const history = useHistory();
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
 
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
+  };
+
+  const handleCardClick = (taskId: number, isTask: boolean) => {
+    if (isTask) {
+      history.push(getTaskDetailPath(String(taskId)));
+    }
   };
 
   return (
@@ -65,6 +75,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   reactions: thread.reactions,
                 } as Post;
                 const isTask = isEqual(thread.type, ThreadType.Task);
+                const isAnnouncement = thread.type === ThreadType.Announcement;
                 const postLength = thread?.posts?.length || 0;
                 const replies = thread.postsCount ? thread.postsCount - 1 : 0;
                 const repliedUsers = [
@@ -87,13 +98,19 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         paddingTop: isTask ? '8px' : '',
                         border: isTask
                           ? '1px solid #C6B5F6'
+                          : isAnnouncement
+                          ? '1px solid #FFC143'
                           : leftPanelAntCardStyle.border,
-                      }}>
+                      }}
+                      onClick={() =>
+                        thread.task && handleCardClick(thread.task.id, isTask)
+                      }>
                       {isTask && (
                         <TaskBadge
                           status={thread.task?.status as ThreadTaskStatus}
                         />
                       )}
+                      {isAnnouncement && <AnnouncementBadge />}
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed

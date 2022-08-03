@@ -35,7 +35,6 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -76,7 +75,6 @@ DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet")
 class DatalakeSource(DatabaseServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.status = SQLSourceStatus()
-
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -84,10 +82,6 @@ class DatalakeSource(DatabaseServiceSource):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=config
-        )
-
         self.connection = get_connection(self.service_connection)
         self.client = self.connection.client
         self.table_constraints = None
@@ -182,10 +176,15 @@ class DatalakeSource(DatabaseServiceSource):
                 for key in bucket.list_blobs(prefix=prefix):
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern, key.name
-                    ) or not self.check_valid_file_type(key.name):
+                    ):
                         self.status.filter(
-                            "{}".format(key["Key"]),
-                            "Table pattern not allowed",
+                            "{}".format(key.name),
+                            "Object pattern not allowed",
+                        )
+                        continue
+                    if not self.check_valid_file_type(key.name):
+                        logger.debug(
+                            f"Object filtered due to unsupported file type: {key.name}"
                         )
                         continue
                     table_name = self.standardize_table_name(bucket_name, key.name)
@@ -197,10 +196,15 @@ class DatalakeSource(DatabaseServiceSource):
                 for key in self._list_s3_objects(**kwargs):
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern, key["Key"]
-                    ) or not self.check_valid_file_type(key["Key"]):
+                    ):
                         self.status.filter(
                             "{}".format(key["Key"]),
-                            "Table pattern not allowed",
+                            "Object pattern not allowed",
+                        )
+                        continue
+                    if not self.check_valid_file_type(key["Key"]):
+                        logger.debug(
+                            f"Object filtered due to unsupported file type: {key['Key']}"
                         )
                         continue
                     table_name = self.standardize_table_name(bucket_name, key["Key"])

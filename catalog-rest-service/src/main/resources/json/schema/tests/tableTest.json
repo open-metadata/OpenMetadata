@@ -67,9 +67,6 @@
     "testCase": {
       "$ref": "#/definitions/tableTestCase"
     },
-    "executionFrequency": {
-      "$ref": "./basic.json#/definitions/testCaseExecutionFrequency"
-    },
     "results": {
       "description": "List of results of the test case.",
       "type": "array",

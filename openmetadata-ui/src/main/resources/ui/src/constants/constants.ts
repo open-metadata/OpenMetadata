@@ -451,3 +451,5 @@ export const TITLE_FOR_UPDATE_DESCRIPTION =
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },
 };
+
+export const NOTIFICATION_READ_TIMER = 2500;

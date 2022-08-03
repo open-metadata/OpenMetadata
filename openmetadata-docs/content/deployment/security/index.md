@@ -55,4 +55,20 @@ please follow the [Quickstart](/quick-start/local-deployment) guide.
   >
     Configure Okta SSO to access the UI and APIs
   </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    bold="Amazon Cognito SSO"
+    icon="add_moderator"
+    href="/deployment/security/amazon-cognito"
+  >
+    Configure Okta SSO to access the UI and APIs
+  </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    bold="One Login SSO"
+    icon="add_moderator"
+    href="/deployment/security/one-login"
+  >
+    Configure One Login SSO to access the UI and APIs
+  </InlineCallout>
 </InlineCalloutContainer>

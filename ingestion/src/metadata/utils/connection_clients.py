@@ -115,3 +115,9 @@ class ModeClient:
 class MlflowClientWrapper:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class FivetranClient:
+    def __init__(self, client) -> None:
+        self.client = client

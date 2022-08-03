@@ -68,50 +68,6 @@ def get_class(key: str) -> Type[T]:
         return my_class
 
 
-def get_source_dir(connection_type: type) -> str:
-    if connection_type == DatabaseConnection:
-        return "database"
-    if connection_type == MessagingConnection:
-        return "messaging"
-    if connection_type == MetadataConnection:
-        return "metadata"
-    if connection_type == DashboardConnection:
-        return "dashboard"
-    if connection_type == PipelineConnection:
-        return "pipeline"
-    if connection_type == MlModelConnection:
-        return "mlmodel"
-
-
-def get_ingestion_source(
-    source_type: str,
-    source_config: WorkflowSource,
-    metadata_config: OpenMetadataConnection,
-) -> Source:
-    """
-    Import the required source class and configure it.
-
-    :param source_type: Type specified in the config, e.g., redshift
-    :param source_config: Specific source configurations, such as the host
-    :param metadata_config: Metadata server configurations
-    """
-
-    source_class = get_class(
-        "metadata.ingestion.source.{}.{}.{}Source".format(
-            get_source_dir(type(source_config.serviceConnection.__root__)),
-            fetch_type_class(source_type, is_file=True),
-            fetch_type_class(source_type, is_file=False),
-        )
-    )
-    source: Source = source_class.create(source_config.dict(), metadata_config)
-    logger.debug(f"Source type:{source_type},{source_class} configured")
-
-    source.prepare()
-    logger.debug(f"Source type:{source_type},{source_class} prepared")
-
-    return source
-
-
 def get_sink(
     sink_type: str,
     sink_config: WorkflowSink,

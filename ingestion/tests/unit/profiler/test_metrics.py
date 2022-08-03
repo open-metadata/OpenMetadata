@@ -13,18 +13,10 @@
 Test Metrics behavior
 """
 import datetime
+import os
 from unittest import TestCase
 
-from sqlalchemy import (
-    TEXT,
-    Column,
-    Date,
-    DateTime,
-    Integer,
-    String,
-    Time,
-    create_engine,
-)
+from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
@@ -34,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.orm.functions.sum import SumFn
 from metadata.orm_profiler.profiler.core import Profiler
 
 Base = declarative_base()
@@ -57,7 +50,13 @@ class MetricsTest(TestCase):
     Run checks on different metrics
     """
 
-    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    db_path = os.path.join(
+        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
+    )
+    sqlite_conn = SQLiteConnection(
+        scheme=SQLiteScheme.sqlite_pysqlite,
+        databaseMode=db_path + "?check_same_thread=False",
+    )
     sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
     engine = sqa_profiler_interface.session.get_bind()
 
@@ -835,3 +834,15 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30
+
+    def test_sum_function(self):
+        """Check overwritten sum function"""
+        session = self.sqa_profiler_interface.session
+        res = session.query(SumFn(User.age)).select_from(User).scalar()
+
+        assert res == 61
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        os.remove(cls.db_path)
+        return super().tearDownClass()
