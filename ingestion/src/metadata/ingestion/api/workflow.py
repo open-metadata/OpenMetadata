@@ -237,10 +237,9 @@ class Workflow:
                 fg="bright_cyan",
                 bold=True,
             )
-            source_sucess = len(self.source.get_status().success)
-            source_failed = len(self.source.get_status().failures)
+            
             click.secho(
-                f"Success % : {round(source_sucess*100/(source_sucess+source_failed),2)}",
+                f"Success % : {self.source.get_status().calculate_success()}",
                 fg="bright_cyan",
                 bold=True,
             )

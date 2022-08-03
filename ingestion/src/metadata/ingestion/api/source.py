@@ -51,6 +51,11 @@ class SourceStatus(BaseModel, Status):
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append({key: reason})
 
+    def calculate_success(self) -> float:
+        source_sucess = len(self.success)
+        source_failed = len(self.failures)
+        return round(source_sucess*100/(source_sucess+source_failed),2)
+
 
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
