@@ -28,11 +28,15 @@
         },
         "startDate": {
           "description": "startDate of the pipeline run for this particular execution.",
-          "type": "string"
+          "$ref": "../../../type/basic.json#/definitions/timestamp"
+        },
+        "executionDate": {
+          "description": "executionDate of the pipeline run for this particular execution.",
+          "$ref": "../../../type/basic.json#/definitions/timestamp"
         },
         "endDate": {
           "description": "endDate of the pipeline run for this particular execution.",
-          "type": "string"
+          "$ref": "../../../type/basic.json#/definitions/timestamp"
         }
       },
       "additionalProperties": false
