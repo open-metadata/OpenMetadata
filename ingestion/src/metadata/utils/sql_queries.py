@@ -1,15 +1,29 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+SQL Queries used during ingestion
+"""
+
 import textwrap
 
-REDSHIFT_SQL_STATEMENT = """
+# Not able to use SYS_QUERY_HISTORY here. Few users not getting any results
+REDSHIFT_SQL_STATEMENT = textwrap.dedent(
+    """
   WITH
   queries AS (
     SELECT *
       FROM pg_catalog.stl_query
      WHERE userid > 1
+          {filters}
           -- Filter out all automated & cursor queries
-          AND querytxt NOT ILIKE 'fetch %%'
-          AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
-          AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
           AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
           AND aborted = 0
@@ -59,8 +73,11 @@ REDSHIFT_SQL_STATEMENT = """
           ON q.userid = u.usesysid
     ORDER BY q.endtime DESC
 """
+)
 
-REDSHIFT_GET_ALL_RELATION_INFO = """
+
+REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
+    """
         SELECT
           c.relkind,
           n.oid as "schema_oid",
@@ -82,8 +99,11 @@ REDSHIFT_GET_ALL_RELATION_INFO = """
           AND n.nspname !~ '^pg_'
         ORDER BY c.relkind, n.oid, n.nspname;
         """
+)
 
-REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
+
+REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
+    """
             SELECT
               n.nspname as "schema",
               c.relname as "table_name",
@@ -171,8 +191,10 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
             FROM svv_external_columns
             ORDER BY "schema", "table_name", "attnum";
             """
+)
 
-SNOWFLAKE_USAGE_SQL_STATEMENT = """
+SNOWFLAKE_USAGE_SQL_STATEMENT = textwrap.dedent(
+    """
         SELECT 
           query_type,
           query_text,
@@ -192,13 +214,15 @@ SNOWFLAKE_USAGE_SQL_STATEMENT = """
           AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
         """
+)
 
-SNOWFLAKE_LINEAGE_SQL_STATEMENT = """
+SNOWFLAKE_LINEAGE_SQL_STATEMENT = textwrap.dedent(
+    """
         SELECT 
           query_type,
           query_text,
           database_name,
-          schema_name,
+          schema_name
         FROM table(
           information_schema.query_history(
             end_time_range_start => to_timestamp_ltz('{start_time}'),
@@ -206,10 +230,11 @@ SNOWFLAKE_LINEAGE_SQL_STATEMENT = """
             RESULT_LIMIT => {result_limit}
             )
         )
-        WHERE QUERY_TYPE IN ()
+        WHERE QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','COPY','CREATE_TABLE_AS_SELECT')
           AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
         """
+)
 
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
@@ -312,7 +337,8 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
         """
 )
 
-VERTICA_GET_COLUMNS = """
+VERTICA_GET_COLUMNS = textwrap.dedent(
+    """
         SELECT column_name, data_type, column_default, is_nullable, comment
         FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id and com.object_type='COLUMN' and col.column_name=com.child_object  
         WHERE lower(table_name) = '{table}'
@@ -323,23 +349,29 @@ VERTICA_GET_COLUMNS = """
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
     """
+)
 
-VERTICA_GET_PRIMARY_KEYS = """
+VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
+    """
         SELECT column_name
         FROM v_catalog.primary_keys
         WHERE lower(table_name) = '{table}'
         AND constraint_type = 'p'
         AND {schema_condition}
     """
+)
 
-VERTICA_VIEW_DEFINITION = """
+VERTICA_VIEW_DEFINITION = textwrap.dedent(
+    """
       SELECT VIEW_DEFINITION
       FROM V_CATALOG.VIEWS
       WHERE table_name='{view_name}'
       AND {schema_condition}
-"""
+    """
+)
 
-MSSQL_SQL_USAGE_STATEMENT = """
+MSSQL_SQL_USAGE_STATEMENT = textwrap.dedent(
+    """
       SELECT
         db.NAME database_name,
         t.text query_text,
@@ -360,8 +392,10 @@ MSSQL_SQL_USAGE_STATEMENT = """
           AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
       ORDER BY s.last_execution_time DESC;
 """
+)
 
-CLICKHOUSE_SQL_USAGE_STATEMENT = """
+CLICKHOUSE_SQL_USAGE_STATEMENT = textwrap.dedent(
+    """
         Select
           query_start_time start_time,
           DATEADD(query_duration_ms, query_start_time) end_time,
@@ -380,14 +414,17 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
         and query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
         and (`type`='QueryFinish' or `type`='QueryStart')
 """
+)
 
 
-SNOWFLAKE_FETCH_ALL_TAGS = """
+SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
+    """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from snowflake.account_usage.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
 """
+)
 
 
 SNOWFLAKE_GET_TABLE_NAMES = """
@@ -398,14 +435,17 @@ SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
 """
 
-SNOWFLAKE_GET_COMMENTS = """
+SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
+    """
     select COMMENT
     from information_schema.TABLES 
     WHERE TABLE_SCHEMA = '{schema_name}'
       AND TABLE_NAME = '{table_name}'
 """
+)
 
-BIGQUERY_USAGE_STATEMENT = """
+BIGQUERY_USAGE_STATEMENT = textwrap.dedent(
+    """
  SELECT
    project_id as database_name,
    user_email as user_name,
@@ -422,9 +462,11 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
   AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
 """
+)
 
 
-TRINO_GET_COLUMNS = """
+TRINO_GET_COLUMNS = textwrap.dedent(
+    """
     SELECT
         "column_name",
         "data_type",
@@ -435,3 +477,4 @@ TRINO_GET_COLUMNS = """
         AND "table_name" = :table
     ORDER BY "ordinal_position" ASC
 """
+)

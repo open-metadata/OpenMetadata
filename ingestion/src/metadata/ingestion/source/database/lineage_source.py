@@ -69,7 +69,7 @@ class LineageSource(QueryParserSource, ABC):
 
         else:
             logger.info(
-                f"Scanning query logs for {self.start.date()} - {self.start.date()}"
+                f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
             try:
                 rows = self.engine.execute(
