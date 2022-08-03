@@ -42,7 +42,11 @@ public abstract class ServiceEntityResource<
         .getConnection()
         .setConfig(
             secretsManager.encryptOrDecryptServiceConnectionConfig(
-                service.getConnection(), extractServiceType(service), service.getName(), serviceType, false));
+                service.getConnection().getConfig(),
+                extractServiceType(service),
+                service.getName(),
+                serviceType,
+                false));
     return service;
   }
 

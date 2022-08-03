@@ -35,6 +35,7 @@ import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PipelineConnection;
 
@@ -52,10 +53,12 @@ public class PipelineServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(PipelineService.class);
+    PipelineConnection serviceConnection = mock(PipelineConnection.class);
+    lenient().when(serviceConnection.getConfig()).thenReturn(mock(AirflowConnection.class));
     CollectionDAO.PipelineServiceDAO entityDAO = mock(CollectionDAO.PipelineServiceDAO.class);
     when(collectionDAO.pipelineServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreatePipelineService.PipelineServiceType.Airflow);
-    lenient().when(service.getConnection()).thenReturn(mock(PipelineConnection.class));
+    lenient().when(service.getConnection()).thenReturn(serviceConnection);
     lenient().when(service.withConnection(isNull())).thenReturn(service);
     when(entityDAO.findEntityById(any(), any())).thenReturn(service);
     when(entityDAO.getEntityClass()).thenReturn(PipelineService.class);
