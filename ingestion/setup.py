@@ -49,6 +49,7 @@ base_requirements = {
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",
+    "croniter~=1.3.0",
 }
 
 

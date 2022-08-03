@@ -18,16 +18,17 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
-    TableColumnCountToEqual,
-)
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.orm_profiler.validations.utils import TEST_DATA_TYPE_MAPPING
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
 def table_column_count_to_equal(
-    test_case: TableColumnCountToEqual,
+    test_case: TestCase,
+    test_definition: TestDefinition,
     table_profile: TableProfile,
     execution_date: datetime,
     **__,
@@ -49,13 +50,26 @@ def table_column_count_to_equal(
             result=msg,
         )
 
+    count = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "columnCount"
+    )
+    count_type = TEST_DATA_TYPE_MAPPING[
+        next(
+            param_value.dataType
+            for param_value in test_definition.parameterDefinition
+            if param_value.name == "columnCount"
+        )
+    ]
+
     status = (
         TestCaseStatus.Success
-        if table_profile.columnCount == test_case.columnCount
+        if table_profile.columnCount == count_type(count)
         else TestCaseStatus.Failed
     )
-    result = f"Found {table_profile.columnCount} columns vs. the expected {test_case.columnCount}"
+    result = f"Found {table_profile.columnCount} columns vs. the expected {count}"
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

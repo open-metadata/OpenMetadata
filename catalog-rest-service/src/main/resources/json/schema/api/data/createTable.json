@@ -41,7 +41,7 @@
     "tablePartition": {
       "$ref": "../../entity/data/table.json#/definitions/tablePartition"
     },
-    "tableProfileConfig": {
+    "tableProfilerConfig": {
       "$ref": "../../entity/data/table.json#/definitions/tableProfilerConfig"
     },
     "owner": {

@@ -20,16 +20,16 @@ from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.table.tableCustomSQLQuery import (
-    TableCustomSQLQuery,
-)
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
 def table_custom_sql_query(
-    test_case: TableCustomSQLQuery,
+    test_case: TestCase,
+    test_definition: TestDefinition,
     execution_date: datetime,
     session: Session,
     **__,
@@ -48,11 +48,17 @@ def table_custom_sql_query(
         TestCaseResult with status and results
     """
 
-    rows = session.execute(text(test_case.sqlExpression)).all()
+    sql_expression = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "sqlExpression"
+    )
+
+    rows = session.execute(text(sql_expression)).all()
 
     status = TestCaseStatus.Success if not rows else TestCaseStatus.Failed
     result = f"Found {len(rows)} row(s). Test query is expected to return 0 row."
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

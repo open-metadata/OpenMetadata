@@ -953,7 +953,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             .withTableType(create.getTableType())
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
-            .withTableProfilerConfig(create.getTableProfileConfig())
+            .withTableProfilerConfig(create.getTableProfilerConfig())
             .withDatabaseSchema(create.getDatabaseSchema()));
   }
 
