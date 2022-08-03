@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -44,6 +45,10 @@ from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerRe
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.utils import fqn
+from metadata.utils.class_helper import (
+    get_service_class_from_service_type,
+    get_service_type_from_source_type,
+)
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_fqn
 from metadata.utils.logger import profiler_logger
@@ -67,6 +72,11 @@ class ProfilerWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
 
+        # OpenMetadata client to fetch tables
+        self.metadata = OpenMetadata(self.metadata_config)
+
+        self._retrieve_service_connection_if_needed()
+
         # Prepare the connection to the source service
         # We don't need the whole Source class, as it is the OM Server
 
@@ -85,9 +95,6 @@ class ProfilerWorkflow:
                 metadata_config=self.metadata_config,
                 _from="orm_profiler",
             )
-
-        # OpenMetadata client to fetch tables
-        self.metadata = OpenMetadata(self.metadata_config)
 
         if not self._validate_service_name():
             raise ValueError(
@@ -302,3 +309,30 @@ class ProfilerWorkflow:
         """
         self.metadata.close()
         self.processor.close()
+
+    def _retrieve_service_connection_if_needed(self) -> None:
+        """
+        We override the current `serviceConnection` source config object if source workflow service already exists
+        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
+        from the service object itself through the default `SecretsManager`.
+
+        :return:
+        """
+        if not self._is_sample_source(self.config.source.type):
+            service_type: ServiceType = get_service_type_from_source_type(
+                self.config.source.type
+            )
+            service = self.metadata.get_by_name(
+                get_service_class_from_service_type(service_type),
+                self.config.source.serviceName,
+            )
+            if service:
+                self.config.source.serviceConnection = (
+                    self.metadata.secrets_manager_client.retrieve_service_connection(
+                        service, service_type.name.lower()
+                    )
+                )
+
+    @staticmethod
+    def _is_sample_source(service_type):
+        return service_type == "sample-data" or service_type == "sample-usage"

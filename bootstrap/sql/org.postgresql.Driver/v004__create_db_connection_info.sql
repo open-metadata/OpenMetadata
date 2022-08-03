@@ -12,6 +12,10 @@ UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,connectionOptions}'
 where serviceType = 'DeltaLake';
 
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsProfiler}'
+where serviceType = 'DeltaLake';
+
 UPDATE dashboard_service_entity
 SET json = jsonb_set(json, '{connection,config,clientId}', json#>'{connection,config,username}')
 WHERE serviceType = 'Looker'
@@ -58,3 +62,7 @@ CREATE TABLE IF NOT EXISTS test_case (
 
 UPDATE webhook_entity
 SET json = JSONB_SET(json::jsonb, '{webhookType}', '"generic"', true);
+
+ALTER TABLE thread_entity
+    ADD announcementStart BIGINT GENERATED ALWAYS AS ((json#>'{announcement,startTime}')::bigint) STORED,
+    ADD announcementEnd BIGINT GENERATED ALWAYS AS ((json#>'{announcement,endTime}')::bigint) STORED;

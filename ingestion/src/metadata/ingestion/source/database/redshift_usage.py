@@ -16,14 +16,14 @@ from typing import Iterator, Union
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
-
-# pylint: disable=useless-super-delegation
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
@@ -34,7 +34,7 @@ class RedshiftUsageSource(UsageSource):
 
     SQL_STATEMENT = REDSHIFT_SQL_STATEMENT
 
-    def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
             start_time=self.start, end_time=self.end
@@ -43,7 +43,7 @@ class RedshiftUsageSource(UsageSource):
         self._database = "redshift"
 
     @classmethod
-    def create(cls, config_dict, metadata_config: WorkflowConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedshiftConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedshiftConnection):

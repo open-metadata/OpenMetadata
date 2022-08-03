@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.entity.policies.accessControl.Rule",
   "properties": {
     "name": {
-      "description": "Name for this Rule.",
+      "description": "Name of this Rule.",
       "type": "string"
     },
     "fullyQualifiedName": {
@@ -40,8 +40,6 @@
       "default": false
     }
   },
-  "required": [
-    "name"
-  ],
+  "required": ["name", "operation"],
   "additionalProperties": false
 }

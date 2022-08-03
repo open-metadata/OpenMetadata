@@ -124,9 +124,6 @@ HiveDialect.get_view_names = get_view_names
 
 
 class HiveSource(CommonDbSourceService):
-    def prepare(self):
-        return super().prepare()
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)

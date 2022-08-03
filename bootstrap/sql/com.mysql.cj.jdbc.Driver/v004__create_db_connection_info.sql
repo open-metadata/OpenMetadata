@@ -12,6 +12,10 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.connectionOptions')
 WHERE serviceType = 'DeltaLake';
 
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.supportsProfiler')
+WHERE serviceType = 'DeltaLake';
+
 UPDATE dashboard_service_entity
 SET json = JSON_INSERT(
         JSON_REMOVE(json, '$.connection.config.username'),
@@ -31,7 +35,6 @@ WHERE serviceType = 'Looker';
 UPDATE dashboard_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.env')
 WHERE serviceType = 'Looker';
-
 
 CREATE TABLE IF NOT EXISTS test_definition (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
@@ -65,3 +68,7 @@ CREATE TABLE IF NOT EXISTS test_case (
 
 UPDATE webhook_entity
 SET json = JSON_INSERT(json, '$.webhookType', 'generic');
+
+ALTER TABLE thread_entity
+    ADD announcementStart BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.startTime'),
+    ADD announcementEnd BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.endTime');

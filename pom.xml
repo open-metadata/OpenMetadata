@@ -130,6 +130,11 @@
     <testng.version>7.6.0</testng.version>
     <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
     <json-schema-validator.version>1.0.70</json-schema-validator.version>
+    <spring-expression.version>5.3.21</spring-expression.version>
+    <java-jwt.version>3.19.2</java-jwt.version>
+    <jwks-rsa.version>0.21.1</jwks-rsa.version>
+    <jjwt.version>0.9.1</jjwt.version>
+    <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -542,7 +547,7 @@
         <enabled>true</enabled>
       </snapshots>
       <id>aws-redshift</id>
-      <url>http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release</url>
+      <url>https://s3.amazonaws.com/redshift-maven-repository/release</url>
     </repository>
   </repositories>
 

@@ -12,7 +12,6 @@
 Airbyte source to extract metadata
 """
 
-from tokenize import group
 from typing import Iterable, Optional
 
 from pydantic import BaseModel

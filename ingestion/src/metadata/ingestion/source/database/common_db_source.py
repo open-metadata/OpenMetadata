@@ -48,7 +48,6 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
-from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -76,12 +75,13 @@ class CommonDbSourceService(
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
+
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(self.metadata_config)
+
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
-
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
 
         self.engine: Engine = get_connection(self.service_connection)
         self.test_connection()

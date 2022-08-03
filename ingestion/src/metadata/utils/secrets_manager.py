@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import inspect
 import json
 from abc import abstractmethod
@@ -25,6 +26,12 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.security.client import (
     auth0SSOClientConfig,
     azureSSOClientConfig,
@@ -42,8 +49,16 @@ logger = ingestion_logger()
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
 
 # new typing type wrapping types from the '__root__' field of 'ServiceConnection' class
-ServiceConnectionType = NewType(
-    "ServiceConnectionType", ServiceConnection.__fields__["__root__"].type_
+ServiceWithConnectionType = NewType(
+    "ServiceWithConnectionType",
+    Union[
+        DashboardService,
+        DatabaseService,
+        MessagingService,
+        MetadataService,
+        MlModelService,
+        PipelineService,
+    ],
 )
 
 # new typing type wrapping types from the 'securityConfig' field of 'OpenMetadataConnection' class
@@ -70,13 +85,13 @@ class SecretsManager(metaclass=Singleton):
     """
 
     @abstractmethod
-    def add_service_config_connection(
+    def retrieve_service_connection(
         self,
-        service: ServiceConnectionType,
+        service: ServiceWithConnectionType,
         service_type: str,
-    ) -> None:
+    ) -> ServiceConnection:
         """
-        Add the service connection config from the secret manager to a given service connection object.
+        Retrieve the service connection from the secret manager to a given service connection object.
         :param service: Service connection object e.g. DatabaseConnection
         :param service_type: Service type e.g. databaseService
         """
@@ -91,15 +106,6 @@ class SecretsManager(metaclass=Singleton):
         pass
 
     @staticmethod
-    def to_service_simple(service_type: str) -> str:
-        """
-        Return the service simple name.
-        :param service_type: Service type e.g. databaseService
-        :return:
-        """
-        return service_type.replace("Service", "").lower()
-
-    @staticmethod
     def build_secret_id(*args: str) -> str:
         """
         Returns a secret_id used by the secrets' manager providers for retrieving a secret.
@@ -111,7 +117,8 @@ class SecretsManager(metaclass=Singleton):
         secret_suffix = "-".join([arg.lower() for arg in args])
         return f"openmetadata-{secret_suffix}"
 
-    def get_service_connection_class(self, service_type: str) -> object:
+    @staticmethod
+    def get_service_connection_class(service_type: str) -> object:
         """
         Returns the located service object by dotted path, importing as necessary.
         :param service_type: Service type e.g. databaseService
@@ -121,20 +128,20 @@ class SecretsManager(metaclass=Singleton):
             (
                 clazz[1]
                 for clazz in inspect.getmembers(
-                    locate(f"metadata.generated.schema.entity.services.{service_type}"),
+                    locate(
+                        f"metadata.generated.schema.entity.services.{service_type}Service"
+                    ),
                     inspect.isclass,
                 )
-                if clazz[0].lower()
-                == f"{self.to_service_simple(service_type)}connection"
+                if clazz[0].lower() == f"{service_type}connection"
             )
         ).__name__
         return locate(
-            f"metadata.generated.schema.entity.services.{service_type}.{service_conn_name}"
+            f"metadata.generated.schema.entity.services.{service_type}Service.{service_conn_name}"
         )
 
-    def get_connection_class(
-        self, service_type: str, service_connection_type: str
-    ) -> object:
+    @staticmethod
+    def get_connection_class(service_type: str, service_connection_type: str) -> object:
         """
         Returns the located connection object by dotted path, importing as necessary.
         :param service_type: Service type e.g. databaseService
@@ -145,7 +152,7 @@ class SecretsManager(metaclass=Singleton):
             service_connection_type[0].lower() + service_connection_type[1:]
         )
         return locate(
-            f"metadata.generated.schema.entity.services.connections.{self.to_service_simple(service_type)}.{connection_py_file}Connection.{service_connection_type}Connection"
+            f"metadata.generated.schema.entity.services.connections.{service_type}.{connection_py_file}Connection.{service_connection_type}Connection"
         )
 
 
@@ -162,15 +169,15 @@ class LocalSecretsManager(SecretsManager):
         """
         pass
 
-    def add_service_config_connection(
+    def retrieve_service_connection(
         self,
-        service: ServiceConnectionType,
+        service: ServiceWithConnectionType,
         service_type: str,
-    ) -> None:
+    ) -> ServiceConnection:
         """
         The LocalSecretsManager does not modify the ServiceConnection object
         """
-        pass
+        return ServiceConnection(__root__=service.connection)
 
 
 class AWSSecretsManager(SecretsManager):
@@ -182,25 +189,26 @@ class AWSSecretsManager(SecretsManager):
         )
         self.secretsmanager_client = session.client("secretsmanager")
 
-    def add_service_config_connection(
+    def retrieve_service_connection(
         self,
-        service: ServiceConnectionType,
+        service: ServiceWithConnectionType,
         service_type: str,
-    ) -> None:
+    ) -> ServiceConnection:
         service_connection_type = service.serviceType.value
         service_name = service.name.__root__
         secret_id = self.build_secret_id(
-            self.to_service_simple(service_type), service_connection_type, service_name
+            service_type, service_connection_type, service_name
         )
         connection_class = self.get_connection_class(
             service_type, service_connection_type
         )
         service_conn_class = self.get_service_connection_class(service_type)
-        service.connection = service_conn_class(
+        service_connection = service_conn_class(
             config=connection_class.parse_obj(
                 json.loads(self._get_string_value(secret_id))
             )
         )
+        return ServiceConnection(__root__=service_connection)
 
     def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
         if config.authProvider == AuthProvider.no_auth:
@@ -231,7 +239,7 @@ class AWSSecretsManager(SecretsManager):
         try:
             kwargs = {"SecretId": name}
             response = self.secretsmanager_client.get_secret_value(**kwargs)
-            logger.info("Got value for secret %s.", name)
+            logger.debug("Got value for secret %s.", name)
         except ClientError:
             logger.exception("Couldn't get value for secret %s.", name)
             raise

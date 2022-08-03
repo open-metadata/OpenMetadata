@@ -21,7 +21,6 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
@@ -43,7 +42,6 @@ import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
@@ -136,7 +134,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
     rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.EDIT_DESCRIPTION, true));
-    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.EDIT_TAGS, true));
+    rules.add(PolicyUtils.accessControlRule(null, "DataConsumer", MetadataOperation.EDIT_TAGS, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -149,27 +147,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     List<Rule> rules = new ArrayList<>();
     rules.add(PolicyUtils.accessControlRule(ruleName, null, null, null, true));
     CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidPolicyOperationNull(ruleName, policyName));
-  }
-
-  @Test
-  void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
-    List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule("rule1", null, null, MetadataOperation.EDIT_DESCRIPTION, true));
-    rules.add(PolicyUtils.accessControlRule("rule2", null, null, MetadataOperation.EDIT_TAGS, true));
-    rules.add(PolicyUtils.accessControlRule("rule3", null, null, MetadataOperation.EDIT_TAGS, true));
-    String policyName = getEntityName(test);
-    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format(
-            "Found multiple rules with operation EditTags within policy %s. "
-                + "Please ensure that operation across all rules within the policy are distinct",
-            policyName));
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[operation must not be null]");
   }
 
   @Test

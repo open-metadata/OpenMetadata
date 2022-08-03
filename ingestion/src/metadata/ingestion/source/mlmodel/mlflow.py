@@ -59,7 +59,6 @@ class MlflowSource(MlModelServiceSource):
             raise InvalidSourceException(
                 f"Expected MysqlConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def get_mlmodels(self) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:

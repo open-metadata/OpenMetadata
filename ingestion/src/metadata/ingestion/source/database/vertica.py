@@ -230,5 +230,4 @@ class VerticaSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected VerticaConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)

@@ -25,7 +25,6 @@ import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.unexpectedParent;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -95,13 +94,22 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     TEAM_OWNER1 = TEAM1.getEntityReference();
 
-    ORG_TEAM = teamResourceTest.getEntityByName("organization", "", ADMIN_AUTH_HEADERS);
+    ORG_TEAM = teamResourceTest.getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
-  void test_initialization() throws HttpResponseException {
+  void test_organization() throws HttpResponseException {
     // Ensure getting organization from team hierarchy is successful
-    getEntityByName("organization", "", ADMIN_AUTH_HEADERS);
+    Team org = getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
+
+    // Organization can't be deleted
+    assertResponse(
+        () -> deleteEntity(org.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.deleteOrganization());
+
+    // Organization can't be created
+    CreateTeam create = createRequest("org_test").withTeamType(ORGANIZATION);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.createOrganization());
   }
 
   @Test
@@ -300,19 +308,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         BAD_REQUEST,
         invalidParent(div21, "buInvalid", BUSINESS_UNIT));
 
-    // There can be no parent for organization
-    EntityReference bu11Ref = bu11.getEntityReference();
-    assertResponse(
-        () -> createWithParents("orgInvalid", ORGANIZATION, dep22.getEntityReference()),
-        BAD_REQUEST,
-        unexpectedParent());
-    assertResponse(
-        () -> createWithParents("orgInvalid", ORGANIZATION, div21.getEntityReference()),
-        BAD_REQUEST,
-        unexpectedParent());
-    assertResponse(() -> createWithParents("orgInvalid", ORGANIZATION, bu11Ref), BAD_REQUEST, unexpectedParent());
-
     // Business Unit can have only one parent
+    EntityReference bu11Ref = bu11.getEntityReference();
     assertResponse(
         () -> createWithParents("buInvalid", BUSINESS_UNIT, bu11Ref, ORG_TEAM.getEntityReference()),
         BAD_REQUEST,
