@@ -52,7 +52,7 @@ import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName, isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import AddUsersModal from './AddUsersModal';
+import AddUsersModalV1 from './AddUsersModalV1';
 
 const TeamsPage = () => {
   const history = useHistory();
@@ -504,7 +504,7 @@ const TeamsPage = () => {
       )}
 
       {isAddingUsers && (
-        <AddUsersModal
+        <AddUsersModalV1
           header={`Adding new users to ${getEntityName(selectedTeam)}`}
           list={selectedTeam.users || []}
           onCancel={() => setIsAddingUsers(false)}

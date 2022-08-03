@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getUsers } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import Searchbar from '../../components/common/searchbar/Searchbar';
+import Loader from '../../components/Loader/Loader';
+import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { OwnerType } from '../../enums/user.enum';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import UserCard from './UserCard';
 
 type Props = {
@@ -28,15 +35,53 @@ type Props = {
   onSave: (data: Array<UserTeams>) => void;
 };
 
-const AddUsersModal = ({
+const AddUsersModalV1 = ({
   header,
   list,
   onCancel,
   onSave,
   searchPlaceHolder,
 }: Props) => {
+  const [allUsers, setAllUsers] = useState<UserTeams[]>([]);
+  const [uniqueUser, setUniqueUser] = useState<UserTeams[]>([]);
   const [selectedUsers, setSelectedusers] = useState<Array<string>>([]);
   const [searchText, setSearchText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  /**
+   * Filter out the already added user and return unique user list
+   * @returns - unique user list
+   */
+  const getUniqueUserList = () => {
+    setIsLoading(true);
+    const uniqueList = allUsers.filter((user) => {
+      const teamUser = list.some((teamUser) => user.id === teamUser.id);
+
+      return !teamUser && user;
+    });
+
+    setUniqueUser(uniqueList);
+    setIsLoading(false);
+  };
+
+  const fetchAllUsers = async () => {
+    setIsLoading(true);
+    const { data } = await getUsers('', API_RES_MAX_SIZE);
+
+    try {
+      if (data) {
+        setAllUsers(data.data);
+      } else {
+        throw jsonData['api-error-messages']['fetch-users-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-users-error']
+      );
+    }
+    setIsLoading(false);
+  };
 
   const selectionHandler = (id: string) => {
     setSelectedusers((prevState) => {
@@ -52,7 +97,7 @@ const AddUsersModal = ({
     });
   };
   const getUserCards = () => {
-    return list
+    return uniqueUser
       .filter((user) => {
         return (
           toLower(user.description)?.includes(toLower(searchText)) ||
@@ -83,15 +128,29 @@ const AddUsersModal = ({
   };
 
   const handleSave = () => {
-    const users = list.filter((user) => {
-      return selectedUsers.includes(user.id);
-    });
-    onSave(users);
+    onSave(
+      selectedUsers.map((id) => {
+        return {
+          id,
+          type: OwnerType.USER,
+        };
+      })
+    );
   };
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
   };
+
+  useEffect(() => {
+    if (allUsers.length > 0) {
+      getUniqueUserList();
+    }
+  }, [allUsers]);
+
+  useEffect(() => {
+    fetchAllUsers();
+  }, []);
 
   return (
     <dialog className="tw-modal " data-testid="modal-container">
@@ -111,9 +170,13 @@ const AddUsersModal = ({
             typingInterval={500}
             onSearch={handleSearchAction}
           />
-          <div className="tw-grid tw-grid-cols-3 tw-gap-4">
-            {getUserCards()}
-          </div>
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <div className="tw-grid tw-grid-cols-3 tw-gap-4">
+              {getUserCards()}
+            </div>
+          )}
         </div>
         <div
           className="tw-modal-footer tw-justify-end"
@@ -141,4 +204,4 @@ const AddUsersModal = ({
   );
 };
 
-export default AddUsersModal;
+export default AddUsersModalV1;
