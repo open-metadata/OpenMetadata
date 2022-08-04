@@ -28,4 +28,5 @@ build_registry = enum_register()
 
 build_registry.add(PipelineType.metadata.value)(build_metadata_dag)
 build_registry.add(PipelineType.usage.value)(build_usage_dag)
+build_registry.add(PipelineType.lineage.value)(build_lineage_dag)
 build_registry.add(PipelineType.profiler.value)(build_profiler_dag)

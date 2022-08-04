@@ -3,6 +3,7 @@ source:
   serviceName: aws_redshift
   sourceConfig:
     config:
+      type: DatabaseLineage
       queryLogDuration: 1
       resultLimit: 10000
 sink:
