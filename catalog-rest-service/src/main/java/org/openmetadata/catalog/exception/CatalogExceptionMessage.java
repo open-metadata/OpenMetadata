@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.exception;
 
-import java.security.Principal;
 import java.util.UUID;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -84,38 +83,16 @@ public final class CatalogExceptionMessage {
         "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s", parentId, glossaryId);
   }
 
-  public static String notAdmin(Principal principal) {
-    return notAdmin(principal.getName());
-  }
-
   public static String notAdmin(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
-  }
-
-  public static String noPermission(Principal principal) {
-    return noPermission(principal.getName());
   }
 
   public static String noPermission(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
   }
 
-  public static String noPermission(Principal principal, String operation) {
-    return noPermission(principal.getName(), operation);
-  }
-
   public static String noPermission(String name, String operation) {
     return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions to %s", name, operation);
-  }
-
-  public static String invalidPolicyOperationNull(String rule, String policy) {
-    return String.format("Found invalid rule %s within policy %s. Please ensure operation is non-null", rule, policy);
-  }
-
-  public static String invalidPolicyDuplicateOperation(String operation, String policy) {
-    return String.format(
-        "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
-        operation, policy);
   }
 
   public static String entityIsNotEmpty(String entityType) {

@@ -7,19 +7,11 @@
   "enabled": true,
   "rules": [
     {
-      "name": "DataConsumerPolicy-editDescription",
-      "operation": "EditDescription",
-      "allow": true
-    },
-    {
-      "name": "DataConsumerPolicy-editOwner",
-      "operation": "EditOwner",
-      "allow": true
-    },
-    {
-      "name": "DataConsumerPolicy-editTags",
-      "operation": "EditTags",
-      "allow": true
+      "name": "DataConsumerPolicy-EditRule",
+      "description" : "Allow some of the edit operations on a resource for everyone.",
+      "resources" : ["all"],
+      "operations": ["EditDescription", "EditOwner", "EditTags"],
+      "effect": "allow"
     }
   ]
 }
