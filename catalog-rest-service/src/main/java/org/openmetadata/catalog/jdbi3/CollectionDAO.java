@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -1823,10 +1824,18 @@ public interface CollectionDAO {
       if (parentTeam != null) {
         // validate parent team
         Team team = findEntityByName(parentTeam);
-        condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
-                condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        if (ORGANIZATION_NAME.equals(team.getName())) {
+          // All the parentless teams should come under "organization" team
+          condition =
+              String.format(
+                  "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
+                  condition, team.getId(), team.getId(), Relationship.PARENT_OF.ordinal());
+        } else {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                  condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        }
       }
 
       return listCount(getTableName(), getNameColumn(), condition);
@@ -1838,11 +1847,19 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = EntityDAO.super.findEntityByName(parentTeam);
-        condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
-                condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        Team team = findEntityByName(parentTeam);
+        if (ORGANIZATION_NAME.equals(team.getName())) {
+          // All the parentless teams should come under "organization" team
+          condition =
+              String.format(
+                  "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
+                  condition, team.getId(), team.getId(), Relationship.PARENT_OF.ordinal());
+        } else {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                  condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        }
       }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
@@ -1856,11 +1873,19 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = EntityDAO.super.findEntityByName(parentTeam);
-        condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
-                condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        Team team = findEntityByName(parentTeam);
+        if (ORGANIZATION_NAME.equals(team.getName())) {
+          // All the parentless teams should come under "organization" team
+          condition =
+              String.format(
+                  "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
+                  condition, team.getId(), team.getId(), Relationship.PARENT_OF.ordinal());
+        } else {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                  condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        }
       }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
@@ -1896,49 +1921,29 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("after") String after);
 
-    default List<String> listUsersWithoutParents() {
-      return listUsersWithoutParents(Relationship.HAS.ordinal());
+    default List<String> listUsersUnderOrganization(String teamId) {
+      return listUsersUnderOrganization(teamId, Relationship.HAS.ordinal());
     }
 
-    default List<String> listTeamsWithoutParents() {
-      return listTeamsWithoutParents(Relationship.PARENT_OF.ordinal());
+    default List<String> listTeamsUnderOrganization(String teamId) {
+      return listTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());
     }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT ue.id "
-                + "FROM user_entity ue "
-                + "WHERE ue.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = `team` AND relation = :relation AND toEntity = `user`)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT ue.id "
-                + "FROM user_entity ue "
-                + "WHERE ue.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = `team` AND relation = :relation AND toEntity = `user`)",
-        connectionType = POSTGRES)
-    List<String> listUsersWithoutParents(@Bind("relation") int relation);
+    @SqlQuery(
+        "SELECT ue.id "
+            + "FROM user_entity ue "
+            + "WHERE ue.id NOT IN (SELECT :teamId) UNION "
+            + "(SELECT toId FROM entity_relationship "
+            + "WHERE fromId != :teamId AND fromEntity = `team` AND relation = :relation AND toEntity = `user`)")
+    List<String> listUsersUnderOrganization(@Bind("teamId") String teamId, @Bind("relation") int relation);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT te.id "
-                + "FROM team_entity te "
-                + "WHERE te.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = 'team' AND relation = :relation AND toEntity = 'user')",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT te.id "
-                + "FROM team_entity te "
-                + "WHERE te.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = 'team' AND relation = :relation AND toEntity = 'user')",
-        connectionType = POSTGRES)
-    List<String> listTeamsWithoutParents(@Bind("relation") int relation);
+    @SqlQuery(
+        "SELECT te.id "
+            + "FROM team_entity te "
+            + "WHERE te.id NOT IN (SELECT :teamId) UNION "
+            + "(SELECT toId FROM entity_relationship "
+            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team')")
+    List<String> listTeamsUnderOrganization(@Bind("teamId") String teamId, @Bind("relation") int relation);
   }
 
   interface TopicDAO extends EntityDAO<Topic> {

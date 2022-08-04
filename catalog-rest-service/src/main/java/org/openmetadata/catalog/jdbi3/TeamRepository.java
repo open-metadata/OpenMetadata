@@ -201,7 +201,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getChildren(UUID teamId) throws IOException {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
-      List<String> children = daoCollection.teamDAO().listTeamsWithoutParents();
+      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
       return EntityUtil.populateEntityReferencesById(children, Entity.TEAM);
     }
     List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
@@ -209,8 +209,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getChildrenCount(Team team) throws IOException {
-    List<EntityRelationshipRecord> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
-    return children.size();
+    return getChildren(team.getId()).size();
   }
 
   private List<EntityReference> getPolicies(Team team) throws IOException {
