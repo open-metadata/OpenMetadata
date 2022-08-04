@@ -3,7 +3,6 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.TEST_DEFINITION;
 
 import java.io.IOException;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.EntityReference;
