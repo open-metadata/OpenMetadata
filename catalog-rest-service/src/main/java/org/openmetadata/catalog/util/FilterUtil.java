@@ -1,6 +1,8 @@
 package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.Entity.*;
+import static org.openmetadata.catalog.filter.FiltersType.ENTITY_CREATED;
+import static org.openmetadata.catalog.filter.FiltersType.ENTITY_DELETED;
 
 import java.util.List;
 import org.openmetadata.catalog.filter.Filter;
@@ -17,11 +19,11 @@ public class FilterUtil {
       EventType changeType = changeEvent.getEventType();
       switch (changeType) {
         case ENTITY_CREATED:
-          return filter.getEventFilter().getCreate().getEnabled();
+          return filter.getEventFilter().getAdditionalProperties().get(ENTITY_CREATED.toString()).getEnabled();
         case ENTITY_UPDATED:
           return getUpdateFilter(changeEvent, filter);
         case ENTITY_DELETED:
-          return filter.getEventFilter().getDelete().getEnabled();
+          return filter.getEventFilter().getAdditionalProperties().get(ENTITY_DELETED.toString()).getEnabled();
       }
     }
     // continue to post events updates
@@ -68,62 +70,34 @@ public class FilterUtil {
         if (changeType == ChangeEventParser.CHANGE_TYPE.ADD) {
           return filter
               .getEventFilter()
-              .getUpdates()
               .getAdditionalProperties()
               .get(FiltersType.FOLLOW_ENTITY.toString())
               .getEnabled();
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.DELETE) {
           return filter
               .getEventFilter()
-              .getUpdates()
               .getAdditionalProperties()
               .get(FiltersType.UNFOLLOW_ENTITY.toString())
               .getEnabled();
         }
       case FIELD_TAGS:
         if (changeType == ChangeEventParser.CHANGE_TYPE.ADD) {
-          return filter
-              .getEventFilter()
-              .getUpdates()
-              .getAdditionalProperties()
-              .get(FiltersType.ADDTAGS.toString())
-              .getEnabled();
+          return filter.getEventFilter().getAdditionalProperties().get(FiltersType.ADDTAGS.toString()).getEnabled();
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.UPDATE) {
-          return filter
-              .getEventFilter()
-              .getUpdates()
-              .getAdditionalProperties()
-              .get(FiltersType.UPDATETAGS.toString())
-              .getEnabled();
+          return filter.getEventFilter().getAdditionalProperties().get(FiltersType.UPDATETAGS.toString()).getEnabled();
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.DELETE) {
-          return filter
-              .getEventFilter()
-              .getUpdates()
-              .getAdditionalProperties()
-              .get(FiltersType.REMOVETAGS.toString())
-              .getEnabled();
+          return filter.getEventFilter().getAdditionalProperties().get(FiltersType.REMOVETAGS.toString()).getEnabled();
         }
       case FIELD_DESCRIPTION:
         return filter
             .getEventFilter()
-            .getUpdates()
             .getAdditionalProperties()
             .get(FiltersType.UPDATEDESCRIPTION.toString())
             .getEnabled();
       case FIELD_OWNER:
-        return filter
-            .getEventFilter()
-            .getUpdates()
-            .getAdditionalProperties()
-            .get(FiltersType.UPDATEOWNER.toString())
-            .getEnabled();
+        return filter.getEventFilter().getAdditionalProperties().get(FiltersType.UPDATEOWNER.toString()).getEnabled();
       case FIELD_USAGE_SUMMARY:
-        return filter
-            .getEventFilter()
-            .getUpdates()
-            .getAdditionalProperties()
-            .get(FiltersType.USAGESUMMARY.toString())
-            .getEnabled();
+        return filter.getEventFilter().getAdditionalProperties().get(FiltersType.USAGESUMMARY.toString()).getEnabled();
     }
     return response;
   }

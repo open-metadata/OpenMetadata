@@ -217,44 +217,15 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
           Filter filter = new Filter();
           filter.setEntityType(type);
           EventFilters eventFilter = new EventFilters();
-          Updates updateFilter = new Updates();
           filterToAdd.forEach(
               (specificFilter) -> {
-                switch (specificFilter) {
-                  case ENTITY_CREATED:
-                    BasicFilter createEventFilter =
-                        new BasicFilter()
-                            .withFilterName("Entity Created")
-                            .withFilterType(FiltersType.ENTITY_CREATED)
-                            .withEnabled(true);
-                    eventFilter.setCreate(createEventFilter);
-                    break;
-                  case ENTITY_DELETED:
-                    BasicFilter deleteEventFilter =
-                        new BasicFilter()
-                            .withFilterName("Entity Deleted")
-                            .withFilterType(FiltersType.ENTITY_DELETED)
-                            .withEnabled(true);
-                    eventFilter.setDelete(deleteEventFilter);
-                    break;
-                  case EXCLUDE_FROM_BOTS:
-                    BasicFilter excluded_from_bots =
-                        new BasicFilter()
-                            .withFilterName("Excluded From Bots")
-                            .withFilterType(FiltersType.ENTITY_DELETED)
-                            .withEnabled(true);
-                    eventFilter.setExcludefrombots(excluded_from_bots);
-                    break;
-                  default:
-                    BasicFilter upFilter =
-                        new BasicFilter()
-                            .withFilterName(specificFilter.toString())
-                            .withFilterType(specificFilter)
-                            .withEnabled(true);
-                    updateFilter.setAdditionalProperty(specificFilter.toString(), upFilter);
-                }
+                BasicFilter upFilter =
+                    new BasicFilter()
+                        .withFilterName(specificFilter.toString())
+                        .withFilterType(specificFilter)
+                        .withEnabled(true);
+                eventFilter.setAdditionalProperty(specificFilter.toString(), upFilter);
               });
-          eventFilter.setUpdates(updateFilter);
           filter.setEventFilter(eventFilter);
           filtersList.add(filter);
         });

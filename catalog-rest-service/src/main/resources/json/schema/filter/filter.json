@@ -54,28 +54,9 @@
       "javaType": "org.openmetadata.catalog.filter.EventFilters",
       "description": "This schema defines all possible filters in OpenMetadata.",
       "type": "object",
-      "properties": {
-        "create": {
-          "description": "List of Filters for Create Events",
-          "$ref": "#/definitions/basicFilter"
-        },
-        "updates": {
-          "description": "List of Filters for Update Events",
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/basicFilter"
-          }
-        },
-        "delete": {
-          "description": "List of Filters for Delete Events",
-          "$ref": "#/definitions/basicFilter"
-        },
-        "excludefrombots": {
-          "description": "List of Filters Exclude from bots",
-          "$ref": "#/definitions/basicFilter"
-        }
-      },
-      "additionalProperties": false
+      "additionalProperties": {
+        "$ref": "#/definitions/basicFilter"
+      }
     }
   },
   "properties": {
