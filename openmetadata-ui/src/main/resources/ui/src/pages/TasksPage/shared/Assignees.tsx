@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Select, Space, Tag } from 'antd';
 import React, { FC } from 'react';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { Option } from '../TasksPage.interface';
+import './Assignee.less';
+import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 
 interface Props {
   options: Option[];
@@ -35,6 +38,26 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
     onChange(newValues as Option[]);
   };
 
+  const tagRender = ({
+    label,
+    closable,
+    onClose,
+    value,
+  }: CustomTagProps): React.ReactElement => {
+    return (
+      <Tag className="assignee-tag" closable={closable} onClose={onClose}>
+        <Space>
+          <ProfilePicture
+            id={value}
+            name={label as unknown as string}
+            width="22"
+          />
+          <span>{label}</span>
+        </Space>
+      </Tag>
+    );
+  };
+
   return (
     <Select
       showSearch
@@ -46,6 +69,7 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
       notFoundContent={null}
       placeholder="Search to Select"
       showArrow={false}
+      tagRender={tagRender}
       value={assignees.length ? assignees : undefined}
       onChange={handleOnChange}
       onSearch={onSearch}>
@@ -55,7 +79,10 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
           data-testid="assignee-option"
           data-usertype={option.type}
           key={option.value}>
-          {option.label}
+          <Space>
+            <ProfilePicture id={option.value} name={option.label} width="22" />
+            <span>{option.label}</span>
+          </Space>
         </Option>
       ))}
     </Select>

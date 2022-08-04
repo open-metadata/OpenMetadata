@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { isNil, isUndefined, toLower } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getTopPosition } from '../../utils/DropDownUtils';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
 
@@ -117,14 +119,20 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         key={index}
         role="menuitem"
         onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
-        {item.icon}
-        {/* Spacer if icon is there */}
-        {item.icon && <span className="tw-p-1" />}
-        <p
-          className={classNames('tw-truncate', widthClass)}
-          title={item.name as string}>
-          {item.name}
-        </p>
+        <Space>
+          {item.type === 'user' && (
+            <ProfilePicture
+              id={item.value as string}
+              name={item.name as string}
+              width="22"
+            />
+          )}
+          <p
+            className={classNames('tw-truncate', widthClass)}
+            title={item.name as string}>
+            {item.name}
+          </p>
+        </Space>
       </div>
     );
   };
