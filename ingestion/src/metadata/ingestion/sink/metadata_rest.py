@@ -48,8 +48,14 @@ from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.models.table_tests import OMetaTableTest
+from metadata.ingestion.models.tests_data import (
+    OMetaTestCaseResultsSample,
+    OMetaTestCaseSample,
+    OMetaTestSuiteSample,
+)
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -130,6 +136,14 @@ class MetadataRestSink(Sink[Entity]):
             self.write_table_location_link(record)
         elif isinstance(record, DashboardUsage):
             self.write_dashboard_usage(record)
+        elif isinstance(record, OMetaTableProfileSampleData):
+            self.write_profile_sample_data(record)
+        elif isinstance(record, OMetaTestSuiteSample):
+            self.write_test_suite_sample(record)
+        elif isinstance(record, OMetaTestCaseSample):
+            self.write_test_case_sample(record)
+        elif isinstance(record, OMetaTestCaseResultsSample):
+            self.write_test_case_results_sample(record)
         else:
             logging.debug(f"Processing Create request {type(record)}")
             self.write_create_request(record)
@@ -545,6 +559,72 @@ class MetadataRestSink(Sink[Entity]):
             )
             self.status.records_written(f"Pipeline Status: {record.pipeline_fqn}")
 
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+
+    def write_profile_sample_data(self, record: OMetaTableProfileSampleData):
+        """
+        Use the /tableProfile endpoint to ingest sample profile data
+        """
+        try:
+            self.metadata.ingest_table_profile_data(
+                table=record.table, table_profile=record.profile
+            )
+
+            logger.info(
+                f"Successfully ingested profile for table {record.table.name.__root__}"
+            )
+            self.status.records_written(
+                f"Profile: {record.table.name.__root__} - {record.profile.timestamp.__root__}"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+
+    def write_test_suite_sample(self, record: OMetaTestSuiteSample):
+        """
+        Use the /testSuite endpoint to ingest sample test suite
+        """
+        try:
+            self.metadata.create_or_update(record.test_suite)
+            logger.info(
+                f"Successfully created test Suite {record.test_suite.name.__root__}"
+            )
+            self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+
+    def write_test_case_sample(self, record: OMetaTestCaseSample):
+        """
+        Use the /testCase endpoint to ingest sample test suite
+        """
+        try:
+            self.metadata.create_or_update(record.test_case)
+            logger.info(
+                f"Successfully created test case {record.test_case.name.__root__}"
+            )
+            self.status.records_written(f"testCase: {record.test_case.name.__root__}")
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+
+    def write_test_case_results_sample(self, record: OMetaTestCaseResultsSample):
+        """
+        Use the /testCase endpoint to ingest sample test suite
+        """
+        try:
+            self.metadata.add_test_case_results(
+                record.test_case_results,
+                record.test_case_uuid,
+            )
+            logger.info(
+                f"Successfully ingested test case results for test case ID {record.test_case_uuid}"
+            )
+            self.status.records_written(
+                f"testCaseResults: {record.test_case_uuid} - {record.test_case_results.timestamp.__root__}"
+            )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(err)

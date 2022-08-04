@@ -16,6 +16,7 @@ import sys
 import traceback
 from collections import namedtuple
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
@@ -37,6 +38,8 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
+from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -48,7 +51,11 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
+    Table,
+    TableProfile,
+)
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
@@ -69,13 +76,22 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_tests import OMetaTableTest
+from metadata.ingestion.models.tests_data import (
+    OMetaTestCaseResultsSample,
+    OMetaTestCaseSample,
+    OMetaTestSuiteSample,
+)
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
@@ -372,6 +388,26 @@ class SampleDataSource(Source[Entity]):
                 "r",
             )
         )
+        self.profiles = json.load(
+            open(
+                self.service_connection.sampleDataFolder
+                + "/profiler/tableProfile.json",
+                "r",
+            )
+        )
+        self.testsSuites = json.load(
+            open(
+                self.service_connection.sampleDataFolder + "/tests/testSuites.json",
+                "r",
+            )
+        )
+        self.testsCaseResults = json.load(
+            open(
+                self.service_connection.sampleDataFolder
+                + "/tests/testCaseResults.json",
+                "r",
+            )
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -400,6 +436,10 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
+        yield from self.ingest_profiles()
+        yield from self.ingest_test_suite()
+        yield from self.ingest_test_case()
+        yield from self.ingest_test_case_results()
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
@@ -787,6 +827,90 @@ class SampleDataSource(Source[Entity]):
                     )
         except Exception as err:  # pylint: disable=broad-except
             logger.error(err)
+
+    def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
+        """Iterate over all the profile data and ingest them"""
+        for table_profile in self.profiles["profiles"]:
+            table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_profile["fqn"],
+            )
+            for i, profile in enumerate(table_profile["profile"]):
+                yield OMetaTableProfileSampleData(
+                    table=table,
+                    profile=TableProfile(
+                        columnCount=profile["columnCount"],
+                        rowCount=profile["rowCount"],
+                        timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
+                        columnProfile=[
+                            ColumnProfile(**col_profile)
+                            for col_profile in profile["columnProfile"]
+                        ],
+                    ),
+                )
+
+    def ingest_test_suite(self) -> Iterable[OMetaTestSuiteSample]:
+        """Iterate over all the testSuite and testCase and ingest them"""
+        for test_suite in self.testsSuites["tests"]:
+            yield OMetaTestSuiteSample(
+                test_suite=CreateTestSuiteRequest(
+                    name=test_suite["testSuiteName"],
+                    description=test_suite["testSuiteDescription"],
+                    scheduleInterval=test_suite["scheduleInterval"],
+                )
+            )
+
+    def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:
+        for test_suite in self.testsSuites["tests"]:
+            suite = self.metadata.get_by_name(
+                fqn=test_suite["testSuiteName"], entity=TestSuite
+            )
+            for test_case in test_suite["testCases"]:
+                yield OMetaTestCaseSample(
+                    test_case=CreateTestCaseRequest(
+                        name=test_case["name"],
+                        description=test_case["description"],
+                        testDefinition=EntityReference(
+                            id=self.metadata.get_by_name(
+                                fqn=test_case["testDefinitionName"],
+                                entity=TestDefinition,
+                            ).id.__root__,
+                            type="testDefinition",
+                        ),
+                        entity=EntityReference(
+                            id=self.metadata.get_by_name(
+                                entity=Table,
+                                fqn=test_case["entityFqn"],
+                            ).id.__root__,
+                            type="table",
+                        ),
+                        testSuite=EntityReference(
+                            id=suite.id.__root__,
+                            type="testSuite",
+                        ),
+                        parameterValues=[
+                            TestCaseParameterValue(**param_values)
+                            for param_values in test_case["parameterValues"]
+                        ],
+                    )
+                )
+
+    def ingest_test_case_results(self) -> Iterable[OMetaTestCaseResultsSample]:
+        """Iterate over all the testSuite and testCase and ingest them"""
+        for test_case_results in self.testsCaseResults["testCaseResults"]:
+            case = self.metadata.get_by_name(
+                TestCase,
+                f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
+            )
+            for i, result in enumerate(test_case_results["results"]):
+                yield OMetaTestCaseResultsSample(
+                    test_case_results=TestCaseResult(
+                        timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
+                        testCaseStatus=result["testCaseStatus"],
+                        result=result["result"],
+                    ),
+                    test_case_uuid=case.id.__root__,
+                )
 
     def close(self):
         pass
