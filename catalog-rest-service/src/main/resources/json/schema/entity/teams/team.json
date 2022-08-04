@@ -76,6 +76,14 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
       "default": null
     },
+    "childrenCount": {
+      "description" : "Total count of Children teams.",
+      "type": "integer"
+    },
+    "userCount": {
+      "description": "Total count of users that are part of the team.",
+      "type": "integer"
+    },
     "owns": {
       "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
