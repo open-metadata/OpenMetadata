@@ -11,9 +11,10 @@
 """
 Dagster source to extract metadata from OM UI
 """
+import json
 from collections.abc import Iterable
 from typing import Iterable, Optional
-import json
+
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -109,14 +110,18 @@ class DagsterSource(PipelineServiceSource):
         :param serialized_dag: SerializedDAG from dagster metadata DB
         :return: Create Pipeline request with tasks
         """
-        
+
         task_list = [{"name": row["pipeline_name"]} for row in self.get_run_list()]
-        
+
         run_body = json.loads(pipeline_details["run_body"])
-        location_name = run_body["external_pipeline_origin"]["external_repository_origin"]["repository_location_origin"]["location_name"]
-        repository_name = run_body["external_pipeline_origin"]["external_repository_origin"]["repository_name"]
+        location_name = run_body["external_pipeline_origin"][
+            "external_repository_origin"
+        ]["repository_location_origin"]["location_name"]
+        repository_name = run_body["external_pipeline_origin"][
+            "external_repository_origin"
+        ]["repository_name"]
         pipeline_url = f"/workspace/{repository_name}@{location_name}/jobs/{pipeline_details.pipeline_name}/"
-        
+
         yield CreatePipelineRequest(
             name=pipeline_details.pipeline_name,
             description=pipeline_details.pipeline_name,

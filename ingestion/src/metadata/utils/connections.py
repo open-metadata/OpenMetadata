@@ -125,7 +125,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.glueConnecti
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
     AirByteClient,
-    DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
