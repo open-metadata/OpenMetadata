@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
+import {
+  ANNOUNCEMENT_BG,
+  ANNOUNCEMENT_BORDER,
+} from '../../../constants/feed.constants';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
@@ -68,8 +73,8 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
               style={{
                 ...leftPanelAntCardStyle,
                 marginTop: '20px',
-                border: '1px solid #FFC143',
-                background: '#fffbf3',
+                border: `1px solid ${ANNOUNCEMENT_BORDER}`,
+                background: `${ANNOUNCEMENT_BG}`,
               }}>
               <AnnouncementBadge />
               <div data-testid="main-message">
