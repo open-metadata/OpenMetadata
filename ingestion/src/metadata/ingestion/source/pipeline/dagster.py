@@ -112,7 +112,6 @@ class DagsterSource(PipelineServiceSource):
         """
 
         task_list = [{"name": row["pipeline_name"]} for row in self.get_run_list()]
-
         run_body = json.loads(pipeline_details["run_body"])
         location_name = run_body["external_pipeline_origin"][
             "external_repository_origin"
@@ -121,7 +120,6 @@ class DagsterSource(PipelineServiceSource):
             "external_repository_origin"
         ]["repository_name"]
         pipeline_url = f"/workspace/{repository_name}@{location_name}/jobs/{pipeline_details.pipeline_name}/"
-
         yield CreatePipelineRequest(
             name=pipeline_details.pipeline_name,
             description=pipeline_details.pipeline_name,
@@ -137,8 +135,7 @@ class DagsterSource(PipelineServiceSource):
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
         run_list = self.get_run_list()
         for run in run_list:
-            log_link = f"{self.service_connection.hostPort}/instance/runs/{run.id}"
-
+            log_link = f"{self.service_connection.hostPort}/instance/runs/{run.run_id}"
             task_status = TaskStatus(
                 name=run["pipeline_name"],
                 executionStatus=STATUS_MAP.get(
