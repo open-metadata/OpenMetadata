@@ -16,7 +16,7 @@ import {
   InteractionRequiredAuthError,
   InteractionStatus,
 } from '@azure/msal-browser';
-import { useAccount, useIsAuthenticated, useMsal } from '@azure/msal-react';
+import { useAccount, useMsal } from '@azure/msal-react';
 import { AxiosError } from 'axios';
 import React, {
   forwardRef,
@@ -28,7 +28,6 @@ import React, {
 import { useMutex } from 'react-context-mutex';
 import { oidcTokenKey } from '../../constants/constants';
 import { msalLoginRequest } from '../../utils/AuthProvider.util';
-import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -46,10 +45,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
     ref
   ) => {
-    const { setIsAuthenticated, loading, setLoadingIndicator } =
-      useAuthContext();
     const { instance, accounts, inProgress } = useMsal();
-    const isMsalAuthenticated = useIsAuthenticated();
     const account = useAccount(accounts[0] || {});
     const MutexRunner = useMutex();
     const mutex = new MutexRunner('fetchIdToken');
@@ -64,12 +60,16 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const login = () => {
-      setLoadingIndicator(true);
-      instance.loginPopup(msalLoginRequest);
+      try {
+        instance.loginPopup(msalLoginRequest);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(error);
+        onLoginFailure(error as AxiosError);
+      }
     };
 
     const logout = () => {
-      setLoadingIndicator(false);
       handleOnLogoutSuccess();
     };
 
@@ -87,14 +87,13 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         },
       };
 
-      setIsAuthenticated(isMsalAuthenticated);
       localStorage.setItem(oidcTokenKey, idToken);
 
       return user;
     };
 
     const fetchIdToken = async (
-      shouldFaullbackToPopup = false
+      shouldFallbackToPopup = false
     ): Promise<OidcUser> => {
       const tokenRequest = {
         account: account || accounts[0], // This is an example - Select account based on your app's requirements
@@ -107,7 +106,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       } catch (error) {
         if (
           error instanceof InteractionRequiredAuthError &&
-          shouldFaullbackToPopup
+          shouldFallbackToPopup
         ) {
           const response = await instance
             .loginPopup(tokenRequest)
@@ -140,15 +139,11 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
           fetchIdToken(true)
             .then((user) => {
               if ((user as OidcUser).id_token) {
-                setLoadingIndicator(false);
                 onLoginSuccess(user as OidcUser);
               }
             })
             .catch(onLoginFailure)
             .finally(() => {
-              if (loading) {
-                setLoadingIndicator(false);
-              }
               mutex.unlock();
             });
         });
