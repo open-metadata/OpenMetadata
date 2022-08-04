@@ -41,6 +41,8 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
   const [visible, setVisible] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>();
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
+  const [isSuggestionsLoading, setIsSuggestionsLoading] =
+    useState<boolean>(false);
 
   const handleCancel = () => {
     setSearchValue('');
@@ -67,6 +69,10 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
     debouncedOnChange,
   ]);
+
+  const handleIsSuggestionsLoading = (value: boolean) => {
+    setIsSuggestionsLoading(value);
+  };
 
   const searchHandler = (value: string) => {
     addToRecentSearched(value);
@@ -107,7 +113,7 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
         maskClosable
         bodyStyle={{
           padding: '20px',
-          height: '314px',
+          height: searchValue ? '314px' : '85px',
         }}
         closeIcon={<></>}
         footer={null}
@@ -116,6 +122,8 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
         width={650}
         onCancel={handleCancel}>
         <GlobalSearchSuggestions
+          handleIsSuggestionsLoading={handleIsSuggestionsLoading}
+          isSuggestionsLoading={isSuggestionsLoading}
           searchText={suggestionSearch}
           selectRef={selectRef}
           value={searchValue || ''}
@@ -124,6 +132,7 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
           onSearch={(newValue) => {
             debounceOnSearch(newValue);
             setSearchValue(newValue);
+            setIsSuggestionsLoading(true);
           }}
         />
       </Modal>

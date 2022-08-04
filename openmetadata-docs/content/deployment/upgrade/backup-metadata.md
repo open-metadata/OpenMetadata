@@ -29,11 +29,29 @@ you can instead install the package with the backup plugin:
 pip install "openmetadata-ingestion[backup]"
 ```
 
-This tool acts as a wrapper around the powerful `mysqldump` utility with some commodity addons on top. `mysqldump` is part
-of the `mysql-client` package and can be installed on your machine as:
+## Requirements & Considerations
 
-- **macOS**: `brew install mysql-client`
-- **Ubuntu**: `sudo apt-get install mysql-client`
+This is a custom utility. As almost all tables contain `GENERATED` columns, directly using `mysqldump` is not an
+option out of the box, as it would require some further cleaning steps to get the data right.
+
+Instead, we have created a utility that will just dump the necessary data.
+
+The requirement for running the process is that the target database should have the Flyway migrations executed.
+
+The backup utility will provide an SQL file which will do two things:
+1. TRUNCATE the OpenMetadata tables
+2. INSERT the data that has been saved
+
+You can then run the script's statements to restore the data.
+
+<Note>
+
+Make sure that the migrations have been run correctly (find out how [here](/deployment/bare-metal#4-prepare-the-openmetadata-database-and-indexes)).
+
+Also, make sure that the target database does not already have any OpenMetadata data, or if it does, that you are OK
+replacing it with whatever comes from the SQL script.
+
+</Note>
 
 ## Backup CLI
 
@@ -43,13 +61,14 @@ After the installation, we can take a look at the different options to run the C
 > metadata backup --help
 Usage: metadata backup [OPTIONS]
 
-  Run a backup for the metadata DB. Requires mysqldump installed on the
-  host.
+  Run a backup for the metadata DB. Uses a custom dump strategy for
+  OpenMetadata tables.
 
-  We can pass as many options as required with `-o <opt1>, -o <opt2> [...]`
+  We can pass as many connection options as required with `-o <opt1>, -o
+  <opt2> [...]` Same with connection arguments `-a <arg1>, -a <arg2> [...]`
 
-  To run the upload, provide the information as `--upload endpoint bucket
-  key` and properly configure the environment variables AWS_ACCESS_KEY_ID &
+  To run the upload, provide the information as `--upload endpoint bucket key`
+  and properly configure the environment variables AWS_ACCESS_KEY_ID &
   AWS_SECRET_ACCESS_KEY
 
 Options:
@@ -62,6 +81,8 @@ Options:
   --upload <TEXT TEXT TEXT>...  S3 endpoint, bucket & key to upload the backup
                                 file
   -o, --options TEXT
+  -a, --arguments TEXT
+  --help                        Show this message and exit.
 ```
 
 ### Database Connection
@@ -83,13 +104,15 @@ We currently support uploading the backup files to S3. To run this, make sure to
 we can just use `--upload <endpoint> <bucket> <key>` to have the CLI upload the file. In this case, you'll get both the
 local dump file and the one in the cloud.
 
-### mysqldump options
+### Connection Options and Arguments
 
-`mysqldump` allows many options when running the command, and some of them might be required in different infrastructures.
-The `--options` parameters help us pass to `mysqldump` all of these required options via `-o <opt1>, -o <opt2> [...]`. An
-example of this could be the default values we have used for them: `--protocol=tcp` and `--no-tablespaces`, which are
-required to run the command pointing to the local Docker container with the database and the default `read-only` user
-OpenMetadata provides in the Docker Compose.
+You can pass any required connection options or arguments to the MySQL connection via `-o <opt1>, -o <opt2> [...]`
+or `-a <arg1>, -a <arg2> [...]`.
+
+### Backup Postgres
+
+If you are saving the data from Postgres, pass the argument `-s <schema>` or `--schema=<schema>` to indicate the
+schema containing the OpenMetadata tables. E.g., `-s public`.
 
 ### Trying it out
 
@@ -125,4 +148,3 @@ Uploading dir1/dir2/openmetadata_202201250823_backup.sql to http://localhost:900
 If we now head to the minio console and check the `my-backup` bucket, we'll see our SQL dump in there.
 
 <Image src="/images/deployment/backup/minio-example.png" alt="minio"/>
-

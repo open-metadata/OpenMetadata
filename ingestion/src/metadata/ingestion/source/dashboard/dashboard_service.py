@@ -79,7 +79,8 @@ class DashboardServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DashboardService,
                 context="dashboard_service",
-                processor="yield_dashboard_service",
+                processor="yield_create_request_dashboard_service",
+                overwrite=False,
             ),
             NodeStage(
                 type_=OMetaTagAndCategory,
@@ -267,7 +268,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
-    def yield_dashboard_service(self, config: WorkflowSource):
+    def yield_create_request_dashboard_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
             entity=DashboardService, config=config
         )

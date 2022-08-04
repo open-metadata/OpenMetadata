@@ -126,6 +126,11 @@ public final class Entity {
   public static final String WEBHOOK = "webhook";
 
   //
+  // Reserved names in OpenMetadata
+  //
+  public static final String ORGANIZATION_NAME = "Organization";
+
+  //
   // List of entities whose changes should not be published to the Activity Feed
   //
   public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
@@ -152,12 +157,7 @@ public final class Entity {
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
-    LOG.info(
-        "Registering entity {} {} {} {}",
-        clazz,
-        entity,
-        dao.getEntityClass().getSimpleName(),
-        entityRepository.getClass().getSimpleName());
+    LOG.info("Registering entity {} {}", clazz, entity);
   }
 
   public static List<String> getEntityList() {

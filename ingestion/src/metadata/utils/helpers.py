@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional
@@ -280,3 +281,17 @@ def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
     return next(
         (col for col in table.columns if col.name.__root__ == column_name), None
     )
+
+
+def list_to_dict(original: Optional[List[str]], sep: str = "=") -> Dict[str, str]:
+    """
+    Given a list with strings that have a separator,
+    convert that to a dictionary of key-value pairs
+    """
+    if not original:
+        return {}
+
+    split_original = [
+        (elem.split(sep)[0], elem.split(sep)[1]) for elem in original if sep in elem
+    ]
+    return dict(split_original)

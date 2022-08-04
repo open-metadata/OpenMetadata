@@ -172,5 +172,4 @@ class ClickhouseSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected ClickhouseConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)

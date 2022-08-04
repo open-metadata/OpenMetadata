@@ -61,7 +61,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -75,7 +74,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Api(value = "Policies collection", tags = "Policies collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "policies")
+@Collection(name = "policies", order = 0)
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
 
@@ -91,9 +90,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @SuppressWarnings("unused") // Method is used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    // Set up the PolicyEvaluator, before loading seed data.
-    PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
-
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
     ResourceRegistry.add(listOrEmpty(PolicyResource.getResourceDescriptors()));
@@ -348,7 +344,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     Policy policy = (Policy) response.getEntity();
-    PolicyCache.invalidatePolicy(policy.getId());
+    PolicyCache.getInstance().invalidatePolicy(policy.getId());
     return response;
   }
 
@@ -370,7 +366,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, policy, true);
-    PolicyCache.invalidatePolicy(policy.getId());
+    PolicyCache.getInstance().invalidatePolicy(policy.getId());
     return response;
   }
 
@@ -395,7 +391,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Parameter(description = "Policy Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
-    PolicyCache.invalidatePolicy(UUID.fromString(id));
+    PolicyCache.getInstance().invalidatePolicy(UUID.fromString(id));
     return response;
   }
 

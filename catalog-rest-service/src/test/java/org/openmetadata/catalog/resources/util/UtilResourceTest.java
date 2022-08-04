@@ -1,8 +1,5 @@
 package org.openmetadata.catalog.resources.util;
 
-import static org.openmetadata.catalog.Entity.DASHBOARD;
-import static org.openmetadata.catalog.Entity.TABLE;
-import static org.openmetadata.catalog.Entity.TOPIC;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.io.IOException;
@@ -63,11 +60,6 @@ public class UtilResourceTest extends CatalogApplicationTest {
   public static ServicesCount getServicesCount() throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("util/services/count");
     return TestUtils.get(target, ServicesCount.class, ADMIN_AUTH_HEADERS);
-  }
-
-  public static Object getIndividualEntityCount(String entity) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("util/" + entity + "/count");
-    return TestUtils.get(target, Object.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -185,34 +177,17 @@ public class UtilResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void individualEntityCount(TestInfo test) throws HttpResponseException {
+  public void botUserCountCheck(TestInfo test) throws HttpResponseException {
+    int beforeUserCount = getEntitiesCount().getUserCount();
 
-    int beforeTableCount = (int) getIndividualEntityCount(TABLE);
-    int beforeDashboardCount = (int) getIndividualEntityCount(DASHBOARD);
-    int beforeTopicCount = (int) getIndividualEntityCount(TOPIC);
+    // Create a bot user.
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser = userResourceTest.createRequest(test).withIsBot(true);
+    userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
 
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable createTable = tableResourceTest.createRequest(test);
-    tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    int afterUserCount = getEntitiesCount().getUserCount();
 
-    // Create Dashboard
-    DashboardResourceTest dashboardResourceTest = new DashboardResourceTest();
-    CreateDashboard createDashboard = dashboardResourceTest.createRequest(test);
-    dashboardResourceTest.createEntity(createDashboard, ADMIN_AUTH_HEADERS);
-
-    // Create Topic
-    TopicResourceTest topicResourceTest = new TopicResourceTest();
-    CreateTopic createTopic = topicResourceTest.createRequest(test);
-    topicResourceTest.createEntity(createTopic, ADMIN_AUTH_HEADERS);
-
-    int afterTableCount = (int) getIndividualEntityCount(TABLE);
-    int afterDashboardCount = (int) getIndividualEntityCount(DASHBOARD);
-    int afterTopicCount = (int) getIndividualEntityCount(TOPIC);
-
-    int actualCount = 1;
-
-    Assertions.assertEquals(afterDashboardCount - beforeDashboardCount, actualCount);
-    Assertions.assertEquals(afterTableCount - beforeTableCount, actualCount);
-    Assertions.assertEquals(afterTopicCount - beforeTopicCount, actualCount);
+    // The bot user count should not be considered.
+    Assertions.assertEquals(beforeUserCount, afterUserCount);
   }
 }

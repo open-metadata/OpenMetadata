@@ -18,19 +18,39 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.PolicyDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.RoleDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
+import org.openmetadata.catalog.jdbi3.PolicyRepository;
+import org.openmetadata.catalog.jdbi3.RoleRepository;
+import org.openmetadata.catalog.jdbi3.TeamRepository;
+import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.EntityReference;
 
 public class SubjectContextTest {
-  public void testPolicyIterator() {
-    System.setProperty("org.apache.commons.logging.LogFactory", "org.apache.commons.logging.impl.LogFactoryImpl");
+  @BeforeAll
+  public static void setup() throws NoSuchMethodException {
+    Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
+    Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
+    Entity.registerEntity(
+        Policy.class, Entity.POLICY, Mockito.mock(PolicyDAO.class), Mockito.mock(PolicyRepository.class));
+    Entity.registerEntity(Role.class, Entity.ROLE, Mockito.mock(RoleDAO.class), Mockito.mock(RoleRepository.class));
+  }
 
+  @Test
+  void testPolicyIterator() {
     // Create team hierarchy team1, team11, team111 each with 3 roles and 3 policies
     List<Role> team1Roles = getRoles("team1", 3);
     List<Policy> team1Policies = getPolicies("team1", 3);
@@ -52,7 +72,7 @@ public class SubjectContextTest {
     List<Role> userRoles = getRoles("user", 3);
     List<EntityReference> userRolesRef = toEntityReferences(userRoles);
     User user = new User().withName("user").withRoles(userRolesRef).withTeams(List.of(team111.getEntityReference()));
-    SubjectContext.USER_CACHE.put("user", new SubjectContext(user));
+    SubjectCache.USER_CACHE.put("user", new SubjectContext(user));
 
     //
     // Check iteration order of the policies
@@ -68,7 +88,7 @@ public class SubjectContextTest {
     expectedPolicyOrder.addAll(getPolicyListFromRoles(team12Roles)); // Next parent of team111 team12 roles next
     expectedPolicyOrder.addAll(getPolicyList(team12Policies)); // Next parent of team111 team12 policies next
 
-    SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
     Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies();
     int count = 0;
     while (policyContextIterator.hasNext()) {
@@ -98,7 +118,7 @@ public class SubjectContextTest {
       String name = prefix + "_policy_" + i;
       Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name, 3));
       policies.add(policy);
-      PolicyCache.POLICY_CACHE.put(policy.getId(), PolicyCache.getRules(policy));
+      PolicyCache.POLICY_CACHE.put(policy.getId(), PolicyCache.getInstance().getRules(policy));
     }
     return policies;
   }
@@ -146,7 +166,7 @@ public class SubjectContextTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    SubjectContext.TEAM_CACHE.put(team.getId(), team);
+    SubjectCache.TEAM_CACHE.put(team.getId(), team);
     return team;
   }
 }

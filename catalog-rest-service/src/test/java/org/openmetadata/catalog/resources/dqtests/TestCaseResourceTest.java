@@ -9,12 +9,18 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.tests.CreateTestCase;
@@ -22,8 +28,11 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
 import org.openmetadata.catalog.tests.TestCase;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
+import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -52,7 +61,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
   }
 
-  @org.junit.jupiter.api.Test
+  @Test
   void post_testWithoutRequiredFields_4xx(TestInfo test) {
     // name is required field
     assertResponse(
@@ -61,7 +70,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         "[name must not be null]");
   }
 
-  @org.junit.jupiter.api.Test
+  @Test
   void post_testWithInvalidEntityTestSuite_4xx(TestInfo test) {
     CreateTestCase create = createRequest(test);
     create.withEntity(TEST_DEFINITION1_REFERENCE).withTestSuite(TEST_TABLE1.getEntityReference());
@@ -88,7 +97,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         "testDefinition instance for " + TEST_SUITE1_REFERENCE.getId() + " not found");
   }
 
-  @org.junit.jupiter.api.Test
+  @Test
   void post_testWithInvalidParamValues_4xx(TestInfo test) throws IOException {
     CreateTestCase create = createRequest(test);
     create
@@ -112,7 +121,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         "Required parameter missingCountValue is not passed in parameterValues");
   }
 
-  @org.junit.jupiter.api.Test
+  @Test
   void createUpdateDelete_tests_200(TestInfo test) throws IOException {
     CreateTestCase create = createRequest(test);
     create
@@ -142,6 +151,131 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCase = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
     testCase = getEntity(testCase.getId(), "entity,testSuite,testDefinition,owner", ADMIN_AUTH_HEADERS);
     validateCreatedEntity(testCase, create, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_testCaseResults_200(TestInfo test) throws IOException, ParseException {
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntity(TEST_TABLE1.getEntityReference())
+        .withTestSuite(TEST_SUITE1_REFERENCE)
+        .withTestDefinition(TEST_DEFINITION3_REFERENCE)
+        .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    TestCaseResult testCaseResult =
+        new TestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
+    TestCase putResponse = putTestCaseResult(testCase.getId(), testCaseResult, ADMIN_AUTH_HEADERS);
+    verifyTestCaseResult(putResponse.getTestCaseResult(), testCaseResult);
+
+    ResultList<TestCaseResult> testCaseResults = getTestCaseResults(testCase.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTestCaseResults(testCaseResults, List.of(testCaseResult), 1);
+
+    // Add new date for TableCaseResult
+    TestCaseResult newTestCaseResult =
+        new TestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
+    putResponse = putTestCaseResult(testCase.getId(), newTestCaseResult, ADMIN_AUTH_HEADERS);
+    verifyTestCaseResult(putResponse.getTestCaseResult(), newTestCaseResult);
+
+    testCaseResults = getTestCaseResults(testCase.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult, testCaseResult), 2);
+
+    // Replace table profile for a date
+    TestCaseResult newTestCaseResult1 =
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
+    putResponse = putTestCaseResult(testCase.getId(), newTestCaseResult1, ADMIN_AUTH_HEADERS);
+    assertEquals(newTestCaseResult1.getTimestamp(), putResponse.getTestCaseResult().getTimestamp());
+    verifyTestCaseResult(putResponse.getTestCaseResult(), newTestCaseResult1);
+
+    testCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
+    // first result should be the latest date
+    testCaseResults = getTestCaseResults(testCase.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult1, testCaseResult), 2);
+
+    String dateStr = "2021-09-";
+    List<TestCaseResult> testCaseResultList = new ArrayList<>();
+    testCaseResultList.add(testCaseResult);
+    testCaseResultList.add(newTestCaseResult1);
+    for (int i = 11; i <= 20; i++) {
+      testCaseResult =
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+      putTestCaseResult(testCase.getId(), testCaseResult, ADMIN_AUTH_HEADERS);
+      testCaseResultList.add(testCaseResult);
+    }
+    testCaseResults = getTestCaseResults(testCase.getId(), testCaseResultList.size(), ADMIN_AUTH_HEADERS);
+    verifyTestCaseResults(testCaseResults, testCaseResultList, 12);
+
+    // create another table and add profiles
+    TestCase testCase1 =
+        createAndCheckEntity(
+            createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
+    List<TestCaseResult> testCase1ResultList = new ArrayList<>();
+    dateStr = "2021-10-";
+    for (int i = 11; i <= 15; i++) {
+      testCaseResult =
+          new TestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
+      putTestCaseResult(testCase1.getId(), testCaseResult, ADMIN_AUTH_HEADERS);
+      testCase1ResultList.add(testCaseResult);
+    }
+    testCaseResults = getTestCaseResults(testCase1.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTestCaseResults(testCaseResults, testCase1ResultList, 5);
+    deleteTestCaseResult(testCase1.getId(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
+    testCase1ResultList.remove(0);
+    testCaseResults = getTestCaseResults(testCase1.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
+  }
+
+  public static TestCase putTestCaseResult(UUID testCaseId, TestCaseResult data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("testCase/" + testCaseId + "/testCaseResult");
+    return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
+  }
+
+  public static TestCase deleteTestCaseResult(UUID testCaseId, Long timestamp, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("testCase/" + testCaseId + "/testCaseResult/" + timestamp);
+    return TestUtils.delete(target, TestCase.class, authHeaders);
+  }
+
+  public static ResultList<TestCaseResult> getTestCaseResults(
+      UUID testCaseId, Integer limit, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("testCase/" + testCaseId + "/testCaseResult");
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
+  }
+
+  private void verifyTestCaseResults(
+      ResultList<TestCaseResult> actualTestCaseResults,
+      List<TestCaseResult> expectedTestCaseResults,
+      int expectedCount) {
+    assertEquals(expectedCount, actualTestCaseResults.getPaging().getTotal());
+    assertEquals(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
+    Map<Long, TestCaseResult> testCaseResultMap = new HashMap<>();
+    for (TestCaseResult result : actualTestCaseResults.getData()) {
+      testCaseResultMap.put(result.getTimestamp(), result);
+    }
+    for (TestCaseResult result : expectedTestCaseResults) {
+      TestCaseResult storedTestCaseResult = testCaseResultMap.get(result.getTimestamp());
+      verifyTestCaseResult(storedTestCaseResult, result);
+    }
+  }
+
+  private void verifyTestCaseResult(TestCaseResult expected, TestCaseResult actual) {
+    assertEquals(expected, actual);
   }
 
   @Override

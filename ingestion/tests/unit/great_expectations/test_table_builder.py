@@ -92,7 +92,7 @@ def test_base_table_builder_build_test_case_results(
     test_case_result = mocked_base_table_builder.build_test_case_results()
 
     assert isinstance(test_case_result, _TestCaseResult)
-    test_case_result.executionTime
+    test_case_result.timestamp
     test_case_result.testCaseStatus
     test_case_result.result
 

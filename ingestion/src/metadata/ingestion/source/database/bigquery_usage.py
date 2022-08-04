@@ -29,7 +29,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import BIGQUERY_USAGE_STATEMENT
 
@@ -56,11 +55,6 @@ class BigqueryUsageSource(UsageSource):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-
-        set_google_credentials(
-            gcs_credentials=config.serviceConnection.__root__.config.credentials
-        )
-
         return cls(config, metadata_config)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:

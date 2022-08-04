@@ -51,10 +51,8 @@ def get_long_description():
 base_requirements = {
     "openmetadata-ingestion[airflow-container]~=0.11",
     "pendulum~=2.1.2",
-    "packaging~=21.2",
-    "setuptools~=58.3.0",
-    "apache-airflow==2.3.3",
-    "Flask~=2.1",
+    "apache-airflow>=2.2.2",
+    "Flask>=1.1.4",
     "Flask-Admin==1.6.0",
 }
 

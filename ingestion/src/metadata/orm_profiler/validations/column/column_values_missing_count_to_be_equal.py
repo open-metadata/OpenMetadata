@@ -54,7 +54,7 @@ def column_values_missing_count_to_be_equal(
         msg = "We expect `nullCount` to be informed on the profiler for ColumnValuesMissingCount."
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -85,7 +85,7 @@ def column_values_missing_count_to_be_equal(
             msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name} - {err}"
             logger.error(msg)
             return TestCaseResult(
-                executionTime=execution_date.timestamp(),
+                timestamp=execution_date.timestamp(),
                 testCaseStatus=TestCaseStatus.Aborted,
                 result=msg,
             )
@@ -98,5 +98,5 @@ def column_values_missing_count_to_be_equal(
     result = f"Found missingCount={missing_count}. It should be {test_case.missingCountValue}."
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

@@ -41,8 +41,7 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(
-      SecurityContext securityContext, ResourceContextInterface resourceContext) {
+  public List<MetadataOperation> listPermissions(SecurityContext securityContext) {
     // Return all operations.
     return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
   }

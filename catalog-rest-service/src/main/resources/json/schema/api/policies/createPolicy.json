@@ -41,6 +41,6 @@
       "default": null
     }
   },
-  "required": ["name", "policyType"],
+  "required": ["name", "policyType", "rules"],
   "additionalProperties": false
 }
