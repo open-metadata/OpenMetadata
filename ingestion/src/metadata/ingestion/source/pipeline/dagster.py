@@ -13,7 +13,7 @@ Dagster source to extract metadata from OM UI
 """
 from collections.abc import Iterable
 from typing import Iterable, Optional
-
+import json
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -109,14 +109,20 @@ class DagsterSource(PipelineServiceSource):
         :param serialized_dag: SerializedDAG from dagster metadata DB
         :return: Create Pipeline request with tasks
         """
+        
         task_list = [{"name": row["pipeline_name"]} for row in self.get_run_list()]
-        dag = pipeline_details
+        
+        run_body = json.loads(pipeline_details["run_body"])
+        location_name = run_body["external_pipeline_origin"]["external_repository_origin"]["repository_location_origin"]["location_name"]
+        repository_name = run_body["external_pipeline_origin"]["external_repository_origin"]["repository_name"]
+        pipeline_url = f"/workspace/{repository_name}@{location_name}/jobs/{pipeline_details.pipeline_name}/"
+        
         yield CreatePipelineRequest(
-            name=pipeline_details["pipeline_name"],
-            description=dag[3],
-            pipelineUrl=pipeline_details[3],  # Just the suffix
-            pipelineLocation=pipeline_details[3],
-            startDate=dag[9],
+            name=pipeline_details.pipeline_name,
+            description=pipeline_details.pipeline_name,
+            pipelineUrl=pipeline_url,
+            pipelineLocation=location_name,
+            startDate=pipeline_details.create_timestamp,
             tasks=task_list,
             service=EntityReference(
                 id=self.context.pipeline_service.id.__root__, type="pipelineService"
@@ -125,7 +131,6 @@ class DagsterSource(PipelineServiceSource):
 
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
         run_list = self.get_run_list()
-
         for run in run_list:
             log_link = f"{self.service_connection.hostPort}/instance/runs/{run.id}"
 
@@ -171,4 +176,4 @@ class DagsterSource(PipelineServiceSource):
         """
         Get Pipeline Name
         """
-        return pipeline_details
+        return pipeline_details.pipeline_name
