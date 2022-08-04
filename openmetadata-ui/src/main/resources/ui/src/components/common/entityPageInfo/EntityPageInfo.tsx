@@ -14,21 +14,24 @@
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Popover, Space, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getActiveAnnouncement } from '../../../axiosAPIs/feedsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { ThreadType } from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { useAfterMount } from '../../../hooks/useAfterMount';
+import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
@@ -42,6 +45,7 @@ import {
   getUpdateTagsPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
@@ -126,6 +130,8 @@ const EntityPageInfo = ({
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
     useState<boolean>(false);
+
+  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const handleRequestTags = () => {
     history.push(getRequestTagsPath(entityType as string, entityFqn as string));
@@ -365,6 +371,22 @@ const EntityPageInfo = ({
     ) : null;
   }, [tagTask]);
 
+  const fetchActiveAnnouncement = async () => {
+    try {
+      const { data } = await getActiveAnnouncement(
+        getEntityFeedLink(entityType, entityFqn)
+      );
+
+      const announcements = data?.data || [];
+
+      if (!isEmpty(announcements)) {
+        setActiveAnnouncement(announcements[0]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     setEntityFollowers(followersList);
   }, [followersList]);
@@ -373,6 +395,9 @@ const EntityPageInfo = ({
     setVersionFollowButtonWidth(
       document.getElementById('version-and-follow-section')?.offsetWidth
     );
+    if (ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)) {
+      fetchActiveAnnouncement();
+    }
   });
 
   return (
@@ -584,7 +609,12 @@ const EntityPageInfo = ({
             )}
           </Space>
         </Space>
-        <AnnouncementCard />
+        {activeAnnouncement && (
+          <AnnouncementCard
+            announcement={activeAnnouncement}
+            onClick={() => setIsAnnouncementDrawer(true)}
+          />
+        )}
       </Space>
       {isViewMore && (
         <FollowersModal

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Empty, Switch } from 'antd';
+import { Button, Empty, Switch } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -248,11 +248,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
         {!isUndefined(selectedThread) ? (
           <Fragment>
-            <p
-              className="tw-py-3 tw-cursor-pointer link-text tw-pl-5"
+            <Button
+              className="tw-mb-3 tw-ml-2"
+              size="small"
+              type="link"
               onClick={onBack}>
-              {'< Back'}
-            </p>
+              Back
+            </Button>
             <ActivityThread
               className="tw-pb-4 tw-pl-5 tw-pr-2"
               postFeed={postFeed}

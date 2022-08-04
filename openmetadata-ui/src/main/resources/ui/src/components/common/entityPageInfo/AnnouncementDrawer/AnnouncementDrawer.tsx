@@ -13,9 +13,19 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Typography } from 'antd';
-import React, { FC, useState } from 'react';
-import { ThreadType } from '../../../../generated/api/feed/createThread';
+import { AxiosError } from 'axios';
+import { Operation } from 'fast-json-patch';
+import { observer } from 'mobx-react';
+import React, { FC, useMemo, useState } from 'react';
+import AppState from '../../../../AppState';
+import { postFeedById, postThread } from '../../../../axiosAPIs/feedsAPI';
+import {
+  CreateThread,
+  ThreadType,
+} from '../../../../generated/api/feed/createThread';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
+import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnouncementModal';
 
@@ -36,6 +46,12 @@ const AnnouncementDrawer: FC<Props> = ({
 }) => {
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
 
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
   const title = (
     <Space className="tw-justify-between" style={{ width: '100%' }}>
       <Typography.Text className="tw-font-medium">
@@ -45,8 +61,39 @@ const AnnouncementDrawer: FC<Props> = ({
     </Space>
   );
 
-  const fn = () => {
-    return;
+  const createThread = (data: CreateThread) => {
+    postThread(data).catch((err: AxiosError) => {
+      showErrorToast(err);
+    });
+  };
+
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId).catch((error: AxiosError) => {
+      showErrorToast(error);
+    });
+  };
+
+  const postFeedHandler = (value: string, id: string) => {
+    const data = {
+      message: value,
+      from: currentUser?.name,
+    };
+    postFeedById(id, data).catch((err: AxiosError) => {
+      showErrorToast(err);
+    });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    const callback = () => {
+      return;
+    };
+
+    updateThreadData(threadId, postId, isThread, data, callback);
   };
 
   return (
@@ -66,13 +113,13 @@ const AnnouncementDrawer: FC<Props> = ({
 
         <ActivityThreadPanelBody
           className="tw-p-0"
-          createThread={fn}
-          deletePostHandler={fn}
-          postFeedHandler={fn}
+          createThread={createThread}
+          deletePostHandler={deletePostHandler}
+          postFeedHandler={postFeedHandler}
           showHeader={false}
           threadLink={getEntityFeedLink(entityType, entityFQN)}
           threadType={ThreadType.Announcement}
-          updateThreadHandler={fn}
+          updateThreadHandler={updateThreadHandler}
         />
       </Drawer>
 
@@ -88,4 +135,4 @@ const AnnouncementDrawer: FC<Props> = ({
   );
 };
 
-export default AnnouncementDrawer;
+export default observer(AnnouncementDrawer);

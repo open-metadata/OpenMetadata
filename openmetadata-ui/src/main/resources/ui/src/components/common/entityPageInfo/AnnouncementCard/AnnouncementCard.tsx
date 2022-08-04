@@ -12,12 +12,25 @@
  */
 
 import { Button, Card, Space, Typography } from 'antd';
-import React from 'react';
+import React, { FC } from 'react';
+import { Thread } from '../../../../generated/entity/feed/thread';
 import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import './AnnouncementCard.less';
-const AnnouncementCard = () => {
+
+interface Props {
+  onClick: () => void;
+  announcement: Thread;
+}
+
+const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
+  const viewCap = 72;
+  const title = announcement.message;
+
   return (
-    <Card className="announcement-card">
+    <Card
+      className="announcement-card"
+      data-testid="announcement-card"
+      onClick={onClick}>
       <Space align="start" size={12}>
         <SVGIcons
           alt="announcement"
@@ -25,11 +38,8 @@ const AnnouncementCard = () => {
           width="24px"
         />
         <div>
-          <Typography.Text>
-            This table will be deleted in 10 days, please store the naccessary
-            data.
-          </Typography.Text>
-          <Button size="small" type="link">
+          <Typography.Text>{title.slice(0, viewCap)}...</Typography.Text>
+          <Button size="small" type="link" onClick={onClick}>
             Read more
           </Button>
         </div>
