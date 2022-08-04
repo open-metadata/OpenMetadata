@@ -66,7 +66,7 @@ class TopologyNode(BaseModel):
 
     children: Optional[List[str]] = None  # nodes to call execute next
     post_process: Optional[
-        str
+        List[str]
     ] = None  # Method to be run after the node has been fully processed
 
 
