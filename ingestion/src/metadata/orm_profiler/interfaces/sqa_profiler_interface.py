@@ -389,7 +389,7 @@ class SQAProfilerInterface(InterfaceProtocol):
         orm_table: DeclarativeMeta,
         profile_sample: float,
     ) -> Optional[TestCaseResult]:
-        """Run table tests
+        """Run table tests where platformsTest=OpenMetadata
 
         Args:
             table_test_type: test type to be ran

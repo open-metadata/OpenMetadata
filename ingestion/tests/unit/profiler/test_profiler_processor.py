@@ -13,7 +13,8 @@
 Test Profiler Processor
 """
 
-# Disabling as we'll need to rework this test entirely
+# Disabled as we'll need to rework this test entirely
+# should be fixed in https://github.com/open-metadata/OpenMetadata/issues/5661
 # from pytest import mark
 
 
