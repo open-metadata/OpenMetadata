@@ -41,8 +41,8 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
 
     filters = """
         AND (
-          querytxt ILIKE 'CREATE TABLE %% AS SELECT %%'
-          OR querytxt ILIKE 'INSERT %%'
+          querytxt ILIKE 'create table %% as select %%'
+          OR querytxt ILIKE 'insert %%'
         )
     """
 

@@ -83,7 +83,7 @@ class LineageSource(QueryParserSource, ABC):
                     try:
                         if filter_by_database(
                             self.source_config.databaseFilterPattern,
-                            self.get_database_name(row),
+                            self.get_database_name(query_dict),
                         ) or filter_by_schema(
                             self.source_config.schemaFilterPattern,
                             schema_name=self.get_schema_name(query_dict),

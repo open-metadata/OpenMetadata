@@ -9,24 +9,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Redshift usage module
+Clickhouse usage module
 """
-
-from metadata.ingestion.source.database.redshift_query_parser import (
-    RedshiftQueryParserSource,
+from metadata.ingestion.source.database.clickhouse_query_parser import (
+    ClickhouseQueryParserSource,
 )
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
+from metadata.utils.sql_queries import CLICKHOUSE_SQL_STATEMENT
 
 
-class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
+class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
+
+    sql_stmt = CLICKHOUSE_SQL_STATEMENT
 
     filters = """
-        AND querytxt NOT ILIKE 'fetch %%'
-        AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
-        AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
-        AND querytxt NOT ILIKE 'create table %% as select %%'
-        AND querytxt NOT ILIKE 'insert %%'
+        and query_kind in ('Create', 'Insert')
     """
-
-    sql_stmt = REDSHIFT_SQL_STATEMENT

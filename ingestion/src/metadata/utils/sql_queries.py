@@ -374,7 +374,7 @@ MSSQL_SQL_USAGE_STATEMENT = textwrap.dedent(
 """
 )
 
-CLICKHOUSE_SQL_USAGE_STATEMENT = textwrap.dedent(
+CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
     """
         Select
           query_start_time start_time,
@@ -392,6 +392,7 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = textwrap.dedent(
         and CAST(type,'Int8') <> 4
         and query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
         and query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        {filters}
         and (`type`='QueryFinish' or `type`='QueryStart')
 """
 )
