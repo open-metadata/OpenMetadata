@@ -40,6 +40,7 @@ import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmati
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
+import AnnouncementThreads from './AnnouncementThreads';
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
@@ -293,16 +294,29 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 )}
               </Fragment>
             ) : null}
-            <ActivityThreadList
-              className={classNames({ 'tw-p-4': !className }, className)}
-              postFeed={postFeed}
-              selectedThreadId={selectedThreadId}
-              threads={threads}
-              updateThreadHandler={onUpdateThread}
-              onConfirmation={onConfirmation}
-              onThreadIdSelect={onThreadIdSelect}
-              onThreadSelect={onThreadSelect}
-            />
+            {isAnnouncementType ? (
+              <AnnouncementThreads
+                className={classNames({ 'tw-p-4': !className }, className)}
+                postFeed={postFeed}
+                selectedThreadId={selectedThreadId}
+                threads={threads}
+                updateThreadHandler={onUpdateThread}
+                onConfirmation={onConfirmation}
+                onThreadIdSelect={onThreadIdSelect}
+                onThreadSelect={onThreadSelect}
+              />
+            ) : (
+              <ActivityThreadList
+                className={classNames({ 'tw-p-4': !className }, className)}
+                postFeed={postFeed}
+                selectedThreadId={selectedThreadId}
+                threads={threads}
+                updateThreadHandler={onUpdateThread}
+                onConfirmation={onConfirmation}
+                onThreadIdSelect={onThreadIdSelect}
+                onThreadSelect={onThreadSelect}
+              />
+            )}
             <div
               data-testid="observer-element"
               id="observer-element"
