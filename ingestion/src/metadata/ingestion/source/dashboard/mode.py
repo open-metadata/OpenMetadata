@@ -116,7 +116,7 @@ class ModeSource(DashboardServiceSource):
         )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict
+        self, dashboard_details: dict, dbServiceName: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 
@@ -147,7 +147,7 @@ class ModeSource(DashboardServiceSource):
                     from_entities = search_table_entities(
                         metadata=self.metadata,
                         database=data_source.get(mode_client.DATABASE),
-                        service_name=self.source_config.dbServiceName,
+                        service_name=dbServiceName,
                         database_schema=database_schema_name,
                         table=table,
                     )
