@@ -34,8 +34,6 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
     Clickhouse base for Usage and Lineage
     """
 
-    filters: str
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

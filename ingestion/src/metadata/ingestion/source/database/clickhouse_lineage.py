@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Clickhouse usage module
+Clickhouse lineage module
 """
 from metadata.ingestion.source.database.clickhouse_query_parser import (
     ClickhouseQueryParserSource,
