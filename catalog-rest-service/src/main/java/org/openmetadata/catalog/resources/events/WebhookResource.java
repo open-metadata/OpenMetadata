@@ -316,7 +316,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    dao.updateWebhookPublisher((Webhook) response.getEntity());
+    return response;
   }
 
   @DELETE

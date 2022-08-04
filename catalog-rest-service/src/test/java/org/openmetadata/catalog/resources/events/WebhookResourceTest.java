@@ -260,19 +260,28 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     // Now update the filter to include entity updated and deleted events
     create.setEventFilters(createUpdateDelete);
     ChangeDescription change = getChangeDescription(webhook.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(updateDelete));
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(createUpdateDelete));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("eventFilters").withOldValue(onlyCreate).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityCreated
     create.setEventFilters(updateDelete);
     change = getChangeDescription(webhook.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(createUpdateDelete)));
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(updateDelete));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("eventFilters").withOldValue(createUpdateDelete).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityDeleted
     create.setEventFilters(delete);
     change = getChangeDescription(webhook.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(updateDelete));
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(delete));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("eventFilters").withOldValue(updateDelete).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
@@ -318,7 +327,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     if (fieldName.equals("eventFilters")) {
       List<Filter> expectedFilters = (List<Filter>) expected;
       List<Filter> actualFilters = JsonUtils.readObjects(actual.toString(), Filter.class);
-      assertEquals(expectedFilters, actualFilters);
+      assertTrue(expectedFilters.equals(actualFilters));
     } else if (fieldName.equals("endPoint")) {
       URI expectedEndpoint = (URI) expected;
       URI actualEndpoint = URI.create(actual.toString());
