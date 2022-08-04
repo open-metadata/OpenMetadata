@@ -68,8 +68,8 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
               style={{
                 ...leftPanelAntCardStyle,
                 marginTop: '20px',
-
                 border: '1px solid #FFC143',
+                background: '#fffbf3',
               }}>
               <AnnouncementBadge />
               <div data-testid="main-message">

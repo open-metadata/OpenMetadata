@@ -149,7 +149,7 @@ export const getActiveAnnouncement = (entityLink: string) => {
     params: {
       entityLink,
       type: ThreadType.Announcement,
-      activeAnnouncement: false,
+      activeAnnouncement: true,
     },
   });
 };

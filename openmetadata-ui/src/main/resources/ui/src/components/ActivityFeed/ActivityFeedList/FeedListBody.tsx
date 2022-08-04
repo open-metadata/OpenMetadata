@@ -137,6 +137,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   : isAnnouncement
                   ? '1px solid #FFC143'
                   : leftPanelAntCardStyle.border,
+                background: isAnnouncement ? '#fffbf3' : '',
               }}
               onClick={() =>
                 feed.task && handleCardClick(feed.task.id, isTask)

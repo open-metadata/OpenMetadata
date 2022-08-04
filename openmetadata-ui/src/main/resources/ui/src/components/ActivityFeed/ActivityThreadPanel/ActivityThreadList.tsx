@@ -101,6 +101,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           : isAnnouncement
                           ? '1px solid #FFC143'
                           : leftPanelAntCardStyle.border,
+                        background: isAnnouncement ? '#fffbf3' : '',
                       }}
                       onClick={() =>
                         thread.task && handleCardClick(thread.task.id, isTask)
