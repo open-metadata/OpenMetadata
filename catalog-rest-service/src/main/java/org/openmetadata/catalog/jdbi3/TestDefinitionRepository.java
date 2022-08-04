@@ -3,7 +3,6 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.TEST_DEFINITION;
 
 import java.io.IOException;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.EntityReference;
@@ -33,7 +32,6 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   @Override
   public void prepare(TestDefinition entity) throws IOException {
     setFullyQualifiedName(entity);
-    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
     // validate test platforms
     if (entity.getTestPlatforms() == null || entity.getTestPlatforms().isEmpty()) {
       throw new IllegalArgumentException("testPlatforms must not be empty");

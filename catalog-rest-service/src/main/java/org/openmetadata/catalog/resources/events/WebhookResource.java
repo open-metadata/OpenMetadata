@@ -345,7 +345,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return response;
   }
 
-  public Webhook getWebhook(CreateWebhook create, String user) {
+  public Webhook getWebhook(CreateWebhook create, String user) throws IOException {
     // Add filter for soft delete events if delete event type is requested
     EntityUtil.addSoftDeleteFilter(create.getEventFilters());
     return copy(new Webhook(), create, user)

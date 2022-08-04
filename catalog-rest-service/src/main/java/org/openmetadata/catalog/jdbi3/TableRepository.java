@@ -642,9 +642,6 @@ public class TableRepository extends EntityRepository<Table> {
 
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
-    // Check if owner is valid and set the relationship
-    table.setOwner(Entity.getEntityReference(table.getOwner()));
-
     // Validate table tags and add derived tags to the list
     table.setTags(addDerivedTags(table.getTags()));
 

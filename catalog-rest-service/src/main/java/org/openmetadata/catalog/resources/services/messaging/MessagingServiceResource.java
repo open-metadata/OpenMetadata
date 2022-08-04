@@ -358,7 +358,7 @@ public class MessagingServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private MessagingService getService(CreateMessagingService create, String user) {
+  private MessagingService getService(CreateMessagingService create, String user) throws IOException {
     return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
         .withServiceType(create.getServiceType());

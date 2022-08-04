@@ -67,7 +67,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
     ingestionPipeline.setService(entityReference);
     setFullyQualifiedName(ingestionPipeline);
-    ingestionPipeline.setOwner(Entity.getEntityReference(ingestionPipeline.getOwner()));
   }
 
   @Override

@@ -307,7 +307,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete, false);
   }
 
-  private Bot getBot(CreateBot create, String user) {
+  private Bot getBot(CreateBot create, String user) throws IOException {
     return copy(new Bot(), create, user).withBotUser(create.getBotUser());
   }
 }

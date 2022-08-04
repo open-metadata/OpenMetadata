@@ -85,8 +85,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     setFullyQualifiedName(policy);
     validateRules(policy);
     policy.setLocation(getLocationReference(policy));
-    // Check if owner is valid and set the relationship
-    populateOwner(policy.getOwner());
   }
 
   @Override

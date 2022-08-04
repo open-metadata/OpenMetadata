@@ -376,7 +376,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
+  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) throws IOException {
     return copy(new TestDefinition(), create, user)
         .withDescription(create.getDescription())
         .withEntityType(create.getEntityType())

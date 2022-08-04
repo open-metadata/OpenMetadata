@@ -63,7 +63,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void prepare(Database database) throws IOException {
     populateService(database);
     setFullyQualifiedName(database);
-    populateOwner(database.getOwner()); // Validate owner
   }
 
   @Override

@@ -391,7 +391,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Dashboard getDashboard(CreateDashboard create, String user) {
+  private Dashboard getDashboard(CreateDashboard create, String user) throws IOException {
     return copy(new Dashboard(), create, user)
         .withService(create.getService())
         .withCharts(create.getCharts())

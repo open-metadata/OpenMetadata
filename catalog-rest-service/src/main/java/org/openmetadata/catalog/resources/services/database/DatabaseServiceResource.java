@@ -358,7 +358,7 @@ public class DatabaseServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private DatabaseService getService(CreateDatabaseService create, String user) {
+  private DatabaseService getService(CreateDatabaseService create, String user) throws IOException {
     return copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

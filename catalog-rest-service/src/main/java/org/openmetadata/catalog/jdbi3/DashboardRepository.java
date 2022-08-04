@@ -108,7 +108,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
     setFullyQualifiedName(dashboard);
-    populateOwner(dashboard.getOwner()); // Validate owner
     dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }

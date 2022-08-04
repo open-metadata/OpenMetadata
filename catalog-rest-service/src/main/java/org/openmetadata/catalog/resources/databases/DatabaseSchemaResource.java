@@ -353,7 +353,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
+  private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {
     return copy(new DatabaseSchema(), create, user).withDatabase(create.getDatabase());
   }
 }

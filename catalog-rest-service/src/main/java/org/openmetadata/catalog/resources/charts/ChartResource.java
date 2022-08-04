@@ -387,7 +387,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Chart getChart(CreateChart create, String user) {
+  private Chart getChart(CreateChart create, String user) throws IOException {
     return copy(new Chart(), create, user)
         .withService(create.getService())
         .withChartType(create.getChartType())

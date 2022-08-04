@@ -366,7 +366,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private Database getDatabase(CreateDatabase create, String user) {
+  private Database getDatabase(CreateDatabase create, String user) throws IOException {
     return copy(new Database(), create, user).withService(create.getService());
   }
 }
