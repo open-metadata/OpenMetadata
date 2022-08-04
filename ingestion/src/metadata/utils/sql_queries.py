@@ -400,8 +400,8 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
-  AND text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-  AND text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
 """
 
 
