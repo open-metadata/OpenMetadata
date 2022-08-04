@@ -16,10 +16,9 @@ import json
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import \
-    DatabaseServiceQueryLineagePipeline
-
-from openmetadata_managed_apis.workflows.ingestion.lineage import build_lineage_workflow_config
+from openmetadata_managed_apis.workflows.ingestion.lineage import (
+    build_lineage_workflow_config,
+)
 from openmetadata_managed_apis.workflows.ingestion.metadata import (
     build_metadata_workflow_config,
 )
@@ -44,6 +43,9 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
     DatabaseServiceQueryUsagePipeline,
