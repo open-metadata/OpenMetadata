@@ -39,7 +39,11 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
         />
         <div>
           <Typography.Text>{title.slice(0, viewCap)}...</Typography.Text>
-          <Button size="small" type="link" onClick={onClick}>
+          <Button
+            data-testid="read-more"
+            size="small"
+            type="link"
+            onClick={onClick}>
             Read more
           </Button>
         </div>

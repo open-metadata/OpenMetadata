@@ -53,7 +53,10 @@ const AnnouncementDrawer: FC<Props> = ({
   );
 
   const title = (
-    <Space className="tw-justify-between" style={{ width: '100%' }}>
+    <Space
+      className="tw-justify-between"
+      data-testid="title"
+      style={{ width: '100%' }}>
       <Typography.Text className="tw-font-medium">
         Announcement on {entityName}
       </Typography.Text>
@@ -100,13 +103,17 @@ const AnnouncementDrawer: FC<Props> = ({
     <>
       <Drawer
         closable={false}
+        data-testid="announcement-drawer"
         placement="right"
         title={title}
         visible={open}
         width={576}
         onClose={onClose}>
         <div className="tw-flex tw-justify-end">
-          <Button type="primary" onClick={() => setIsAnnouncement(true)}>
+          <Button
+            data-testid="add-announcement"
+            type="primary"
+            onClick={() => setIsAnnouncement(true)}>
             Add Announcement
           </Button>
         </div>

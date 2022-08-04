@@ -27,13 +27,13 @@ import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
 const AnnouncementThreads: FC<ActivityThreadListProp> = ({
-  className,
   threads,
+  className,
   selectedThreadId,
-  postFeed,
   onThreadIdSelect,
   onThreadSelect,
   onConfirmation,
+  postFeed,
   updateThreadHandler,
 }) => {
   const { updatedFeedList: updatedThreads } =
@@ -69,6 +69,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
           <Fragment key={index}>
             <Card
               className="ant-card-feed"
+              data-testid="announcement-card"
               key={`${index} - card`}
               style={{
                 ...leftPanelAntCardStyle,
