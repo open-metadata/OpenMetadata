@@ -353,7 +353,7 @@ public class PipelineServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private PipelineService getService(CreatePipelineService create, String user) {
+  private PipelineService getService(CreatePipelineService create, String user) throws IOException {
     return copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

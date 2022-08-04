@@ -141,9 +141,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
 
-    // Check if owner is valid and set the relationship
-    populateOwner(mlModel.getOwner());
-
     // Check that the dashboard exists
     if (mlModel.getDashboard() != null) {
       daoCollection.dashboardDAO().findEntityReferenceById(mlModel.getDashboard().getId());

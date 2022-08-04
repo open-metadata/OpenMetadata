@@ -473,7 +473,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return addHref(uriInfo, testCase);
   }
 
-  private TestCase getTestCase(CreateTestCase create, String user) {
+  private TestCase getTestCase(CreateTestCase create, String user) throws IOException {
     return copy(new TestCase(), create, user)
         .withDescription(create.getDescription())
         .withName(create.getName())

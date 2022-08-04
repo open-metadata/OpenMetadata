@@ -395,7 +395,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return response;
   }
 
-  private Policy getPolicy(CreatePolicy create, String user) {
+  private Policy getPolicy(CreatePolicy create, String user) throws IOException {
     Policy policy =
         copy(new Policy(), create, user)
             .withPolicyType(create.getPolicyType())

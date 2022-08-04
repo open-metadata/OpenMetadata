@@ -8,15 +8,16 @@
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "teamType" : {
-      "description" : "Organization is the highest level entity. An Organization has one of more Business Units, Division, or Departments. A Business Unit has one or more Divisions, or Departments. A Division has one or more Divisions or Departments. A Department has one or more Departments or users.",
+      "description" : "Organization is the highest level entity. An Organization has one of more Business Units, Division, Departments, Group, or Users. A Business Unit has one or more Divisions, Departments, Group, or Users. A Division has one or more Divisions, Departments, Group, or Users. A Department has one or more Departments, Group, or Users. A Group has a only Users",
       "type" : "string",
       "enum": [
+        "Group",
         "Department",
         "Division",
         "BusinessUnit",
         "Organization"
       ],
-      "default": "Department"
+      "default": "Group"
     }
   },
   "properties": {
