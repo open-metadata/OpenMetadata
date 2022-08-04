@@ -40,7 +40,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     Snowflake base for Usage and Lineage
     """
 
-    sql_stmt: str
+    filters: str
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
@@ -68,6 +68,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             result_limit=self.config.sourceConfig.config.resultLimit,
+            filters=self.filters,
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:

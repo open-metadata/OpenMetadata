@@ -193,7 +193,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
             """
 )
 
-SNOWFLAKE_USAGE_SQL_STATEMENT = textwrap.dedent(
+SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
         SELECT 
           query_type,
@@ -210,29 +210,9 @@ SNOWFLAKE_USAGE_SQL_STATEMENT = textwrap.dedent(
             RESULT_LIMIT => {result_limit}
             )
         )
-        WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES')
-          AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
-        """
-)
-
-SNOWFLAKE_LINEAGE_SQL_STATEMENT = textwrap.dedent(
-    """
-        SELECT 
-          query_type,
-          query_text,
-          database_name,
-          schema_name
-        FROM table(
-          information_schema.query_history(
-            end_time_range_start => to_timestamp_ltz('{start_time}'),
-            end_time_range_end => to_timestamp_ltz('{end_time}'),
-            RESULT_LIMIT => {result_limit}
-            )
-        )
-        WHERE QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','COPY','CREATE_TABLE_AS_SELECT')
-          AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
+        WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          {filters}
         """
 )
 

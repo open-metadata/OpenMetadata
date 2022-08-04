@@ -16,7 +16,7 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake_query_parser import (
     SnowflakeQueryParserSource,
 )
-from metadata.utils.sql_queries import SNOWFLAKE_LINEAGE_SQL_STATEMENT
+from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
 class SnowflakeLineageSource(SnowflakeQueryParserSource, LineageSource):
@@ -24,4 +24,8 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, LineageSource):
     Snowflake class for Lineage
     """
 
-    sql_stmt = SNOWFLAKE_LINEAGE_SQL_STATEMENT
+    sql_stmt = SNOWFLAKE_SQL_STATEMENT
+
+    filters = """
+        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','COPY','CREATE_TABLE_AS_SELECT')
+    """

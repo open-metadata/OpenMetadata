@@ -15,7 +15,7 @@ from metadata.ingestion.source.database.snowflake_query_parser import (
     SnowflakeQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import SNOWFLAKE_USAGE_SQL_STATEMENT
+from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
 class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
@@ -23,4 +23,11 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
     Snowflake class for Usage
     """
 
-    sql_stmt = SNOWFLAKE_USAGE_SQL_STATEMENT
+    sql_stmt = SNOWFLAKE_SQL_STATEMENT
+
+    filters = """
+        AND QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY',
+        'ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER',
+        'DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','
+        ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES')
+    """
