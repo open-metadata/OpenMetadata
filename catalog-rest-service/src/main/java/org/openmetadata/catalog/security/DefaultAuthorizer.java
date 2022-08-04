@@ -23,8 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -42,6 +40,8 @@ import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.Permission.Access;
+import org.openmetadata.catalog.type.ResourcePermission;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
@@ -98,7 +98,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(SecurityContext securityContext) {
+  public List<ResourcePermission> listPermissions(SecurityContext securityContext) {
     SubjectContext subjectContext;
     try {
       subjectContext = getSubjectContext(securityContext);
@@ -108,7 +108,7 @@ public class DefaultAuthorizer implements Authorizer {
 
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
       // Admins and bots have permissions to do all operations.
-      return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+      return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
     }
     return PolicyEvaluator.getAllowedOperations(subjectContext);
   }

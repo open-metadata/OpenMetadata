@@ -1,5 +1,6 @@
 package org.openmetadata.catalog.security.policyevaluator;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -10,7 +11,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 /** This class is used in a single threaded model and hence does not have concurrency support */
 public class CompiledRule extends Rule {
   private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
-  private Expression expression;
+  @JsonIgnore private Expression expression;
 
   public CompiledRule(Rule rule) {
     super();
@@ -44,11 +45,11 @@ public class CompiledRule extends Rule {
     Expression expression = rule.getExpression();
     RuleEvaluator policyContext = new RuleEvaluator(null, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(policyContext);
-    return expression == null ? true : rule.getExpression().getValue(evaluationContext, Boolean.class);
+    return expression == null || expression.getValue(evaluationContext, Boolean.class);
   }
 
   public static boolean matchRuleForPermissions(CompiledRule rule, SubjectContext subjectContext) {
-    return matchResource(rule, "all") && rule.getCondition() == null;
+    return matchResource(rule, "all");
   }
 
   public static boolean matchResource(CompiledRule rule, String resource) {
