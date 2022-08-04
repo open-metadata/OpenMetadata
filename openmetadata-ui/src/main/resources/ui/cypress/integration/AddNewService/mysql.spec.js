@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    //goToAddNewServicePage();
+    addNewServicePage('Database');
     const connectionInput = () => {
       cy.get('#root_username').type('openmetadata_user');
       cy.get('#root_password').type('openmetadata_password');
@@ -37,7 +38,7 @@ describe('MySQL Ingestion', () => {
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName,
+      serviceName
     );
   });
 

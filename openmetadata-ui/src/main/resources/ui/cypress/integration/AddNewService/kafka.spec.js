@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Kafka';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Kafka Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    //goToAddNewServicePage();
+    addNewServicePage('Messaging');
 
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').select('messagingServices');

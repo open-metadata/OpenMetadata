@@ -81,6 +81,29 @@ export const DELETE_ENTITY = {
   },
 };
 
+export const ENTITY = {
+  table: {
+    term: 'raw_customer',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    description: 'This is raw_customer description',
+  },
+  topic: {
+    term: 'sales',
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    description: 'This is sales description',
+  },
+  dashboard: {
+    term: 'Video Game Sales',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    description: 'This is Video Game Sales description',
+  },
+  pipeline: {
+    term: 'Snowflake ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    description: 'This is Snowflake ETL description',
+  },
+};
+
 export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
@@ -152,4 +175,42 @@ export const service = {
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
   Owner: 'Cloud_Infra',
+};
+
+export const ENTITIES = {
+  entity_table: {
+    name: 'table',
+    description: 'This is Table custom property',
+    integerValue: '45',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+  entity_topic: {
+    name: 'topic',
+    description: 'This is Topic custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+  entity_dashboard: {
+    name: 'dashboard',
+    description: 'This is Dashboard custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+  entity_pipeline: {
+    name: 'pipeline',
+    description: 'This is Pipeline custom property',
+    integerValue: '78',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+  entity_ml_model: {
+    name: 'model',
+    description: 'This is ML Model custom property',
+    integerValue: '78',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
 };

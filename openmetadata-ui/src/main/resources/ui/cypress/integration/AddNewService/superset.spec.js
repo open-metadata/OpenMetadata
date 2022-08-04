@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Superset';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Superset Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    //goToAddNewServicePage();
+    addNewServicePage('Dashboard');
 
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').select('dashboardServices');

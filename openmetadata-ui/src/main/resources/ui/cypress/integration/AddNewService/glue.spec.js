@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 
 const serviceType = 'Glue';
@@ -19,7 +19,8 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Glue Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    //goToAddNewServicePage();
+    addNewServicePage('Database');
     const connectionInput = () => {
       cy.get('#root_awsConfig_awsAccessKeyId')
         .scrollIntoView()

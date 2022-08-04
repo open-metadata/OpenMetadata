@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
-
+import { addNewServicePage, deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('BigQuery Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    //goToAddNewServicePage();
+    addNewServicePage('Database');
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
       cy.get('.form-group > #root_type')

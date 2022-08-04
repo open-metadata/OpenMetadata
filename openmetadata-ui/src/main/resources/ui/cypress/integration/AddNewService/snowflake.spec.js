@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Snowflake';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Snowflake Ingestion', () => {
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
-    goToAddNewServicePage();
+    //goToAddNewServicePage();
+    addNewServicePage('Database');
     const connectionInput = () => {
       cy.get('#root_username').type(Cypress.env('snowflakeUsername'));
       cy.get('#root_password').type(Cypress.env('snowflakePassword'));
@@ -38,7 +39,7 @@ describe('Snowflake Ingestion', () => {
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName,
+      serviceName
     );
   });
 
