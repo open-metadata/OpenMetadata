@@ -350,7 +350,7 @@ VERTICA_VIEW_DEFINITION = textwrap.dedent(
     """
 )
 
-MSSQL_SQL_USAGE_STATEMENT = textwrap.dedent(
+MSSQL_SQL_STATEMENT = textwrap.dedent(
     """
       SELECT
         db.NAME database_name,
@@ -369,8 +369,10 @@ MSSQL_SQL_USAGE_STATEMENT = textwrap.dedent(
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
           AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%';
-      ORDER BY s.last_execution_time DESC;
+          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND p.objtype != 'Prepared'
+          {filters}
+      ORDER BY s.last_execution_time DESC
 """
 )
 
