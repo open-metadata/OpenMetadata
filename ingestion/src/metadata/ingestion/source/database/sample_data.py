@@ -463,6 +463,8 @@ class SampleDataSource(Source[Entity]):
                 databaseSchema=EntityReference(
                     id=database_schema_object.id, type="databaseSchema"
                 ),
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
             )
 
             self.status.scanned("table", table_request.name.__root__)
@@ -547,6 +549,8 @@ class SampleDataSource(Source[Entity]):
                 databaseSchema=EntityReference(
                     id=database_schema_object.id, type="databaseSchema"
                 ),
+                tableType=table["tableType"],
+                tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
             )
 
