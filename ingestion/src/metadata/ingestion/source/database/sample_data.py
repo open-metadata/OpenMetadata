@@ -14,7 +14,6 @@ import json
 import os
 import sys
 import traceback
-import uuid
 from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Union
@@ -23,9 +22,14 @@ from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -74,6 +78,8 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.database_service import TableLocationLink
+from metadata.utils import fqn
 from metadata.utils.helpers import (
     get_chart_entities_from_id,
     get_standard_chart_type,
@@ -409,83 +415,146 @@ class SampleDataSource(Source[Entity]):
             )
             yield location_ev
 
-    def ingest_glue(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = Database(
-            id=uuid.uuid4(),
-            name=self.glue_database["name"],
-            description=self.glue_database["description"],
+    def ingest_glue(self):
+        db = CreateDatabaseRequest(
+            name=self.database["name"],
+            description=self.database["description"],
             service=EntityReference(
-                id=self.glue_database_service.id,
-                type=self.glue_database_service.serviceType.value,
+                id=self.database_service.id.__root__, type="databaseService"
             ),
         )
-        db_schema = DatabaseSchema(
-            id=uuid.uuid4(),
-            name=self.glue_database_schema["name"],
-            description=self.glue_database_schema["description"],
-            service=EntityReference(
-                id=self.glue_database_service.id,
-                type=self.glue_database_service.serviceType.value,
-            ),
-            database=EntityReference(id=db.id, type="database"),
+
+        yield db
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
         )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+        schema = CreateDatabaseSchemaRequest(
+            name=self.database_schema["name"],
+            description=self.database_schema["description"],
+            database=EntityReference(id=database_object.id, type="database"),
+        )
+        yield schema
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+            schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
         for table in self.glue_tables["tables"]:
-            table["id"] = uuid.uuid4()
-            parameters = table.get("Parameters")
-            table = {key: val for key, val in table.items() if key != "Parameters"}
-            table_metadata = Table(**table)
-            location_type = LocationType.Table
-            if parameters:
-                location_type = (
-                    location_type
-                    if parameters.get("table_type") != "ICEBERG"
-                    else LocationType.Iceberg
-                )
-            location_metadata = Location(
-                id=uuid.uuid4(),
+            table_request = CreateTableRequest(
                 name=table["name"],
-                path="s3://glue_bucket/dwh/schema/" + table["name"],
                 description=table["description"],
-                locationType=location_type,
+                columns=table["columns"],
+                databaseSchema=EntityReference(
+                    id=database_schema_object.id, type="databaseSchema"
+                ),
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
+            )
+
+            self.status.scanned("table", table_request.name.__root__)
+            yield table_request
+
+            location = CreateLocationRequest(
+                name=table["name"],
                 service=EntityReference(
                     id=self.glue_storage_service.id, type="storageService"
                 ),
             )
-            db_table_location = OMetaDatabaseAndTable(
-                database=db,
-                table=table_metadata,
-                location=location_metadata,
-                database_schema=db_schema,
-            )
-            self.status.scanned("table", table_metadata.name.__root__)
-            yield db_table_location
+            self.status.scanned("location", location.name)
+            yield location
 
-    def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = Database(
-            id=uuid.uuid4(),
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.database_service.name.__root__,
+                database_name=db.name.__root__,
+                schema_name=schema.name.__root__,
+                table_name=table_request.name.__root__,
+            )
+
+            location_fqn = fqn.build(
+                self.metadata,
+                entity_type=Location,
+                service_name=self.glue_storage_service.name.__root__,
+                location_name=location.name.__root__,
+            )
+            if table_fqn and location_fqn:
+                yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
+
+    def ingest_tables(self):
+
+        db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
             service=EntityReference(
-                id=self.database_service.id, type=self.service_connection.type.value
+                id=self.database_service.id.__root__, type="databaseService"
             ),
         )
-        schema = DatabaseSchema(
-            id=uuid.uuid4(),
+        yield db
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+        )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+
+        schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            service=EntityReference(
-                id=self.database_service.id, type=self.service_connection.type.value
-            ),
-            database=EntityReference(id=db.id, type="database"),
+            database=EntityReference(id=database_object.id, type="database"),
         )
+        yield schema
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+            schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
+
         for table in self.tables["tables"]:
-            table_metadata = Table(**table)
-            table_and_db = OMetaDatabaseAndTable(
-                table=table_metadata, database=db, database_schema=schema
+            table_and_db = CreateTableRequest(
+                name=table["name"],
+                description=table["description"],
+                columns=table["columns"],
+                databaseSchema=EntityReference(
+                    id=database_schema_object.id, type="databaseSchema"
+                ),
+                tableType=table["tableType"],
+                tableConstraints=table.get("tableConstraints"),
+                tags=table["tags"],
             )
-            self.status.scanned("table", table_metadata.name.__root__)
+
+            self.status.scanned("table", table_and_db.name)
             yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
