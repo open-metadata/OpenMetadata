@@ -57,7 +57,7 @@ def column_values_to_match_regex(
         msg = "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -79,7 +79,7 @@ def column_values_to_match_regex(
         msg = f"Error computing ColumnValuesToMatchRegex for {col_profile.name} - {err}"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -92,5 +92,5 @@ def column_values_to_match_regex(
     result = f"Found {like_count_res} value(s) matching regex pattern vs {int(col_profile.valuesCount)} value(s) in the column."
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

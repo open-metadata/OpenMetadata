@@ -16,8 +16,20 @@ JSON workflows to the profiler
 from typing import List, Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+
+
+class TestCase(ConfigModel):
+    """
+    cli testcases
+    """
+
+    name: str
+    description: Optional[Markdown] = "Test suite description"
+    testDefinitionName: str
+    fullyQualifiedName: FullyQualifiedEntityName
+    parameterValues: List[TestCaseParameterValue]
 
 
 class TestDef(ConfigModel):
@@ -35,10 +47,8 @@ class TestDef(ConfigModel):
     on the incoming properties.
     """
 
-    table: str  # Table FQN
+    testCase: Optional[List[TestCase]] = None
     profile_sample: Optional[float] = None
-    table_tests: Optional[List[CreateTableTestRequest]] = None
-    column_tests: Optional[List[CreateColumnTestRequest]] = None
     partition_field: Optional[str] = None
     partition_query_duration: Optional[int] = 1
     partition_values: Optional[List] = None
@@ -52,4 +62,6 @@ class TestSuite(ConfigModel):
     """
 
     name: str  # Test Suite name
-    tests: List[TestDef]
+    description: Optional[str] = "Test suite description"
+    scheduleInterval: Optional[str]
+    testCases: List[TestCase]

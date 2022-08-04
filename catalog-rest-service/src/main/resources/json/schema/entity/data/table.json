@@ -461,14 +461,68 @@
       },
       "additionalProperties": false
     },
+    "columnProfilerConfig": {
+      "description": "This schema defines the type for Table profile config include Columns.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.ColumnProfilerConfig",
+       "properties": {
+          "columnName": {
+            "description": "Column Name of the table to be included.",
+            "type": "string"
+          },
+          "metrics": {
+            "description": "Include only following metrics.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": null
+          }
+       }
+    },
+    "tableProfilerConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableProfilerConfig",
+      "description": "This schema defines the type for Table profile config.",
+      "properties": {
+        "profileSample": {
+          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "default": null
+        },
+        "profileQuery": {
+          "description": "Users' raw SQL query to fetch sample data and profile the table",
+          "type": "string",
+          "default": null
+        },
+        "excludeColumns": {
+          "description": "column names to exclude from profiling.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "includeColumns": {
+          "description": "Only run profiler on included columns with specific metrics.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnProfilerConfig"
+          },
+          "default": null
+        }
+      }
+    },
     "tableProfile": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableProfile",
       "description": "This schema defines the type to capture the table's data profile.",
       "properties": {
-        "profileDate": {
-          "description": "Data one which profile is taken.",
-          "$ref": "../../type/basic.json#/definitions/date"
+        "timestamp": {
+          "description": "Timestamp on which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "profileSample": {
           "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",
@@ -487,10 +541,6 @@
         "rowCount": {
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
-        },
-        "columnNames": {
-          "description": "List of column names",
-          "type": "array"
         },
         "columnProfile": {
           "description": "List of local column profiles of the table.",
@@ -708,24 +758,13 @@
       "$ref": "#/definitions/tableData",
       "default": null
     },
-    "profileSample": {
-      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 100,
-      "default": null
-    },
-    "profileQuery": {
-      "description": "Users' raw SQL query to fetch sample data and profile the table",
-      "type": "string",
-      "default": null
+    "tableProfilerConfig": {
+      "description": "Table Profiler Config to include or exclude columns from profiling.",
+      "$ref": "#/definitions/tableProfilerConfig"
     },
     "tableProfile": {
-      "description": "Data profile for a table.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/tableProfile"
-      },
+      "description": "Latest Data profile for a table.",
+      "$ref": "#/definitions/tableProfile",
       "default": null
     },
     "tableQueries": {

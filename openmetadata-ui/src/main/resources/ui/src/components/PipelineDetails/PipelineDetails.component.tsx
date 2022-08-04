@@ -120,7 +120,7 @@ const PipelineDetails = ({
   const [selectedExecution, setSelectedExecution] = useState<PipelineStatus>(
     () => {
       if (pipelineStatus) {
-        return pipelineStatus[0];
+        return pipelineStatus;
       } else {
         return {} as PipelineStatus;
       }

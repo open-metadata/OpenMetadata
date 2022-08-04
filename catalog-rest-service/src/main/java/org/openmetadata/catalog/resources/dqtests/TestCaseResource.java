@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -42,6 +43,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.tests.TestCase;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
@@ -80,6 +82,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
 
     public TestCaseList(List<TestCase> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class TestCaseResultList extends ResultList<TestCaseResult> {
+    @SuppressWarnings("unused")
+    public TestCaseResultList() {
+      /* Required for serde */
+    }
+
+    public TestCaseResultList(List<TestCaseResult> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -347,6 +360,117 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
+  }
+
+  @PUT
+  @Path("/{id}/testCaseResult")
+  @Operation(
+      operationId = "addTestCaseResult",
+      summary = "Add test case result data",
+      tags = "TestCases",
+      description = "Add test case result data to the testCase.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the TestCase. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+      })
+  public TestCase addTestCaseResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Valid TestCaseResult testCaseResult)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    TestCase testCase = dao.addTestCaseResult(UUID.fromString(id), testCaseResult);
+    return addHref(uriInfo, testCase);
+  }
+
+  @GET
+  @Path("/{id}/testCaseResult")
+  @Operation(
+      operationId = "listTestCaseResults",
+      summary = "List of testCase results",
+      tags = "TestCases",
+      description =
+          "Get a list of all the test case results for the given testCase id, optionally filtered by  `startTs` and `endTs` of the profile. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of testCase results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseResource.TestCaseResultList.class)))
+      })
+  public ResultList<TestCaseResult> listTestCaseResults(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "Filter testCase results after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter testCase results before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number of testCase results returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of testCase results before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of testCase results after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+
+    ListFilter filter =
+        new ListFilter(Include.ALL)
+            .addQueryParam("entityId", id)
+            .addQueryParam("extension", TestCaseRepository.TESTCASE_RESULT_EXTENSION);
+
+    if (startTs != null) {
+      filter.addQueryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("endTs", String.valueOf(endTs));
+    }
+    return dao.getTestCaseResults(filter, before, after, limitParam);
+  }
+
+  @DELETE
+  @Path("/{id}/testCaseResult/{timestamp}")
+  @Operation(
+      operationId = "DeleteTestCaseResult",
+      summary = "Delete testCase result.",
+      tags = "tables",
+      description = "Delete testCase result for a testCase.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the TestCaseResult",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+      })
+  public TestCase deleteTestCaseResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
+          @PathParam("timestamp")
+          Long timestamp)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    TestCase testCase = dao.deleteTestCaseResult(UUID.fromString(id), timestamp);
+    return addHref(uriInfo, testCase);
   }
 
   private TestCase getTestCase(CreateTestCase create, String user) {

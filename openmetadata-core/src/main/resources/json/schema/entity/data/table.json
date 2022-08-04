@@ -716,12 +716,9 @@
       "type": "string",
       "default": null
     },
-    "tableProfile": {
+    "latestTableProfile": {
       "description": "Data profile for a table.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/tableProfile"
-      },
+      "$ref": "#/definitions/tableProfile",
       "default": null
     },
     "tableQueries": {

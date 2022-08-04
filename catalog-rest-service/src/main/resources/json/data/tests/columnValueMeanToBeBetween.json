@@ -2,6 +2,7 @@
     "name": "columnValueMeanToBeBetween",
     "displayName": "columnValueMeanToBeBetween",
     "description": "This schema defines the test ColumnValueMeanToBeBetween. Test the mean value in a col is within a range.",
+    "entityType": "COLUMN",
     "testPlatforms": ["OpenMetadata", "GreatExpectations"],
     "parameterDefinition": [
     {

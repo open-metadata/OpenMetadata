@@ -18,11 +18,13 @@ import reprlib
 from datetime import datetime
 from typing import List
 
+from sqlalchemy import inspect
+from sqlalchemy.orm import DeclarativeMeta
+
 from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.table.tableColumnNameToExist import (
-    TableColumnNameToExist,
-)
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -41,9 +43,11 @@ def format_column_list(status: TestCaseStatus, cols: List):
 
 
 def table_column_name_to_exist(
-    test_case: TableColumnNameToExist,
+    test_case: TestCase,
+    test_definition: TestDefinition,
     table_profile: TableProfile,
     execution_date: datetime,
+    table: DeclarativeMeta,
     **__,
 ) -> TestCaseResult:
     """
@@ -56,8 +60,7 @@ def table_column_name_to_exist(
     Returns:
         TestCaseResult with status and results
     """
-
-    if table_profile.columnNames is None:
+    if table is None:
         msg = "columnNames should not be None for TableColumnNameToExist"
         logger.error(msg)
         return TestCaseResult(
@@ -66,14 +69,20 @@ def table_column_name_to_exist(
             result=msg,
         )
 
+    column_name = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "columnName"
+    )
+
     status = (
         TestCaseStatus.Success
-        if test_case.columnName in table_profile.columnNames
+        if column_name in [col.name for col in inspect(table).c]
         else TestCaseStatus.Failed
     )
 
-    result = f"{test_case.columnName} column expected vs {format_column_list(status, table_profile.columnNames)}"
+    result = f"{column_name} column expected vs {format_column_list(status, [col.name for col in inspect(table).c])}"
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

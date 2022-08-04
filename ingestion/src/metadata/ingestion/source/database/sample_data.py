@@ -769,7 +769,6 @@ class SampleDataSource(Source[Entity]):
                     create_table_test = CreateTableTestRequest(
                         description=table_test.get("description"),
                         testCase=TableTestCase.parse_obj(table_test["testCase"]),
-                        executionFrequency=table_test["executionFrequency"],
                         result=TestCaseResult.parse_obj(table_test["result"]),
                     )
                     yield OMetaTableTest(
@@ -781,7 +780,6 @@ class SampleDataSource(Source[Entity]):
                         description=col_test.get("description"),
                         columnName=col_test["columnName"],
                         testCase=ColumnTestCase.parse_obj(col_test["testCase"]),
-                        executionFrequency=col_test["executionFrequency"],
                         result=TestCaseResult.parse_obj(col_test["result"]),
                     )
                     yield OMetaTableTest(

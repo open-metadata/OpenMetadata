@@ -31,15 +31,7 @@ from metadata.generated.schema.tests.column.columnValuesToBeNotNull import (
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
 )
-from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
-    TableColumnCountToEqual,
-)
-from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
-    TableRowCountToBeBetween,
-)
-from metadata.generated.schema.tests.table.tableRowCountToEqual import (
-    TableRowCountToEqual,
-)
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.orm_profiler.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -50,45 +42,57 @@ def test_table_row_count_to_equal():
     Check TableRowCountToEqual
     """
     table_profile = TableProfile(
-        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        timestamp=EXECUTION_DATE.timestamp(),
         rowCount=100,
     )
 
-    res_ok = validation_enum_registry.registry["tableRowCountToEqual"](
-        TableRowCountToEqual(value=100),
+    res_ok = validation_enum_registry.registry["TableRowCountToEqual"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[TestCaseParameterValue(name="value", value=100)],
+        ),
+        test_definition=None,
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
     assert res_ok == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
         result="Found 100.0 rows vs. the expected 100",
     )
 
-    res_ko = validation_enum_registry.registry["tableRowCountToEqual"](
-        TableRowCountToEqual(value=50),
+    res_ko = validation_enum_registry.registry["TableRowCountToEqual"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[TestCaseParameterValue(name="value", value=50)],
+        ),
+        test_definition=None,
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
 
     assert res_ko == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
         result="Found 100.0 rows vs. the expected 50",
     )
 
     table_profile_aborted = TableProfile(
-        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        timestamp=EXECUTION_DATE.timestamp(),
     )
 
-    res_aborted = validation_enum_registry.registry["tableRowCountToEqual"](
-        TableRowCountToEqual(value=100),
+    res_aborted = validation_enum_registry.registry["TableRowCountToEqual"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[TestCaseParameterValue(name="value", value=50)],
+        ),
+        test_definition=None,
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
     )
 
     assert res_aborted == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result="rowCount should not be None for TableRowCountToEqual",
     )
@@ -99,45 +103,66 @@ def test_table_row_count_to_be_between():
     Check TableRowCountToEqual
     """
     table_profile = TableProfile(
-        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        timestamp=EXECUTION_DATE.timestamp(),
         rowCount=100,
     )
 
-    res_ok = validation_enum_registry.registry["tableRowCountToBeBetween"](
-        TableRowCountToBeBetween(minValue=20, maxValue=120),
+    res_ok = validation_enum_registry.registry["TableRowCountToBeBetween"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[
+                TestCaseParameterValue(name="minValue", value=20),
+                TestCaseParameterValue(name="maxValue", value=120),
+            ],
+        ),
+        test_definition=None,
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
     assert res_ok == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
         result="Found 100.0 rows vs. the expected range [20, 120].",
     )
 
-    res_ko = validation_enum_registry.registry["tableRowCountToBeBetween"](
-        TableRowCountToBeBetween(minValue=120, maxValue=200),
+    res_ko = validation_enum_registry.registry["TableRowCountToBeBetween"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[
+                TestCaseParameterValue(name="minValue", value=120),
+                TestCaseParameterValue(name="maxValue", value=200),
+            ],
+        ),
+        test_definition=None,
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
 
     assert res_ko == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
         result="Found 100.0 rows vs. the expected range [120, 200].",
     )
 
     table_profile_aborted = TableProfile(
-        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        timestamp=EXECUTION_DATE.timestamp(),
     )
 
-    res_aborted = validation_enum_registry.registry["tableRowCountToBeBetween"](
-        TableRowCountToBeBetween(minValue=120, maxValue=200),
+    res_aborted = validation_enum_registry.registry["TableRowCountToBeBetween"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[
+                TestCaseParameterValue(name="minValue", value=120),
+                TestCaseParameterValue(name="maxValue", value=200),
+            ],
+        ),
+        test_definition=None,
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
     )
 
     assert res_aborted == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result="rowCount should not be None for TableRowCountToBeBetween",
     )
@@ -148,45 +173,63 @@ def test_table_column_count_to_equal():
     Check TableColumnCountToEqual
     """
     table_profile = TableProfile(
-        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        timestamp=EXECUTION_DATE.timestamp(),
         columnCount=5,
     )
 
-    res_ok = validation_enum_registry.registry["tableColumnCountToEqual"](
-        TableColumnCountToEqual(columnCount=5),
+    res_ok = validation_enum_registry.registry["TableColumnCountToEqual"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[
+                TestCaseParameterValue(name="columnCount", value=5),
+            ],
+        ),
+        test_definition=None,
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
     assert res_ok == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
         result="Found 5.0 columns vs. the expected 5",
     )
 
-    res_ko = validation_enum_registry.registry["tableColumnCountToEqual"](
-        TableColumnCountToEqual(columnCount=20),
+    res_ko = validation_enum_registry.registry["TableColumnCountToEqual"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[
+                TestCaseParameterValue(name="columnCount", value=20),
+            ],
+        ),
+        test_definition=None,
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
 
     assert res_ko == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
         result="Found 5.0 columns vs. the expected 20",
     )
 
     table_profile_aborted = TableProfile(
-        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        timestamp=EXECUTION_DATE.timestamp(),
     )
 
-    res_aborted = validation_enum_registry.registry["tableColumnCountToEqual"](
-        TableColumnCountToEqual(columnCount=5),
+    res_aborted = validation_enum_registry.registry["TableColumnCountToEqual"](
+        TestCase(
+            name="my_test_case",
+            parameterValues=[
+                TestCaseParameterValue(name="columnCount", value=5),
+            ],
+        ),
+        test_definition=None,
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
     )
 
     assert res_aborted == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result="columnCount should not be None for TableColumnCountToEqual",
     )
@@ -211,7 +254,7 @@ def test_column_values_to_be_between():
         execution_date=EXECUTION_DATE,
     )
     assert res_ok == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
         result="Found min=1.0, max=3.0 vs. the expected min=0, max=3.",
     )
@@ -226,7 +269,7 @@ def test_column_values_to_be_between():
     )
 
     assert res_ko == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
         result="Found min=1.0, max=3.0 vs. the expected min=0, max=2.",
     )
@@ -245,7 +288,7 @@ def test_column_values_to_be_between():
     )
 
     assert res_aborted == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result=(
             "We expect `min` & `max` to be informed on the profiler for ColumnValuesToBeBetween"
@@ -270,7 +313,7 @@ def test_column_values_to_be_unique():
         execution_date=EXECUTION_DATE,
     )
     assert res_ok == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
         result=(
             "Found valuesCount=10.0 vs. uniqueCount=10.0."
@@ -290,7 +333,7 @@ def test_column_values_to_be_unique():
     )
 
     assert res_ko == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
         result=(
             "Found valuesCount=10.0 vs. uniqueCount=5.0."
@@ -307,7 +350,7 @@ def test_column_values_to_be_unique():
     )
 
     assert res_aborted == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result=(
             "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
@@ -331,7 +374,7 @@ def test_column_values_to_be_not_null():
         execution_date=EXECUTION_DATE,
     )
     assert res_ok == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
         result=("Found nullCount=0.0. It should be 0."),
     )
@@ -347,7 +390,7 @@ def test_column_values_to_be_not_null():
     )
 
     assert res_ko == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
         result=("Found nullCount=10.0. It should be 0."),
     )
@@ -361,7 +404,7 @@ def test_column_values_to_be_not_null():
     )
 
     assert res_aborted == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result=(
             "We expect `nullCount` to be informed on the profiler for ColumnValuesToBeNotNull."
@@ -384,7 +427,7 @@ def test_column_value_length_to_be_between():
         execution_date=EXECUTION_DATE,
     )
     assert res_ok == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
         result="Found minLength=4.0, maxLength=16.0 vs. the expected minLength=2, maxLength=20.",
     )
@@ -396,7 +439,7 @@ def test_column_value_length_to_be_between():
     )
 
     assert res_ko == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
         result="Found minLength=4.0, maxLength=16.0 vs. the expected minLength=10, maxLength=20.",
     )
@@ -410,7 +453,7 @@ def test_column_value_length_to_be_between():
     )
 
     assert res_aborted == TestCaseResult(
-        executionTime=EXECUTION_DATE.timestamp(),
+        timestamp=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result=(
             "We expect `minLength` & `maxLength` to be informed on the profiler for ColumnValueLengthsToBeBetween"

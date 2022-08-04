@@ -2,6 +2,7 @@
   "name": "TableRowCountToBeBetween",
   "displayName": "TableRowCountToBeBetween",
   "description": "This defines the test TableRowCountToBeBetween. Test the number of rows to between to two values.",
+  "entityType": "TABLE",
   "testPlatforms": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {

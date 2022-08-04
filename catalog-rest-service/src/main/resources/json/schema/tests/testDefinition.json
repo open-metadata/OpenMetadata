@@ -40,6 +40,15 @@
         "STRING"
       ]
     },
+    "entityType": {
+      "javaType": "org.openmetadata.catalog.type.TestDefinitionEntityType",
+      "description": "This enum defines the type for which this test definition applies to.",
+      "type": "string",
+      "enum": [
+        "TABLE",
+        "COLUMN"
+      ]
+    },
     "testCaseParameterDefinition": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.test.TestCaseParameter",
@@ -89,6 +98,9 @@
     "description": {
       "description": "Description of the testcase.",
       "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "entityType": {
+      "$ref": "#/definitions/entityType"
     },
     "testPlatforms": {
       "type": "array",
