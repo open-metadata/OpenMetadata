@@ -29,13 +29,12 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
-import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.fixtures.ConfigurationFixtures;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.services.connections.mlModel.SklearnConnection;
-import org.openmetadata.catalog.type.MlModelConnection;
 
 @ExtendWith(MockitoExtension.class)
 public class LocalSecretsManagerTest {
@@ -124,31 +123,29 @@ public class LocalSecretsManagerTest {
   }
 
   private void testEncryptDecryptServiceConnectionWithoutPassword(boolean decrypt) {
-    MlModelConnection mlModelConnection = new MlModelConnection();
     SklearnConnection sklearnConnection = new SklearnConnection();
-    mlModelConnection.setConfig(sklearnConnection);
     CreateMlModelService.MlModelServiceType databaseServiceType = CreateMlModelService.MlModelServiceType.Sklearn;
     String connectionName = "test";
 
-    secretsManager.encryptOrDecryptServiceConnection(
-        mlModelConnection, databaseServiceType.value(), connectionName, decrypt);
+    Object actualConfig =
+        secretsManager.encryptOrDecryptServiceConnectionConfig(
+            sklearnConnection, databaseServiceType.value(), connectionName, ServiceType.ML_MODEL, decrypt);
 
-    assertNotSame(sklearnConnection, mlModelConnection.getConfig());
+    assertNotSame(sklearnConnection, actualConfig);
   }
 
   private void testEncryptDecryptServiceConnection(String encryptedValue, String decryptedValue, boolean decrypt) {
-    DatabaseConnection databaseConnection = new DatabaseConnection();
     MysqlConnection mysqlConnection = new MysqlConnection();
     mysqlConnection.setPassword(encryptedValue);
-    databaseConnection.setConfig(mysqlConnection);
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
-    secretsManager.encryptOrDecryptServiceConnection(
-        databaseConnection, databaseServiceType.value(), connectionName, decrypt);
+    Object actualConfig =
+        secretsManager.encryptOrDecryptServiceConnectionConfig(
+            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
 
-    assertEquals(decryptedValue, ((MysqlConnection) databaseConnection.getConfig()).getPassword());
-    assertNotSame(mysqlConnection, databaseConnection.getConfig());
+    assertEquals(decryptedValue, ((MysqlConnection) actualConfig).getPassword());
+    assertNotSame(mysqlConnection, actualConfig);
   }
 
   private static Stream<Arguments> testDecryptAuthProviderConfigParams() {

@@ -211,6 +211,16 @@ public final class EntityUtil {
     return refs;
   }
 
+  public static List<EntityReference> populateEntityReferencesById(List<String> ids, @NonNull String entityType)
+      throws IOException {
+    List<EntityReference> refs = new ArrayList<>(ids.size());
+    for (String id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
+    }
+    refs.sort(compareEntityReference);
+    return refs;
+  }
+
   public static EntityReference validateEntityLink(EntityLink entityLink) {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();

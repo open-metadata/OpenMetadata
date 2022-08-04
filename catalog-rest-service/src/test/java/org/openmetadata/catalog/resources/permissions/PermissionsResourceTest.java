@@ -75,7 +75,6 @@ class PermissionsResourceTest extends CatalogApplicationTest {
     Map<String, String> authHeaders = SecurityUtil.authHeaders(username + "@open-metadata.org");
     Permissions permissions = TestUtils.get(target, Permissions.class, authHeaders);
     Map<MetadataOperation, Boolean> actualOperations = permissions.getMetadataOperations();
-
     assertEquals(expectedOperations, actualOperations);
   }
 
@@ -93,14 +92,12 @@ class PermissionsResourceTest extends CatalogApplicationTest {
     dataStewardPermissions.put(MetadataOperation.EDIT_LINEAGE, Boolean.TRUE);
     dataStewardPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
     dataStewardPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
-    // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
     dataStewardPermissions.put(MetadataOperation.EDIT_USERS, Boolean.FALSE);
 
     dataConsumerPermissions.put(MetadataOperation.EDIT_DESCRIPTION, Boolean.TRUE);
     dataConsumerPermissions.put(MetadataOperation.EDIT_LINEAGE, Boolean.FALSE);
     dataConsumerPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
     dataConsumerPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
-    // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
     dataConsumerPermissions.put(MetadataOperation.EDIT_USERS, Boolean.FALSE);
 
     return Stream.of(

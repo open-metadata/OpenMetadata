@@ -27,7 +27,7 @@ import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
-const DeleteWidgetV1 = ({
+const DeleteWidgetModal = ({
   allowSoftDelete = true,
   visible,
   entityName,
@@ -252,4 +252,4 @@ const DeleteWidgetV1 = ({
   );
 };
 
-export default DeleteWidgetV1;
+export default DeleteWidgetModal;

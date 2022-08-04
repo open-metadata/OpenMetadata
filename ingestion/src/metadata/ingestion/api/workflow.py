@@ -39,6 +39,8 @@ logger = ingestion_logger()
 
 T = TypeVar("T")
 
+SIMPLE_SOURCE = {"sample-data", "sample-usage", "metadata_elasticsearch"}
+
 
 class InvalidWorkflowJSONException(Exception):
     """
@@ -271,4 +273,4 @@ class Workflow:
 
     @staticmethod
     def _is_sample_source(service_type):
-        return service_type == "sample-data" or service_type == "sample-usage"
+        return service_type in SIMPLE_SOURCE

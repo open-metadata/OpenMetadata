@@ -634,9 +634,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     User user = daoCollection.userDAO().findEntityById(userId);
 
     // Remove follower
-    daoCollection
-        .relationshipDAO()
-        .delete(userId.toString(), Entity.USER, entityId.toString(), entityType, Relationship.FOLLOWS.ordinal());
+    deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     change
@@ -949,6 +947,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
   }
 
+  public void deleteRelationship(
+      UUID fromId, String fromEntityType, UUID toId, String toEntityType, Relationship relationship) {
+    daoCollection
+        .relationshipDAO()
+        .delete(fromId.toString(), fromEntityType, toId.toString(), toEntityType, relationship.ordinal());
+  }
+
   public void deleteTo(UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
     daoCollection.relationshipDAO().deleteTo(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
   }
@@ -956,16 +961,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void deleteFrom(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
     // Remove relationships from original
     daoCollection.relationshipDAO().deleteFrom(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
-  }
-
-  public void validateTeams(List<EntityReference> entityReferences) throws IOException {
-    if (entityReferences != null) {
-      for (EntityReference entityReference : entityReferences) {
-        EntityReference ref = daoCollection.teamDAO().findEntityReferenceById(entityReference.getId());
-        EntityUtil.copy(ref, entityReference);
-      }
-      entityReferences.sort(EntityUtil.compareEntityReference);
-    }
   }
 
   public void validateUsers(List<EntityReference> entityReferences) throws IOException {
@@ -1044,14 +1039,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void removeOwner(T entity, EntityReference owner) {
     if (owner != null && owner.getId() != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), entity.getId());
-      daoCollection
-          .relationshipDAO()
-          .delete(
-              owner.getId().toString(),
-              owner.getType(),
-              entity.getId().toString(),
-              entityType,
-              Relationship.OWNS.ordinal());
+      deleteRelationship(owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
     }
   }
 

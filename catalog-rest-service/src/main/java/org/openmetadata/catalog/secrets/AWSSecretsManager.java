@@ -4,8 +4,10 @@ import static org.openmetadata.catalog.services.connections.metadata.OpenMetadat
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.Locale;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.exception.SecretsManagerException;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
@@ -49,12 +51,8 @@ public class AWSSecretsManager extends SecretsManager {
 
   @Override
   public Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig,
-      String connectionType,
-      String connectionName,
-      String connectionPackage,
-      boolean encrypt) {
-    String secretName = buildSecretId(connectionPackage, connectionType, connectionName);
+      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
+    String secretName = buildSecretId(serviceType.value().toLowerCase(Locale.ROOT), connectionType, connectionName);
     try {
       if (encrypt) {
         String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
@@ -63,7 +61,7 @@ public class AWSSecretsManager extends SecretsManager {
         }
         return null;
       } else {
-        Class<?> clazz = createConnectionConfigClass(connectionType, connectionPackage);
+        Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
         return JsonUtils.readValue(getSecret(secretName), clazz);
       }
     } catch (ClassNotFoundException ex) {

@@ -110,6 +110,7 @@ import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconUp from '../assets/svg/icon-up.svg';
@@ -323,6 +324,7 @@ export const Icons = {
   TASK_CLOSED: 'task-closed',
   TASK_OPEN: 'task-open',
   FOREGIN_KEY: 'foreign-key',
+  ROLE_GREY: 'role-grey',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -379,6 +381,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO:
       IconComponent = Logo;
+
+      break;
+    case Icons.ROLE_GREY:
+      IconComponent = IconRoleGrey;
 
       break;
     case Icons.LOGO_SMALL:

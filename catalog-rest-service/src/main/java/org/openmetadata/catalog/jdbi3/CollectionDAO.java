@@ -1814,6 +1814,50 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
+
+    default List<String> listUsersWithoutParents() {
+      return listUsersWithoutParents(Relationship.HAS.ordinal());
+    }
+
+    default List<String> listTeamsWithoutParents() {
+      return listTeamsWithoutParents(Relationship.PARENT_OF.ordinal());
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT ue.id "
+                + "FROM user_entity ue "
+                + "WHERE ue.id NOT IN "
+                + "(SELECT toId FROM entity_relationship "
+                + "WHERE fromEntity = `team` AND relation = :relation AND toEntity = `user`)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT ue.id "
+                + "FROM user_entity ue "
+                + "WHERE ue.id NOT IN "
+                + "(SELECT toId FROM entity_relationship "
+                + "WHERE fromEntity = `team` AND relation = :relation AND toEntity = `user`)",
+        connectionType = POSTGRES)
+    List<String> listUsersWithoutParents(@Bind("relation") int relation);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT te.id "
+                + "FROM team_entity te "
+                + "WHERE te.id NOT IN "
+                + "(SELECT toId FROM entity_relationship "
+                + "WHERE fromEntity = 'team' AND relation = :relation AND toEntity = 'user')",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT te.id "
+                + "FROM team_entity te "
+                + "WHERE te.id NOT IN "
+                + "(SELECT toId FROM entity_relationship "
+                + "WHERE fromEntity = 'team' AND relation = :relation AND toEntity = 'user')",
+        connectionType = POSTGRES)
+    List<String> listTeamsWithoutParents(@Bind("relation") int relation);
   }
 
   interface TopicDAO extends EntityDAO<Topic> {

@@ -123,6 +123,9 @@ public class TeamRepository extends EntityRepository<Team> {
       addRelationship(team.getId(), defaultRole.getId(), TEAM, Entity.ROLE, Relationship.HAS);
     }
     for (EntityReference parent : listOrEmpty(team.getParents())) {
+      if (parent.getId().equals(organization.getId())) {
+        continue; // When the parent is the default parent - organization, don't store the relationship
+      }
       addRelationship(parent.getId(), team.getId(), TEAM, TEAM, Relationship.PARENT_OF);
     }
     for (EntityReference child : listOrEmpty(team.getChildren())) {
@@ -178,10 +181,17 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getParents(Team team) throws IOException {
     List<EntityRelationshipRecord> parents = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+    if (listOrEmpty(parents).isEmpty() && !team.getId().equals(organization.getId())) {
+      return new ArrayList<>(List.of(organization.getEntityReference()));
+    }
     return EntityUtil.populateEntityReferences(parents, TEAM);
   }
 
   private List<EntityReference> getChildren(Team team) throws IOException {
+    if (team.getId().equals(organization.getId())) { // For organization all the parentless teams are children
+      List<String> children = daoCollection.teamDAO().listTeamsWithoutParents();
+      return EntityUtil.populateEntityReferencesById(children, Entity.TEAM);
+    }
     List<EntityRelationshipRecord> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
     return EntityUtil.populateEntityReferences(children, TEAM);
   }
@@ -279,7 +289,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private void validateSingleParent(Team team, List<EntityReference> parentRefs) {
-    if (parentRefs.size() != 1) {
+    if (listOrEmpty(parentRefs).size() != 1) {
       throw new IllegalArgumentException(invalidParentCount(1, team.getTeamType()));
     }
   }
@@ -288,6 +298,7 @@ public class TeamRepository extends EntityRepository<Team> {
     String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
     if (json == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
+      EntityReference organizationPolicy = Entity.getEntityReferenceByName(POLICY, "OrganizationPolicy", Include.ALL);
       Team team =
           new Team()
               .withId(UUID.randomUUID())
@@ -296,7 +307,8 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDescription("Organization under which all the other team hierarchy is created")
               .withTeamType(ORGANIZATION)
               .withUpdatedBy("admin")
-              .withUpdatedAt(System.currentTimeMillis());
+              .withUpdatedAt(System.currentTimeMillis())
+              .withPolicies(new ArrayList<>(List.of(organizationPolicy)));
       // Teams
       try {
         organization = create(null, team);

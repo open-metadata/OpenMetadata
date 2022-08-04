@@ -217,8 +217,6 @@ class ColumnTypeParser:
                     "The map type string format is: 'map<key_type,value_type>', "
                     + "but got: %s" % s
                 )
-            kt = ColumnTypeParser._parse_datatype_string(parts[0])
-            vt = ColumnTypeParser._parse_datatype_string(parts[1])
             return {"dataType": "MAP", "dataTypeDisplay": s}
         elif s.startswith("uniontype<") or s.startswith("union<"):
             if s[-1] != ">":
@@ -226,10 +224,7 @@ class ColumnTypeParser:
             parts = ColumnTypeParser._ignore_brackets_split(s[10:-1], ",")
             t = []
             for part in parts:
-                if part.startswith("struct<"):
-                    t.append(ColumnTypeParser._parse_datatype_string(part))
-                else:
-                    t.append(ColumnTypeParser._parse_datatype_string(part))
+                t.append(ColumnTypeParser._parse_datatype_string(part))
             return t
         elif s.startswith("struct<"):
             if s[-1] != ">":
@@ -273,7 +268,6 @@ class ColumnTypeParser:
                 "dataTypeDisplay": s,
             }
         elif ColumnTypeParser._FIXED_STRING.match(s):
-            m = ColumnTypeParser._FIXED_STRING.match(s)
             return {"dataType": "STRING", "dataTypeDisplay": s}
         elif ColumnTypeParser._FIXED_DECIMAL.match(s):
             m = ColumnTypeParser._FIXED_DECIMAL.match(s)
@@ -293,17 +287,17 @@ class ColumnTypeParser:
         elif s == "timestamp":
             return {"dataType": "TIMESTAMP", "dataTypeDisplay": s}
         else:
-            dataType = ColumnTypeParser.get_column_type(s)
-            if not dataType:
+            data_type = ColumnTypeParser.get_column_type(s)
+            if not data_type:
                 return {"dataType": "NULL", "dataTypeDisplay": s}
             else:
-                dataLength = 1
+                data_length = 1
                 if re.match(".*(\([\w]*\))", s):
-                    dataLength = re.match(".*\(([\w]*)\)", s).groups()[0]
+                    data_length = re.match(".*\(([\w]*)\)", s).groups()[0]
                 return {
-                    "dataType": dataType,
-                    "dataTypeDisplay": dataType,
-                    "dataLength": dataLength,
+                    "dataType": data_type,
+                    "dataTypeDisplay": data_type,
+                    "dataLength": data_length,
                 }
 
     @staticmethod

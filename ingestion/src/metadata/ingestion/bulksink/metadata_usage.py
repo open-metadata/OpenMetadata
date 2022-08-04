@@ -33,16 +33,16 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
+from metadata.ingestion.lineage.sql_lineage import (
+    get_column_fqn,
+    get_lineage_by_query,
+    get_table_entities_from_query,
+)
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
-from metadata.utils.sql_lineage import (
-    get_column_fqn,
-    get_lineage_by_query,
-    get_table_entities_from_query,
-)
 
 logger = ingestion_logger()
 
