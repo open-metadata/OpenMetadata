@@ -433,7 +433,9 @@ class SampleDataSource(Source[Entity]):
             database_name=db.name.__root__,
         )
 
-        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
@@ -511,7 +513,9 @@ class SampleDataSource(Source[Entity]):
             database_name=db.name.__root__,
         )
 
-        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
 
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
