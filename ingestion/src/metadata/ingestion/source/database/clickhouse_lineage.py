@@ -15,7 +15,6 @@ from metadata.ingestion.source.database.clickhouse_query_parser import (
     ClickhouseQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_STATEMENT
 
 
