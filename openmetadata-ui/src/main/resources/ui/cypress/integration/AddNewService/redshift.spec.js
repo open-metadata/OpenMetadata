@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { addNewServicePage, deleteCreatedService, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Redshift';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
