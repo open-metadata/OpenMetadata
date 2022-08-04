@@ -14,14 +14,14 @@ Handle big query usage extraction
 from metadata.ingestion.source.database.bigquery_query_parser import (
     BigqueryQueryParserSource,
 )
-from metadata.ingestion.source.database.usage_source import UsageSource
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.sql_queries import BIGQUERY_STATEMENT
 
 
-class BigqueryUsageSource(BigqueryQueryParserSource, UsageSource):
+class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):
 
     sql_stmt = BIGQUERY_STATEMENT
 
     filters = """
-        AND statement_type = "SELECT"
+        AND statement_type IN ("INSERT", "MERGE", "CREATE_TABLE_AS_SELECT", "UPDATE")
     """

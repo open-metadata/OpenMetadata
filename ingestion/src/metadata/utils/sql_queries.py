@@ -424,7 +424,7 @@ SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
 """
 )
 
-BIGQUERY_USAGE_STATEMENT = textwrap.dedent(
+BIGQUERY_STATEMENT = textwrap.dedent(
     """
  SELECT
    project_id as database_name,
@@ -436,6 +436,7 @@ BIGQUERY_USAGE_STATEMENT = textwrap.dedent(
    null as schema_name
 FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
 WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
+  {filters}
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")

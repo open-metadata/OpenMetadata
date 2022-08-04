@@ -15,8 +15,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Iterator, Optional, Union
 
-from sqlalchemy.engine import Engine
-
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -24,12 +22,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
