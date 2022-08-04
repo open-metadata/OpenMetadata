@@ -34,8 +34,6 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
     BigQuery base for Usage and Lineage
     """
 
-    filters: str
-
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
 

@@ -40,8 +40,6 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     Snowflake base for Usage and Lineage
     """
 
-    filters: str
-
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
 
@@ -72,7 +70,10 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:
-        if self.config.serviceConnection.__root__.config.database:
+        database = self.config.serviceConnection.__root__.config.database
+        if database:
+            use_db_query = f"USE DATABASE {database}"
+            self.engine.execute(use_db_query)
             yield from super().get_table_query()
         else:
             query = "SHOW DATABASES"

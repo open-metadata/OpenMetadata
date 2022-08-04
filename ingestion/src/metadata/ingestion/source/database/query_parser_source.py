@@ -44,6 +44,7 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
     """
 
     sql_stmt: str
+    filters: str
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
@@ -93,7 +94,7 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
 
         Override if we have specific parameters
         """
-        return self.sql_stmt.format(start_time=start_time, end_time=end_time)
+        return self.sql_stmt.format(start_time=start_time, end_time=end_time, filters=self.filters)
 
     def get_report(self):
         """
