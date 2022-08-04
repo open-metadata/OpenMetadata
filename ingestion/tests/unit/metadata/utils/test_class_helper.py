@@ -25,6 +25,7 @@ from metadata.utils.class_helper import (
         ("clickhouse_usage", ServiceType.Database),
         ("sample-data", ServiceType.Database),
         ("redshift-usage", ServiceType.Database),
+        ("metadata_elasticsearch", ServiceType.Metadata),
     ],
 )
 def test_get_service_type_from_source_type(
