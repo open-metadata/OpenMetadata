@@ -240,7 +240,8 @@ def test_default_profile_def(mocked_method):
     )
 
 
-# Disabling this test as we'll need to change it entirely
+# Disabled this test as we'll need to change it entirely
+# should be fixed in https://github.com/open-metadata/OpenMetadata/issues/5661
 # @patch.object(
 #     ProfilerWorkflow,
 #     "_validate_service_name",

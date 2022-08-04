@@ -446,15 +446,20 @@ class OpenMetadata(
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
             .replace("tagcategory", "tagCategory")
+            .replace("testsuite", "testSuite")
+            .replace("testcase", "testCase")
         )
 
         class_path = ".".join(
-            [
-                self.class_root,
-                self.entity_path,
-                self.get_module_path(create),
-                self.update_file_name(create, file_name),
-            ]
+            filter(
+                None,
+                [
+                    self.class_root,
+                    self.entity_path if not file_name.startswith("test") else None,
+                    self.get_module_path(create),
+                    self.update_file_name(create, file_name),
+                ],
+            )
         )
 
         entity_class = getattr(

@@ -152,7 +152,8 @@ class ProfilerWorkflowTest(TestCase):
         )
         assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.main.users"
 
-    # dfisabling as this will need to be rewriten entirely
+    # Disabled as this will need to be rewriten entirely
+    # should be fixed in https://github.com/open-metadata/OpenMetadata/issues/5661
     # def test_profiler_workflow(self):
     #     """
     #     Prepare and execute the profiler workflow

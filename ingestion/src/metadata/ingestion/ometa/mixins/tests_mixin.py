@@ -35,33 +35,6 @@ class OMetaTestsMixin:
 
     client: REST
 
-    def create_test_defintion(self, test_definition: CreateTestDefinitionRequest):
-        """Create test definition"""
-        resp = self.client.post(
-            f"{self.get_suffix(TestDefinition)}",
-            test_definition.json(),
-        )
-
-        return TestDefinition(**resp)
-
-    def create_test_suite(self, test_suite: CreateTestSuiteRequest):
-        """Create test definition"""
-        resp = self.client.post(
-            f"{self.get_suffix(TestSuite)}",
-            test_suite.json(),
-        )
-
-        return TestSuite(**resp)
-
-    def create_test_case(self, test_case: CreateTestCaseRequest):
-        """Create test definition"""
-        resp = self.client.post(
-            f"{self.get_suffix(TestCase)}",
-            test_case.json(),
-        )
-
-        return TestCase(**resp)
-
     def add_test_case_results(
         self,
         test_results: TestCaseResult,

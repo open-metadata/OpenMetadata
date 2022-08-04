@@ -103,7 +103,6 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_profile: Profile data to add
         """
-        print(table_profile.json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfile",
             data=table_profile.json(),
@@ -251,7 +250,6 @@ class OMetaTableMixin:
             return self._create_or_update_table_profiler_config(
                 table=table,
                 table_profiler_config=table_profiler_config,
-                path="tableProfilerConfig",
             )
 
         return None

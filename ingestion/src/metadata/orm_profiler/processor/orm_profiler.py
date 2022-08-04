@@ -359,7 +359,7 @@ class OrmProfilerProcessor(Processor[Table]):
         self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
 
-    def get_test_case(
+    def get_or_create_test_case(
         self,
         test_case: CLIConfigTestCase,
         test_definition: TestDefinition,
@@ -378,7 +378,7 @@ class OrmProfilerProcessor(Processor[Table]):
         )
 
         if not case:
-            self.metadata.create_test_case(
+            self.metadata.create_or_update(
                 CreateTestCaseRequest(
                     name=test_case.name,
                     description=test_case.description,
@@ -429,7 +429,7 @@ class OrmProfilerProcessor(Processor[Table]):
         )
 
         if not suite:
-            suite = self.metadata.create_test_suite(
+            suite = self.metadata.create_or_update(
                 CreateTestSuiteRequest(
                     name=test_suite_name,
                     description=test_suite_description,
@@ -493,7 +493,7 @@ class OrmProfilerProcessor(Processor[Table]):
             test_case,
         )
 
-        case = self.get_test_case(
+        case = self.get_or_create_test_case(
             test_case,
             definition,
             test_suite,

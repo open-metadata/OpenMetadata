@@ -250,6 +250,7 @@ class OMetaPipelineTest(TestCase):
         assert len(updated.pipelineStatus.taskStatus) == 1
 
         # Disabled as throwing an error regarding service key not present
+        # should be fixed in https://github.com/open-metadata/OpenMetadata/issues/5661
         # # Check that we can update a given status properly
         # updated = self.metadata.add_pipeline_status(
         #     pipeline=pipeline,
