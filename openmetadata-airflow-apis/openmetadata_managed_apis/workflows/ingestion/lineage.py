@@ -34,7 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 
 
-def build_metadata_workflow_config(
+def build_lineage_workflow_config(
     ingestion_pipeline: IngestionPipeline,
 ) -> OpenMetadataWorkflowConfig:
     """
@@ -56,11 +56,11 @@ def build_metadata_workflow_config(
     return workflow_config
 
 
-def build_metadata_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
+def build_lineage_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
     """
     Build a simple metadata workflow DAG
     """
-    workflow_config = build_metadata_workflow_config(ingestion_pipeline)
+    workflow_config = build_lineage_workflow_config(ingestion_pipeline)
     dag = build_dag(
         task_name="lineage_task",
         ingestion_pipeline=ingestion_pipeline,

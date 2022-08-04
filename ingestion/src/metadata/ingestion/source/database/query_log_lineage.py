@@ -22,7 +22,6 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 
 
 class QueryLogLineageSource(LineageSource):
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
