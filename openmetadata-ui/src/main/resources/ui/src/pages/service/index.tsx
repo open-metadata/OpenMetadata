@@ -884,8 +884,8 @@ const ServicePage: FunctionComponent = () => {
                 isRecursiveDelete
                 entityFQN={serviceFQN}
                 entityId={serviceDetails?.id}
-                entityName={serviceName || ''}
-                entityType={serviceCategory.slice(0, -1)}
+                entityName={serviceDetails?.name || ''}
+                entityType={serviceName?.slice(0, -1)}
               />
             </Space>
 

@@ -92,41 +92,43 @@ describe('MyData page should work', () => {
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
     // go to manage tab and search for logged in user and set the owner
-    cy.get('[data-testid="Manage"]').should('be.visible').click();
 
-    cy.get(
-      '[data-testid="dropdown-profile"] > [data-testid="dropdown-item"] > :nth-child(1) > [data-testid="menu-button"]'
-    )
+    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+
+    cy.wait(500);
+    //Clicking on users tab
+    cy.get('[data-testid="dropdown-tab"]')
+      .contains('Users')
+      .should('exist')
       .should('be.visible')
       .click();
-    cy.get('[data-testid="greeting-text"] > a > :nth-child(1)')
+
+    //Selecting the user
+    cy.get('[data-testid="list-item"]')
+      .should('exist')
       .should('be.visible')
+      .click();
+    cy.wait(1000);
+
+    cy.get('[data-testid="owner-dropdown"]')
       .invoke('text')
-      .then((name) => {
-        cy.get('.tw-z-10').click();
-        cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-        cy.get('[data-testid="dropdown-tab"]').eq(1).should('exist').click();
-        cy.get('[data-testid="list-item"]').should('be.visible').click();
-        cy.wait(500);
-        cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
-          .invoke('text')
-          .then((text) => {
-            expect(text).equal(name);
-          });
-        cy.clickOnLogo();
-
-        // checks newly generated feed for follow and setting owner
-        cy.get('[data-testid="message-container"]')
-          .first()
-          .contains(`Added owner: ${name}`)
-          .should('be.visible');
-
-        cy.get('[data-testid="message-container"]')
-          .eq(1)
-          .scrollIntoView()
-          .contains(`Followed ${termObj.entity.slice(0, -1)}`)
-          .should('be.visible');
+      .then((text) => {
+        expect(text).equal('Aaron Johnson');
       });
+
+    cy.clickOnLogo();
+
+    // checks newly generated feed for follow and setting owner
+    cy.get('[data-testid="message-container"]')
+      .first()
+      .contains('Added owner: Aaron Johnson')
+      .should('be.visible');
+
+    cy.get('[data-testid="message-container"]')
+      .eq(1)
+      .scrollIntoView()
+      .contains(`Followed ${termObj.entity.slice(0, -1)}`)
+      .should('be.visible');
 
     cy.clickOnLogo();
   };

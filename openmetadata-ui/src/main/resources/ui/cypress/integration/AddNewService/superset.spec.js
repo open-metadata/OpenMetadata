@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Superset';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -46,6 +46,10 @@ describe('Superset Ingestion', () => {
       serviceName,
       'dashboard'
     );
+  });
+
+  it('Edit and validate owner', () => {
+    editOwnerforCreatedService('Dashboard', serviceName);
   });
 
   it('delete created service', () => {

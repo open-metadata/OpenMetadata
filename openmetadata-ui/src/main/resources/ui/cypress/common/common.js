@@ -135,7 +135,9 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
-  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should('be.visible');
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
+    'be.visible'
+  );
   cy.contains(`"${serviceName}_metadata"`).should('be.visible');
   cy.contains('has been created and deployed successfully').should(
     'be.visible'
@@ -186,15 +188,26 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
   cy.wait(1000);
 
-  cy.get('[data-testid="Manage"]').should('exist').should('be.visible').click();
-  cy.get('[data-testid="delete-button"]')
-    .scrollIntoView()
+  cy.get('[data-testid="manage-button"]')
     .should('exist')
     .should('be.visible')
     .click();
+
+  cy.get('[data-testid="delete-button"] > .tw-font-medium')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Clicking on permanent delete radio button and checking the service name
+  cy.get(':nth-child(2) > :nth-child(2) > .tw-text-sm')
+    .contains(service_Name)
+    .should('be.visible')
+    .click();
+
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
     .type('DELETE');
+
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
   cy.wait(2000);
   cy.get('[class="Toastify__toast-body"] >div')
@@ -202,6 +215,75 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('exist')
     .should('be.visible')
     .should('have.text', `${typeOfService} Service deleted successfully!`);
+
+  //Checking if the service got deleted successfully
+  cy.clickOnLogo();
+
+  cy.wait(1000);
+  cy.get(
+    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+  )
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+  cy.wait(1000);
+
+  //redirecting to services page
+  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+
+  cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
+};
+
+export const editOwnerforCreatedService = (typeOfService, service_Name) => {
+  cy.goToHomePage();
+
+  cy.get(
+    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+  )
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+  cy.wait(1000);
+
+  //redirecting to services page
+  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+
+  //click on created service
+  cy.get(`[data-testid="service-name-${service_Name}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+
+  //Click on edit owner button
+  cy.get('[data-testid="edit-Owner-icon"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(500);
+  //Clicking on users tab
+  cy.get('[data-testid="dropdown-tab"]')
+    .contains('Teams')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Selecting the user
+  cy.get('[data-testid="list-item"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.wait(1000);
+
+  cy.get('[data-testid*="owner"]')
+    .invoke('text')
+    .then((text) => {
+      expect(text).equal('Cloud_Infra');
+    });
 };
 
 export const goToAddNewServicePage = () => {
