@@ -310,12 +310,12 @@ const Ingestion: React.FC<IngestionProps> = ({
           />
         );
 
-      return r?.endDate || r?.startDate || r?.executionDate ? (
+      return r?.endDate || r?.startDate || r?.timestamp ? (
         <PopOver
           html={
             <div className="tw-text-left">
-              {r.executionDate ? (
-                <p>Execution Date: {new Date(r.executionDate).toUTCString()}</p>
+              {r.timestamp ? (
+                <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
               ) : null}
               {r.startDate ? (
                 <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
