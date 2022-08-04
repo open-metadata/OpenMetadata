@@ -323,6 +323,11 @@ class Profiler(Generic[TMetric]):
             for metric in self.get_col_metrics(self.static_metrics)
             if metric.is_window_metric()
         ]
+        columns = [
+            column
+            for column in self.columns
+            if column.type.__class__ not in NOT_COMPUTE
+        ]
 
         column_metrics_for_thread_pool = [
             *[
@@ -335,7 +340,7 @@ class Profiler(Generic[TMetric]):
                     self._partition_details,
                     self._profile_sample_query,
                 )
-                for column in self.columns
+                for column in columns
             ],
             *[
                 (
