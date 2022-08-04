@@ -351,17 +351,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const prepareTableRowInfo = () => {
     const rowData =
-      (tableProfile
-        ?.map((d) => ({
-          date: d.profileDate,
-          value: d.rowCount ?? 0,
-        }))
-        .reverse() as Array<{
+      ([
+        {
+          date: new Date(tableProfile?.timestamp || 0),
+          value: tableProfile?.rowCount ?? 0,
+        },
+      ] as Array<{
         date: Date;
         value: number;
       }>) ?? [];
 
-    if (!isUndefined(tableProfile) && tableProfile.length > 0) {
+    if (!isUndefined(tableProfile)) {
       return (
         <div className="tw-flex">
           {rowData.length > 1 && (
@@ -375,7 +375,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           <span
             className={classNames({
               'tw--ml-6': rowData.length > 1,
-            })}>{`${tableProfile[0].rowCount || 0} rows`}</span>
+            })}>{`${tableProfile.rowCount || 0} rows`}</span>
         </div>
       );
     } else {
@@ -408,8 +408,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     {
       key: 'Columns',
       value:
-        tableProfile && tableProfile[0]?.columnCount
-          ? `${tableProfile[0].columnCount} columns`
+        tableProfile && tableProfile?.columnCount
+          ? `${tableProfile.columnCount} columns`
           : columns.length
           ? `${columns.length} columns`
           : '',

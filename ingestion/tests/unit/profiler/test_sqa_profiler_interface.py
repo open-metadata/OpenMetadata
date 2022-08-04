@@ -33,7 +33,6 @@ from metadata.orm_profiler.metrics.core import (
     QueryMetric,
     StaticMetric,
 )
-from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.profiler.default import get_default_metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -210,10 +209,8 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
         ]
 
         table_profile = TableProfile(
-            profileDate="2022-07-26",
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            columnNames=profile_results["table"].get(ColumnNames.name(), "").split(","),
             columnProfile=column_profile,
             profileQuery=None,
             profileSample=None,

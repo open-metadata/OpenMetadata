@@ -18,16 +18,17 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.table.tableColumnCountToBeBetween import (
-    TableColumnCountToBeBetween,
-)
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.orm_profiler.validations.utils import TEST_DATA_TYPE_MAPPING
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
 def table_column_count_to_be_between(
-    test_case: TableColumnCountToBeBetween,
+    test_case: TestCase,
+    test_definition: TestDefinition,
     table_profile: TableProfile,
     execution_date: datetime,
     **__,
@@ -52,13 +53,38 @@ def table_column_count_to_be_between(
             result=msg,
         )
 
+    min_ = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "minColValue"
+    )
+    min_type = TEST_DATA_TYPE_MAPPING[
+        next(
+            param_value.dataType
+            for param_value in test_definition.parameterDefinition
+            if param_value.name == "minColValue"
+        )
+    ]
+    max_ = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "maxColValue"
+    )
+    max_type = TEST_DATA_TYPE_MAPPING[
+        next(
+            param_value.dataType
+            for param_value in test_definition.parameterDefinition
+            if param_value.name == "maxColValue"
+        )
+    ]
+
     status = (
         TestCaseStatus.Success
-        if test_case.minColValue <= table_profile.columnCount <= test_case.maxColValue
+        if min_type(min_) <= table_profile.columnCount <= max_type(max_)
         else TestCaseStatus.Failed
     )
-    result = f"Found {table_profile.columnCount} column vs. the expected range [{test_case.minColValue}, {test_case.maxColValue}]."
+    result = f"Found {table_profile.columnCount} column vs. the expected range [{min_}, {max_}]."
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

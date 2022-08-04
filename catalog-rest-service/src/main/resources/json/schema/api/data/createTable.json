@@ -41,17 +41,8 @@
     "tablePartition": {
       "$ref": "../../entity/data/table.json#/definitions/tablePartition"
     },
-    "profileSample": {
-      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100].",
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 100,
-      "default": null
-    },
-    "profileQuery": {
-      "description": "Users' raw SQL query to fetch sample data and profile the table",
-      "type": "string",
-      "default": null
+    "tableProfilerConfig": {
+      "$ref": "../../entity/data/table.json#/definitions/tableProfilerConfig"
     },
     "owner": {
       "description": "Owner of this entity",

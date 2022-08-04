@@ -54,6 +54,7 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.dqtests.TestCaseResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -89,6 +90,17 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     }
 
     public PipelineList(List<Pipeline> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class PipelineStatusList extends ResultList<PipelineStatus> {
+    @SuppressWarnings("unused")
+    public PipelineStatusList() {
+      /* Required for serde */
+    }
+
+    public PipelineStatusList(List<PipelineStatus> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -351,6 +363,94 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
+    return addHref(uriInfo, pipeline);
+  }
+
+  @GET
+  @Path("/{id}/status")
+  @Operation(
+      operationId = "listPipelineStatuses",
+      summary = "List pipeline status",
+      tags = "pipelines",
+      description =
+          "Get a list of pipeline status."
+              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline statuses.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
+      })
+  public ResultList<PipelineStatus> list(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "Filter pipeline statues after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter pipeline statues before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number of pipeline statues returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of pipeline statues before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of pipeline statues after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+
+    ListFilter filter =
+        new ListFilter(Include.ALL)
+            .addQueryParam("entityId", id)
+            .addQueryParam("extension", PipelineRepository.PIPELINE_STATUS_EXTENSION);
+
+    if (startTs != null) {
+      filter.addQueryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("endTs", String.valueOf(endTs));
+    }
+    return dao.getPipelineStatuses(filter, before, after, limitParam);
+  }
+
+  @DELETE
+  @Path("/{id}/status/{timestamp}")
+  @Operation(
+      operationId = "DeletePipelineStatus",
+      summary = "Delete pipeline status.",
+      tags = "pipelines",
+      description = "Delete pipeline status for a pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the PipelineStatus",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class)))
+      })
+  public Pipeline deletePipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
+          @PathParam("timestamp")
+          Long timestamp)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Pipeline pipeline = dao.deletePipelineStatus(UUID.fromString(id), timestamp);
     return addHref(uriInfo, pipeline);
   }
 

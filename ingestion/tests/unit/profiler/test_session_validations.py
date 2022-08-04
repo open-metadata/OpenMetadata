@@ -13,7 +13,7 @@
 Test validations that need a session configured to run
 """
 from datetime import datetime
-from unittest import TestCase
+from unittest import TestCase as UnitestTestCase
 
 from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
@@ -39,9 +39,7 @@ from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
 from metadata.generated.schema.tests.column.columnValuesToNotMatchRegex import (
     ColumnValuesToNotMatchRegex,
 )
-from metadata.generated.schema.tests.table.tableCustomSQLQuery import (
-    TableCustomSQLQuery,
-)
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.validations.core import validation_enum_registry
 
@@ -59,7 +57,7 @@ class User(Base):
     age = Column(Integer)
 
 
-class SessionValidation(TestCase):
+class SessionValidation(UnitestTestCase):
     """
     Run checks on different metrics
     """
@@ -114,7 +112,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ok == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Success,
             result="Found countInSet=0. It should be 0.",
         )
@@ -128,7 +126,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ko == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Failed,
             result="Found countInSet=1. It should be 0.",
         )
@@ -142,7 +140,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_aborted == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=(
                 "Error computing ColumnValuesToBeNotInSet for users.random - Cannot find"
@@ -165,7 +163,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ok == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Success,
             result="Found 2 value(s) matching regex pattern vs 2 value(s) in the column.",
         )
@@ -179,7 +177,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ko == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Failed,
             result="Found 1 value(s) matching regex pattern vs 2 value(s) in the column.",
         )
@@ -193,7 +191,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_aborted == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=(
                 "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
@@ -215,7 +213,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ok == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Success,
             result="Found missingCount=1.0. It should be 1.",
         )
@@ -234,7 +232,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ok_2 == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Success,
             result="Found missingCount=2.0. It should be 2.",
         )
@@ -250,7 +248,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ko == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Failed,
             result="Found missingCount=1.0. It should be 0.",
         )
@@ -268,7 +266,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_aborted == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=(
                 "We expect `nullCount` to be informed on the profiler for ColumnValuesMissingCount."
@@ -290,7 +288,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ok == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Failed,
             result="Found countInSet=0",
         )
@@ -312,7 +310,7 @@ class SessionValidation(TestCase):
         print(res_ok)
 
         assert res_ok == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Failed,
             result="Found 2 matching the forbidden regex pattern. Expected 0.",
         )
@@ -321,11 +319,20 @@ class SessionValidation(TestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        table_profile = TableProfile(profileDate=EXECUTION_DATE.timestamp())
-
+        table_profile = TableProfile(timestamp=EXECUTION_DATE.timestamp())
+        print(validation_enum_registry.registry["TableCustomSQLQuery"])
         res_ok = (
-            validation_enum_registry.registry["tableCustomSQLQuery"](
-                TableCustomSQLQuery(sqlExpression="SELECT * FROM users WHERE age < 10"),
+            validation_enum_registry.registry["TableCustomSQLQuery"](
+                TestCase(
+                    name="my_test_case",
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="sqlExpression",
+                            value="SELECT * FROM users WHERE age < 10",
+                        )
+                    ],
+                ),
+                test_definition=None,
                 table_profile=table_profile,
                 execution_date=EXECUTION_DATE,
                 session=self.session,
@@ -335,16 +342,23 @@ class SessionValidation(TestCase):
         )
 
         assert res_ok == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Success,
             result="Found 0 row(s). Test query is expected to return 0 row.",
         )
 
         res_ok = (
-            validation_enum_registry.registry["tableCustomSQLQuery"](
-                TableCustomSQLQuery(
-                    sqlExpression="SELECT * FROM users WHERE LOWER(name) LIKE '%john%'"
+            validation_enum_registry.registry["TableCustomSQLQuery"](
+                TestCase(
+                    name="my_test_case",
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="sqlExpression",
+                            value="SELECT * FROM users WHERE LOWER(name) LIKE '%john%'",
+                        )
+                    ],
                 ),
+                test_definition=None,
                 table_profile=table_profile,
                 execution_date=EXECUTION_DATE,
                 session=self.session,
@@ -354,7 +368,7 @@ class SessionValidation(TestCase):
         )
 
         assert res_ok == TestCaseResult(
-            executionTime=EXECUTION_DATE.timestamp(),
+            timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Failed,
             result="Found 1 row(s). Test query is expected to return 0 row.",
         )

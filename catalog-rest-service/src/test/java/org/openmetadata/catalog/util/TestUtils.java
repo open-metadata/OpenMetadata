@@ -24,8 +24,12 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -476,5 +480,11 @@ public final class TestUtils {
       prev = next;
     }
     return true;
+  }
+
+  public static Long dateToTimestamp(String dateStr) throws ParseException {
+    DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+    Date date = formatter.parse(dateStr);
+    return date.getTime();
   }
 }

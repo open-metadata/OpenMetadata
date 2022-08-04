@@ -86,7 +86,7 @@ EXPECTED_PIPELINE_STATUS = [
                     logLink=f"{MOCK_LOG_URL}/status",
                 )
             ],
-            executionDate=1655482894,
+            timestamp=1655482894,
         ),
     ),
     OMetaPipelineStatus(
@@ -102,7 +102,7 @@ EXPECTED_PIPELINE_STATUS = [
                     logLink=f"{MOCK_LOG_URL}/status",
                 )
             ],
-            executionDate=1655393914,
+            timestamp=1655393914,
         ),
     ),
 ]

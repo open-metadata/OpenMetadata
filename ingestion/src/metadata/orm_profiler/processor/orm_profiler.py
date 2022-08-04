@@ -20,11 +20,19 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from croniter import croniter
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
-from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
+from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.table import (
+    Table,
+    TableData,
+    TableProfile,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -34,6 +42,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
@@ -46,6 +58,7 @@ from metadata.orm_profiler.profiler.handle_partition import (
     get_partition_cols,
     is_partitioned,
 )
+from metadata.orm_profiler.validations.models import TestCase as CLIConfigTestCase
 from metadata.orm_profiler.validations.models import TestDef
 from metadata.utils.helpers import get_start_and_end
 
@@ -131,7 +144,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :param table: Table instance
         :return: profileSample value to use
         """
-        if self.config.test_suite:
+        if self.config.testSuites:
             # If the processed table has information about the profile_sample,
             # use that instead of the Entity stored profileSample
             my_record_tests = self.get_record_test_def(table)
@@ -140,13 +153,16 @@ class OrmProfilerProcessor(Processor[Table]):
 
         if self.workflow_profile_sample:
             if (
-                table.profileSample is not None
+                table.tableProfilerConfig.profileSample is not None
                 and self.workflow_profile_sample != table.profileSample
             ):
-                return table.profileSample
+                return table.tableProfilerConfig.profileSample
             return self.workflow_profile_sample
 
-        return table.profileSample or None
+        if not table.tableProfilerConfig:
+            return None
+
+        return table.tableProfilerConfig.profileSample
 
     def get_partition_details(
         self,
@@ -166,7 +182,7 @@ class OrmProfilerProcessor(Processor[Table]):
             if is_partitioned(self.processor_interface.session, orm):
                 my_record_profile = (
                     self.get_record_test_def(table)
-                    if self.config.test_suite and self.get_record_test_def(table)
+                    if self.config.testSuites and self.get_record_test_def(table)
                     else TestDef(table=table.fullyQualifiedName.__root__)
                 )
 
@@ -200,18 +216,23 @@ class OrmProfilerProcessor(Processor[Table]):
         Returns
             Optional[str]
         """
-        if self.config.test_suite:
+
+        if self.config.testSuites:
             test_record = self.get_record_test_def(table)
             if test_record:
                 if test_record.clear_sample_query_from_entity:
-                    self.metadata.update_profile_query(
+                    self.metadata.create_or_update_table_profiler_config(
                         fqn=table.fullyQualifiedName.__root__,
-                        profileSample=self.get_table_profile_sample(table),
+                        table_profiler_config=TableProfilerConfig(
+                            profileSample=self.get_table_profile_sample(table),
+                        ),
                     )
                     return None
                 return test_record.profile_sample_query
 
-        return table.profileQuery
+        if not table.tableProfilerConfig:
+            return None
+        return table.tableProfilerConfig.profileQuery
 
     def build_profiler(
         self,
@@ -226,7 +247,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :return: Initialised Profiler
         """
 
-        profile_sample = self.get_table_profile_sample(table)
+        profile_sample = None
 
         if not self.config.profiler:
             return DefaultProfiler(
@@ -234,7 +255,8 @@ class OrmProfilerProcessor(Processor[Table]):
                 table=orm,
                 profile_sample=profile_sample,
                 partition_details=self.get_partition_details(orm, table),
-                profile_sample_query=self.get_profile_sample_query(table),
+                profile_sample_query=None,
+                table_entity=table,
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
@@ -253,6 +275,7 @@ class OrmProfilerProcessor(Processor[Table]):
             timeout_seconds=self.config.profiler.timeout_seconds,
             partition_details=self.get_partition_details(orm, table),
             profile_sample_query=self.get_profile_sample_query(table),
+            table_entity=table,
         )
 
     def profile_entity(
@@ -336,6 +359,168 @@ class OrmProfilerProcessor(Processor[Table]):
         self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
 
+    def get_or_create_test_case(
+        self,
+        test_case: CLIConfigTestCase,
+        test_definition: TestDefinition,
+        test_suite: TestSuite,
+    ) -> TestCase:
+        """
+        get a test definition or create it if it does not exists
+
+        Args:
+            test_case: a single test case
+        """
+        case = self.metadata.get_by_name(
+            TestCase,
+            f"{test_case.fullyQualifiedName.__root__}.{test_case.name}",
+            fields=["testSuite", "testDefinition", "entity"],
+        )
+
+        if not case:
+            self.metadata.create_or_update(
+                CreateTestCaseRequest(
+                    name=test_case.name,
+                    description=test_case.description,
+                    testDefinition=EntityReference(
+                        id=self.metadata.get_by_name(
+                            fqn=test_definition.name, entity=TestDefinition
+                        ).id.__root__,
+                        type="testDefinition",
+                    ),
+                    entity=EntityReference(
+                        id=self.metadata.get_by_name(
+                            fqn=test_case.fullyQualifiedName, entity=Table
+                        ).id.__root__,
+                        type="table",
+                    ),
+                    testSuite=EntityReference(
+                        id=self.metadata.get_by_name(
+                            fqn=test_suite.name, entity=TestSuite
+                        ).id.__root__,
+                        type="testSuite",
+                    ),
+                    parameterValues=test_case.parameterValues,
+                )
+            )
+            case = self.metadata.get_by_name(
+                TestCase,
+                f"{test_case.fullyQualifiedName.__root__}.{test_case.name}",
+                fields=["testSuite", "testDefinition", "entity"],
+            )
+
+        return case
+
+    def get_test_suite(
+        self,
+        test_suite_name: str,
+        test_suite_description: Optional[str] = None,
+        scheduled_interval: Optional[str] = None,
+    ) -> TestDefinition:
+        """
+        get a test definition or create it if it does not exists
+
+        Args:
+            test_case: a single test case
+        """
+        suite = self.metadata.get_by_name(
+            TestSuite,
+            test_suite_name,
+        )
+
+        if not suite:
+            suite = self.metadata.create_or_update(
+                CreateTestSuiteRequest(
+                    name=test_suite_name,
+                    description=test_suite_description,
+                    scheduleInterval=croniter.is_valid(scheduled_interval)
+                    if scheduled_interval
+                    else None,
+                )
+            )
+
+        return suite
+
+    def get_test_definition(
+        self,
+        test_case: CLIConfigTestCase,
+    ) -> TestDefinition:
+        """
+        get a test definition. We should not have to create a testDefintion
+        as it
+
+        Args:
+            test_case: a single test case
+        """
+        ometa_test_definitions = {
+            test_definition.name.__root__
+            for test_definition in self.metadata.list_all_entities(
+                entity=TestDefinition, params={"testPlatforms": "OpenMetadata"}
+            )
+        }
+
+        if test_case.testDefinitionName not in ometa_test_definitions:
+            raise ValueError(
+                f"{test_case.testDefinitionName} is not natively supported by OpenMetadata."
+                f"Supported OpenMetadata tests {', '.join(ometa_test_definitions)}"
+            )
+
+        test_definition = self.metadata.get_by_name(
+            TestDefinition,
+            test_case.testDefinitionName,
+        )
+
+        return test_definition
+
+    def run_test_case(
+        self,
+        table: Table,
+        orm_table: DeclarativeMeta,
+        test_case: CLIConfigTestCase,
+        test_suite: TestSuite,
+        profiler_results: TableProfile,
+    ) -> Optional[TestCaseResult]:
+        """
+        Run & log the table test against the TableProfile.
+
+        :param table: Table Entity being processed
+        :param orm_table: Declarative Meta
+        :param test_case: Table Test Case to run
+        :param profiler_results: Table profiler with informed metrics
+        :return: TestCaseResult
+        """
+        definition: TestDefinition = self.get_test_definition(
+            test_case,
+        )
+
+        case = self.get_or_create_test_case(
+            test_case,
+            definition,
+            test_suite,
+        )
+
+        if case.entity.fullyQualifiedName != table.fullyQualifiedName.__root__:
+            return None
+
+        test_name = self.get_test_name(table=table, test_type=case.name.__root__)
+        if test_name in self.status.tests:
+            logger.info(
+                f"Test {test_name} has already been computed in this execution."
+            )
+            return None
+
+        test_case_result: TestCaseResult = self.processor_interface.run_test_case(
+            test_case=case,
+            test_definition=definition,
+            table_profile=profiler_results,
+            orm_table=orm_table,
+            profile_sample=None,
+        )
+
+        self.log_test_result(name=test_name, result=test_case_result)
+
+        return (test_case_result, case.id.__root__)
+
     def run_column_test(
         self,
         table: Table,
@@ -406,40 +591,30 @@ class OrmProfilerProcessor(Processor[Table]):
         :param profiler_results: TableProfile with computed metrics
         """
 
-        logger.info(f"Checking validations for {table.fullyQualifiedName.__root__}...")
-
         # Check if I have tests for the table I am processing
-        my_record_tests = self.get_record_test_def(table)
+        test_results = []
+        test_suites = self.config.testSuites
 
-        if not my_record_tests:
+        if not test_suites:
             return None
 
-        # Compute all validations against the profiler results
-        table_tests = my_record_tests.table_tests or []
-        column_tests = my_record_tests.column_tests or []
+        logger.info(f"Running validations for {table.fullyQualifiedName.__root__}...")
 
-        for table_test in table_tests:
-            test_case_result = self.run_table_test(
-                table=table,
-                orm_table=orm,
-                test_case=table_test.testCase,
-                profiler_results=profiler_results,
-            )
-            if test_case_result:
-                table_test.result = test_case_result
+        for suite in test_suites:
+            test_suite = self.get_test_suite(suite.name, suite.description)
+            test_cases = suite.testCases
+            for test_case in test_cases:
+                result = self.run_test_case(
+                    table=table,
+                    orm_table=orm,
+                    test_case=test_case,
+                    test_suite=test_suite,
+                    profiler_results=profiler_results,
+                )
+                if result:
+                    test_results.append(result)
 
-        for column_test in column_tests:
-            test_case_result = self.run_column_test(
-                table=table,
-                orm_table=orm,
-                column=column_test.columnName,
-                test_case=column_test.testCase,
-                profiler_results=profiler_results,
-            )
-            if test_case_result:
-                column_test.result = test_case_result
-
-        return my_record_tests
+        return test_results
 
     def get_record_test_def(self, table: Table) -> Optional[TestDef]:
         """
@@ -452,7 +627,7 @@ class OrmProfilerProcessor(Processor[Table]):
         my_record_tests = next(
             (
                 test
-                for test in self.config.test_suite.tests
+                for test in self.config.testSuites.tests
                 if test.table == table.fullyQualifiedName.__root__
             ),
             None,
@@ -590,29 +765,28 @@ class OrmProfilerProcessor(Processor[Table]):
         orm_table = ometa_to_orm(table=record, metadata=self.metadata)
         self.processor_interface.create_sampler(
             table=orm_table,
-            profile_sample=self.get_table_profile_sample(record),
+            profile_sample=None,
             partition_details=self.get_partition_details(orm_table, record),
-            profile_sample_query=self.get_profile_sample_query(record),
+            profile_sample_query=None,
         )
         self.processor_interface.create_runner(
             table=orm_table,
             partition_details=self.get_partition_details(orm_table, record),
-            profile_sample_query=self.get_profile_sample_query(record),
+            profile_sample_query=None,
         )
 
         entity_profile = self.profile_entity(orm=orm_table, table=record)
 
         # First, check if we have any tests directly configured in the workflow
-        config_tests = None
-        if self.config.test_suite:
-            config_tests = self.validate_config_tests(
+        test_results = None
+        if self.config.testSuites:
+            test_results = self.validate_config_tests(
                 orm=orm_table, table=record, profiler_results=entity_profile
             )
-
-        # Then, Check if the entity has any tests
-        record_tests = self.validate_entity_tests(
-            record, orm_table, entity_profile, config_tests
-        )
+        # # Then, Check if the entity has any tests
+        # record_tests = self.validate_entity_tests(
+        #     record, orm_table, entity_profile, config_tests
+        # )
 
         sample_data = (
             self.fetch_sample_data(orm=orm_table, table=record)
@@ -623,7 +797,7 @@ class OrmProfilerProcessor(Processor[Table]):
         res = ProfilerResponse(
             table=record,
             profile=entity_profile,
-            record_tests=record_tests,
+            test_results=test_results,
             sample_data=sample_data,
         )
 

@@ -44,7 +44,7 @@ def column_values_to_be_not_null(
         msg = "We expect `nullCount` to be informed on the profiler for ColumnValuesToBeNotNull."
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -55,5 +55,5 @@ def column_values_to_be_not_null(
     result = f"Found nullCount={col_profile.nullCount}. It should be 0."
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

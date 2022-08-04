@@ -13,27 +13,29 @@
 Test Profiler Processor
 """
 
-from pytest import mark
+# Disabled as we'll need to rework this test entirely
+# should be fixed in https://github.com/open-metadata/OpenMetadata/issues/5661
+# from pytest import mark
 
 
-@mark.parametrize(
-    "condition,expected",
-    [
-        (None, None),
-    ],
-)
-def test_get_table_profile_sample(
-    condition,
-    expected,
-    base_orm_profiler_processor,
-    base_table,
-):
-    processor = base_orm_profiler_processor
+# @mark.parametrize(
+#     "condition,expected",
+#     [
+#         (None, None),
+#     ],
+# )
+# def test_get_table_profile_sample(
+#     condition,
+#     expected,
+#     base_orm_profiler_processor,
+#     base_table,
+# ):
+#     processor = base_orm_profiler_processor
 
-    if condition:
-        ...
+#     if condition:
+#         ...
 
-    profile_sample = processor.get_table_profile_sample(
-        base_table,
-    )
-    assert profile_sample == expected
+#     profile_sample = processor.get_table_profile_sample(
+#         base_table,
+#     )
+#     assert profile_sample == expected

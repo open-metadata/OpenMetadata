@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.type.MetadataOperation.*;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -71,7 +69,9 @@ import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
+import org.openmetadata.catalog.type.TableProfilerConfig;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/tables")
@@ -110,9 +110,20 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     }
   }
 
+  public static class TableProfileList extends ResultList<TableProfile> {
+    @SuppressWarnings("unused")
+    public TableProfileList() {
+      /* Required for serde */
+    }
+
+    public TableProfileList(List<TableProfile> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,profileSample,profileQuery,customMetrics,"
-          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests,"
+      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfilerConfig,tableProfile,location,tableQueries,dataModel,tests,"
           + "extension";
 
   @GET
@@ -472,6 +483,133 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @PUT
+  @Path("/{id}/tableProfilerConfig")
+  @Operation(
+      operationId = "addDataProfilerConfig",
+      summary = "Add table profile Config",
+      tags = "tables",
+      description = "Add table profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table addDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Valid TableProfilerConfig tableProfilerConfig)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Table table = dao.addTableProfilerConfig(UUID.fromString(id), tableProfilerConfig);
+    return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/tableProfilerConfig")
+  @Operation(
+      operationId = "getDataProfilerConfig",
+      summary = "Get table profile Config",
+      tags = "tables",
+      description = "Get table profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table getDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    return addHref(uriInfo, table.withTableProfilerConfig(dao.getTableProfilerConfig(table)));
+  }
+
+  @DELETE
+  @Path("/{id}/tableProfilerConfig")
+  @Operation(
+      operationId = "delete DataProfilerConfig",
+      summary = "delete table profiler config",
+      tags = "tables",
+      description = "delete table profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Table profiler config",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table deleteDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Table table = dao.deleteTableProfilerConfig(UUID.fromString(id));
+    return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/tableProfile")
+  @Operation(
+      operationId = "listTableProfiles",
+      summary = "List of table profiles",
+      tags = "tables",
+      description =
+          "Get a list of all the table profiles for the given table id, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of table profiles",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfileList.class)))
+      })
+  public ResultList<TableProfile> listTableProfiles(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "Filter table profiles after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter table profiles before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of table profiles before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of table profiles after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+
+    ListFilter filter =
+        new ListFilter(Include.ALL).addQueryParam("entityId", id).addQueryParam("extension", "table.tableProfile");
+
+    if (startTs != null) {
+      filter.addQueryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("endTs", String.valueOf(endTs));
+    }
+    return dao.getTableProfiles(filter, before, after, limitParam);
+  }
+
+  @PUT
   @Path("/{id}/tableProfile")
   @Operation(
       operationId = "addDataProfiler",
@@ -492,6 +630,32 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     Table table = dao.addTableProfileData(UUID.fromString(id), tableProfile);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
+  @Path("/{id}/tableProfile/{timestamp}")
+  @Operation(
+      operationId = "DeleteDataProfiler",
+      summary = "Delete table profile data",
+      tags = "tables",
+      description = "Delete table profile data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Table Profile",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfile.class)))
+      })
+  public Table deleteDataProfiler(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Timestamp of the table profile", schema = @Schema(type = "long"))
+          @PathParam("timestamp")
+          Long timestamp)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Table table = dao.deleteTableProfile(UUID.fromString(id), timestamp);
     return addHref(uriInfo, table);
   }
 
@@ -789,8 +953,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             .withTableType(create.getTableType())
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
-            .withProfileSample(create.getProfileSample())
-            .withProfileQuery(create.getProfileQuery())
+            .withTableProfilerConfig(create.getTableProfilerConfig())
             .withDatabaseSchema(create.getDatabaseSchema()));
   }
 

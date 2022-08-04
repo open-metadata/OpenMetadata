@@ -18,11 +18,7 @@ import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { excludedMetrics } from '../../constants/profiler.constant';
-import {
-  ColumnTest,
-  Table,
-  TableProfile,
-} from '../../generated/entity/data/table';
+import { ColumnTest, Table } from '../../generated/entity/data/table';
 import { useAuth } from '../../hooks/authHooks';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import { isColumnTestSupported } from '../../utils/EntityUtils';
@@ -77,28 +73,25 @@ const TableProfiler: FC<Props> = ({
 }) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
-    rows: tableProfile.rowCount,
-    profileDate: tableProfile.profileDate,
-    columnProfile: tableProfile.columnProfile,
-  }));
+  const modifiedData = {
+    rows: tableProfiles?.rowCount,
+    profileDate: tableProfiles?.timestamp,
+    columnProfile: tableProfiles?.columnProfile,
+  };
 
   const columnSpecificData = columns.map((column) => {
-    const data = modifiedData?.map((md) => {
-      const currentColumn = md.columnProfile?.find(
-        (colProfile) => colProfile.name === column.colName
-      );
-
-      return {
-        profilDate: md.profileDate,
-        ...currentColumn,
-        rows: md.rows,
-      };
-    });
+    const currentColumn = modifiedData.columnProfile?.find(
+      (colProfile) => colProfile.name === column.colName
+    );
+    const data = {
+      profilDate: modifiedData.profileDate,
+      ...currentColumn,
+      rows: modifiedData.rows,
+    };
 
     return {
       name: column,
-      columnMetrics: Object.entries(data?.[0] ?? {})
+      columnMetrics: Object.entries(data ?? {})
         .map((d) => ({
           key: d[0],
           value: d[1],
@@ -112,7 +105,7 @@ const TableProfiler: FC<Props> = ({
 
   return (
     <div className="tw-table-responsive tw-overflow-x-auto">
-      {tableProfiles?.length ? (
+      {tableProfiles ? (
         <table
           className="tw-w-full"
           data-testid="schema-table"
@@ -207,23 +200,19 @@ const TableProfiler: FC<Props> = ({
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <PercentageGraph
-                        percentage={(col.data?.[0]?.nullProportion ?? 0) * 100}
+                        percentage={(col.data?.nullProportion ?? 0) * 100}
                         title="null value"
                       />
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <PercentageGraph
-                        percentage={
-                          (col.data?.[0]?.uniqueProportion ?? 0) * 100
-                        }
+                        percentage={(col.data?.uniqueProportion ?? 0) * 100}
                         title="unique value"
                       />
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <PercentageGraph
-                        percentage={
-                          (col.data?.[0]?.distinctProportion ?? 0) * 100
-                        }
+                        percentage={(col.data?.distinctProportion ?? 0) * 100}
                         title="distinct value"
                       />
                     </td>

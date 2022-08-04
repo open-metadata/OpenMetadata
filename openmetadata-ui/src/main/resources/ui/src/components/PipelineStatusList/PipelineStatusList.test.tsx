@@ -16,106 +16,20 @@ import React from 'react';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import PipelineStatusListComponent from './PipelineStatusList.component';
 
-const mockPipelineStatus: Pipeline['pipelineStatus'] = [
-  {
-    executionDate: 1649669589,
-    executionStatus: 'Successful',
-    taskStatus: [
-      {
-        name: 'dim_address_task',
-        executionStatus: 'Successful',
-      },
-      {
-        name: 'assert_table_exists',
-        executionStatus: 'Successful',
-      },
-    ],
-  },
-  {
-    executionDate: 1649669474,
-    executionStatus: 'Pending',
-    taskStatus: [
-      {
-        name: 'dim_address_task',
-        executionStatus: 'Pending',
-      },
-      {
-        name: 'assert_table_exists',
-        executionStatus: 'Pending',
-      },
-    ],
-  },
-  {
-    executionDate: 1649669394,
-    executionStatus: 'Failed',
-    taskStatus: [
-      {
-        name: 'dim_address_task',
-        executionStatus: 'Successful',
-      },
-      {
-        name: 'assert_table_exists',
-        executionStatus: 'Failed',
-      },
-    ],
-  },
-  {
-    executionDate: 1649669374,
-    executionStatus: 'Pending',
-    taskStatus: [
-      {
-        name: 'dim_address_task',
-        executionStatus: 'Failed',
-      },
-      {
-        name: 'assert_table_exists',
-        executionStatus: 'Pending',
-      },
-    ],
-  },
-  {
-    executionDate: 1649669274,
-    executionStatus: 'Pending',
-    taskStatus: [
-      {
-        name: 'dim_address_task',
-        executionStatus: 'Pending',
-      },
-      {
-        name: 'assert_table_exists',
-        executionStatus: 'Successful',
-      },
-    ],
-  },
-  {
-    executionDate: 1649669174,
-    executionStatus: 'Failed',
-    taskStatus: [
-      {
-        name: 'dim_address_task',
-        executionStatus: 'Failed',
-      },
-      {
-        name: 'assert_table_exists',
-        executionStatus: 'Successful',
-      },
-    ],
-  },
-  {
-    executionDate: 1649582444,
-    executionStatus: 'Failed',
-    taskStatus: [
-      {
-        name: 'dim_address_task',
-        executionStatus: 'Failed',
-      },
-      {
-        name: 'assert_table_exists',
-        executionStatus: 'Failed',
-      },
-    ],
-  },
-] as Pipeline['pipelineStatus'];
+const mockPipelineStatus: Pipeline['pipelineStatus'] = {
+  executionDate: 1649669589,
+  executionStatus: 'Successful',
+  taskStatus: [
+    {
+      name: 'dim_address_task',
+      executionStatus: 'Successful',
+    },
+    {
+      name: 'assert_table_exists',
+      executionStatus: 'Successful',
+    },
+  ],
+} as Pipeline['pipelineStatus'];
 
 const mockSelectExec = jest.fn();
 
@@ -143,11 +57,11 @@ jest.mock('../../utils/PipelineDetailsUtils', () => ({
   getFilteredPipelineStatus: jest
     .fn()
     .mockImplementation(
-      (status: StatusType, pipelineStatus: Pipeline['pipelineStatus'] = []) => {
+      (status: StatusType, pipelineStatus: Pipeline['pipelineStatus'] = {}) => {
         if (!status) {
           return pipelineStatus;
         } else {
-          return pipelineStatus.filter((d) => d?.executionStatus === status);
+          return pipelineStatus.executionStatus === status;
         }
       }
     ),
@@ -165,7 +79,7 @@ describe('Test PipelineStatus list component', () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
         pipelineStatus={mockPipelineStatus}
-        selectedExec={mockPipelineStatus?.[0] || {}}
+        selectedExec={mockPipelineStatus || {}}
         onSelectExecution={mockSelectExec}
       />
     );
@@ -195,7 +109,7 @@ describe('Test PipelineStatus list component', () => {
   it('Should render no data placeholder if pipelinestatus is empty list', async () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
-        pipelineStatus={[]}
+        pipelineStatus={{}}
         selectedExec={{}}
         onSelectExecution={mockSelectExec}
       />

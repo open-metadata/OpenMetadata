@@ -134,9 +134,8 @@ const PipelineDetailsPage = () => {
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
-  const [pipeLineStatus, setPipelineStatus] = useState<
-    Pipeline['pipelineStatus']
-  >([]);
+  const [pipeLineStatus, setPipelineStatus] =
+    useState<Pipeline['pipelineStatus']>();
   const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
@@ -323,9 +322,7 @@ const PipelineDetailsPage = () => {
           setPipelineUrl(pipelineUrl);
           setTasks(tasks || []);
 
-          setPipelineStatus(
-            (pipelineStatus as Pipeline['pipelineStatus']) || []
-          );
+          setPipelineStatus(pipelineStatus as Pipeline['pipelineStatus']);
 
           fetchServiceDetails(service.type, service.name)
             .then((hostPort: string) => {
