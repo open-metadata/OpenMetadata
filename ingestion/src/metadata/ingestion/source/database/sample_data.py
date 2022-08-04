@@ -426,22 +426,22 @@ class SampleDataSource(Source[Entity]):
 
         yield db
 
-        databaseEntity = fqn.build(
+        database_entity = fqn.build(
             self.metadata,
             entity_type=Database,
             service_name=self.database_service.name.__root__,
             database_name=db.name.__root__,
         )
 
-        databaseObject = self.metadata.get_by_name(entity=Database, fqn=databaseEntity)
+        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=databaseObject.id, type="database"),
+            database=EntityReference(id=database_object.id, type="database"),
         )
         yield schema
 
-        databaseSchemaEntity = fqn.build(
+        database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
             service_name=self.database_service.name.__root__,
@@ -449,8 +449,8 @@ class SampleDataSource(Source[Entity]):
             schema_name=schema.name.__root__,
         )
 
-        databaseSchemaObject = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=databaseSchemaEntity
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
         )
 
         for table in self.glue_tables["tables"]:
@@ -459,7 +459,7 @@ class SampleDataSource(Source[Entity]):
                 description=table["description"],
                 columns=table["columns"],
                 databaseSchema=EntityReference(
-                    id=databaseSchemaObject.id, type="databaseSchema"
+                    id=database_schema_object.id, type="databaseSchema"
                 ),
             )
 
@@ -504,23 +504,23 @@ class SampleDataSource(Source[Entity]):
         )
         yield db
 
-        databaseEntity = fqn.build(
+        database_entity = fqn.build(
             self.metadata,
             entity_type=Database,
             service_name=self.database_service.name.__root__,
             database_name=db.name.__root__,
         )
 
-        databaseObject = self.metadata.get_by_name(entity=Database, fqn=databaseEntity)
+        database_object = self.metadata.get_by_name(entity=Database, fqn=database_entity)
 
         schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            database=EntityReference(id=databaseObject.id, type="database"),
+            database=EntityReference(id=database_object.id, type="database"),
         )
         yield schema
 
-        databaseSchemaEntity = fqn.build(
+        database_schema_entity = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
             service_name=self.database_service.name.__root__,
@@ -528,8 +528,8 @@ class SampleDataSource(Source[Entity]):
             schema_name=schema.name.__root__,
         )
 
-        databaseSchemaObject = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn=databaseSchemaEntity
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
         )
 
         resp = self.metadata.list_entities(entity=User, limit=5)
@@ -541,7 +541,7 @@ class SampleDataSource(Source[Entity]):
                 description=table["description"],
                 columns=table["columns"],
                 databaseSchema=EntityReference(
-                    id=databaseSchemaObject.id, type="databaseSchema"
+                    id=database_schema_object.id, type="databaseSchema"
                 ),
                 tags=table["tags"],
             )
