@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import React, { FC, Fragment, HTMLAttributes, useMemo, useState } from 'react';
 import Select, { SingleValue } from 'react-select';
 import {
@@ -64,7 +64,7 @@ const PipelineStatusList: FC<Prop> = ({
     }
   };
 
-  if (isNil(pipelineStatus) || pipelineStatus.length === 0) {
+  if (isNil(pipelineStatus)) {
     return (
       <div
         className="tw-mt-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
@@ -91,7 +91,7 @@ const PipelineStatusList: FC<Prop> = ({
               />
             </div>
           </div>
-          {executions.length ? (
+          {isUndefined(executions) ? (
             <ExecutionStrip
               executions={executions}
               selectedExecution={selectedExec}

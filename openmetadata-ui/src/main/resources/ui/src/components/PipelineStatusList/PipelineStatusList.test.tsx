@@ -143,11 +143,11 @@ jest.mock('../../utils/PipelineDetailsUtils', () => ({
   getFilteredPipelineStatus: jest
     .fn()
     .mockImplementation(
-      (status: StatusType, pipelineStatus: Pipeline['pipelineStatus'] = []) => {
+      (status: StatusType, pipelineStatus: Pipeline['pipelineStatus'] = {}) => {
         if (!status) {
           return pipelineStatus;
         } else {
-          return pipelineStatus.filter((d) => d?.executionStatus === status);
+          return pipelineStatus.executionStatus === status;
         }
       }
     ),
@@ -165,7 +165,7 @@ describe('Test PipelineStatus list component', () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
         pipelineStatus={mockPipelineStatus}
-        selectedExec={mockPipelineStatus?.[0] || {}}
+        selectedExec={mockPipelineStatus || {}}
         onSelectExecution={mockSelectExec}
       />
     );
@@ -195,7 +195,7 @@ describe('Test PipelineStatus list component', () => {
   it('Should render no data placeholder if pipelinestatus is empty list', async () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
-        pipelineStatus={[]}
+        pipelineStatus={{}}
         selectedExec={{}}
         onSelectExecution={mockSelectExec}
       />
