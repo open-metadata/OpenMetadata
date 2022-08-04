@@ -258,7 +258,9 @@ class SupersetSource(DashboardServiceSource):
             )
             yield chart
 
-    def _get_datasource_fqn(self, datasource_id: str, dbServiceName: str) -> Optional[str]:
+    def _get_datasource_fqn(
+        self, datasource_id: str, dbServiceName: str
+    ) -> Optional[str]:
         if not dbServiceName:
             return
         try:
