@@ -11,21 +11,15 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.secrets;
+package org.openmetadata.catalog.exception;
 
-import java.util.Map;
-import javax.validation.constraints.NotEmpty;
-import lombok.Getter;
-import lombok.Setter;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider;
+public class SecretsManagerMigrationException extends RuntimeException {
 
-@Getter
-@Setter
-public class SecretsManagerConfiguration {
+  public SecretsManagerMigrationException(String message, Throwable throwable) {
+    super(message, throwable);
+  }
 
-  public static final SecretsManagerProvider DEFAULT_SECRET_MANAGER = SecretsManagerProvider.LOCAL;
-
-  @NotEmpty private SecretsManagerProvider secretsManager;
-
-  private Map<String, String> parameters;
+  public SecretsManagerMigrationException(String message) {
+    super(message);
+  }
 }

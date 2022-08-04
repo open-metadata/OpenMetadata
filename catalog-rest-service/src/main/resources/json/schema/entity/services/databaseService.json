@@ -12,6 +12,7 @@
   "definitions": {
     "databaseServiceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "javaInterfaces": ["org.openmetadata.catalog.EnumInterface"],
       "type": "string",
       "enum": [
         "BigQuery",

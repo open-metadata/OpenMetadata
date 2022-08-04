@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.secrets;
 
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.AWS;
@@ -23,6 +36,7 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 public class AWSSecretsManager extends SecretsManager {
 
   public static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
+
   private static AWSSecretsManager INSTANCE = null;
 
   private SecretsManagerClient secretsClient;
@@ -30,23 +44,22 @@ public class AWSSecretsManager extends SecretsManager {
   private AWSSecretsManager(
       OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider, SecretsManagerConfiguration config) {
     super(secretsManagerProvider);
-    if (config == null) {
-      throw new SecretsManagerException("Secrets manager configuration is empty.");
+    // initialize the secret client depending on the SecretsManagerConfiguration passed
+    if (config != null && config.getParameters() != null) {
+      String accessKeyId = config.getParameters().getOrDefault("accessKeyId", "");
+      String secretAccessKey = config.getParameters().getOrDefault("secretAccessKey", "");
+      String region = config.getParameters().getOrDefault("region", "");
+      this.secretsClient =
+          SecretsManagerClient.builder()
+              .region(Region.of(region))
+              .credentialsProvider(
+                  StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+              .build();
+    } else {
+      // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials loaded from the
+      // DefaultCredentialsProvider
+      this.secretsClient = SecretsManagerClient.create();
     }
-    String region = config.getParameters().getOrDefault("region", "");
-    String accessKeyId = config.getParameters().getOrDefault("accessKeyId", "");
-    String secretAccessKey = config.getParameters().getOrDefault("secretAccessKey", "");
-    this.secretsClient =
-        SecretsManagerClient.builder()
-            .region(Region.of(region))
-            .credentialsProvider(
-                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
-            .build();
-  }
-
-  @Override
-  public boolean isLocal() {
-    return false;
   }
 
   @Override
