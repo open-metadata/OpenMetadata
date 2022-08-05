@@ -61,6 +61,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
             <ActivityFeedCard
               isEntityFeed
               isThread
+              announcementDetails={threadData.announcement}
               className="tw-mb-3"
               feed={mainThread as Post}
               feedType={threadData.type || ThreadType.Conversation}
