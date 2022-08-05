@@ -195,12 +195,17 @@ class LocalSecretsManager(SecretsManager):
 class AWSSecretsManager(SecretsManager):
     def __init__(self, credentials: AWSCredentials, cluster_prefix: str):
         super().__init__(cluster_prefix)
-        session = boto3.Session(
-            aws_access_key_id=credentials.awsAccessKeyId,
-            aws_secret_access_key=credentials.awsSecretAccessKey.get_secret_value(),
-            region_name=credentials.awsRegion,
-        )
-        self.secretsmanager_client = session.client("secretsmanager")
+        # initialize the secret client depending on the SecretsManagerConfiguration passed
+        if credentials:
+            session = boto3.Session(
+                aws_access_key_id=credentials.awsAccessKeyId,
+                aws_secret_access_key=credentials.awsSecretAccessKey.get_secret_value(),
+                region_name=credentials.awsRegion,
+            )
+            self.secretsmanager_client = session.client("secretsmanager")
+        else:
+            # initialized with the credentials loaded from running machine
+            self.secretsmanager_client = boto3.client("secretsmanager")
 
     def retrieve_service_connection(
         self,
