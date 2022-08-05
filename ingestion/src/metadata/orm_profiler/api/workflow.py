@@ -50,9 +50,9 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_fqn
+from metadata.utils.filters import filter_by_fqn, filter_by_table, filter_by_schema
 from metadata.utils.logger import profiler_logger
-
+import traceback
 logger = profiler_logger()
 
 
@@ -123,18 +123,32 @@ class ProfilerWorkflow:
         We will update the status on the SQLSource Status.
         """
         for table in tables:
+            try:
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    table.databaseSchema.name,
+                ):
+                    self.source_status.filter(
+                        table.databaseSchema.fullyQualifiedName, "Schema pattern not allowed"
+                    )
+                    continue
+                if filter_by_table(
+                    self.source_config.tableFilterPattern,
+                    table.name.__root__,
+                ):
+                    self.source_status.filter(
+                        table.fullyQualifiedName.__root__, "Table pattern not allowed"
+                    )
+                    continue
 
-            if filter_by_fqn(
-                fqn_filter_pattern=self.source_config.fqnFilterPattern,
-                fqn=table.fullyQualifiedName.__root__,
-            ):
+                self.source_status.scanned(table.fullyQualifiedName.__root__)
+                yield table
+            except Exception as err:  # pylint: disable=broad-except
                 self.source_status.filter(
-                    table.fullyQualifiedName.__root__, "Schema pattern not allowed"
+                    table.fullyQualifiedName.__root__, f"{err}"
                 )
-                continue
-
-            self.source_status.scanned(table.fullyQualifiedName.__root__)
-            yield table
+                logger.error(err)
+                logger.debug(traceback.format_exc())
 
     def create_processor(self, service_connection_config):
         self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
@@ -209,30 +223,35 @@ class ProfilerWorkflow:
             self.config.source.serviceConnection.__root__.config
         )
         for database in self.get_database_entities():
-            if hasattr(
-                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
-            ):
+            try:
+
                 if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "database"
+                    self.config.source.serviceConnection.__root__.config, "supportsDatabase"
                 ):
-                    copy_service_connection_config.database = database.name.__root__
-                if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "catalog"
-                ):
-                    copy_service_connection_config.catalog = database.name.__root__
+                    if hasattr(
+                        self.config.source.serviceConnection.__root__.config, "database"
+                    ):
+                        copy_service_connection_config.database = database.name.__root__
+                    if hasattr(
+                        self.config.source.serviceConnection.__root__.config, "catalog"
+                    ):
+                        copy_service_connection_config.catalog = database.name.__root__
 
-            self.create_processor(copy_service_connection_config)
+                self.create_processor(copy_service_connection_config)
 
-            for entity in self.get_table_entities(database=database):
-                profile_and_tests: ProfilerResponse = self.processor.process(
-                    record=entity,
-                    generate_sample_data=self.source_config.generateSampleData,
-                )
+                for entity in self.get_table_entities(database=database):
+                    profile_and_tests: ProfilerResponse = self.processor.process(
+                        record=entity,
+                        generate_sample_data=self.source_config.generateSampleData,
+                    )
 
-                if hasattr(self, "sink"):
-                    self.sink.write_record(profile_and_tests)
+                    if hasattr(self, "sink"):
+                        self.sink.write_record(profile_and_tests)
 
-            self.processor_interface.session.close()
+                self.processor_interface.session.close()
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error(err)
+                logger.debug(traceback.format_exc())
 
     def print_status(self) -> int:
         """
