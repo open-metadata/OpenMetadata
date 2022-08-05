@@ -215,40 +215,44 @@ class ProfilerWorkflow:
 
         yield from self.filter_entities(all_tables)
 
+    def copy_service_config(self, database) -> None:
+        copy_service_connection_config = deepcopy(
+            self.config.source.serviceConnection.__root__.config
+        )
+        if hasattr(
+            self.config.source.serviceConnection.__root__.config,
+            "supportsDatabase",
+        ):
+            if hasattr(
+                self.config.source.serviceConnection.__root__.config, "database"
+            ):
+                copy_service_connection_config.database = database.name.__root__
+            if hasattr(self.config.source.serviceConnection.__root__.config, "catalog"):
+                copy_service_connection_config.catalog = database.name.__root__
+
+        self.create_processor(copy_service_connection_config)
+
     def execute(self):
         """
         Run the profiling and tests
         """
-        copy_service_connection_config = deepcopy(
-            self.config.source.serviceConnection.__root__.config
-        )
+
         for database in self.get_database_entities():
             try:
-
-                if hasattr(
-                    self.config.source.serviceConnection.__root__.config,
-                    "supportsDatabase",
-                ):
-                    if hasattr(
-                        self.config.source.serviceConnection.__root__.config, "database"
-                    ):
-                        copy_service_connection_config.database = database.name.__root__
-                    if hasattr(
-                        self.config.source.serviceConnection.__root__.config, "catalog"
-                    ):
-                        copy_service_connection_config.catalog = database.name.__root__
-
-                self.create_processor(copy_service_connection_config)
+                self.copy_service_config(database)
 
                 for entity in self.get_table_entities(database=database):
-                    profile_and_tests: ProfilerResponse = self.processor.process(
-                        record=entity,
-                        generate_sample_data=self.source_config.generateSampleData,
-                    )
+                    try:
+                        profile_and_tests: ProfilerResponse = self.processor.process(
+                            record=entity,
+                            generate_sample_data=self.source_config.generateSampleData,
+                        )
 
-                    if hasattr(self, "sink"):
-                        self.sink.write_record(profile_and_tests)
-
+                        if hasattr(self, "sink"):
+                            self.sink.write_record(profile_and_tests)
+                    except Exception as err: # pylint: disable=broad-except
+                        logger.error(err)
+                        logger.debug(traceback.format_exc())
                 self.processor_interface.session.close()
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(err)
