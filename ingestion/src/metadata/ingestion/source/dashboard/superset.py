@@ -193,7 +193,9 @@ class SupersetSource(DashboardServiceSource):
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
             chart_json = self.all_charts.get(chart_id)
             datasource_fqn = (
-                self._get_datasource_fqn(chart_json.get("datasource_id"), db_service_name)
+                self._get_datasource_fqn(
+                    chart_json.get("datasource_id"), db_service_name
+                )
                 if chart_json.get("datasource_id")
                 else None
             )
