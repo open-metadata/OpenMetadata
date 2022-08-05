@@ -385,7 +385,12 @@ export const updateThreadData = (
         callback((prevData) => {
           return prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
-              return { ...thread, reactions: res.data.reactions };
+              return {
+                ...thread,
+                reactions: res.data.reactions,
+                message: res.data.message,
+                announcement: res.data?.announcement,
+              };
             } else {
               return thread;
             }
@@ -403,7 +408,11 @@ export const updateThreadData = (
             if (isEqual(threadId, thread.id)) {
               const updatedPosts = (thread.posts || []).map((post) => {
                 if (isEqual(postId, post.id)) {
-                  return { ...post, reactions: res.data.reactions };
+                  return {
+                    ...post,
+                    reactions: res.data.reactions,
+                    message: res.data.message,
+                  };
                 } else {
                   return post;
                 }

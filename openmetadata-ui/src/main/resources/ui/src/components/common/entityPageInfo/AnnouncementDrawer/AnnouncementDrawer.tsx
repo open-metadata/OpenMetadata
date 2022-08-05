@@ -27,7 +27,7 @@ import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnouncementModal';
+import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
   open: boolean;

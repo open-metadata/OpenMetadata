@@ -14,10 +14,12 @@
 import { Popover } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { ReactionOperation } from '../../../enums/reactions.enum';
+import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useAuth } from '../../../hooks/authHooks';
@@ -28,6 +30,7 @@ import {
 } from '../../../utils/FeedUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
@@ -63,6 +66,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
   const [visible, setVisible] = useState<boolean>(false);
+  const [isEditAnnouncement, setEditAnnouncement] = useState<boolean>(false);
 
   const isAuthor = Boolean(
     feedDetail.from === currentUser?.name || isAdminUser
@@ -112,6 +116,33 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
     onFeedUpdate(patch);
   };
 
+  const handleAnnouncementUpdate = (
+    title: string,
+    announcement: AnnouncementDetails
+  ) => {
+    const existingAnnouncement = {
+      ...feedDetail,
+      announcement: announcementDetails,
+    };
+
+    const updatedAnnouncement = {
+      ...feedDetail,
+      message: title,
+      announcement,
+    };
+
+    const patch = compare(existingAnnouncement, updatedAnnouncement);
+
+    onFeedUpdate(patch);
+    setEditAnnouncement(false);
+  };
+
+  const handleThreadEdit = () => {
+    if (announcementDetails) {
+      setEditAnnouncement(true);
+    }
+  };
+
   const handleVisibleChange = (newVisible: boolean) => setVisible(newVisible);
 
   const onHide = () => setVisible(false);
@@ -121,76 +152,89 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   }, [feed]);
 
   return (
-    <div
-      className={classNames(
-        className,
-        'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-1 tw-mb-1 tw-rounded',
-        {
-          'tw-bg-gray-100': visible,
-        }
-      )}>
-      <Popover
-        destroyTooltipOnHide
-        align={{ targetOffset: [0, -35] }}
-        content={
-          <PopoverContent
-            isAuthor={isAuthor}
-            isThread={isThread}
-            postId={feedDetail.id}
-            reactions={feedDetail.reactions || []}
-            threadId={threadId}
-            onConfirmation={onConfirmation}
-            onPopoverHide={onHide}
-            onReactionSelect={onReactionSelect}
-            onReply={onReply}
-          />
-        }
-        key="reaction-options-popover"
-        overlayClassName="ant-popover-feed"
-        placement="topRight"
-        trigger="hover"
-        visible={visible}
-        zIndex={9999}
-        onVisibleChange={handleVisibleChange}>
-        <div className="tw-flex tw-mb-1">
-          <UserPopOverCard userName={feedDetail.from}>
-            <span className="tw-cursor-pointer" data-testid="authorAvatar">
-              <ProfilePicture id="" name={feedDetail.from} width="32" />
-            </span>
-          </UserPopOverCard>
-          <div className="tw-flex tw-flex-col">
-            <FeedCardHeader
-              className="tw-pl-2"
-              createdBy={feedDetail.from}
-              entityFQN={entityFQN as string}
-              entityField={entityField as string}
-              entityType={entityType as string}
-              feedType={feedType}
-              isEntityFeed={isEntityFeed}
-              taskDetails={taskDetails}
-              timeStamp={feedDetail.postTs}
-            />
-            <FeedCardBody
-              announcementDetails={announcementDetails}
-              className="tw-pl-2 tw-break-all"
+    <>
+      <div
+        className={classNames(
+          className,
+          'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-1 tw-mb-1 tw-rounded',
+          {
+            'tw-bg-gray-100': visible,
+          }
+        )}>
+        <Popover
+          align={{ targetOffset: [0, -35] }}
+          content={
+            <PopoverContent
+              isAnnouncement={!isUndefined(announcementDetails)}
+              isAuthor={isAuthor}
               isThread={isThread}
-              message={feedDetail.message}
+              postId={feedDetail.id}
               reactions={feedDetail.reactions || []}
+              threadId={threadId}
+              onConfirmation={onConfirmation}
+              onEdit={handleThreadEdit}
+              onPopoverHide={onHide}
               onReactionSelect={onReactionSelect}
+              onReply={onReply}
             />
+          }
+          destroyTooltipOnHide={{ keepParent: false }}
+          key="reaction-options-popover"
+          overlayClassName="ant-popover-feed"
+          placement="topRight"
+          trigger="hover"
+          visible={visible}
+          zIndex={9999}
+          onVisibleChange={handleVisibleChange}>
+          <div className="tw-flex tw-mb-1">
+            <UserPopOverCard userName={feedDetail.from}>
+              <span className="tw-cursor-pointer" data-testid="authorAvatar">
+                <ProfilePicture id="" name={feedDetail.from} width="32" />
+              </span>
+            </UserPopOverCard>
+            <div className="tw-flex tw-flex-col">
+              <FeedCardHeader
+                className="tw-pl-2"
+                createdBy={feedDetail.from}
+                entityFQN={entityFQN as string}
+                entityField={entityField as string}
+                entityType={entityType as string}
+                feedType={feedType}
+                isEntityFeed={isEntityFeed}
+                taskDetails={taskDetails}
+                timeStamp={feedDetail.postTs}
+              />
+              <FeedCardBody
+                announcementDetails={announcementDetails}
+                className="tw-pl-2 tw-break-all"
+                isThread={isThread}
+                message={feedDetail.message}
+                reactions={feedDetail.reactions || []}
+                onReactionSelect={onReactionSelect}
+              />
+            </div>
           </div>
-        </div>
-        <FeedCardFooter
-          className="tw-mt-2"
-          isFooterVisible={isFooterVisible}
-          lastReplyTimeStamp={lastReplyTimeStamp}
-          repliedUsers={repliedUsers}
-          replies={replies}
-          threadId={threadId}
-          onThreadSelect={onThreadSelect}
+          <FeedCardFooter
+            className="tw-mt-2"
+            isFooterVisible={isFooterVisible}
+            lastReplyTimeStamp={lastReplyTimeStamp}
+            repliedUsers={repliedUsers}
+            replies={replies}
+            threadId={threadId}
+            onThreadSelect={onThreadSelect}
+          />
+        </Popover>
+      </div>
+      {isEditAnnouncement && announcementDetails && (
+        <EditAnnouncementModal
+          announcement={announcementDetails}
+          announcementTitle={feedDetail.message}
+          open={isEditAnnouncement}
+          onCancel={() => setEditAnnouncement(false)}
+          onConfirm={handleAnnouncementUpdate}
         />
-      </Popover>
-    </div>
+      )}
+    </>
   );
 };
 

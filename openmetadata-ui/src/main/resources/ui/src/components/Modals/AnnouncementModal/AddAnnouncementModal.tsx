@@ -26,7 +26,7 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import './AddAnnouncementModal.less';
+import './AnnouncementModal.less';
 
 interface Props {
   open: boolean;
@@ -85,6 +85,7 @@ const AddAnnouncementModal: FC<Props> = ({
       centered
       className="announcement-modal"
       confirmLoading={isLoading}
+      data-testid="add-announcement"
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
@@ -96,6 +97,7 @@ const AddAnnouncementModal: FC<Props> = ({
       width={620}
       onCancel={onCancel}>
       <Form
+        data-testid="announcement-form"
         id="announcement-form"
         layout="vertical"
         validateMessages={validateMessages}
