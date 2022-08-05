@@ -50,19 +50,15 @@ mock_dagster_config = {
             "config": {
                 "type": "Dagster",
                 "hostPort": "http://localhost:3000",
-                "connection":{
+                "connection": {
                     "username": "dagster_user",
                     "password": "dagter_pass",
                     "databaseSchema": "dagster_db",
-                    "hostPort": "localhost:3306"
-                }
+                    "hostPort": "localhost:3306",
+                },
             }
         },
-        "sourceConfig": {
-            "config": {
-                "type": "PipelineMetadata"
-            }
-        },
+        "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -77,7 +73,9 @@ mock_dagster_config = {
 EXPECTED_DAGSTER_DETAILS = mock_data
 
 MOCK_CONNECTION_URI_PATH = "/workspace/__repository__do_it_all_with_default_config@cereal.py/jobs/do_it_all_with_default_config/"
-MOCK_LOG_URL = "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
+MOCK_LOG_URL = (
+    "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
+)
 
 
 EXPECTED_PIPELINE_STATUS = [
@@ -165,7 +163,6 @@ MOCK_PIPELINE = Pipeline(
 
 class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    @patch("metadata.ingestion.source.pipeline.dagster.DagsterClient")
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
@@ -174,10 +171,10 @@ class DagsterUnitTest(TestCase):
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        print("$"*100)
+        print("$" * 100)
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
-        
+
     def test_pipeline_list(self):
         assert list(self.dagster.get_pipelines_list())[0] == EXPECTED_DAGSTER_DETAILS
 
