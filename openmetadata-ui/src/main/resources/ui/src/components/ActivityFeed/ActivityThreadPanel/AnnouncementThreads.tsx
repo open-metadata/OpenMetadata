@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Divider, Typography } from 'antd';
 import React, { FC, Fragment } from 'react';
 import {
   ANNOUNCEMENT_BG,
   ANNOUNCEMENT_BORDER,
 } from '../../../constants/feed.constants';
-import { Post, ThreadType } from '../../../generated/entity/feed/thread';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { isActiveAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -43,100 +48,129 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
     onThreadIdSelect(selectedThreadId === id ? '' : id);
   };
 
-  return (
-    <div className={className}>
-      {updatedThreads.map((thread, index) => {
-        const mainFeed = {
-          message: thread.message,
-          postTs: thread.threadTs,
-          from: thread.createdBy,
-          id: thread.id,
-          reactions: thread.reactions,
-        } as Post;
+  const activeAnnouncements = updatedThreads.filter(
+    (thread) =>
+      thread.announcement &&
+      isActiveAnnouncement(
+        thread.announcement?.startTime,
+        thread.announcement?.endTime
+      )
+  );
 
-        const postLength = thread?.posts?.length || 0;
-        const replies = thread.postsCount ? thread.postsCount - 1 : 0;
-        const repliedUsers = [
-          ...new Set((thread?.posts || []).map((f) => f.from)),
-        ];
-        const repliedUniqueUsersList = repliedUsers.slice(
-          0,
-          postLength >= 3 ? 2 : 1
-        );
-        const lastPost = thread?.posts?.[postLength - 1];
+  const inActiveAnnouncements = updatedThreads.filter(
+    (thread) =>
+      !(
+        thread.announcement &&
+        isActiveAnnouncement(
+          thread.announcement?.startTime,
+          thread.announcement?.endTime
+        )
+      )
+  );
 
-        return (
-          <Fragment key={index}>
-            <Card
-              className="ant-card-feed"
-              data-testid="announcement-card"
-              key={`${index} - card`}
-              style={{
-                ...leftPanelAntCardStyle,
-                marginTop: '20px',
-                border: `1px solid ${ANNOUNCEMENT_BORDER}`,
-                background: `${ANNOUNCEMENT_BG}`,
-              }}>
-              <AnnouncementBadge />
-              <div data-testid="main-message">
-                <ActivityFeedCard
-                  isEntityFeed
-                  isThread
-                  announcementDetails={thread.announcement}
-                  entityLink={thread.about}
-                  feed={mainFeed}
-                  feedType={thread.type || ThreadType.Conversation}
-                  taskDetails={thread.task}
-                  updateThreadHandler={updateThreadHandler}
-                  onReply={() => onThreadSelect(thread.id)}
-                />
-              </div>
-              {postLength > 0 ? (
-                <div data-testid="replies-container">
-                  {postLength > 1 ? (
-                    <div className="tw-ml-9 tw-my-2">
-                      {Boolean(lastPost) && (
-                        <div className="tw-filter-seperator" />
-                      )}
-                      <div className="tw-flex tw-my-4">
-                        <FeedCardFooter
-                          isFooterVisible
-                          lastReplyTimeStamp={lastPost?.postTs}
-                          repliedUsers={repliedUniqueUsersList}
-                          replies={replies}
-                          threadId={thread.id}
-                          onThreadSelect={() => onThreadSelect(thread.id)}
-                        />
-                      </div>
+  const getAnnouncements = (announcements: Thread[]) => {
+    return announcements.map((thread, index) => {
+      const mainFeed = {
+        message: thread.message,
+        postTs: thread.threadTs,
+        from: thread.createdBy,
+        id: thread.id,
+        reactions: thread.reactions,
+      } as Post;
+
+      const postLength = thread?.posts?.length || 0;
+      const replies = thread.postsCount ? thread.postsCount - 1 : 0;
+      const repliedUsers = [
+        ...new Set((thread?.posts || []).map((f) => f.from)),
+      ];
+      const repliedUniqueUsersList = repliedUsers.slice(
+        0,
+        postLength >= 3 ? 2 : 1
+      );
+      const lastPost = thread?.posts?.[postLength - 1];
+
+      return (
+        <Fragment key={index}>
+          <Card
+            className="ant-card-feed"
+            data-testid="announcement-card"
+            key={`${index} - card`}
+            style={{
+              ...leftPanelAntCardStyle,
+              marginTop: '20px',
+              border: `1px solid ${ANNOUNCEMENT_BORDER}`,
+              background: `${ANNOUNCEMENT_BG}`,
+            }}>
+            <AnnouncementBadge />
+            <div data-testid="main-message">
+              <ActivityFeedCard
+                isEntityFeed
+                isThread
+                announcementDetails={thread.announcement}
+                entityLink={thread.about}
+                feed={mainFeed}
+                feedType={thread.type || ThreadType.Conversation}
+                taskDetails={thread.task}
+                updateThreadHandler={updateThreadHandler}
+                onReply={() => onThreadSelect(thread.id)}
+              />
+            </div>
+            {postLength > 0 ? (
+              <div data-testid="replies-container">
+                {postLength > 1 ? (
+                  <div className="tw-ml-9 tw-my-2">
+                    {Boolean(lastPost) && (
+                      <div className="tw-filter-seperator" />
+                    )}
+                    <div className="tw-flex tw-my-4">
+                      <FeedCardFooter
+                        isFooterVisible
+                        lastReplyTimeStamp={lastPost?.postTs}
+                        repliedUsers={repliedUniqueUsersList}
+                        replies={replies}
+                        threadId={thread.id}
+                        onThreadSelect={() => onThreadSelect(thread.id)}
+                      />
                     </div>
-                  ) : null}
-                  <div data-testid="latest-reply">
-                    <ActivityFeedCard
-                      isEntityFeed
-                      className="tw-ml-9"
-                      feed={lastPost as Post}
-                      feedType={thread.type || ThreadType.Conversation}
-                      threadId={thread.id}
-                      updateThreadHandler={updateThreadHandler}
-                      onConfirmation={onConfirmation}
-                      onReply={() => toggleReplyEditor(thread.id)}
-                    />
                   </div>
-                </div>
-              ) : null}
-              {selectedThreadId === thread.id ? (
-                <div data-testid="quick-reply-editor">
-                  <ActivityFeedEditor
-                    buttonClass="tw-mr-4"
-                    className="tw-ml-5 tw-mr-2 tw-mb-6"
-                    onSave={postFeed}
+                ) : null}
+                <div data-testid="latest-reply">
+                  <ActivityFeedCard
+                    isEntityFeed
+                    className="tw-ml-9"
+                    feed={lastPost as Post}
+                    feedType={thread.type || ThreadType.Conversation}
+                    threadId={thread.id}
+                    updateThreadHandler={updateThreadHandler}
+                    onConfirmation={onConfirmation}
+                    onReply={() => toggleReplyEditor(thread.id)}
                   />
                 </div>
-              ) : null}
-            </Card>
-          </Fragment>
-        );
-      })}
+              </div>
+            ) : null}
+            {selectedThreadId === thread.id ? (
+              <div data-testid="quick-reply-editor">
+                <ActivityFeedEditor
+                  buttonClass="tw-mr-4"
+                  className="tw-ml-5 tw-mr-2 tw-mb-6"
+                  onSave={postFeed}
+                />
+              </div>
+            ) : null}
+          </Card>
+        </Fragment>
+      );
+    });
+  };
+
+  return (
+    <div className={className}>
+      {getAnnouncements(activeAnnouncements)}
+      <Typography.Text className="tw-block tw-mt-4 tw-font-medium">
+        Inactive Announcements
+      </Typography.Text>
+      <Divider className="tw-mb-4 tw-mt-2" />
+      {getAnnouncements(inActiveAnnouncements)}
     </div>
   );
 };

@@ -13,3 +13,9 @@ export const validateMessages = {
     range: '${name} must be between ${min} and ${max} character.',
   },
 };
+
+export const isActiveAnnouncement = (startTime: number, endTime: number) => {
+  const currentTime = Date.now();
+
+  return currentTime > startTime && currentTime < endTime;
+};
