@@ -1,22 +1,22 @@
 ---
-title: One Login SSO for Bare Metal
+title: OneLogin SSO for Bare Metal
 slug: /deployment/security/one-login/bare-metal
 ---
 
-# One Login SSO for Bare Metal
+# OneLogin SSO for Bare Metal
 
 ## Update conf/openmetadata.yaml
 
 Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
 
 Update the providerName config to the name you want to display in the `Sign In` button in the UI. 
-For example, with the following configuration with `providerName` set to `One Login`, the users will see `Sign In with One Login SSO` 
+For example, with the following configuration with `providerName` set to `OneLogin`, the users will see `Sign In with OneLogin SSO` 
 in the `Sign In` page of the OpenMetadata UI.
 
 ```yaml
 authenticationConfiguration:
   provider: "custom-oidc"
-  providerName: "One Login"
+  providerName: "OneLogin"
   publicKeyUrls: 
     - "{IssuerUrl}/certs"
   authority: "{IssuerUrl}"
