@@ -26,7 +26,7 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import './AddAnnouncementModal.less';
+import './AnnouncementModal.less';
 
 interface Props {
   open: boolean;
