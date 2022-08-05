@@ -23,15 +23,15 @@ FROM airflow as apis
 WORKDIR /openmetadata-airflow-apis
 COPY openmetadata-airflow-apis /openmetadata-airflow-apis
 
-RUN pip install "."
-
+RUN pip install "." "openmetadata-ingestion[all]"
+RUN pip uninstall openmetadata-ingestion -y
 
 FROM apis as ingestion
 WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg

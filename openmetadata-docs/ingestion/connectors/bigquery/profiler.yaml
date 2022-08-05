@@ -18,7 +18,9 @@ source:
           clientX509CertUrl: <client certificate URL>
   sourceConfig:
     config:
-      fqnFilterPattern: <table FQN filtering regex>
+      databaseFilterPattern: <table FQN filtering regex>
+      schemaFilterPattern: <table FQN filtering regex>
+      tableFilterPattern: <table FQN filtering regex>
 processor:
   type: orm-profiler
   config: {}

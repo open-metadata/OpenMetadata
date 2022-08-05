@@ -163,7 +163,7 @@ class ProfilerWorkflowTest(TestCase):
     #     workflow_config["source"]["sourceConfig"]["config"].update(
     #         {
     #             "type": "Profiler",
-    #             "fqnFilterPattern": {"includes": ["test_sqlite.main.main.users"]},
+    #             "tableFilterPattern": {"includes": ["users"]},
     #         }
     #     )
     #     workflow_config["processor"] = {
@@ -233,7 +233,7 @@ class ProfilerWorkflowTest(TestCase):
             {
                 "type": "Profiler",
                 "profileSample": 50,
-                "fqnFilterPattern": {"includes": ["test_sqlite.main.main.new_users"]},
+                "tableFilterPattern": {"includes": ["new_users"]},
             }
         )
         workflow_config["processor"] = {"type": "orm-profiler", "config": {}}
