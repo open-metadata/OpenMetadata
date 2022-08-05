@@ -14,6 +14,7 @@
 import { Popover } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
@@ -164,6 +165,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           align={{ targetOffset: [0, -35] }}
           content={
             <PopoverContent
+              isAnnouncement={!isUndefined(announcementDetails)}
               isAuthor={isAuthor}
               isThread={isThread}
               postId={feedDetail.id}

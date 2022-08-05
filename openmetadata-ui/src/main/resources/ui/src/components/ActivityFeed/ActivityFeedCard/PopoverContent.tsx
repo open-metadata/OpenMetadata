@@ -25,6 +25,7 @@ import { ConfirmState } from './ActivityFeedCard.interface';
 
 interface Props {
   isAuthor: boolean;
+  isAnnouncement?: boolean;
   isThread?: boolean;
   threadId?: string;
   postId?: string;
@@ -50,6 +51,7 @@ const PopoverContent: FC<Props> = ({
   onReactionSelect,
   onPopoverHide,
   onEdit,
+  isAnnouncement,
 }) => {
   // get current user details
   const currentUser = useMemo(
@@ -179,16 +181,18 @@ const PopoverContent: FC<Props> = ({
         </Button>
       )}
 
-      <Button
-        className="tw-p-0"
-        size="small"
-        type="text"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEdit && onEdit();
-        }}>
-        <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="18px" />
-      </Button>
+      {isAnnouncement && (
+        <Button
+          className="tw-p-0"
+          size="small"
+          type="text"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit && onEdit();
+          }}>
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="18px" />
+        </Button>
+      )}
 
       {deleteButtonCheck ? (
         <Button className="tw-p-0" type="text" onClick={handleDelete}>
