@@ -176,6 +176,7 @@ def _build_table_lineage(
     from_table_raw_name: str,
     to_table_raw_name: str,
     query: str,
+    column_lineage_map: dict,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """
     Prepare the lineage request generator
@@ -185,6 +186,7 @@ def _build_table_lineage(
         to_table_raw_name=str(to_table_raw_name),
         from_entity=from_entity,
         from_table_raw_name=str(from_table_raw_name),
+        column_lineage_map=column_lineage_map,
     )
     lineage_details = None
     if col_lineage:
