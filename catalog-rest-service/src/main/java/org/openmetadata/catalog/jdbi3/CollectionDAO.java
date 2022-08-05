@@ -21,10 +21,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Triple;
@@ -94,11 +91,7 @@ import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
-import org.openmetadata.catalog.util.EntitiesCount;
-import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.FullyQualifiedName;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ServicesCount;
+import org.openmetadata.catalog.util.*;
 import org.openmetadata.common.utils.CommonUtil;
 
 public interface CollectionDAO {
@@ -116,6 +109,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   EntityExtensionDAO entityExtensionDAO();
+
+  @CreateSqlObject
+  EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
 
   @CreateSqlObject
   RoleDAO roleDAO();
@@ -221,6 +217,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   UtilDAO utilDAO();
+
+  @CreateSqlObject
+  SettingsDAO getSettingsDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -1857,45 +1856,109 @@ public interface CollectionDAO {
       return listCount(getTableName(), getNameColumn(), condition);
     }
 
-    default List<String> listTeamsWithoutParents() {
-      return listTeamsWithoutParents(Relationship.PARENT_OF.ordinal());
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String parentTeam = filter.getQueryParam("parentTeam");
+      String condition = filter.getCondition();
+      if (parentTeam != null) {
+        // validate parent team
+        Team team = findEntityByName(parentTeam);
+        if (ORGANIZATION_NAME.equals(team.getName())) {
+          // All the parentless teams should come under "organization" team
+          condition =
+              String.format(
+                  "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
+                  condition, team.getId(), team.getId(), Relationship.PARENT_OF.ordinal());
+        } else {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                  condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        }
+      }
+
+      // Quoted name is stored in fullyQualifiedName column and not in the name column
+      before = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(before) : before;
+      return listBefore(getTableName(), getNameColumn(), condition, limit, before);
     }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT ue.id "
-                + "FROM user_entity ue "
-                + "WHERE ue.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = `team` AND relation = :relation AND toEntity = `user`)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT ue.id "
-                + "FROM user_entity ue "
-                + "WHERE ue.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = `team` AND relation = :relation AND toEntity = `user`)",
-        connectionType = POSTGRES)
-    List<String> listUsersWithoutParents(@Bind("relation") int relation);
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String parentTeam = filter.getQueryParam("parentTeam");
+      String condition = filter.getCondition();
+      if (parentTeam != null) {
+        // validate parent team
+        Team team = findEntityByName(parentTeam);
+        if (ORGANIZATION_NAME.equals(team.getName())) {
+          // All the parentless teams should come under "organization" team
+          condition =
+              String.format(
+                  "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
+                  condition, team.getId(), team.getId(), Relationship.PARENT_OF.ordinal());
+        } else {
+          condition =
+              String.format(
+                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d)",
+                  condition, team.getId(), Relationship.PARENT_OF.ordinal());
+        }
+      }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT te.id "
-                + "FROM team_entity te "
-                + "WHERE te.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = 'team' AND relation = :relation AND toEntity = 'user')",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT te.id "
-                + "FROM team_entity te "
-                + "WHERE te.id NOT IN "
-                + "(SELECT toId FROM entity_relationship "
-                + "WHERE fromEntity = 'team' AND relation = :relation AND toEntity = 'user')",
-        connectionType = POSTGRES)
-    List<String> listTeamsWithoutParents(@Bind("relation") int relation);
+      // Quoted name is stored in fullyQualifiedName column and not in the name column
+      after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
+      return listAfter(getTableName(), getNameColumn(), condition, limit, after);
+    }
+
+    @SqlQuery("SELECT count(*) FROM <table> <cond>")
+    int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
+
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT <nameColumn>, json FROM <table> <cond> AND "
+            + "<nameColumn> < :before "
+            + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+            "ORDER BY <nameColumn> DESC "
+            + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+            "LIMIT :limit"
+            + ") last_rows_subquery ORDER BY <nameColumn>")
+    List<String> listBefore(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @SqlQuery(
+        "SELECT json FROM <table> <cond> AND " + "<nameColumn> > :after " + "ORDER BY <nameColumn> " + "LIMIT :limit")
+    List<String> listAfter(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
+
+    default List<String> listUsersUnderOrganization(String teamId) {
+      return listUsersUnderOrganization(teamId, Relationship.HAS.ordinal());
+    }
+
+    default List<String> listTeamsUnderOrganization(String teamId) {
+      return listTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());
+    }
+
+    @SqlQuery(
+        "SELECT ue.id "
+            + "FROM user_entity ue "
+            + "WHERE ue.id NOT IN (SELECT :teamId) UNION "
+            + "(SELECT toId FROM entity_relationship "
+            + "WHERE fromId != :teamId AND fromEntity = `team` AND relation = :relation AND toEntity = `user`)")
+    List<String> listUsersUnderOrganization(@Bind("teamId") String teamId, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT te.id "
+            + "FROM team_entity te "
+            + "WHERE te.id NOT IN (SELECT :teamId) UNION "
+            + "(SELECT toId FROM entity_relationship "
+            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team')")
+    List<String> listTeamsUnderOrganization(@Bind("teamId") String teamId, @Bind("relation") int relation);
   }
 
   interface TopicDAO extends EntityDAO<Topic> {
