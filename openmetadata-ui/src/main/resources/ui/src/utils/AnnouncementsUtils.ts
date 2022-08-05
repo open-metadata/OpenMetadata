@@ -15,7 +15,7 @@ export const validateMessages = {
 };
 
 export const isActiveAnnouncement = (startTime: number, endTime: number) => {
-  const currentTime = Date.now();
+  const currentTime = Date.now() / 1000;
 
   return currentTime > startTime && currentTime < endTime;
 };

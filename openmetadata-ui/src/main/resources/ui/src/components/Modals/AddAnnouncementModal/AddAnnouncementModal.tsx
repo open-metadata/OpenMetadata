@@ -61,8 +61,8 @@ const AddAnnouncementModal: FC<Props> = ({
       about: getEntityFeedLink(entityType, entityFQN),
       announcementDetails: {
         description,
-        startTime: getUTCDateTime(startDate),
-        endTime: getUTCDateTime(endDate),
+        startTime: Math.floor(getUTCDateTime(startDate) / 1000),
+        endTime: Math.floor(getUTCDateTime(endDate) / 1000),
       },
       type: ThreadType.Announcement,
     };
