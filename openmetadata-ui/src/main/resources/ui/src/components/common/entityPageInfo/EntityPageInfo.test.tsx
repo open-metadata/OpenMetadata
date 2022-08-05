@@ -256,6 +256,14 @@ jest.mock('../title-breadcrumb/title-breadcrumb.component', () => {
   return jest.fn().mockReturnValue(<p>TitleBreadCrumb</p>);
 });
 
+jest.mock('./AnnouncementCard/AnnouncementCard', () => {
+  return jest.fn().mockReturnValue(<div>AnnouncementCard</div>);
+});
+
+jest.mock('./AnnouncementDrawer/AnnouncementDrawer', () => {
+  return jest.fn().mockReturnValue(<div>AnnouncementDrawer</div>);
+});
+
 describe('Test EntityPageInfo component', () => {
   it('Check if it has all child elements', async () => {
     const { container } = render(<EntityPageInfo {...mockEntityInfoProp} />, {

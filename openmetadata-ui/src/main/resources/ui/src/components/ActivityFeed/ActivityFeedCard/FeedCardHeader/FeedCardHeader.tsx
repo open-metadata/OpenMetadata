@@ -45,88 +45,76 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     history.push(getUserPath(name));
   };
 
-  const getFeedLinkElement = () => {
-    if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
-      return (
-        <span className="tw-font-normal" data-testid="headerText">
-          <span className="tw-mx-1">posted on</span>
-          {isEntityFeed ? (
-            <span className="tw-heading" data-testid="headerText-entityField">
-              {getEntityFieldDisplay(entityField)}
-            </span>
-          ) : (
-            <>
-              <span data-testid="entityType">{entityType} </span>
-              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-                <Link
-                  className="tw-break-all"
-                  data-testid="entitylink"
-                  to={prepareFeedLink(entityType, entityFQN)}>
-                  <span>{entityDisplayName(entityType, entityFQN)}</span>
-                </Link>
-              </EntityPopOverCard>
-            </>
-          )}
-        </span>
-      );
-    } else {
-      return null;
-    }
-  };
+  const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
 
-  const getTaskLinkElement = () => {
-    if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
-      return (
-        <span className="tw-font-normal">
-          <span className="tw-mx-1">created a task</span>
-          <Link
-            data-testid="tasklink"
-            to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
-            <span>
-              {`#${taskDetails?.id} `}
-              {taskDetails?.type}
-            </span>
-          </Link>
-          <span className="tw-mx-1">for</span>
-          {isEntityFeed ? (
-            <span className="tw-heading" data-testid="headerText-entityField">
-              {getEntityFieldDisplay(entityField)}
-            </span>
-          ) : (
-            <>
-              <span className="tw-pr-1">{entityType}</span>
-              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-                <Link
-                  className="tw-break-all"
-                  data-testid="entitylink"
-                  to={prepareFeedLink(entityType, entityFQN)}>
-                  {entityDisplayName(entityType, entityFQN)}
-                </Link>
-              </EntityPopOverCard>
-            </>
-          )}
+  const getFeedLinkElement = entityCheck && (
+    <span className="tw-font-normal" data-testid="headerText">
+      <span className="tw-mx-1">posted on</span>
+      {isEntityFeed ? (
+        <span className="tw-heading" data-testid="headerText-entityField">
+          {getEntityFieldDisplay(entityField)}
         </span>
-      );
-    } else {
-      return null;
-    }
-  };
+      ) : (
+        <>
+          <span data-testid="entityType">{entityType} </span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="tw-break-all"
+              data-testid="entitylink"
+              to={prepareFeedLink(entityType, entityFQN)}>
+              <span>{entityDisplayName(entityType, entityFQN)}</span>
+            </Link>
+          </EntityPopOverCard>
+        </>
+      )}
+    </span>
+  );
 
-  const getAnnouncementLinkElement = () => {
-    return (
-      <span className="tw-mx-1">
-        made an announcement for {entityType}{' '}
-        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <Link
-            className="tw-break-all"
-            data-testid="entitylink"
-            to={prepareFeedLink(entityType, entityFQN)}>
-            {entityDisplayName(entityType, entityFQN)}
-          </Link>
-        </EntityPopOverCard>
-      </span>
-    );
-  };
+  const getTaskLinkElement = entityCheck && (
+    <span className="tw-font-normal">
+      <span className="tw-mx-1">created a task</span>
+      <Link
+        data-testid="tasklink"
+        to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
+        <span>
+          {`#${taskDetails?.id} `}
+          {taskDetails?.type}
+        </span>
+      </Link>
+      <span className="tw-mx-1">for</span>
+      {isEntityFeed ? (
+        <span className="tw-heading" data-testid="headerText-entityField">
+          {getEntityFieldDisplay(entityField)}
+        </span>
+      ) : (
+        <>
+          <span className="tw-pr-1">{entityType}</span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="tw-break-all"
+              data-testid="entitylink"
+              to={prepareFeedLink(entityType, entityFQN)}>
+              {entityDisplayName(entityType, entityFQN)}
+            </Link>
+          </EntityPopOverCard>
+        </>
+      )}
+    </span>
+  );
+
+  const getAnnouncementLinkElement = entityCheck && (
+    <span className="tw-mx-1">
+      made an announcement for {entityType}{' '}
+      <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+        <Link
+          className="tw-break-all"
+          data-testid="entitylink"
+          to={prepareFeedLink(entityType, entityFQN)}>
+          {entityDisplayName(entityType, entityFQN)}
+        </Link>
+      </EntityPopOverCard>
+    </span>
+  );
 
   return (
     <div className={classNames('tw-inline-block', className)}>
@@ -141,9 +129,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         </span>
       </UserPopOverCard>
 
-      {feedType === ThreadType.Conversation && getFeedLinkElement()}
-      {feedType === ThreadType.Task && getTaskLinkElement()}
-      {feedType === ThreadType.Announcement && getAnnouncementLinkElement()}
+      {feedType === ThreadType.Conversation && getFeedLinkElement}
+      {feedType === ThreadType.Task && getTaskLinkElement}
+      {feedType === ThreadType.Announcement && getAnnouncementLinkElement}
 
       <span className="tw-text-grey-muted" data-testid="timestamp">
         {timeStamp && ' - ' + getDayTimeByTimeStamp(timeStamp)}

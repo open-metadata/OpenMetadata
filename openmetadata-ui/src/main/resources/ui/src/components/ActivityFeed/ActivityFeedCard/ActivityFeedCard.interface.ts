@@ -13,6 +13,7 @@
 
 import { HTMLAttributes } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
+import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import {
   Post,
   TaskDetails,
@@ -38,6 +39,7 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   isFooterVisible?: boolean;
   isThread?: boolean;
   taskDetails?: TaskDetails;
+  announcementDetails?: AnnouncementDetails;
   onThreadSelect?: (id: string) => void;
   onConfirmation?: (data: ConfirmState) => void;
   updateThreadHandler: ThreadUpdatedFunc;
@@ -54,7 +56,7 @@ export interface FeedHeaderProp
 }
 export interface FeedBodyProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'isThread'> {
+    Pick<ActivityFeedCardProp, 'isThread' | 'announcementDetails'> {
   message: string;
   reactions: Post['reactions'];
   onReactionSelect: (

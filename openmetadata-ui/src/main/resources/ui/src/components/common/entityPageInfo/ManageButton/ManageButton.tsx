@@ -17,7 +17,6 @@ import React, { FC, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
-import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnouncementModal';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 
 interface Props {
@@ -25,17 +24,17 @@ interface Props {
   entityId?: string;
   entityType?: string;
   entityFQN?: string;
+  onAnnouncementClick: () => void;
 }
 
 const ManageButton: FC<Props> = ({
   entityName,
   entityType,
   entityId,
-  entityFQN,
+  onAnnouncementClick,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
 
   const menu = (
     <Menu
@@ -74,13 +73,13 @@ const ManageButton: FC<Props> = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowActions(false);
-                      setIsAnnouncement(true);
+                      onAnnouncementClick();
                     }}>
                     <SVGIcons alt="Delete" icon={Icons.ANNOUNCEMENT} />
                     <div
                       className="tw-text-left"
                       data-testid="announcement-button">
-                      <p className="tw-font-medium">Make an Announcement</p>
+                      <p className="tw-font-medium">Manage Announcement</p>
                       <p className="tw-text-grey-muted tw-text-xs">
                         Set up banners to inform your team of upcoming
                         maintenance, updates, &amp; deletions.
@@ -102,7 +101,7 @@ const ManageButton: FC<Props> = ({
         arrow
         align={{ targetOffset: [-12, 8] }}
         overlay={menu}
-        overlayStyle={{ width: '500px' }}
+        overlayStyle={{ width: '400px' }}
         placement="bottomRight"
         trigger={['click']}
         visible={showActions}
@@ -126,14 +125,6 @@ const ManageButton: FC<Props> = ({
           entityType={entityType || ''}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
-        />
-      )}
-      {isAnnouncement && (
-        <AddAnnouncementModal
-          entityFQN={entityFQN || ''}
-          entityType={entityType || ''}
-          open={isAnnouncement}
-          onCancel={() => setIsAnnouncement(false)}
         />
       )}
     </>
