@@ -45,6 +45,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -79,7 +80,12 @@ public class DatabaseServiceResource
   }
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(DatabaseService.class, new DatabaseServiceRepository(dao, secretsManager), authorizer, secretsManager);
+    super(
+        DatabaseService.class,
+        new DatabaseServiceRepository(dao, secretsManager),
+        authorizer,
+        secretsManager,
+        ServiceType.DATABASE);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {

@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.PipelineConnection;
@@ -28,7 +29,8 @@ public class PipelineServiceRepository extends ServiceRepository<PipelineService
         dao,
         dao.pipelineServiceDAO(),
         secretsManager,
-        PipelineConnection.class);
+        PipelineConnection.class,
+        ServiceType.PIPELINE);
   }
 
   @Override

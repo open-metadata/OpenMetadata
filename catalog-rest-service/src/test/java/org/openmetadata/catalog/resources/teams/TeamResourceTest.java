@@ -19,6 +19,8 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
@@ -30,7 +32,6 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
@@ -42,6 +43,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -59,6 +61,7 @@ import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -77,6 +80,7 @@ import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
@@ -94,13 +98,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     TEAM_OWNER1 = TEAM1.getEntityReference();
 
-    ORG_TEAM = teamResourceTest.getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
+    ORG_TEAM = teamResourceTest.getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void test_organization() throws HttpResponseException {
     // Ensure getting organization from team hierarchy is successful
-    Team org = getEntityByName(Entity.ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
+    Team org = getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
 
     // Organization can't be deleted
     assertResponse(
@@ -181,9 +185,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Team -- has --> Role relationships are deleted
     deleteAndCheckEntity(team, ADMIN_AUTH_HEADERS);
 
-    // Ensure that the user does not have relationship to this team
+    // Ensure that the user does not have relationship to this team and is moved to the default team - Organization.
     User user = userResourceTest.getEntity(user1.getId(), "teams", ADMIN_AUTH_HEADERS);
-    assertDeleted(user.getTeams(), true);
+    assertEquals(1, user.getTeams().size());
+    assertEquals(ORG_TEAM.getId(), user.getTeams().get(0).getId());
 
     // Ensure that the role is not deleted
     Role role = roleResourceTest.getEntity(role1.getId(), "", ADMIN_AUTH_HEADERS);
@@ -354,6 +359,23 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         createWithChildren(
             "t1", BUSINESS_UNIT, bu11.getEntityReference(), div12.getEntityReference(), dep13.getEntityReference());
     assertEntityReferencesContain(t1.getParents(), ORG_TEAM.getEntityReference());
+
+    // assert children count for the newly created bu team
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parentTeam", "t1");
+    queryParams.put("fields", "childrenCount,userCount");
+    ResultList<Team> teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, teams.getData().size());
+    assertEquals(3, teams.getPaging().getTotal());
+    assertEquals(0, teams.getData().get(0).getChildrenCount());
+    assertEquals(0, teams.getData().get(0).getUserCount());
+
+    queryParams.put("parentTeam", ORGANIZATION_NAME);
+    teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertTrue(teams.getData().stream().anyMatch(t -> t.getName().equals("t1")));
+    t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).collect(Collectors.toList()).get(0);
+    assertEquals(3, t1.getChildrenCount());
+    assertEquals(0, t1.getUserCount());
 
     //
     // Creating a parent with invalid children type is not allowed
@@ -705,7 +727,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
     Rule rule =
-        new Rule().withName("TeamManagerPolicy-UpdateTeam").withAllow(true).withOperation(MetadataOperation.EDIT_USERS);
+        new Rule()
+            .withName("TeamManagerPolicy-UpdateTeam")
+            .withEffect(Effect.ALLOW)
+            .withResources(List.of(Entity.TEAM))
+            .withOperations(List.of(MetadataOperation.EDIT_USERS));
 
     // Create a policy with the rule
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();

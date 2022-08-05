@@ -25,10 +25,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -36,19 +33,24 @@ import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.PipelineStatus;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension";
   private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension";
+  public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
   public PipelineRepository(CollectionDAO dao) {
     super(
@@ -84,48 +86,110 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return pipeline;
   }
 
-  private List<PipelineStatus> getPipelineStatus(Pipeline pipeline) throws IOException {
-    List<PipelineStatus> pipelineStatus =
-        JsonUtils.readObjects(
-            daoCollection.entityExtensionDAO().getExtension(pipeline.getId().toString(), "pipeline.pipelineStatus"),
-            PipelineStatus.class);
-    if (pipelineStatus != null) {
-      pipelineStatus.sort(Comparator.comparing(PipelineStatus::getExecutionDate, Comparator.reverseOrder()));
-    }
-    return pipelineStatus;
+  private PipelineStatus getPipelineStatus(Pipeline pipeline) throws IOException {
+    return JsonUtils.readValue(
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtension(pipeline.getId().toString(), PIPELINE_STATUS_EXTENSION),
+        PipelineStatus.class);
   }
 
   @Transaction
   public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
-    Map<Long, PipelineStatus> storedMapStatus = new HashMap<>();
-
-    // Add stored status
-    List<PipelineStatus> storedPipelineStatus = getPipelineStatus(pipeline);
-    if (storedPipelineStatus != null) {
-      for (PipelineStatus status : storedPipelineStatus) {
-        storedMapStatus.put(status.getExecutionDate(), status);
-      }
-    }
-
     // validate all the Tasks
     for (Status taskStatus : pipelineStatus.getTaskStatus()) {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    // Add new status
-    storedMapStatus.put(pipelineStatus.getExecutionDate(), pipelineStatus);
+    PipelineStatus storedPipelineStatus =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getExtensionAtTimestamp(
+                    pipelineId.toString(), PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp()),
+            PipelineStatus.class);
+    if (storedPipelineStatus != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              pipelineId.toString(),
+              PIPELINE_STATUS_EXTENSION,
+              JsonUtils.pojoToJson(pipelineStatus),
+              pipelineStatus.getTimestamp());
+    } else {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .insert(
+              pipelineId.toString(),
+              pipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              "pipelineStatus",
+              JsonUtils.pojoToJson(pipelineStatus));
+      setFields(pipeline, EntityUtil.Fields.EMPTY_FIELDS);
+    }
+    return pipeline.withPipelineStatus(pipelineStatus);
+  }
 
-    // Prepare to update status
-    List<PipelineStatus> updatedStatus = new ArrayList<>(storedMapStatus.values());
+  @Transaction
+  public Pipeline deletePipelineStatus(UUID pipelineId, Long timestamp) throws IOException {
+    // Validate the request content
+    Pipeline pipeline = dao.findEntityById(pipelineId);
+    PipelineStatus storedPipelineStatus =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getExtensionAtTimestamp(pipelineId.toString(), PIPELINE_STATUS_EXTENSION, timestamp),
+            PipelineStatus.class);
+    if (storedPipelineStatus != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .deleteAtTimestamp(pipelineId.toString(), PIPELINE_STATUS_EXTENSION, timestamp);
+      pipeline.setPipelineStatus(storedPipelineStatus);
+      return pipeline;
+    }
+    throw new EntityNotFoundException(
+        String.format("Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
+  }
 
-    daoCollection
-        .entityExtensionDAO()
-        .insert(
-            pipelineId.toString(), "pipeline.pipelineStatus", "pipelineStatus", JsonUtils.pojoToJson(updatedStatus));
-    setFields(pipeline, Fields.EMPTY_FIELDS);
-    return pipeline.withPipelineStatus(getPipelineStatus(pipeline));
+  public ResultList<PipelineStatus> getPipelineStatuses(ListFilter filter, String before, String after, int limit)
+      throws IOException {
+    List<PipelineStatus> pipelineStatuses;
+    int total;
+    // Here timestamp is used for page marker since table profiles are sorted by timestamp
+    long time = Long.MAX_VALUE;
+
+    if (before != null) { // Reverse paging
+      time = Long.parseLong(RestUtil.decodeCursor(before));
+      pipelineStatuses =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), PipelineStatus.class);
+    } else { // Forward paging or first page
+      if (after != null) {
+        time = Long.parseLong(RestUtil.decodeCursor(after));
+      }
+      pipelineStatuses =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), PipelineStatus.class);
+    }
+    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
+    String beforeCursor = null;
+    String afterCursor = null;
+    if (before != null) {
+      if (pipelineStatuses.size() > limit) { // If extra result exists, then previous page exists - return before cursor
+        pipelineStatuses.remove(0);
+        beforeCursor = pipelineStatuses.get(0).getTimestamp().toString();
+      }
+      afterCursor = pipelineStatuses.get(pipelineStatuses.size() - 1).getTimestamp().toString();
+    } else {
+      beforeCursor = after == null ? null : pipelineStatuses.get(0).getTimestamp().toString();
+      if (pipelineStatuses.size() > limit) { // If extra result exists, then next page exists - return after cursor
+        pipelineStatuses.remove(limit);
+        afterCursor = pipelineStatuses.get(limit - 1).getTimestamp().toString();
+      }
+    }
+    return new ResultList<>(pipelineStatuses, beforeCursor, afterCursor, total);
   }
 
   // Validate if a given task exists in the pipeline

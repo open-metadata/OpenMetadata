@@ -72,7 +72,6 @@ public class IngestionPipelineResourceUnitTest {
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(entityDAO.findEntityById(any(), any())).thenReturn(ingestionPipeline);
     when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(mock(EntityReference.class));
-    when(entityDAO.getEntityClass()).thenReturn(IngestionPipeline.class);
     when(ingestionPipeline.getId()).thenReturn(UUID.fromString(DAG_ID));
     ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer, mock(SecretsManager.class));
   }

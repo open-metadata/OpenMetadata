@@ -7,24 +7,10 @@
   "enabled": true,
   "rules": [
     {
-      "name": "DataStewardPolicy-editDescription",
-      "operation": "EditDescription",
-      "allow": true
-    },
-    {
-      "name": "DataStewardPolicy-editLineage",
-      "operation": "EditLineage",
-      "allow": true
-    },
-    {
-      "name": "DataStewardPolicy-editOwner",
-      "operation": "EditOwner",
-      "allow": true
-    },
-    {
-      "name": "DataStewardPolicy-editTags",
-      "operation": "EditTags",
-      "allow": true
+      "name": "DataStewardPolicy-EditRule",
+      "resources" : ["all"],
+      "operations": ["EditDescription", "EditLineage", "EditOwner", "EditTags"],
+      "effect": "allow"
     }
   ]
 }

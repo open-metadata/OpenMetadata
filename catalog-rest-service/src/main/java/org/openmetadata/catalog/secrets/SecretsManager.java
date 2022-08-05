@@ -5,9 +5,9 @@ import static java.util.Objects.isNull;
 import com.google.common.base.CaseFormat;
 import java.util.List;
 import lombok.Getter;
-import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.exception.SecretsManagerException;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 
@@ -24,18 +24,7 @@ public abstract class SecretsManager {
   public abstract boolean isLocal();
 
   public abstract Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig, String connectionType, String connectionName, String connectionPackage, boolean encrypt);
-
-  public void encryptOrDecryptServiceConnection(
-      ServiceConnectionEntityInterface serviceConnection, String serviceType, String connectionName, boolean encrypt) {
-    serviceConnection.setConfig(
-        encryptOrDecryptServiceConnectionConfig(
-            serviceConnection.getConfig(),
-            serviceType,
-            connectionName,
-            extractConnectionPackageName(serviceConnection),
-            encrypt));
-  }
+      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt);
 
   public OpenMetadataServerConnection decryptServerConnection(AirflowConfiguration airflowConfiguration) {
     OpenMetadataServerConnection.AuthProvider authProvider =
@@ -71,8 +60,7 @@ public abstract class SecretsManager {
     return Class.forName(clazzName);
   }
 
-  private String extractConnectionPackageName(ServiceConnectionEntityInterface serviceConnection) {
-    String upperCamelClassName = serviceConnection.getClass().getSimpleName().replace("Connection", "");
-    return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, upperCamelClassName);
+  protected String extractConnectionPackageName(ServiceType serviceType) {
+    return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, serviceType.value());
   }
 }

@@ -36,7 +36,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 }
 
 const ExecutionStrip = ({
-  executions = [],
+  executions,
   selectedExecution,
   onSelectExecution,
 }: Props) => {
@@ -56,7 +56,7 @@ const ExecutionStrip = ({
   };
 
   const getExecutionTooltip = (execution: PipelineStatus) => {
-    const executionDate = execution.executionDate as number;
+    const executionDate = execution.timestamp as number;
     const momentDate = moment.unix(executionDate).format('DD MMM YYYY');
     const momentTime = moment.unix(executionDate).format('hh:mm A');
 
@@ -115,36 +115,28 @@ const ExecutionStrip = ({
         className="tw-w-full tw-overflow-x-auto tw-pt-20 tw-pb-3"
         ref={tableRef}>
         <div className="tw-flex" id="executionTimeline">
-          {executions
-            .map((execution, i) => {
-              const isSelected = _.isEqual(execution, selectedExecution);
-
-              return (
-                <div className="data-box-wrapper tw-mr-5" key={i}>
-                  <div className="tw-relative">
-                    <div className="exec-date-time">
-                      {getExecutionTooltip(execution)}
-                    </div>
-                    <div
-                      className={classNames(
-                        'data-box',
-                        execution.executionStatus,
-                        {
-                          selected: isSelected,
-                        }
-                      )}
-                      onClick={() => onSelectExecution(execution)}>
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        color={isSelected ? '#FFFFFF' : 'transparent'}
-                        icon="check"
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-            .reverse()}
+          <div className="data-box-wrapper tw-mr-5">
+            <div className="tw-relative">
+              <div className="exec-date-time">
+                {getExecutionTooltip(executions || {})}
+              </div>
+              <div
+                className={classNames('data-box', executions?.executionStatus, {
+                  selected: _.isEqual(executions, selectedExecution),
+                })}
+                onClick={() => onSelectExecution(executions || {})}>
+                <FontAwesomeIcon
+                  className="tw-w-3.5 tw-h-3.5"
+                  color={
+                    _.isEqual(executions, selectedExecution)
+                      ? '#FFFFFF'
+                      : 'transparent'
+                  }
+                  icon="check"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

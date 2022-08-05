@@ -1,0 +1,98 @@
+{
+    "testCaseResults": [
+        {
+            "name": "table_column_count_equals",
+            "results": [
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 8 columns vs. the expected 10",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found 8 columns vs. the expected 10",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "columnCount should not be None for TableColumnCountToEqual",
+                    "testCaseStatus": "Aborted"
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 10 columns vs. the expected 10",
+                    "testCaseStatus": "Success"
+                }
+            ]
+        },
+        {
+            "name": "table_column_count_between",
+            "results": [
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "columnCount should not be None for TableColumnCountToBeBetween",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 9 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 14 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 8 column vs. the expected range [1, 10].",
+                    "testCaseStatus": "Success"
+                }
+            ]
+        }
+    ]
+}

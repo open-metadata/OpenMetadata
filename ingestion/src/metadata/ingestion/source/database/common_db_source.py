@@ -52,6 +52,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -90,6 +91,7 @@ class CommonDbSourceService(
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
+        self.context.table_views = []
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -276,6 +278,13 @@ class CommonDbSourceService(
                 inspector=self.inspector,
             )
 
+            view_definition = self.get_view_definition(
+                table_type=table_type,
+                table_name=table_name,
+                schema_name=schema_name,
+                inspector=self.inspector,
+            )
+
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
@@ -285,12 +294,7 @@ class CommonDbSourceService(
                     inspector=self.inspector,
                 ),
                 columns=columns,
-                viewDefinition=self.get_view_definition(
-                    table_type=table_type,
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    inspector=self.inspector,
-                ),
+                viewDefinition=view_definition,
                 tableConstraints=table_constraints if table_constraints else None,
                 databaseSchema=EntityReference(
                     id=self.context.database_schema.id,
@@ -300,6 +304,15 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
+
+            if table_type == TableType.View or view_definition:
+                table_view = {
+                    "table_name": table_name,
+                    "table_type": table_type,
+                    "schema_name": schema_name,
+                    "db_name": db_name,
+                }
+                self.context.table_views.append(table_view)
 
             yield table_request
 
@@ -312,54 +325,64 @@ class CommonDbSourceService(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
 
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        table_name, table_type = table_name_and_type
-        table_entity: Table = self.context.table
-        schema_name = self.context.database_schema.name.__root__
-        db_name = self.context.database.name.__root__
-        view_definition = self.get_view_definition(
-            table_type=table_type,
-            table_name=table_name,
-            schema_name=schema_name,
-            inspector=self.inspector,
-        )
-        if table_type != TableType.View or not view_definition:
-            return
-        # Prevent sqllineage from modifying the logger config
-        # Disable the DictConfigurator.configure method while importing LineageRunner
-        configure = DictConfigurator.configure
-        DictConfigurator.configure = lambda _: None
-        from sqllineage.runner import LineageRunner
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        logger.info(f"Processing Lineage for Views")
+        for view in self.context.table_views:
+            table_name = view.get("table_name")
+            table_type = view.get("table_type")
+            schema_name = view.get("schema_name")
+            db_name = view.get("db_name")
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.database_service.name.__root__,
+                database_name=db_name,
+                schema_name=schema_name,
+                table_name=table_name,
+            )
+            table_entity = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_fqn,
+            )
+            view_definition = self.get_view_definition(
+                table_type=table_type,
+                table_name=table_name,
+                schema_name=schema_name,
+                inspector=self.inspector,
+            )
+            # Prevent sqllineage from modifying the logger config
+            # Disable the DictConfigurator.configure method while importing LineageRunner
+            configure = DictConfigurator.configure
+            DictConfigurator.configure = lambda _: None
+            from sqllineage.runner import LineageRunner
 
-        # Reverting changes after import is done
-        DictConfigurator.configure = configure
+            # Reverting changes after import is done
+            DictConfigurator.configure = configure
 
-        try:
-            result = LineageRunner(view_definition)
-            if result.source_tables and result.target_tables:
-                yield from get_lineage_by_query(
-                    self.metadata,
-                    query=view_definition,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=db_name,
-                    schema_name=schema_name,
-                ) or []
+            try:
+                result = LineageRunner(view_definition)
+                if result.source_tables and result.target_tables:
+                    yield from get_lineage_by_query(
+                        self.metadata,
+                        query=view_definition,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=db_name,
+                        schema_name=schema_name,
+                    ) or []
 
-            else:
-                yield from get_lineage_via_table_entity(
-                    self.metadata,
-                    table_entity=table_entity,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=db_name,
-                    schema_name=schema_name,
-                    query=view_definition,
-                ) or []
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Query : {view_definition}")
-            logger.warning("Could not parse query: Ingesting lineage failed")
+                else:
+                    yield from get_lineage_via_table_entity(
+                        self.metadata,
+                        table_entity=table_entity,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=db_name,
+                        schema_name=schema_name,
+                        query=view_definition,
+                    ) or []
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.debug(f"Query : {view_definition}")
+                logger.warning("Could not parse query: Ingesting lineage failed")
 
     def test_connection(self) -> None:
         """
