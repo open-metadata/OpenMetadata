@@ -48,6 +48,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.TestDefinitionEntityType;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -154,9 +155,17 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
+          Include include,
+      @Parameter(
+              description = "Filter by entityType.",
+              schema = @Schema(implementation = TestDefinitionEntityType.class))
+          @QueryParam("entityType")
+          String entityType)
       throws IOException {
     ListFilter filter = new ListFilter(include);
+    if (entityType != null) {
+      filter.addQueryParam("entityType", entityType);
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -370,6 +379,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
     return copy(new TestDefinition(), create, user)
         .withDescription(create.getDescription())
+        .withEntityType(create.getEntityType())
         .withTestPlatforms(create.getTestPlatforms())
         .withDisplayName(create.getDisplayName())
         .withParameterDefinition(create.getParameterDefinition())

@@ -185,8 +185,7 @@ class ProfilerWorkflow:
             entity=Table,
             fields=[
                 "tableProfile",
-                "profileSample",
-                "profileQuery",
+                "tableProfilerConfig",
                 "tests",
             ],
             params={

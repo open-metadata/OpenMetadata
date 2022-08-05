@@ -7,7 +7,23 @@ Named volumes can persist data after we restart or remove a container. Also, itâ
 
 For example:
 
-<Image src="/images/deployment/docker/example-volumes.png" alt="volumes"/>
+```yaml
+version: 3.8
+services:
+  db:
+    image:mysql
+    restart:always
+    environment:
+       MYSQL_ROOT_PASSWORD: root
+       MYSQL_DATABASE: test_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+  volumes:
+    db_data
+```
+
 
 Here, the first field is a unique name of the volume on a host machine. The second field is the path in the container.
 

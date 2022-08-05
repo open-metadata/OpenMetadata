@@ -90,9 +90,10 @@ class TopologyRunnerMixin(Generic[C]):
 
             if node.post_process:
                 logger.debug(f"Post processing node {node}")
-                node_post_process = getattr(self, node.post_process)
-                for entity_request in node_post_process():
-                    yield entity_request
+                for process in node.post_process:
+                    node_post_process = getattr(self, process)
+                    for entity_request in node_post_process():
+                        yield entity_request
 
     def next_record(self) -> Iterable[Entity]:
         """

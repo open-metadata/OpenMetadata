@@ -28,6 +28,8 @@ from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -378,6 +380,33 @@ class SQAProfilerInterface(InterfaceProtocol):
         except Exception as err:
             logger.error(err)
             self.session.rollback()
+
+    def run_test_case(
+        self,
+        test_case: TestCase,
+        test_definition: TestDefinition,
+        table_profile: TableProfile,
+        orm_table: DeclarativeMeta,
+        profile_sample: float,
+    ) -> Optional[TestCaseResult]:
+        """Run table tests where platformsTest=OpenMetadata
+
+        Args:
+            table_test_type: test type to be ran
+            table_profile: table profile
+            table: SQA table,
+            profile_sample: sample for the profile
+        """
+
+        return validation_enum_registry.registry[test_definition.name.__root__](
+            test_case,
+            test_definition,
+            table_profile=table_profile,
+            execution_date=datetime.now(),
+            session=self.session,
+            table=orm_table,
+            profile_sample=profile_sample,
+        )
 
     def run_table_test(
         self,

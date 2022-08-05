@@ -4,9 +4,6 @@ from typing import Type
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.utils.logger import utils_logger
-
-logger = utils_logger()
 
 
 def _clean(source_type: str):

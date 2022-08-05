@@ -122,7 +122,7 @@ const PipelineDetailsProps = {
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
-  pipelineStatus: [],
+  pipelineStatus: {},
   isPipelineStatusLoading: false,
   updateThreadHandler: jest.fn(),
   onExtensionUpdate: jest.fn(),
