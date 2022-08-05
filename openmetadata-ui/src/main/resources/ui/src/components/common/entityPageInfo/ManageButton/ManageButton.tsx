@@ -36,7 +36,6 @@ const ManageButton: FC<Props> = ({
   entityName,
   entityType,
   entityId,
-  entityFQN,
   isRecursiveDelete,
   onAnnouncementClick,
 }) => {
