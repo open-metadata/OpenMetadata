@@ -16,6 +16,7 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
+import traceback
 from copy import deepcopy
 from typing import Iterable, List
 
@@ -50,9 +51,9 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_fqn, filter_by_table, filter_by_schema
+from metadata.utils.filters import filter_by_fqn, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
-import traceback
+
 logger = profiler_logger()
 
 
@@ -129,7 +130,8 @@ class ProfilerWorkflow:
                     table.databaseSchema.name,
                 ):
                     self.source_status.filter(
-                        table.databaseSchema.fullyQualifiedName, "Schema pattern not allowed"
+                        table.databaseSchema.fullyQualifiedName,
+                        "Schema pattern not allowed",
                     )
                     continue
                 if filter_by_table(
@@ -144,9 +146,7 @@ class ProfilerWorkflow:
                 self.source_status.scanned(table.fullyQualifiedName.__root__)
                 yield table
             except Exception as err:  # pylint: disable=broad-except
-                self.source_status.filter(
-                    table.fullyQualifiedName.__root__, f"{err}"
-                )
+                self.source_status.filter(table.fullyQualifiedName.__root__, f"{err}")
                 logger.error(err)
                 logger.debug(traceback.format_exc())
 
@@ -226,7 +226,8 @@ class ProfilerWorkflow:
             try:
 
                 if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "supportsDatabase"
+                    self.config.source.serviceConnection.__root__.config,
+                    "supportsDatabase",
                 ):
                     if hasattr(
                         self.config.source.serviceConnection.__root__.config, "database"

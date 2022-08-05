@@ -23,7 +23,8 @@ FROM airflow as apis
 WORKDIR /openmetadata-airflow-apis
 COPY openmetadata-airflow-apis /openmetadata-airflow-apis
 
-RUN pip install "."
+RUN pip install "." "openmetadata-ingestion[all]"
+RUN pip uninstall openmetadata-ingestion -y
 
 FROM apis as ingestion
 WORKDIR /ingestion
