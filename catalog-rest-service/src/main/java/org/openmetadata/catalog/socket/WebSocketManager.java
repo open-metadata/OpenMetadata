@@ -19,6 +19,7 @@ public class WebSocketManager {
   public static final String feedBroadcastChannel = "activityFeed";
   public static final String taskBroadcastChannel = "taskChannel";
   public static final String mentionChannel = "mentionChannel";
+  public static final String announcementChannel = "announcementChannel";
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
@@ -67,6 +68,8 @@ public class WebSocketManager {
                   allUserConnection.remove(socket.getId());
                   activityFeedEndpoints.put(id, allUserConnection);
                 });
+
+            // On Socket Connection Error
             socket.on(
                 "connect_error",
                 args1 ->
@@ -76,6 +79,8 @@ public class WebSocketManager {
                             + "with Remote Address :"
                             + socket.getInitialHeaders().get("RemoteAddress")
                             + " disconnected."));
+
+            // On Socket Connection Failure
             socket.on(
                 "connect_failed",
                 args1 ->

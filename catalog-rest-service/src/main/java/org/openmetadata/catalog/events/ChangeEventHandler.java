@@ -186,8 +186,7 @@ public class ChangeEventHandler implements EventHandler {
                 });
             return;
           case Announcement:
-          default:
-            return;
+              WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.announcementChannel, jsonThread);
         }
       } catch (JsonProcessingException e) {
         throw new RuntimeException(e);
