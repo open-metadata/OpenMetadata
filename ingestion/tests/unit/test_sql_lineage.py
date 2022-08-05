@@ -12,12 +12,18 @@
 """
 sql lineage utils tests
 """
-
-from unittest import TestCase
-
-from sqllineage.runner import LineageRunner
-
 from metadata.utils.sql_lineage import populate_column_lineage_map
+from unittest import TestCase
+from sqllineage.runner import LineageRunner
+from logging.config import DictConfigurator
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
+
+# Reverting changes after import is done
+DictConfigurator.configure = configure
+
 
 QUERY = [
     "CREATE TABLE MYTABLE2 AS SELECT * FROM MYTABLE1;",
