@@ -13,7 +13,7 @@ Helper functions to handle SQL lineage operations
 """
 import traceback
 from logging.config import DictConfigurator
-from typing import Any, Iterator, List, Optional, Iterable
+from typing import Any, Iterable, Iterator, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -246,7 +246,6 @@ def _create_lineage_by_table_name(
                     to_table_raw_name=to_table,
                     from_table_raw_name=from_table,
                     query=query,
-                    from_table_raw_name=str(from_table),
                     column_lineage_map=column_lineage_map,
                 )
 

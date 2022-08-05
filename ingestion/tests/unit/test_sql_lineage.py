@@ -12,10 +12,13 @@
 """
 sql lineage utils tests
 """
-from metadata.utils.sql_lineage import populate_column_lineage_map
-from unittest import TestCase
-from sqllineage.runner import LineageRunner
 from logging.config import DictConfigurator
+from unittest import TestCase
+
+from sqllineage.runner import LineageRunner
+
+from metadata.utils.sql_lineage import populate_column_lineage_map
+
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
 configure = DictConfigurator.configure
