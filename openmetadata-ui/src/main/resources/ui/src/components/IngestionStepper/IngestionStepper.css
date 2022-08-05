@@ -36,6 +36,7 @@
 }
 
 .ingestion-rounder.completed::after {
+  font-size: 12px;
   content: '\2713';
   display: block;
   margin-top: -4px;
@@ -95,4 +96,47 @@
   border-radius: 50%;
   margin-top: 0.15rem;
   z-index: 1;
+}
+
+.ant-steps-label-vertical .ant-steps-item-tail {
+  padding: 3.5px 0px;
+}
+
+.ant-steps-item-finish
+  > .ant-steps-item-container
+  > .ant-steps-item-tail::after {
+  background-color: #d9ceee;
+  height: 2px;
+}
+
+.ant-steps-item-process
+  > .ant-steps-item-container
+  > .ant-steps-item-tail::after {
+  background-color: #d9ceee;
+  height: 2px;
+}
+
+.ant-steps-small .ant-steps-item-title {
+  font-size: 12px;
+  color: #7147e8;
+}
+
+.ant-steps-item-finish
+  > .ant-steps-item-container
+  > .ant-steps-item-content
+  > .ant-steps-item-title {
+  color: #7147e8;
+}
+
+.ant-steps-item-process
+  > .ant-steps-item-container
+  > .ant-steps-item-content
+  > .ant-steps-item-title {
+  color: black;
+}
+.ant-steps-item-wait
+  > .ant-steps-item-container
+  > .ant-steps-item-content
+  > .ant-steps-item-title {
+  color: black;
 }
