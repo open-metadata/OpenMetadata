@@ -39,8 +39,9 @@ import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.BasicFilter;
 import org.openmetadata.catalog.filter.FilterRegistry;
+import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
@@ -94,7 +95,7 @@ public class ChangeEventHandler implements EventHandler {
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
         // ignore usageSummary updates in the feed
         boolean filterEnabled = true;
-        Filter filter = FilterRegistry.getFilterForEntity(changeEvent.getEntityType());
+        Map<FiltersType, BasicFilter> filter = FilterRegistry.getFilterForEntity(changeEvent.getEntityType());
         filterEnabled = FilterUtil.shouldProcessRequest(changeEvent, filter);
         if (filterEnabled) {
           for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {

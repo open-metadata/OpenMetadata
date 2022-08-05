@@ -102,7 +102,7 @@ public class WebhookPublisher extends AbstractEventPublisher {
 
   private void updateFilter() {
     filter.clear();
-    webhook.getEventFilters().forEach(f -> filter.put(f.getEntityType(), f));
+    updateFilter(webhook.getEventFilters());
   }
 
   private void setErrorStatus(Long attemptTime, Integer statusCode, String reason) throws IOException {

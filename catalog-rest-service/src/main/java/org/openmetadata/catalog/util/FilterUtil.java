@@ -5,7 +5,8 @@ import static org.openmetadata.catalog.filter.FiltersType.ENTITY_CREATED;
 import static org.openmetadata.catalog.filter.FiltersType.ENTITY_DELETED;
 
 import java.util.List;
-import org.openmetadata.catalog.filter.Filter;
+import java.util.Map;
+import org.openmetadata.catalog.filter.BasicFilter;
 import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -14,23 +15,23 @@ import org.openmetadata.catalog.type.FieldChange;
 
 public class FilterUtil {
 
-  public static boolean shouldProcessRequest(ChangeEvent changeEvent, Filter filter) {
+  public static boolean shouldProcessRequest(ChangeEvent changeEvent, Map<FiltersType, BasicFilter> filter) {
     if (filter != null) {
       EventType changeType = changeEvent.getEventType();
       switch (changeType) {
         case ENTITY_CREATED:
-          return filter.getEventFilter().getAdditionalProperties().get(ENTITY_CREATED.toString()).getEnabled();
+          return filter.get(ENTITY_CREATED).getEnabled();
         case ENTITY_UPDATED:
           return getUpdateFilter(changeEvent, filter);
         case ENTITY_DELETED:
-          return filter.getEventFilter().getAdditionalProperties().get(ENTITY_DELETED.toString()).getEnabled();
+          return filter.get(ENTITY_DELETED).getEnabled();
       }
     }
     // continue to post events updates
     return true;
   }
 
-  public static boolean getUpdateFilter(ChangeEvent changeEvent, Filter filter) {
+  public static boolean getUpdateFilter(ChangeEvent changeEvent, Map<FiltersType, BasicFilter> filter) {
     ChangeDescription description = changeEvent.getChangeDescription();
     List<FieldChange> fieldsAdded = description.getFieldsAdded();
     List<FieldChange> fieldsUpdated = description.getFieldsUpdated();
@@ -63,41 +64,30 @@ public class FilterUtil {
     }
   }
 
-  public static boolean isFilterEnabled(ChangeEventParser.CHANGE_TYPE changeType, Filter filter, String updatedField) {
+  public static boolean isFilterEnabled(
+      ChangeEventParser.CHANGE_TYPE changeType, Map<FiltersType, BasicFilter> filter, String updatedField) {
     boolean response = true;
     switch (updatedField) {
       case FIELD_FOLLOWERS:
         if (changeType == ChangeEventParser.CHANGE_TYPE.ADD) {
-          return filter
-              .getEventFilter()
-              .getAdditionalProperties()
-              .get(FiltersType.FOLLOW_ENTITY.toString())
-              .getEnabled();
+          return filter.get(FiltersType.FOLLOW_ENTITY).getEnabled();
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.DELETE) {
-          return filter
-              .getEventFilter()
-              .getAdditionalProperties()
-              .get(FiltersType.UNFOLLOW_ENTITY.toString())
-              .getEnabled();
+          return filter.get(FiltersType.UNFOLLOW_ENTITY).getEnabled();
         }
       case FIELD_TAGS:
         if (changeType == ChangeEventParser.CHANGE_TYPE.ADD) {
-          return filter.getEventFilter().getAdditionalProperties().get(FiltersType.ADDTAGS.toString()).getEnabled();
+          return filter.get(FiltersType.ADDTAGS).getEnabled();
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.UPDATE) {
-          return filter.getEventFilter().getAdditionalProperties().get(FiltersType.UPDATETAGS.toString()).getEnabled();
+          return filter.get(FiltersType.UPDATETAGS).getEnabled();
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.DELETE) {
-          return filter.getEventFilter().getAdditionalProperties().get(FiltersType.REMOVETAGS.toString()).getEnabled();
+          return filter.get(FiltersType.REMOVETAGS).getEnabled();
         }
       case FIELD_DESCRIPTION:
-        return filter
-            .getEventFilter()
-            .getAdditionalProperties()
-            .get(FiltersType.UPDATEDESCRIPTION.toString())
-            .getEnabled();
+        return filter.get(FiltersType.UPDATEDESCRIPTION).getEnabled();
       case FIELD_OWNER:
-        return filter.getEventFilter().getAdditionalProperties().get(FiltersType.UPDATEOWNER.toString()).getEnabled();
+        return filter.get(FiltersType.UPDATEOWNER).getEnabled();
       case FIELD_USAGE_SUMMARY:
-        return filter.getEventFilter().getAdditionalProperties().get(FiltersType.USAGESUMMARY.toString()).getEnabled();
+        return filter.get(FiltersType.USAGESUMMARY).getEnabled();
     }
     return response;
   }

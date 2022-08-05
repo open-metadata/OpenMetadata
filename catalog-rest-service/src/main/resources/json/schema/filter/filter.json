@@ -49,14 +49,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "eventFilter": {
-      "javaType": "org.openmetadata.catalog.filter.EventFilters",
-      "description": "This schema defines all possible filters in OpenMetadata.",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/basicFilter"
-      }
     }
   },
   "properties": {
@@ -66,7 +58,10 @@
     },
     "eventFilter": {
       "description": "List of operations supported by the resource.",
-      "$ref": "#/definitions/eventFilter"
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/basicFilter"
+      }
     }
   },
   "required": ["entityType"],

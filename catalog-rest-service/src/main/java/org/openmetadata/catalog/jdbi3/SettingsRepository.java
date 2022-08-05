@@ -8,6 +8,7 @@ import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.filter.BasicFilter;
 import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.settings.Settings;
@@ -63,10 +64,38 @@ public class SettingsRepository {
     }
   }
 
-  public Response addNewFilter(Filter filter) {
+  public Response addNewFilter(List<Filter> filter) {
     Settings oldValue = getConfigWithKey(SettingsType.ACTIVITY_FEED_FILTER_SETTING.toString());
     List<Filter> existingFilters = (List<Filter>) oldValue.getConfigValue();
-    existingFilters.add(filter);
+    existingFilters.addAll(filter);
+    oldValue.setConfigValue(existingFilters);
+    return createOrUpdate(oldValue);
+  }
+
+  public Response addNewFilterToEntity(String entityType, List<BasicFilter> filters) {
+    Settings oldValue = getConfigWithKey(SettingsType.ACTIVITY_FEED_FILTER_SETTING.toString());
+    // all existing filters
+    List<Filter> existingFilters = (List<Filter>) oldValue.getConfigValue();
+    Filter entititySpecificFilter = null;
+    int position = 0;
+    for (Filter e : existingFilters) {
+      if (e.getEntityType().equals(entityType)) {
+        // filters for entity to Update
+        entititySpecificFilter = e;
+        break;
+      }
+      position++;
+    }
+    if (entititySpecificFilter != null) {
+      // entity has some existing filter
+      entititySpecificFilter.getEventFilter().addAll(filters);
+      existingFilters.set(position, entititySpecificFilter);
+    } else {
+      entititySpecificFilter = new Filter();
+      entititySpecificFilter.setEntityType(entityType);
+      entititySpecificFilter.setEventFilter(filters);
+      existingFilters.add(entititySpecificFilter);
+    }
     oldValue.setConfigValue(existingFilters);
     return createOrUpdate(oldValue);
   }

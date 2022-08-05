@@ -216,7 +216,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
         (type) -> {
           Filter filter = new Filter();
           filter.setEntityType(type);
-          EventFilters eventFilter = new EventFilters();
+          List<BasicFilter> eventFilter = new ArrayList<>();
           filterToAdd.forEach(
               (specificFilter) -> {
                 BasicFilter upFilter =
@@ -224,7 +224,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
                         .withFilterName(specificFilter.toString())
                         .withFilterType(specificFilter)
                         .withEnabled(true);
-                eventFilter.setAdditionalProperty(specificFilter.toString(), upFilter);
+                eventFilter.add(upFilter);
               });
           filter.setEventFilter(eventFilter);
           filtersList.add(filter);

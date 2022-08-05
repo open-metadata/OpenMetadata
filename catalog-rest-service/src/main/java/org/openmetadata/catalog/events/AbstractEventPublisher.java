@@ -1,11 +1,15 @@
 package org.openmetadata.catalog.events;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.events.errors.RetriableException;
+import org.openmetadata.catalog.filter.BasicFilter;
 import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.FilterUtil;
@@ -22,12 +26,28 @@ public abstract class AbstractEventPublisher implements EventPublisher {
 
   protected int currentBackoffTime = BACKOFF_NORMAL;
   protected final List<ChangeEvent> batch = new ArrayList<>();
-  protected final ConcurrentHashMap<String, Filter> filter = new ConcurrentHashMap<>();
+  protected final ConcurrentHashMap<String, Map<FiltersType, BasicFilter>> filter = new ConcurrentHashMap<>();
   private final int batchSize;
 
   protected AbstractEventPublisher(int batchSize, List<Filter> filters) {
-    filters.forEach(f -> filter.put(f.getEntityType(), f));
+    updateFilter(filters);
     this.batchSize = batchSize;
+  }
+
+  protected void updateFilter(List<Filter> filters) {
+    filters.forEach(
+        (f) -> {
+          String entityType = f.getEntityType();
+          Map<FiltersType, BasicFilter> eventFilterMap = new HashMap<>();
+          if (f.getEventFilter() != null) {
+            f.getEventFilter()
+                .forEach(
+                    (eventFilter) -> {
+                      eventFilterMap.put(eventFilter.getFilterType(), eventFilter);
+                    });
+          }
+          filter.put(entityType, eventFilterMap);
+        });
   }
 
   @Override
@@ -36,7 +56,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.get();
     if (!filter.isEmpty()) {
-      Filter entityFilter = filter.get(changeEvent.getEntityType());
+      Map<FiltersType, BasicFilter> entityFilter = filter.get(changeEvent.getEntityType());
       if (entityFilter != null && !FilterUtil.shouldProcessRequest(changeEvent, entityFilter)) {
         return;
       }

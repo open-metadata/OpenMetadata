@@ -18,7 +18,6 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import java.util.ArrayList;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -42,7 +41,6 @@ import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.validators.AirflowConfigValidation;
 
@@ -99,14 +97,12 @@ public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
-  public List<Settings> fetchConfigurationFromDB(Jdbi jdbi) {
-    List<Settings> settingsList = new ArrayList<>();
+  public void fetchActivityFeedConfigurationFromDB(Jdbi jdbi) {
     try {
       CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);
       SettingsRepository repository = new SettingsRepository(dao);
       ResultList<Settings> settings = repository.listAllConfigs();
       if (settings.getData() != null) {
-        settingsList = settings.getData();
         settings
             .getData()
             .forEach(
@@ -117,20 +113,19 @@ public class CatalogApplicationConfig extends Configuration {
                     FilterRegistry.add(filters);
                   }
                 });
-        return settingsList;
       }
     } catch (StatementException e) {
       throw new IllegalArgumentException("Exception encountered when trying to obtain configuration from Database.", e);
     }
-    return settingsList;
   }
 
   public void setConfigFromDB(List<Settings> dbConfig) {
     dbConfig.forEach(
         (config) -> {
           switch (config.getConfigType()) {
-            case AIRFLOW_CONFIGURATION:
-              airflowConfiguration = JsonUtils.convertValue(config.getConfigValue(), AirflowConfiguration.class);
+            case ACTIVITY_FEED_FILTER_SETTING:
+              List<Filter> filterList = (List<Filter>) config.getConfigValue();
+              FilterRegistry.add(filterList);
           }
         });
   }
