@@ -250,7 +250,7 @@ class ProfilerWorkflow:
 
                         if hasattr(self, "sink"):
                             self.sink.write_record(profile_and_tests)
-                    except Exception as err: # pylint: disable=broad-except
+                    except Exception as err:  # pylint: disable=broad-except
                         logger.error(err)
                         logger.debug(traceback.format_exc())
                 self.processor_interface.session.close()
