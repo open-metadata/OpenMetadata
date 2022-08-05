@@ -87,7 +87,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = () => {
       setLoadingIndicator(true);
-      setIsAuthenticated(false);
       userManager.removeUser();
       onLogoutSuccess();
     };
@@ -111,7 +110,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const AppWithAuth = getAuthenticator(childComponentType, userManager);
 
-    return !loading ? (
+    return (
       <>
         <Appbar />
         <Switch>
@@ -142,7 +141,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     onLoginSuccess(user as OidcUser);
                   }}
                 />
-                <Loader />
               </>
             )}
           />
@@ -156,7 +154,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     localStorage.setItem(oidcTokenKey, user.id_token);
                   }}
                 />
-                <Loader />
               </>
             )}
           />
@@ -168,9 +165,8 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             <AppWithAuth />
           )}
         </Switch>
+        {loading && <Loader />}
       </>
-    ) : (
-      <Loader />
     );
   }
 );
