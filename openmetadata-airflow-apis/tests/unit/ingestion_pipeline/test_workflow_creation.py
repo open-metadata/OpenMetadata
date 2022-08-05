@@ -120,7 +120,6 @@ class OMetaServiceTest(TestCase):
 
     workflow_source = WorkflowSource(**data)
     usage_workflow_source = WorkflowSource(**usage_data)
-    lineage_workflow_source = WorkflowSource(**lineage_data)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -136,11 +135,6 @@ class OMetaServiceTest(TestCase):
         cls.usage_service: DatabaseService = cls.metadata.get_service_or_create(
             entity=DatabaseService,
             config=cls.usage_workflow_source,
-        )
-
-        cls.lineage_service: DatabaseService = cls.metadata.get_service_or_create(
-            entity=DatabaseService,
-            config=cls.lineage_workflow_source,
         )
 
     @classmethod
@@ -230,9 +224,9 @@ class OMetaServiceTest(TestCase):
                 startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.lineage_service.id,
+                id=self.usage_service.id,
                 type="databaseService",
-                name=self.lineage_service.name.__root__,
+                name=self.usage_service.name.__root__,
             ),
         )
 
