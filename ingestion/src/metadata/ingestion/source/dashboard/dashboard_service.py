@@ -205,7 +205,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Yields lineage if config is enabled
         """
-        for db_service_name in self.source_config.dbServiceNames:
+        for db_service_name in self.source_config.dbServiceNames or []:
             yield from self.yield_dashboard_lineage_details(
                 dashboard_details, db_service_name
             ) or []
