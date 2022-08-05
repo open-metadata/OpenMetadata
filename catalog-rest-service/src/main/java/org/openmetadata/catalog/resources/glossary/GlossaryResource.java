@@ -349,7 +349,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private Glossary getGlossary(CreateGlossary create, String user) {
+  private Glossary getGlossary(CreateGlossary create, String user) throws IOException {
     return copy(new Glossary(), create, user).withReviewers(create.getReviewers()).withTags(create.getTags());
   }
 }
