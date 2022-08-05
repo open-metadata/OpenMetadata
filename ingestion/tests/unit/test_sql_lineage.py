@@ -19,18 +19,29 @@ from sqllineage.runner import LineageRunner
 
 from metadata.utils.sql_lineage import populate_column_lineage_map
 
-QUERY = """create view test2 as
-SELECT brand_id
-FROM production.brands;"""
-
-EXPECTED_LINEAGE_MAP = {
-    "<default>.test2": {"production.brands": [("brand_id", "brand_id")]}
-}
+QUERY = [
+    "CREATE TABLE MYTABLE2 AS SELECT * FROM MYTABLE1;",
+    "CREATE TABLE MYTABLE3 AS SELECT ID, NAME FROM MYTABLE1",
+    "CREATE VIEW MYVIEW2 AS SELECT NAME, CITY FROM MYTABLE1;",
+    "INSERT INTO MYTABLE5 SELECT ID, NAME, CITY FROM MYTABLE1;",
+]
+EXPECTED_LINEAGE_MAP = [
+    {"<default>.mytable2": {"<default>.mytable1": [("*", "*")]}},
+    {"<default>.mytable3": {"<default>.mytable1": [("ID", "ID"), ("NAME", "NAME")]}},
+    {"<default>.myview2": {"<default>.mytable1": [("CITY", "CITY"), ("NAME", "NAME")]}},
+    {
+        "<default>.mytable5": {
+            "<default>.mytable1": [("CITY", "CITY"), ("ID", "ID"), ("NAME", "NAME")]
+        }
+    },
+]
 
 
 class SqlLineageTest(TestCase):
     def test_populate_column_lineage_map(self):
-        result = LineageRunner(QUERY)
-        raw_column_lineage = result.get_column_lineage()
-        lineage_map = populate_column_lineage_map(raw_column_lineage)
-        self.assertEqual(lineage_map, EXPECTED_LINEAGE_MAP)
+
+        for i in range(len(QUERY)):
+            result = LineageRunner(QUERY[i])
+            raw_column_lineage = result.get_column_lineage()
+            lineage_map = populate_column_lineage_map(raw_column_lineage)
+            self.assertEqual(lineage_map, EXPECTED_LINEAGE_MAP[i])
