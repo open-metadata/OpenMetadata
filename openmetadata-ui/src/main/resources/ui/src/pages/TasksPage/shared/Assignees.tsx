@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Select, Space, Tag } from 'antd';
+import { Select, Tag } from 'antd';
 import React, { FC } from 'react';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -46,14 +46,7 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
   }: CustomTagProps): React.ReactElement => {
     return (
       <Tag className="assignee-tag" closable={closable} onClose={onClose}>
-        <Space>
-          <ProfilePicture
-            id={value}
-            name={label as unknown as string}
-            width="22"
-          />
-          <span>{label}</span>
-        </Space>
+        <UserTag id={value} name={label as string} />
       </Tag>
     );
   };
@@ -79,10 +72,7 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
           data-testid="assignee-option"
           data-usertype={option.type}
           key={option.value}>
-          <Space>
-            <ProfilePicture id={option.value} name={option.label} width="22" />
-            <span>{option.label}</span>
-          </Space>
+          <UserTag id={option.value} name={option.label} />
         </Option>
       ))}
     </Select>
