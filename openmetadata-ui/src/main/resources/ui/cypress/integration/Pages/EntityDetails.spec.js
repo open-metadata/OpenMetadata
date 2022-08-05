@@ -42,14 +42,14 @@ describe('Entity Details Page', () => {
     cy.wait(1000);
     // check for delete section and delete button is available or not
     // cy.get('[data-testid="danger-zone"]').scrollIntoView().should('be.visible');
-    cy.get('[data-testid="delete-button"] > .tw-font-medium')
+    cy.get('[data-testid="delete-button-title"]')
       .should('be.visible')
       .click()
       .as('deleteBtn');
 
     cy.wait(1000);
 
-    cy.get(':nth-child(2) > :nth-child(2) > .tw-text-sm')
+    cy.get('[data-testid="hard-delete-option"]')
       .should('contain', `Permanently Delete ${singuler} “${value.term}”`)
       .should('be.visible')
       .as('permanentDelete');

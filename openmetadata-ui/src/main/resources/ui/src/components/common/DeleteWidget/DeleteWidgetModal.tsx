@@ -30,6 +30,7 @@ import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 const DeleteWidgetModal = ({
   allowSoftDelete = true,
   visible,
+  deleteMessage,
   entityName,
   entityType,
   onCancel,
@@ -61,7 +62,7 @@ const DeleteWidgetModal = ({
     },
     {
       title: `Permanently Delete ${entityType} “${entityName}”`,
-      description: prepareDeleteMessage(),
+      description: deleteMessage || prepareDeleteMessage(),
       type: DeleteType.HARD_DELETE,
       isAllowd: true,
     },
@@ -222,7 +223,9 @@ const DeleteWidgetModal = ({
                 data-testid={option.type}
                 key={option.type}
                 value={option.type}>
-                <p className="tw-text-sm tw-mb-1 tw-font-medium">
+                <p
+                  className="tw-text-sm tw-mb-1 tw-font-medium"
+                  data-testid={`${option.type}-option`}>
                   {option.title}
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs tw-mb-2">

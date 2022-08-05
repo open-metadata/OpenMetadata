@@ -82,9 +82,12 @@ import {
 } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
+  getDeleteEntityMessage,
   getServiceCategoryFromType,
   servicePageTabs,
   serviceTypeLogo,
+  setServiceSchemaCount,
+  setServiceTableCount,
 } from '../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -121,6 +124,9 @@ const ServicePage: FunctionComponent = () => {
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
+
+  const [schemaCount, setSchemaCount] = useState<number>(0);
+  const [tableCount, setTableCount] = useState<number>(0);
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -356,6 +362,8 @@ const ServicePage: FunctionComponent = () => {
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
+          setServiceSchemaCount(res.data.data, setSchemaCount);
+          setServiceTableCount(res.data.data, setTableCount);
           setPaging(res.data.paging);
           setInstanceCount(res.data.paging.total);
           setIsloading(false);
@@ -882,6 +890,13 @@ const ServicePage: FunctionComponent = () => {
               <TitleBreadcrumb titleLinks={slashedTableName} />
               <ManageButton
                 isRecursiveDelete
+                allowSoftDelete={false}
+                deleteMessage={getDeleteEntityMessage(
+                  serviceName || '',
+                  instanceCount,
+                  schemaCount,
+                  tableCount
+                )}
                 entityFQN={serviceFQN}
                 entityId={serviceDetails?.id}
                 entityName={serviceDetails?.name || ''}

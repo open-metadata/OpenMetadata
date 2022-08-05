@@ -609,6 +609,7 @@ const DatabaseDetails: FunctionComponent = () => {
               <TitleBreadcrumb titleLinks={slashedDatabaseName} />
               <ManageButton
                 isRecursiveDelete
+                allowSoftDelete={false}
                 entityFQN={databaseFQN}
                 entityId={databaseId}
                 entityName={databaseName}

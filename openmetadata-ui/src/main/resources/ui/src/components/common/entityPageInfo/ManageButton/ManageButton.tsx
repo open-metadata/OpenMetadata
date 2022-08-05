@@ -21,14 +21,18 @@ import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnoun
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 
 interface Props {
+  allowSoftDelete?: boolean;
   entityName: string;
   entityId?: string;
   entityType?: string;
   entityFQN?: string;
   isRecursiveDelete?: boolean;
+  deleteMessage?: string;
 }
 
 const ManageButton: FC<Props> = ({
+  allowSoftDelete,
+  deleteMessage,
   entityName,
   entityType,
   entityId,
@@ -54,7 +58,7 @@ const ManageButton: FC<Props> = ({
               }}>
               <SVGIcons alt="Delete" icon={Icons.DELETE_GRADIANT} />
               <div className="tw-text-left" data-testid="delete-button">
-                <p className="tw-font-medium">
+                <p className="tw-font-medium" data-testid="delete-button-title">
                   Delete {entityType} {entityName}
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs">
@@ -123,6 +127,8 @@ const ManageButton: FC<Props> = ({
       </Dropdown>
       {isDelete && (
         <DeleteWidgetModal
+          allowSoftDelete={allowSoftDelete}
+          deleteMessage={deleteMessage}
           entityId={entityId || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}

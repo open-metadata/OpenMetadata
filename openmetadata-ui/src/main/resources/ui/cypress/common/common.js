@@ -15,6 +15,8 @@
 
 export const uuid = () => Cypress._.random(0, 1e6);
 
+const CLOUD_INFRA = 'Cloud_Infra';
+
 const isDatabaseService = (type) => type === 'database';
 
 export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
@@ -160,12 +162,7 @@ export const testServiceCreationAndIngestion = (
 export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.goToHomePage();
 
-  cy.get(
-    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-  )
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  cy.get('#menu-button-Settings').scrollIntoView().should('be.visible').click();
   cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
   cy.wait(1000);
 
@@ -199,7 +196,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .click();
 
   //Clicking on permanent delete radio button and checking the service name
-  cy.get(':nth-child(2) > :nth-child(2) > .tw-text-sm')
+  cy.get('[data-testid="hard-delete-option"]')
     .contains(service_Name)
     .should('be.visible')
     .click();
@@ -220,12 +217,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.clickOnLogo();
 
   cy.wait(1000);
-  cy.get(
-    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-  )
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  cy.get('#menu-button-Settings').scrollIntoView().should('be.visible').click();
   cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
   cy.wait(1000);
 
@@ -238,12 +230,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 export const editOwnerforCreatedService = (typeOfService, service_Name) => {
   cy.goToHomePage();
 
-  cy.get(
-    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-  )
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  cy.get('#menu-button-Settings').scrollIntoView().should('be.visible').click();
   cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
   cy.wait(1000);
 
@@ -282,7 +269,7 @@ export const editOwnerforCreatedService = (typeOfService, service_Name) => {
   cy.get('[data-testid*="owner"]')
     .invoke('text')
     .then((text) => {
-      expect(text).equal('Cloud_Infra');
+      expect(text).equal(CLOUD_INFRA);
     });
 };
 
