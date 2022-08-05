@@ -13,7 +13,7 @@ Dagster source to extract metadata from OM UI
 """
 import json
 from collections.abc import Iterable
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -160,7 +160,9 @@ class DagsterSource(PipelineServiceSource):
     def yield_pipeline_lineage_details(
         self, pipeline_details
     ) -> Optional[Iterable[AddLineageRequest]]:
-        """ """
+        """
+        Not implemented, as this connector does not create any lineage
+        """
 
     def close(self):
         self.session.close()
@@ -168,11 +170,11 @@ class DagsterSource(PipelineServiceSource):
     def test_connection(self) -> None:
         test_connection(self.engine)
 
-    def get_pipelines_list(self):
+    def get_pipelines_list(self) -> Dict:
 
-        result = self.engine.execute(text("SELECT * from runs"))
-        for i in result:
-            yield i
+        results = self.engine.execute(text("SELECT * from runs"))
+        for result in results:
+            yield result
 
     def get_pipeline_name(self, pipeline_details) -> str:
         """
