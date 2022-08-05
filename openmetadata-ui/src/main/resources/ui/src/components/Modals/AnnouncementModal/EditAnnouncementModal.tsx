@@ -61,6 +61,7 @@ const EditAnnouncementModal: FC<Props> = ({
     <Modal
       centered
       className="announcement-modal"
+      data-testid="edit-announcement"
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
@@ -72,6 +73,7 @@ const EditAnnouncementModal: FC<Props> = ({
       width={620}
       onCancel={onCancel}>
       <Form
+        data-testid="announcement-form"
         id="announcement-form"
         initialValues={{ title, startDate, endDate }}
         layout="vertical"

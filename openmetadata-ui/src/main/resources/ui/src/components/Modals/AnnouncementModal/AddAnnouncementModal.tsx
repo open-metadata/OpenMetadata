@@ -85,6 +85,7 @@ const AddAnnouncementModal: FC<Props> = ({
       centered
       className="announcement-modal"
       confirmLoading={isLoading}
+      data-testid="add-announcement"
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
@@ -96,6 +97,7 @@ const AddAnnouncementModal: FC<Props> = ({
       width={620}
       onCancel={onCancel}>
       <Form
+        data-testid="announcement-form"
         id="announcement-form"
         layout="vertical"
         validateMessages={validateMessages}
