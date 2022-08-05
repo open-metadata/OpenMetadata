@@ -51,6 +51,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   updateThreadHandler,
   onReply,
   taskDetails,
+  announcementDetails,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -170,6 +171,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               timeStamp={feedDetail.postTs}
             />
             <FeedCardBody
+              announcementDetails={announcementDetails}
               className="tw-pl-2 tw-break-all"
               isThread={isThread}
               message={feedDetail.message}

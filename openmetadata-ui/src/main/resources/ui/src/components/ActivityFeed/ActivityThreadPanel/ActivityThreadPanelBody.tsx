@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Empty, Switch } from 'antd';
+import { Button, Empty, Switch } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -40,6 +40,7 @@ import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmati
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
+import AnnouncementThreads from './AnnouncementThreads';
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
@@ -77,6 +78,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const isConversationType = isEqual(threadType, ThreadType.Conversation);
 
   const isTaskClosed = isEqual(taskStatus, ThreadTaskStatus.Closed);
+
+  const isAnnouncementType = threadType === ThreadType.Announcement;
 
   const getThreads = (after?: string) => {
     const status = isTaskType ? taskStatus : undefined;
@@ -245,11 +248,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
         {!isUndefined(selectedThread) ? (
           <Fragment>
-            <p
-              className="tw-py-3 tw-cursor-pointer link-text tw-pl-5"
+            <Button
+              className="tw-mb-3 tw-ml-2"
+              size="small"
+              type="link"
               onClick={onBack}>
-              {'< Back'}
-            </p>
+              Back
+            </Button>
             <ActivityThread
               className="tw-pb-4 tw-pl-5 tw-pr-2"
               postFeed={postFeed}
@@ -262,7 +267,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Fragment>
             {showNewConversation || isEqual(threads.length, 0) ? (
               <Fragment>
-                {isConversationType ? (
+                {isConversationType && (
                   <Fragment>
                     <p className="tw-ml-9 tw-mr-2 tw-mb-2 tw-mt-1">
                       You are starting a new conversation
@@ -274,7 +279,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                       onSave={onPostThread}
                     />
                   </Fragment>
-                ) : (
+                )}
+                {isTaskType && (
                   <Empty
                     className="ant-empty-tasks"
                     description={
@@ -282,18 +288,37 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     }
                   />
                 )}
+                {isAnnouncementType && (
+                  <Empty
+                    className="ant-empty-tasks"
+                    description="No Announcements, Click on add announcement to add one."
+                  />
+                )}
               </Fragment>
             ) : null}
-            <ActivityThreadList
-              className={classNames({ 'tw-p-4': !className }, className)}
-              postFeed={postFeed}
-              selectedThreadId={selectedThreadId}
-              threads={threads}
-              updateThreadHandler={onUpdateThread}
-              onConfirmation={onConfirmation}
-              onThreadIdSelect={onThreadIdSelect}
-              onThreadSelect={onThreadSelect}
-            />
+            {isAnnouncementType ? (
+              <AnnouncementThreads
+                className={classNames({ 'tw-p-4': !className }, className)}
+                postFeed={postFeed}
+                selectedThreadId={selectedThreadId}
+                threads={threads}
+                updateThreadHandler={onUpdateThread}
+                onConfirmation={onConfirmation}
+                onThreadIdSelect={onThreadIdSelect}
+                onThreadSelect={onThreadSelect}
+              />
+            ) : (
+              <ActivityThreadList
+                className={classNames({ 'tw-p-4': !className }, className)}
+                postFeed={postFeed}
+                selectedThreadId={selectedThreadId}
+                threads={threads}
+                updateThreadHandler={onUpdateThread}
+                onConfirmation={onConfirmation}
+                onThreadIdSelect={onThreadIdSelect}
+                onThreadSelect={onThreadSelect}
+              />
+            )}
             <div
               data-testid="observer-element"
               id="observer-element"

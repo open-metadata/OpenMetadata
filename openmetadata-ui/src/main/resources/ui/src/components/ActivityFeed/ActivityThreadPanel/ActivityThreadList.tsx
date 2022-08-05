@@ -15,6 +15,11 @@ import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
+  ANNOUNCEMENT_BG,
+  ANNOUNCEMENT_BORDER,
+  TASK_BORDER,
+} from '../../../constants/feed.constants';
+import {
   Post,
   ThreadTaskStatus,
   ThreadType,
@@ -97,10 +102,11 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         marginTop: '20px',
                         paddingTop: isTask ? '8px' : '',
                         border: isTask
-                          ? '1px solid #C6B5F6'
+                          ? `1px solid ${TASK_BORDER}`
                           : isAnnouncement
-                          ? '1px solid #FFC143'
+                          ? `1px solid ${ANNOUNCEMENT_BORDER}`
                           : leftPanelAntCardStyle.border,
+                        background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
                       }}
                       onClick={() =>
                         thread.task && handleCardClick(thread.task.id, isTask)
@@ -115,6 +121,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         <ActivityFeedCard
                           isEntityFeed
                           isThread
+                          announcementDetails={thread.announcement}
                           entityLink={thread.about}
                           feed={mainFeed}
                           feedType={thread.type || ThreadType.Conversation}

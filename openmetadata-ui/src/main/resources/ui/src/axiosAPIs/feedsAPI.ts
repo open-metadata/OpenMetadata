@@ -143,3 +143,13 @@ export const updateTask: Function = (
 ) => {
   return APIClient.put(`/feed/tasks/${taskId}/${operation}`, taskDetail);
 };
+
+export const getActiveAnnouncement = (entityLink: string) => {
+  return APIClient.get('/feed', {
+    params: {
+      entityLink,
+      type: ThreadType.Announcement,
+      activeAnnouncement: true,
+    },
+  });
+};

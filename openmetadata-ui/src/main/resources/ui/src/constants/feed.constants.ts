@@ -74,3 +74,7 @@ export enum EntityField {
   TAGS = 'tags',
   TASKS = 'tasks',
 }
+
+export const ANNOUNCEMENT_BG = '#fffbf3';
+export const ANNOUNCEMENT_BORDER = '#FFC143';
+export const TASK_BORDER = '#C6B5F6';

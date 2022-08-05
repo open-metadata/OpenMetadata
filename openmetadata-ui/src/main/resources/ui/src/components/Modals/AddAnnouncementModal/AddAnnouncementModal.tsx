@@ -21,6 +21,7 @@ import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { validateMessages } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -60,8 +61,8 @@ const AddAnnouncementModal: FC<Props> = ({
       about: getEntityFeedLink(entityType, entityFQN),
       announcementDetails: {
         description,
-        startTime: getUTCDateTime(startDate),
-        endTime: getUTCDateTime(endDate),
+        startTime: Math.floor(getUTCDateTime(startDate) / 1000),
+        endTime: Math.floor(getUTCDateTime(endDate) / 1000),
       },
       type: ThreadType.Announcement,
     };
@@ -81,6 +82,7 @@ const AddAnnouncementModal: FC<Props> = ({
 
   return (
     <Modal
+      centered
       className="announcement-modal"
       confirmLoading={isLoading}
       okButtonProps={{
@@ -96,6 +98,7 @@ const AddAnnouncementModal: FC<Props> = ({
       <Form
         id="announcement-form"
         layout="vertical"
+        validateMessages={validateMessages}
         onFinish={handleCreateAnnouncement}>
         <Form.Item
           label="Title:"
@@ -103,7 +106,6 @@ const AddAnnouncementModal: FC<Props> = ({
           rules={[
             {
               required: true,
-              message: 'Please provide valid title!',
               max: 124,
               min: 5,
             },
@@ -122,7 +124,6 @@ const AddAnnouncementModal: FC<Props> = ({
             rules={[
               {
                 required: true,
-                message: 'Start date is required!',
               },
             ]}>
             <Input
@@ -137,7 +138,6 @@ const AddAnnouncementModal: FC<Props> = ({
             rules={[
               {
                 required: true,
-                message: 'End date is required!',
               },
             ]}>
             <Input
