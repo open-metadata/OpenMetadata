@@ -53,6 +53,8 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 )
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
+    OracleDatabaseSchema,
+    OracleServiceName,
 )
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -86,12 +88,7 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
 
-
-class OracleConnectionError(Exception):
-    """
-    Custom Exception Class to be thown when both
-    service name and database schema is passed in config
-    """
+CX_ORACLE_LIB_VERSION = "8.3.0"
 
 
 def get_connection_url_common(connection):
@@ -157,13 +154,50 @@ def _(connection: MssqlConnection):
 
 @get_connection_url.register
 def _(connection: OracleConnection):
-    if connection.oracleServiceName and connection.databaseSchema:
-        raise OracleConnectionError(
-            "Please pass either Service Name or Database Schema not both"
+    # Patching the cx_Oracle module with oracledb lib
+    # to work take advantage of the thin mode of oracledb
+    # which doesn't require the oracle client libs to be installed
+    import sys
+
+    import oracledb
+
+    oracledb.version = CX_ORACLE_LIB_VERSION
+    sys.modules["cx_Oracle"] = oracledb
+
+    url = f"{connection.scheme.value}://"
+    if connection.username:
+        url += f"{connection.username}"
+        if not connection.password:
+            connection.password = SecretStr("")
+        url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+
+    url += connection.hostPort
+
+    if isinstance(connection.oracleConnectionType, OracleDatabaseSchema):
+        url += (
+            f"/{connection.oracleConnectionType.databaseSchema}"
+            if connection.oracleConnectionType.databaseSchema
+            else ""
         )
-    url = get_connection_url_common(connection)
-    if connection.oracleServiceName:
-        url = f"{url}/?service_name={connection.oracleServiceName}"
+
+    elif isinstance(connection.oracleConnectionType, OracleServiceName):
+        url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
+
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        if isinstance(connection.oracleConnectionType, OracleServiceName):
+            url = f"{url}&{params}"
+        else:
+            url = f"{url}?{params}"
+
     return url
 
 

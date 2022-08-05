@@ -98,7 +98,7 @@ plugins: Dict[str, Set[str]] = {
     "pymssql": {"pymssql~=2.2.5"},
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
-    "oracle": {"cx_Oracle"},
+    "oracle": {"cx_Oracle", "oracledb==1.0.3"},
     "powerbi": {"msal==1.17.0"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"trino[sqlalchemy]"},
