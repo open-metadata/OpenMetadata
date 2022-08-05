@@ -185,6 +185,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
+  getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),
 }));
 
 jest.mock(
@@ -214,6 +215,26 @@ jest.mock(
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
   return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
 });
+
+jest.mock(
+  '../../components/common/entityPageInfo/ManageButton/ManageButton',
+  () => {
+    return jest.fn().mockReturnValue(<p>ManageButton</p>);
+  }
+);
+
+jest.mock('antd', () => ({
+  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../utils/TableUtils', () => ({
+  getEntityLink: jest.fn(),
+  getUsagePercentile: jest.fn(),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
