@@ -21,13 +21,16 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
 def table_row_count_to_equal(
-    test_case: TableRowCountToEqual,
+    test_case: TestCase,
+    test_definition: TestDefinition,
     table_profile: TableProfile,
     execution_date: datetime,
     **__,
@@ -44,18 +47,24 @@ def table_row_count_to_equal(
         msg = "rowCount should not be None for TableRowCountToEqual"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
 
+    value = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "value"
+    )
+
     status = (
         TestCaseStatus.Success
-        if table_profile.rowCount == test_case.value
+        if table_profile.rowCount == value
         else TestCaseStatus.Failed
     )
-    result = f"Found {table_profile.rowCount} rows vs. the expected {test_case.value}"
+    result = f"Found {table_profile.rowCount} rows vs. the expected {value}"
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

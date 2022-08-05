@@ -19,6 +19,9 @@
       "description": "Description of the testcase.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "entityType": {
+      "$ref": "../../tests/testDefinition.json#/definitions/entityType"
+    },
     "testPlatforms": {
       "type": "array",
       "items": {
@@ -32,6 +35,6 @@
       }
     }
   },
-  "required": ["name", "description", "testPlatforms"],
+  "required": ["name", "description","entityType", "testPlatforms"],
   "additionalProperties": false
 }

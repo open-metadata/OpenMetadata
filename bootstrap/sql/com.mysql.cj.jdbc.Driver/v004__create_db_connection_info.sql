@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS test_definition (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     json JSON NOT NULL,
+    entityType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
@@ -69,9 +70,22 @@ CREATE TABLE IF NOT EXISTS test_case (
 UPDATE webhook_entity
 SET json = JSON_INSERT(json, '$.webhookType', 'generic');
 
+CREATE TABLE IF NOT EXISTS entity_extension_time_series (
+    entityId VARCHAR(36) NOT NULL,                    -- ID of the from entity
+    entityFqn VARCHAR(512) NOT NULL,
+    extension VARCHAR(256) NOT NULL,            -- Extension name same as entity.fieldName
+    jsonSchema VARCHAR(256) NOT NULL,           -- Schema used for generating JSON
+    json JSON NOT NULL,
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL
+);
+
 ALTER TABLE thread_entity
     ADD announcementStart BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.startTime'),
     ADD announcementEnd BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.endTime');
+
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.databaseSchema','$.connection.config.oracleServiceName')
+WHERE serviceType = 'Oracle';
 
 CREATE TABLE IF NOT EXISTS openmetadata_settings (
      id MEDIUMINT NOT NULL AUTO_INCREMENT,

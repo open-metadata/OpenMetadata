@@ -11,37 +11,57 @@
  *  limitations under the License.
  */
 
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { FC, Fragment } from 'react';
+import { isUndefined } from 'lodash';
+import React, { FC } from 'react';
 import { getFrontEndFormat } from '../../../../utils/FeedUtils';
+import { getDateTimeByTimeStamp } from '../../../../utils/TimeUtils';
 import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
 import Reactions from '../../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
 
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,
+  announcementDetails,
   className,
   reactions,
   onReactionSelect,
 }) => {
   return (
-    <Fragment>
-      <div className={classNames('tw-group', className)}>
-        <div className="feed-meesage">
+    <div className={classNames('tw-group', className)}>
+      <div className="feed-meesage">
+        {!isUndefined(announcementDetails) ? (
+          <Space direction="vertical" size={4}>
+            <Typography.Text className="tw-text-xs tw-text-grey-muted">
+              Duration{' '}
+              {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)} to{' '}
+              {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
+            </Typography.Text>
+            <Typography.Text className="tw-font-semibold">
+              {message}
+            </Typography.Text>
+            <RichTextEditorPreviewer
+              className="activity-feed-card-text"
+              enableSeeMoreVariant={false}
+              markdown={announcementDetails.description || ''}
+            />
+          </Space>
+        ) : (
           <RichTextEditorPreviewer
             className="activity-feed-card-text"
             enableSeeMoreVariant={false}
             markdown={getFrontEndFormat(message)}
           />
-        </div>
-        {Boolean(reactions?.length) && (
-          <Reactions
-            reactions={reactions || []}
-            onReactionSelect={onReactionSelect}
-          />
         )}
       </div>
-    </Fragment>
+      {Boolean(reactions?.length) && (
+        <Reactions
+          reactions={reactions || []}
+          onReactionSelect={onReactionSelect}
+        />
+      )}
+    </div>
   );
 };
 

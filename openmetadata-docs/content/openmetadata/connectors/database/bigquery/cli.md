@@ -7,6 +7,25 @@ slug: /openmetadata/connectors/database/bigquery/cli
 
 <Requirements />
 
+<h4>GCP Permissions</h4>
+
+<p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
+
+| # | GCP Permission | GCP Role | Required For |
+| :---------- | :---------- | :---------- | :---------- |
+| 1 | bigquery.datasets.get | BigQuery Data Viewer | Metadata Ingestion |
+| 2 | bigquery.tables.get | BigQuery Data Viewer | Metadata Ingestion |
+| 3 | bigquery.tables.getData | BigQuery Data Viewer | Metadata Ingestion |
+| 4 | bigquery.tables.list | BigQuery Data Viewer | Metadata Ingestion |
+| 5 | resourcemanager.projects.get | BigQuery Data Viewer | Metadata Ingestion |
+| 6 | bigquery.jobs.create | BigQuery Job User | Metadata Ingestion |
+| 7 | bigquery.jobs.listAll | BigQuery Job User | Metadata Ingestion |
+| 8 | datacatalog.taxonomies.get | BigQuery Policy Admin | Fetch Policy Tags |
+| 9 | datacatalog.taxonomies.list | BigQuery Policy Admin | Fetch Policy Tags |
+| 10 | bigquery.readsessions.create | BigQuery Admin | Bigquery Usage Workflow |
+| 11 | bigquery.readsessions.getData | BigQuery Admin | Bigquery Usage Workflow |
+
+
 <MetadataIngestionServiceDev service="database" connector="BigQuery" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

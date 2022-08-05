@@ -9,21 +9,29 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.test.TestCaseParameter;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.TestDefinition;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 
 public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS = "owner,entity,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entity,testSuite,testDefinition";
+  public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {
     super(
@@ -41,6 +49,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setEntity(fields.contains("entity") ? getEntity(test) : null);
     test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
+    test.setTestCaseResult(fields.contains("testCaseResult") ? getTestCaseResult(test) : null);
     test.setOwner(fields.contains("owner") ? getOwner(test) : null);
     return test;
   }
@@ -116,6 +125,108 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
     // Add test owner relationship
     storeOwner(test, test.getOwner());
+  }
+
+  @Transaction
+  public TestCase addTestCaseResult(UUID testCaseId, TestCaseResult testCaseResult) throws IOException {
+    // Validate the request content
+    TestCase testCase = dao.findEntityById(testCaseId);
+
+    TestCaseResult storedTestCaseResult =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getExtensionAtTimestamp(
+                    testCaseId.toString(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp()),
+            TestCaseResult.class);
+    if (storedTestCaseResult != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              testCaseId.toString(),
+              TESTCASE_RESULT_EXTENSION,
+              JsonUtils.pojoToJson(testCaseResult),
+              testCaseResult.getTimestamp());
+    } else {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .insert(
+              testCaseId.toString(),
+              testCase.getFullyQualifiedName(),
+              TESTCASE_RESULT_EXTENSION,
+              "testCaseResult",
+              JsonUtils.pojoToJson(testCaseResult));
+      setFields(testCase, EntityUtil.Fields.EMPTY_FIELDS);
+    }
+    return testCase.withTestCaseResult(testCaseResult);
+  }
+
+  @Transaction
+  public TestCase deleteTestCaseResult(UUID testCaseId, Long timestamp) throws IOException {
+    // Validate the request content
+    TestCase testCase = dao.findEntityById(testCaseId);
+    TestCaseResult storedTestCaseResult =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getExtensionAtTimestamp(testCaseId.toString(), TESTCASE_RESULT_EXTENSION, timestamp),
+            TestCaseResult.class);
+    if (storedTestCaseResult != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .deleteAtTimestamp(testCaseId.toString(), TESTCASE_RESULT_EXTENSION, timestamp);
+      testCase.setTestCaseResult(storedTestCaseResult);
+      return testCase;
+    }
+    throw new EntityNotFoundException(
+        String.format("Failed to find testCase result for %s at %s", testCase.getName(), timestamp));
+  }
+
+  private TestCaseResult getTestCaseResult(TestCase testCase) throws IOException {
+    return JsonUtils.readValue(
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtension(testCase.getId().toString(), TESTCASE_RESULT_EXTENSION),
+        TestCaseResult.class);
+  }
+
+  public ResultList<TestCaseResult> getTestCaseResults(ListFilter filter, String before, String after, int limit)
+      throws IOException {
+    List<TestCaseResult> testCaseResults;
+    int total;
+    // Here timestamp is used for page marker since table profiles are sorted by timestamp
+    long time = Long.MAX_VALUE;
+
+    if (before != null) { // Reverse paging
+      time = Long.parseLong(RestUtil.decodeCursor(before));
+      testCaseResults =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), TestCaseResult.class);
+    } else { // Forward paging or first page
+      if (after != null) {
+        time = Long.parseLong(RestUtil.decodeCursor(after));
+      }
+      testCaseResults =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), TestCaseResult.class);
+    }
+    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
+    String beforeCursor = null;
+    String afterCursor = null;
+    if (before != null) {
+      if (testCaseResults.size() > limit) { // If extra result exists, then previous page exists - return before cursor
+        testCaseResults.remove(0);
+        beforeCursor = testCaseResults.get(0).getTimestamp().toString();
+      }
+      afterCursor = testCaseResults.get(testCaseResults.size() - 1).getTimestamp().toString();
+    } else {
+      beforeCursor = after == null ? null : testCaseResults.get(0).getTimestamp().toString();
+      if (testCaseResults.size() > limit) { // If extra result exists, then next page exists - return after cursor
+        testCaseResults.remove(limit);
+        afterCursor = testCaseResults.get(limit - 1).getTimestamp().toString();
+      }
+    }
+    return new ResultList<>(testCaseResults, beforeCursor, afterCursor, total);
   }
 
   @Override

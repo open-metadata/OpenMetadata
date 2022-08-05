@@ -147,7 +147,7 @@ class GlueSource(PipelineServiceSource):
                     )
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
-                        executionDate=attempt["StartedOn"].timestamp(),
+                        timestamp=attempt["StartedOn"].timestamp(),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,

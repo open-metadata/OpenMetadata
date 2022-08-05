@@ -120,7 +120,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process="create_dbt_lineage",
+        post_process=["create_dbt_lineage", "yield_view_lineage"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -133,7 +133,7 @@ class DatabaseServiceTopology(ServiceTopology):
             )
         ],
         children=["databaseSchema"],
-        post_process="mark_tables_as_deleted",
+        post_process=["mark_tables_as_deleted"],
     )
     databaseSchema = TopologyNode(
         producer="get_database_schema_names",
@@ -169,13 +169,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="location",
                 processor="yield_location",
                 consumer=["storage_service"],
-                nullable=True,
-            ),
-            NodeStage(
-                type_=AddLineageRequest,
-                context="view_lineage",
-                processor="yield_view_lineage",
-                ack_sink=False,
                 nullable=True,
             ),
             NodeStage(
@@ -317,9 +310,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             yield from self.yield_tag(schema_name) or []
 
     @abstractmethod
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         """
         From topology.
         Parses view definition to get lineage information
