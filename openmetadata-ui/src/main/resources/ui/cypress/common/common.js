@@ -266,7 +266,7 @@ export const editOwnerforCreatedService = (typeOfService, service_Name) => {
     .click();
   cy.wait(1000);
 
-  cy.get('[data-testid*="owner"]')
+  cy.get('[data-testid="owner-dropdown"]')
     .invoke('text')
     .then((text) => {
       expect(text).equal(AARON_JOHNSON);
