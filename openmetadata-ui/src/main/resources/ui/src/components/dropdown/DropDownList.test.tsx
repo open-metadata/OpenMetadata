@@ -21,6 +21,10 @@ import {
 import React from 'react';
 import DropDownList from './DropDownList';
 
+jest.mock('../common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<div>ProfilePicture</div>);
+});
+
 const dropDownList = [
   {
     name: 'test 1',

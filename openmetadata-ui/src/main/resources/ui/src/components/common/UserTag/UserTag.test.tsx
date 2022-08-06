@@ -15,6 +15,10 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { UserTag } from './UserTag.component';
 
+jest.mock('../ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<div>ProfilePicture</div>);
+});
+
 describe('UserTag Component', () => {
   it('If valid props being passed to UserTag it should show tag', () => {
     const { getByTestId, container } = render(
