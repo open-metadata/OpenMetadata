@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Kafka';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -43,6 +43,10 @@ describe('Kafka Ingestion', () => {
       serviceName,
       'messaging'
     );
+  });
+
+  it('Edit and validate owner', () => {
+    editOwnerforCreatedService('Messaging', serviceName);
   });
 
   it('delete created service', () => {

@@ -17,6 +17,7 @@ import React, { FC, useState } from 'react';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import { validateMessages } from '../../../utils/AnnouncementsUtils';
 import { getLocaleDate, getUTCDateTime } from '../../../utils/TimeUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import './AnnouncementModal.less';
 
@@ -47,14 +48,20 @@ const EditAnnouncementModal: FC<Props> = ({
   );
 
   const handleConfirm = () => {
-    const updatedAnnouncement = {
-      ...announcement,
-      description,
-      startTime: Math.floor(getUTCDateTime(startDate) / 1000),
-      endTime: Math.floor(getUTCDateTime(endDate) / 1000),
-    };
+    const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
+    const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
+    if (startTime >= endTime) {
+      showErrorToast('Start date should be earlier than end date.');
+    } else {
+      const updatedAnnouncement = {
+        ...announcement,
+        description,
+        startTime,
+        endTime,
+      };
 
-    onConfirm(title, updatedAnnouncement);
+      onConfirm(title, updatedAnnouncement);
+    }
   };
 
   return (

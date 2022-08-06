@@ -51,7 +51,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
-import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
@@ -194,18 +193,6 @@ const PipelineDetails = ({
       isProtected: false,
       position: 4,
     },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: true,
-      protectedState: !owner || hasEditAccess(),
-      position: 5,
-    },
   ];
 
   const extraInfo: Array<ExtraInfo> = [
@@ -287,31 +274,6 @@ const PipelineDetails = ({
         tags: tierTag,
       };
       settingsUpdateHandler(updatedPipelineDetails);
-    }
-  };
-  const onSettingsUpdate = (newOwner?: Pipeline['owner'], newTier?: string) => {
-    if (newOwner || newTier) {
-      const tierTag: Pipeline['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : pipelineDetails.tags;
-      const updatedPipelineDetails = {
-        ...pipelineDetails,
-        owner: newOwner
-          ? { ...pipelineDetails.owner, ...newOwner }
-          : pipelineDetails.owner,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedPipelineDetails);
-    } else {
-      return Promise.reject();
     }
   };
 
@@ -410,6 +372,7 @@ const PipelineDetails = ({
             entityFieldThreadCount
           )}
           entityFqn={pipelineFQN}
+          entityId={pipelineDetails.id}
           entityName={entityName}
           entityType={EntityType.PIPELINE}
           extraInfo={extraInfo}
@@ -539,24 +502,6 @@ const PipelineDetails = ({
                   entityType={EntityType.PIPELINE}
                   handleExtentionUpdate={onExtensionUpdate}
                 />
-              )}
-              {activeTab === 5 && (
-                <div>
-                  <ManageTabComponent
-                    allowDelete
-                    allowSoftDelete={!deleted}
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner}
-                    entityId={pipelineDetails.id}
-                    entityName={pipelineDetails.name}
-                    entityType={EntityType.PIPELINE}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={deleted}
-                    hideTier={deleted}
-                    manageSectionType={EntityType.PIPELINE}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
               )}
               <div
                 data-testid="observer-element"

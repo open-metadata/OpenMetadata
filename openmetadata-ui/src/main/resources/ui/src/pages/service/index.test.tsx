@@ -92,24 +92,54 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
       },
     })
   ),
-  deleteIngestionPipelineById: jest.fn(),
-  addIngestionPipeline: jest.fn(),
-  triggerIngestionPipelineById: jest.fn(),
-  updateIngestionPipeline: jest.fn(),
+  checkAirflowStatus: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  deployIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  deleteIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  enableDisableIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+  triggerIngestionPipelineById: jest.fn().mockImplementation(() => {
+    Promise.resolve();
+  }),
+}));
+
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  fetchAirflowConfig: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../axiosAPIs/mlModelAPI', () => ({
+  getMlmodels: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+  getPipelines: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../axiosAPIs/topicsAPI', () => ({
+  getTopics: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../axiosAPIs/dashboardAPI', () => ({
+  getDashboards: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
   getServiceByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockData })),
-  updateService: jest.fn(),
+  updateService: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../axiosAPIs/databaseAPI', () => ({
   getDatabases: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
-  updateService: jest.fn(),
 }));
 
 jest.mock(
@@ -155,6 +185,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
+  getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),
 }));
 
 jest.mock(
@@ -184,6 +215,26 @@ jest.mock(
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
   return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
 });
+
+jest.mock(
+  '../../components/common/entityPageInfo/ManageButton/ManageButton',
+  () => {
+    return jest.fn().mockReturnValue(<p>ManageButton</p>);
+  }
+);
+
+jest.mock('antd', () => ({
+  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../utils/TableUtils', () => ({
+  getEntityLink: jest.fn(),
+  getUsagePercentile: jest.fn(),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {

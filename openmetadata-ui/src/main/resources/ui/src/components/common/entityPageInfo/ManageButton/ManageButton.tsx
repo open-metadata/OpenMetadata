@@ -20,17 +20,23 @@ import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 
 interface Props {
+  allowSoftDelete?: boolean;
   entityName: string;
   entityId?: string;
   entityType?: string;
   entityFQN?: string;
-  onAnnouncementClick: () => void;
+  isRecursiveDelete?: boolean;
+  deleteMessage?: string;
+  onAnnouncementClick?: () => void;
 }
 
 const ManageButton: FC<Props> = ({
+  allowSoftDelete,
+  deleteMessage,
   entityName,
   entityType,
   entityId,
+  isRecursiveDelete,
   onAnnouncementClick,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
@@ -51,7 +57,7 @@ const ManageButton: FC<Props> = ({
               }}>
               <SVGIcons alt="Delete" icon={Icons.DELETE_GRADIANT} />
               <div className="tw-text-left" data-testid="delete-button">
-                <p className="tw-font-medium">
+                <p className="tw-font-medium" data-testid="delete-button-title">
                   Delete {entityType} {entityName}
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs">
@@ -73,7 +79,7 @@ const ManageButton: FC<Props> = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowActions(false);
-                      onAnnouncementClick();
+                      onAnnouncementClick && onAnnouncementClick();
                     }}>
                     <SVGIcons alt="Delete" icon={Icons.ANNOUNCEMENT} />
                     <div
@@ -120,9 +126,12 @@ const ManageButton: FC<Props> = ({
       </Dropdown>
       {isDelete && (
         <DeleteWidgetModal
+          allowSoftDelete={allowSoftDelete}
+          deleteMessage={deleteMessage}
           entityId={entityId || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}
+          isRecursiveDelete={isRecursiveDelete}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
         />

@@ -122,10 +122,6 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   unobserve: mockunObserve,
 }));
 
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
-});
-
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
@@ -183,7 +179,6 @@ describe('Test TopicDetails component', () => {
     const schemaTab = await findByTestId(tabs, 'Schema');
     const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
     const configTab = await findByTestId(tabs, 'Config');
-    const manageTab = await findByTestId(tabs, 'Manage');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -191,7 +186,6 @@ describe('Test TopicDetails component', () => {
     expect(schemaTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(configTab).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is schema', async () => {
@@ -237,18 +231,6 @@ describe('Test TopicDetails component', () => {
     const config = await findByTestId(container, 'config');
 
     expect(config).toBeInTheDocument();
-  });
-
-  it('Check if active tab is manage', async () => {
-    const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={7} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const manage = await findByTestId(container, 'manage');
-
-    expect(manage).toBeInTheDocument();
   });
 
   it('Should render lineage tab', async () => {
