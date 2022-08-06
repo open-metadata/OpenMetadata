@@ -129,4 +129,23 @@ describe('Test FeedCardBody component', () => {
 
     expect(mockUpdate).toHaveBeenCalledWith('xyz');
   });
+
+  it('Save button should be disable if message is empty', async () => {
+    const { container } = render(
+      <FeedCardBody {...mockFeedCardBodyProps} isEditPost message="" />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editor = await findByTestId(container, 'editor');
+
+    const saveButton = await findByTestId(container, 'save-button');
+
+    expect(editor).toBeInTheDocument();
+
+    expect(saveButton).toBeInTheDocument();
+
+    expect(saveButton).toBeDisabled();
+  });
 });
