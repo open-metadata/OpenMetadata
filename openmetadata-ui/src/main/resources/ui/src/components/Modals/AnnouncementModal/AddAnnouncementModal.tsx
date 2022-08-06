@@ -21,7 +21,10 @@ import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
-import { validateMessages } from '../../../utils/AnnouncementsUtils';
+import {
+  announcementInvalidStartTime,
+  validateMessages,
+} from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -58,7 +61,7 @@ const AddAnnouncementModal: FC<Props> = ({
     const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
     const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
     if (startTime >= endTime) {
-      showErrorToast('Start date should be earlier than end date.');
+      showErrorToast(announcementInvalidStartTime);
     } else {
       const announcementData: CreateThread = {
         from: currentUser?.name as string,

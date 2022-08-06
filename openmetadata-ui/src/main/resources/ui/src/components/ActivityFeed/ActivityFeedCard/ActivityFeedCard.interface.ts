@@ -63,6 +63,9 @@ export interface FeedBodyProp
     reactionType: ReactionType,
     reactionOperation: ReactionOperation
   ) => void;
+  isEditPost: boolean;
+  onPostUpdate: (message: string) => void;
+  onCancelPostUpdate: () => void;
 }
 export interface FeedFooterProp
   extends HTMLAttributes<HTMLDivElement>,

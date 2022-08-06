@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByText, queryByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
@@ -69,10 +69,23 @@ describe('Test ActivityFeedCard Component', () => {
     });
     const feedCardHeader = await findByText(container, /FeedCardHeader/i);
     const feedCardBody = await findByText(container, /FeedCardBody/i);
-    const feedCardFooter = await findByText(container, /FeedCardFooter/i);
+    const feedCardFooter = queryByText(container, /FeedCardFooter/i);
 
     expect(feedCardHeader).toBeInTheDocument();
     expect(feedCardBody).toBeInTheDocument();
+    expect(feedCardFooter).not.toBeInTheDocument();
+  });
+
+  it('Should render footer if  isFooterVisible is true', async () => {
+    const { container } = render(
+      <ActivityFeedCard {...mockFeedCardProps} isFooterVisible />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const feedCardFooter = await findByText(container, /FeedCardFooter/i);
+
     expect(feedCardFooter).toBeInTheDocument();
   });
 });

@@ -22,6 +22,7 @@ import {
   EntityThreadField,
 } from 'Models';
 import React from 'react';
+import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import {
   deletePostById,
@@ -495,3 +496,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
   return displayName;
 };
+
+export const MarkdownToHTMLConverter = new Showdown.Converter({
+  strikethrough: true,
+});
