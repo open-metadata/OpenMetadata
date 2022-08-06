@@ -7,7 +7,6 @@ import java.util.List;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 
 public class ResourceRegistry {
-  private static final ResourceRegistry registry = new ResourceRegistry();
   private static final List<ResourceDescriptor> RESOURCE_DESCRIPTORS = new ArrayList<>();
 
   private ResourceRegistry() {}

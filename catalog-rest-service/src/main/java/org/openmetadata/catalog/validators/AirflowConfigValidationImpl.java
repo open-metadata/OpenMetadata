@@ -71,6 +71,7 @@ public class AirflowConfigValidationImpl implements ConstraintValidator<AirflowC
       case OPENMETADATA:
         OpenMetadataJWTClientConfig openMetadataJWTClientConfig = authConfig.getOpenmetadata();
         checkRequiredField(JWT_TOKEN, openMetadataJWTClientConfig.getJwtToken(), authProvider, message);
+        break;
       case NO_AUTH:
         break;
       default:
