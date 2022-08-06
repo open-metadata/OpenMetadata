@@ -97,7 +97,7 @@ const AddAnnouncementModal: FC<Props> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
-      okText="Sumbit"
+      okText="Submit"
       title="Make an announcement"
       visible={open}
       width={620}

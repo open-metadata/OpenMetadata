@@ -618,6 +618,23 @@ public interface CollectionDAO {
       return listBefore(limit, before, status, resolved, type);
     }
 
+    default List<String> listAnnouncementBetween(String entityId, long startTs, long endTs) {
+      return listAnnouncementBetween(null, entityId, startTs, endTs);
+    }
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity "
+            + "WHERE type='Announcement' AND (:threadId IS NULL OR id != :threadId) "
+            + "AND entityId = :entityId "
+            + "AND (( :startTs >= announcementStart AND :startTs < announcementEnd) "
+            + "OR (:endTs > announcementStart AND :endTs < announcementEnd) "
+            + "OR (:startTs <= announcementStart AND :endTs >= announcementEnd))")
+    List<String> listAnnouncementBetween(
+        @Bind("threadId") String threadId,
+        @Bind("entityId") String entityId,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity "
