@@ -135,7 +135,10 @@ const AnnouncementDrawer: FC<Props> = ({
           entityFQN={entityFQN || ''}
           entityType={entityType || ''}
           open={isAnnouncement}
-          onCancel={() => setIsAnnouncement(false)}
+          onCancel={() => {
+            setIsAnnouncement(false);
+            onClose();
+          }}
         />
       )}
     </>
