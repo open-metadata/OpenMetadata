@@ -336,7 +336,7 @@ const getRootTermEmbeddedGlossary = (
       ])
     );
     Promise.allSettled(promises)
-      .then((responses: PromiseSettledResult<AxiosResponse>[]) => {
+      .then((responses) => {
         for (let i = 0; i < responses.length; i++) {
           const res = responses[i];
           const glossary = glossaries[i];
@@ -369,8 +369,8 @@ export const getGlossariesWithRootTerms = (
 ): Promise<Array<ModifiedGlossaryData>> => {
   return new Promise<Array<ModifiedGlossaryData>>((resolve, reject) => {
     getGlossaries(paging, limit, arrQueryFields)
-      .then((res: AxiosResponse) => {
-        const { data } = res.data;
+      .then((res) => {
+        const { data } = res;
         if (data?.length) {
           getRootTermEmbeddedGlossary(data)
             .then((res) => resolve(res))

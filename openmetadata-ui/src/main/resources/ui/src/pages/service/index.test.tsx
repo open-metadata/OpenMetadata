@@ -101,14 +101,14 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
   getServiceByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockData })),
+    .mockImplementation(() => Promise.resolve(mockData)),
   updateService: jest.fn(),
 }));
 
 jest.mock('../../axiosAPIs/databaseAPI', () => ({
   getDatabases: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
+    .mockImplementation(() => Promise.resolve({ ...mockDatabase })),
   updateService: jest.fn(),
 }));
 

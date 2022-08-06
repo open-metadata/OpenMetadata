@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { FormErrorData, SearchResponse } from 'Models';
@@ -98,7 +98,7 @@ const TeamsPage = () => {
       ]);
 
       if (data) {
-        setAllTeam(data.data);
+        setAllTeam(data);
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -157,10 +157,10 @@ const TeamsPage = () => {
         name: data.name,
         displayName: data.displayName,
         description: data.description,
-      };
+      } as Team;
       createTeam(teamData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             handleAddTeam(false);
             fetchAllTeams();
           } else {
@@ -181,14 +181,14 @@ const TeamsPage = () => {
    */
   const getCurrentTeamUsers = (
     team: string,
-    pagin = {} as { [key: string]: string }
+    paging = {} as { [key: string]: string }
   ) => {
     setIsDataLoading(true);
-    getUsers('teams', PAGE_SIZE, { team, ...pagin })
-      .then((res: AxiosResponse) => {
+    getUsers('teams', PAGE_SIZE, { team, ...paging })
+      .then((res) => {
         if (res.data) {
-          setUsers(res.data.data);
-          setUserPaging(res.data.paging);
+          setUsers(res.data);
+          setUserPaging(res.paging);
         }
       })
       .catch(() => {
@@ -201,7 +201,7 @@ const TeamsPage = () => {
   const fetchTeamByFqn = async (name: string) => {
     setIsPageLoading(true);
     try {
-      const { data } = await getTeamByName(name, [
+      const data = await getTeamByName(name, [
         'users',
         'owns',
         'defaultRoles',
@@ -254,8 +254,8 @@ const TeamsPage = () => {
 
     return new Promise<void>((resolve, reject) => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             fetchTeamByFqn(selectedTeam.name);
             resolve();
           } else {
@@ -290,9 +290,9 @@ const TeamsPage = () => {
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
     // setIsPageLoading(true);
     updateUserDetail(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          AppState.updateUserDetails(res.data);
+      .then((res) => {
+        if (res) {
+          AppState.updateUserDetails(res);
           fetchTeamByFqn(selectedTeam.name);
           showSuccessToast(
             jsonData['api-success-messages']['join-team-success'],
@@ -313,9 +313,9 @@ const TeamsPage = () => {
 
     return new Promise<void>((resolve) => {
       updateUserDetail(id, data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            AppState.updateUserDetails(res.data);
+        .then((res) => {
+          if (res) {
+            AppState.updateUserDetails(res);
             fetchTeamByFqn(selectedTeam.name);
             showSuccessToast(
               jsonData['api-success-messages']['leave-team-success'],
@@ -348,9 +348,9 @@ const TeamsPage = () => {
       };
       const jsonPatch = compare(selectedTeam, updatedTeam);
       patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchTeamByFqn(res.data.name);
+        .then((res) => {
+          if (res) {
+            fetchTeamByFqn(res.name);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -384,9 +384,9 @@ const TeamsPage = () => {
 
     return new Promise<void>((resolve) => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchTeamByFqn(res.data.name);
+        .then((res) => {
+          if (res) {
+            fetchTeamByFqn(res.name);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -418,9 +418,9 @@ const TeamsPage = () => {
       const updatedTeam = { ...selectedTeam, description: updatedHTML };
       const jsonPatch = compare(selectedTeam, updatedTeam);
       patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchTeamByFqn(res.data.name);
+        .then((res) => {
+          if (res) {
+            fetchTeamByFqn(res.name);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }

@@ -27,6 +27,17 @@ jest.mock('./TagsDiffView', () => ({
     .mockReturnValue(<div data-testid="DiffView">DiffView</div>),
 }));
 
+// jest.mock('antd', () => ({
+//   Tabs: {
+//     __esModule: true,
+//     TabPane: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+//     default: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+//   },
+//   Tag: jest
+//     .fn()
+//     .mockImplementation(({ children }) => <p data-testid="tag">{children}</p>),
+// }));
+
 const mockProps = {
   tags: [],
   suggestedTags: [],

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { cloneDeep, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -96,9 +96,9 @@ const AddGlossaryTermPage = () => {
 
   const fetchGlossaryData = () => {
     getGlossariesByName(glossaryName, ['tags', 'owner', 'reviewers'])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setGlossaryData(res.data);
+      .then((res) => {
+        if (res) {
+          setGlossaryData(res);
         } else {
           setGlossaryData(undefined);
           showErrorToast(
@@ -123,9 +123,9 @@ const AddGlossaryTermPage = () => {
       'reviewers',
       'tags',
     ])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setParentGlossaryData(res.data);
+      .then((res) => {
+        if (res) {
+          setParentGlossaryData(res);
         } else {
           setParentGlossaryData(undefined);
           showErrorToast(

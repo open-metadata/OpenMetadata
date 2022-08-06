@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEqual, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
@@ -289,9 +289,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const tierData = res.data.children.map(
+      .then((res) => {
+        if (res) {
+          const tierData = res.children?.map(
             (tier: { name: string; description: string }) => ({
               id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
               title: tier.name,
@@ -305,7 +305,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             })
           );
 
-          setTierData(tierData);
+          setTierData(tierData ?? []);
         } else {
           setTierData([]);
         }

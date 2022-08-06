@@ -12,7 +12,7 @@
  */
 
 import { Card } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
@@ -42,12 +42,12 @@ import {
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
+import { Table } from '../../generated/entity/data/table';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { ServiceDataObj } from '../../interface/service.interface';
@@ -141,7 +141,7 @@ const ServicesPage = () => {
         return getServices(obj.value);
       });
       Promise.allSettled(promiseArr)
-        .then((result: PromiseSettledResult<AxiosResponse>[]) => {
+        .then((result) => {
           if (result.length) {
             let serviceArr = [];
             let servicePagingArr = [];
@@ -152,7 +152,7 @@ const ServicesPage = () => {
             serviceArr = result.map((service) => {
               let data = [];
               if (service.status === 'fulfilled') {
-                data = service.value?.data?.data;
+                data = service.value?.data;
               } else {
                 errors.push(service.reason);
               }
@@ -160,7 +160,7 @@ const ServicesPage = () => {
               return data;
             });
             servicePagingArr = result.map((service) =>
-              service.status === 'fulfilled' ? service.value?.data?.paging : {}
+              service.status === 'fulfilled' ? service.value?.paging : {}
             );
             for (let i = 0; i < serviceArr.length; i++) {
               serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
@@ -367,9 +367,9 @@ const ServicesPage = () => {
       currentServicePaging[cursorType as keyof Paging]
     }`;
     getServices(pagingString)
-      .then((result: AxiosResponse) => {
-        if (result.data) {
-          const currentServices = result.data.data;
+      .then((result) => {
+        if (result) {
+          const currentServices = result.data;
           setServiceList(currentServices);
 
           setServices({
@@ -379,7 +379,7 @@ const ServicesPage = () => {
 
           setPaging({
             ...paging,
-            [serviceName]: result.data.paging,
+            [serviceName]: result.paging,
           });
           setCurrentPage(activePage ?? 0);
         } else {
@@ -445,58 +445,61 @@ const ServicesPage = () => {
         <div
           className="tw-grid xl:tw-grid-cols-4 tw-grid-cols-2 tw-gap-4 tw-mb-4"
           data-testid="data-container">
-          {serviceList.map((service, index) => (
-            <Card key={index} style={leftPanelAntCardStyle}>
-              <div
-                className="tw-flex tw-justify-between tw-text-grey-muted"
-                data-testid="service-card">
-                <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
-                  <div>
-                    <Link to={getServiceDetailsPath(service.name, serviceName)}>
-                      <button>
-                        <h6
-                          className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                          data-testid={`service-name-${getEntityName(
-                            service as EntityReference
-                          )}`}
-                          title={getEntityName(service as EntityReference)}>
-                          {getEntityName(service as EntityReference)}
-                        </h6>
-                      </button>
-                    </Link>
-                    <div
-                      className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                      data-testid="service-description">
-                      {service.description ? (
-                        <RichTextEditorPreviewer
-                          enableSeeMoreVariant={false}
-                          markdown={service.description}
-                        />
-                      ) : (
-                        <span className="tw-no-description">
-                          No description
-                        </span>
-                      )}
+          {serviceList.map((service, index) => {
+            const entityName = getEntityName(service as Table);
+
+            return (
+              <Card key={index} style={leftPanelAntCardStyle}>
+                <div
+                  className="tw-flex tw-justify-between tw-text-grey-muted"
+                  data-testid="service-card">
+                  <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
+                    <div>
+                      <Link
+                        to={getServiceDetailsPath(service.name, serviceName)}>
+                        <button>
+                          <h6
+                            className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                            data-testid={`service-name-${entityName}`}
+                            title={entityName}>
+                            {entityName}
+                          </h6>
+                        </button>
+                      </Link>
+                      <div
+                        className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                        data-testid="service-description">
+                        {service.description ? (
+                          <RichTextEditorPreviewer
+                            enableSeeMoreVariant={false}
+                            markdown={service.description}
+                          />
+                        ) : (
+                          <span className="tw-no-description">
+                            No description
+                          </span>
+                        )}
+                      </div>
+                      {getOptionalFields(service)}
                     </div>
-                    {getOptionalFields(service)}
+                    <div className="" data-testid="service-type">
+                      <label className="tw-mb-0">Type:</label>
+                      <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                        {service.serviceType}
+                      </span>
+                    </div>
                   </div>
-                  <div className="" data-testid="service-type">
-                    <label className="tw-mb-0">Type:</label>
-                    <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                      {service.serviceType}
-                    </span>
+                  <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                    <div
+                      className="tw-flex tw-justify-end"
+                      data-testid="service-icon">
+                      {getServiceLogo(service.serviceType || '', 'tw-h-8')}
+                    </div>
                   </div>
                 </div>
-                <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                  <div
-                    className="tw-flex tw-justify-end"
-                    data-testid="service-icon">
-                    {getServiceLogo(service.serviceType || '', 'tw-h-8')}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       </Fragment>
     ) : (
@@ -546,11 +549,11 @@ const ServicesPage = () => {
     //   fetch all service collection
     setIsLoading(true);
     getServiceDetails()
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           let allServiceCollectionArr: Array<ServiceCollection> = [];
-          if (res.data.data?.length) {
-            allServiceCollectionArr = res.data.data.reduce(
+          if (res.data?.length) {
+            allServiceCollectionArr = res.data.reduce(
               (prev: Array<ServiceCollection>, curr: ServiceData) => {
                 const sName = curr.collection.name as ServiceTypes;
 

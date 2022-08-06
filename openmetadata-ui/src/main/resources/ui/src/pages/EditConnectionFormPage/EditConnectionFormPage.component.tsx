@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { ServicesData } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -68,15 +68,15 @@ function EditConnectionFormPage() {
       connection: {
         config: updatedData,
       },
-    };
+    } as ServiceOption;
 
     return new Promise<void>((resolve, reject) => {
-      updateService(serviceCategory, serviceDetails?.id, configData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+      updateService(serviceCategory, serviceDetails?.id ?? '', configData)
+        .then((res) => {
+          if (res) {
             setServiceDetails({
-              ...res.data,
-              owner: res.data?.owner ?? serviceDetails?.owner,
+              ...res,
+              owner: res?.owner ?? serviceDetails?.owner,
             });
           } else {
             showErrorToast(
@@ -99,17 +99,17 @@ function EditConnectionFormPage() {
   useEffect(() => {
     setIsloading(true);
     getServiceByFQN(serviceCategory, serviceFQN, ['owner'])
-      .then((resService: AxiosResponse) => {
-        if (resService.data) {
-          setServiceDetails(resService.data);
+      .then((resService) => {
+        if (resService) {
+          setServiceDetails(resService);
           setSlashedBreadcrumb([
             {
               name: startCase(serviceCategory),
               url: getServicesWithTabPath(serviceCategory),
             },
             {
-              name: getEntityName(resService.data),
-              imgSrc: serviceTypeLogo(resService.data.serviceType),
+              name: getEntityName(resService),
+              imgSrc: serviceTypeLogo(resService.serviceType),
               url: getPathByServiceFQN(serviceCategory, serviceFQN),
             },
             {

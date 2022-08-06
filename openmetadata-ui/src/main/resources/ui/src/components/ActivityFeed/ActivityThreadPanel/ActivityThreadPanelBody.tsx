@@ -12,7 +12,7 @@
  */
 
 import { Empty, Switch } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
@@ -82,8 +82,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     const status = isTaskType ? taskStatus : undefined;
     setIsThreadLoading(true);
     getAllFeeds(threadLink, after, threadType, FeedFilter.ALL, status)
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
         setThreads((prevData) => {
           if (after) {
             return [...prevData, ...data];

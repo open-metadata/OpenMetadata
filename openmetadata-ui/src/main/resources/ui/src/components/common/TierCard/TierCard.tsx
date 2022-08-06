@@ -1,5 +1,5 @@
 import { Card, Popover, Typography } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TableDetail } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
@@ -51,21 +51,22 @@ const TierCard = ({
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const tierData = res.data.children.map(
-            (tier: { name: string; description: string }) => ({
-              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-              title: tier.name,
-              description: tier.description.substring(
-                0,
-                tier.description.indexOf('\n\n')
-              ),
-              data: tier.description.substring(
-                tier.description.indexOf('\n\n') + 1
-              ),
-            })
-          );
+      .then((res) => {
+        if (res) {
+          const tierData: CardWithListItems[] =
+            res.children?.map(
+              (tier: { name: string; description: string }) => ({
+                id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+                title: tier.name,
+                description: tier.description.substring(
+                  0,
+                  tier.description.indexOf('\n\n')
+                ),
+                data: tier.description.substring(
+                  tier.description.indexOf('\n\n') + 1
+                ),
+              })
+            ) ?? [];
 
           setTierData(tierData);
         } else {

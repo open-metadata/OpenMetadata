@@ -12,11 +12,23 @@
  */
 
 import { DynamicObj, Paging } from 'Models';
-import { DashboardService } from '../generated/entity/services/dashboardService';
+import {
+  DashboardConnection,
+  DashboardService,
+} from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
-import { MessagingService } from '../generated/entity/services/messagingService';
-import { MlmodelService } from '../generated/entity/services/mlmodelService';
-import { PipelineService } from '../generated/entity/services/pipelineService';
+import {
+  MessagingConnection,
+  MessagingService,
+} from '../generated/entity/services/messagingService';
+import {
+  MlModelConnection,
+  MlmodelService,
+} from '../generated/entity/services/mlmodelService';
+import {
+  PipelineConnection,
+  PipelineService,
+} from '../generated/entity/services/pipelineService';
 
 export interface IngestionSchedule {
   repeatFrequency: string;
@@ -58,11 +70,12 @@ export interface EditObj {
   id?: string;
 }
 
-export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
-  Partial<MessagingService> &
-  Partial<DashboardService> &
-  Partial<PipelineService> &
-  Partial<MlmodelService>;
+export type ServiceDataObj =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService;
 
 export type DataService =
   | DatabaseService
@@ -76,8 +89,9 @@ export interface ServiceResponse {
   paging: Paging;
 }
 
-export type ConfigData = Partial<DatabaseService['connection']> &
-  Partial<MessagingService['connection']> &
-  Partial<DashboardService['connection']> &
-  Partial<PipelineService['connection']> &
-  Partial<MlmodelService['connection']>;
+export type ConfigData =
+  | DatabaseConnection
+  | MessagingConnection
+  | DashboardConnection
+  | PipelineConnection
+  | MlModelConnection;

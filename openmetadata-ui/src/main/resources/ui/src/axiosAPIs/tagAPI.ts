@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { TagCategory } from '../generated/entity/tags/tagCategory';
 import { TagsCategory } from '../pages/tags/tagsTypes';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -24,13 +25,12 @@ export const getTags: Function = (
   return APIClient.get(url);
 };
 
-export const getCategory: Function = (
-  name: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
+export const getCategory = async (name: string, arrQueryFields?: string) => {
   const url = getURLWithQueryFields(`/tags/${name}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<TagsCategory>(url);
+
+  return response.data;
 };
 
 export const deleteTagCategory = (
@@ -39,21 +39,23 @@ export const deleteTagCategory = (
   return APIClient.delete(`/tags/${categoryId}`);
 };
 
-export const createTagCategory: Function = (data: TagsCategory) => {
-  return APIClient.post('/tags', data);
+export const createTagCategory = async (data: TagsCategory) => {
+  const response = await APIClient.post<
+    TagsCategory,
+    AxiosResponse<TagCategory>
+  >('/tags', data);
+
+  return response.data;
 };
-export const updateTagCategory: Function = (
-  name: string,
-  data: TagsCategory
-) => {
+export const updateTagCategory = (name: string, data: TagsCategory) => {
   return APIClient.put(`/tags/${name}`, data);
 };
 
-export const createTag: Function = (name: string, data: TagsCategory) => {
+export const createTag = (name: string, data: TagsCategory) => {
   return APIClient.post(`/tags/${name}`, data);
 };
 
-export const updateTag: Function = (
+export const updateTag = (
   category: string,
   tagName: string,
   data: TagsCategory

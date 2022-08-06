@@ -11,50 +11,62 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
 import { CreateWebhook } from '../generated/api/events/createWebhook';
+import { Webhook } from '../generated/entity/events/webhook';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getWebhooks = (
-  paging?: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
+export const getWebhooks = async (paging?: string, arrQueryFields?: string) => {
   const url = getURLWithQueryFields(
     '/webhook',
     arrQueryFields,
     paging ? paging : undefined
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: Webhook[]; paging: Paging }>(
+    url
+  );
+
+  return response.data;
 };
 
-export const addWebhook = (data: CreateWebhook): Promise<AxiosResponse> => {
+export const addWebhook = async (data: CreateWebhook) => {
   const url = '/webhook';
 
-  return APIClient.post(url, data);
+  const response = await APIClient.post<CreateWebhook>(url, data);
+
+  return response.data;
 };
 
-export const updateWebhook = (data: CreateWebhook): Promise<AxiosResponse> => {
+export const updateWebhook = async (data: CreateWebhook) => {
   const url = '/webhook';
 
-  return APIClient.put(url, data);
+  const response = await APIClient.put<CreateWebhook>(url, data);
+
+  return response.data;
 };
 
-export const deleteWebhook = (id: string): Promise<AxiosResponse> => {
+export const deleteWebhook = async (id: string) => {
   const url = `/webhook/${id}`;
 
-  return APIClient.delete(url);
+  const response = await APIClient.delete<Webhook>(url);
+
+  return response.data;
 };
 
-export const getWebhookByName = (name: string): Promise<AxiosResponse> => {
+export const getWebhookByName = async (name: string) => {
   const url = `/webhook/name/${name}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Webhook>(url);
+
+  return response.data;
 };
 
-export const getWebhookById = (id: string): Promise<AxiosResponse> => {
+export const getWebhookById = async (id: string) => {
   const url = `/webhook/${id}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Webhook>(url);
+
+  return response.data;
 };

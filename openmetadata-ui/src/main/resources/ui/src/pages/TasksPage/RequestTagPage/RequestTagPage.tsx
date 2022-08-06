@@ -12,7 +12,7 @@
  */
 
 import { Button, Card, Input } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -153,9 +153,9 @@ const RequestTag = () => {
         type: ThreadType.Task,
       };
       postThread(data)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           showSuccessToast('Task Created Successfully');
-          history.push(getTaskDetailPath(res.data.task.id));
+          history.push(getTaskDetailPath(res.task.id));
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {

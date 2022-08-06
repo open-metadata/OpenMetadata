@@ -12,59 +12,66 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
-import { Table } from 'Models';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
-import { ColumnTestType } from '../generated/entity/data/table';
+import { ColumnTestType, Table } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { EntityReference } from '../generated/type/entityReference';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getTableDetails: Function = (
+export const getTableDetails = async (
   id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[]
+) => {
   const url = getURLWithQueryFields(`/tables/${id}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Table>(url);
+
+  return response.data;
 };
 
-export const getTableVersions: Function = (
-  id: string
-): Promise<AxiosResponse> => {
+export const getTableVersions = async (id: string) => {
   const url = `/tables/${id}/versions`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
 };
-export const getTableVersion: Function = (
-  id: string,
-  version: string
-): Promise<AxiosResponse> => {
+
+export const getTableVersion = async (id: string, version: string) => {
   const url = `/tables/${id}/versions/${version}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get(url);
+
+  return response.data;
 };
 
-export const getTableDetailsByFQN: Function = (
+export const getTableDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string,
+  arrQueryFields: string | string[],
   include = 'all'
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields(
     `/tables/name/${fqn}`,
     arrQueryFields,
     `include=${include}`
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Table>(url);
+
+  return response.data;
 };
 
-export const getAllTables = (
+export const getAllTables = async (
   arrQueryFields?: string,
   limit?: number,
   database?: string
-): Promise<AxiosResponse> => {
+) => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
@@ -81,7 +88,9 @@ export const getAllTables = (
     searchParams.toString()
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: Table[]; paging: Paging }>(url);
+
+  return response.data;
 };
 
 export const getDatabaseTables: Function = (
@@ -97,48 +106,65 @@ export const getDatabaseTables: Function = (
   return APIClient.get(url);
 };
 
-export const patchTableDetails: Function = (
-  id: string,
-  data: Table
-): Promise<AxiosResponse> => {
+export const patchTableDetails = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/tables/${id}`, data, configOptions);
-};
-
-export const addFollower: Function = (
-  tableId: string,
-  userId: string
-): Promise<AxiosResponse> => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
-  return APIClient.put(`/tables/${tableId}/followers`, userId, configOptions);
-};
-
-export const removeFollower: Function = (
-  tableId: string,
-  userId: string
-): Promise<AxiosResponse> => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
-  return APIClient.delete(
-    `/tables/${tableId}/followers/${userId}`,
+  const response = await APIClient.patch<Operation[], AxiosResponse<Table>>(
+    `/tables/${id}`,
+    data,
     configOptions
   );
+
+  return response.data;
 };
 
-export const addTableTestCase = (tableId: string, data: CreateTableTest) => {
+export const addFollower = async (tableId: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.put(`/tables/${tableId}/tableTest`, data, configOptions);
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`/tables/${tableId}/followers`, userId, configOptions);
+
+  return response.data;
+};
+
+export const removeFollower = async (tableId: string, userId: string) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(`/tables/${tableId}/followers/${userId}`, configOptions);
+
+  return response.data;
+};
+
+export const addTableTestCase = async (
+  tableId: string,
+  data: CreateTableTest
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.put<CreateTableTest, AxiosResponse<Table>>(
+    `/tables/${tableId}/tableTest`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
 
 export const deleteTableTestCase = (
@@ -155,12 +181,21 @@ export const deleteTableTestCase = (
   );
 };
 
-export const addColumnTestCase = (tableId: string, data: CreateColumnTest) => {
+export const addColumnTestCase = async (
+  tableId: string,
+  data: CreateColumnTest
+) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.put(`/tables/${tableId}/columnTest`, data, configOptions);
+  const response = await APIClient.put<CreateColumnTest, AxiosResponse<Table>>(
+    `/tables/${tableId}/columnTest`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
 
 export const deleteColumnTestCase = (

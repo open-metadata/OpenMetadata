@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -57,7 +57,8 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Connection } from '../../generated/entity/services/dashboardService';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -165,23 +166,18 @@ const PipelineDetailsPage = () => {
     );
   };
 
-  const saveUpdatedPipelineData = (
-    updatedData: Pipeline
-  ): Promise<AxiosResponse> => {
+  const saveUpdatedPipelineData = (updatedData: Pipeline) => {
     const jsonPatch = compare(pipelineDetails, updatedData);
 
-    return patchPipelineDetails(
-      pipelineId,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchPipelineDetails(pipelineId, jsonPatch);
   };
 
   const getLineageData = () => {
     setIsLineageLoading(true);
     getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityLineage(res.data);
+      .then((res) => {
+        if (res) {
+          setEntityLineage(res);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -209,8 +205,8 @@ const PipelineDetailsPage = () => {
       threadType,
       feedFilter
     )
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
         if (data) {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
@@ -241,9 +237,10 @@ const PipelineDetailsPage = () => {
   const fetchServiceDetails = (type: string, fqn: string) => {
     return new Promise<string>((resolve, reject) => {
       getServiceByFQN(type + 's', fqn, ['owner'])
-        .then((resService: AxiosResponse) => {
-          if (resService?.data) {
-            const hostPort = resService.data.connection?.config?.hostPort || '';
+        .then((resService) => {
+          if (resService) {
+            const hostPort =
+              (resService.connection?.config as Connection)?.hostPort || '';
             resolve(hostPort);
           } else {
             throw null;
@@ -262,58 +259,59 @@ const PipelineDetailsPage = () => {
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, defaultFields)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           const {
             id,
             deleted,
             description,
-            followers,
+            followers = [],
             fullyQualifiedName,
             service,
             serviceType,
-            tags,
+            tags = [],
             owner,
             displayName,
             name,
             tasks,
-            pipelineUrl,
+            pipelineUrl = '',
             pipelineStatus,
             version,
-          } = res.data;
+          } = res;
           setDisplayName(displayName || name);
-          setPipelineDetails(res.data);
-          setCurrentVersion(version);
+          setPipelineDetails(res);
+          setCurrentVersion(version + '');
           setPipelineId(id);
           setDescription(description ?? '');
           setFollowers(followers);
           setOwner(owner);
           setTier(getTierTags(tags));
           setTags(getTagsWithoutTier(tags));
-          setServiceType(serviceType);
-          setDeleted(deleted);
+          setServiceType(serviceType ?? '');
+          setDeleted(Boolean(deleted));
+          const serviceName = service.name ?? '';
           setSlashedPipelineName([
             {
-              name: service.name,
-              url: service.name
+              name: serviceName,
+              url: serviceName
                 ? getServiceDetailsPath(
-                    service.name,
+                    serviceName,
                     ServiceCategory.PIPELINE_SERVICES
                   )
                 : '',
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getEntityName(res.data),
+              name: getEntityName(res),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName: getEntityName(res.data),
+            displayName: getEntityName(res),
             entityType: EntityType.PIPELINE,
-            fqn: fullyQualifiedName,
+            fqn: fullyQualifiedName ?? '',
             serviceType: serviceType,
             timestamp: 0,
             id: id,
@@ -324,7 +322,7 @@ const PipelineDetailsPage = () => {
 
           setPipelineStatus(pipelineStatus as Pipeline['pipelineStatus']);
 
-          fetchServiceDetails(service.type, service.name)
+          fetchServiceDetails(service.type, service.name ?? '')
             .then((hostPort: string) => {
               setPipelineUrl(hostPort + pipelineUrl);
               const updatedTasks = ((tasks || []) as Task[]).map((task) => ({
@@ -384,9 +382,9 @@ const PipelineDetailsPage = () => {
 
   const followPipeline = () => {
     addFollower(pipelineId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { newValue } = res.data.changeDescription.fieldsAdded[0];
+      .then((res) => {
+        if (res) {
+          const { newValue } = res.changeDescription.fieldsAdded[0];
 
           setFollowers([...followers, ...newValue]);
         } else {
@@ -403,9 +401,9 @@ const PipelineDetailsPage = () => {
 
   const unfollowPipeline = () => {
     removeFollower(pipelineId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+      .then((res) => {
+        if (res) {
+          const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
           setFollowers(
             followers.filter((follower) => follower.id !== oldValue[0].id)
@@ -424,11 +422,11 @@ const PipelineDetailsPage = () => {
 
   const descriptionUpdateHandler = (updatedPipeline: Pipeline) => {
     saveUpdatedPipelineData(updatedPipeline)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { description, version } = res.data;
-          setCurrentVersion(version);
-          setPipelineDetails(res.data);
+      .then((res) => {
+        if (res) {
+          const { description = '', version } = res;
+          setCurrentVersion(version + '');
+          setPipelineDetails(res);
           setDescription(description);
           getEntityFeedCount();
         } else {
@@ -447,11 +445,11 @@ const PipelineDetailsPage = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedPipelineData(updatedPipeline)
         .then((res) => {
-          if (res.data) {
-            setPipelineDetails(res.data);
-            setCurrentVersion(res.data.version);
-            setOwner(res.data.owner);
-            setTier(getTierTags(res.data.tags));
+          if (res) {
+            setPipelineDetails(res);
+            setCurrentVersion(res.version + '');
+            setOwner(res.owner);
+            setTier(getTierTags(res.tags ?? []));
             getEntityFeedCount();
             resolve();
           } else {
@@ -470,12 +468,12 @@ const PipelineDetailsPage = () => {
 
   const onTagUpdate = (updatedPipeline: Pipeline) => {
     saveUpdatedPipelineData(updatedPipeline)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setPipelineDetails(res.data);
-          setTier(getTierTags(res.data.tags));
-          setCurrentVersion(res.data.version);
-          setTags(getTagsWithoutTier(res.data.tags));
+      .then((res) => {
+        if (res) {
+          setPipelineDetails(res);
+          setTier(getTierTags(res.tags ?? []));
+          setCurrentVersion(res.version + '');
+          setTags(getTagsWithoutTier(res.tags ?? []));
           getEntityFeedCount();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -491,9 +489,9 @@ const PipelineDetailsPage = () => {
 
   const onTaskUpdate = (jsonPatch: Array<Operation>) => {
     patchPipelineDetails(pipelineId, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setTasks(res.data.tasks || []);
+      .then((res) => {
+        if (res) {
+          setTasks(res.tasks || []);
           getEntityFeedCount();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -528,11 +526,11 @@ const PipelineDetailsPage = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName, node.type)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setLeafNode(res.data, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
+      .then((res) => {
+        if (res) {
+          setLeafNode(res, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res, pos));
         } else {
           showErrorToast(
             jsonData['api-error-messages']['fetch-lineage-node-error']
@@ -592,15 +590,15 @@ const PipelineDetailsPage = () => {
     const data = {
       message: value,
       from: currentUser,
-    };
+    } as Post;
     postFeedById(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, posts } = res.data;
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === id) {
-                return { ...res.data, posts: posts.slice(-3) };
+                return { ...res, posts: posts?.slice(-3) };
               } else {
                 return thread;
               }
@@ -618,9 +616,9 @@ const PipelineDetailsPage = () => {
 
   const createThread = (data: CreateThread) => {
     postThread(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityThread((pre) => [...pre, res.data]);
+      .then((res) => {
+        if (res) {
+          setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
           showErrorToast(
@@ -687,11 +685,11 @@ const PipelineDetailsPage = () => {
 
   const handleExtentionUpdate = async (updatedPipeline: Pipeline) => {
     try {
-      const { data } = await saveUpdatedPipelineData(updatedPipeline);
+      const data = await saveUpdatedPipelineData(updatedPipeline);
 
       if (data) {
-        const { version, owner: ownerValue, tags } = data;
-        setCurrentVersion(version);
+        const { version, owner: ownerValue, tags = [] } = data;
+        setCurrentVersion(version + '');
         setPipelineDetails(data);
         setOwner(ownerValue);
         setTier(getTierTags(tags));
