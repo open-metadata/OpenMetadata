@@ -884,7 +884,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   void patch_entityUpdateOwner_200(TestInfo test) throws IOException {
-    if (!supportsOwner) {
+    if (!supportsOwner || !supportsPatch) {
       return; // Entity doesn't support ownership
     }
     // Create an entity without owner
