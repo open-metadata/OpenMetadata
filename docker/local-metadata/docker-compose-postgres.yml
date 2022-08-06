@@ -24,6 +24,7 @@ services:
     depends_on:
       - elasticsearch
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     expose:
       - 5432
@@ -99,14 +100,15 @@ services:
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+      #Database configuration for Postgres
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
       DB_USE_SSL: ${DB_USE_SSL:-false}
-      MYSQL_USER: ${MYSQL_USER:-openmetadata_user}
-      MYSQL_USER_PASSWORD: ${MYSQL_USER_PASSWORD:-openmetadata_password}
-      MYSQL_HOST: ${MYSQL_HOST:-postgres}
-      MYSQL_PORT: ${MYSQL_PORT:-5432}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-openmetadata_db} 
+      DB_USER: ${DB_USER:-openmetadata_user}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      OM_DATABASE: ${OM_DATABASE:-openmetadata_db} 
     expose:
       - 8585
       - 8586

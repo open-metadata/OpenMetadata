@@ -10,9 +10,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-MYSQL="${MYSQL_HOST:-mysql}":"${MYSQL_PORT:-3306}"
-while ! nc -z -w 5 "${MYSQL}";
-  do echo "Trying to connect to ${MYSQL}"; sleep 5;
+DB_ENDPOINT="${DB_HOST:-mysql}":"${DB_PORT:-3306}"
+while ! nc -z -w 5 "${DB_ENDPOINT}";
+  do echo "Trying to connect to ${DB_ENDPOINT}"; sleep 5;
 done
 cd /openmetadata-*/
 ./bootstrap/bootstrap_storage.sh migrate-all
