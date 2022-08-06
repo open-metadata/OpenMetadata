@@ -55,28 +55,34 @@ const AddAnnouncementModal: FC<Props> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleCreateAnnouncement = async () => {
-    const announcementData: CreateThread = {
-      from: currentUser?.name as string,
-      message: title,
-      about: getEntityFeedLink(entityType, entityFQN),
-      announcementDetails: {
-        description,
-        startTime: Math.floor(getUTCDateTime(startDate) / 1000),
-        endTime: Math.floor(getUTCDateTime(endDate) / 1000),
-      },
-      type: ThreadType.Announcement,
-    };
-    try {
-      setIsLoading(true);
-      const { data } = await postThread(announcementData);
-      if (data) {
-        showSuccessToast('Announcement created successfully!');
+    const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
+    const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
+    if (startTime >= endTime) {
+      showErrorToast('Start date should be earlier than end date.');
+    } else {
+      const announcementData: CreateThread = {
+        from: currentUser?.name as string,
+        message: title,
+        about: getEntityFeedLink(entityType, entityFQN),
+        announcementDetails: {
+          description,
+          startTime,
+          endTime,
+        },
+        type: ThreadType.Announcement,
+      };
+      try {
+        setIsLoading(true);
+        const { data } = await postThread(announcementData);
+        if (data) {
+          showSuccessToast('Announcement created successfully!');
+        }
+        onCancel();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
       }
-      onCancel();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
   };
 

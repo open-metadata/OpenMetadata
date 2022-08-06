@@ -25,6 +25,7 @@ interface Props {
 const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
   const viewCap = 72;
   const title = announcement.message;
+  const hasMore = title.length > viewCap;
 
   return (
     <Card
@@ -38,7 +39,10 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
           width="24px"
         />
         <div>
-          <Typography.Text>{title.slice(0, viewCap)}...</Typography.Text>
+          <Typography.Text>
+            {title.slice(0, viewCap)}
+            {hasMore ? '...' : ''}
+          </Typography.Text>
           <Button
             data-testid="read-more"
             size="small"

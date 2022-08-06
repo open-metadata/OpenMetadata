@@ -34,7 +34,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
             <Typography.Text className="tw-text-xs tw-text-grey-muted">
-              Duration{' '}
+              Schedule{' '}
               {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)} to{' '}
               {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
             </Typography.Text>
