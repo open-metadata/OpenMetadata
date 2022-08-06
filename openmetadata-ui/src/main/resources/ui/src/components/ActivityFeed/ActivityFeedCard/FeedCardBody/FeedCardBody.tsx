@@ -69,6 +69,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           <Button
             className="tw-rounded"
             data-testid="save-button"
+            disabled={!postMessage.length}
             size="small"
             type="primary"
             onClick={(e) => {
