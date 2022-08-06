@@ -6,9 +6,9 @@ source:
       hostPort: hostPort
       username: username
       password: password
-      databaseSchema: default
       type: Oracle
-      oracleServiceName: TESTDB
+      oracleConnectionType:
+        oracleServiceName: TESTDB
   sourceConfig:
     config: {}
 sink:

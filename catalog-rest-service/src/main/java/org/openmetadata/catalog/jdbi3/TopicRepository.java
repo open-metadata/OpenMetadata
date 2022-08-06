@@ -64,7 +64,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     setFullyQualifiedName(topic);
-    topic.setOwner(Entity.getEntityReference(topic.getOwner()));
     topic.setTags(addDerivedTags(topic.getTags()));
   }
 

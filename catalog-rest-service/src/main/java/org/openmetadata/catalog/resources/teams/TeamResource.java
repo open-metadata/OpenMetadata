@@ -359,9 +359,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Team getTeam(CreateTeam ct, String user) {
+  private Team getTeam(CreateTeam ct, String user) throws IOException {
     if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.createOrganization());
+    }
+    if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.createGroup());
     }
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())

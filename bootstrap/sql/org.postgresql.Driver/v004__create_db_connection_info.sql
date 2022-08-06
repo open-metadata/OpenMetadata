@@ -1,5 +1,5 @@
 UPDATE team_entity
-SET json = JSONB_SET(json, '{teamType}', '"Department"', true);
+SET json = JSONB_SET(json, '{teamType}', '"Group"', true);
 
 ALTER TABLE team_entity
 ADD teamType VARCHAR(64) GENERATED ALWAYS AS (json ->> 'teamType') STORED NOT NULL;
@@ -77,3 +77,7 @@ CREATE TABLE IF NOT EXISTS entity_extension_time_series (
 ALTER TABLE thread_entity
     ADD announcementStart BIGINT GENERATED ALWAYS AS ((json#>'{announcement,startTime}')::bigint) STORED,
     ADD announcementEnd BIGINT GENERATED ALWAYS AS ((json#>'{announcement,endTime}')::bigint) STORED;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,databaseSchema}' #- '{connection,config,oracleServiceName}'
+WHERE serviceType = 'Oracle';

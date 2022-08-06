@@ -464,6 +464,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepare(updated);
+    populateOwner(updated.getOwner());
     validateExtension(updated);
     restorePatchAttributes(original, updated);
 

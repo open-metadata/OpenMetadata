@@ -21,11 +21,12 @@ import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { validateMessages } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import './AddAnnouncementModal.less';
+import './AnnouncementModal.less';
 
 interface Props {
   open: boolean;
@@ -54,35 +55,43 @@ const AddAnnouncementModal: FC<Props> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleCreateAnnouncement = async () => {
-    const announcementData: CreateThread = {
-      from: currentUser?.name as string,
-      message: title,
-      about: getEntityFeedLink(entityType, entityFQN),
-      announcementDetails: {
-        description,
-        startTime: getUTCDateTime(startDate),
-        endTime: getUTCDateTime(endDate),
-      },
-      type: ThreadType.Announcement,
-    };
-    try {
-      setIsLoading(true);
-      const { data } = await postThread(announcementData);
-      if (data) {
-        showSuccessToast('Announcement created successfully!');
+    const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
+    const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
+    if (startTime >= endTime) {
+      showErrorToast('Start date should be earlier than end date.');
+    } else {
+      const announcementData: CreateThread = {
+        from: currentUser?.name as string,
+        message: title,
+        about: getEntityFeedLink(entityType, entityFQN),
+        announcementDetails: {
+          description,
+          startTime,
+          endTime,
+        },
+        type: ThreadType.Announcement,
+      };
+      try {
+        setIsLoading(true);
+        const { data } = await postThread(announcementData);
+        if (data) {
+          showSuccessToast('Announcement created successfully!');
+        }
+        onCancel();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
       }
-      onCancel();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
     <Modal
+      centered
       className="announcement-modal"
       confirmLoading={isLoading}
+      data-testid="add-announcement"
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
@@ -94,8 +103,10 @@ const AddAnnouncementModal: FC<Props> = ({
       width={620}
       onCancel={onCancel}>
       <Form
+        data-testid="announcement-form"
         id="announcement-form"
         layout="vertical"
+        validateMessages={validateMessages}
         onFinish={handleCreateAnnouncement}>
         <Form.Item
           label="Title:"
@@ -103,7 +114,6 @@ const AddAnnouncementModal: FC<Props> = ({
           rules={[
             {
               required: true,
-              message: 'Please provide valid title!',
               max: 124,
               min: 5,
             },
@@ -122,7 +132,6 @@ const AddAnnouncementModal: FC<Props> = ({
             rules={[
               {
                 required: true,
-                message: 'Start date is required!',
               },
             ]}>
             <Input
@@ -137,7 +146,6 @@ const AddAnnouncementModal: FC<Props> = ({
             rules={[
               {
                 required: true,
-                message: 'End date is required!',
               },
             ]}>
             <Input

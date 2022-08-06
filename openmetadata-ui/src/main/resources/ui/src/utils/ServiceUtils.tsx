@@ -97,6 +97,7 @@ import {
 } from '../generated/entity/services/pipelineService';
 import { Paging } from '../generated/type/paging';
 import { DataService, ServiceResponse } from '../interface/service.interface';
+import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
 import { showErrorToast } from './ToastUtils';
@@ -436,10 +437,6 @@ export const servicePageTabs = (entity: string) => [
     name: 'Connection',
     path: 'connection',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentServiceTab = (tab: string) => {
@@ -452,11 +449,6 @@ export const getCurrentServiceTab = (tab: string) => {
 
     case 'connection':
       currentTab = 3;
-
-      break;
-
-    case 'manage':
-      currentTab = 4;
 
       break;
 
@@ -731,5 +723,46 @@ export const getOptionalFields = (
     default: {
       return <></>;
     }
+  }
+};
+
+export const getDeleteEntityMessage = (
+  serviceName: string,
+  instanceCount: number,
+  schemaCount: number,
+  tableCount: number
+) => {
+  const service = serviceName?.slice(0, -1);
+
+  switch (serviceName) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return getEntityDeleteMessage(
+        service || 'Service',
+        `${pluralize(instanceCount, 'Database')}, ${pluralize(
+          schemaCount,
+          'Schema'
+        )} and ${pluralize(tableCount, 'Table')}`
+      );
+
+    case ServiceCategory.MESSAGING_SERVICES:
+      return getEntityDeleteMessage(
+        service || 'Service',
+        pluralize(instanceCount, 'Topic')
+      );
+
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return getEntityDeleteMessage(
+        service || 'Service',
+        pluralize(instanceCount, 'Dashboard')
+      );
+
+    case ServiceCategory.PIPELINE_SERVICES:
+      return getEntityDeleteMessage(
+        service || 'Service',
+        pluralize(instanceCount, 'Pipeline')
+      );
+
+    default:
+      return;
   }
 };

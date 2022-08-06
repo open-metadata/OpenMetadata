@@ -120,3 +120,11 @@ export const getUTCDateTime = (dateTime: string) => {
     dateObject.getUTCSeconds()
   );
 };
+
+export const getDateTimeByTimeStamp = (timeStamp: number): string => {
+  return moment(timeStamp, 'x').format('DD MMMM YYYY hh:mm A');
+};
+
+export const getLocaleDate = (timeStamp: number): string => {
+  return moment(timeStamp, 'x').format('yyyy-MM-DDThh:mm');
+};

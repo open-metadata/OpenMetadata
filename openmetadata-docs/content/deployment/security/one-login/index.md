@@ -1,11 +1,11 @@
 ---
-title: One Login SSO
+title: OneLogin SSO
 slug: /deployment/security/one-login
 ---
 
-# One Login SSO
+# OneLogin SSO
 
-Follow the sections in this guide to set up One Login SSO.
+Follow the sections in this guide to set up OneLogin SSO.
 
 <Collapse title="Create Server Credentials">
 
@@ -65,7 +65,7 @@ After the applying these steps, you can update the configuration of your deploym
     bold="Docker Security"
     href="/deployment/security/one-login/docker"
   >
-    Configure One Login SSO for your Docker Deployment.
+    Configure OneLogin SSO for your Docker Deployment.
   </InlineCallout>
   <InlineCallout
     color="violet-70"
@@ -73,7 +73,7 @@ After the applying these steps, you can update the configuration of your deploym
     bold="Bare Metal Security"
     href="/deployment/security/one-login/bare-metal"
   >
-    Configure One Login SSO for your Bare Metal Deployment.
+    Configure OneLogin SSO for your Bare Metal Deployment.
   </InlineCallout>
   <InlineCallout
     color="violet-70"
@@ -81,7 +81,7 @@ After the applying these steps, you can update the configuration of your deploym
     bold="Kubernetes Security"
     href="/deployment/security/one-login/kubernetes"
   >
-    Configure One Login SSO for your Kubernetes Deployment.
+    Configure OneLogin SSO for your Kubernetes Deployment.
   </InlineCallout>
 </InlineCalloutContainer>
 

@@ -155,10 +155,6 @@ const mockProp = {
   onExtensionUpdate: jest.fn(),
 };
 
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
-});
-
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
@@ -251,21 +247,6 @@ describe('Test MlModel entity detail component', () => {
     const detailContainer = await findByTestId(container, 'lineage-details');
 
     expect(detailContainer).toBeInTheDocument();
-  });
-
-  it('Should render manage component for manage tab', async () => {
-    const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={5} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
-    const manageTab = await findByTestId(container, 'manage');
-
-    expect(detailContainer).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {

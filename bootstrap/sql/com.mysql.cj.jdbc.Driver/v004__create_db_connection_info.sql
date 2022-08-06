@@ -1,5 +1,5 @@
 UPDATE team_entity
-SET json = JSON_INSERT(json, '$.teamType', 'Department');
+SET json = JSON_INSERT(json, '$.teamType', 'Group');
 
 ALTER TABLE team_entity
 ADD teamType VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.teamType') NOT NULL;
@@ -82,3 +82,7 @@ CREATE TABLE IF NOT EXISTS entity_extension_time_series (
 ALTER TABLE thread_entity
     ADD announcementStart BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.startTime'),
     ADD announcementEnd BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.announcement.endTime');
+
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.databaseSchema','$.connection.config.oracleServiceName')
+WHERE serviceType = 'Oracle';

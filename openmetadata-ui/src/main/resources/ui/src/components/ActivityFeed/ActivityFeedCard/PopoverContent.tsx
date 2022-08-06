@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Button, Popover, Space } from 'antd';
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import AppState from '../../../AppState';
@@ -25,6 +25,7 @@ import { ConfirmState } from './ActivityFeedCard.interface';
 
 interface Props {
   isAuthor: boolean;
+  isAnnouncement?: boolean;
   isThread?: boolean;
   threadId?: string;
   postId?: string;
@@ -36,6 +37,7 @@ interface Props {
   onPopoverHide: () => void;
   onConfirmation?: (data: ConfirmState) => void;
   onReply?: () => void;
+  onEdit?: () => void;
 }
 
 const PopoverContent: FC<Props> = ({
@@ -48,7 +50,15 @@ const PopoverContent: FC<Props> = ({
   reactions = [],
   onReactionSelect,
   onPopoverHide,
+  onEdit,
+  isAnnouncement,
 }) => {
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
   const [visible, setVisible] = useState<boolean>(false);
 
   const hide = () => {
@@ -60,7 +70,11 @@ const PopoverContent: FC<Props> = ({
   };
 
   const deleteButtonCheck =
-    threadId && postId && onConfirmation && isAuthor && !isThread;
+    threadId &&
+    postId &&
+    onConfirmation &&
+    (isAuthor || currentUser?.isAdmin) &&
+    !isThread;
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -97,12 +111,6 @@ const PopoverContent: FC<Props> = ({
     }
   };
 
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
   /**
    *
    * @param reactionType
@@ -133,7 +141,7 @@ const PopoverContent: FC<Props> = ({
   });
 
   return (
-    <div className="tw-flex tw-gap-x-2">
+    <Space>
       <Popover
         destroyTooltipOnHide
         align={{ targetOffset: [0, -10] }}
@@ -144,38 +152,59 @@ const PopoverContent: FC<Props> = ({
         visible={visible}
         zIndex={9999}
         onVisibleChange={handleVisibleChange}>
-        <button onClick={(e) => e.stopPropagation()}>
+        <Button
+          className="tw-p-0"
+          size="small"
+          type="text"
+          onClick={(e) => e.stopPropagation()}>
           <SVGIcons
             alt="add-reaction"
             icon={Icons.REACTION}
             title="Add reactions"
             width="20px"
           />
-        </button>
+        </Button>
       </Popover>
 
       {(onReply || isThread) && (
-        <button onClick={handleReply}>
+        <Button
+          className="tw-p-0"
+          size="small"
+          type="text"
+          onClick={handleReply}>
           <SVGIcons
             alt="add-reply"
             icon={Icons.ADD_REPLY}
             title="Reply"
             width="20px"
           />
-        </button>
+        </Button>
+      )}
+
+      {isAnnouncement && (
+        <Button
+          className="tw-p-0"
+          size="small"
+          type="text"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit && onEdit();
+          }}>
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="18px" />
+        </Button>
       )}
 
       {deleteButtonCheck ? (
-        <button onClick={handleDelete}>
+        <Button className="tw-p-0" type="text" onClick={handleDelete}>
           <SVGIcons
             alt="delete-reply"
             icon={Icons.FEED_DELETE}
             title="Delete"
             width="20px"
           />
-        </button>
+        </Button>
       ) : null}
-    </div>
+    </Space>
   );
 };
 

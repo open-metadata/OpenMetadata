@@ -94,6 +94,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
@@ -706,13 +707,25 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void post_entityWithInvalidOwnerType_4xx(TestInfo test) {
+  void post_entityWithInvalidOwnerType_4xx(TestInfo test) throws HttpResponseException {
     if (!supportsOwner) {
       return;
     }
     EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
     K create = createRequest(getEntityName(test), "", "", owner);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "type must not be null");
+
+    // Only Team of type Group is allowed to own entities
+    List<Team> teams =
+        new TeamResourceTest().getTeamOfTypes(test, TeamType.BUSINESS_UNIT, TeamType.DEPARTMENT, TeamType.DEPARTMENT);
+    teams.add(ORG_TEAM);
+    for (Team team : teams) {
+      K create1 = createRequest(getEntityName(test), "", "", team.getEntityReference());
+      assertResponseContains(
+          () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+    }
   }
 
   @Test

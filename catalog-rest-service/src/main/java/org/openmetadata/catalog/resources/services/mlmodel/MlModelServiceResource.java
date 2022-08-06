@@ -354,7 +354,7 @@ public class MlModelServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private MlModelService getService(CreateMlModelService create, String user) {
+  private MlModelService getService(CreateMlModelService create, String user) throws IOException {
     return copy(new MlModelService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

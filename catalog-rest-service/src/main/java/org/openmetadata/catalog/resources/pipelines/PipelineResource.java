@@ -528,7 +528,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Pipeline getPipeline(CreatePipeline create, String user) {
+  private Pipeline getPipeline(CreatePipeline create, String user) throws IOException {
     return copy(new Pipeline(), create, user)
         .withService(create.getService())
         .withTasks(create.getTasks())
