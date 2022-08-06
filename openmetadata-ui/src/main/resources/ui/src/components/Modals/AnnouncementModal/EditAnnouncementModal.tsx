@@ -15,7 +15,10 @@ import { Form, Input, Modal, Space } from 'antd';
 import { observer } from 'mobx-react';
 import React, { FC, useState } from 'react';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
-import { validateMessages } from '../../../utils/AnnouncementsUtils';
+import {
+  announcementInvalidStartTime,
+  validateMessages,
+} from '../../../utils/AnnouncementsUtils';
 import { getLocaleDate, getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -51,7 +54,7 @@ const EditAnnouncementModal: FC<Props> = ({
     const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
     const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
     if (startTime >= endTime) {
-      showErrorToast('Start date should be earlier than end date.');
+      showErrorToast(announcementInvalidStartTime);
     } else {
       const updatedAnnouncement = {
         ...announcement,
