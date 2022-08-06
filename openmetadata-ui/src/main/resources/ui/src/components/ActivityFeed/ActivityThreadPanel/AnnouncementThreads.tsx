@@ -12,7 +12,6 @@
  */
 
 import { Card, Divider, Typography } from 'antd';
-import { isEmpty } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import {
   ANNOUNCEMENT_BG,
@@ -167,7 +166,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   return (
     <div className={className}>
       {getAnnouncements(activeAnnouncements)}
-      {!isEmpty(inActiveAnnouncements) && (
+      {Boolean(inActiveAnnouncements.length) && (
         <>
           <Typography.Text className="tw-block tw-mt-4 tw-font-medium">
             Inactive Announcements
