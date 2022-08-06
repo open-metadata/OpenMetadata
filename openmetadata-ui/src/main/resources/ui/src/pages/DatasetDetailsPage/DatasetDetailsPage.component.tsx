@@ -220,10 +220,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
     columnName?: string
   ) => {
     activeTabHandler(tabValue);
-    if (testMode && columnName) {
+    if (testMode) {
       setTestMode(testMode as DatasetTestModeType);
-      setSelectedColumn(columnName);
       setShowTestForm(true);
+      if (columnName) {
+        setSelectedColumn(columnName);
+      }
     }
   };
 
