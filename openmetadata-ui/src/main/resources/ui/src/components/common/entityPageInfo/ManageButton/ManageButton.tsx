@@ -27,7 +27,7 @@ interface Props {
   entityFQN?: string;
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
-  onAnnouncementClick: () => void;
+  onAnnouncementClick?: () => void;
 }
 
 const ManageButton: FC<Props> = ({
@@ -79,7 +79,7 @@ const ManageButton: FC<Props> = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowActions(false);
-                      onAnnouncementClick();
+                      onAnnouncementClick && onAnnouncementClick();
                     }}>
                     <SVGIcons alt="Delete" icon={Icons.ANNOUNCEMENT} />
                     <div
