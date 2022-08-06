@@ -21,9 +21,9 @@ import {
 import React from 'react';
 import DropDownList from './DropDownList';
 
-jest.mock('../common/ProfilePicture/ProfilePicture', () => {
-  return jest.fn().mockReturnValue(<div>ProfilePicture</div>);
-});
+jest.mock('../common/UserTag/UserTag.component', () => ({
+  UserTag: jest.fn().mockReturnValue(<div>ProfilePicture</div>),
+}));
 
 const dropDownList = [
   {
