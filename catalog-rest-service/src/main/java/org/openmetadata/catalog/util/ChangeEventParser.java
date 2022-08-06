@@ -49,7 +49,6 @@ import org.openmetadata.catalog.type.FieldChange;
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
   public static final String FEED_REMOVE_MARKER = "<!remove>";
-  public static final String SLACK_STRIKE_MARKER = "~%s~ ";
   public static final String FEED_BOLD = "**%s**";
   public static final String SLACK_BOLD = "*%s* ";
   public static final String FEED_SPAN_ADD = "<span class=\"diff-added\">";
@@ -94,12 +93,12 @@ public final class ChangeEventParser {
     Map<EntityLink, String> messages =
         getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<SlackAttachment> attachmentList = new ArrayList<>();
-    for (var entryset : messages.entrySet()) {
+    for (var entry : messages.entrySet()) {
       SlackAttachment attachment = new SlackAttachment();
       List<String> mark = new ArrayList<>();
       mark.add("text");
       attachment.setMarkdownIn(mark);
-      attachment.setText(entryset.getValue());
+      attachment.setText(entry.getValue());
       attachmentList.add(attachment);
     }
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
@@ -352,9 +351,8 @@ public final class ChangeEventParser {
 
     if (oldValue == null || oldValue.toString().isEmpty()) {
       return String.format(
-          "Updated " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + " to %s",
-          updatedField,
-          getFieldValue(newValue));
+          "Updated %s to %s",
+          publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD, updatedField, getFieldValue(newValue));
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
       return getPlainTextUpdateMessage(publishTo, updatedField, getFieldValue(oldValue), getFieldValue(newValue));
     }

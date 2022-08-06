@@ -26,14 +26,13 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.JwtFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class SocketAddressFilter implements Filter {
-  private static final Logger LOG = LoggerFactory.getLogger(SocketAddressFilter.class);
   private JwtFilter jwtFilter;
 
   private final boolean enableSecureSocketConnection;
