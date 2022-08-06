@@ -14,7 +14,6 @@
 import { Steps } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
-import './IngestionStepper.css';
 
 const { Step } = Steps;
 type Props = {
