@@ -343,7 +343,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final K createRequest(String name, String description, String displayName, EntityReference owner) {
-    return createRequest(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+    return createRequest(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withOwner(reduceEntityReference(owner));
   }
 
   public abstract K createRequest(String name);
@@ -877,6 +880,49 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     request = createRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+  }
+
+  @Test
+  void patch_entityUpdateOwner_200(TestInfo test) throws IOException {
+    if (!supportsOwner || !supportsPatch) {
+      return; // Entity doesn't support ownership
+    }
+    // Create an entity without owner
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Set TEAM_OWNER1 as owner using PATCH request
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(TEAM_OWNER1);
+    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1);
+    ChangeDescription change =
+        getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    checkOwnerOwns(TEAM_OWNER1, entity.getId(), true);
+
+    // Change owner from TEAM_OWNER1 to USER_OWNER1 using PATCH request
+    json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(USER_OWNER1);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
+    change = getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+    checkOwnerOwns(TEAM_OWNER1, entity.getId(), false);
+
+    // Set the owner to the existing owner. No ownership change must be recorded.
+    json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(USER_OWNER1);
+    change = getChangeDescription(entity.getVersion());
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+
+    // Remove ownership (from USER_OWNER1) using PATCH request. Owner is expected to remain the same and not removed.
+    json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(null);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1);
+    change = getChangeDescription(entity.getVersion()).withFieldsDeleted(Collections.singletonList(fieldChange));
+    patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), false);
   }
 
   @Test
@@ -1436,6 +1482,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
       throws JsonProcessingException, HttpResponseException {
+    updated.setOwner(reduceEntityReference(updated.getOwner()));
     String updatedEntityJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
@@ -1644,7 +1691,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(create.getDisplayName(), entity.getDisplayName());
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertEquals(create.getOwner(), entity.getOwner());
+    assertReference(create.getOwner(), entity.getOwner());
     assertEquals(getPrincipalName(authHeaders), entity.getUpdatedBy());
   }
 
@@ -1654,7 +1701,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(expected.getDisplayName(), actual.getDisplayName());
     assertEquals(expected.getDescription(), actual.getDescription());
     assertEquals(JsonUtils.valueToTree(expected.getExtension()), JsonUtils.valueToTree(actual.getExtension()));
-    assertEquals(expected.getOwner(), actual.getOwner());
+    assertReference(expected.getOwner(), actual.getOwner());
     assertEquals(getPrincipalName(authHeaders), actual.getUpdatedBy());
   }
 
@@ -2072,5 +2119,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return String.valueOf((char) ('a' + index));
     }
     return getNthAlphanumericString(index / N_LETTERS) + (char) ('a' + (index % N_LETTERS));
+  }
+
+  public static EntityReference reduceEntityReference(EntityReference ref) {
+    // In requests send minimum entity reference information to ensure the server fills rest of the details
+    return ref != null ? new EntityReference().withType(ref.getType()).withId(ref.getId()) : null;
   }
 }
