@@ -35,6 +35,7 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -101,7 +102,10 @@ const RequestTag = () => {
     if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
       const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
-      const columnObject = getColumnObject(column[0], entityData.columns || []);
+      const columnObject = getColumnObject(
+        column[0],
+        (entityData as Table).columns || []
+      );
 
       return (
         <div data-testid="column-details">
@@ -116,7 +120,7 @@ const RequestTag = () => {
     } else {
       return null;
     }
-  }, [entityData.columns]);
+  }, [(entityData as Table).columns]);
 
   const onSearch = (query: string) => {
     fetchOptions(query, setOptions);
@@ -155,7 +159,7 @@ const RequestTag = () => {
       postThread(data)
         .then((res) => {
           showSuccessToast('Task Created Successfully');
-          history.push(getTaskDetailPath(res.task.id));
+          history.push(getTaskDetailPath(res.task?.id.toFixed() ?? ''));
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {

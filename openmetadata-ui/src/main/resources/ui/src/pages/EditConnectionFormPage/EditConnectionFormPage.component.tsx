@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { ServicesData } from 'Models';
+import { ServiceOption, ServicesData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
@@ -27,7 +27,7 @@ import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import { addServiceGuide } from '../../constants/service-guide.constant';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
 import {
@@ -41,7 +41,7 @@ function EditConnectionFormPage() {
   const { serviceFQN, serviceCategory } = useParams() as Record<string, string>;
   const [isLoading, setIsloading] = useState(true);
   const [isError, setIsError] = useState(false);
-  const [serviceDetails, setServiceDetails] = useState<ServiceDataObj>();
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -68,7 +68,8 @@ function EditConnectionFormPage() {
       connection: {
         config: updatedData,
       },
-    } as ServiceOption;
+      // TODO: fix type issue here
+    } as unknown as ServiceOption;
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceCategory, serviceDetails?.id ?? '', configData)

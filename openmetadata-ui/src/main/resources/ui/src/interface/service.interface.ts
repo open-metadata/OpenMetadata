@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DynamicObj, Paging } from 'Models';
+import { DynamicObj } from 'Models';
 import {
   DashboardConnection,
   DashboardService,
@@ -29,6 +29,7 @@ import {
   PipelineConnection,
   PipelineService,
 } from '../generated/entity/services/pipelineService';
+import { Paging } from '../generated/type/paging';
 
 export interface IngestionSchedule {
   repeatFrequency: string;
@@ -70,14 +71,7 @@ export interface EditObj {
   id?: string;
 }
 
-export type ServiceDataObj =
-  | DatabaseService
-  | MessagingService
-  | DashboardService
-  | PipelineService
-  | MlmodelService;
-
-export type DataService =
+export type ServicesType =
   | DatabaseService
   | MessagingService
   | DashboardService
@@ -85,7 +79,7 @@ export type DataService =
   | MlmodelService;
 
 export interface ServiceResponse {
-  data: Array<ServiceDataObj>;
+  data: Array<ServicesType>;
   paging: Paging;
 }
 

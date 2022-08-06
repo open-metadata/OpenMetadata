@@ -44,13 +44,12 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { Table } from '../../generated/entity/data/table';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { ServiceDataObj } from '../../interface/service.interface';
+import { ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
@@ -67,21 +66,9 @@ import {
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-type ServiceRecord = {
-  databaseServices: Array<DatabaseService>;
-  messagingServices: Array<MessagingService>;
-  dashboardServices: Array<DashboardService>;
-  pipelineServices: Array<PipelineService>;
-  mlmodelServices: Array<MlmodelService>;
-};
+type ServiceRecord = Record<ServiceTypes, ServicesType[]>;
 
-type ServicePagingRecord = {
-  databaseServices: Paging;
-  messagingServices: Paging;
-  dashboardServices: Paging;
-  pipelineServices: Paging;
-  mlmodelServices: Paging;
-};
+type ServicePagingRecord = Record<ServiceTypes, Paging>;
 
 export type ApiData = {
   description: string;
@@ -116,7 +103,7 @@ const ServicesPage = () => {
     pipelineServices: [],
     mlmodelServices: [],
   });
-  const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
+  const [serviceList, setServiceList] = useState<Array<ServicesType>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -150,7 +137,7 @@ const ServicesPage = () => {
             const serviceRecord = {} as ServiceRecord;
             const servicePaging = {} as ServicePagingRecord;
             serviceArr = result.map((service) => {
-              let data = [];
+              let data: ServicesType[] = [];
               if (service.status === 'fulfilled') {
                 data = service.value?.data;
               } else {
@@ -161,7 +148,7 @@ const ServicesPage = () => {
             });
             servicePagingArr = result.map((service) =>
               service.status === 'fulfilled' ? service.value?.paging : {}
-            );
+            ) as Paging[];
             for (let i = 0; i < serviceArr.length; i++) {
               serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
                 serviceArr[i];
@@ -178,9 +165,7 @@ const ServicesPage = () => {
               pipelineServices: servicePaging.pipelineServices.total || 0,
               mlmodelServices: servicePaging.mlmodelServices.total || 0,
             });
-            setServiceList(
-              serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
-            );
+            setServiceList(serviceRecord[serviceName as ServiceTypes]);
             if (errors.length) {
               for (const err of errors) {
                 const errMsg = getErrorText(err, '');
@@ -236,7 +221,7 @@ const ServicesPage = () => {
     setSearchText('');
     setServiceName(tabName);
     history.push(getServicesWithTabPath(tabName));
-    setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
+    setServiceList(services[tabName]);
   };
 
   const fetchLeftPanel = () => {
@@ -279,7 +264,7 @@ const ServicesPage = () => {
     );
   };
 
-  const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
+  const getOptionalFields = (service: ServicesType): JSX.Element => {
     switch (serviceName) {
       case ServiceCategory.MESSAGING_SERVICES: {
         const messagingService = service as unknown as MessagingService;

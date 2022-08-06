@@ -22,7 +22,7 @@ import { pagingObject } from '../../constants/constants';
 import { SERVICE_CATEGORY } from '../../constants/services.const';
 import { ServiceCategory as Category } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
-import { DataService } from '../../interface/service.interface';
+import { ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -30,7 +30,7 @@ const ServicesPage = () => {
   const { tab } = useParams<{ [key: string]: keyof ServiceCategory }>();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [serviceDetails, setServiceDetails] = useState<DataService[]>([]);
+  const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [serviceName, setServiceName] = useState<Category>(
     Category.DATABASE_SERVICES
@@ -40,9 +40,9 @@ const ServicesPage = () => {
   const getServiceDetails = async (type: string) => {
     setIsLoading(true);
     try {
-      const { data } = await getServices(type);
-      setServiceDetails(data.data);
-      setPaging(data.paging);
+      const { data, paging } = await getServices(type);
+      setServiceDetails(data);
+      setPaging(paging);
     } catch (error) {
       setServiceDetails([]);
       setPaging(pagingObject);

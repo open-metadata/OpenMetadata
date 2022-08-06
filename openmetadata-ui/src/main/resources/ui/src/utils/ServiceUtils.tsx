@@ -96,7 +96,7 @@ import {
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
 import { Paging } from '../generated/type/paging';
-import { DataService, ServiceResponse } from '../interface/service.interface';
+import { ServiceResponse, ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
@@ -649,7 +649,7 @@ export const setServiceTableCount = (
 };
 
 export const getOptionalFields = (
-  service: DataService,
+  service: ServicesType,
   serviceName: ServiceCategory
 ): JSX.Element => {
   switch (serviceName) {

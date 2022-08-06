@@ -33,6 +33,7 @@ import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { TagsCategory } from '../../pages/tags/tagsTypes';
 import { getOwnerList } from '../../utils/ManageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -291,19 +292,20 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     getCategory('Tier')
       .then((res) => {
         if (res) {
-          const tierData = res.children?.map(
-            (tier: { name: string; description: string }) => ({
-              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-              title: tier.name,
-              description: tier.description.substring(
-                0,
-                tier.description.indexOf('\n\n')
-              ),
-              data: tier.description.substring(
-                tier.description.indexOf('\n\n') + 1
-              ),
-            })
-          );
+          const tierData: CardWithListItems[] =
+            (res as TagsCategory).children?.map(
+              (tier: { name: string; description: string }) => ({
+                id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+                title: tier.name,
+                description: tier.description.substring(
+                  0,
+                  tier.description.indexOf('\n\n')
+                ),
+                data: tier.description.substring(
+                  tier.description.indexOf('\n\n') + 1
+                ),
+              })
+            ) ?? [];
 
           setTierData(tierData ?? []);
         } else {

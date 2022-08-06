@@ -19,7 +19,7 @@ import APIClient from './index';
 
 export const getChartById = (
   id: string,
-  arrQueryFields: string
+  arrQueryFields: string | string[]
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields(`/charts/${id}`, arrQueryFields);
 

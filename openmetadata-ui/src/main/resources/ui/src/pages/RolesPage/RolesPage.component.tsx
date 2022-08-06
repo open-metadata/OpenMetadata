@@ -1092,8 +1092,8 @@ const RolesPage = () => {
   const fetchDefualtPolicies = () => {
     getPolicies()
       .then((res) => {
-        if (res.data) {
-          setDefaultPolicies(res.data);
+        if (res) {
+          setDefaultPolicies(res);
         } else {
           setDefaultPolicies([]);
         }

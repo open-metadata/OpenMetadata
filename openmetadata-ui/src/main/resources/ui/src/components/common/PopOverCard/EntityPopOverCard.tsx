@@ -205,7 +205,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
           )}
         </div>
 
-        {entityData.tags ? (
+        {entityTags.length ? (
           <div
             className="tw-mt-2 tw-flex tw-flex-wrap tw-gap-1"
             data-testid="tags">

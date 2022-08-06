@@ -70,7 +70,7 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityMissingError,
@@ -109,7 +109,7 @@ const ServicePage: FunctionComponent = () => {
   >([]);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [serviceDetails, setServiceDetails] = useState<ServiceDataObj>();
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
@@ -774,7 +774,7 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
+  const handleUpdateOwner = (owner: ServicesType['owner']) => {
     const updatedData = {
       connection: serviceDetails?.connection,
       name: serviceDetails?.name,
@@ -853,7 +853,7 @@ const ServicePage: FunctionComponent = () => {
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as ServiceDataObj}
+            serviceDetails={serviceDetails as ServicesType}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}

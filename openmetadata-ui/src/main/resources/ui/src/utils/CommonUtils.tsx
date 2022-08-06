@@ -50,7 +50,7 @@ import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
-import { DataService } from '../interface/service.interface';
+import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -622,7 +622,7 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
 export const getEntityName = (
   entity?:
     | EntityReference
-    | DataService
+    | ServicesType
     | User
     | Topic
     | Database

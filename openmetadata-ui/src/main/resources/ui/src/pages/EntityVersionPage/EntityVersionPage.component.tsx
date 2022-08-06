@@ -448,13 +448,14 @@ const EntityVersionPage: FunctionComponent = () => {
             const { id, service, serviceType } = res;
             getTopicVersion(id, version)
               .then((vRes) => {
-                const { owner, tags } = vRes;
+                const { owner, tags = [] } = vRes;
+                const serviceName = service?.name ?? '';
                 setEntityState(tags, owner, vRes, [
                   {
-                    name: service.name,
-                    url: service.name
+                    name: serviceName,
+                    url: serviceName
                       ? getServiceDetailsPath(
-                          service.name,
+                          serviceName,
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',
@@ -492,19 +493,21 @@ const EntityVersionPage: FunctionComponent = () => {
             entityFQN,
             ['service', 'database'],
             FQN_SEPARATOR_CHAR
-          )
+          ),
+          []
         )
           .then((res) => {
             const { id, service, serviceType } = res;
             getDashboardVersion(id, version)
               .then((vRes) => {
-                const { owner, tags } = vRes;
+                const { owner, tags = [] } = vRes;
+                const serviceName = service?.name ?? '';
                 setEntityState(tags, owner, vRes, [
                   {
-                    name: service.name,
-                    url: service.name
+                    name: serviceName,
+                    url: serviceName
                       ? getServiceDetailsPath(
-                          service.name,
+                          serviceName,
                           ServiceCategory.DASHBOARD_SERVICES
                         )
                       : '',
@@ -542,19 +545,21 @@ const EntityVersionPage: FunctionComponent = () => {
             entityFQN,
             ['service', 'database'],
             FQN_SEPARATOR_CHAR
-          )
+          ),
+          []
         )
           .then((res) => {
             const { id, service, serviceType } = res;
             getPipelineVersion(id, version)
               .then((vRes) => {
-                const { owner, tags } = vRes;
+                const { owner, tags = [] } = vRes;
+                const serviceName = service?.name ?? '';
                 setEntityState(tags, owner, vRes, [
                   {
-                    name: service.name,
-                    url: service.name
+                    name: serviceName,
+                    url: serviceName
                       ? getServiceDetailsPath(
-                          service.name,
+                          serviceName,
                           ServiceCategory.PIPELINE_SERVICES
                         )
                       : '',

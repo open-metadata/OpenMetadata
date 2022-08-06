@@ -70,9 +70,7 @@ JSON.parse = jest.fn().mockReturnValue([]);
 describe('Test DashboardVersion page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
     const { container } = render(
-      <DashboardVersion
-        {...(dashboardVersionProp as unknown as DashboardVersionProp)}
-      />,
+      <DashboardVersion {...dashboardVersionProp} />,
       {
         wrapper: MemoryRouter,
       }
@@ -112,7 +110,7 @@ describe('Test DashboardVersion page', () => {
   it('Checks if the page has all the proper components rendered, if change version is related to tags', async () => {
     const { container } = render(
       <DashboardVersion
-        {...(dashboardVersionProp as unknown as DashboardVersionProp)}
+        {...dashboardVersionProp}
         currentVersionData={
           mockTagChangeVersion as DashboardVersionProp['currentVersionData']
         }
@@ -156,10 +154,8 @@ describe('Test DashboardVersion page', () => {
   it('Checks if the page has all the proper components rendered, if the dashboard deleted is undefined', async () => {
     const { container } = render(
       <DashboardVersion
-        {...(dashboardVersionProp as unknown as DashboardVersionProp)}
-        currentVersionData={
-          mockNoChartData as DashboardVersionProp['currentVersionData']
-        }
+        {...dashboardVersionProp}
+        currentVersionData={mockNoChartData}
         deleted={undefined}
       />,
       {
@@ -193,10 +189,7 @@ describe('Test DashboardVersion page', () => {
 
   it('If version is loading it should show loading component', async () => {
     const { container } = render(
-      <DashboardVersion
-        {...(dashboardVersionProp as unknown as DashboardVersionProp)}
-        isVersionLoading
-      />,
+      <DashboardVersion {...dashboardVersionProp} isVersionLoading />,
       {
         wrapper: MemoryRouter,
       }

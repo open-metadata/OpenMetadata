@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
   FormattedGlossarySuggestion,
@@ -76,19 +76,17 @@ export const getGlossaryTermlist = (
  * @param listTermFQN fqn of targeted child terms
  * @returns promise of list of glossary terms
  */
-export const getChildGlossaryTerms = (
-  listTermFQN: Array<string>
-): Promise<GlossaryTerm[]> => {
-  return new Promise((resolve, reject) => {
+export const getChildGlossaryTerms = (listTermFQN: Array<string>) => {
+  return new Promise<GlossaryTerm[]>((resolve, reject) => {
     const promises = listTermFQN.map((term) => {
       return getGlossaryTermByFQN(term, ['children']);
     });
     Promise.allSettled(promises)
-      .then((responses: PromiseSettledResult<AxiosResponse>[]) => {
+      .then((responses) => {
         const data = responses.reduce((prev, curr) => {
           return curr.status === 'fulfilled' ? [...prev, curr.value] : prev;
-        }, [] as AxiosResponse[]);
-        resolve(data.map((item) => item.data));
+        }, [] as GlossaryTerm[]);
+        resolve(data);
       })
       .catch((err) => {
         reject(err);

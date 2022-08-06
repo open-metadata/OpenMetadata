@@ -36,10 +36,15 @@ export const getGlossaries = async (
   return response.data;
 };
 
-export const addGlossaries = (data: CreateGlossary): Promise<AxiosResponse> => {
+export const addGlossaries = async (data: CreateGlossary) => {
   const url = '/glossaries';
 
-  return APIClient.post(url, data);
+  const response = await APIClient.post<
+    CreateGlossary,
+    AxiosResponse<Glossary>
+  >(url, data);
+
+  return response.data;
 };
 
 export const updateGlossaries = (

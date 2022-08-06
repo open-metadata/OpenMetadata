@@ -8,6 +8,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';
+import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
@@ -54,7 +55,7 @@ const TierCard = ({
       .then((res) => {
         if (res) {
           const tierData: CardWithListItems[] =
-            res.children?.map(
+            (res as TagsCategory).children?.map(
               (tier: { name: string; description: string }) => ({
                 id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
                 title: tier.name,

@@ -16,8 +16,8 @@ import { isNil } from 'lodash';
 import { ServiceData, ServiceOption, ServicesData } from 'Models';
 import {
   ConfigData,
-  ServiceDataObj,
   ServiceResponse,
+  ServicesType,
 } from '../interface/service.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -64,7 +64,7 @@ export const getServiceByFQN = async (
     arrQueryFields
   );
 
-  const response = await APIClient.get<ServiceDataObj>(url);
+  const response = await APIClient.get<ServicesType>(url);
 
   return response.data;
 };
@@ -88,7 +88,7 @@ export const updateService = async (
 ) => {
   const response = await APIClient.put<
     ServiceOption,
-    AxiosResponse<ServiceDataObj>
+    AxiosResponse<ServicesType>
   >(`/services/${serviceCat}`, options);
 
   return response.data;

@@ -32,7 +32,7 @@ export const getPipelineVersions = async (id: string) => {
 export const getPipelineVersion = async (id: string, version: string) => {
   const url = `/pipelines/${id}/versions/${version}`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<Pipeline>(url);
 
   return response.data;
 };

@@ -29,13 +29,12 @@ export const getDashboardVersions = async (id: string) => {
 
   return response.data;
 };
-export const getDashboardVersion: Function = (
-  id: string,
-  version: string
-): Promise<AxiosResponse> => {
+export const getDashboardVersion = async (id: string, version: string) => {
   const url = `/dashboards/${id}/versions/${version}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Dashboard>(url);
+
+  return response.data;
 };
 
 export const getDashboards = async (

@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { cloneDeep, isUndefined } from 'lodash';
+import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -135,9 +135,9 @@ const AddGlossaryTermPage = () => {
       })
       .catch((err: AxiosError) => {
         setParentGlossaryData(undefined);
+        const errMsg = get(err, 'response.data.message', '');
         showErrorToast(
-          err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-glossary-term-error']
+          errMsg || jsonData['api-error-messages']['fetch-glossary-term-error']
         );
       });
   };

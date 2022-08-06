@@ -128,8 +128,8 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentCategory = await getCategory(name, 'usageCount');
-        if (currentCategory.data) {
-          setCurrentCategory(currentCategory.data);
+        if (currentCategory) {
+          setCurrentCategory(currentCategory as TagCategory);
           setIsLoading(false);
         } else {
           showErrorToast(
@@ -337,7 +337,7 @@ const TagsPage = () => {
   const createPrimaryTag = (data: TagCategory) => {
     const errData = onNewTagChange(data, true);
     if (!Object.values(errData).length) {
-      createTag(currentCategory?.name, {
+      createTag(currentCategory?.name ?? '', {
         name: data.name,
         description: data.description,
       })

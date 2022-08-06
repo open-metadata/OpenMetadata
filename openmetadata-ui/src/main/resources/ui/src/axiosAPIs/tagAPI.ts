@@ -25,10 +25,13 @@ export const getTags: Function = (
   return APIClient.get(url);
 };
 
-export const getCategory = async (name: string, arrQueryFields?: string) => {
+export const getCategory = async (
+  name: string,
+  arrQueryFields?: string | string[]
+) => {
   const url = getURLWithQueryFields(`/tags/${name}`, arrQueryFields);
 
-  const response = await APIClient.get<TagsCategory>(url);
+  const response = await APIClient.get<TagsCategory | TagCategory>(url);
 
   return response.data;
 };
