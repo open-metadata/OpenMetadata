@@ -140,6 +140,14 @@ const PopoverContent: FC<Props> = ({
     );
   });
 
+  const handleEdit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    onEdit && onEdit();
+  };
+
+  const editCheck =
+    (isAnnouncement || !isThread) && (isAuthor || currentUser?.isAdmin);
+
   return (
     <Space>
       <Popover
@@ -181,15 +189,12 @@ const PopoverContent: FC<Props> = ({
         </Button>
       )}
 
-      {isAnnouncement && (
+      {editCheck && (
         <Button
           className="tw-p-0"
           size="small"
           type="text"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit && onEdit();
-          }}>
+          onClick={handleEdit}>
           <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="18px" />
         </Button>
       )}
