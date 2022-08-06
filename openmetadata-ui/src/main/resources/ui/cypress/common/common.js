@@ -254,7 +254,7 @@ export const editOwnerforCreatedService = (typeOfService, service_Name) => {
   cy.wait(500);
   //Clicking on users tab
   cy.get('[data-testid="dropdown-tab"]')
-    .contains('Teams')
+    .contains('Users')
     .should('exist')
     .should('be.visible')
     .click();
