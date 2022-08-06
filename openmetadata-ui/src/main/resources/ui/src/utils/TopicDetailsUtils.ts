@@ -41,10 +41,6 @@ export const topicDetailsTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentTopicTab = (tab: string) => {
@@ -68,10 +64,6 @@ export const getCurrentTopicTab = (tab: string) => {
       break;
     case 'custom_properties':
       currentTab = 6;
-
-      break;
-    case 'manage':
-      currentTab = 7;
 
       break;
 
