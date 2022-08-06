@@ -41,8 +41,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
     setPostMessage(updatedMessage);
   };
 
-  const handleSave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
+  const handleSave = () => {
     onPostUpdate(postMessage);
   };
 
@@ -72,12 +71,16 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             data-testid="save-button"
             size="small"
             type="primary"
-            onClick={handleSave}>
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSave();
+            }}>
             Save
           </Button>
         </div>
       }
       editorClass="is_edit_post"
+      onSave={handleSave}
       onTextChange={handleMessageUpdate}
     />
   ) : (
