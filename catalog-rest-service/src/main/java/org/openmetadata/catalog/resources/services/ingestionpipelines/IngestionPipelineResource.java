@@ -548,7 +548,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
-  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
+  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
         secretsManager.decryptServerConnection(airflowConfiguration);
     openMetadataServerConnection.setSecretsManagerProvider(this.secretsManager.getSecretsManagerProvider());
