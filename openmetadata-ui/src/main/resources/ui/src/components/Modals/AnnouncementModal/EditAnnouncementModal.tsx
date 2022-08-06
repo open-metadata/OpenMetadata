@@ -51,7 +51,7 @@ const EditAnnouncementModal: FC<Props> = ({
     const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
     const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
     if (startTime >= endTime) {
-      showErrorToast('Start date should be earlier that end date.');
+      showErrorToast('Start date should be earlier than end date.');
     } else {
       const updatedAnnouncement = {
         ...announcement,

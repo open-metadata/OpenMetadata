@@ -168,12 +168,14 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
     <div className={className}>
       {getAnnouncements(activeAnnouncements)}
       {!isEmpty(inActiveAnnouncements) && (
-        <Typography.Text className="tw-block tw-mt-4 tw-font-medium">
-          Inactive Announcements
-        </Typography.Text>
+        <>
+          <Typography.Text className="tw-block tw-mt-4 tw-font-medium">
+            Inactive Announcements
+          </Typography.Text>
+          <Divider className="tw-mb-4 tw-mt-2" />
+        </>
       )}
 
-      <Divider className="tw-mb-4 tw-mt-2" />
       {getAnnouncements(inActiveAnnouncements)}
     </div>
   );
