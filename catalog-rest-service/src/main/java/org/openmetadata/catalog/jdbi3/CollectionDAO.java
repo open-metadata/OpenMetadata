@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -2893,7 +2892,7 @@ public interface CollectionDAO {
             value = JsonUtils.readValue(json, SlackWebhookEventPublisher.class);
             break;
           case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, new TypeReference<ArrayList<Filter>>() {});
+            value = JsonUtils.readValue(json, Filter.class);
             break;
           case SLACK_CHAT:
             value = JsonUtils.readValue(json, SlackChatConfiguration.class);

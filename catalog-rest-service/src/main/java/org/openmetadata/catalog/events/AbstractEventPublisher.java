@@ -8,7 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.events.errors.RetriableException;
 import org.openmetadata.catalog.filter.BasicFilter;
+import org.openmetadata.catalog.filter.EntityFilter;
 import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.FilteringScheme;
 import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -23,30 +25,33 @@ public abstract class AbstractEventPublisher implements EventPublisher {
   protected static final int BACKOFF_5_MINUTES = 5 * 60 * 1000;
   protected static final int BACKOFF_1_HOUR = 60 * 60 * 1000;
   protected static final int BACKOFF_24_HOUR = 24 * 60 * 60 * 1000;
-
   protected int currentBackoffTime = BACKOFF_NORMAL;
   protected final List<ChangeEvent> batch = new ArrayList<>();
   protected final ConcurrentHashMap<String, Map<FiltersType, BasicFilter>> filter = new ConcurrentHashMap<>();
+  protected FilteringScheme filteringScheme = FilteringScheme.ENTITY_SPECIFIC_FROM_LIST;
   private final int batchSize;
 
-  protected AbstractEventPublisher(int batchSize, List<Filter> filters) {
-    updateFilter(filters);
+  protected AbstractEventPublisher(int batchSize, Filter filters) {
+    if (filters != null) updateFilter(filters);
     this.batchSize = batchSize;
   }
 
-  protected void updateFilter(List<Filter> filters) {
-    filters.forEach(
-        (f) -> {
-          String entityType = f.getEntityType();
-          Map<FiltersType, BasicFilter> eventFilterMap = new HashMap<>();
-          if (f.getEventFilter() != null) {
-            f.getEventFilter()
+  protected void updateFilter(Filter f) {
+    filteringScheme = f.getFilteringScheme();
+    List<EntityFilter> entityFilterList = f.getEntityFilters();
+    entityFilterList.forEach(
+        (entityFilter) -> {
+          String entityType = entityFilter.getEntityType();
+          Map<FiltersType, BasicFilter> entityBasicFilterMap = new HashMap<>();
+          if (entityFilter.getEventFilter() != null) {
+            entityFilter
+                .getEventFilter()
                 .forEach(
-                    (eventFilter) -> {
-                      eventFilterMap.put(eventFilter.getFilterType(), eventFilter);
+                    (basicFilter) -> {
+                      entityBasicFilterMap.put(basicFilter.getFilterType(), basicFilter);
                     });
           }
-          filter.put(entityType, eventFilterMap);
+          filter.put(entityType, entityBasicFilterMap);
         });
   }
 
@@ -57,7 +62,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
     ChangeEvent changeEvent = changeEventHolder.get();
     if (!filter.isEmpty()) {
       Map<FiltersType, BasicFilter> entityFilter = filter.get(changeEvent.getEntityType());
-      if (entityFilter != null && !FilterUtil.shouldProcessRequest(changeEvent, entityFilter)) {
+      if (!FilterUtil.shouldProcessRequest(filteringScheme, changeEvent, entityFilter)) {
         return;
       }
     }

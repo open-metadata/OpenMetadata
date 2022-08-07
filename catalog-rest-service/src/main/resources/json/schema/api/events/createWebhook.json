@@ -27,10 +27,7 @@
     },
     "eventFilters": {
       "description": "Event filters to filter for desired events.",
-      "type": "array",
-      "items": {
-        "$ref": "../../filter/filter.json"
-      }
+      "$ref": "../../filter/filter.json"
     },
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 10).",

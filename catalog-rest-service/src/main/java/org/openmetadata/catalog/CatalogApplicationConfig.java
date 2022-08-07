@@ -108,7 +108,7 @@ public class CatalogApplicationConfig extends Configuration {
             .forEach(
                 (setting) -> {
                   if (setting.getConfigType().equals(SettingsType.ACTIVITY_FEED_FILTER_SETTING)) {
-                    List<Filter> filters = (List<Filter>) setting.getConfigValue();
+                    Filter filters = (Filter) setting.getConfigValue();
                     // if we have the filters on server startup , populate the config to Filter Registry
                     FilterRegistry.add(filters);
                   }
@@ -124,8 +124,8 @@ public class CatalogApplicationConfig extends Configuration {
         (config) -> {
           switch (config.getConfigType()) {
             case ACTIVITY_FEED_FILTER_SETTING:
-              List<Filter> filterList = (List<Filter>) config.getConfigValue();
-              FilterRegistry.add(filterList);
+              Filter filter = (Filter) config.getConfigValue();
+              FilterRegistry.add(filter);
           }
         });
   }

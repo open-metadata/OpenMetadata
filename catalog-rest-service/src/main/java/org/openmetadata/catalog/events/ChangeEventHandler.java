@@ -96,7 +96,7 @@ public class ChangeEventHandler implements EventHandler {
         // ignore usageSummary updates in the feed
         boolean filterEnabled = true;
         Map<FiltersType, BasicFilter> filter = FilterRegistry.getFilterForEntity(changeEvent.getEntityType());
-        filterEnabled = FilterUtil.shouldProcessRequest(changeEvent, filter);
+        filterEnabled = FilterUtil.shouldProcessRequest(FilterRegistry.getFilteringScheme(), changeEvent, filter);
         if (filterEnabled) {
           for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message

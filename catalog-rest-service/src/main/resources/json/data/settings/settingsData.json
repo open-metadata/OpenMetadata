@@ -46,6 +46,9 @@
   },
   {
     "config_type": "activityFeedFilterSetting",
-    "config_value": []
+    "config_value": {
+      "filteringScheme" : "entitySpecificFromList",
+      "entityFilters" : []
+    }
   }
 ]

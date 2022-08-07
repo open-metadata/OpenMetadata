@@ -6,24 +6,29 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FilterRegistry {
   private static final FilterRegistry registry = new FilterRegistry();
   private static final ConcurrentHashMap<String, Map<FiltersType, BasicFilter>> FILTERS_MAP = new ConcurrentHashMap<>();
+  private static FilteringScheme FILTERING_SCHEME = FilteringScheme.ENTITY_SPECIFIC_FROM_LIST;
 
   private FilterRegistry() {}
 
-  public static void add(List<Filter> filterDetails) {
-    filterDetails.forEach(
-        (filter) -> {
-          String entityType = filter.getEntityType();
-          Map<FiltersType, BasicFilter> eventFilterMap = new HashMap<>();
-          if (filter.getEventFilter() != null) {
-            filter
-                .getEventFilter()
-                .forEach(
-                    (eventFilter) -> {
-                      eventFilterMap.put(eventFilter.getFilterType(), eventFilter);
-                    });
-          }
-          FILTERS_MAP.put(filter.getEntityType(), eventFilterMap);
-        });
+  public static void add(Filter f) {
+    if (f != null) {
+      FILTERING_SCHEME = f.getFilteringScheme();
+      List<EntityFilter> filterDetails = f.getEntityFilters();
+      filterDetails.forEach(
+          (filter) -> {
+            String entityType = filter.getEntityType();
+            Map<FiltersType, BasicFilter> eventFilterMap = new HashMap<>();
+            if (filter.getEventFilter() != null) {
+              filter
+                  .getEventFilter()
+                  .forEach(
+                      (eventFilter) -> {
+                        eventFilterMap.put(eventFilter.getFilterType(), eventFilter);
+                      });
+            }
+            FILTERS_MAP.put(entityType, eventFilterMap);
+          });
+    }
   }
 
   public static List<Map<FiltersType, BasicFilter>> listAllFilters() {
@@ -41,5 +46,9 @@ public class FilterRegistry {
 
   public static Map<FiltersType, BasicFilter> getFilterForEntity(String key) {
     return FILTERS_MAP.get(key);
+  }
+
+  public static FilteringScheme getFilteringScheme() {
+    return FILTERING_SCHEME;
   }
 }

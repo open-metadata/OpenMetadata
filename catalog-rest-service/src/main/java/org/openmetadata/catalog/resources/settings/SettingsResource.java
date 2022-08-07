@@ -25,6 +25,7 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.filter.BasicFilter;
+import org.openmetadata.catalog.filter.EntityFilter;
 import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.SettingsRepository;
@@ -388,10 +389,10 @@ public class SettingsResource {
         @ApiResponse(
             responseCode = "200",
             description = "Settings",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Filter.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityFilter.class)))
       })
   public Response createNewFilter(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<Filter> newFilter) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<EntityFilter> newFilter) {
     return settingsRepository.addNewFilter(newFilter);
   }
 

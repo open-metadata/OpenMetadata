@@ -48,10 +48,7 @@
     },
     "eventFilters": {
       "description": "Endpoint to receive the webhook events over POST requests.",
-      "type": "array",
-      "items": {
-        "$ref": "../../filter/filter.json"
-      }
+      "$ref": "../../filter/filter.json"
     },
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 10).",

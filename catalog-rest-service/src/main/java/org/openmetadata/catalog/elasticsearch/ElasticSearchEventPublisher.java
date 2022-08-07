@@ -80,7 +80,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private final ElasticSearchIndexDefinition esIndexDefinition;
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig) {
-    super(esConfig.getBatchSize(), new ArrayList<>());
+    super(esConfig.getBatchSize(), null);
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     esIndexDefinition = new ElasticSearchIndexDefinition(client);
     esIndexDefinition.createIndexes();

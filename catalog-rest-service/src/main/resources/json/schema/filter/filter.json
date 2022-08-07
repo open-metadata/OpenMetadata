@@ -1,12 +1,22 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/policies/filter.json",
+  "$id": "https://open-metadata.org/schema/filter/filter.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Filter",
   "description": "This schema defines the Filter entity. A filter controls the publishing of different change events in OpenMetadata",
   "type": "object",
   "javaType": "org.openmetadata.catalog.filter.Filter",
   "definitions": {
-    "filtersType": {
+    "filteringScheme": {
+      "javaType": "org.openmetadata.catalog.filter.FilteringScheme",
+      "description": "This schema defines Scheme for the filter",
+      "type": "string",
+      "enum": [
+        "allowOnlyFromList",
+        "entitySpecificFromList"
+      ],
+      "default": "entitySpecificFromList"
+    },
+    "eventfiltersType": {
       "javaType": "org.openmetadata.catalog.filter.FiltersType",
       "description": "This schema defines all possible filters enum in OpenMetadata.",
       "type": "string",
@@ -26,7 +36,8 @@
         "sampledata",
         "queries",
         "excludeFromBots",
-        "entityDeleted"
+        "entityDeleted",
+        "updateEventFilters"
       ]
     },
     "basicFilter": {
@@ -40,7 +51,7 @@
         },
         "filterType": {
           "description": "Type of the filter",
-          "$ref": "#/definitions/filtersType"
+          "$ref": "#/definitions/eventfiltersType"
         },
         "enabled": {
           "description": "Is the Filter Enabled",
@@ -48,22 +59,43 @@
           "default": true
         }
       },
+      "required": ["filterType"],
+      "additionalProperties": false
+    },
+    "entityFilter": {
+      "javaType": "org.openmetadata.catalog.filter.EntityFilter",
+      "description": "Represents a Filter attached to a entity.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "description": "Entity type for filter , example : topic , table, dashboard, mlmodel , etc",
+          "type": "string"
+        },
+        "eventFilter": {
+          "description": "List of operations supported by the resource.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/basicFilter"
+          }
+        }
+      },
+      "required": ["entityType"],
       "additionalProperties": false
     }
   },
   "properties": {
-    "entityType": {
-      "description": "Entity type for filter , example : topic , table, dashboard, mlmodel , etc",
-      "type": "string"
+    "filteringScheme": {
+      "description": "Scheme to be used for Filtering",
+      "$ref": "#/definitions/filteringScheme"
     },
-    "eventFilter": {
-      "description": "List of operations supported by the resource.",
+    "entityFilters": {
+      "description": "List of Entity Filters",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/basicFilter"
+        "$ref": "#/definitions/entityFilter"
       }
     }
   },
-  "required": ["entityType"],
+  "required": ["filteringScheme"],
   "additionalProperties": false
 }

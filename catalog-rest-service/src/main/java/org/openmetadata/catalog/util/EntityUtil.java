@@ -124,8 +124,8 @@ public final class EntityUtil {
 
   public static final BiPredicate<Filter, Filter> eventFilterMatch =
       (filter1, filter2) ->
-          filter1.getEntityType().equals(filter2.getEntityType())
-              && filter1.getEventFilter().equals(filter2.getEventFilter());
+          filter1.getFilteringScheme().equals(filter2.getFilteringScheme())
+              && filter1.getEntityFilters().equals(filter2.getEntityFilters());
 
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());

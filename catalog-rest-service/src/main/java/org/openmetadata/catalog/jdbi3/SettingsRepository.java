@@ -1,14 +1,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.filter.BasicFilter;
+import org.openmetadata.catalog.filter.EntityFilter;
 import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.settings.Settings;
@@ -64,21 +63,55 @@ public class SettingsRepository {
     }
   }
 
-  public Response addNewFilter(List<Filter> filter) {
+  public Response addNewFilter(List<EntityFilter> filter) {
+    // takes up unique entries
+    checkDuplicateFilters(filter);
+    // else proceed
     Settings oldValue = getConfigWithKey(SettingsType.ACTIVITY_FEED_FILTER_SETTING.toString());
-    List<Filter> existingFilters = (List<Filter>) oldValue.getConfigValue();
-    existingFilters.addAll(filter);
-    oldValue.setConfigValue(existingFilters);
+    Filter existingFilter = (Filter) oldValue.getConfigValue();
+    List<EntityFilter> existingEntityFilters = existingFilter.getEntityFilters();
+    // once we have the stored
+    checkDuplicateFilters(filter, existingEntityFilters);
+    // if no
+    existingEntityFilters.addAll(filter);
+    existingFilter.setEntityFilters(existingEntityFilters);
+    oldValue.setConfigValue(existingFilter);
     return createOrUpdate(oldValue);
+  }
+
+  private void checkDuplicateFilters(List<EntityFilter> filters) {
+    for (int i = 0; i < filters.size(); i++) {
+      for (int j = i + 1; j < filters.size(); j++) {
+        if (filters.get(i).getEntityType().equals(filters.get(j).getEntityType()))
+          throw new RuntimeException("Filter List Contains Duplicate Entries, Duplicate Entities not allowed in list");
+      }
+    }
+  }
+
+  private void checkDuplicateFilters(List<EntityFilter> newfilters, List<EntityFilter> existingFilters) {
+    newfilters.stream()
+        .forEach(
+            (newFilter) -> {
+              boolean duplicateFound =
+                  existingFilters.stream()
+                      .anyMatch(
+                          (existingFilter) -> {
+                            return existingFilter.getEntityType().equals(newFilter.getEntityType());
+                          });
+              if (duplicateFound) {
+                throw new RuntimeException("Filters for the Entity already exists, you need to add filters to entity.");
+              }
+            });
   }
 
   public Response addNewFilterToEntity(String entityType, List<BasicFilter> filters) {
     Settings oldValue = getConfigWithKey(SettingsType.ACTIVITY_FEED_FILTER_SETTING.toString());
     // all existing filters
-    List<Filter> existingFilters = (List<Filter>) oldValue.getConfigValue();
-    Filter entititySpecificFilter = null;
+    Filter existingFilter = (Filter) oldValue.getConfigValue();
+    List<EntityFilter> existingEntityFilter = existingFilter.getEntityFilters();
+    EntityFilter entititySpecificFilter = null;
     int position = 0;
-    for (Filter e : existingFilters) {
+    for (EntityFilter e : existingEntityFilter) {
       if (e.getEntityType().equals(entityType)) {
         // filters for entity to Update
         entititySpecificFilter = e;
@@ -89,14 +122,15 @@ public class SettingsRepository {
     if (entititySpecificFilter != null) {
       // entity has some existing filter
       entititySpecificFilter.getEventFilter().addAll(filters);
-      existingFilters.set(position, entititySpecificFilter);
+      existingEntityFilter.set(position, entititySpecificFilter);
     } else {
-      entititySpecificFilter = new Filter();
+      entititySpecificFilter = new EntityFilter();
       entititySpecificFilter.setEntityType(entityType);
       entititySpecificFilter.setEventFilter(filters);
-      existingFilters.add(entititySpecificFilter);
+      existingEntityFilter.add(entititySpecificFilter);
     }
-    oldValue.setConfigValue(existingFilters);
+    existingFilter.setEntityFilters(existingEntityFilter);
+    oldValue.setConfigValue(existingFilter);
     return createOrUpdate(oldValue);
   }
 
@@ -129,8 +163,7 @@ public class SettingsRepository {
       dao.getSettingsDAO()
           .insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       if (setting.getConfigType() == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
-        List<Filter> filterDetails =
-            JsonUtils.convertValue(setting.getConfigValue(), new TypeReference<ArrayList<Filter>>() {});
+        Filter filterDetails = JsonUtils.convertValue(setting.getConfigValue(), Filter.class);
         FilterRegistry.add(filterDetails);
       }
     } catch (Exception ex) {

@@ -19,8 +19,6 @@ import static org.openmetadata.catalog.util.EntityUtil.failureDetailsMatch;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.SneakyThrows;
@@ -164,11 +162,9 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     private void updateEventFilters() throws JsonProcessingException {
-      List<Filter> origFilter = original.getEventFilters();
-      List<Filter> updatedFilter = updated.getEventFilters();
-      List<Filter> added = new ArrayList<>();
-      List<Filter> deleted = new ArrayList<>();
-      recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);
+      Filter origFilter = original.getEventFilters();
+      Filter updatedFilter = updated.getEventFilters();
+      recordChange("entityFilters", origFilter, updatedFilter, false, eventFilterMatch);
     }
   }
 }

@@ -1,33 +1,47 @@
 package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.Entity.*;
-import static org.openmetadata.catalog.filter.FiltersType.ENTITY_CREATED;
-import static org.openmetadata.catalog.filter.FiltersType.ENTITY_DELETED;
+import static org.openmetadata.catalog.filter.FiltersType.*;
 
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.filter.BasicFilter;
+import org.openmetadata.catalog.filter.FilteringScheme;
 import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 
+@Slf4j
 public class FilterUtil {
 
-  public static boolean shouldProcessRequest(ChangeEvent changeEvent, Map<FiltersType, BasicFilter> filter) {
+  public static boolean shouldProcessRequest(
+      FilteringScheme scheme, ChangeEvent changeEvent, Map<FiltersType, BasicFilter> filter) {
     if (filter != null) {
-      EventType changeType = changeEvent.getEventType();
-      switch (changeType) {
-        case ENTITY_CREATED:
-          return filter.get(ENTITY_CREATED).getEnabled();
-        case ENTITY_UPDATED:
-          return getUpdateFilter(changeEvent, filter);
-        case ENTITY_DELETED:
-          return filter.get(ENTITY_DELETED).getEnabled();
+      try {
+        EventType changeType = changeEvent.getEventType();
+        switch (changeType) {
+          case ENTITY_CREATED:
+            return filter.get(ENTITY_CREATED).getEnabled();
+          case ENTITY_UPDATED:
+            return getUpdateFilter(changeEvent, filter);
+          case ENTITY_DELETED:
+            return filter.get(ENTITY_DELETED).getEnabled();
+        }
+      } catch (Exception ex) {
+        LOG.debug("Filter of type is not present in the map");
       }
     }
     // continue to post events updates
+    if (scheme == FilteringScheme.ENTITY_SPECIFIC_FROM_LIST) {
+      // this scheme allows events to pass if a filter is not found
+      return true;
+    } else if (scheme == FilteringScheme.ALLOW_ONLY_FROM_LIST) {
+      // only allow events to pass in case there is a enabled filter present in the filter list
+      return false;
+    }
     return true;
   }
 
@@ -66,7 +80,6 @@ public class FilterUtil {
 
   public static boolean isFilterEnabled(
       ChangeEventParser.CHANGE_TYPE changeType, Map<FiltersType, BasicFilter> filter, String updatedField) {
-    boolean response = true;
     switch (updatedField) {
       case FIELD_FOLLOWERS:
         if (changeType == ChangeEventParser.CHANGE_TYPE.ADD) {
@@ -88,7 +101,10 @@ public class FilterUtil {
         return filter.get(FiltersType.UPDATEOWNER).getEnabled();
       case FIELD_USAGE_SUMMARY:
         return filter.get(FiltersType.USAGESUMMARY).getEnabled();
+      case FIELD_EVENT_FILTERS:
+        return filter.get(UPDATE_EVENT_FILTERS).getEnabled();
+      default:
+        throw new RuntimeException("Filter not found");
     }
-    return response;
   }
 }

@@ -20,11 +20,7 @@
     },
     "filters": {
       "description": "Filters",
-      "type": "array",
-      "items": {
-        "$ref": "../filter/filter.json"
-      },
-      "default": null
+      "$ref": "../filter/filter.json"
     },
     "batchSize": {
       "description": "Batch Size",
