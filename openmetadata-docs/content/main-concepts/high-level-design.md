@@ -5,7 +5,7 @@ slug: /main-concepts/high-level-design
 
 # High Level Design
 
-Thi Solution Design document will help us explore and understand the internals of OpenMetadata services, how are they built and
+This Solution Design document will help us explore and understand the internals of OpenMetadata services, how are they built and
 their interactions.
 
 We will start by describing the big picture of the software design of the application. Bit by bit we will get inside
