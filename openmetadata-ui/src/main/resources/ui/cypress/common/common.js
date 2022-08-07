@@ -15,7 +15,7 @@
 
 export const uuid = () => Cypress._.random(0, 1e6);
 
-const CLOUD_INFRA = 'Cloud_Infra';
+const AARON_JOHNSON = 'Aaron Johnson';
 
 const isDatabaseService = (type) => type === 'database';
 
@@ -254,7 +254,7 @@ export const editOwnerforCreatedService = (typeOfService, service_Name) => {
   cy.wait(500);
   //Clicking on users tab
   cy.get('[data-testid="dropdown-tab"]')
-    .contains('Teams')
+    .contains('Users')
     .should('exist')
     .should('be.visible')
     .click();
@@ -266,10 +266,10 @@ export const editOwnerforCreatedService = (typeOfService, service_Name) => {
     .click();
   cy.wait(1000);
 
-  cy.get('[data-testid*="owner"]')
+  cy.get('[data-testid="owner-dropdown"]')
     .invoke('text')
     .then((text) => {
-      expect(text).equal(CLOUD_INFRA);
+      expect(text).equal(AARON_JOHNSON);
     });
 };
 

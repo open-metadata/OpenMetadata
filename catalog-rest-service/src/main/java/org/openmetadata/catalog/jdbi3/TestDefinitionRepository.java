@@ -3,6 +3,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.TEST_DEFINITION;
 
 import java.io.IOException;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.EntityReference;
@@ -25,7 +26,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
+    entity.setOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 

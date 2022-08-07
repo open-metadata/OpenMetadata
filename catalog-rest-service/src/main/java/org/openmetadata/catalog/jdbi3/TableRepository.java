@@ -98,6 +98,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
+  public static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
+  public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
 
   public TableRepository(CollectionDAO daoCollection) {
     super(
@@ -208,7 +211,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     daoCollection
         .entityExtensionDAO()
-        .insert(tableId.toString(), "table.sampleData", "tableData", JsonUtils.pojoToJson(tableData));
+        .insert(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
   }
@@ -216,7 +219,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public TableProfilerConfig getTableProfilerConfig(Table table) throws IOException {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableProfilerConfig"),
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_PROFILER_CONFIG_EXTENSION),
         TableProfilerConfig.class);
   }
 
@@ -242,7 +245,7 @@ public class TableRepository extends EntityRepository<Table> {
         .entityExtensionDAO()
         .insert(
             tableId.toString(),
-            "table.tableProfilerConfig",
+            TABLE_PROFILER_CONFIG_EXTENSION,
             "tableProfilerConfig",
             JsonUtils.pojoToJson(tableProfilerConfig));
     setFields(table, Fields.EMPTY_FIELDS);
@@ -254,7 +257,7 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
 
-    daoCollection.entityExtensionDAO().delete(tableId.toString(), "table.tableProfilerConfig");
+    daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_PROFILER_CONFIG_EXTENSION);
     setFields(table, Fields.EMPTY_FIELDS);
     return table;
   }
@@ -273,14 +276,14 @@ public class TableRepository extends EntityRepository<Table> {
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(tableId.toString(), "table.tableProfile", tableProfile.getTimestamp()),
+                .getExtensionAtTimestamp(tableId.toString(), TABLE_PROFILE_EXTENSION, tableProfile.getTimestamp()),
             TableProfile.class);
     if (storedTableProfile != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .update(
               tableId.toString(),
-              "table.tableProfile",
+              TABLE_PROFILE_EXTENSION,
               JsonUtils.pojoToJson(tableProfile),
               tableProfile.getTimestamp());
     } else {
@@ -289,7 +292,7 @@ public class TableRepository extends EntityRepository<Table> {
           .insert(
               tableId.toString(),
               table.getFullyQualifiedName(),
-              "table.tableProfile",
+              TABLE_PROFILE_EXTENSION,
               "tableProfile",
               JsonUtils.pojoToJson(tableProfile));
       setFields(table, Fields.EMPTY_FIELDS);
@@ -305,12 +308,12 @@ public class TableRepository extends EntityRepository<Table> {
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(tableId.toString(), "table.tableProfile", timestamp),
+                .getExtensionAtTimestamp(tableId.toString(), TABLE_PROFILE_EXTENSION, timestamp),
             TableProfile.class);
     if (storedTableProfile != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .deleteAtTimestamp(tableId.toString(), "table.tableProfile", timestamp);
+          .deleteAtTimestamp(tableId.toString(), TABLE_PROFILE_EXTENSION, timestamp);
       table.setTableProfile(storedTableProfile);
       return table;
     }
@@ -991,12 +994,15 @@ public class TableRepository extends EntityRepository<Table> {
 
   private TableData getSampleData(Table table) throws IOException {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.sampleData"), TableData.class);
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_SAMPLE_DATA_EXTENSION),
+        TableData.class);
   }
 
   private TableProfile getTableProfile(Table table) throws IOException {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(table.getId().toString(), "table.tableProfile"),
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtension(table.getId().toString(), TABLE_PROFILE_EXTENSION),
         TableProfile.class);
   }
 

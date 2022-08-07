@@ -96,8 +96,8 @@ public abstract class CatalogApplicationTest {
       APP.after();
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
-    SubjectCache.getInstance().cleanUp();
-    PolicyCache.getInstance().cleanUp();
+    SubjectCache.cleanUp();
+    PolicyCache.cleanUp();
     RoleCache.cleanUp();
   }
 

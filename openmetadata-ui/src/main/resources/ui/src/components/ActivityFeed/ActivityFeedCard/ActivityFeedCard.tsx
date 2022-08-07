@@ -67,6 +67,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
 
   const [visible, setVisible] = useState<boolean>(false);
   const [isEditAnnouncement, setEditAnnouncement] = useState<boolean>(false);
+  const [isEditPost, setEditPost] = useState<boolean>(false);
 
   const isAuthor = Boolean(
     feedDetail.from === currentUser?.name || isAdminUser
@@ -137,9 +138,20 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
     setEditAnnouncement(false);
   };
 
+  const handlePostUpdate = (message: string) => {
+    const updatedPost = { ...feedDetail, message };
+
+    const patch = compare(feedDetail, updatedPost);
+
+    onFeedUpdate(patch);
+    setEditPost(false);
+  };
+
   const handleThreadEdit = () => {
     if (announcementDetails) {
       setEditAnnouncement(true);
+    } else {
+      setEditPost(true);
     }
   };
 
@@ -183,16 +195,16 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           overlayClassName="ant-popover-feed"
           placement="topRight"
           trigger="hover"
-          visible={visible}
+          visible={visible && !isEditPost}
           zIndex={9999}
           onVisibleChange={handleVisibleChange}>
-          <div className="tw-flex tw-mb-1">
+          <div className="tw-flex tw-flex-1">
             <UserPopOverCard userName={feedDetail.from}>
               <span className="tw-cursor-pointer" data-testid="authorAvatar">
                 <ProfilePicture id="" name={feedDetail.from} width="32" />
               </span>
             </UserPopOverCard>
-            <div className="tw-flex tw-flex-col">
+            <div className="tw-flex tw-flex-col tw-flex-1">
               <FeedCardHeader
                 className="tw-pl-2"
                 createdBy={feedDetail.from}
@@ -207,22 +219,27 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               <FeedCardBody
                 announcementDetails={announcementDetails}
                 className="tw-pl-2 tw-break-all"
+                isEditPost={isEditPost}
                 isThread={isThread}
                 message={feedDetail.message}
                 reactions={feedDetail.reactions || []}
+                onCancelPostUpdate={() => setEditPost(false)}
+                onPostUpdate={handlePostUpdate}
                 onReactionSelect={onReactionSelect}
               />
             </div>
           </div>
-          <FeedCardFooter
-            className="tw-mt-2"
-            isFooterVisible={isFooterVisible}
-            lastReplyTimeStamp={lastReplyTimeStamp}
-            repliedUsers={repliedUsers}
-            replies={replies}
-            threadId={threadId}
-            onThreadSelect={onThreadSelect}
-          />
+          {isFooterVisible && (
+            <FeedCardFooter
+              className="tw-mt-2"
+              isFooterVisible={isFooterVisible}
+              lastReplyTimeStamp={lastReplyTimeStamp}
+              repliedUsers={repliedUsers}
+              replies={replies}
+              threadId={threadId}
+              onThreadSelect={onThreadSelect}
+            />
+          )}
         </Popover>
       </div>
       {isEditAnnouncement && announcementDetails && (

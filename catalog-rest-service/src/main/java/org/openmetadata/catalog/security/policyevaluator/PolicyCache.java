@@ -47,7 +47,7 @@ public class PolicyCache {
   }
 
   /** To be called during application startup by Default Authorizer */
-  public void initialize() {
+  public static void initialize() {
     if (!INITIALIZED) {
       POLICY_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
       POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
@@ -88,7 +88,7 @@ public class PolicyCache {
     return rules;
   }
 
-  public void cleanUp() {
+  public static void cleanUp() {
     POLICY_CACHE.cleanUp();
     INITIALIZED = false;
   }
