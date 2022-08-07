@@ -264,6 +264,16 @@ jest.mock('./AnnouncementDrawer/AnnouncementDrawer', () => {
   return jest.fn().mockReturnValue(<div>AnnouncementDrawer</div>);
 });
 
+jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+  getActiveAnnouncement: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('./ManageButton/ManageButton', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<button data-testid="manage-button">ManageButton</button>);
+});
+
 describe('Test EntityPageInfo component', () => {
   it('Check if it has all child elements', async () => {
     const { container } = render(<EntityPageInfo {...mockEntityInfoProp} />, {
@@ -323,6 +333,13 @@ describe('Test EntityPageInfo component', () => {
     const extraInfo = await findByTestId(entityPageInfoContainer, 'extrainfo');
 
     expect(extraInfo).toBeInTheDocument();
+
+    const manageButton = await findByTestId(
+      entityPageInfoContainer,
+      'manage-button'
+    );
+
+    expect(manageButton).toBeInTheDocument();
   });
 
   it('Should call version handler on version button click', async () => {

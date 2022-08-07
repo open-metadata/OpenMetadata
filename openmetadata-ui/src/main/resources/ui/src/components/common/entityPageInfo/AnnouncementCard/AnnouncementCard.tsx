@@ -23,7 +23,7 @@ interface Props {
 }
 
 const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
-  const viewCap = 72;
+  const viewCap = 64;
   const title = announcement.message;
   const hasMore = title.length > viewCap;
 

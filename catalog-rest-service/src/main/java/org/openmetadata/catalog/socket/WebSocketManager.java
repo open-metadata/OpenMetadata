@@ -1,5 +1,7 @@
 package org.openmetadata.catalog.socket;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoNamespace;
@@ -7,61 +9,46 @@ import io.socket.socketio.server.SocketIoServer;
 import io.socket.socketio.server.SocketIoSocket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class WebSocketManager {
-  private static final Logger LOG = LoggerFactory.getLogger(WebSocketManager.class);
   private static WebSocketManager INSTANCE;
-  private final EngineIoServer mEngineIoServer;
-  private final SocketIoServer mSocketIoServer;
-  public static final String feedBroadcastChannel = "activityFeed";
-  public static final String taskBroadcastChannel = "taskChannel";
-  public static final String mentionChannel = "mentionChannel";
+  @Getter private final EngineIoServer engineIoServer;
+  @Getter private final SocketIoServer socketIoServer;
+  public static final String FEED_BROADCAST_CHANNEL = "activityFeed";
+  public static final String TASK_BROADCAST_CHANNEL = "taskChannel";
+  public static final String MENTION_CHANNEL = "mentionChannel";
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
-    mEngineIoServer = new EngineIoServer(eiOptions);
-    mSocketIoServer = new SocketIoServer(mEngineIoServer);
+    engineIoServer = new EngineIoServer(eiOptions);
+    socketIoServer = new SocketIoServer(engineIoServer);
     initializeHandlers();
   }
 
   private void initializeHandlers() {
-    SocketIoNamespace ns = mSocketIoServer.namespace("/");
+    SocketIoNamespace ns = socketIoServer.namespace("/");
     // On Connection
     ns.on(
         "connection",
         args -> {
           SocketIoSocket socket = (SocketIoSocket) args[0];
-          final String userId;
-          String tempId;
-          try {
-            tempId = socket.getInitialHeaders().get("UserId").get(0);
-          } catch (Exception ex) {
-            tempId = socket.getInitialQuery().get("userId");
-          }
-          userId = tempId;
+          List<String> remoteAddress = socket.getInitialHeaders().get("RemoteAddress");
+          Map<String, List<String>> initialHeaders = socket.getInitialHeaders();
+          List<String> userIdHeaders = listOrEmpty(initialHeaders.get("UserId"));
+          String userId = userIdHeaders.isEmpty() ? socket.getInitialQuery().get("userId") : userIdHeaders.get(0);
 
           if (userId != null && !userId.equals("")) {
-            LOG.info(
-                "Client :"
-                    + userId
-                    + "with Remote Address :"
-                    + socket.getInitialHeaders().get("RemoteAddress")
-                    + "connected."
-                    + socket.getInitialQuery());
+            LOG.info("Client : {} with Remote Address:{} connected {} ", userId, remoteAddress, initialHeaders);
 
             // On Socket Disconnect
             socket.on(
                 "disconnect",
                 args1 -> {
-                  LOG.info(
-                      "Client from:"
-                          + userId
-                          + "with Remote Address :"
-                          + socket.getInitialHeaders().get("RemoteAddress")
-                          + " disconnected.");
+                  LOG.info("Client from: {} with Remote Address:{} disconnected.", userId, remoteAddress);
                   UUID id = UUID.fromString(userId);
                   Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
                   allUserConnection.remove(socket.getId());
@@ -71,20 +58,14 @@ public class WebSocketManager {
                 "connect_error",
                 args1 ->
                     LOG.error(
-                        "Connection ERROR for user:"
-                            + userId
-                            + "with Remote Address :"
-                            + socket.getInitialHeaders().get("RemoteAddress")
-                            + " disconnected."));
+                        "Connection ERROR for user:{} with Remote Address:{} disconnected", userId, remoteAddress));
             socket.on(
                 "connect_failed",
                 args1 ->
                     LOG.error(
-                        "Connection failed ERROR for user:"
-                            + userId
-                            + "with Remote Address :"
-                            + socket.getInitialHeaders().get("RemoteAddress")
-                            + " disconnected."));
+                        "Connection failed ERROR for user: {} with Remote Address: {} disconnected",
+                        userId,
+                        remoteAddress));
 
             UUID id = UUID.fromString(userId);
             Map<String, SocketIoSocket> userSocketConnections;
@@ -99,14 +80,6 @@ public class WebSocketManager {
 
   public static WebSocketManager getInstance() {
     return INSTANCE;
-  }
-
-  public SocketIoServer getSocketIoServer() {
-    return mSocketIoServer;
-  }
-
-  public EngineIoServer getEngineIoServer() {
-    return mEngineIoServer;
   }
 
   public Map<UUID, Map<String, SocketIoSocket>> getActivityFeedEndpoints() {
