@@ -134,7 +134,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       <Col span={7}>right panel</Col>
     </Row>
   ) : (
-    <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+    <div
+      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+      data-testid="no-profiler-placeholder-container">
       <span>
         Data Profiler is an optional configuration in Ingestion. Please enable
         the data profiler by following the documentation
