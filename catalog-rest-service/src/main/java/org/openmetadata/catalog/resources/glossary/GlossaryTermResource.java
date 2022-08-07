@@ -398,7 +398,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {
+  private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
         .withGlossary(create.getGlossary())

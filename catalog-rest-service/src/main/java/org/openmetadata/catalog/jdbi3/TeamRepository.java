@@ -82,7 +82,6 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void prepare(Team team) throws IOException {
     setFullyQualifiedName(team);
-    populateOwner(team.getOwner()); // Validate owner
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());
@@ -224,6 +223,11 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     List<Team> children = getTeams(childrenRefs);
     switch (team.getTeamType()) {
+      case GROUP:
+        if (!children.isEmpty()) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.createGroup());
+        }
+        break;
       case DEPARTMENT:
         validateChildren(team, children, DEPARTMENT);
         break;
@@ -250,6 +254,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     List<Team> parents = getTeams(parentRefs);
     switch (team.getTeamType()) {
+      case GROUP:
       case DEPARTMENT:
         validateParents(team, parents, DEPARTMENT, DIVISION, BUSINESS_UNIT, ORGANIZATION);
         break;

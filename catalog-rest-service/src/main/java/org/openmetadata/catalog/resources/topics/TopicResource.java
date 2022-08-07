@@ -422,7 +422,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Topic getTopic(CreateTopic create, String user) {
+  private Topic getTopic(CreateTopic create, String user) throws IOException {
     return copy(new Topic(), create, user)
         .withService(create.getService())
         .withPartitions(create.getPartitions())

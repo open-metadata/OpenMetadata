@@ -34,7 +34,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectCache {
-  private static SubjectCache INSTANCE = new SubjectCache();
+  private static final SubjectCache INSTANCE = new SubjectCache();
   private static volatile boolean INITIALIZED = false;
 
   protected static LoadingCache<String, SubjectContext> USER_CACHE;
@@ -46,7 +46,7 @@ public class SubjectCache {
   protected static Fields TEAM_FIELDS;
 
   // Expected to be called only once from the DefaultAuthorizer
-  public void initialize() {
+  public static void initialize() {
     if (!INITIALIZED) {
       USER_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new UserLoader());
@@ -80,7 +80,7 @@ public class SubjectCache {
     }
   }
 
-  public void cleanUp() {
+  public static void cleanUp() {
     USER_CACHE.invalidateAll();
     TEAM_CACHE.invalidateAll();
     INITIALIZED = false;

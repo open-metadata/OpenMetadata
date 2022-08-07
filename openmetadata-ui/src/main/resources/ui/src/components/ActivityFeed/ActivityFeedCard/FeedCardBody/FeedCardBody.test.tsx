@@ -11,17 +11,35 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardBody from './FeedCardBody';
 
+const mockCancel = jest.fn();
+
+const mockUpdate = jest.fn();
+
 jest.mock('../../../../utils/FeedUtils', () => ({
   getFrontEndFormat: jest.fn(),
+  MarkdownToHTMLConverter: {
+    makeHtml: jest.fn().mockReturnValue('html string'),
+  },
 }));
 
 jest.mock('../../../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichText Preview</p>);
+});
+
+jest.mock('../../ActivityFeedEditor/ActivityFeedEditor', () => {
+  return jest.fn().mockImplementation(({ editAction }) => {
+    return <div data-testid="editor">{editAction}</div>;
+  });
 });
 
 const mockFeedCardBodyProps = {
@@ -33,6 +51,9 @@ const mockFeedCardBodyProps = {
   onConfirmation: jest.fn(),
   reactions: [],
   onReactionSelect: jest.fn(),
+  isEditPost: false,
+  onPostUpdate: mockUpdate,
+  onCancelPostUpdate: mockCancel,
 };
 
 describe('Test FeedCardBody component', () => {
@@ -44,5 +65,87 @@ describe('Test FeedCardBody component', () => {
     const messagePreview = await findByText(container, /RichText Preview/i);
 
     expect(messagePreview).toBeInTheDocument();
+  });
+
+  it('Should render editor if editpost is true', async () => {
+    const { container } = render(
+      <FeedCardBody {...mockFeedCardBodyProps} isEditPost />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editor = await findByTestId(container, 'editor');
+
+    const cancelButton = await findByTestId(container, 'cancel-button');
+
+    const saveButton = await findByTestId(container, 'save-button');
+
+    expect(editor).toBeInTheDocument();
+
+    expect(cancelButton).toBeInTheDocument();
+
+    expect(saveButton).toBeInTheDocument();
+  });
+
+  it('Cancel button should work', async () => {
+    const { container } = render(
+      <FeedCardBody {...mockFeedCardBodyProps} isEditPost />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editor = await findByTestId(container, 'editor');
+
+    const cancelButton = await findByTestId(container, 'cancel-button');
+
+    expect(editor).toBeInTheDocument();
+
+    expect(cancelButton).toBeInTheDocument();
+
+    fireEvent.click(cancelButton);
+
+    expect(mockCancel).toBeCalled();
+  });
+
+  it('Save button should work', async () => {
+    const { container } = render(
+      <FeedCardBody {...mockFeedCardBodyProps} isEditPost />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editor = await findByTestId(container, 'editor');
+
+    const saveButton = await findByTestId(container, 'save-button');
+
+    expect(editor).toBeInTheDocument();
+
+    expect(saveButton).toBeInTheDocument();
+
+    fireEvent.click(saveButton);
+
+    expect(mockUpdate).toHaveBeenCalledWith('xyz');
+  });
+
+  it('Save button should be disable if message is empty', async () => {
+    const { container } = render(
+      <FeedCardBody {...mockFeedCardBodyProps} isEditPost message="" />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editor = await findByTestId(container, 'editor');
+
+    const saveButton = await findByTestId(container, 'save-button');
+
+    expect(editor).toBeInTheDocument();
+
+    expect(saveButton).toBeInTheDocument();
+
+    expect(saveButton).toBeDisabled();
   });
 });

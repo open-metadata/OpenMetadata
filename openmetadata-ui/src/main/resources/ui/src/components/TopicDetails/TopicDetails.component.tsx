@@ -52,7 +52,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
-import ManageTabComponent from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
@@ -229,18 +228,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       isProtected: false,
       position: 6,
     },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: true,
-      protectedState: !owner || hasEditAccess(),
-      position: 7,
-    },
   ];
   const extraInfo: Array<ExtraInfo> = [
     {
@@ -311,34 +298,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         : topicDetails.tags;
       const updatedTopicDetails = {
         ...topicDetails,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedTopicDetails);
-    } else {
-      return Promise.reject();
-    }
-  };
-  const onSettingsUpdate = (newOwner?: Topic['owner'], newTier?: string) => {
-    if (newOwner || newTier) {
-      const tierTag: Topic['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(topicDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : topicDetails.tags;
-      const updatedTopicDetails = {
-        ...topicDetails,
-        owner: newOwner
-          ? {
-              ...topicDetails.owner,
-              ...newOwner,
-            }
-          : topicDetails.owner,
         tags: tierTag,
       };
 
@@ -442,6 +401,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             entityFieldThreadCount
           )}
           entityFqn={topicFQN}
+          entityId={topicDetails.id}
           entityName={entityName}
           entityType={EntityType.TOPIC}
           extraInfo={extraInfo}
@@ -572,24 +532,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityType={EntityType.TOPIC}
                   handleExtentionUpdate={onExtensionUpdate}
                 />
-              )}
-              {activeTab === 7 && (
-                <div>
-                  <ManageTabComponent
-                    allowDelete
-                    allowSoftDelete={!deleted}
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner}
-                    entityId={topicDetails.id}
-                    entityName={topicDetails.name}
-                    entityType={EntityType.TOPIC}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={deleted}
-                    hideTier={deleted}
-                    manageSectionType={EntityType.TOPIC}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
               )}
               <div
                 data-testid="observer-element"

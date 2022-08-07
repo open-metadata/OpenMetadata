@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
-
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'Glue';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -50,6 +49,10 @@ describe('Glue Ingestion', () => {
       'database',
       false
     );
+  });
+
+  it('Edit and validate owner', () => {
+    editOwnerforCreatedService('Database', serviceName);
   });
 
   it('delete created service', () => {

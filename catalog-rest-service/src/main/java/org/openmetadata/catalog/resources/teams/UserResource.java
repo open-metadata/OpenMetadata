@@ -392,9 +392,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    if (!user.getIsBot()) {
-      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
-    }
+    authorizeGenerateJWT(user);
     authorizer.authorizeAdmin(securityContext, false);
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
@@ -427,9 +425,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    if (!user.getIsBot()) {
-      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
-    }
+    authorizeGenerateJWT(user);
     authorizer.authorizeAdmin(securityContext, false);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
@@ -460,7 +456,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
 
     User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
-    if (!user.getIsBot()) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     authorizer.authorizeAdmin(securityContext, false);
@@ -566,5 +562,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
+  }
+
+  private void authorizeGenerateJWT(User user) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
+    }
   }
 }

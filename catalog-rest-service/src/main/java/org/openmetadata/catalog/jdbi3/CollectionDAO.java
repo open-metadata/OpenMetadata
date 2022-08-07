@@ -630,6 +630,23 @@ public interface CollectionDAO {
       return listBefore(limit, before, status, resolved, type);
     }
 
+    default List<String> listAnnouncementBetween(String entityId, long startTs, long endTs) {
+      return listAnnouncementBetween(null, entityId, startTs, endTs);
+    }
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity "
+            + "WHERE type='Announcement' AND (:threadId IS NULL OR id != :threadId) "
+            + "AND entityId = :entityId "
+            + "AND (( :startTs >= announcementStart AND :startTs < announcementEnd) "
+            + "OR (:endTs > announcementStart AND :endTs < announcementEnd) "
+            + "OR (:startTs <= announcementStart AND :endTs >= announcementEnd))")
+    List<String> listAnnouncementBetween(
+        @Bind("threadId") String threadId,
+        @Bind("entityId") String entityId,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity "
@@ -2125,14 +2142,12 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       String team = filter.getQueryParam("team");
-      Boolean isAdmin = null;
-      Boolean isBot = null;
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
-        isAdmin = Boolean.parseBoolean(isAdminStr);
+        boolean isAdmin = Boolean.parseBoolean(isAdminStr);
         if (isAdmin) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
           postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean)  = TRUE ", postgresCondition);
@@ -2148,7 +2163,7 @@ public interface CollectionDAO {
         }
       }
       if (isBotStr != null) {
-        isBot = Boolean.parseBoolean(isBotStr);
+        boolean isBot = Boolean.parseBoolean(isBotStr);
         if (isBot) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
           postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
@@ -2162,7 +2177,7 @@ public interface CollectionDAO {
                   "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
         }
       }
-      if (team == null && isAdmin == null && isBot == null) {
+      if (team == null && isAdminStr == null && isBotStr == null) {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
@@ -2172,14 +2187,12 @@ public interface CollectionDAO {
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String team = filter.getQueryParam("team");
-      Boolean isAdmin = null;
-      Boolean isBot = null;
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
-        isAdmin = Boolean.parseBoolean(isAdminStr);
+        boolean isAdmin = Boolean.parseBoolean(isAdminStr);
         if (isAdmin) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
           postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean) = TRUE ", postgresCondition);
@@ -2195,7 +2208,7 @@ public interface CollectionDAO {
         }
       }
       if (isBotStr != null) {
-        isBot = Boolean.parseBoolean(isBotStr);
+        boolean isBot = Boolean.parseBoolean(isBotStr);
         if (isBot) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
           postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
@@ -2209,7 +2222,7 @@ public interface CollectionDAO {
                   "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
         }
       }
-      if (team == null && isAdmin == null && isBot == null) {
+      if (team == null && isAdminStr == null && isBotStr == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
       return listBefore(
@@ -2226,14 +2239,12 @@ public interface CollectionDAO {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String team = filter.getQueryParam("team");
-      Boolean isAdmin = null;
-      Boolean isBot = null;
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String mySqlCondition = filter.getCondition("ue");
       String postgresCondition = filter.getCondition("ue");
       if (isAdminStr != null) {
-        isAdmin = Boolean.parseBoolean(isAdminStr);
+        boolean isAdmin = Boolean.parseBoolean(isAdminStr);
         if (isAdmin) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
           postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean) = TRUE ", postgresCondition);
@@ -2249,7 +2260,7 @@ public interface CollectionDAO {
         }
       }
       if (isBotStr != null) {
-        isBot = Boolean.parseBoolean(isBotStr);
+        boolean isBot = Boolean.parseBoolean(isBotStr);
         if (isBot) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
           postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
@@ -2263,7 +2274,7 @@ public interface CollectionDAO {
                   "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ", postgresCondition);
         }
       }
-      if (team == null && isAdmin == null && isBot == null) {
+      if (team == null && isAdminStr == null && isBotStr == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
       return listAfter(
@@ -2698,7 +2709,7 @@ public interface CollectionDAO {
       if (entityFqn != null) {
         condition = String.format("%s AND entityFqn='%s' ", condition, entityFqn);
       }
-      if (startTs != null & endTs != null) {
+      if (startTs != null && endTs != null) {
         condition =
             String.format(
                 "%s AND timestamp BETWEEN %d and %d ", condition, Long.parseLong(startTs), Long.parseLong(endTs));
@@ -2732,7 +2743,7 @@ public interface CollectionDAO {
       if (entityFqn != null) {
         condition = String.format("%s AND entityFqn='%s' ", condition, entityFqn);
       }
-      if (startTs != null & endTs != null) {
+      if (startTs != null && endTs != null) {
         condition =
             String.format(
                 "%s AND timestamp BETWEEN %d and %d ", condition, Long.parseLong(startTs), Long.parseLong(endTs));
@@ -2764,7 +2775,7 @@ public interface CollectionDAO {
       if (entityFqn != null) {
         condition = String.format("%s AND entityFqn='%s' ", condition, entityFqn);
       }
-      if (startTs != null & endTs != null) {
+      if (startTs != null && endTs != null) {
         condition =
             String.format(
                 "%s AND timestamp BETWEEN %d and %d ", condition, Long.parseLong(startTs), Long.parseLong(endTs));

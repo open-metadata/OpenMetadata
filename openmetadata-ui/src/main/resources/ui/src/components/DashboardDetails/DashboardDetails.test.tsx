@@ -181,10 +181,6 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   unobserve: mockunObserve,
 }));
 
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
-});
-
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
@@ -288,7 +284,6 @@ describe('Test DashboardDetails component', () => {
     const detailsTab = await findByTestId(tabs, 'Details');
     const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
     const lineageTab = await findByTestId(tabs, 'Lineage');
-    const manageTab = await findByTestId(tabs, 'Manage');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -296,7 +291,6 @@ describe('Test DashboardDetails component', () => {
     expect(detailsTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is details', async () => {
@@ -333,18 +327,6 @@ describe('Test DashboardDetails component', () => {
     const lineage = await findByTestId(container, 'lineage');
 
     expect(lineage).toBeInTheDocument();
-  });
-
-  it('Check if active tab is manage', async () => {
-    const { container } = render(
-      <DashboardDetails {...DashboardDetailsProps} activeTab={5} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const manage = await findByTestId(container, 'manage');
-
-    expect(manage).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {

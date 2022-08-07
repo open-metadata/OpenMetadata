@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
-
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
 
 const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -66,6 +65,10 @@ describe('BigQuery Ingestion', () => {
       addIngestionInput,
       serviceName
     );
+  });
+
+  it('Edit and validate owner', () => {
+    editOwnerforCreatedService('Database', serviceName);
   });
 
   it('delete created service', () => {
