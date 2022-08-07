@@ -12,71 +12,58 @@
  */
 
 import { Form, Input, Modal, Space } from 'antd';
-import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
-import React, { FC, useMemo, useState } from 'react';
-import AppState from '../../../AppState';
-import { postThread } from '../../../axiosAPIs/feedsAPI';
+import React, { FC, useState } from 'react';
+import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import {
-  CreateThread,
-  ThreadType,
-} from '../../../generated/api/feed/createThread';
-import { validateMessages } from '../../../utils/AnnouncementsUtils';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import { getUTCDateTime } from '../../../utils/TimeUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+  announcementInvalidStartTime,
+  validateMessages,
+} from '../../../utils/AnnouncementsUtils';
+import { getLocaleDate, getUTCDateTime } from '../../../utils/TimeUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import './AddAnnouncementModal.less';
+import './AnnouncementModal.less';
 
 interface Props {
+  announcement: AnnouncementDetails;
+  announcementTitle: string;
   open: boolean;
-  entityType: string;
-  entityFQN: string;
   onCancel: () => void;
+  onConfirm: (title: string, announcement: AnnouncementDetails) => void;
 }
 
-const AddAnnouncementModal: FC<Props> = ({
+const EditAnnouncementModal: FC<Props> = ({
   open,
   onCancel,
-  entityType,
-  entityFQN,
+  onConfirm,
+  announcementTitle,
+  announcement,
 }) => {
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
+  const [title, setTitle] = useState<string>(announcementTitle);
+  const [startDate, setStartDate] = useState<string>(
+    getLocaleDate(announcement.startTime * 1000)
+  );
+  const [endDate, setEndDate] = useState<string>(
+    getLocaleDate(announcement.endTime * 1000)
+  );
+  const [description, setDescription] = useState<string>(
+    announcement.description || ''
   );
 
-  const [title, setTitle] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [description, setDescription] = useState<string>('');
-
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const handleCreateAnnouncement = async () => {
-    const announcementData: CreateThread = {
-      from: currentUser?.name as string,
-      message: title,
-      about: getEntityFeedLink(entityType, entityFQN),
-      announcementDetails: {
+  const handleConfirm = () => {
+    const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
+    const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
+    if (startTime >= endTime) {
+      showErrorToast(announcementInvalidStartTime);
+    } else {
+      const updatedAnnouncement = {
+        ...announcement,
         description,
-        startTime: Math.floor(getUTCDateTime(startDate) / 1000),
-        endTime: Math.floor(getUTCDateTime(endDate) / 1000),
-      },
-      type: ThreadType.Announcement,
-    };
-    try {
-      setIsLoading(true);
-      const { data } = await postThread(announcementData);
-      if (data) {
-        showSuccessToast('Announcement created successfully!');
-      }
-      onCancel();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
+        startTime,
+        endTime,
+      };
+
+      onConfirm(title, updatedAnnouncement);
     }
   };
 
@@ -84,22 +71,24 @@ const AddAnnouncementModal: FC<Props> = ({
     <Modal
       centered
       className="announcement-modal"
-      confirmLoading={isLoading}
+      data-testid="edit-announcement"
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
         htmlType: 'submit',
       }}
-      okText="Sumbit"
-      title="Make an announcement"
+      okText="Save"
+      title="Edit an announcement"
       visible={open}
       width={620}
       onCancel={onCancel}>
       <Form
+        data-testid="announcement-form"
         id="announcement-form"
+        initialValues={{ title, startDate, endDate }}
         layout="vertical"
         validateMessages={validateMessages}
-        onFinish={handleCreateAnnouncement}>
+        onFinish={handleConfirm}>
         <Form.Item
           label="Title:"
           name="title"
@@ -134,7 +123,7 @@ const AddAnnouncementModal: FC<Props> = ({
           </Form.Item>
           <Form.Item
             label="End Date (UTC):"
-            name="endtDate"
+            name="endDate"
             rules={[
               {
                 required: true,
@@ -159,4 +148,4 @@ const AddAnnouncementModal: FC<Props> = ({
   );
 };
 
-export default observer(AddAnnouncementModal);
+export default observer(EditAnnouncementModal);

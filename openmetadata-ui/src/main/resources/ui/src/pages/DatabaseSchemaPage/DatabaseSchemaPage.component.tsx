@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
@@ -40,6 +41,7 @@ import {
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
+import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -48,7 +50,6 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
-import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -70,12 +71,9 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
-  getEntityDeleteMessage,
   getEntityName,
   getPartialNameFromTableFQN,
-  hasEditAccess,
   isEven,
-  pluralize,
 } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
@@ -158,17 +156,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       isProtected: false,
       position: 2,
       count: feedCount,
-    },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: false,
-      position: 3,
     },
   ];
 
@@ -583,17 +570,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   };
 
-  const getDeleteEntityMessage = () => {
-    if (!tableInstanceCount) {
-      return;
-    }
-
-    return getEntityDeleteMessage(
-      'Database Schema',
-      pluralize(tableInstanceCount, 'Table')
-    );
-  };
-
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
@@ -639,12 +615,28 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="page-container">
-            <TitleBreadcrumb titleLinks={slashedTableName} />
+            <Space
+              align="center"
+              className="tw-justify-between"
+              style={{ width: '100%' }}>
+              <TitleBreadcrumb titleLinks={slashedTableName} />
+              <ManageButton
+                isRecursiveDelete
+                allowSoftDelete={false}
+                entityFQN={databaseSchemaFQN}
+                entityId={databaseSchemaId}
+                entityName={databaseSchemaName}
+                entityType={EntityType.DATABASE_SCHEMA}
+              />
+            </Space>
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
-                  <EntitySummaryDetails data={info} />
+                  <EntitySummaryDetails
+                    data={info}
+                    updateOwner={handleUpdateOwner}
+                  />
 
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                     <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
@@ -702,24 +694,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     />
                     <div />
                   </div>
-                )}
-                {activeTab === 3 && (
-                  <ManageTabComponent
-                    allowDelete
-                    hideTier
-                    isRecursiveDelete
-                    currentUser={databaseSchema?.owner}
-                    deletEntityMessage={getDeleteEntityMessage()}
-                    entityId={databaseSchema?.id}
-                    entityName={databaseSchema?.name}
-                    entityType={EntityType.DATABASE_SCHEMA}
-                    hasEditAccess={hasEditAccess(
-                      databaseSchema?.owner?.type || '',
-                      databaseSchema?.owner?.id || ''
-                    )}
-                    manageSectionType={EntityType.DATABASE_SCHEMA}
-                    onSave={handleUpdateOwner}
-                  />
                 )}
                 <div
                   data-testid="observer-element"

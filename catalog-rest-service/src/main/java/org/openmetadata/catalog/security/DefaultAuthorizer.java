@@ -59,9 +59,9 @@ public class DefaultAuthorizer implements Authorizer {
     this.testUsers = new HashSet<>(config.getTestPrincipals());
     this.principalDomain = config.getPrincipalDomain();
 
-    SubjectCache.getInstance().initialize();
-    PolicyCache.getInstance().initialize();
-    RoleCache.getInstance().initialize();
+    SubjectCache.initialize();
+    PolicyCache.initialize();
+    RoleCache.initialize();
     LOG.debug("Admin users: {}", adminUsers);
     initializeUsers();
   }

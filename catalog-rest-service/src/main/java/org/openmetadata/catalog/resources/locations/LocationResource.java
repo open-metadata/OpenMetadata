@@ -490,7 +490,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return location;
   }
 
-  private Location getLocation(CreateLocation create, String user) {
+  private Location getLocation(CreateLocation create, String user) throws IOException {
     return copy(new Location(), create, user)
         .withPath(create.getPath())
         .withService(create.getService())

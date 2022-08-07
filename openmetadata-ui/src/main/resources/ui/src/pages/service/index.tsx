@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined, startCase } from 'lodash';
@@ -35,6 +36,7 @@ import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
+import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
@@ -46,7 +48,6 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
-import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
@@ -55,7 +56,6 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -72,12 +72,9 @@ import { useAuth } from '../../hooks/authHooks';
 import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
-  getEntityDeleteMessage,
   getEntityMissingError,
   getEntityName,
-  hasEditAccess,
   isEven,
-  pluralize,
 } from '../../utils/CommonUtils';
 import {
   getEditConnectionPath,
@@ -85,6 +82,7 @@ import {
 } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
+  getDeleteEntityMessage,
   getServiceCategoryFromType,
   servicePageTabs,
   serviceTypeLogo,
@@ -183,17 +181,6 @@ const ServicePage: FunctionComponent = () => {
       isProtected: !isAdminUser && !isAuthDisabled,
       isHidden: !isAdminUser && !isAuthDisabled,
       position: 3,
-    },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: false,
-      position: 4,
     },
   ];
 
@@ -686,42 +673,6 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getDeleteEntityMessage = () => {
-    const service = serviceName?.slice(0, -1);
-
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          `${pluralize(instanceCount, 'Database')}, ${pluralize(
-            schemaCount,
-            'Schema'
-          )} and ${pluralize(tableCount, 'Table')}`
-        );
-
-      case ServiceCategory.MESSAGING_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          pluralize(instanceCount, 'Topic')
-        );
-
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          pluralize(instanceCount, 'Dashboard')
-        );
-
-      case ServiceCategory.PIPELINE_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          pluralize(instanceCount, 'Pipeline')
-        );
-
-      default:
-        return;
-    }
-  };
-
   useEffect(() => {
     setServiceName(serviceCategory || getServiceCategoryFromType(serviceType));
   }, [serviceCategory, serviceType]);
@@ -932,7 +883,26 @@ const ServicePage: FunctionComponent = () => {
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="service-page">
-            <TitleBreadcrumb titleLinks={slashedTableName} />
+            <Space
+              align="center"
+              className="tw-justify-between"
+              style={{ width: '100%' }}>
+              <TitleBreadcrumb titleLinks={slashedTableName} />
+              <ManageButton
+                isRecursiveDelete
+                allowSoftDelete={false}
+                deleteMessage={getDeleteEntityMessage(
+                  serviceName || '',
+                  instanceCount,
+                  schemaCount,
+                  tableCount
+                )}
+                entityFQN={serviceFQN}
+                entityId={serviceDetails?.id}
+                entityName={serviceDetails?.name || ''}
+                entityType={serviceName?.slice(0, -1)}
+              />
+            </Space>
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
@@ -1074,27 +1044,6 @@ const ServicePage: FunctionComponent = () => {
                       serviceFQN={serviceDetails?.serviceType || ''}
                     />
                   </>
-                )}
-
-                {activeTab === 4 && (
-                  <div className="tw-bg-white tw-h-full tw-pt-4 tw-pb-6">
-                    <ManageTabComponent
-                      allowDelete
-                      hideTier
-                      isRecursiveDelete
-                      currentUser={serviceDetails?.owner}
-                      deletEntityMessage={getDeleteEntityMessage()}
-                      entityId={serviceDetails?.id}
-                      entityName={serviceDetails?.name}
-                      entityType={serviceCategory.slice(0, -1)}
-                      hasEditAccess={hasEditAccess(
-                        serviceDetails?.owner?.type || '',
-                        serviceDetails?.owner?.id || ''
-                      )}
-                      manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.SERVICE}
-                      onSave={handleUpdateOwner}
-                    />
-                  </div>
                 )}
               </div>
             </div>

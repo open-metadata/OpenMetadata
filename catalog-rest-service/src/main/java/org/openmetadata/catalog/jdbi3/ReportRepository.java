@@ -46,7 +46,6 @@ public class ReportRepository extends EntityRepository<Report> {
   public void prepare(Report report) throws IOException {
     // TODO report does not have service yet
     setFullyQualifiedName(report);
-    report.setOwner(Entity.getEntityReference(report.getOwner()));
   }
 
   @Override

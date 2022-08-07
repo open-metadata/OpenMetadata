@@ -26,14 +26,13 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
+    entity.setOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 
   @Override
   public void prepare(TestDefinition entity) throws IOException {
     setFullyQualifiedName(entity);
-    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
     // validate test platforms
     if (entity.getTestPlatforms() == null || entity.getTestPlatforms().isEmpty()) {
       throw new IllegalArgumentException("testPlatforms must not be empty");

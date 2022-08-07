@@ -78,7 +78,7 @@ public final class RestUtil {
   }
 
   public static String replaceSpaces(String s) {
-    s = s.replaceAll(" ", "%20");
+    s = s.replace(" ", "%20");
     return s;
   }
 

@@ -138,4 +138,20 @@ public final class CatalogExceptionMessage {
   public static String createOrganization() {
     return "Only one Organization is allowed. New Organization type can't be created";
   }
+
+  public static String createGroup() {
+    return "Team of type Group can't have children of type team. Only users are allowed as part of the team";
+  }
+
+  public static String invalidTeamOwner(TeamType teamType) {
+    return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
+  }
+
+  public static String announcementOverlap() {
+    return "There is already an announcement scheduled that overlaps with the given start time and end time";
+  }
+
+  public static String announcementInvalidStartTime() {
+    return "Announcement start time must be earlier than the end time";
+  }
 }

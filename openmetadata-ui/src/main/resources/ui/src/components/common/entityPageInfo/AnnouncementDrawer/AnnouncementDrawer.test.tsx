@@ -35,7 +35,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../../Modals/AddAnnouncementModal/AddAnnouncementModal', () => {
+jest.mock('../../../Modals/AnnouncementModal/AddAnnouncementModal', () => {
   return jest.fn().mockReturnValue(<div>AddAnnouncementModal</div>);
 });
 

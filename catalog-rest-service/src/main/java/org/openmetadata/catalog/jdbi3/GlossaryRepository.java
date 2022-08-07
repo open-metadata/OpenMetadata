@@ -60,7 +60,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   public void prepare(Glossary glossary) throws IOException {
     setFullyQualifiedName(glossary);
-    glossary.setOwner(Entity.getEntityReference(glossary.getOwner()));
     validateUsers(glossary.getReviewers());
     glossary.setTags(addDerivedTags(glossary.getTags()));
   }

@@ -27,7 +27,7 @@ import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnouncementModal';
+import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
   open: boolean;
@@ -58,7 +58,7 @@ const AnnouncementDrawer: FC<Props> = ({
       data-testid="title"
       style={{ width: '100%' }}>
       <Typography.Text className="tw-font-medium">
-        Announcement on {entityName}
+        Announcements on {entityName}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
     </Space>

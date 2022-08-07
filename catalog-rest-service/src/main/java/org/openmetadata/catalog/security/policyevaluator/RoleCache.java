@@ -31,7 +31,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class RoleCache {
-  private static RoleCache INSTANCE = new RoleCache();
+  private static final RoleCache INSTANCE = new RoleCache();
   private static volatile boolean INITIALIZED = false;
   protected static LoadingCache<UUID, Role> ROLE_CACHE;
   private static EntityRepository<Role> ROLE_REPOSITORY;
@@ -42,7 +42,7 @@ public class RoleCache {
   }
 
   /** To be called only once during the application start from DefaultAuthorizer */
-  public void initialize() {
+  public static void initialize() {
     if (!INITIALIZED) {
       ROLE_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
       ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
@@ -68,9 +68,6 @@ public class RoleCache {
   }
 
   static class RoleLoader extends CacheLoader<UUID, Role> {
-    private static final EntityRepository<Role> ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
-    private static final Fields FIELDS = ROLE_REPOSITORY.getFields("policies");
-
     @Override
     public Role load(@CheckForNull UUID roleId) throws IOException {
       Role role = ROLE_REPOSITORY.get(null, roleId.toString(), FIELDS);

@@ -214,7 +214,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
     setFullyQualifiedName(pipeline);
-    populateOwner(pipeline.getOwner()); // Validate owner
     pipeline.setTags(addDerivedTags(pipeline.getTags()));
   }
 

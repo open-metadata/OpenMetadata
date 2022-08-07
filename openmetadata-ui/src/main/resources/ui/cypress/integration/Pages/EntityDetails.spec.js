@@ -29,27 +29,43 @@ describe('Entity Details Page', () => {
       .should('have.class', 'active')
       .click();
 
-    // click on the 1st result and go to manage tab in entity details page
     cy.wait(500);
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-    cy.get('[data-testid="Manage"]').click();
 
+    //Click on manage button
+    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.wait(1000);
     // check for delete section and delete button is available or not
-    cy.get('[data-testid="danger-zone"]').scrollIntoView().should('be.visible');
-    cy.get('[data-testid="hard-delete"] > .tw-flex')
-      .scrollIntoView()
-      .find('[data-testid="delete-button"]')
+    // cy.get('[data-testid="danger-zone"]').scrollIntoView().should('be.visible');
+    cy.get('[data-testid="delete-button-title"]')
       .should('be.visible')
       .click()
       .as('deleteBtn');
 
+    cy.wait(1000);
+
+    cy.get('[data-testid="hard-delete-option"]')
+      .should('contain', `Permanently Delete ${singuler} “${value.term}”`)
+      .should('be.visible')
+      .as('permanentDelete');
+
+    cy.get('@permanentDelete').should('be.visible').click();
+
     cy.get('[data-testid="confirm-button"]')
       .should('be.visible')
       .as('confirmBtn');
+
     cy.get('@confirmBtn').should('be.disabled');
+
     cy.get('[data-testid="discard-button"]')
       .should('be.visible')
       .as('discardBtn');
+
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
       .as('textBox');
@@ -57,8 +73,16 @@ describe('Entity Details Page', () => {
     // delete modal should be disappeared
     cy.get('@discardBtn').click();
 
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
     // open modal and type required text in input box to delete entity
+
     cy.get('@deleteBtn').click();
+    cy.wait(1000);
+    cy.get('@permanentDelete').click();
     cy.get('@textBox').type(DELETE_TERM);
     cy.get('@confirmBtn').should('not.be.disabled');
     cy.get('@confirmBtn').click();
@@ -95,6 +119,87 @@ describe('Entity Details Page', () => {
     });
     cy.clickOnLogo();
   };
+
+  const addOwnerAndTier = (value) => {
+    searchEntity(value.term);
+    cy.get(`[data-testid="${value.entity}-tab"]`).should('be.visible').click();
+    cy.get(`[data-testid="${value.entity}-tab"]`)
+      .should('be.visible')
+      .should('have.class', 'active')
+      .click();
+
+    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+
+    cy.wait(500);
+
+    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+
+    cy.wait(500);
+    //Clicking on users tab
+    cy.get('[data-testid="dropdown-tab"]')
+      .contains('Users')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    //Selecting the user
+    cy.get('[data-testid="list-item"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+    cy.wait(1000);
+
+    cy.get('[data-testid="owner-dropdown"]')
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal('Aaron Johnson');
+      });
+
+    cy.wait(1000);
+
+    cy.get('[data-testid="edit-Tier-icon"]')
+      .scrollIntoView()
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="select-tier-buuton"]')
+      .first()
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="tier-dropdown"]')
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal('Tier1');
+      });
+
+    cy.get('[data-testid="entity-tags"]').should('contain', 'Tier1');
+    cy.wait(1000);
+
+    cy.clickOnLogo();
+
+    // checks newly generated feed for follow and setting owner
+    cy.get('[data-testid="message-container"]')
+      .eq(1)
+      .contains('Added owner: Aaron Johnson')
+      .should('be.visible');
+
+    cy.get('[data-testid="message-container"]')
+      .eq(0)
+      .scrollIntoView()
+      .contains('Added tags: Tier.Tier1')
+      .should('be.visible');
+
+    cy.clickOnLogo();
+  };
+
+  it('Add Owner and Tier for entity', () => {
+    Object.values(DELETE_ENTITY).forEach((value) => {
+      addOwnerAndTier(value);
+    });
+  });
 
   it('Delete entity flow should work properly', () => {
     Object.values(DELETE_ENTITY).forEach((value) => {
