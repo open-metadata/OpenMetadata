@@ -17,9 +17,14 @@ import { TestIndicatorProps } from '../TableProfiler.interface';
 
 const TestIndicator: React.FC<TestIndicatorProps> = ({ value, type }) => {
   return (
-    <span className="tw-flex tw-gap-1.5 tw-items-center">
-      <span className={classNames('test-indicator', type.toLowerCase())} />
-      <span>{value}</span>
+    <span
+      className="tw-flex tw-gap-1.5 tw-items-center"
+      data-testid="indicator-container">
+      <span
+        className={classNames('test-indicator', type.toLowerCase())}
+        data-testid="test-status"
+      />
+      <span data-testid="test-value">{value}</span>
     </span>
   );
 };
