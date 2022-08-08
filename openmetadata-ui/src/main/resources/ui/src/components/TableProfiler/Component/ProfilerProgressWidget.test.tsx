@@ -24,7 +24,7 @@ const mockProps: ProfilerProgressWidgetProps = {
   value: 0.2,
 };
 
-describe('Test ColumnProfileTable component', () => {
+describe('Test ProfilerProgressWidget component', () => {
   beforeEach(() => {
     cleanup();
   });
