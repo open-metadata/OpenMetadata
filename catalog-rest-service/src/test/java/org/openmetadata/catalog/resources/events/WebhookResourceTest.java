@@ -202,7 +202,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
         new EventFilter().withEventType(EventType.ENTITY_DELETED).withEvents(List.of(allowAllFilter));
 
     EntityFilter f1 = new EntityFilter().withEntityType("*").withEventFilter(List.of(createFilter));
-    EntityFilter f2 = new EntityFilter().withEntityType("*").withEventFilter(List.of(createFilter, updateFilter, deleteFilter));
+    EntityFilter f2 =
+        new EntityFilter().withEntityType("*").withEventFilter(List.of(createFilter, updateFilter, deleteFilter));
     EntityFilter f3 = new EntityFilter().withEntityType("*").withEventFilter(List.of(updateFilter, deleteFilter));
     EntityFilter f4 = new EntityFilter().withEntityType("*").withEventFilter(List.of(updateFilter));
 
@@ -217,21 +218,27 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     create.setEventFilters(List.of(f2));
     ChangeDescription change = getChangeDescription(webhook.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f2)));
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f1)).withNewValue(null));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("eventFilters").withOldValue(List.of(f1)).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityCreated
     create.setEventFilters(List.of(f3));
     change = getChangeDescription(webhook.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f3)));
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f2)).withNewValue(null));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("eventFilters").withOldValue(List.of(f2)).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityDeleted
     create.setEventFilters(List.of(f4));
     change = getChangeDescription(webhook.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f4)));
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f3)).withNewValue(null));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("eventFilters").withOldValue(List.of(f3)).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
