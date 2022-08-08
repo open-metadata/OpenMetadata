@@ -39,13 +39,18 @@ export const getTypeByFQN = async (typeFQN: string) => {
   return response.data;
 };
 
-export const addPropertyToEntity = (
+export const addPropertyToEntity = async (
   entityTypeId: string,
   data: CustomProperty
-): Promise<AxiosResponse> => {
+) => {
   const path = `/metadata/types/${entityTypeId}`;
 
-  return APIClient.put(path, data);
+  const response = await APIClient.put<
+    CustomProperty,
+    AxiosResponse<CustomProperty>
+  >(path, data);
+
+  return response.data;
 };
 
 export const updateType = async (entityTypeId: string, data: Operation[]) => {

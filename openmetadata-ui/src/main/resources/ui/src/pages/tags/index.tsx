@@ -222,7 +222,7 @@ const TagsPage = () => {
   const deleteTagCategoryById = (categoryId: string) => {
     deleteTagCategory(categoryId)
       .then((res) => {
-        if (res.data) {
+        if (res) {
           setIsLoading(true);
           const updatedCategory = categories.filter(
             (data) => data.id !== categoryId
@@ -291,7 +291,7 @@ const TagsPage = () => {
       categoryType: currentCategory?.categoryType,
     })
       .then((res) => {
-        if (res.data) {
+        if (res) {
           fetchCurrentCategory(currentCategory?.name as string, true);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -342,7 +342,7 @@ const TagsPage = () => {
         description: data.description,
       })
         .then((res) => {
-          if (res.data) {
+          if (res) {
             fetchCurrentCategory(currentCategory?.name as string, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];

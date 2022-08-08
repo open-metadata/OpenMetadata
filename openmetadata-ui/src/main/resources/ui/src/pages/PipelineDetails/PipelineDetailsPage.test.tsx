@@ -24,7 +24,7 @@ jest.mock('../../axiosAPIs/pipelineAPI', () => ({
   addFollower: jest.fn(),
   patchPipelineDetails: jest.fn(),
   removeFollower: jest.fn(),
-  getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
+  getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
 jest.mock('../../components/PipelineDetails/PipelineDetails.component', () => {
