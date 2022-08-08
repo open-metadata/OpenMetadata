@@ -51,6 +51,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -78,14 +80,10 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
-import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.security.saml.SamlLogoutServlet;
 import org.openmetadata.catalog.security.saml.SamlRedirectServlet;
 import org.openmetadata.catalog.security.saml.SamlResponseServlet;
 import org.openmetadata.catalog.security.saml.SamlSettingsHolder;
-import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
-import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.socket.FeedServlet;
 import org.openmetadata.catalog.socket.SocketAddressFilter;
 import org.openmetadata.catalog.socket.WebSocketManager;
@@ -302,13 +300,11 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
-
-    ServletRegistration.Dynamic pushNotificationServlet =
-        environment.servlets().addServlet("Push Notification", new FeedServlet());
-    pushNotificationServlet.addMapping(pathSpec);
-    FilterRegistration.Dynamic pushFeedFilter = environment.servlets().addFilter("PushFeedFilter", socketAddressFilter);
-    pushFeedFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, pathSpec);
-
+    environment.getApplicationContext().setContextPath("/");
+    environment
+        .getApplicationContext()
+        .addFilter(new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
+    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
       WebSocketUpgradeFilter webSocketUpgradeFilter =
