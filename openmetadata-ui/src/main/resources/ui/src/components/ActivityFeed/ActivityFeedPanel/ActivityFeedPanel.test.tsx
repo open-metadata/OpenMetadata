@@ -57,6 +57,7 @@ const mockFeedPanelProp = {
 
 jest.mock('../../../utils/FeedUtils', () => ({
   getEntityField: jest.fn(),
+  getEntityFQN: jest.fn(),
 }));
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
