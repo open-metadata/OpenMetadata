@@ -73,7 +73,7 @@ class BaseTableTestBuilder(ABC):
     def build_test_case_results(self) -> TestCaseResult:
         """Build test case result base on GE test result"""
         return TestCaseResult(
-            executionTime=self.timestamp,
+            timestamp=self.timestamp,
             testCaseStatus=TestCaseStatus.Success
             if self.result["success"]
             else TestCaseStatus.Failed,

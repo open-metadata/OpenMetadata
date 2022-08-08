@@ -47,7 +47,7 @@ def column_value_max_to_be_between(
         )
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -65,5 +65,5 @@ def column_value_max_to_be_between(
     )
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestampe=execution_date.timestamp(), testCaseStatus=status, result=result
     )

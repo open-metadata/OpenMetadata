@@ -137,7 +137,7 @@ public class DashboardServiceResource
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<DashboardService> dashboardServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
   }
 
@@ -352,7 +352,7 @@ public class DashboardServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private DashboardService getService(CreateDashboardService create, String user) {
+  private DashboardService getService(CreateDashboardService create, String user) throws IOException {
     return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
 import lombok.Getter;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ServiceType;
@@ -78,8 +77,6 @@ public abstract class ServiceEntityRepository<
   @Override
   public void prepare(T service) throws IOException {
     setFullyQualifiedName(service);
-    // Check if owner is valid and set the relationship
-    service.setOwner(Entity.getEntityReference(service.getOwner()));
   }
 
   @Override

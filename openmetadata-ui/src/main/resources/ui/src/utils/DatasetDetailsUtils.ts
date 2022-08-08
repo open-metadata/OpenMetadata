@@ -58,10 +58,6 @@ export const datasetTableTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentDatasetTab = (tab: string) => {
@@ -102,10 +98,6 @@ export const getCurrentDatasetTab = (tab: string) => {
 
     case 'custom_properties':
       currentTab = 9;
-
-      break;
-    case 'manage':
-      currentTab = 10;
 
       break;
 

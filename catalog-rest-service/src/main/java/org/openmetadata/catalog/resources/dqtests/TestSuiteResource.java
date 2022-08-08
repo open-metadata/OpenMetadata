@@ -333,7 +333,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private TestSuite getTestSuite(CreateTestSuite create, String user) {
+  private TestSuite getTestSuite(CreateTestSuite create, String user) throws IOException {
     return copy(new TestSuite(), create, user)
         .withDescription(create.getDescription())
         .withScheduleInterval(create.getScheduleInterval())

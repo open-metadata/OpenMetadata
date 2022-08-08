@@ -34,12 +34,10 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getEntityDeleteMessage,
   getEntityName,
   getEntityPlaceHolder,
   getHtmlForNonAdminAction,
   isEven,
-  pluralize,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -63,7 +61,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
-import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsContainer from '../tags-container/tags-container';
@@ -200,18 +197,6 @@ const DashboardDetails = ({
       isProtected: false,
       position: 4,
     },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: true,
-      protectedState: !owner || hasEditAccess(),
-      position: 5,
-    },
   ];
 
   const extraInfo: Array<ExtraInfo> = [
@@ -290,34 +275,6 @@ const DashboardDetails = ({
         tags: tierTag,
       };
       settingsUpdateHandler(updatedDashboardDetails);
-    }
-  };
-  const onSettingsUpdate = (
-    newOwner?: Dashboard['owner'],
-    newTier?: string
-  ) => {
-    if (newOwner || newTier) {
-      const tierTag: Dashboard['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : dashboardDetails.tags;
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        owner: newOwner
-          ? { ...dashboardDetails.owner, ...newOwner }
-          : dashboardDetails.owner,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedDashboardDetails);
-    } else {
-      return Promise.reject();
     }
   };
 
@@ -458,17 +415,6 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
-  const getDeleteEntityMessage = () => {
-    if (!charts.length) {
-      return;
-    }
-
-    return getEntityDeleteMessage(
-      EntityType.DASHBOARD,
-      pluralize(charts.length, 'Chart')
-    );
-  };
-
   const getLoader = () => {
     return isentityThreadLoading ? <Loader /> : null;
   };
@@ -513,6 +459,7 @@ const DashboardDetails = ({
             entityFieldThreadCount
           )}
           entityFqn={dashboardFQN}
+          entityId={dashboardDetails.id}
           entityName={entityName}
           entityType={EntityType.DASHBOARD}
           extraInfo={extraInfo}
@@ -754,25 +701,6 @@ const DashboardDetails = ({
                   entityType={EntityType.DASHBOARD}
                   handleExtentionUpdate={onExtensionUpdate}
                 />
-              )}
-              {activeTab === 5 && (
-                <div>
-                  <ManageTabComponent
-                    allowDelete
-                    allowSoftDelete={!deleted}
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner}
-                    deletEntityMessage={getDeleteEntityMessage()}
-                    entityId={dashboardDetails.id}
-                    entityName={dashboardDetails.name}
-                    entityType={EntityType.DASHBOARD}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={deleted}
-                    hideTier={deleted}
-                    manageSectionType={EntityType.DASHBOARD}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
               )}
               <div
                 data-testid="observer-element"

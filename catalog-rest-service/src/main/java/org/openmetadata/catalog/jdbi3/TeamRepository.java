@@ -66,8 +66,10 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setDefaultRoles(fields.contains("defaultRoles") ? getDefaultRoles(team) : null);
     team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
     team.setParents(fields.contains("parents") ? getParents(team) : null);
-    team.setChildren(fields.contains("children") ? getChildren(team) : null);
+    team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
     team.setPolicies(fields.contains("policies") ? getPolicies(team) : null);
+    team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : null);
+    team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : null);
     return team;
   }
 
@@ -80,7 +82,6 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void prepare(Team team) throws IOException {
     setFullyQualifiedName(team);
-    populateOwner(team.getOwner()); // Validate owner
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());
@@ -123,6 +124,9 @@ public class TeamRepository extends EntityRepository<Team> {
       addRelationship(team.getId(), defaultRole.getId(), TEAM, Entity.ROLE, Relationship.HAS);
     }
     for (EntityReference parent : listOrEmpty(team.getParents())) {
+      if (parent.getId().equals(organization.getId())) {
+        continue; // When the parent is the default parent - organization, don't store the relationship
+      }
       addRelationship(parent.getId(), team.getId(), TEAM, TEAM, Relationship.PARENT_OF);
     }
     for (EntityReference child : listOrEmpty(team.getChildren())) {
@@ -165,6 +169,16 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(userIds, Entity.USER);
   }
 
+  private Integer getUserCount(UUID teamId) throws IOException {
+    List<EntityRelationshipRecord> userIds = findTo(teamId, TEAM, Relationship.HAS, Entity.USER);
+    int userCount = userIds.size();
+    List<EntityReference> children = getChildren(teamId);
+    for (EntityReference child : children) {
+      userCount += getUserCount(child.getId());
+    }
+    return userCount;
+  }
+
   private List<EntityReference> getOwns(Team team) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.getEntityReferences(
@@ -178,12 +192,23 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getParents(Team team) throws IOException {
     List<EntityRelationshipRecord> parents = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+    if (listOrEmpty(parents).isEmpty() && !team.getId().equals(organization.getId())) {
+      return new ArrayList<>(List.of(organization.getEntityReference()));
+    }
     return EntityUtil.populateEntityReferences(parents, TEAM);
   }
 
-  private List<EntityReference> getChildren(Team team) throws IOException {
-    List<EntityRelationshipRecord> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+  private List<EntityReference> getChildren(UUID teamId) throws IOException {
+    if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
+      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
+      return EntityUtil.populateEntityReferencesById(children, Entity.TEAM);
+    }
+    List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
     return EntityUtil.populateEntityReferences(children, TEAM);
+  }
+
+  private Integer getChildrenCount(Team team) throws IOException {
+    return getChildren(team.getId()).size();
   }
 
   private List<EntityReference> getPolicies(Team team) throws IOException {
@@ -198,6 +223,11 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     List<Team> children = getTeams(childrenRefs);
     switch (team.getTeamType()) {
+      case GROUP:
+        if (!children.isEmpty()) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.createGroup());
+        }
+        break;
       case DEPARTMENT:
         validateChildren(team, children, DEPARTMENT);
         break;
@@ -224,6 +254,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     List<Team> parents = getTeams(parentRefs);
     switch (team.getTeamType()) {
+      case GROUP:
       case DEPARTMENT:
         validateParents(team, parents, DEPARTMENT, DIVISION, BUSINESS_UNIT, ORGANIZATION);
         break;
@@ -279,7 +310,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private void validateSingleParent(Team team, List<EntityReference> parentRefs) {
-    if (parentRefs.size() != 1) {
+    if (listOrEmpty(parentRefs).size() != 1) {
       throw new IllegalArgumentException(invalidParentCount(1, team.getTeamType()));
     }
   }
@@ -288,6 +319,7 @@ public class TeamRepository extends EntityRepository<Team> {
     String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
     if (json == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
+      EntityReference organizationPolicy = Entity.getEntityReferenceByName(POLICY, "OrganizationPolicy", Include.ALL);
       Team team =
           new Team()
               .withId(UUID.randomUUID())
@@ -296,7 +328,8 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDescription("Organization under which all the other team hierarchy is created")
               .withTeamType(ORGANIZATION)
               .withUpdatedBy("admin")
-              .withUpdatedAt(System.currentTimeMillis());
+              .withUpdatedAt(System.currentTimeMillis())
+              .withPolicies(new ArrayList<>(List.of(organizationPolicy)));
       // Teams
       try {
         organization = create(null, team);

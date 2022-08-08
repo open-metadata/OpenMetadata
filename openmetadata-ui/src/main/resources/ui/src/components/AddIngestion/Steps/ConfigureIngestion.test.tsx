@@ -58,10 +58,6 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     includes: [],
     excludes: [],
   },
-  fqnFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
   includeLineage: false,
   includeView: false,
   includeTags: false,
@@ -77,7 +73,6 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   showTopicFilter: false,
   showChartFilter: false,
   showPipelineFilter: false,
-  showFqnFilter: false,
   handleIncludeLineage: jest.fn(),
   handleIncludeView: jest.fn(),
   handleIncludeTags: jest.fn(),

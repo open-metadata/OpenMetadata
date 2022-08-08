@@ -39,7 +39,7 @@ logger = ingestion_logger()
 
 T = TypeVar("T")
 
-SIMPLE_SOURCE = {"sample-data", "sample-usage", "metadata_elasticsearch"}
+SAMPLE_SOURCE = {"sample-data", "sample-usage"}
 
 
 class InvalidWorkflowJSONException(Exception):
@@ -258,7 +258,9 @@ class Workflow:
         # We override the current serviceConnection source object if source workflow service already exists in OM.
         # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
         # from the service object itself.
-        if not self._is_sample_source(self.config.source.type):
+        if service_type is not ServiceType.Metadata and not self._is_sample_source(
+            self.config.source.type
+        ):
             metadata = OpenMetadata(config=metadata_config)
             service = metadata.get_by_name(
                 get_service_class_from_service_type(service_type),
@@ -273,4 +275,4 @@ class Workflow:
 
     @staticmethod
     def _is_sample_source(service_type):
-        return service_type in SIMPLE_SOURCE
+        return service_type in SAMPLE_SOURCE

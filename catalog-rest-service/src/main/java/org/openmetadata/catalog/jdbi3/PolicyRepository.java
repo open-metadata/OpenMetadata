@@ -85,8 +85,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     setFullyQualifiedName(policy);
     validateRules(policy);
     policy.setLocation(getLocationReference(policy));
-    // Check if owner is valid and set the relationship
-    populateOwner(policy.getOwner());
   }
 
   @Override
@@ -167,14 +165,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
       // remove original Policy --> Location relationship if exists.
       if (origPolicy.getLocation() != null && origPolicy.getLocation().getId() != null) {
-        daoCollection
-            .relationshipDAO()
-            .delete(
-                origPolicy.getId().toString(),
-                POLICY,
-                origPolicy.getLocation().getId().toString(),
-                Entity.LOCATION,
-                Relationship.APPLIED_TO.ordinal());
+        deleteRelationship(
+            origPolicy.getId(), POLICY, origPolicy.getLocation().getId(), Entity.LOCATION, Relationship.APPLIED_TO);
       }
       // insert updated Policy --> Location relationship.
       if (updatedPolicy.getLocation() != null && updatedPolicy.getLocation().getId() != null) {

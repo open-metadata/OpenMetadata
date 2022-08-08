@@ -57,6 +57,9 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
@@ -72,6 +75,7 @@ from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
+from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.provider_registry import (
@@ -135,6 +139,7 @@ class OpenMetadata(
     OMetaServerMixin,
     OMetaDashboardMixin,
     OMetaPatchMixin,
+    OMetaTestsMixin,
     Generic[T, C],
 ):
     """
@@ -156,6 +161,7 @@ class OpenMetadata(
     services_path = "services"
     teams_path = "teams"
     tags_path = "tags"
+    tests_path = "tests"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
@@ -347,6 +353,26 @@ class OpenMetadata(
         ):
             return "/services/mlmodelServices"
 
+        if issubclass(
+            entity,
+            get_args(
+                Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
+            ),
+        ):
+            return "/testDefinition"
+
+        if issubclass(
+            entity,
+            get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
+        ):
+            return "/testSuite"
+
+        if issubclass(
+            entity,
+            get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
+        ):
+            return "/testCase"
+
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"
         )
@@ -365,6 +391,9 @@ class OpenMetadata(
 
         if "tag" in entity.__name__.lower():
             return self.tags_path
+
+        if "test" in entity.__name__.lower():
+            return self.tests_path
 
         if (
             "user" in entity.__name__.lower()
@@ -417,15 +446,20 @@ class OpenMetadata(
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
             .replace("tagcategory", "tagCategory")
+            .replace("testsuite", "testSuite")
+            .replace("testcase", "testCase")
         )
 
         class_path = ".".join(
-            [
-                self.class_root,
-                self.entity_path,
-                self.get_module_path(create),
-                self.update_file_name(create, file_name),
-            ]
+            filter(
+                None,
+                [
+                    self.class_root,
+                    self.entity_path if not file_name.startswith("test") else None,
+                    self.get_module_path(create),
+                    self.update_file_name(create, file_name),
+                ],
+            )
         )
 
         entity_class = getattr(

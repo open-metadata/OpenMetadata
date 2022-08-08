@@ -233,10 +233,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertRoles(user2, Arrays.asList(nonDefaultRoleRef), Arrays.asList(newDefaultRoleRef, role1Ref, role2Ref));
 
     // Given user2 has a non default role assigned, when user2 leaves team2, then user2 should get assigned the global
-    // default role and retain its non-default role.
+    // default role and retain its non-default role. Also note that user2 is assigned to organization.
     originalUser2 = JsonUtils.pojoToJson(user2);
     ChangeDescription change = getChangeDescription(user2.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(List.of(team2Ref)));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("teams").withNewValue(List.of(ORG_TEAM.getEntityReference())));
     user2.setTeams(null);
     user2 = patchEntityAndCheck(user2, originalUser2, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertRoles(user2, Arrays.asList(nonDefaultRoleRef), Arrays.asList(newDefaultRoleRef));
@@ -617,7 +620,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
 
     //
-    // Add previously absent attributes
+    // Add previously absent attributes. Note the default team Organization is deleted when adding new teams.
     //
     String origJson = JsonUtils.pojoToJson(user);
 
@@ -631,6 +634,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsAdmin(false);
     ChangeDescription change = getChangeDescription(user.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(Arrays.asList(role1)));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("teams").withOldValue(Arrays.asList(ORG_TEAM.getEntityReference())));
     change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(teams));
     change.getFieldsAdded().add(new FieldChange().withName("timezone").withNewValue(timezone));
     change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
@@ -684,10 +690,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsBot(null)
         .withIsAdmin(false);
 
-    // Note non-empty display field is not deleted
+    // Note non-empty display field is not deleted. When teams are deleted, Organization is added back as default team.
     change = getChangeDescription(user.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(Arrays.asList(role2)));
     change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(teams1));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("teams").withNewValue(Arrays.asList(ORG_TEAM.getEntityReference())));
     change.getFieldsDeleted().add(new FieldChange().withName("timezone").withOldValue(timezone1));
     change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
     change.getFieldsDeleted().add(new FieldChange().withName("profile").withOldValue(profile1));
@@ -867,7 +876,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (UUID teamId : listOrEmpty(createRequest.getTeams())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
-    TestUtils.assertEntityReferences(expectedTeams, user.getTeams());
+    if (expectedTeams.isEmpty()) {
+      expectedTeams = new ArrayList<>(List.of(ORG_TEAM.getEntityReference())); // Organization is default team
+    }
 
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());

@@ -41,10 +41,6 @@ export const pipelineDetailsTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentPipelineTab = (tab: string) => {
@@ -64,11 +60,6 @@ export const getCurrentPipelineTab = (tab: string) => {
 
       break;
 
-    case 'manage':
-      currentTab = 5;
-
-      break;
-
     case 'details':
     default:
       currentTab = 1;
@@ -81,33 +72,30 @@ export const getCurrentPipelineTab = (tab: string) => {
 
 export const getModifiedPipelineStatus = (
   status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = []
+  pipelineStatus: Pipeline['pipelineStatus'] = {}
 ) => {
-  const data = pipelineStatus
-    .map((statusValue) => {
-      return statusValue.taskStatus?.map((task) => ({
-        executionDate: statusValue.executionDate,
-        executionStatus: task.executionStatus,
-        name: task.name,
-      }));
-    })
-    .flat(1);
+  const data =
+    pipelineStatus?.taskStatus?.map((task) => ({
+      executionDate: pipelineStatus.timestamp,
+      executionStatus: task.executionStatus,
+      name: task.name,
+    })) || [];
 
   if (!status) {
     return data;
   } else {
-    return data.filter((d) => d?.executionStatus === status);
+    return data?.filter((d) => d?.executionStatus === status);
   }
 };
 
 export const getFilteredPipelineStatus = (
   status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = []
+  pipelineStatus: Pipeline['pipelineStatus'] = {}
 ) => {
   if (!status) {
     return pipelineStatus;
   } else {
-    return pipelineStatus.filter((d) => d?.executionStatus === status);
+    return pipelineStatus?.executionStatus === status;
   }
 };
 

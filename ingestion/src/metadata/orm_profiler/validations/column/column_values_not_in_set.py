@@ -69,7 +69,7 @@ def column_values_not_in_set(
         msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name} - {err}"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(),
+            timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
         )
@@ -78,5 +78,5 @@ def column_values_not_in_set(
     result = f"Found countInSet={set_count_res}. It should be 0."
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
+        timestamp=execution_date.timestamp(), testCaseStatus=status, result=result
     )

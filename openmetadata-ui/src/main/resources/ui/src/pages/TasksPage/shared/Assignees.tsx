@@ -13,7 +13,9 @@
 
 import { Select } from 'antd';
 import React, { FC } from 'react';
+import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { Option } from '../TasksPage.interface';
+import './Assignee.less';
 
 interface Props {
   options: Option[];
@@ -55,7 +57,7 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
           data-testid="assignee-option"
           data-usertype={option.type}
           key={option.value}>
-          {option.label}
+          <UserTag id={option.value} name={option.label} />
         </Option>
       ))}
     </Select>

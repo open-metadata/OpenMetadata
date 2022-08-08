@@ -142,8 +142,8 @@ export const getEntityOverview = (
         {
           name: 'Columns',
           value:
-            tableProfile && tableProfile[0]?.columnCount
-              ? tableProfile[0].columnCount
+            tableProfile && tableProfile?.columnCount
+              ? tableProfile.columnCount
               : '--',
           isLink: false,
         },
@@ -153,12 +153,12 @@ export const getEntityOverview = (
             <TableProfilerGraph
               className="tw--mt-5"
               data={
-                tableProfile
-                  ?.map((d) => ({
-                    date: d.profileDate,
-                    value: d.rowCount ?? 0,
-                  }))
-                  .reverse() as Array<{
+                [
+                  {
+                    date: new Date(tableProfile?.timestamp || 0),
+                    value: tableProfile.rowCount ?? 0,
+                  },
+                ] as Array<{
                   date: Date;
                   value: number;
                 }>

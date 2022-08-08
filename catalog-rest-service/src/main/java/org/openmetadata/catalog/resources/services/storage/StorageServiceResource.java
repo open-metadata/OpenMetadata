@@ -320,7 +320,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private StorageService getService(CreateStorageService create, String user) {
+  private StorageService getService(CreateStorageService create, String user) throws IOException {
     return copy(new StorageService(), create, user).withServiceType(create.getServiceType());
   }
 }

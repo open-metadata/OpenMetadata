@@ -47,6 +47,12 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection,
     MySQLScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
+    OracleDatabaseSchema,
+    OracleScheme,
+    OracleServiceName,
+)
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
     PinotDBScheme,
@@ -693,3 +699,66 @@ class SouceConnectionTest(TestCase):
             catalog="test_catalog",
         )
         assert expected_url == get_connection_url(presto_conn_obj)
+
+    def test_oracle_url(self):
+        # oracle with db
+        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
+
+        oracle_conn_obj = OracleConnection(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
+        )
+        assert expected_url == get_connection_url(oracle_conn_obj)
+
+        # oracle with service name
+        expected_url = (
+            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
+        )
+
+        oracle_conn_obj = OracleConnection(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
+        )
+        assert expected_url == get_connection_url(oracle_conn_obj)
+
+        # oracle with db & connection options
+        expected_url = [
+            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+cx_oracle://admin:password@localhost:1541/testdb?test_key_1=test_value_1&test_key_2=test_value_2",
+        ]
+
+        oracle_conn_obj = OracleConnection(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
+            connectionOptions=dict(
+                test_key_1="test_value_1", test_key_2="test_value_2"
+            ),
+        )
+        assert get_connection_url(oracle_conn_obj) in expected_url
+
+        # oracle with service name & connection options
+        expected_url = [
+            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb&test_key_1=test_value_1&test_key_2=test_value_2",
+        ]
+
+        oracle_conn_obj = OracleConnection(
+            username="admin",
+            password="password",
+            hostPort="localhost:1541",
+            scheme=OracleScheme.oracle_cx_oracle,
+            oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
+            connectionOptions=dict(
+                test_key_1="test_value_1", test_key_2="test_value_2"
+            ),
+        )
+        assert get_connection_url(oracle_conn_obj) in expected_url

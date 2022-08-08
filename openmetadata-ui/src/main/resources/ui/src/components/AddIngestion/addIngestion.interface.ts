@@ -66,7 +66,6 @@ export interface ConfigureIngestionProps {
   topicFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
   pipelineFilterPattern: FilterPattern;
-  fqnFilterPattern: FilterPattern;
   includeLineage: boolean;
   includeView: boolean;
   includeTags: boolean;
@@ -82,7 +81,6 @@ export interface ConfigureIngestionProps {
   showTopicFilter: boolean;
   showChartFilter: boolean;
   showPipelineFilter: boolean;
-  showFqnFilter: boolean;
   threadCount: number;
   queryLogDuration: number;
   stageFileLocation: string;

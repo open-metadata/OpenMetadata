@@ -19,10 +19,13 @@ import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
-  onSave?: (value: string) => void;
+  editorClass?: string;
   buttonClass?: string;
   placeHolder?: string;
   defaultValue?: string;
+  editAction?: React.ReactNode;
+  onSave?: (value: string) => void;
+  onTextChange?: (message: string) => void;
 }
 
 export type EditorContentRef = {
@@ -32,16 +35,22 @@ export type EditorContentRef = {
 
 const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   className,
+  editorClass = '',
   buttonClass = '',
   onSave,
   placeHolder,
   defaultValue,
+  onTextChange,
+  editAction,
 }) => {
   const editorRef = useRef<EditorContentRef>();
   const [editorValue, setEditorValue] = useState<string>('');
 
   const onChangeHandler = (value: string) => {
-    setEditorValue(HTMLToMarkdown.turndown(value));
+    const markdown = HTMLToMarkdown.turndown(value);
+    const backendFormat = getBackendFormat(markdown);
+    setEditorValue(markdown);
+    onTextChange && onTextChange(backendFormat);
   };
 
   const onSaveHandler = () => {
@@ -49,7 +58,8 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
       if (editorRef.current?.getEditorValue()) {
         setEditorValue('');
         editorRef.current?.clearEditorValue();
-        onSave?.(getBackendFormat(editorRef.current?.getEditorValue()));
+        const message = getBackendFormat(editorRef.current?.getEditorValue());
+        onSave && onSave(message);
       }
     }
   };
@@ -60,19 +70,25 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
       onClick={(e) => e.stopPropagation()}>
       <FeedEditor
         defaultValue={defaultValue}
+        editorClass={editorClass}
         placeHolder={placeHolder}
         ref={editorRef}
         onChangeHandler={onChangeHandler}
         onSave={onSaveHandler}
       />
+      {editAction ? (
+        editAction
+      ) : (
+        <>
+          <SendButton
+            buttonClass={buttonClass}
+            editorValue={editorValue}
+            onSaveHandler={onSaveHandler}
+          />
 
-      <SendButton
-        buttonClass={buttonClass}
-        editorValue={editorValue}
-        onSaveHandler={onSaveHandler}
-      />
-
-      <KeyHelp editorValue={editorValue} />
+          <KeyHelp editorValue={editorValue} />
+        </>
+      )}
     </div>
   );
 };

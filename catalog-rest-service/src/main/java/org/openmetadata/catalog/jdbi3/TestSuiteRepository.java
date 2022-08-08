@@ -3,7 +3,6 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.TEST_SUITE;
 
 import java.io.IOException;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.tests.TestSuite;
 import org.openmetadata.catalog.type.EntityReference;
@@ -33,7 +32,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public void prepare(TestSuite entity) throws IOException {
     setFullyQualifiedName(entity);
-    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
   }
 
   @Override

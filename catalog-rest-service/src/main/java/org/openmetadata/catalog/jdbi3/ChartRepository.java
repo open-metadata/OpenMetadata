@@ -60,7 +60,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     chart.setService(dashboardService.getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
     setFullyQualifiedName(chart);
-    chart.setOwner(Entity.getEntityReference(chart.getOwner()));
     chart.setTags(addDerivedTags(chart.getTags()));
   }
 

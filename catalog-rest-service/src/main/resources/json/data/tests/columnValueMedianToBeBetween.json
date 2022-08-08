@@ -2,6 +2,7 @@
     "name": "columnValueMedianToBeBetween",
     "displayName": "columnValueMedianToBeBetween",
     "description": "This schema defines the test ColumnValueMedianToBeBetween. Test the median value in a col is within a range.",
+    "entityType": "COLUMN",
     "testPlatforms": ["OpenMetadata", "GreatExpectations"],
     "parameterDefinition": [
       {

@@ -22,6 +22,7 @@ import {
   EntityThreadField,
 } from 'Models';
 import React from 'react';
+import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import {
   deletePostById,
@@ -385,7 +386,12 @@ export const updateThreadData = (
         callback((prevData) => {
           return prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
-              return { ...thread, reactions: res.data.reactions };
+              return {
+                ...thread,
+                reactions: res.data.reactions,
+                message: res.data.message,
+                announcement: res.data?.announcement,
+              };
             } else {
               return thread;
             }
@@ -403,7 +409,11 @@ export const updateThreadData = (
             if (isEqual(threadId, thread.id)) {
               const updatedPosts = (thread.posts || []).map((post) => {
                 if (isEqual(postId, post.id)) {
-                  return { ...post, reactions: res.data.reactions };
+                  return {
+                    ...post,
+                    reactions: res.data.reactions,
+                    message: res.data.message,
+                  };
                 } else {
                   return post;
                 }
@@ -486,3 +496,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
   return displayName;
 };
+
+export const MarkdownToHTMLConverter = new Showdown.Converter({
+  strikethrough: true,
+});

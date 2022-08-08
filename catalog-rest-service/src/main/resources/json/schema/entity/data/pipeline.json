@@ -119,8 +119,8 @@
       "description": "Series of pipeline executions, its status and task status.",
       "type": "object",
       "properties": {
-        "executionDate": {
-          "description": "Date where the job was executed.",
+        "timestamp": {
+          "description": "Timestamp where the job was executed.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "executionStatus": {
@@ -197,11 +197,8 @@
       "default": null
     },
     "pipelineStatus": {
-      "description": "Series of pipeline executions and its status.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/pipelineStatus"
-      },
+      "description": "Latest Pipeline Status.",
+      "$ref": "#/definitions/pipelineStatus",
       "default": null
     },
     "followers": {

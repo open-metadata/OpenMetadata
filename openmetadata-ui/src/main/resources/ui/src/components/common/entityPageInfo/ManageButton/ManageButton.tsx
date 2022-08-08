@@ -17,25 +17,30 @@ import React, { FC, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
-import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnouncementModal';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 
 interface Props {
+  allowSoftDelete?: boolean;
   entityName: string;
   entityId?: string;
   entityType?: string;
   entityFQN?: string;
+  isRecursiveDelete?: boolean;
+  deleteMessage?: string;
+  onAnnouncementClick?: () => void;
 }
 
 const ManageButton: FC<Props> = ({
+  allowSoftDelete,
+  deleteMessage,
   entityName,
   entityType,
   entityId,
-  entityFQN,
+  isRecursiveDelete,
+  onAnnouncementClick,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
 
   const menu = (
     <Menu
@@ -52,7 +57,7 @@ const ManageButton: FC<Props> = ({
               }}>
               <SVGIcons alt="Delete" icon={Icons.DELETE_GRADIANT} />
               <div className="tw-text-left" data-testid="delete-button">
-                <p className="tw-font-medium">
+                <p className="tw-font-medium" data-testid="delete-button-title">
                   Delete {entityType} {entityName}
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs">
@@ -74,13 +79,13 @@ const ManageButton: FC<Props> = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowActions(false);
-                      setIsAnnouncement(true);
+                      onAnnouncementClick && onAnnouncementClick();
                     }}>
                     <SVGIcons alt="Delete" icon={Icons.ANNOUNCEMENT} />
                     <div
                       className="tw-text-left"
                       data-testid="announcement-button">
-                      <p className="tw-font-medium">Make an Announcement</p>
+                      <p className="tw-font-medium">Manage Announcement</p>
                       <p className="tw-text-grey-muted tw-text-xs">
                         Set up banners to inform your team of upcoming
                         maintenance, updates, &amp; deletions.
@@ -102,7 +107,7 @@ const ManageButton: FC<Props> = ({
         arrow
         align={{ targetOffset: [-12, 8] }}
         overlay={menu}
-        overlayStyle={{ width: '500px' }}
+        overlayStyle={{ width: '400px' }}
         placement="bottomRight"
         trigger={['click']}
         visible={showActions}
@@ -121,19 +126,14 @@ const ManageButton: FC<Props> = ({
       </Dropdown>
       {isDelete && (
         <DeleteWidgetModal
+          allowSoftDelete={allowSoftDelete}
+          deleteMessage={deleteMessage}
           entityId={entityId || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}
+          isRecursiveDelete={isRecursiveDelete}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
-        />
-      )}
-      {isAnnouncement && (
-        <AddAnnouncementModal
-          entityFQN={entityFQN || ''}
-          entityType={entityType || ''}
-          open={isAnnouncement}
-          onCancel={() => setIsAnnouncement(false)}
         />
       )}
     </>

@@ -394,7 +394,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return response.toResponse();
   }
 
-  private Type getType(CreateType create, String user) {
+  private Type getType(CreateType create, String user) throws IOException {
     return copy(new Type(), create, user)
         .withFullyQualifiedName(create.getName())
         .withCategory(create.getCategory())

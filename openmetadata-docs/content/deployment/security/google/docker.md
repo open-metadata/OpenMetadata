@@ -9,7 +9,7 @@ To enable security for the Docker deployment, follow the next steps:
 
 ## 1. Create an .env file
 
-Create an `openmetadata.env` file and add the following contents as an example. Use the information
+Create an `openmetadata_google.env` file and add the following contents as an example. Use the information
 generated when setting up the account in the previous steps.
 
 ```bash

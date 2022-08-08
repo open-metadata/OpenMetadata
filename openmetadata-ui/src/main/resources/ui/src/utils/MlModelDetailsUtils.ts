@@ -34,10 +34,6 @@ export const mlModelTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentMlModelTab = (tab: string) => {
@@ -55,10 +51,7 @@ export const getCurrentMlModelTab = (tab: string) => {
       currentTab = 4;
 
       break;
-    case 'manage':
-      currentTab = 5;
 
-      break;
     case 'features':
       currentTab = 1;
 

@@ -31,10 +31,27 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class RoleCache {
-  protected static final LoadingCache<UUID, Role> ROLE_CACHE =
-      CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
+  private static final RoleCache INSTANCE = new RoleCache();
+  private static volatile boolean INITIALIZED = false;
+  protected static LoadingCache<UUID, Role> ROLE_CACHE;
+  private static EntityRepository<Role> ROLE_REPOSITORY;
+  private static Fields FIELDS;
 
-  public static Role getRole(UUID roleId) {
+  public static RoleCache getInstance() {
+    return INSTANCE;
+  }
+
+  /** To be called only once during the application start from DefaultAuthorizer */
+  public static void initialize() {
+    if (!INITIALIZED) {
+      ROLE_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
+      ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
+      FIELDS = ROLE_REPOSITORY.getFields("policies");
+      INITIALIZED = true;
+    }
+  }
+
+  public Role getRole(UUID roleId) {
     try {
       return ROLE_CACHE.get(roleId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -42,7 +59,7 @@ public class RoleCache {
     }
   }
 
-  public static void invalidateRole(UUID roleId) {
+  public void invalidateRole(UUID roleId) {
     try {
       ROLE_CACHE.invalidate(roleId);
     } catch (Exception ex) {
@@ -51,14 +68,16 @@ public class RoleCache {
   }
 
   static class RoleLoader extends CacheLoader<UUID, Role> {
-    private static final EntityRepository<Role> ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
-    private static final Fields FIELDS = ROLE_REPOSITORY.getFields("policies");
-
     @Override
     public Role load(@CheckForNull UUID roleId) throws IOException {
       Role role = ROLE_REPOSITORY.get(null, roleId.toString(), FIELDS);
       LOG.info("Loaded role {}:{}", role.getName(), role.getId());
       return role;
     }
+  }
+
+  public static void cleanUp() {
+    ROLE_CACHE.cleanUp();
+    INITIALIZED = false;
   }
 }

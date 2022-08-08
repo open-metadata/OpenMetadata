@@ -25,13 +25,12 @@ COPY openmetadata-airflow-apis /openmetadata-airflow-apis
 
 RUN pip install "."
 
-
 FROM apis as ingestion
 WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg
