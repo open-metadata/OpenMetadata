@@ -20,13 +20,12 @@ import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 
 export interface TableProfilerProps {
-  columns: Column[];
   onAddTestClick: (
     tabValue: number,
     testMode?: DatasetTestModeType,
     columnName?: string
   ) => void;
-  tableProfile: Table['tableProfile'];
+  table: Table;
 }
 
 export interface ColumnProfileTableProps {
@@ -45,6 +44,7 @@ export interface ProfilerProgressWidgetProps {
 }
 
 export interface ProfilerSettingsModalProps {
+  tableId: string;
   columnProfile: ColumnProfile[];
   visible: boolean;
   onVisibilityChange: (visible: boolean) => void;

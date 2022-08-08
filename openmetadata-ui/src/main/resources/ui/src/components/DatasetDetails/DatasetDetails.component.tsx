@@ -728,8 +728,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 5 && (
                 <TableProfilerV1
-                  columns={columns}
-                  tableProfile={tableDetails.tableProfile}
+                  table={tableDetails}
                   onAddTestClick={qualityTestFormHandler}
                 />
               )}

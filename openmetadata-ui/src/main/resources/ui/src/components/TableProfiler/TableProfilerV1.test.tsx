@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
+import { MOCK_TABLE } from './mockTableData';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internel imports
 import TableProfilerV1 from './TableProfilerV1';
@@ -69,47 +70,8 @@ jest.mock('../../utils/CommonUtils', () => ({
 const mockGetCurrentDatasetTab = getCurrentDatasetTab as jest.Mock;
 
 const mockProps: TableProfilerProps = {
-  columns: [],
+  table: MOCK_TABLE,
   onAddTestClick: jest.fn(),
-  tableProfile: {
-    timestamp: 1659764894,
-    columnCount: 12,
-    rowCount: 14567,
-    columnProfile: [
-      {
-        name: 'shop_id',
-        valuesCount: 14567,
-        nullCount: 0,
-        nullProportion: 0,
-        uniqueCount: 14567,
-        uniqueProportion: 1,
-        distinctCount: 14509,
-        distinctProportion: 1,
-        min: 1,
-        max: 587,
-        mean: 45,
-        sum: 1367,
-        stddev: 35,
-        median: 7654,
-      },
-      {
-        name: 'address_id',
-        valuesCount: 14567,
-        nullCount: 0,
-        nullProportion: 0,
-        uniqueCount: 14567,
-        uniqueProportion: 1,
-        distinctCount: 14509,
-        distinctProportion: 1,
-        min: 1,
-        max: 14509,
-        mean: 567,
-        sum: 34526,
-        stddev: 190,
-        median: 7654,
-      },
-    ],
-  },
 };
 
 describe('Test TableProfiler component', () => {
@@ -134,7 +96,12 @@ describe('Test TableProfiler component', () => {
   });
 
   it('No data placeholder should be visible where there is no profiler', async () => {
-    render(<TableProfilerV1 {...mockProps} tableProfile={undefined} />);
+    render(
+      <TableProfilerV1
+        {...mockProps}
+        table={{ ...mockProps.table, tableProfile: undefined }}
+      />
+    );
 
     const noProfiler = await screen.findByTestId(
       'no-profiler-placeholder-container'

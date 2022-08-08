@@ -36,6 +36,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
 }) => {
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState(columnProfile);
+  // TODO:- Once column level test filter is implemented in test case API, remove this hardcoded value
   const testDetails = [
     {
       value: 0,
@@ -75,7 +76,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Null %',
         dataIndex: 'nullProportion',
         key: 'nullProportion',
-        width: 130,
+        width: 200,
         render: (nullValue) => {
           return (
             <ProfilerProgressWidget
@@ -89,7 +90,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Unique %',
         dataIndex: 'uniqueProportion',
         key: 'uniqueProportion',
-        width: 130,
+        width: 200,
         render: (uniqueValue) => (
           <ProfilerProgressWidget
             strokeColor={SECONDARY_COLOR}
@@ -101,7 +102,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Distinct %',
         dataIndex: 'distinctProportion',
         key: 'distinctProportion',
-        width: 130,
+        width: 200,
         render: (distValue) => (
           <ProfilerProgressWidget
             strokeColor={SUCCESS_COLOR}
@@ -116,7 +117,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (valuesCount) => formatNumberWithComma(valuesCount),
       },
       {
-        title: 'Data Quality Test',
+        title: 'Test',
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
         render: () => {
@@ -166,7 +167,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
 
   return (
     <div data-testid="column-profile-table-container">
-      <div className="tw-w-3/6">
+      <div className="tw-w-2/6">
         <Searchbar
           placeholder="Find in table..."
           searchValue={searchText}

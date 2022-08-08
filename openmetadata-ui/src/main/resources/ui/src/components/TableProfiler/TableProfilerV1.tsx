@@ -30,11 +30,8 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({
-  columns,
-  onAddTestClick,
-  tableProfile,
-}) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
+  const { tableProfile, columns } = table;
   const [settingModalVisible, setSettingModalVisible] = useState(false);
 
   const handleSettingModal = (value: boolean) => {
@@ -73,66 +70,66 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   }, [tableProfile]);
 
   return !isUndefined(tableProfile) ? (
-    <Row
+    <div
       className="table-profiler-container"
-      data-testid="table-profiler-container"
-      gutter={[16, 16]}>
-      <Col span={17}>
-        <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
-          <Button
-            className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
-            data-testid="profiler-setting-btn"
-            icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
-            type="default"
-            onClick={() => handleSettingModal(true)}>
-            Settings
-          </Button>
-          <Button
-            className="tw-rounded"
-            data-testid="profiler-add-table-test-btn"
-            type="primary"
-            onClick={() =>
-              onAddTestClick(getCurrentDatasetTab('data-quality'), 'table')
-            }>
-            Add Test
-          </Button>
-        </div>
+      data-testid="table-profiler-container">
+      <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
+        <Button
+          className="tw-rounded"
+          data-testid="profiler-add-table-test-btn"
+          type="primary"
+          onClick={() =>
+            onAddTestClick(getCurrentDatasetTab('data-quality'), 'table')
+          }>
+          Add Test
+        </Button>
+        <Button
+          className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+          data-testid="profiler-setting-btn"
+          icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+          type="default"
+          onClick={() => handleSettingModal(true)}>
+          Settings
+        </Button>
+      </div>
 
-        <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
-          {overallSummery.map((summery) => (
-            <Col
-              className="overall-summery-card"
-              data-testid={`header-card-${summery.title}`}
-              key={summery.title}
-              span={4}>
-              <p className="overall-summery-card-title tw-font-medium tw-text-grey-muted tw-mb-1">
-                {summery.title}
-              </p>
-              <p
-                className={classNames(
-                  'tw-text-2xl tw-font-semibold',
-                  summery.className
-                )}>
-                {summery.value}
-              </p>
-            </Col>
-          ))}
-        </Row>
+      <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
+        {overallSummery.map((summery) => (
+          <Col
+            className="overall-summery-card"
+            data-testid={`header-card-${summery.title}`}
+            key={summery.title}
+            span={4}>
+            <p className="overall-summery-card-title tw-font-medium tw-text-grey-muted tw-mb-1">
+              {summery.title}
+            </p>
+            <p
+              className={classNames(
+                'tw-text-2xl tw-font-semibold',
+                summery.className
+              )}>
+              {summery.value}
+            </p>
+          </Col>
+        ))}
+      </Row>
 
-        <ColumnProfileTable
-          columnProfile={tableProfile?.columnProfile || []}
-          columns={columns}
-          onAddTestClick={onAddTestClick}
-        />
+      <ColumnProfileTable
+        columnProfile={(tableProfile?.columnProfile || []).map((col) => ({
+          ...col,
+          key: col.name,
+        }))}
+        columns={columns}
+        onAddTestClick={onAddTestClick}
+      />
 
-        <ProfilerSettingsModal
-          columnProfile={tableProfile.columnProfile || []}
-          visible={settingModalVisible}
-          onVisibilityChange={handleSettingModal}
-        />
-      </Col>
-      <Col span={7}>right panel</Col>
-    </Row>
+      <ProfilerSettingsModal
+        columnProfile={tableProfile.columnProfile || []}
+        tableId={table.id}
+        visible={settingModalVisible}
+        onVisibilityChange={handleSettingModal}
+      />
+    </div>
   ) : (
     <div
       className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"

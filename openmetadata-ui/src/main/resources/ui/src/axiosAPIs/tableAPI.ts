@@ -13,10 +13,13 @@
 
 import { AxiosResponse } from 'axios';
 import { isNil, isUndefined } from 'lodash';
-import { Table } from 'Models';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
-import { ColumnTestType } from '../generated/entity/data/table';
+import {
+  ColumnTestType,
+  Table,
+  TableProfilerConfig,
+} from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -176,4 +179,29 @@ export const deleteColumnTestCase = (
     `/tables/${tableId}/columnTest/${columnName}/${columnTestType}`,
     configOptions
   );
+};
+
+export const getTableProfilerConfig = async (tableId: string) => {
+  const response = await APIClient.get<string, AxiosResponse<Table>>(
+    `/tables/${tableId}/tableProfilerConfig`
+  );
+
+  return response.data;
+};
+
+export const putTableProfileConfig = async (
+  tableId: string,
+  data: TableProfilerConfig
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.put<string, AxiosResponse<Table>>(
+    `/tables/${tableId}/tableProfilerConfig`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
