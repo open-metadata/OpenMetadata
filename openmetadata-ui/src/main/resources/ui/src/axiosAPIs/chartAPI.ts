@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { ChartType } from '../components/DashboardDetails/DashboardDetails.interface';
+import { ChartType } from '../generated/entity/data/chart';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
