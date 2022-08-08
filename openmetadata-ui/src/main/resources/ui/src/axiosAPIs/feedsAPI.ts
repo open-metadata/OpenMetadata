@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { EntityFieldThreadCount } from 'Models';
 import { configOptions } from '../constants/constants';
 import { TaskOperation } from '../constants/feed.constants';
 import { FeedFilter } from '../enums/mydata.enum';
@@ -20,36 +21,43 @@ import { CreateThread } from '../generated/api/feed/createThread';
 import {
   Post,
   TaskDetails,
+  Thread,
   ThreadTaskStatus,
   ThreadType,
 } from '../generated/entity/feed/thread';
+import { Paging } from '../generated/type/paging';
 import APIClient from './index';
 
-export const getAllFeeds: Function = (
+export const getAllFeeds = async (
   entityLink?: string,
   after?: string,
   type?: ThreadType,
   filterType?: FeedFilter,
   taskStatus?: ThreadTaskStatus
-): Promise<AxiosResponse> => {
-  return APIClient.get(`/feed`, {
-    params: {
-      entityLink: entityLink,
-      after,
-      type,
-      filterType: filterType !== FeedFilter.ALL ? filterType : undefined,
-      taskStatus,
-    },
-  });
+) => {
+  const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
+    `/feed`,
+    {
+      params: {
+        entityLink: entityLink,
+        after,
+        type,
+        filterType: filterType !== FeedFilter.ALL ? filterType : undefined,
+        taskStatus,
+      },
+    }
+  );
+
+  return response.data;
 };
 
-export const getFeedsWithFilter: Function = (
+export const getFeedsWithFilter = async (
   userId?: string,
   filterType?: FeedFilter,
   after?: string,
   type?: ThreadType,
   taskStatus?: ThreadTaskStatus
-): Promise<AxiosResponse> => {
+) => {
   let config = {};
 
   if (filterType !== FeedFilter.ALL) {
@@ -72,68 +80,87 @@ export const getFeedsWithFilter: Function = (
     };
   }
 
-  return APIClient.get(`/feed`, config);
+  const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
+    `/feed`,
+    config
+  );
+
+  return response.data;
 };
 
-export const getFeedCount: Function = (
+export const getFeedCount = async (
   entityLink?: string,
   type?: ThreadType,
   taskStatus?: ThreadTaskStatus
-): Promise<AxiosResponse> => {
-  return APIClient.get(`/feed/count`, {
+) => {
+  const response = await APIClient.get<{
+    totalCount: number;
+    counts: EntityFieldThreadCount[];
+  }>(`/feed/count`, {
     params: {
       entityLink: entityLink,
       type,
       taskStatus,
     },
   });
+
+  return response.data;
 };
 
-export const postThread: Function = (
-  data: CreateThread
-): Promise<AxiosResponse> => {
-  return APIClient.post('/feed', data);
+export const postThread = async (data: CreateThread) => {
+  const response = await APIClient.post<CreateThread, AxiosResponse<Thread>>(
+    '/feed',
+    data
+  );
+
+  return response.data;
 };
 
-export const getFeedById: Function = (id: string): Promise<AxiosResponse> => {
+export const getFeedById = (id: string): Promise<AxiosResponse<Thread>> => {
   return APIClient.get(`/feed/${id}`);
 };
 
-export const postFeedById: Function = (
-  id: string,
-  data: Post
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/feed/${id}/posts`, data);
+export const postFeedById = async (id: string, data: Post) => {
+  const response = await APIClient.post<Post, AxiosResponse<Thread>>(
+    `/feed/${id}/posts`,
+    data
+  );
+
+  return response.data;
 };
 
-export const deletePostById: Function = (
-  threadId: string,
-  postId: string
-): Promise<AxiosResponse> => {
-  return APIClient.delete(`/feed/${threadId}/posts/${postId}`);
+export const deletePostById = (threadId: string, postId: string) => {
+  return APIClient.delete<Post>(`/feed/${threadId}/posts/${postId}`);
 };
 
-export const updateThread: Function = (
-  threadId: string,
-  data: Operation[]
-): Promise<AxiosResponse> => {
-  return APIClient.patch(`/feed/${threadId}`, data, configOptions);
+export const updateThread = async (threadId: string, data: Operation[]) => {
+  const response = await APIClient.patch<Operation[], AxiosResponse<Thread>>(
+    `/feed/${threadId}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const updatePost: Function = (
+export const updatePost = async (
   threadId: string,
   postId: string,
   data: Operation[]
-): Promise<AxiosResponse> => {
-  return APIClient.patch(
+) => {
+  const response = await APIClient.patch<Operation[], AxiosResponse<Thread>>(
     `/feed/${threadId}/posts/${postId}`,
     data,
     configOptions
   );
+
+  return response.data;
 };
 
-export const getTask: Function = (taskID: string): Promise<AxiosResponse> => {
-  return APIClient.get(`/feed/tasks/${taskID}`);
+export const getTask = async (taskID: string) => {
+  const response = await APIClient.get<Thread>(`/feed/tasks/${taskID}`);
+
+  return response.data;
 };
 
 export const updateTask: Function = (
@@ -144,12 +171,14 @@ export const updateTask: Function = (
   return APIClient.put(`/feed/tasks/${taskId}/${operation}`, taskDetail);
 };
 
-export const getActiveAnnouncement = (entityLink: string) => {
-  return APIClient.get('/feed', {
+export const getActiveAnnouncement = async (entityLink: string) => {
+  const response = await APIClient.get<Thread[]>('/feed', {
     params: {
       entityLink,
       type: ThreadType.Announcement,
       activeAnnouncement: true,
     },
   });
+
+  return response.data;
 };

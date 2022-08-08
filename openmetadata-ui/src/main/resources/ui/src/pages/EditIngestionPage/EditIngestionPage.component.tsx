@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -80,9 +80,10 @@ const EditIngestionPage = () => {
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
       getServiceByFQN(serviceCategory, serviceFQN)
-        .then((resService: AxiosResponse) => {
-          if (resService.data) {
-            setServiceData(resService.data);
+        .then((resService) => {
+          if (resService) {
+            // TODO: fix type issue below
+            setServiceData(resService as DataObj);
             resolve();
           } else {
             showErrorToast(
@@ -107,9 +108,9 @@ const EditIngestionPage = () => {
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
       getIngestionPipelineByFqn(ingestionFQN, ['pipelineStatuses'])
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setIngestionData(res.data);
+        .then((res) => {
+          if (res) {
+            setIngestionData(res);
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -187,8 +188,8 @@ const EditIngestionPage = () => {
 
     return new Promise<void>((resolve, reject) => {
       return updateIngestionPipeline(updateData as CreateIngestionPipeline)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             onIngestionDeploy();
             resolve();
           } else {

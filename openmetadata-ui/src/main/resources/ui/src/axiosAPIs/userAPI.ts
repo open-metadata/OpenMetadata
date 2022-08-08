@@ -17,17 +17,19 @@ import { isNil, isUndefined } from 'lodash';
 import { UserProfile } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateUser } from '../generated/api/teams/createUser';
+import { JwtAuth } from '../generated/entity/teams/authN/jwtAuth';
 import { User } from '../generated/entity/teams/user';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getUsers = (
+export const getUsers = async (
   arrQueryFields?: string,
   limit?: number,
   team?: { [key: string]: string },
   isAdmin?: boolean,
   isBot?: boolean
-): Promise<AxiosResponse> => {
+) => {
   let qParam = '';
   if (!isUndefined(team)) {
     const paramArr = Object.entries(team);
@@ -49,42 +51,47 @@ export const getUsers = (
       ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
       : '');
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: User[]; paging: Paging }>(url);
+
+  return response.data;
 };
 
-export const updateUserDetail = (
-  id: string,
-  data: Operation[]
-): Promise<AxiosResponse> => {
+export const updateUserDetail = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/users/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<User>>(
+    `/users/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const getUserByName = (
-  name: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
+export const getUserByName = async (name: string, arrQueryFields?: string) => {
   const url = getURLWithQueryFields('/users/name/' + name, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<User>(url);
+
+  return response.data;
 };
 
-export const getUserById = (
-  id: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
+export const getUserById = async (id: string, arrQueryFields?: string) => {
   const url = getURLWithQueryFields(`/users/${id}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<User>(url);
+
+  return response.data;
 };
 
-export const getLoggedInUser = (arrQueryFields?: string) => {
+export const getLoggedInUser = async (arrQueryFields?: string) => {
   const url = getURLWithQueryFields('/users/loggedInUser', arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<User>(url);
+
+  return response.data;
 };
 
 export const getUserDetails: Function = (
@@ -121,11 +128,13 @@ export const createUser = (
   return APIClient.post(`/users`, userDetails);
 };
 
-export const updateUser = (data: User | CreateUser): Promise<AxiosResponse> => {
+export const updateUser = (
+  data: User | CreateUser
+): Promise<AxiosResponse<User>> => {
   return APIClient.put('/users', data);
 };
 
-export const getUserCounts = () => {
+export const getUserCounts = (): Promise<AxiosResponse<unknown>> => {
   return APIClient.get(
     `/search/query?q=*&from=0&size=0&index=${SearchIndex.USER}`
   );
@@ -135,14 +144,13 @@ export const deleteUser = (id: string) => {
   return APIClient.delete(`/users/${id}`);
 };
 
-export const getUserToken: Function = (id: string): Promise<AxiosResponse> => {
-  return APIClient.get(`/users/token/${id}`);
+export const getUserToken = async (id: string) => {
+  const response = await APIClient.get<JwtAuth>(`/users/token/${id}`);
+
+  return response.data;
 };
 
-export const generateUserToken: Function = (
-  id: string,
-  expiry: string
-): Promise<AxiosResponse> => {
+export const generateUserToken = async (id: string, expiry: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
@@ -150,11 +158,19 @@ export const generateUserToken: Function = (
     JWTTokenExpiry: expiry,
   };
 
-  return APIClient.put(`/users/generateToken/${id}`, payload, configOptions);
+  const response = await APIClient.put<typeof payload, AxiosResponse<JwtAuth>>(
+    `/users/generateToken/${id}`,
+    payload,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const revokeUserToken: Function = (
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.put(`/users/revokeToken/${id}`);
+export const revokeUserToken = async (id: string) => {
+  const response = await APIClient.put<string, AxiosResponse<User>>(
+    `/users/revokeToken/${id}`
+  );
+
+  return response.data;
 };

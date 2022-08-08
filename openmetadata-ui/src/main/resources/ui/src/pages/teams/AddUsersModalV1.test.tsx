@@ -119,9 +119,7 @@ jest.mock('../../axiosAPIs/userAPI', () => {
   return {
     getUsers: jest
       .fn()
-      .mockImplementation(() =>
-        Promise.resolve({ data: { data: mockAllUsers } })
-      ),
+      .mockImplementation(() => Promise.resolve({ data: mockAllUsers })),
   };
 });
 

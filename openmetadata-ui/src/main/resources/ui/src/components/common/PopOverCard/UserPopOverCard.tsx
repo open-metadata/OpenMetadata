@@ -12,7 +12,6 @@
  */
 
 import { Popover } from 'antd';
-import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
   FC,
@@ -51,8 +50,8 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
       if (type === 'user') {
         setIsLoading(true);
         getUserByName(userName, 'profile,roles,teams,follows,owns')
-          .then((res: AxiosResponse) => {
-            AppState.userDataProfiles[userName] = res.data;
+          .then((res) => {
+            AppState.userDataProfiles[userName] = res;
           })
           .finally(() => setIsLoading(false));
       }

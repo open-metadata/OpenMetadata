@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -38,9 +38,9 @@ const BotsPage = () => {
   const fetchBotsData = () => {
     setIsLoading(true);
     getUserByName(botsName)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setBotsData(res.data);
+      .then((res) => {
+        if (res) {
+          setBotsData(res);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -59,8 +59,8 @@ const BotsPage = () => {
     const updatedDetails = { ...botsData, ...data };
     const jsonPatch = compare(botsData, updatedDetails);
     updateUserDetail(botsData.id, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setBotsData((prevData) => ({ ...prevData, ...data }));
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];
@@ -73,8 +73,8 @@ const BotsPage = () => {
 
   const revokeBotsToken = () => {
     revokeUserToken(botsData.id)
-      .then((res: AxiosResponse) => {
-        const data = res.data;
+      .then((res) => {
+        const data = res;
         setBotsData(data);
       })
       .catch((err: AxiosError) => {

@@ -12,26 +12,30 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Chart } from '../generated/entity/data/chart';
+import { Operation } from 'fast-json-patch';
+import { ChartType } from '../generated/entity/data/chart';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getChartById: Function = (
+export const getChartById = (
   id: string,
-  arrQueryFields: string
+  arrQueryFields: string | string[]
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields(`/charts/${id}`, arrQueryFields);
 
   return APIClient.get(url);
 };
 
-export const updateChart: Function = (
-  id: string,
-  data: Chart
-): Promise<AxiosResponse> => {
+export const updateChart = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/charts/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<ChartType>>(
+    `/charts/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -257,8 +257,8 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const fetchOMVersion = () => {
     getVersion()
-      .then((res: AxiosResponse) => {
-        setVersion(res.data.version);
+      .then((res) => {
+        setVersion(res.version);
       })
       .catch((err: AxiosError) => {
         showErrorToast(

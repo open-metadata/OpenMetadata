@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
@@ -56,7 +56,7 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -140,9 +140,9 @@ const TopicDetailsPage: FunctionComponent = () => {
   const getLineageData = () => {
     setIsLineageLoading(true);
     getLineageByFQN(topicFQN, EntityType.TOPIC)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityLineage(res.data);
+      .then((res) => {
+        if (res) {
+          setEntityLineage(res);
         } else {
           showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
         }
@@ -179,11 +179,11 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName, node.type)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setLeafNode(res.data, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
+      .then((res) => {
+        if (res) {
+          setLeafNode(res, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res, pos));
         } else {
           showErrorToast(
             jsonData['api-error-messages']['fetch-lineage-node-error']
@@ -266,8 +266,8 @@ const TopicDetailsPage: FunctionComponent = () => {
       threadType,
       feedType
     )
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
         if (data) {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
@@ -309,9 +309,9 @@ const TopicDetailsPage: FunctionComponent = () => {
         } else {
           setIsSampleDataLoading(true);
           getTopicByFqn(topicFQN, tabField)
-            .then((res: AxiosResponse) => {
-              if (res.data) {
-                const { sampleData } = res.data;
+            .then((res) => {
+              if (res) {
+                const { sampleData } = res;
                 setSampleData(sampleData);
               } else {
                 showErrorToast(
@@ -348,13 +348,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const saveUpdatedTopicData = (updatedData: Topic): Promise<AxiosResponse> => {
+  const saveUpdatedTopicData = (updatedData: Topic) => {
     const jsonPatch = compare(topicDetails, updatedData);
 
-    return patchTopicDetails(
-      topicId,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchTopicDetails(topicId, jsonPatch);
   };
 
   const fetchTopicDetail = (topicFQN: string) => {
@@ -365,8 +362,8 @@ const TopicDetailsPage: FunctionComponent = () => {
       TabSpecificField.TAGS,
       TabSpecificField.EXTENSION,
     ])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           const {
             id,
             deleted,
@@ -386,27 +383,27 @@ const TopicDetailsPage: FunctionComponent = () => {
             retentionSize,
             serviceType,
             version,
-          } = res.data;
+          } = res;
           setName(name);
-          setTopicDetails(res.data);
+          setTopicDetails(res);
           setTopicId(id);
-          setCurrentVersion(version);
+          setCurrentVersion(version?.toString());
           setDescription(description ?? '');
-          setSchemaType(schemaType);
-          setFollowers(followers);
+          setSchemaType(schemaType ?? '');
+          setFollowers(followers ?? []);
           setOwner(owner);
-          setTier(getTierTags(tags));
-          setTags(getTagsWithoutTier(tags));
-          setSchemaText(schemaText);
+          setTier(getTierTags(tags ?? []));
+          setTags(getTagsWithoutTier(tags ?? []));
+          setSchemaText(schemaText ?? '');
           setPartitions(partitions);
-          setCleanupPolicies(cleanupPolicies);
-          setMaximumMessageSize(maximumMessageSize);
-          setReplicationFactor(replicationFactor);
-          setRetentionSize(retentionSize);
-          setDeleted(deleted);
+          setCleanupPolicies(cleanupPolicies ?? []);
+          setMaximumMessageSize(maximumMessageSize ?? 0);
+          setReplicationFactor(replicationFactor ?? 0);
+          setRetentionSize(retentionSize ?? 0);
+          setDeleted(deleted ?? false);
           setSlashedTopicName([
             {
-              name: service.name,
+              name: service.name ?? '',
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,
@@ -416,16 +413,16 @@ const TopicDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getEntityName(res.data),
+              name: getEntityName(res),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName: getEntityName(res.data),
+            displayName: getEntityName(res),
             entityType: EntityType.TOPIC,
-            fqn: fullyQualifiedName,
+            fqn: fullyQualifiedName ?? '',
             serviceType: serviceType,
             timestamp: 0,
             id: id,
@@ -454,9 +451,9 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const followTopic = () => {
     addFollower(topicId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { newValue } = res.data.changeDescription.fieldsAdded[0];
+      .then((res) => {
+        if (res) {
+          const { newValue } = res.changeDescription.fieldsAdded[0];
 
           setFollowers([...followers, ...newValue]);
         } else {
@@ -475,9 +472,9 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const unfollowTopic = () => {
     removeFollower(topicId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+      .then((res) => {
+        if (res) {
+          const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
           setFollowers(
             followers.filter((follower) => follower.id !== oldValue[0].id)
@@ -498,11 +495,11 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const descriptionUpdateHandler = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { description, version } = res.data;
-          setCurrentVersion(version);
-          setTopicDetails(res.data);
+      .then((res) => {
+        if (res) {
+          const { description = '', version } = res;
+          setCurrentVersion(version + '');
+          setTopicDetails(res);
           setDescription(description);
           getEntityFeedCount();
         } else {
@@ -523,11 +520,11 @@ const TopicDetailsPage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedTopicData(updatedTopic)
         .then((res) => {
-          if (res.data) {
-            setTopicDetails(res.data);
-            setCurrentVersion(res.data.version);
-            setOwner(res.data.owner);
-            setTier(getTierTags(res.data.tags));
+          if (res) {
+            setTopicDetails(res);
+            setCurrentVersion(res.version?.toString());
+            setOwner(res.owner);
+            setTier(getTierTags(res.tags as EntityTags[]));
             getEntityFeedCount();
             resolve();
           } else {
@@ -548,12 +545,12 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const onTagUpdate = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setTopicDetails(res.data);
-          setTier(getTierTags(res.data.tags));
-          setCurrentVersion(res.data.version);
-          setTags(getTagsWithoutTier(res.data.tags));
+      .then((res) => {
+        if (res) {
+          setTopicDetails(res);
+          setTier(getTierTags(res.tags as TagLabel[]));
+          setCurrentVersion(res.version?.toString());
+          setTags(getTagsWithoutTier(res.tags as EntityTags[]));
           getEntityFeedCount();
         } else {
           showErrorToast(jsonData['api-error-messages']['update-tags-error']);
@@ -579,15 +576,15 @@ const TopicDetailsPage: FunctionComponent = () => {
     const data = {
       message: value,
       from: currentUser,
-    };
+    } as Post;
     postFeedById(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, posts } = res.data;
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === id) {
-                return { ...res.data, posts: posts.slice(-3) };
+                return { ...res, posts: posts?.slice(-3) };
               } else {
                 return thread;
               }
@@ -605,9 +602,9 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const createThread = (data: CreateThread) => {
     postThread(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityThread((pre) => [...pre, res.data]);
+      .then((res) => {
+        if (res) {
+          setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
           showErrorToast(
@@ -676,14 +673,14 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const handleExtentionUpdate = async (updatedTopic: Topic) => {
     try {
-      const { data } = await saveUpdatedTopicData(updatedTopic);
+      const data = await saveUpdatedTopicData(updatedTopic);
 
       if (data) {
         const { version, owner: ownerValue, tags } = data;
-        setCurrentVersion(version);
+        setCurrentVersion(version?.toString());
         setTopicDetails(data);
         setOwner(ownerValue);
-        setTier(getTierTags(tags));
+        setTier(getTierTags(tags ?? []));
       } else {
         throw jsonData['api-error-messages']['update-entity-error'];
       }

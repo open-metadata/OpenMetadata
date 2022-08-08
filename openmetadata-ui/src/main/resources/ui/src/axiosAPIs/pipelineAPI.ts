@@ -12,45 +12,54 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { EntityReference } from '../generated/type/entityReference';
+import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getPipelineVersions: Function = (
-  id: string
-): Promise<AxiosResponse> => {
+export const getPipelineVersions = async (id: string) => {
   const url = `/pipelines/${id}/versions`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
 };
-export const getPipelineVersion: Function = (
-  id: string,
-  version: string
-): Promise<AxiosResponse> => {
+export const getPipelineVersion = async (id: string, version: string) => {
   const url = `/pipelines/${id}/versions/${version}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Pipeline>(url);
+
+  return response.data;
 };
 
-export const getPipelines: Function = (
+export const getPipelines = async (
   serviceName: string,
-  paging: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[],
+  paging?: string
+) => {
   const url = `${getURLWithQueryFields(
     `/pipelines`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{
+    data: ServicePageData[];
+    paging: Paging;
+  }>(url);
+
+  return response.data;
 };
 
-export const getAllPipelines = (
+export const getAllPipelines = async (
   paging: string,
   arrQueryFields: string,
   limit?: number
-): Promise<AxiosResponse> => {
+) => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
@@ -63,7 +72,11 @@ export const getAllPipelines = (
     `${searchParams.toString()}${paging ? `&${paging}` : ''}`
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: Pipeline[]; paging: Paging }>(
+    url
+  );
+
+  return response.data;
 };
 
 export const getPipelineDetails: Function = (
@@ -75,55 +88,61 @@ export const getPipelineDetails: Function = (
   return APIClient.get(url);
 };
 
-export const getPipelineByFqn: Function = (
+export const getPipelineByFqn = async (
   fqn: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[]
+) => {
   const url = getURLWithQueryFields(
     `/pipelines/name/${fqn}`,
     arrQueryFields,
     'include=all'
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Pipeline>(url);
+
+  return response.data;
 };
 
-export const addFollower: Function = (
-  pipelineID: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const addFollower = async (pipelineID: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.put(
-    `/pipelines/${pipelineID}/followers`,
-    userId,
-    configOptions
-  );
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`/pipelines/${pipelineID}/followers`, userId, configOptions);
+
+  return response.data;
 };
 
-export const removeFollower: Function = (
-  pipelineID: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const removeFollower = async (pipelineID: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.delete(
-    `/pipelines/${pipelineID}/followers/${userId}`,
-    configOptions
-  );
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(`/pipelines/${pipelineID}/followers/${userId}`, configOptions);
+
+  return response.data;
 };
 
-export const patchPipelineDetails: Function = (
-  id: string,
-  data: Pipeline
-): Promise<AxiosResponse> => {
+export const patchPipelineDetails = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/pipelines/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Pipeline>>(
+    `/pipelines/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };

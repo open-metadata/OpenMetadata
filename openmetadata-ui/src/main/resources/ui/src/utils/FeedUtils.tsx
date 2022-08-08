@@ -13,7 +13,7 @@
 
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEqual } from 'lodash';
 import {
@@ -167,7 +167,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
     let atValues = [];
     if (!searchTerm) {
       const data = await getInitialEntity(SearchIndex.USER);
-      const hits = data.data.hits.hits;
+      // TODO: fix below type issues
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hits = (data as any).data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
         const entityType = hit._source.entityType;
@@ -185,7 +187,8 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         };
       });
     } else {
-      const data = await getUserSuggestions(searchTerm);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await getUserSuggestions(searchTerm);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
@@ -209,7 +212,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   } else {
     let hashValues = [];
     if (!searchTerm) {
-      const data = await getInitialEntity(SearchIndex.TABLE);
+      // TODO: fix below type issues
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await getInitialEntity(SearchIndex.TABLE);
       const hits = data.data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
@@ -225,7 +230,8 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         };
       });
     } else {
-      const data = await getSuggestions(searchTerm);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await getSuggestions(searchTerm);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
@@ -315,7 +321,7 @@ export const getFrontEndFormat = (message: string) => {
 export const deletePost = (threadId: string, postId: string) => {
   return new Promise<Post>((resolve, reject) => {
     deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.status === 200) {
           resolve(res.data);
         } else {
@@ -331,7 +337,7 @@ export const deletePost = (threadId: string, postId: string) => {
 export const getUpdatedThread = (id: string) => {
   return new Promise<Thread>((resolve, reject) => {
     getFeedById(id)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.status === 200) {
           resolve(res.data);
         } else {
@@ -382,15 +388,15 @@ export const updateThreadData = (
 ) => {
   if (isThread) {
     updateThread(threadId, data)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         callback((prevData) => {
           return prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
               return {
                 ...thread,
-                reactions: res.data.reactions,
-                message: res.data.message,
-                announcement: res.data?.announcement,
+                reactions: res.reactions,
+                message: res.message,
+                announcement: res?.announcement,
               };
             } else {
               return thread;
@@ -403,7 +409,7 @@ export const updateThreadData = (
       });
   } else {
     updatePost(threadId, postId, data)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         callback((prevData) => {
           return prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
@@ -411,8 +417,8 @@ export const updateThreadData = (
                 if (isEqual(postId, post.id)) {
                   return {
                     ...post,
-                    reactions: res.data.reactions,
-                    message: res.data.message,
+                    reactions: res.reactions,
+                    message: res.message,
                   };
                 } else {
                   return post;

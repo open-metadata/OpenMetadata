@@ -19,7 +19,10 @@ import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { OwnerType } from '../../enums/user.enum';
-import { ChangeDescription } from '../../generated/entity/data/dashboard';
+import {
+  ChangeDescription,
+  Dashboard,
+} from '../../generated/entity/data/dashboard';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -156,7 +159,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       },
       {
         key: `${currentVersionData.serviceType} Url`,
-        value: currentVersionData.dashboardUrl,
+        value: (currentVersionData as Dashboard).dashboardUrl,
         placeholderText:
           currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
@@ -187,10 +190,10 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabelWithStatus) => {
+    ].forEach((elem) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem);
+        uniqueTags.push(elem as TagLabelWithStatus);
       }
     });
 
@@ -257,45 +260,47 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                         </tr>
                       </thead>
                       <tbody className="tableBody">
-                        {currentVersionData?.charts?.map((chart, index) => (
-                          <tr
-                            className={classNames(
-                              'tableBody-row',
-                              !isEven(index + 1) ? 'odd-row' : null
-                            )}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <Link
-                                target="_blank"
-                                to={{ pathname: chart.name }}>
-                                <span className="tw-flex">
-                                  <span className="tw-mr-1">
-                                    {chart.displayName}
-                                  </span>
-                                  <SVGIcons
-                                    alt="external-link"
-                                    className="tw-align-middle"
-                                    icon="external-link"
-                                    width="16px"
-                                  />
-                                </span>
-                              </Link>
-                            </td>
-                            <td className="tableBody-cell">{chart.type}</td>
-                            <td className="tw-group tableBody-cell tw-relative">
-                              {chart.description ? (
-                                <RichTextEditorPreviewer
-                                  markdown={chart.description}
-                                />
-                              ) : (
-                                <span className="tw-no-description">
-                                  No description
-                                </span>
+                        {(currentVersionData as Dashboard)?.charts?.map(
+                          (chart, index) => (
+                            <tr
+                              className={classNames(
+                                'tableBody-row',
+                                !isEven(index + 1) ? 'odd-row' : null
                               )}
-                            </td>
-                            <td className="tw-group tw-relative tableBody-cell" />
-                          </tr>
-                        ))}
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <Link
+                                  target="_blank"
+                                  to={{ pathname: chart.name }}>
+                                  <span className="tw-flex">
+                                    <span className="tw-mr-1">
+                                      {chart.displayName}
+                                    </span>
+                                    <SVGIcons
+                                      alt="external-link"
+                                      className="tw-align-middle"
+                                      icon="external-link"
+                                      width="16px"
+                                    />
+                                  </span>
+                                </Link>
+                              </td>
+                              <td className="tableBody-cell">{chart.type}</td>
+                              <td className="tw-group tableBody-cell tw-relative">
+                                {chart.description ? (
+                                  <RichTextEditorPreviewer
+                                    markdown={chart.description}
+                                  />
+                                ) : (
+                                  <span className="tw-no-description">
+                                    No description
+                                  </span>
+                                )}
+                              </td>
+                              <td className="tw-group tw-relative tableBody-cell" />
+                            </tr>
+                          )
+                        )}
                       </tbody>
                     </table>
                   </div>

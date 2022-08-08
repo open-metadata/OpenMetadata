@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -74,9 +74,9 @@ const AddIngestionPage = () => {
 
   const fetchServiceDetails = () => {
     getServiceByFQN(serviceCategory, serviceFQN)
-      .then((resService: AxiosResponse) => {
-        if (resService.data) {
-          setServiceData(resService.data);
+      .then((resService) => {
+        if (resService) {
+          setServiceData(resService as DataObj);
         } else {
           showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
         }
@@ -123,10 +123,10 @@ const AddIngestionPage = () => {
 
     return new Promise<void>((resolve, reject) => {
       return addIngestionPipeline(data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setIngestionId(res.data.id);
-            onIngestionDeploy(res.data.id).finally(() => resolve());
+        .then((res) => {
+          if (res) {
+            setIngestionId(res.id ?? '');
+            onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
               jsonData['api-error-messages']['create-ingestion-error']
@@ -143,8 +143,8 @@ const AddIngestionPage = () => {
             reject();
           } else {
             getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
-              .then((res: AxiosResponse) => {
-                if (res.data) {
+              .then((res) => {
+                if (res) {
                   resolve();
                   showErrorToast(
                     err,

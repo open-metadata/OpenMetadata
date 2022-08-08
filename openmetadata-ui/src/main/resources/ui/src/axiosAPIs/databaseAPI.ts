@@ -12,21 +12,29 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Database } from 'Models';
+import { Operation } from 'fast-json-patch';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getDatabases: Function = (
+export const getDatabases = async (
   serviceName: string,
-  paging: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[],
+  paging?: string
+) => {
   const url = `${getURLWithQueryFields(
     `/databases`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{
+    data: Database[];
+    paging: Paging;
+  }>(url);
+
+  return response.data;
 };
 
 export const getTables: Function = (id: number): Promise<AxiosResponse> => {
@@ -42,57 +50,74 @@ export const getDatabase: Function = (
   return APIClient.get(url);
 };
 
-export const getDatabaseDetailsByFQN: Function = (
+export const getDatabaseDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[]
+) => {
   const url = getURLWithQueryFields(`/databases/name/${fqn}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Database>(url);
+
+  return response.data;
 };
 
-export const patchDatabaseDetails: Function = (
-  id: string,
-  data: Database
-): Promise<AxiosResponse> => {
+export const patchDatabaseDetails = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/databases/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Database>>(
+    `/databases/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const patchDatabaseSchemaDetails: Function = (
+export const patchDatabaseSchemaDetails = async (
   id: string,
-  data: Database
-): Promise<AxiosResponse> => {
+  data: Operation[]
+) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/databaseSchemas/${id}`, data, configOptions);
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<DatabaseSchema>
+  >(`/databaseSchemas/${id}`, data, configOptions);
+
+  return response.data;
 };
 
-export const getDatabaseSchemas: Function = (
+export const getDatabaseSchemas = async (
   databaseName: string,
-  paging: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
+  paging?: string,
+  arrQueryFields?: string | string[]
+) => {
   const url = `${getURLWithQueryFields(
     `/databaseSchemas`,
     arrQueryFields
   )}&database=${databaseName}${paging ? paging : ''}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{
+    data: DatabaseSchema[];
+    paging: Paging;
+  }>(url);
+
+  return response.data;
 };
-export const getDatabaseSchemaDetailsByFQN: Function = (
+export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
+  arrQueryFields?: string | string[]
+) => {
   const url = `${getURLWithQueryFields(
     `/databaseSchemas/name/${databaseSchemaName}`,
     arrQueryFields
   )}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<DatabaseSchema>(url);
+
+  return response.data;
 };

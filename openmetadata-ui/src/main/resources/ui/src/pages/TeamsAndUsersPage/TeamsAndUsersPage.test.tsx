@@ -73,26 +73,22 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../axiosAPIs/teamsAPI', () => ({
   createTeam: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: getMockTeamByName })),
+    .mockImplementation(() => Promise.resolve(getMockTeamByName)),
   getTeamByName: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: getMockTeamByName })),
-  getTeams: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: getMockTeams })),
+    .mockImplementation(() => Promise.resolve(getMockTeamByName)),
+  getTeams: jest.fn().mockImplementation(() => Promise.resolve(getMockTeams)),
   patchTeamDetail: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: getMockTeamByName })),
+    .mockImplementation(() => Promise.resolve(getMockTeamByName)),
 }));
 
 jest.mock('../../axiosAPIs/userAPI', () => ({
   deleteUser: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUserDetail: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: getMockUsers.data[0] })),
-  getUsers: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: getMockUsers })),
+    .mockImplementation(() => Promise.resolve(getMockUsers.data[0])),
+  getUsers: jest.fn().mockImplementation(() => Promise.resolve(getMockUsers)),
 }));
 
 jest.mock('../../axiosAPIs/miscAPI', () => ({

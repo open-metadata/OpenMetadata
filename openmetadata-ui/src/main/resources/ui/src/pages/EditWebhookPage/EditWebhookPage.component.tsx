@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -46,8 +46,8 @@ const EditWebhookPage: FunctionComponent = () => {
     setIsLoading(true);
     getWebhookByName(webhookName)
       .then((res) => {
-        if (res.data) {
-          setWebhookData(res.data);
+        if (res) {
+          setWebhookData(res);
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];
         }
@@ -70,8 +70,8 @@ const EditWebhookPage: FunctionComponent = () => {
     setStatus('waiting');
     const { name, secretKey } = webhookData || data;
     updateWebhook({ ...data, name, secretKey })
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');
@@ -90,8 +90,8 @@ const EditWebhookPage: FunctionComponent = () => {
   const handleDelete = (id: string) => {
     setDeleteStatus('waiting');
     deleteWebhook(id)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setDeleteStatus('initial');
           goToWebhooks();
         } else {

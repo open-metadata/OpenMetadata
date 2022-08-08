@@ -12,12 +12,12 @@
  */
 
 import { Space } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, ExtraInfo, Paging } from 'Models';
+import { EntityFieldThreadCount, ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -66,8 +66,9 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Post, Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
@@ -202,10 +203,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     getFeedCount(
       getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
     )
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
+      .then((res) => {
+        if (res) {
+          setFeedCount(res.totalCount);
+          setEntityFieldThreadCount(res.counts);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -224,22 +225,23 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       'tables',
       'usageSummary',
     ])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           const {
-            description: schemaDescription,
-            id,
+            description: schemaDescription = '',
+            id = '',
             name,
             service,
             serviceType,
-            tables,
+            tables = [],
             database,
-          } = res.data;
-          setDatabaseSchema(res.data);
+          } = res;
+          setDatabaseSchema(res);
           setDescription(schemaDescription);
           setDatabaseSchemaId(id);
           setDatabaseSchemaName(name);
-          setTableData(tables);
+          // TODO: fix type overlapping here
+          setTableData(tables as unknown as Table[]);
           setTableInstanceCount(tables?.length || 0);
           setSlashedTableName([
             {
@@ -247,7 +249,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
             },
             {
-              name: service.name,
+              name: service.name ?? '',
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,
@@ -257,13 +259,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                FqnPart.Database,
-              ]),
-              url: getDatabaseDetailsPath(database.fullyQualifiedName),
+              name: getPartialNameFromTableFQN(
+                database.fullyQualifiedName ?? '',
+                [FqnPart.Database]
+              ),
+              url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
             },
             {
-              name: getEntityName(res.data),
+              name: getEntityName(res),
               url: '',
               activeTitle: true,
             },
@@ -289,18 +292,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setIsEdit(false);
   };
 
-  const saveUpdatedDatabaseSchemaData = (
+  const saveUpdatedDatabaseSchemaData = async (
     updatedData: DatabaseSchema
-  ): Promise<AxiosResponse> => {
-    let jsonPatch;
+  ): Promise<DatabaseSchema> => {
+    let jsonPatch: Operation[] = [];
     if (databaseSchema) {
       jsonPatch = compare(databaseSchema, updatedData);
     }
 
-    return patchDatabaseSchemaDetails(
-      databaseSchemaId,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchDatabaseSchemaDetails(databaseSchemaId, jsonPatch);
   };
 
   const onDescriptionUpdate = (updatedHTML: string) => {
@@ -310,8 +310,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         description: updatedHTML,
       };
       saveUpdatedDatabaseSchemaData(updatedDatabaseSchemaDetails)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             setDatabaseSchema(updatedDatabaseSchemaDetails);
             setDescription(updatedHTML);
             getEntityFeedCount();
@@ -356,9 +356,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
     return new Promise<void>((_, reject) => {
       saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setDatabaseSchema(res.data);
+        .then((res) => {
+          if (res) {
+            setDatabaseSchema(res);
             reject();
           } else {
             reject();
@@ -382,8 +382,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN),
       after
     )
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
         if (data) {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
@@ -406,15 +406,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     const data = {
       message: value,
       from: currentUser,
-    };
+    } as Post;
     postFeedById(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id: threadId, posts } = res.data;
+      .then((res) => {
+        if (res) {
+          const { id: threadId, posts } = res;
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === threadId) {
-                return { ...res.data, posts: posts.slice(-3) };
+                return { ...res, posts: posts?.slice(-3) };
               } else {
                 return thread;
               }
@@ -432,9 +432,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const createThread = (data: CreateThread) => {
     postThread(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityThread((pre) => [...pre, res.data]);
+      .then((res) => {
+        if (res) {
+          setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
           showErrorToast(

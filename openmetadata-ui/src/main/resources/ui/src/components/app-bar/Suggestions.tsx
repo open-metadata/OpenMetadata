@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
@@ -284,10 +284,17 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   useEffect(() => {
     if (!isMounting.current) {
       getSuggestions(searchText)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           if (res.data) {
-            setOptions(res.data.suggest['metadata-suggest'][0].options);
-            setSuggestions(res.data.suggest['metadata-suggest'][0].options);
+            // TODO: Fix type issues below
+            setOptions(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (res.data as any).suggest['metadata-suggest'][0].options
+            );
+            setSuggestions(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (res.data as any).suggest['metadata-suggest'][0].options
+            );
             setIsOpen(true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
