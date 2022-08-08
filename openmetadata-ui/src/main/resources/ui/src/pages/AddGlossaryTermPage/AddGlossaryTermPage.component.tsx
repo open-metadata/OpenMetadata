@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
-import { cloneDeep, isUndefined } from 'lodash';
+import { AxiosError } from 'axios';
+import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -96,9 +96,9 @@ const AddGlossaryTermPage = () => {
 
   const fetchGlossaryData = () => {
     getGlossariesByName(glossaryName, ['tags', 'owner', 'reviewers'])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setGlossaryData(res.data);
+      .then((res) => {
+        if (res) {
+          setGlossaryData(res);
         } else {
           setGlossaryData(undefined);
           showErrorToast(
@@ -123,9 +123,9 @@ const AddGlossaryTermPage = () => {
       'reviewers',
       'tags',
     ])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setParentGlossaryData(res.data);
+      .then((res) => {
+        if (res) {
+          setParentGlossaryData(res);
         } else {
           setParentGlossaryData(undefined);
           showErrorToast(
@@ -135,9 +135,9 @@ const AddGlossaryTermPage = () => {
       })
       .catch((err: AxiosError) => {
         setParentGlossaryData(undefined);
+        const errMsg = get(err, 'response.data.message', '');
         showErrorToast(
-          err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-glossary-term-error']
+          errMsg || jsonData['api-error-messages']['fetch-glossary-term-error']
         );
       });
   };

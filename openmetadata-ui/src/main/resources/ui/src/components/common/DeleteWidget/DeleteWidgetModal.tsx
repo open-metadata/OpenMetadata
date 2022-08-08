@@ -12,7 +12,7 @@
  */
 
 import { Modal, Radio, RadioChangeEvent } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -108,11 +108,11 @@ const DeleteWidgetModal = ({
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(
       prepareEntityType(),
-      entityId,
-      isRecursiveDelete,
+      entityId ?? '',
+      Boolean(isRecursiveDelete),
       entityDeleteState.softDelete
     )
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.status === 200) {
           setTimeout(() => {
             handleOnEntityDeleteCancel();

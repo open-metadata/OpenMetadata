@@ -76,7 +76,7 @@ const AddAnnouncementModal: FC<Props> = ({
       };
       try {
         setIsLoading(true);
-        const { data } = await postThread(announcementData);
+        const data = await postThread(announcementData);
         if (data) {
           showSuccessToast('Announcement created successfully!');
         }

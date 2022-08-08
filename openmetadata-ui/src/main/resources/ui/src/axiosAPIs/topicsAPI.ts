@@ -12,45 +12,55 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isNil } from 'lodash';
-import { Topic } from 'Models';
+import { TabSpecificField } from '../enums/entity.enum';
+import { Topic } from '../generated/entity/data/topic';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { EntityReference } from '../generated/type/entityReference';
+import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getTopicVersions: Function = (
-  id: string
-): Promise<AxiosResponse> => {
+export const getTopicVersions = async (id: string) => {
   const url = `/topics/${id}/versions`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
 };
-export const getTopicVersion: Function = (
-  id: string,
-  version: string
-): Promise<AxiosResponse> => {
+export const getTopicVersion = async (id: string, version: string) => {
   const url = `/topics/${id}/versions/${version}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Topic>(url);
+
+  return response.data;
 };
 
-export const getTopics: Function = (
+export const getTopics = async (
   serviceName: string,
-  paging: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[],
+  paging?: string
+) => {
   const url = `${getURLWithQueryFields(
     `/topics`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{
+    data: ServicePageData[];
+    paging: Paging;
+  }>(url);
+
+  return response.data;
 };
 
-export const getAllTopics = (
+export const getAllTopics = async (
   paging: string,
   arrQueryFields: string,
   limit?: number
-): Promise<AxiosResponse> => {
+) => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
@@ -63,7 +73,9 @@ export const getAllTopics = (
     `${searchParams.toString()}${paging ? `&${paging}` : ''}`
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: Topic[]; paging: Paging }>(url);
+
+  return response.data;
 };
 
 export const getTopicDetails: Function = (
@@ -75,51 +87,63 @@ export const getTopicDetails: Function = (
   return APIClient.get(url);
 };
 
-export const getTopicByFqn: Function = (
+export const getTopicByFqn = async (
   fqn: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | TabSpecificField[]
+) => {
   const url = getURLWithQueryFields(
     `/topics/name/${fqn}`,
     arrQueryFields,
     'include=all'
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Topic>(url);
+
+  return response.data;
 };
 
-export const addFollower: Function = (
-  topicId: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const addFollower = async (topicId: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.put(`/topics/${topicId}/followers`, userId, configOptions);
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`/topics/${topicId}/followers`, userId, configOptions);
+
+  return response.data;
 };
 
-export const removeFollower: Function = (
-  topicId: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const removeFollower = async (topicId: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.delete(
-    `/topics/${topicId}/followers/${userId}`,
-    configOptions
-  );
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: {
+        fieldsDeleted: { oldValue: EntityReference[] }[];
+      };
+    }>
+  >(`/topics/${topicId}/followers/${userId}`, configOptions);
+
+  return response.data;
 };
 
-export const patchTopicDetails: Function = (
-  id: string,
-  data: Topic
-): Promise<AxiosResponse> => {
+export const patchTopicDetails = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/topics/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Topic>>(
+    `/topics/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };

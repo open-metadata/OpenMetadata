@@ -73,7 +73,9 @@ const ReviewerModal = ({
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
     getSuggestions(searchText, SearchIndex.USER)
-      .then((res: AxiosResponse) => {
+      // TODO: fix types for below suggest api
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((res: AxiosResponse<any>) => {
         const data = formatUsersResponse(
           res.data.suggest['metadata-suggest'][0].options
         );

@@ -224,9 +224,7 @@ describe('Test MyData page component', () => {
   it('Component should render in sandbox mode', async () => {
     (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        data: {
-          sandboxModeEnabled: true,
-        },
+        sandboxModeEnabled: true,
       })
     );
 

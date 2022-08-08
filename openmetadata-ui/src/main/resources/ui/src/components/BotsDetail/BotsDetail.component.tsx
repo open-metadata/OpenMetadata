@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import moment from 'moment';
@@ -103,10 +103,10 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const fetchBotsToken = () => {
     getUserToken(botsData.id)
-      .then((res: AxiosResponse) => {
-        const { JWTToken, JWTTokenExpiresAt } = res.data;
+      .then((res) => {
+        const { JWTToken, JWTTokenExpiresAt } = res;
         setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt);
+        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -115,10 +115,10 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const generateBotsToken = (data: string) => {
     generateUserToken(botsData.id, data)
-      .then((res: AxiosResponse) => {
-        const { JWTToken, JWTTokenExpiresAt } = res.data;
+      .then((res) => {
+        const { JWTToken, JWTTokenExpiresAt } = res;
         setBotsToken(JWTToken);
-        setBotsTokenExpiry(JWTTokenExpiresAt);
+        setBotsTokenExpiry(JWTTokenExpiresAt?.toString());
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
