@@ -19,7 +19,7 @@ I worked on the ..... because ...
 #
 ### Checklist:
 <!-- add an x in [] if done, don't mark items that you didn't do !-->
-- [x] I have read the [**CONTRIBUTING**](https://docs.open-metadata.org/open-source-community/developer) document.
+- [x] I have read the [**CONTRIBUTING**](https://docs.open-metadata.org/developers/contribute) document.
 - [ ] I have commented on my code, particularly in hard-to-understand areas.
 - [ ] I have added tests that prove my fix is effective or that my feature works.
 - [x] All new and existing tests passed.
