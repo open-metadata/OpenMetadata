@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
   isEmpty,
@@ -881,9 +881,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const getTableColumns = (expandNode?: EntityReference) => {
     if (expandNode) {
       getTableDetails(expandNode.id, ['columns'])
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           const tableId = expandNode.id;
-          const { columns } = res.data;
+          const { columns } = res;
           tableColumnsRef.current[tableId] = columns;
           updateColumnsToNode(columns, tableId);
         })

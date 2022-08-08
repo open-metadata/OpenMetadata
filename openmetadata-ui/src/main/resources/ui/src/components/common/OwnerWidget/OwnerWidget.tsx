@@ -92,8 +92,8 @@ const OwnerWidget = ({
   const fetchTeamsAndUsersCount = () => {
     getUsers('', 0)
       .then((res) => {
-        if (res.data) {
-          setTotalUsersCount(res.data.paging.total);
+        if (res.paging) {
+          setTotalUsersCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -108,8 +108,8 @@ const OwnerWidget = ({
 
     getTeams('', 0)
       .then((res) => {
-        if (res.data) {
-          setTotalTeamsCount(res.data.paging.total);
+        if (res.paging) {
+          setTotalTeamsCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }

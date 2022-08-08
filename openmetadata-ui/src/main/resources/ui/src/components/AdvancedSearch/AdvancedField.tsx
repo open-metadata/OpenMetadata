@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Select } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { FC, useState } from 'react';
 import {
@@ -103,9 +103,11 @@ const AdvancedField: FC<Props> = ({
   const fetchOptions = (query: string) => {
     if (!MISC_FIELDS.includes(field.key)) {
       getAdvancedFieldOptions(query, index, advancedField)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           const suggestOptions =
-            res.data.suggest['metadata-suggest'][0].options ?? [];
+            // TODO: Fix type issues below
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (res.data as any).suggest['metadata-suggest'][0].options ?? [];
           const uniqueOptions = [
             // eslint-disable-next-line
             ...new Set(suggestOptions.map((op: any) => op.text)),
@@ -121,9 +123,11 @@ const AdvancedField: FC<Props> = ({
     } else {
       if (field.key === 'tags') {
         getTagSuggestions(query)
-          .then((res: AxiosResponse) => {
+          .then((res) => {
             const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
+              // TODO: Fix type issues below
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (res.data as any).suggest['metadata-suggest'][0].options ?? [];
             const uniqueOptions = [
               ...new Set(
                 // eslint-disable-next-line
@@ -140,9 +144,11 @@ const AdvancedField: FC<Props> = ({
           .catch((err: AxiosError) => showErrorToast(err));
       } else {
         getUserSuggestions(query)
-          .then((res: AxiosResponse) => {
+          .then((res) => {
             const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
+              // TODO: Fix type issues below
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (res.data as any).suggest['metadata-suggest'][0].options ?? [];
             const uniqueOptions = [
               // eslint-disable-next-line
               ...new Set(suggestOptions.map((op: any) => op._source.name)),

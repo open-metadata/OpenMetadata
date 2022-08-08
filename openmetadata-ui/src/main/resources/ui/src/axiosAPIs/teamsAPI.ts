@@ -12,40 +12,58 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Team } from 'Models';
+import { Operation } from 'fast-json-patch';
+import { Team } from '../generated/entity/teams/team';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getTeams = (
+export const getTeams = async (
   arrQueryFields?: string | string[],
   limit = 100000
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields('/teams', arrQueryFields);
 
-  return APIClient.get(`${url}${arrQueryFields ? '&' : '?'}limit=${limit}`);
+  const response = await APIClient.get<{ data: Team[]; paging: Paging }>(
+    `${url}${arrQueryFields ? '&' : '?'}limit=${limit}`
+  );
+
+  return response.data;
 };
 
-export const getTeamByName: Function = (
+export const getTeamByName = async (
   name: string,
-  arrQueryFields?: string
-): Promise<AxiosResponse> => {
+  arrQueryFields?: string | string[]
+) => {
   const url = getURLWithQueryFields(`/teams/name/${name}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Team>(url);
+
+  return response.data;
 };
 
-export const createTeam: Function = (data: Team) => {
-  return APIClient.post('/teams', data);
+export const createTeam = async (data: Team) => {
+  const response = await APIClient.post<Team>('/teams', data);
+
+  return response.data;
 };
 
-export const patchTeamDetail: Function = (id: string, data: Team) => {
+export const patchTeamDetail = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/teams/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Team>>(
+    `/teams/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const deleteTeam = (id: string): Promise<AxiosResponse> => {
-  return APIClient.delete(`/teams/${id}`);
+export const deleteTeam = async (id: string) => {
+  const response = await APIClient.delete<Team>(`/teams/${id}`);
+
+  return response.data;
 };

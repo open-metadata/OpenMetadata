@@ -15,6 +15,13 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import Avatar from './Avatar';
 
+jest.mock('../../../utils/CommonUtils', () => ({
+  getRandomColor: jest.fn().mockImplementation(() => ({
+    color: '#fff',
+    character: 'a',
+  })),
+}));
+
 describe('Test for Avatar component', () => {
   it('Component should render avatar properly', () => {
     const { getByTestId } = render(<Avatar name="Avatar1" />);

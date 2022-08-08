@@ -13,32 +13,39 @@
 
 import { AxiosResponse } from 'axios';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const addIngestionPipeline = (
-  data: CreateIngestionPipeline
-): Promise<AxiosResponse> => {
-  return APIClient.post('/services/ingestionPipelines', data);
+export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
+  const response = await APIClient.post<
+    CreateIngestionPipeline,
+    AxiosResponse<IngestionPipeline>
+  >('/services/ingestionPipelines', data);
+
+  return response.data;
 };
 
-export const getIngestionPipelineByFqn = (
+export const getIngestionPipelineByFqn = async (
   fqn: string,
   arrQueryFields?: Array<string>
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields(
     `/services/ingestionPipelines/name/${fqn}`,
     arrQueryFields
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<IngestionPipeline>(url);
+
+  return response.data;
 };
 
-export const getIngestionPipelines = (
+export const getIngestionPipelines = async (
   arrQueryFields: Array<string>,
   serviceFilter?: string,
   paging?: string
-): Promise<AxiosResponse> => {
+) => {
   const service = serviceFilter ? `service=${serviceFilter}` : '';
   const url = `${getURLWithQueryFields(
     '/services/ingestionPipelines',
@@ -46,7 +53,12 @@ export const getIngestionPipelines = (
     service
   )}${paging ? paging : ''}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{
+    data: IngestionPipeline[];
+    paging: Paging;
+  }>(url);
+
+  return response.data;
 };
 
 export const triggerIngestionPipelineById = (
@@ -73,10 +85,15 @@ export const deleteIngestionPipelineById = (
   return APIClient.delete(`/services/ingestionPipelines/${id}?hardDelete=true`);
 };
 
-export const updateIngestionPipeline = (
+export const updateIngestionPipeline = async (
   data: CreateIngestionPipeline
-): Promise<AxiosResponse> => {
-  return APIClient.put(`/services/ingestionPipelines`, data);
+) => {
+  const response = await APIClient.put<
+    CreateIngestionPipeline,
+    AxiosResponse<IngestionPipeline>
+  >(`/services/ingestionPipelines`, data);
+
+  return response.data;
 };
 
 export const checkAirflowStatus = (): Promise<AxiosResponse> => {

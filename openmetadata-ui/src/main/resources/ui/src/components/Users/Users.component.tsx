@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card, Switch } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -118,9 +118,9 @@ const Users = ({
 
   const fetchTeams = () => {
     getTeams(['users'])
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
-          setTeams(res.data.data);
+          setTeams(res.data);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }

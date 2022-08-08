@@ -12,7 +12,7 @@
  */
 
 import { Select } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { getTagSuggestions } from '../../../axiosAPIs/miscAPI';
@@ -49,7 +49,9 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
 
   const fetchOptions = (query: string) => {
     getTagSuggestions(query)
-      .then((res: AxiosResponse) => {
+      // TODO: Fix types below
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((res: any) => {
         const suggestOptions =
           res.data.suggest['metadata-suggest'][0].options ?? [];
         const uniqueOptions = [

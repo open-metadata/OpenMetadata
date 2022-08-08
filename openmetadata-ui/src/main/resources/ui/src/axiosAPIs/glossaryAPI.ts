@@ -15,24 +15,36 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
+import { Glossary } from '../generated/entity/data/glossary';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getGlossaries: Function = (
+export const getGlossaries = async (
   paging = '',
   limit = 10,
-  arrQueryFields = ''
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[] = ''
+) => {
   const qParams = `limit=${limit}`;
   const url = getURLWithQueryFields(`/glossaries`, arrQueryFields, qParams);
 
-  return APIClient.get(paging ? `${url}&${paging}` : url);
+  const response = await APIClient.get<{ data: ModifiedGlossaryData[] }>(
+    paging ? `${url}&${paging}` : url
+  );
+
+  return response.data;
 };
 
-export const addGlossaries = (data: CreateGlossary): Promise<AxiosResponse> => {
+export const addGlossaries = async (data: CreateGlossary) => {
   const url = '/glossaries';
 
-  return APIClient.post(url, data);
+  const response = await APIClient.post<
+    CreateGlossary,
+    AxiosResponse<Glossary>
+  >(url, data);
+
+  return response.data;
 };
 
 export const updateGlossaries = (
@@ -43,34 +55,39 @@ export const updateGlossaries = (
   return APIClient.put(url, data);
 };
 
-export const patchGlossaries = (
-  id: string,
-  patch: Operation[]
-): Promise<AxiosResponse> => {
+export const patchGlossaries = async (id: string, patch: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/glossaries/${id}`, patch, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
+    `/glossaries/${id}`,
+    patch,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const getGlossariesByName = (
+export const getGlossariesByName = async (
   glossaryName: string,
   arrQueryFields: string | string[]
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields(
     `/glossaries/name/${glossaryName}`,
     arrQueryFields
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Glossary>(url);
+
+  return response.data;
 };
 
-export const getGlossaryTerms: Function = (
+export const getGlossaryTerms = (
   glossaryId = '',
   limit = 10,
-  arrQueryFields = ''
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[] = ''
+): Promise<AxiosResponse<{ data: GlossaryTerm[] }>> => {
   let qParams = `limit=${limit}`;
   qParams += glossaryId ? `&glossary=${glossaryId}` : '';
   const url = getURLWithQueryFields(`/glossaryTerms`, arrQueryFields, qParams);
@@ -90,16 +107,18 @@ export const getGlossaryTermsById: Function = (
   return APIClient.get(url);
 };
 
-export const getGlossaryTermByFQN: Function = (
+export const getGlossaryTermByFQN = async (
   glossaryTermFQN = '',
-  arrQueryFields = ''
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[] = ''
+) => {
   const url = getURLWithQueryFields(
     `/glossaryTerms/name/${glossaryTermFQN}`,
     arrQueryFields
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<GlossaryTerm>(url);
+
+  return response.data;
 };
 
 export const addGlossaryTerm = (
@@ -110,15 +129,18 @@ export const addGlossaryTerm = (
   return APIClient.post(url, data);
 };
 
-export const patchGlossaryTerm = (
-  id: string,
-  patch: Operation[]
-): Promise<AxiosResponse> => {
+export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/glossaryTerms/${id}`, patch, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
+    `/glossaryTerms/${id}`,
+    patch,
+    configOptions
+  );
+
+  return response.data;
 };
 
 export const deleteGlossary = (id: string) => {

@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { EntityLineage } from '../generated/type/entityLineage';
 import APIClient from './index';
 
-export const getLineageByFQN: Function = (
+export const getLineageByFQN = async (
   fqn: string,
   type: string,
   upstreamDepth = 3,
   downstreamDepth = 3
-): Promise<AxiosResponse> => {
-  return APIClient.get(
+) => {
+  const response = await APIClient.get<EntityLineage>(
     `/lineage/${type}/name/${fqn}?upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}`
   );
+
+  return response.data;
 };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
@@ -40,9 +40,9 @@ const UserListPage = () => {
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users'])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setTeams(res.data.data);
+      .then((res) => {
+        if (res) {
+          setTeams(res.data);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -69,7 +69,7 @@ const UserListPage = () => {
     setIsLoading(true);
     updateUserDetail(id, data)
       .then((res) => {
-        if (res.data) {
+        if (res) {
           setAllUsers(
             (allUsers || []).map((user) => {
               if (user.id === id) {

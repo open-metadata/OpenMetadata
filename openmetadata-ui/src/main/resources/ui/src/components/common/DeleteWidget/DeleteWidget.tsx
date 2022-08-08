@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { Fragment, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -82,10 +82,10 @@ const DeleteWidget = ({
     deleteEntity(
       prepareEntityType(),
       entityId,
-      isRecursiveDelete,
+      Boolean(isRecursiveDelete),
       entityDeleteState.softDelete
     )
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.status === 200) {
           setTimeout(() => {
             handleOnEntityDeleteCancel();

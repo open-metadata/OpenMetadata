@@ -12,7 +12,7 @@
  */
 
 import { Button, Card, Input } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
@@ -37,6 +37,7 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
@@ -103,7 +104,10 @@ const RequestDescription = () => {
     if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
       const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
-      const columnObject = getColumnObject(column[0], entityData.columns || []);
+      const columnObject = getColumnObject(
+        column[0],
+        (entityData as Table).columns || []
+      );
 
       return (
         <div data-testid="column-details">
@@ -118,7 +122,7 @@ const RequestDescription = () => {
     } else {
       return null;
     }
-  }, [entityData.columns]);
+  }, [(entityData as Table).columns]);
 
   const onSearch = (query: string) => {
     fetchOptions(query, setOptions);
@@ -159,9 +163,9 @@ const RequestDescription = () => {
         type: ThreadType.Task,
       };
       postThread(data)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           showSuccessToast('Task Created Successfully');
-          history.push(getTaskDetailPath(res.data.task.id));
+          history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {

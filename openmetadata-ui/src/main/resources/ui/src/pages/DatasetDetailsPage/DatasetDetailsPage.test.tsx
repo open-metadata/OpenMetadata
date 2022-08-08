@@ -207,26 +207,24 @@ jest.mock('fast-json-patch', () => ({
 jest.mock('../../axiosAPIs/tableAPI', () => ({
   addColumnTestCase: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: updateTagRes })),
+    .mockImplementation(() => Promise.resolve(updateTagRes)),
   addFollower: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockFollowRes })),
+    .mockImplementation(() => Promise.resolve(mockFollowRes)),
   addTableTestCase: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: updateTagRes })),
+    .mockImplementation(() => Promise.resolve(updateTagRes)),
   deleteColumnTestCase: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteTableTestCase: jest.fn().mockImplementation(() => Promise.resolve()),
-  getTableDetailsByFQN: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: updateTagRes,
-    })
-  ),
+  getTableDetailsByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(updateTagRes)),
   patchTableDetails: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: updateTagRes })),
+    .mockImplementation(() => Promise.resolve(updateTagRes)),
   removeFollower: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockUnfollowRes })),
+    .mockImplementation(() => Promise.resolve(mockUnfollowRes)),
 }));
 
 jest.mock('../../utils/FeedUtils', () => ({
@@ -495,7 +493,7 @@ describe('Test DatasetDetails page', () => {
 
     it('show error if getTableDetailsByFQN resolves with empty response data', async () => {
       (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({ data: '' })
+        Promise.resolve()
       );
       const { container } = render(<DatasetDetailsPage />, {
         wrapper: MemoryRouter,
@@ -510,7 +508,7 @@ describe('Test DatasetDetails page', () => {
 
     it('show error if getTableDetailsByFQN resolves with empty response', async () => {
       (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve()
+        Promise.resolve({})
       );
       const { container } = render(<DatasetDetailsPage />, {
         wrapper: MemoryRouter,

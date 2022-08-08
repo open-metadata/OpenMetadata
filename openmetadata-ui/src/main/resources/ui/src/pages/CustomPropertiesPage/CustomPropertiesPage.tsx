@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import React, { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getTypeListByCategory } from '../../axiosAPIs/metadataTypeAPI';
@@ -31,8 +31,8 @@ const CustomPropertiesPage = () => {
   const fetchEntityType = () => {
     setIsLoading(true);
     getTypeListByCategory(Category.Entity)
-      .then((res: AxiosResponse) => {
-        setEntityTypes(res.data.data || []);
+      .then((res) => {
+        setEntityTypes(res.data || []);
       })
       .catch((err: AxiosError) => {
         setIsError(true);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { flatten } from 'lodash';
 import { EntityTags, TableColumn, TagOption } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
@@ -19,32 +19,26 @@ import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
 
 export const getTagCategories = async (fields?: Array<string> | string) => {
   try {
-    let listOfCategories: Array<TagCategory> = [];
+    const listOfCategories: Array<TagCategory> = [];
     const categories = await getTags(fields);
-    const categoryList = categories.data.data.map((category: TagCategory) => {
+    const categoryList = categories.data.map((category: TagCategory) => {
       return {
         name: category.name,
         description: category.description,
-      };
+      } as TagCategory;
     });
     if (categoryList.length) {
-      let promiseArr: Array<AxiosPromise> = [];
-      promiseArr = categoryList.map((category: TagCategory) => {
-        return getCategory(category.name, fields);
-      });
-
-      await Promise.allSettled(promiseArr).then(
-        (res: PromiseSettledResult<AxiosResponse>[]) => {
-          if (res.length) {
-            listOfCategories = res
-              .filter((category) => category.status === 'fulfilled')
-              .map((category) => {
-                return (category as PromiseFulfilledResult<AxiosResponse>).value
-                  ?.data;
-              });
-          }
-        }
+      const promiseArr = categoryList.map((category: TagCategory) =>
+        getCategory(category.name, fields)
       );
+
+      const categories = await Promise.allSettled(promiseArr);
+
+      categories.map((category) => {
+        if (category.status === 'fulfilled') {
+          listOfCategories.push(category.value as TagCategory);
+        }
+      });
     }
 
     return Promise.resolve({ data: listOfCategories });
