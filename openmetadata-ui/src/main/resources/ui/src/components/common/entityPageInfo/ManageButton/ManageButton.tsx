@@ -108,8 +108,7 @@ const ManageButton: FC<Props> = ({
   return (
     <>
       <Dropdown
-        arrow
-        align={{ targetOffset: [-12, 8] }}
+        align={{ targetOffset: [-12, 0] }}
         overlay={menu}
         overlayStyle={{ width: '350px' }}
         placement="bottomRight"
