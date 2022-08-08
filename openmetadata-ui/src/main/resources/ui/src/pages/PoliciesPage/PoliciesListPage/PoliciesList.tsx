@@ -46,6 +46,17 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
           <RichTextEditorPreviewer markdown={record?.description || ''} />
         ),
       },
+      {
+        title: 'Rules',
+        dataIndex: 'rules',
+        width: '200px',
+        key: 'rules',
+        render: (_, record) => {
+          return record.rules
+            ? record.rules.map((rule) => rule.name).join(', ')
+            : '--';
+        },
+      },
 
       {
         title: 'Actions',
