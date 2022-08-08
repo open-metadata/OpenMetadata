@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
@@ -28,11 +28,10 @@ import {
   PLACEHOLDER_TASK_ID,
   ROUTES,
 } from '../constants/constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { TaskType } from '../generated/entity/feed/thread';
-import { EntityReference } from '../generated/type/entityReference';
 import {
   EntityData,
   Option,
@@ -144,8 +143,10 @@ export const fetchOptions = (
   setOptions: (value: React.SetStateAction<Option[]>) => void
 ) => {
   getUserSuggestions(query)
-    .then((res: AxiosResponse) => {
-      const hits = res.data.suggest['metadata-suggest'][0]['options'];
+    .then((res) => {
+      // TODO: Fix types below
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hits = (res.data as any).suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line
       const suggestOptions = hits.map((hit: any) => ({
         label: hit._source.name ?? hit._source.display_name,
@@ -189,25 +190,27 @@ export const getBreadCrumbList = (
   entityType: EntityType
 ) => {
   const activeEntity = {
-    name: getEntityName(entityData as unknown as EntityReference),
+    name: getEntityName(entityData),
     url: getEntityLink(entityType, entityData.fullyQualifiedName || ''),
   };
 
   const database = {
     name: getPartialNameFromTableFQN(
-      entityData.database?.fullyQualifiedName || '',
+      (entityData as Table).database?.fullyQualifiedName || '',
       [FqnPart.Database]
     ),
-    url: getDatabaseDetailsPath(entityData.database?.fullyQualifiedName || ''),
+    url: getDatabaseDetailsPath(
+      (entityData as Table).database?.fullyQualifiedName || ''
+    ),
   };
 
   const databaseSchema = {
     name: getPartialNameFromTableFQN(
-      entityData.databaseSchema?.fullyQualifiedName || '',
+      (entityData as Table).databaseSchema?.fullyQualifiedName || '',
       [FqnPart.Schema]
     ),
     url: getDatabaseSchemaDetailsPath(
-      entityData.databaseSchema?.fullyQualifiedName || ''
+      (entityData as Table).databaseSchema?.fullyQualifiedName || ''
     ),
   };
 
@@ -215,7 +218,7 @@ export const getBreadCrumbList = (
     return {
       name: getEntityName(entityData.service),
       url: getEntityName(entityData.service)
-        ? getServiceDetailsPath(entityData.service.name || '', serviceCategory)
+        ? getServiceDetailsPath(entityData.service?.name || '', serviceCategory)
         : '',
       imgSrc: entityData.serviceType
         ? serviceTypeLogo(entityData.serviceType || '')
@@ -258,32 +261,32 @@ export const fetchEntityDetail = (
   switch (entityType) {
     case EntityType.TABLE:
       getTableDetailsByFQN(entityFQN, TableFields)
-        .then((res: AxiosResponse) => {
-          setEntityData(res.data);
+        .then((res) => {
+          setEntityData(res);
         })
         .catch((err: AxiosError) => showErrorToast(err));
 
       break;
     case EntityType.TOPIC:
-      getTopicByFqn(entityFQN, ['owner', 'tags'])
-        .then((res: AxiosResponse) => {
-          setEntityData(res.data);
+      getTopicByFqn(entityFQN, [TabSpecificField.OWNER, TabSpecificField.TAGS])
+        .then((res) => {
+          setEntityData(res as EntityData);
         })
         .catch((err: AxiosError) => showErrorToast(err));
 
       break;
     case EntityType.DASHBOARD:
       getDashboardByFqn(entityFQN, DashboardFields)
-        .then((res: AxiosResponse) => {
-          setEntityData(res.data);
+        .then((res) => {
+          setEntityData(res);
         })
         .catch((err: AxiosError) => showErrorToast(err));
 
       break;
     case EntityType.PIPELINE:
       getPipelineByFqn(entityFQN, PipelineFields)
-        .then((res: AxiosResponse) => {
-          setEntityData(res.data);
+        .then((res) => {
+          setEntityData(res);
         })
         .catch((err: AxiosError) => showErrorToast(err));
 

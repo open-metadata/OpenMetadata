@@ -65,7 +65,7 @@ const UserListPageV1 = () => {
   ) => {
     setIsDataLoading(true);
     try {
-      const { data } = await getUsers(
+      const { data, paging } = await getUsers(
         'profile,teams,roles',
         limit,
         param,
@@ -73,8 +73,8 @@ const UserListPageV1 = () => {
         false
       );
       if (data) {
-        setUserList(data.data);
-        setPaging(data.paging);
+        setUserList(data);
+        setPaging(paging);
       } else {
         throw jsonData['api-error-messages']['fetch-users-error'];
       }

@@ -373,11 +373,9 @@ const EntityPageInfo = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const { data } = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncement(
         getEntityFeedLink(entityType, entityFqn)
       );
-
-      const announcements = data?.data || [];
 
       if (!isEmpty(announcements)) {
         setActiveAnnouncement(announcements[0]);

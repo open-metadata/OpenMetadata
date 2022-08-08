@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
@@ -47,8 +47,8 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
 
   const fetchTypeDetail = (typeFQN: string) => {
     getTypeByFQN(typeFQN)
-      .then((res: AxiosResponse) => {
-        setSelectedEntityTypeDetail(res.data);
+      .then((res) => {
+        setSelectedEntityTypeDetail(res);
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -98,8 +98,8 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
     });
 
     updateType(selectedEntityTypeDetail.id as string, patch)
-      .then((res: AxiosResponse) => {
-        const { customProperties: properties } = res.data;
+      .then((res) => {
+        const { customProperties: properties } = res;
 
         setSelectedEntityTypeDetail((prev) => ({
           ...prev,

@@ -9,7 +9,7 @@ jest.mock('../../components/TopicDetails/TopicDetails.component', () => {
 
 jest.mock('../../axiosAPIs/topicsAPI', () => ({
   addFollower: jest.fn(),
-  getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
+  getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
   patchTopicDetails: jest.fn(),
   removeFollower: jest.fn(),
 }));

@@ -23,6 +23,7 @@ import {
   CreateThread,
   ThreadType,
 } from '../../../../generated/api/feed/createThread';
+import { Post } from '../../../../generated/entity/feed/thread';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -80,7 +81,7 @@ const AnnouncementDrawer: FC<Props> = ({
     const data = {
       message: value,
       from: currentUser?.name,
-    };
+    } as Post;
     postFeedById(id, data).catch((err: AxiosError) => {
       showErrorToast(err);
     });

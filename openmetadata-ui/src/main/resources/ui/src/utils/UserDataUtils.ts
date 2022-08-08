@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { isEqual, isUndefined } from 'lodash';
 import { SearchedUsersAndTeams, SearchResponse } from 'Models';
 import AppState from '../AppState';
@@ -34,7 +34,7 @@ import { getImages } from './CommonUtils';
 export const getAllUsersList = (arrQueryFields = ''): void => {
   getUsers(arrQueryFields, 1)
     .then((res) => {
-      AppState.updateUsers(res.data.data);
+      AppState.updateUsers(res.data);
     })
     .catch(() => {
       AppState.updateUsers([]);
@@ -43,8 +43,8 @@ export const getAllUsersList = (arrQueryFields = ''): void => {
 
 const getAllRoles = (): void => {
   getRoles()
-    .then((res: AxiosResponse) => {
-      AppState.updateUserRole(res.data.data);
+    .then((res) => {
+      AppState.updateUserRole(res.data);
     })
     .catch(() => {
       AppState.updateUserRole([]);
@@ -111,7 +111,7 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
 
   promise
     .then((res) => {
-      const userData = res.data as User;
+      const userData = res as User;
       const profile = userData.profile?.images?.image512 || '';
 
       AppState.updateUserProfilePic(userData.id, userData.name, profile);
@@ -182,24 +182,29 @@ export const suggestFormattedUsersAndTeams = (
       getSuggestedUsers(searchQuery),
       getSuggestedTeams(searchQuery),
     ];
+
     Promise.allSettled(promises)
-      .then(
-        ([resUsers, resTeams]: Array<PromiseSettledResult<AxiosResponse>>) => {
-          const users =
-            resUsers.status === SettledStatus.FULFILLED
-              ? formatUsersResponse(
-                  resUsers.value.data.suggest['metadata-suggest'][0].options
-                )
-              : [];
-          const teams =
-            resTeams.status === SettledStatus.FULFILLED
-              ? formatTeamsResponse(
-                  resTeams.value.data.suggest['metadata-suggest'][0].options
-                )
-              : [];
-          resolve({ users, teams });
-        }
-      )
+      .then(([resUsers, resTeams]) => {
+        const users =
+          resUsers.status === SettledStatus.FULFILLED
+            ? formatUsersResponse(
+                // TODO: fix type errors below
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (resUsers.value.data as any).suggest['metadata-suggest'][0]
+                  .options
+              )
+            : [];
+        const teams =
+          resTeams.status === SettledStatus.FULFILLED
+            ? formatTeamsResponse(
+                // TODO: fix type errors below
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (resTeams.value.data as any).suggest['metadata-suggest'][0]
+                  .options
+              )
+            : [];
+        resolve({ users, teams });
+      })
       .catch((err: AxiosError) => {
         reject(err);
       });

@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy, toLower } from 'lodash';
@@ -128,13 +128,13 @@ const TeamsPage = () => {
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           if (!team) {
-            setCurrentTeam(res.data.data[0]);
+            setCurrentTeam(res.data[0]);
           }
-          setTeams(res.data.data);
-          AppState.updateUserTeam(res.data.data);
+          setTeams(res.data);
+          AppState.updateUserTeam(res.data as EntityReference[]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -168,9 +168,9 @@ const TeamsPage = () => {
     if (currentTeam?.name !== name || update) {
       setIsLoading(true);
       getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setCurrentTeam(res.data);
+        .then((res) => {
+          if (res) {
+            setCurrentTeam(res);
             if (teams.length <= 0) {
               fetchTeams();
             }
@@ -240,10 +240,10 @@ const TeamsPage = () => {
         name: data.name,
         displayName: data.displayName,
         description: data.description,
-      };
+      } as Team;
       createTeam(teamData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             fetchTeams();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -266,15 +266,19 @@ const TeamsPage = () => {
    * @param data
    */
   const addUsersToTeam = (data: Array<UserTeams>) => {
+    if (isUndefined(currentTeam)) {
+      return;
+    }
+
     const updatedTeam = {
       ...currentTeam,
-      users: [...(currentTeam?.users as Array<UserTeams>), ...data],
+      users: [...(currentTeam.users ?? []), ...data],
     };
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
-    patchTeamDetail(currentTeam?.id, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentTeam(res.data.name, true);
+    patchTeamDetail(currentTeam.id, jsonPatch)
+      .then((res) => {
+        if (res) {
+          fetchCurrentTeam(res.name, true);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -306,6 +310,9 @@ const TeamsPage = () => {
    * @param id - user id
    */
   const removeUserFromTeam = (id: string) => {
+    if (isUndefined(currentTeam)) {
+      return;
+    }
     const users = [...(currentTeam?.users as Array<UserTeams>)];
     const newUsers = users.filter((user) => {
       return user.id !== id;
@@ -314,11 +321,11 @@ const TeamsPage = () => {
       ...currentTeam,
       users: newUsers,
     };
-    const jsonPatch = compare(currentTeam as Team, updatedTeam);
-    patchTeamDetail(currentTeam?.id, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentTeam(res.data.name, true);
+    const jsonPatch = compare(currentTeam, updatedTeam);
+    patchTeamDetail(currentTeam.id, jsonPatch)
+      .then((res) => {
+        if (res) {
+          fetchCurrentTeam(res.name, true);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -348,8 +355,8 @@ const TeamsPage = () => {
    */
   const deleteTeamById = (id: string) => {
     deleteTeam(id)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           goToTeams();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -626,13 +633,13 @@ const TeamsPage = () => {
    * @param updatedHTML - updated description
    */
   const onDescriptionUpdate = (updatedHTML: string) => {
-    if (currentTeam?.description !== updatedHTML) {
+    if (!isUndefined(currentTeam) && currentTeam.description !== updatedHTML) {
       const updatedTeam = { ...currentTeam, description: updatedHTML };
       const jsonPatch = compare(currentTeam as Team, updatedTeam);
-      patchTeamDetail(currentTeam?.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentTeam(res.data.name, true);
+      patchTeamDetail(currentTeam.id, jsonPatch)
+        .then((res) => {
+          if (res) {
+            fetchCurrentTeam(res.name, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -702,7 +709,10 @@ const TeamsPage = () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _tier = '',
     isJoinable?: boolean
-  ) => {
+  ): Promise<void> => {
+    if (isUndefined(currentTeam)) {
+      return new Promise((res) => res());
+    }
     const updatedTeam = {
       ...currentTeam,
       owner: !isUndefined(owner) ? owner : currentTeam?.owner,
@@ -710,13 +720,13 @@ const TeamsPage = () => {
         ? isJoinable
         : currentTeam?.isJoinable,
     };
-    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+    const jsonPatch = compare(currentTeam, updatedTeam);
 
     return new Promise<void>((_, reject) => {
       patchTeamDetail(currentTeam?.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentTeam(res.data.name, true);
+        .then((res) => {
+          if (res) {
+            fetchCurrentTeam(res.name, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }

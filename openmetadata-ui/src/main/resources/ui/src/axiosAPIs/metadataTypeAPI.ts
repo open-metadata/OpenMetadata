@@ -13,44 +13,57 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Category, CustomProperty } from '../generated/entity/type';
+import { Category, CustomProperty, Type } from '../generated/entity/type';
+import { Paging } from '../generated/type/paging';
 import APIClient from './index';
 
-export const getTypeListByCategory = (
-  category: Category
-): Promise<AxiosResponse> => {
+export const getTypeListByCategory = async (category: Category) => {
   const path = `/metadata/types`;
 
   const params = { category, limit: '12' };
 
-  return APIClient.get(path, { params });
+  const response = await APIClient.get<{ data: Type[]; paging: Paging }>(path, {
+    params,
+  });
+
+  return response.data;
 };
 
-export const getTypeByFQN = (typeFQN: string): Promise<AxiosResponse> => {
+export const getTypeByFQN = async (typeFQN: string) => {
   const path = `/metadata/types/name/${typeFQN}`;
 
   const params = { fields: 'customProperties' };
 
-  return APIClient.get(path, { params });
+  const response = await APIClient.get<Type>(path, { params });
+
+  return response.data;
 };
 
-export const addPropertyToEntity = (
+export const addPropertyToEntity = async (
   entityTypeId: string,
   data: CustomProperty
-): Promise<AxiosResponse> => {
+) => {
   const path = `/metadata/types/${entityTypeId}`;
 
-  return APIClient.put(path, data);
+  const response = await APIClient.put<
+    CustomProperty,
+    AxiosResponse<CustomProperty>
+  >(path, data);
+
+  return response.data;
 };
 
-export const updateType = (
-  entityTypeId: string,
-  data: Operation[]
-): Promise<AxiosResponse> => {
+export const updateType = async (entityTypeId: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
   const path = `/metadata/types/${entityTypeId}`;
 
-  return APIClient.patch(path, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Type>>(
+    path,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };

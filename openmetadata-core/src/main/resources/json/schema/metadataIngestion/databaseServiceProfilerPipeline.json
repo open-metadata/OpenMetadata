@@ -17,8 +17,16 @@
       "$ref": "#/definitions/profilerConfigType",
       "default": "Profiler"
     },
-    "fqnFilterPattern": {
-      "description": "Regex to only fetch tables with FQN matching the pattern.",
+    "schemaFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "generateSampleData": {
