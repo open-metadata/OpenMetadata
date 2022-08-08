@@ -325,7 +325,7 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(
                 f"Table: {db_schema_and_table.database.name.__root__}.{created_table.name.__root__}"
             )
-        except (APIError, ValidationError) as err:
+        except (APIError, HTTPError, ValidationError) as err:
             logger.error(
                 "Failed to ingest table {} in database {}".format(
                     db_schema_and_table.table.name.__root__,
