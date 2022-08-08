@@ -36,6 +36,9 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 public class AWSSecretsManager extends SecretsManager {
 
   public static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
+  public static final String ACCESS_KEY_ID = "accessKeyId";
+  public static final String SECRET_ACCESS_KEY = "secretAccessKey";
+  public static final String REGION = "region";
 
   private static AWSSecretsManager INSTANCE = null;
 
@@ -46,9 +49,9 @@ public class AWSSecretsManager extends SecretsManager {
     super(secretsManagerProvider);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
     if (config != null && config.getParameters() != null) {
-      String accessKeyId = config.getParameters().getOrDefault("accessKeyId", "");
-      String secretAccessKey = config.getParameters().getOrDefault("secretAccessKey", "");
-      String region = config.getParameters().getOrDefault("region", "");
+      String accessKeyId = config.getParameters().getOrDefault(ACCESS_KEY_ID, "");
+      String secretAccessKey = config.getParameters().getOrDefault(SECRET_ACCESS_KEY, "");
+      String region = config.getParameters().getOrDefault(REGION, "");
       this.secretsClient =
           SecretsManagerClient.builder()
               .region(Region.of(region))
