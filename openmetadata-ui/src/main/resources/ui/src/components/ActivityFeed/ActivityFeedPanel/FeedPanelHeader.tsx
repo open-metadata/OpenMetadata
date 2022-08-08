@@ -37,7 +37,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
           <span data-testid="header-noun">
             {noun ? noun : getFeedPanelHeaderText(threadType)} on{' '}
           </span>
-          <span className="tw-heading">
+          <span className="tw-heading" data-testid="entity-attribute">
             {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
           </span>
         </p>
