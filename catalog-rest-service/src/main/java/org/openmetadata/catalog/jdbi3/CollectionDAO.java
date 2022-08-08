@@ -578,6 +578,9 @@ public interface CollectionDAO {
       }
     }
 
+    @SqlUpdate("DELETE FROM thread_entity WHERE id = :id")
+    void delete(@Bind("id") String id);
+
     @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)", connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=(id+1) RETURNING id", connectionType = POSTGRES)
     void updateTaskId();
@@ -1081,11 +1084,11 @@ public interface CollectionDAO {
         @Bind("isResolved") boolean isResolved);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM thread_entity WHERE resolved = :resolved AND "
-            + "(:type IS NULL OR type = :type) AND id in (SELECT toId FROM entity_relationship WHERE "
-            + "(((fromEntity='user' AND fromId= :userId) OR "
+        "SELECT entityLink, COUNT(id) count FROM thread_entity WHERE resolved = :resolved AND (:type IS NULL OR type = :type) AND "
+            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "(fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
             + "GROUP BY entityLink")
     @RegisterRowMapper(CountFieldMapper.class)
     List<List<String>> listCountByOwner(
