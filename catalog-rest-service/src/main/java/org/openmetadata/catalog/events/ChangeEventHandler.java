@@ -39,9 +39,7 @@ import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.filter.BasicFilter;
 import org.openmetadata.catalog.filter.FilterRegistry;
-import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
@@ -49,6 +47,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
 import org.openmetadata.catalog.type.*;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.FilterUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -94,9 +93,8 @@ public class ChangeEventHandler implements EventHandler {
       // for the event to appear in activity feeds
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
         // ignore usageSummary updates in the feed
-        boolean filterEnabled = true;
-        Map<FiltersType, BasicFilter> filter = FilterRegistry.getFilterForEntity(changeEvent.getEntityType());
-        filterEnabled = FilterUtil.shouldProcessRequest(FilterRegistry.getFilteringScheme(), changeEvent, filter);
+        boolean filterEnabled;
+        filterEnabled = FilterUtil.shouldProcessRequest(changeEvent, FilterRegistry.getAllFilters());
         if (filterEnabled) {
           for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message
@@ -230,10 +228,10 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
-      EventType eventType = null;
+      EventType eventType;
       if (RestUtil.ENTITY_UPDATED.equals(changeType)) {
         eventType = ENTITY_UPDATED;
-      } else if (RestUtil.ENTITY_SOFT_DELETED.equals(changeType)) {
+      } else {
         eventType = ENTITY_SOFT_DELETED;
       }
 

@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.filter.BasicFilter;
-import org.openmetadata.catalog.filter.FilteringScheme;
 import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -18,41 +17,63 @@ import org.openmetadata.catalog.type.FieldChange;
 public class FilterUtil {
 
   public static boolean shouldProcessRequest(
-      FilteringScheme scheme, ChangeEvent changeEvent, Map<FiltersType, BasicFilter> filter) {
-    if (filter != null) {
-      try {
-        EventType changeType = changeEvent.getEventType();
-        switch (changeType) {
-          case ENTITY_CREATED:
-            return filter.get(ENTITY_CREATED).getEnabled();
-          case ENTITY_UPDATED:
-            return getUpdateFilter(changeEvent, filter);
-          case ENTITY_DELETED:
-            return filter.get(ENTITY_DELETED).getEnabled();
+      ChangeEvent changeEvent, Map<String, Map<EventType, List<BasicFilter>>> filtersMap) {
+    if (filtersMap != null && !filtersMap.isEmpty()) {
+      EventType changeType = changeEvent.getEventType();
+      String entityType = changeEvent.getEntityType();
+      Map<EventType, List<BasicFilter>> filtersOfEntity = filtersMap.get(entityType);
+      if (filtersOfEntity == null || filtersOfEntity.size() == 0) {
+        // check if we have all entities Filter
+        return handleWithWildCardFilter(filtersMap.get("*"), changeType);
+      } else {
+        List<BasicFilter> filter = filtersOfEntity.get(changeType);
+        if (filter == null || filter.isEmpty()) {
+          return handleWithWildCardFilter(filtersMap.get("*"), changeType);
+        } else {
+          try {
+            switch (changeType) {
+              case ENTITY_CREATED:
+              case ENTITY_DELETED:
+              case ENTITY_SOFT_DELETED:
+                // TODO: Here assumption of having one filter for above changeTypes?!
+                return filter.get(0).getEnabled();
+              case ENTITY_UPDATED:
+                if (filter.size() == 1 && filter.get(0).getFilterType() == ALL) {
+                  return filter.get(0).getEnabled();
+                } else {
+                  return getUpdateFilter(changeEvent, filter);
+                }
+            }
+          } catch (Exception ex) {
+            LOG.debug("Filter of type is not present in the map");
+          }
         }
-      } catch (Exception ex) {
-        LOG.debug("Filter of type is not present in the map");
       }
     }
-    // continue to post events updates
-    if (scheme == FilteringScheme.ENTITY_SPECIFIC_FROM_LIST) {
-      // this scheme allows events to pass if a filter is not found
-      return true;
-    } else if (scheme == FilteringScheme.ALLOW_ONLY_FROM_LIST) {
-      // only allow events to pass in case there is a enabled filter present in the filter list
-      return false;
-    }
-    return true;
+    return false;
   }
 
-  public static boolean getUpdateFilter(ChangeEvent changeEvent, Map<FiltersType, BasicFilter> filter) {
+  public static boolean handleWithWildCardFilter(Map<EventType, List<BasicFilter>> wildCardFilter, EventType type) {
+    if (wildCardFilter != null && !wildCardFilter.isEmpty()) {
+      // check if we have all entities Filter
+      List<BasicFilter> filter = wildCardFilter.get(type);
+      if (filter != null && !filter.isEmpty()) {
+        return filter.get(0).getEnabled();
+      } else {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  public static boolean getUpdateFilter(ChangeEvent changeEvent, List<BasicFilter> filter) {
     ChangeDescription description = changeEvent.getChangeDescription();
     List<FieldChange> fieldsAdded = description.getFieldsAdded();
     List<FieldChange> fieldsUpdated = description.getFieldsUpdated();
     List<FieldChange> fieldsDeleted = description.getFieldsDeleted();
 
     // at a time eiter the fields are added or deleted or updated
-    // there is a scenarion of tags where we can have updated and added or removed together
+    // there is a scenario of tags where we can have updated and added or removed together
     if (fieldsAdded.size() > 0 && fieldsUpdated.size() == 0 && fieldsDeleted.size() == 0) {
       // only added fields
       return isFilterEnabled(ChangeEventParser.CHANGE_TYPE.ADD, filter, getUpdatedField(fieldsAdded.get(0)));
@@ -79,32 +100,44 @@ public class FilterUtil {
   }
 
   public static boolean isFilterEnabled(
-      ChangeEventParser.CHANGE_TYPE changeType, Map<FiltersType, BasicFilter> filter, String updatedField) {
+      ChangeEventParser.CHANGE_TYPE changeType, List<BasicFilter> filter, String updatedField) {
+    FiltersType updateFilterType = ALL;
+    boolean containsFilter = true;
     switch (updatedField) {
       case FIELD_FOLLOWERS:
         if (changeType == ChangeEventParser.CHANGE_TYPE.ADD) {
-          return filter.get(FiltersType.FOLLOW_ENTITY).getEnabled();
+          updateFilterType = FOLLOW_ENTITY;
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.DELETE) {
-          return filter.get(FiltersType.UNFOLLOW_ENTITY).getEnabled();
+          updateFilterType = UNFOLLOW_ENTITY;
         }
+        break;
       case FIELD_TAGS:
         if (changeType == ChangeEventParser.CHANGE_TYPE.ADD) {
-          return filter.get(FiltersType.ADDTAGS).getEnabled();
+          updateFilterType = ADDTAGS;
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.UPDATE) {
-          return filter.get(FiltersType.UPDATETAGS).getEnabled();
+          updateFilterType = UPDATETAGS;
         } else if (changeType == ChangeEventParser.CHANGE_TYPE.DELETE) {
-          return filter.get(FiltersType.REMOVETAGS).getEnabled();
+          updateFilterType = REMOVETAGS;
         }
+        break;
       case FIELD_DESCRIPTION:
-        return filter.get(FiltersType.UPDATEDESCRIPTION).getEnabled();
+        updateFilterType = UPDATEDESCRIPTION;
+        break;
       case FIELD_OWNER:
-        return filter.get(FiltersType.UPDATEOWNER).getEnabled();
+        updateFilterType = UPDATEOWNER;
+        break;
       case FIELD_USAGE_SUMMARY:
-        return filter.get(FiltersType.USAGESUMMARY).getEnabled();
+        updateFilterType = USAGESUMMARY;
+        break;
       case FIELD_EVENT_FILTERS:
-        return filter.get(UPDATE_EVENT_FILTERS).getEnabled();
-      default:
-        throw new RuntimeException("Filter not found");
+        updateFilterType = UPDATE_EVENT_FILTERS;
+        break;
     }
+    for (BasicFilter f : filter) {
+      if (f.getFilterType() == updateFilterType) {
+        containsFilter = f.getEnabled();
+      }
+    }
+    return containsFilter;
   }
 }

@@ -46,9 +46,43 @@
   },
   {
     "config_type": "activityFeedFilterSetting",
-    "config_value": {
-      "filteringScheme" : "entitySpecificFromList",
-      "entityFilters" : []
-    }
+    "config_value": [
+      {
+        "entityType":"*",
+        "eventFilter":
+        [
+          {
+            "eventType":"entityCreated",
+            "events":
+            [
+              {
+                "filterType":"all",
+                "enabled":true
+              }
+            ]
+          },
+          {
+            "eventType":"entityUpdated",
+            "events":
+            [
+              {
+                "filterType":"all",
+                "enabled":true
+              }
+            ]
+          },
+          {
+            "eventType":"entityDeleted",
+            "events":
+            [
+              {
+                "filterType":"all",
+                "enabled":true
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 ]

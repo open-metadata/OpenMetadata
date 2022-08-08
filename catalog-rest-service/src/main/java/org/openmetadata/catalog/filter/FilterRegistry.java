@@ -2,41 +2,33 @@ package org.openmetadata.catalog.filter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import org.openmetadata.catalog.type.EventType;
 
 public class FilterRegistry {
-  private static final FilterRegistry registry = new FilterRegistry();
-  private static final ConcurrentHashMap<String, Map<FiltersType, BasicFilter>> FILTERS_MAP = new ConcurrentHashMap<>();
-  private static FilteringScheme FILTERING_SCHEME = FilteringScheme.ENTITY_SPECIFIC_FROM_LIST;
-
+  private static final ConcurrentHashMap<String, Map<EventType, List<BasicFilter>>> FILTERS_MAP = new ConcurrentHashMap<>();
   private FilterRegistry() {}
 
-  public static void add(Filter f) {
+  public static void add(List<EntityFilter> f) {
     if (f != null) {
-      FILTERING_SCHEME = f.getFilteringScheme();
-      List<EntityFilter> filterDetails = f.getEntityFilters();
-      filterDetails.forEach(
-          (filter) -> {
-            String entityType = filter.getEntityType();
-            Map<FiltersType, BasicFilter> eventFilterMap = new HashMap<>();
-            if (filter.getEventFilter() != null) {
-              filter
+      f.forEach(
+          (entityfilter) -> {
+            String entityType = entityfilter.getEntityType();
+            Map<EventType, List<BasicFilter>> eventFilterMap = new HashMap<>();
+            if (entityfilter.getEventFilter() != null) {
+              entityfilter
                   .getEventFilter()
                   .forEach(
-                      (eventFilter) -> {
-                        eventFilterMap.put(eventFilter.getFilterType(), eventFilter);
-                      });
+                      (eventFilter) -> eventFilterMap.put(eventFilter.getEventType(), eventFilter.getEvents()));
             }
             FILTERS_MAP.put(entityType, eventFilterMap);
           });
     }
   }
 
-  public static List<Map<FiltersType, BasicFilter>> listAllFilters() {
-    List<Map<FiltersType, BasicFilter>> filterList = new ArrayList<>();
+  public static List<Map<EventType, List<BasicFilter>>> listAllFilters() {
+    List<Map<EventType, List<BasicFilter>>> filterList = new ArrayList<>();
     FILTERS_MAP.forEach(
-        (key, value) -> {
-          filterList.add(value);
-        });
+        (key, value) -> filterList.add(value));
     return filterList;
   }
 
@@ -44,11 +36,11 @@ public class FilterRegistry {
     return List.copyOf(FILTERS_MAP.keySet());
   }
 
-  public static Map<FiltersType, BasicFilter> getFilterForEntity(String key) {
+  public static Map<EventType, List<BasicFilter>> getFilterForEntity(String key) {
     return FILTERS_MAP.get(key);
   }
 
-  public static FilteringScheme getFilteringScheme() {
-    return FILTERING_SCHEME;
+  public static Map<String, Map<EventType, List<BasicFilter>>> getAllFilters() {
+    return FILTERS_MAP;
   }
 }

@@ -29,7 +29,7 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
-import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.EntityFilter;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.SettingsRepository;
@@ -108,7 +108,7 @@ public class CatalogApplicationConfig extends Configuration {
             .forEach(
                 (setting) -> {
                   if (setting.getConfigType().equals(SettingsType.ACTIVITY_FEED_FILTER_SETTING)) {
-                    Filter filters = (Filter) setting.getConfigValue();
+                    List<EntityFilter> filters = (List<EntityFilter>) setting.getConfigValue();
                     // if we have the filters on server startup , populate the config to Filter Registry
                     FilterRegistry.add(filters);
                   }
@@ -124,7 +124,7 @@ public class CatalogApplicationConfig extends Configuration {
         (config) -> {
           switch (config.getConfigType()) {
             case ACTIVITY_FEED_FILTER_SETTING:
-              Filter filter = (Filter) config.getConfigValue();
+              List<EntityFilter> filter = (List<EntityFilter>) config.getConfigValue();
               FilterRegistry.add(filter);
           }
         });

@@ -6,22 +6,12 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.filter.Filter",
   "definitions": {
-    "filteringScheme": {
-      "javaType": "org.openmetadata.catalog.filter.FilteringScheme",
-      "description": "This schema defines Scheme for the filter",
-      "type": "string",
-      "enum": [
-        "allowOnlyFromList",
-        "entitySpecificFromList"
-      ],
-      "default": "entitySpecificFromList"
-    },
-    "eventfiltersType": {
+    "eventFiltersType": {
       "javaType": "org.openmetadata.catalog.filter.FiltersType",
       "description": "This schema defines all possible filters enum in OpenMetadata.",
       "type": "string",
       "enum": [
-        "entityCreated",
+        "all",
         "followEntity",
         "unfollowEntity",
         "updatedescription",
@@ -30,13 +20,11 @@
         "updatetier",
         "addtags",
         "removetags",
-        "softdeleteentity",
         "testcases",
         "usagesummary",
         "sampledata",
         "queries",
         "excludeFromBots",
-        "entityDeleted",
         "updateEventFilters"
       ]
     },
@@ -45,13 +33,9 @@
       "description": "Represents a basic filter which has a Name and a flag to indicate if enabled",
       "type": "object",
       "properties": {
-        "filterName": {
-          "description": "Name of the filter",
-          "type": "string"
-        },
         "filterType": {
           "description": "Type of the filter",
-          "$ref": "#/definitions/eventfiltersType"
+          "$ref": "#/definitions/eventFiltersType"
         },
         "enabled": {
           "description": "Is the Filter Enabled",
@@ -60,6 +44,25 @@
         }
       },
       "required": ["filterType"],
+      "additionalProperties": false
+    },
+    "eventFilter": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.filter.EventFilter",
+      "properties": {
+        "eventType": {
+          "description": "Event type that is being requested.",
+          "$ref": "../../schema/type/changeEvent.json/#/definitions/eventType"
+        },
+        "events": {
+          "description": "Field on which to apply the filter on",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/basicFilter"
+          }
+        }
+      },
+      "required": ["eventType"],
       "additionalProperties": false
     },
     "entityFilter": {
@@ -75,7 +78,7 @@
           "description": "List of operations supported by the resource.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/basicFilter"
+            "$ref": "#/definitions/eventFilter"
           }
         }
       },
@@ -84,10 +87,6 @@
     }
   },
   "properties": {
-    "filteringScheme": {
-      "description": "Scheme to be used for Filtering",
-      "$ref": "#/definitions/filteringScheme"
-    },
     "entityFilters": {
       "description": "List of Entity Filters",
       "type": "array",
@@ -96,6 +95,6 @@
       }
     }
   },
-  "required": ["filteringScheme"],
+  "required": ["entityFilters"],
   "additionalProperties": false
 }

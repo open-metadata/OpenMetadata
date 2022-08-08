@@ -19,6 +19,8 @@ import static org.openmetadata.catalog.util.EntityUtil.failureDetailsMatch;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.SneakyThrows;
@@ -27,7 +29,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.events.EventPubSub.ChangeEventHolder;
 import org.openmetadata.catalog.events.WebhookPublisher;
-import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.EntityFilter;
 import org.openmetadata.catalog.resources.events.WebhookResource;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.type.Webhook;
@@ -162,9 +164,11 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     }
 
     private void updateEventFilters() throws JsonProcessingException {
-      Filter origFilter = original.getEventFilters();
-      Filter updatedFilter = updated.getEventFilters();
-      recordChange("entityFilters", origFilter, updatedFilter, false, eventFilterMatch);
+      List<EntityFilter> origFilter = original.getEventFilters();
+      List<EntityFilter> updatedFilter = updated.getEventFilters();
+      List<EntityFilter> added = new ArrayList<>();
+      List<EntityFilter> deleted = new ArrayList<>();
+      recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);
     }
   }
 }

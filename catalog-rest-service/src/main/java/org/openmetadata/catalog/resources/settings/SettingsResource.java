@@ -24,8 +24,8 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
-import org.openmetadata.catalog.filter.BasicFilter;
 import org.openmetadata.catalog.filter.EntityFilter;
+import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.filter.Filter;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.SettingsRepository;
@@ -415,7 +415,7 @@ public class SettingsResource {
       @Parameter(description = "Entity Name for Filter to Update", schema = @Schema(type = "string"))
           @PathParam("entityName")
           String entityName,
-      @Valid List<BasicFilter> newFilter) {
+      @Valid List<EventFilter> newFilter) {
     return settingsRepository.addNewFilterToEntity(entityName, newFilter);
   }
 

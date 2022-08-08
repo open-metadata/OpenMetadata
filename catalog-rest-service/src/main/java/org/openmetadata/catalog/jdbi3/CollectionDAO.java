@@ -17,6 +17,7 @@ import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -66,7 +67,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
-import org.openmetadata.catalog.filter.Filter;
+import org.openmetadata.catalog.filter.EntityFilter;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -2892,7 +2893,7 @@ public interface CollectionDAO {
             value = JsonUtils.readValue(json, SlackWebhookEventPublisher.class);
             break;
           case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, Filter.class);
+            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EntityFilter>>() {});
             break;
           case SLACK_CHAT:
             value = JsonUtils.readValue(json, SlackChatConfiguration.class);

@@ -20,7 +20,10 @@
     },
     "filters": {
       "description": "Filters",
-      "$ref": "../filter/filter.json"
+      "type": "array",
+      "items": {
+        "$ref": "../filter/filter.json#/definitions/entityFilter"
+      }
     },
     "batchSize": {
       "description": "Batch Size",
