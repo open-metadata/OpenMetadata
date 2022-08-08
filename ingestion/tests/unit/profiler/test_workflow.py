@@ -128,17 +128,17 @@ def test_filter_entities(mocked_method):
 
     # We can exclude based on the schema name
     exclude_config = deepcopy(config)
-    exclude_config["source"]["sourceConfig"]["config"]["fqnFilterPattern"] = {
-        "excludes": ["service*"]
+    exclude_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "excludes": ["another_schema"]
     }
 
     exclude_workflow = ProfilerWorkflow.create(exclude_config)
     mocked_method.assert_called()
-    assert len(list(exclude_workflow.filter_entities(all_tables))) == 0
+    assert len(list(exclude_workflow.filter_entities(all_tables))) == 2
 
     exclude_config = deepcopy(config)
-    exclude_config["source"]["sourceConfig"]["config"]["fqnFilterPattern"] = {
-        "excludes": ["service.db.another*"]
+    exclude_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "excludes": ["another*"]
     }
 
     exclude_workflow = ProfilerWorkflow.create(exclude_config)
@@ -146,8 +146,8 @@ def test_filter_entities(mocked_method):
     assert len(list(exclude_workflow.filter_entities(all_tables))) == 2
 
     include_config = deepcopy(config)
-    include_config["source"]["sourceConfig"]["config"]["fqnFilterPattern"] = {
-        "includes": ["service*"]
+    include_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
+        "includes": ["db*"]
     }
 
     include_workflow = ProfilerWorkflow.create(include_config)
