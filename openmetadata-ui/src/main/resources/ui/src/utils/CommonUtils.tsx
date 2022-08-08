@@ -677,7 +677,7 @@ export const getFeedCounts = (
     ThreadType.Conversation
   )
     .then((res) => {
-      if (res.counts) {
+      if (res) {
         conversationCallback(res.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
@@ -697,7 +697,7 @@ export const getFeedCounts = (
     ThreadTaskStatus.Open
   )
     .then((res) => {
-      if (res.counts) {
+      if (res) {
         taskCallback(res.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
@@ -713,7 +713,7 @@ export const getFeedCounts = (
   // To get all thread count (task + conversation)
   getFeedCount(getEntityFeedLink(entityType, entityFQN))
     .then((res) => {
-      if (res.totalCount) {
+      if (res) {
         entityCallback(res.totalCount);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
