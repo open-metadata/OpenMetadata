@@ -25,7 +25,6 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -55,9 +54,6 @@ class SalesforceSource(DatabaseServiceSource):
         )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=config
-        )
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
         self.connection = get_connection(self.service_connection)
@@ -74,7 +70,6 @@ class SalesforceSource(DatabaseServiceSource):
             raise InvalidSourceException(
                 f"Expected SalesforceConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:
@@ -224,10 +219,8 @@ class SalesforceSource(DatabaseServiceSource):
             return "INT"
         return "VARCHAR"
 
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        pass
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass

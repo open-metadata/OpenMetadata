@@ -30,6 +30,7 @@ import React, {
   useState,
 } from 'react';
 import AppState from '../../AppState';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
@@ -45,6 +46,8 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -52,7 +55,6 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
-import ManageTabComponent from '../ManageTab/ManageTab.component';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
 interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
@@ -75,6 +77,7 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
     lineageLeafNodes: LeafNodes;
     isNodeLoading: LoadingNodeState;
   };
+  onExtensionUpdate: (updatedMlModel: Mlmodel) => void;
 }
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
@@ -88,6 +91,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   settingsUpdateHandler,
   updateMlModelFeatures,
   lineageTabData,
+  onExtensionUpdate,
 }) => {
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -143,6 +147,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         mlModelDetail.owner?.type === OwnerType.USER
           ? mlModelDetail.owner?.name
           : undefined,
+    },
+    {
+      key: 'Tier',
+      value: mlModelTier?.tagFQN
+        ? mlModelTier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : '',
     },
     {
       key: 'Algorithm',
@@ -214,15 +224,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 3,
     },
     {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
+      name: 'Custom Properties',
       isProtected: false,
-      protectedState: !mlModelDetail.owner || hasEditAccess(),
       position: 4,
     },
   ];
@@ -306,35 +309,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       };
 
       settingsUpdateHandler(updatedMlModelDetails);
-    }
-  };
-
-  const onSettingsUpdate = (newOwner?: Mlmodel['owner'], newTier?: string) => {
-    if (newOwner || newTier) {
-      const tierTag: Mlmodel['tags'] = newTier
-        ? [
-            ...mlModelTags,
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : mlModelDetail.tags;
-      const updatedMlModelDetails = {
-        ...mlModelDetail,
-        owner: newOwner
-          ? {
-              ...mlModelDetail.owner,
-              ...newOwner,
-            }
-          : mlModelDetail.owner,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedMlModelDetails);
-    } else {
-      return Promise.reject();
     }
   };
 
@@ -463,6 +437,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           isTagEditable
           deleted={mlModelDetail.deleted}
           entityFqn={mlModelDetail.fullyQualifiedName}
+          entityId={mlModelDetail.id}
           entityName={mlModelDetail.name}
           entityType={EntityType.MLMODEL}
           extraInfo={mlModelPageInfo}
@@ -536,21 +511,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </div>
               )}
               {activeTab === 4 && (
-                <div>
-                  <ManageTabComponent
-                    allowDelete
-                    allowSoftDelete={!mlModelDetail.deleted}
-                    currentTier={mlModelTier?.tagFQN}
-                    currentUser={mlModelDetail.owner}
-                    entityId={mlModelDetail.id}
-                    entityName={mlModelDetail.name}
-                    entityType={EntityType.MLMODEL}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={mlModelDetail.deleted}
-                    hideTier={mlModelDetail.deleted}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
+                <CustomPropertyTable
+                  entityDetails={
+                    mlModelDetail as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.MLMODEL}
+                  handleExtentionUpdate={onExtensionUpdate}
+                />
               )}
             </div>
           </div>

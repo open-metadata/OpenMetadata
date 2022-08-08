@@ -8,7 +8,7 @@
   "definitions": {
     "tagFQN": {
       "type": "string",
-      "maxLength": 45
+      "maxLength": 128
     },
     "TagSource": {
       "type": "string",

@@ -276,8 +276,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-
     // PUT one status and validate
     Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
     Status t2Status = new Status().withName("task2").withExecutionStatus(StatusType.Failed);
@@ -286,51 +284,82 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     PipelineStatus pipelineStatus =
         new PipelineStatus()
             .withExecutionStatus(StatusType.Failed)
-            .withExecutionDate(format.parse("2022-01-15").getTime())
+            .withTimestamp(TestUtils.dateToTimestamp("2022-01-15"))
             .withTaskStatus(taskStatus);
 
     Pipeline putResponse = putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS);
     // Validate put response
-    verifyPipelineStatusData(putResponse.getPipelineStatus(), List.of(pipelineStatus));
+    verifyPipelineStatus(putResponse.getPipelineStatus(), pipelineStatus);
+
+    ResultList<PipelineStatus> pipelineStatues = getPipelineStatues(pipeline.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus), 1);
 
     // Validate that a new GET will come with the proper status
     pipeline = getEntity(pipeline.getId(), "pipelineStatus", ADMIN_AUTH_HEADERS);
-    verifyPipelineStatusData(pipeline.getPipelineStatus(), List.of(pipelineStatus));
+    verifyPipelineStatus(pipeline.getPipelineStatus(), pipelineStatus);
 
     // PUT another status and validate
     PipelineStatus newPipelineStatus =
         new PipelineStatus()
             .withExecutionStatus(StatusType.Failed)
-            .withExecutionDate(format.parse("2022-01-16").getTime())
+            .withTimestamp(TestUtils.dateToTimestamp("2022-01-16"))
             .withTaskStatus(taskStatus);
 
     putResponse = putPipelineStatusData(pipeline.getId(), newPipelineStatus, ADMIN_AUTH_HEADERS);
     // Validate put response
-    verifyPipelineStatusData(putResponse.getPipelineStatus(), List.of(pipelineStatus, newPipelineStatus));
+    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus);
+    pipelineStatues = getPipelineStatues(pipeline.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
-    // Validate that a new GET will come with the proper status
-    pipeline = getEntity(pipeline.getId(), "pipelineStatus", ADMIN_AUTH_HEADERS);
-    verifyPipelineStatusData(pipeline.getPipelineStatus(), List.of(pipelineStatus, newPipelineStatus));
-
-    // Replace status data for a date
-    Status t3Status = new Status().withName("task0").withExecutionStatus(StatusType.Successful);
-    List<Status> newTaskStatus = List.of(t1Status, t2Status, t3Status);
-    PipelineStatus anotherStatus =
+    // Replace pipeline status for a date
+    PipelineStatus newPipelineStatus1 =
         new PipelineStatus()
-            .withExecutionStatus(StatusType.Successful)
-            .withExecutionDate(format.parse("2022-01-16").getTime())
-            .withTaskStatus(newTaskStatus);
-
-    putResponse = putPipelineStatusData(pipeline.getId(), anotherStatus, ADMIN_AUTH_HEADERS);
-    // As the results come sorted, check the first status, as we are updating the newest one,
-    // ordering with reverseOrder
-    assertEquals(anotherStatus.getExecutionDate(), putResponse.getPipelineStatus().get(0).getExecutionDate());
+            .withExecutionStatus(StatusType.Pending)
+            .withTimestamp(TestUtils.dateToTimestamp("2022-01-16"))
+            .withTaskStatus(taskStatus);
+    putResponse = putPipelineStatusData(pipeline.getId(), newPipelineStatus1, ADMIN_AUTH_HEADERS);
     // Validate put response
-    verifyPipelineStatusData(putResponse.getPipelineStatus(), List.of(pipelineStatus, anotherStatus));
+    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus1);
+    pipelineStatues = getPipelineStatues(pipeline.getId(), null, ADMIN_AUTH_HEADERS);
+    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus1), 2);
 
-    // Validate that a new GET will come with the proper status
-    pipeline = getEntity(pipeline.getId(), "pipelineStatus", ADMIN_AUTH_HEADERS);
-    verifyPipelineStatusData(pipeline.getPipelineStatus(), List.of(pipelineStatus, anotherStatus));
+    String dateStr = "2021-09-";
+    List<PipelineStatus> pipelineStatusList = new ArrayList<>();
+    pipelineStatusList.add(pipelineStatus);
+    pipelineStatusList.add(newPipelineStatus1);
+    for (int i = 11; i <= 20; i++) {
+      pipelineStatus =
+          new PipelineStatus()
+              .withExecutionStatus(StatusType.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
+              .withTaskStatus(taskStatus);
+      putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS);
+      pipelineStatusList.add(pipelineStatus);
+    }
+    pipelineStatues = getPipelineStatues(pipeline.getId(), pipelineStatusList.size(), ADMIN_AUTH_HEADERS);
+    verifyPipelineStatuses(pipelineStatues, pipelineStatusList, 12);
+
+    // create another table and add profiles
+    Pipeline pipeline1 =
+        createAndCheckEntity(
+            createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
+    List<PipelineStatus> pipeline1StatusList = new ArrayList<>();
+    dateStr = "2021-10-";
+    for (int i = 11; i <= 15; i++) {
+      pipelineStatus =
+          new PipelineStatus()
+              .withExecutionStatus(StatusType.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
+              .withTaskStatus(taskStatus);
+      putPipelineStatusData(pipeline1.getId(), pipelineStatus, ADMIN_AUTH_HEADERS);
+      pipeline1StatusList.add(pipelineStatus);
+    }
+    pipelineStatues = getPipelineStatues(pipeline1.getId(), pipelineStatusList.size(), ADMIN_AUTH_HEADERS);
+    verifyPipelineStatuses(pipelineStatues, pipeline1StatusList, 5);
+    deletePipelineStatus(pipeline1.getId(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
+    pipeline1StatusList.remove(0);
+    pipelineStatues = getPipelineStatues(pipeline1.getId(), pipelineStatusList.size(), ADMIN_AUTH_HEADERS);
+    verifyPipelineStatuses(pipelineStatues, pipeline1StatusList, 4);
   }
 
   @Test
@@ -348,7 +377,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     PipelineStatus pipelineStatus =
         new PipelineStatus()
             .withExecutionStatus(StatusType.Failed)
-            .withExecutionDate(format.parse("2022-01-16").getTime())
+            .withTimestamp(format.parse("2022-01-16").getTime())
             .withTaskStatus(taskStatus);
 
     assertResponseContains(
@@ -539,17 +568,35 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     return TestUtils.put(target, data, Pipeline.class, OK, authHeaders);
   }
 
+  public static Pipeline deletePipelineStatus(UUID pipelineId, Long timestamp, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("pipelines/" + pipelineId + "/status/" + timestamp);
+    return TestUtils.delete(target, Pipeline.class, authHeaders);
+  }
+
+  public static ResultList<PipelineStatus> getPipelineStatues(
+      UUID pipelineId, Integer limit, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("pipelines/" + pipelineId + "/status");
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
+  }
+
   // Check that the inserted status are properly stored
-  private void verifyPipelineStatusData(List<PipelineStatus> actualStatus, List<PipelineStatus> expectedStatus) {
-    assertEquals(actualStatus.size(), expectedStatus.size());
-    Map<Long, PipelineStatus> statusMap = new HashMap<>();
-    for (PipelineStatus status : actualStatus) {
-      statusMap.put(status.getExecutionDate(), status);
+  private void verifyPipelineStatuses(
+      ResultList<PipelineStatus> actualStatuses, List<PipelineStatus> expectedStatuses, int expectedCount) {
+    assertEquals(expectedCount, actualStatuses.getPaging().getTotal());
+    assertEquals(expectedStatuses.size(), actualStatuses.getData().size());
+    Map<Long, PipelineStatus> pipelineStatusMap = new HashMap<>();
+    for (PipelineStatus result : actualStatuses.getData()) {
+      pipelineStatusMap.put(result.getTimestamp(), result);
     }
-    for (PipelineStatus status : expectedStatus) {
-      PipelineStatus storedStatus = statusMap.get(status.getExecutionDate());
-      assertNotNull(storedStatus);
-      assertEquals(status, storedStatus);
+    for (PipelineStatus result : expectedStatuses) {
+      PipelineStatus storedPipelineStatus = pipelineStatusMap.get(result.getTimestamp());
+      verifyPipelineStatus(storedPipelineStatus, result);
     }
+  }
+
+  private void verifyPipelineStatus(PipelineStatus actualStatus, PipelineStatus expectedStatus) {
+    assertEquals(actualStatus, expectedStatus);
   }
 }

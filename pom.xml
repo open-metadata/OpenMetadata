@@ -87,14 +87,13 @@
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
     <jdbi3.version>3.30.0</jdbi3.version>
-    <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
     <flyway.version>8.5.11</flyway.version>
     <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.29</mysql.connector.version>
-    <postgres.connector.version>42.3.6</postgres.connector.version>
+    <postgres.connector.version>42.4.1</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
@@ -130,6 +129,11 @@
     <testng.version>7.6.0</testng.version>
     <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
     <json-schema-validator.version>1.0.70</json-schema-validator.version>
+    <spring-expression.version>5.3.21</spring-expression.version>
+    <java-jwt.version>3.19.2</java-jwt.version>
+    <jwks-rsa.version>0.21.1</jwks-rsa.version>
+    <jjwt.version>0.9.1</jjwt.version>
+    <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -213,11 +217,6 @@
         <groupId>org.jdbi</groupId>
         <artifactId>jdbi3-core</artifactId>
         <version>${jdbi3.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.jeasy</groupId>
-        <artifactId>easy-rules-core</artifactId>
-        <version>${jeasy.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-cli</groupId>
@@ -489,6 +488,27 @@
         <artifactId>disruptor</artifactId>
         <version>3.4.4</version>
       </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <version>9.4.39.v20210325</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
+      <dependency>
+        <groupId>org.glassfish</groupId>
+        <artifactId>jakarta.el</artifactId>
+        <version>3.0.4</version>
+      </dependency>
+
+      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONDATAFORMAT-1047329 -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.dataformat</groupId>
+        <artifactId>jackson-dataformat-cbor</artifactId>
+        <version>2.11.4</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -521,7 +541,7 @@
         <enabled>true</enabled>
       </snapshots>
       <id>aws-redshift</id>
-      <url>http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release</url>
+      <url>https://s3.amazonaws.com/redshift-maven-repository/release</url>
     </repository>
   </repositories>
 
@@ -769,7 +789,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
-        <version>2.0</version>
+        <version>2.2</version>
       </plugin>
     </plugins>
   </build>

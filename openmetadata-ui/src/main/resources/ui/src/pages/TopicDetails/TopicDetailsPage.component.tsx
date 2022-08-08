@@ -359,7 +359,12 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const fetchTopicDetail = (topicFQN: string) => {
     setLoading(true);
-    getTopicByFqn(topicFQN, ['owner', 'followers', 'tags'])
+    getTopicByFqn(topicFQN, [
+      TabSpecificField.OWNER,
+      TabSpecificField.FOLLOWERS,
+      TabSpecificField.TAGS,
+      TabSpecificField.EXTENSION,
+    ])
       .then((res: AxiosResponse) => {
         if (res.data) {
           const {
@@ -423,6 +428,7 @@ const TopicDetailsPage: FunctionComponent = () => {
             fqn: fullyQualifiedName,
             serviceType: serviceType,
             timestamp: 0,
+            id: id,
           });
         } else {
           showErrorToast(
@@ -668,6 +674,27 @@ const TopicDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
+  const handleExtentionUpdate = async (updatedTopic: Topic) => {
+    try {
+      const { data } = await saveUpdatedTopicData(updatedTopic);
+
+      if (data) {
+        const { version, owner: ownerValue, tags } = data;
+        setCurrentVersion(version);
+        setTopicDetails(data);
+        setOwner(ownerValue);
+        setTier(getTierTags(tags));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
+    }
+  };
+
   useEffect(() => {
     if (topicDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentTopicTab(tab));
@@ -743,6 +770,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           updateThreadHandler={updateThreadHandler}
           version={currentVersion}
           versionHandler={versionHandler}
+          onExtensionUpdate={handleExtentionUpdate}
         />
       )}
     </>

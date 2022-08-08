@@ -17,6 +17,7 @@ import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getTopPosition } from '../../utils/DropDownUtils';
+import { UserTag } from '../common/UserTag/UserTag.component';
 import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
 
@@ -117,14 +118,15 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         key={index}
         role="menuitem"
         onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
-        {item.icon}
-        {/* Spacer if icon is there */}
-        {item.icon && <span className="tw-p-1" />}
-        <p
-          className={classNames('tw-truncate', widthClass)}
-          title={item.name as string}>
-          {item.name}
-        </p>
+        {item.type === 'user' ? (
+          <UserTag id={item.value as string} name={item.name as string} />
+        ) : (
+          <p
+            className={classNames('tw-truncate', widthClass)}
+            title={item.name as string}>
+            {item.name}
+          </p>
+        )}
       </div>
     );
   };

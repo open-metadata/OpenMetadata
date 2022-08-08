@@ -14,7 +14,7 @@
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},
-${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS}`;
+${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS},${TabSpecificField.EXTENSION}`;
 
 export const dashboardDetailsTabs = [
   {
@@ -32,8 +32,8 @@ export const dashboardDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Manage',
-    path: 'manage',
+    name: 'Custom Properties',
+    path: 'custom_properties',
   },
 ];
 
@@ -50,7 +50,7 @@ export const getCurrentDashboardTab = (tab: string) => {
 
       break;
 
-    case 'manage':
+    case 'custom_properties':
       currentTab = 4;
 
       break;

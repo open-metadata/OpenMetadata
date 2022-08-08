@@ -63,4 +63,5 @@ export interface IngestionProps {
   deployIngestion: (id: string) => Promise<void>;
   handleEnableDisableIngestion: (id: string) => void;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
+  onIngestionWorkflowsUpdate: () => void;
 }

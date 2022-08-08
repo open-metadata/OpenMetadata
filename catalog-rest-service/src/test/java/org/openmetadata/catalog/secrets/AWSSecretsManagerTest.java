@@ -36,7 +36,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.fixtures.ConfigurationFixtures;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
@@ -168,22 +168,20 @@ public class AWSSecretsManagerTest {
   }
 
   private void testEncryptDecryptServiceConnection(boolean decrypt) {
-    DatabaseConnection databaseConnection = new DatabaseConnection();
     MysqlConnection mysqlConnection = new MysqlConnection();
     mysqlConnection.setPassword("openmetadata-test");
-    databaseConnection.setConfig(mysqlConnection);
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
-    secretsManager.encryptOrDecryptServiceConnection(
-        databaseConnection, databaseServiceType.value(), connectionName, decrypt);
+    Object actualConfig =
+        secretsManager.encryptOrDecryptServiceConnectionConfig(
+            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
 
     if (decrypt) {
-      assertNull(databaseConnection.getConfig());
-      assertNotSame(mysqlConnection, databaseConnection.getConfig());
+      assertNull(actualConfig);
     } else {
-      assertEquals(mysqlConnection, databaseConnection.getConfig());
-      assertNotSame(mysqlConnection, databaseConnection.getConfig());
+      assertEquals(mysqlConnection, actualConfig);
+      assertNotSame(mysqlConnection, actualConfig);
     }
   }
 

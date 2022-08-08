@@ -92,4 +92,5 @@ export interface DashboardDetailsProps {
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;
+  onExtensionUpdate: (updatedDashboard: Dashboard) => void;
 }

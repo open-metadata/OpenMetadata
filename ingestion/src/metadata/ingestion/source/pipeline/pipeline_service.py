@@ -62,7 +62,8 @@ class PipelineServiceTopology(ServiceTopology):
             NodeStage(
                 type_=PipelineService,
                 context="pipeline_service",
-                processor="yield_pipeline_service",
+                processor="yield_create_request_pipeline_service",
+                overwrite=False,
             ),
         ],
         children=["pipeline"],
@@ -171,7 +172,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = PipelineServiceTopology()
     context = create_source_context(topology)
 
-    @abstractmethod
     def __init__(
         self,
         config: WorkflowSource,
@@ -200,7 +200,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
-    def yield_pipeline_service(self, config: WorkflowSource):
+    def yield_create_request_pipeline_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
             entity=PipelineService, config=config
         )

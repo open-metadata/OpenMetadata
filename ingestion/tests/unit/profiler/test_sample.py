@@ -12,11 +12,15 @@
 """
 Test Sample behavior
 """
+import os
 from unittest import TestCase
+from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -45,10 +49,27 @@ class SampleTest(TestCase):
     Run checks on different metrics
     """
 
-    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    db_path = os.path.join(
+        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
+    )
+    sqlite_conn = SQLiteConnection(
+        scheme=SQLiteScheme.sqlite_pysqlite,
+        databaseMode=db_path + "?check_same_thread=False",
+    )
     sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
+
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -108,6 +129,7 @@ class SampleTest(TestCase):
             table_count,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
+            table_entity=self.table_entity,
         )
 
         res = self.session.query(func.count()).select_from(profiler.sample).first()
@@ -118,14 +140,13 @@ class SampleTest(TestCase):
         Profile sample should be ignored in row count
         """
 
-        self.sqa_profiler_interface.create_sampler(User, profile_sample=50.0)
-        self.sqa_profiler_interface.create_runner(User)
-
         table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
             table_count,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
+            profile_sample=50.0,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
@@ -138,27 +159,17 @@ class SampleTest(TestCase):
         get 15 rows, but for sure we should get less than 30.
         """
 
-        self.sqa_profiler_interface.create_sampler(
-            User,
-            profile_sample=50.0,
-        )
-        self.sqa_profiler_interface.create_runner(User)
-
         count = Metrics.COUNT.value
         profiler = Profiler(
             count,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.name],
+            profile_sample=50,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
-
-        self.sqa_profiler_interface.create_sampler(
-            User,
-            profile_sample=100.0,
-        )
-        self.sqa_profiler_interface.create_runner(User)
 
         profiler = Profiler(
             count,
@@ -166,6 +177,7 @@ class SampleTest(TestCase):
             table=User,
             profile_sample=100.0,
             use_cols=[User.name],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] == 30
@@ -174,36 +186,27 @@ class SampleTest(TestCase):
         """
         Histogram should run correctly
         """
-
-        self.sqa_profiler_interface.create_sampler(
-            User,
-            profile_sample=50.0,
-        )
-        self.sqa_profiler_interface.create_runner(User)
-
         hist = Metrics.HISTOGRAM.value
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.id],
+            profile_sample=50.0,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
-        self.sqa_profiler_interface.create_sampler(
-            User,
-            profile_sample=100.0,
-        )
-        self.sqa_profiler_interface.create_runner(User)
-
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.id],
+            profile_sample=100.0,
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -227,6 +230,7 @@ class SampleTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.name],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -245,6 +249,7 @@ class SampleTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.name],
+            table_entity=self.table_entity,
         )
         res = profiler.execute()._column_results
 
@@ -330,3 +335,8 @@ class SampleTest(TestCase):
         assert len(sample_data.columns) == 2
         names = [col.__root__ for col in sample_data.columns]
         assert names == ["id", "name"]
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        os.remove(cls.db_path)
+        return super().tearDownClass()

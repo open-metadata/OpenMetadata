@@ -111,6 +111,7 @@ const TopicDetailsProps = {
     lineageLeafNodes: {} as LeafNodes,
     isNodeLoading: { id: undefined, state: false },
   },
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -120,10 +121,6 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: mockObserve,
   unobserve: mockunObserve,
 }));
-
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
-});
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
@@ -182,7 +179,6 @@ describe('Test TopicDetails component', () => {
     const schemaTab = await findByTestId(tabs, 'Schema');
     const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
     const configTab = await findByTestId(tabs, 'Config');
-    const manageTab = await findByTestId(tabs, 'Manage');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -190,7 +186,6 @@ describe('Test TopicDetails component', () => {
     expect(schemaTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(configTab).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is schema', async () => {
@@ -238,18 +233,6 @@ describe('Test TopicDetails component', () => {
     expect(config).toBeInTheDocument();
   });
 
-  it('Check if active tab is manage', async () => {
-    const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const manage = await findByTestId(container, 'manage');
-
-    expect(manage).toBeInTheDocument();
-  });
-
   it('Should render lineage tab', async () => {
     const { container } = render(
       <TopicDetails {...TopicDetailsProps} activeTab={5} />,
@@ -261,6 +244,21 @@ describe('Test TopicDetails component', () => {
     const detailContainer = await findByTestId(container, 'lineage-details');
 
     expect(detailContainer).toBeInTheDocument();
+  });
+
+  it('Check if active tab is custom properties', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
+
+    expect(customProperties).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

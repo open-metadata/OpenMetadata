@@ -14,11 +14,8 @@ OpenMetadata API initialization
 """
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
-    SecretsManagerProvider,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.secrets_manager import AWSSecretsManager, LocalSecretsManager
 
 
 def test_init_ometa():
@@ -26,17 +23,3 @@ def test_init_ometa():
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
-    assert type(metadata.secrets_manager_client) is LocalSecretsManager
-
-
-def test_init_ometa_with_aws_secret_manager():
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        secretsManagerProvider=SecretsManagerProvider.aws,
-        secretsManagerCredentials=AWSCredentials(
-            awsRegion="test", awsSecretAccessKey="test"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
-
-    assert type(metadata.secrets_manager_client) is AWSSecretsManager

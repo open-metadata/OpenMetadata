@@ -34,12 +34,10 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getEntityDeleteMessage,
   getEntityName,
   getEntityPlaceHolder,
   getHtmlForNonAdminAction,
   isEven,
-  pluralize,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -53,6 +51,8 @@ import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -61,7 +61,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
-import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsContainer from '../tags-container/tags-container';
@@ -112,6 +111,7 @@ const DashboardDetails = ({
   fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
+  onExtensionUpdate,
 }: DashboardDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -193,15 +193,8 @@ const DashboardDetails = ({
       position: 3,
     },
     {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: true,
-      protectedState: !owner || hasEditAccess(),
+      name: 'Custom Properties',
+      isProtected: false,
       position: 4,
     },
   ];
@@ -282,34 +275,6 @@ const DashboardDetails = ({
         tags: tierTag,
       };
       settingsUpdateHandler(updatedDashboardDetails);
-    }
-  };
-  const onSettingsUpdate = (
-    newOwner?: Dashboard['owner'],
-    newTier?: string
-  ) => {
-    if (newOwner || newTier) {
-      const tierTag: Dashboard['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : dashboardDetails.tags;
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        owner: newOwner
-          ? { ...dashboardDetails.owner, ...newOwner }
-          : dashboardDetails.owner,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedDashboardDetails);
-    } else {
-      return Promise.reject();
     }
   };
 
@@ -450,17 +415,6 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
-  const getDeleteEntityMessage = () => {
-    if (!charts.length) {
-      return;
-    }
-
-    return getEntityDeleteMessage(
-      EntityType.DASHBOARD,
-      pluralize(charts.length, 'Chart')
-    );
-  };
-
   const getLoader = () => {
     return isentityThreadLoading ? <Loader /> : null;
   };
@@ -505,6 +459,7 @@ const DashboardDetails = ({
             entityFieldThreadCount
           )}
           entityFqn={dashboardFQN}
+          entityId={dashboardDetails.id}
           entityName={entityName}
           entityType={EntityType.DASHBOARD}
           extraInfo={extraInfo}
@@ -739,23 +694,13 @@ const DashboardDetails = ({
                 </div>
               )}
               {activeTab === 4 && (
-                <div>
-                  <ManageTabComponent
-                    allowDelete
-                    allowSoftDelete={!deleted}
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner}
-                    deletEntityMessage={getDeleteEntityMessage()}
-                    entityId={dashboardDetails.id}
-                    entityName={dashboardDetails.name}
-                    entityType={EntityType.DASHBOARD}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={deleted}
-                    hideTier={deleted}
-                    manageSectionType={EntityType.DASHBOARD}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
+                <CustomPropertyTable
+                  entityDetails={
+                    dashboardDetails as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.DASHBOARD}
+                  handleExtentionUpdate={onExtensionUpdate}
+                />
               )}
               <div
                 data-testid="observer-element"

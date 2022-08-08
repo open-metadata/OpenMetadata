@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isEmpty, isNull, isUndefined } from 'lodash';
+import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
 import {
   EntityFieldThreadCount,
   RecentlySearched,
@@ -41,7 +42,10 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
+import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
+import { Paging } from '../generated/type/paging';
+import { DataService } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -610,7 +614,9 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @param entity - entity reference
  * @returns - entity name
  */
-export const getEntityName = (entity?: EntityReference) => {
+export const getEntityName = (
+  entity?: EntityReference | DataService | User | Team
+) => {
   return entity?.displayName || entity?.name || '';
 };
 
@@ -717,4 +723,42 @@ export const isTaskSupported = (entityType: EntityType) =>
 
 export const isAllowedHost = () => {
   return SUPPORTED_DOMAIN_TYPES.includes(window.location.host);
+};
+
+/**
+ * Utility function to show pagination
+ * @param paging paging object
+ * @returns boolean
+ */
+export const showPagination = (paging: Paging) => {
+  return !isNil(paging.after) || !isNil(paging.before);
+};
+
+export const getTeamsText = (teams: EntityReference[]) => {
+  return teams.length === 0 ? (
+    'No teams'
+  ) : teams.length > 1 ? (
+    <span>
+      {getEntityName(teams[0])}, &{' '}
+      <Popover
+        content={
+          <span>
+            {teams.map((t, i) => {
+              return i >= 1 ? (
+                <span className="tw-block tw-text-left" key={i}>
+                  {getEntityName(t)}
+                </span>
+              ) : null;
+            })}
+          </span>
+        }
+        trigger="hover">
+        <span className="tw-underline tw-cursor-pointer">
+          {teams.length - 1} more
+        </span>
+      </Popover>
+    </span>
+  ) : (
+    `${getEntityName(teams[0])}`
+  );
 };

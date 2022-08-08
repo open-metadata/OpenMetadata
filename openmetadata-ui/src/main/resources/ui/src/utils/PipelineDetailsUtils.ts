@@ -20,7 +20,7 @@ import {
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}`;
+${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificField.EXTENSION}`;
 
 export const pipelineDetailsTabs = [
   {
@@ -38,8 +38,8 @@ export const pipelineDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Manage',
-    path: 'manage',
+    name: 'Custom Properties',
+    path: 'custom_properties',
   },
 ];
 
@@ -55,8 +55,7 @@ export const getCurrentPipelineTab = (tab: string) => {
       currentTab = 3;
 
       break;
-
-    case 'manage':
+    case 'custom_properties':
       currentTab = 4;
 
       break;
@@ -73,33 +72,30 @@ export const getCurrentPipelineTab = (tab: string) => {
 
 export const getModifiedPipelineStatus = (
   status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = []
+  pipelineStatus: Pipeline['pipelineStatus'] = {}
 ) => {
-  const data = pipelineStatus
-    .map((statusValue) => {
-      return statusValue.taskStatus?.map((task) => ({
-        executionDate: statusValue.executionDate,
-        executionStatus: task.executionStatus,
-        name: task.name,
-      }));
-    })
-    .flat(1);
+  const data =
+    pipelineStatus?.taskStatus?.map((task) => ({
+      executionDate: pipelineStatus.timestamp,
+      executionStatus: task.executionStatus,
+      name: task.name,
+    })) || [];
 
   if (!status) {
     return data;
   } else {
-    return data.filter((d) => d?.executionStatus === status);
+    return data?.filter((d) => d?.executionStatus === status);
   }
 };
 
 export const getFilteredPipelineStatus = (
   status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = []
+  pipelineStatus: Pipeline['pipelineStatus'] = {}
 ) => {
   if (!status) {
     return pipelineStatus;
   } else {
-    return pipelineStatus.filter((d) => d?.executionStatus === status);
+    return pipelineStatus?.executionStatus === status;
   }
 };
 

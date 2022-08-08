@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     TableConstraint,
 )
-from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

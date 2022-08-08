@@ -58,10 +58,6 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     includes: [],
     excludes: [],
   },
-  fqnFilterPattern: {
-    includes: [],
-    excludes: [],
-  },
   includeLineage: false,
   includeView: false,
   includeTags: false,
@@ -77,7 +73,6 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   showTopicFilter: false,
   showChartFilter: false,
   showPipelineFilter: false,
-  showFqnFilter: false,
   handleIncludeLineage: jest.fn(),
   handleIncludeView: jest.fn(),
   handleIncludeTags: jest.fn(),
@@ -99,6 +94,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleIngestSampleData: jest.fn(),
   databaseServiceName: '',
   handleDatasetServiceName: jest.fn(),
+  threadCount: 5,
+  handleThreadCount: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {

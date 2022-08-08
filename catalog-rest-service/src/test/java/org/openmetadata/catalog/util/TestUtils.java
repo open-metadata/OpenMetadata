@@ -24,8 +24,12 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -391,7 +395,22 @@ public final class TestUtils {
     }
   }
 
-  public static void assertEntityReferenceList(List<EntityReference> expected, List<EntityReference> actual) {
+  public static void assertEntityReferenceIds(List<UUID> expected, List<EntityReference> actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+    if (listOrEmpty(expected).isEmpty()) {
+      return;
+    }
+    for (UUID id : listOrEmpty(expected)) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().get());
+    }
+    validateEntityReferences(actual);
+  }
+
+  public static void assertEntityReferences(List<EntityReference> expected, List<EntityReference> actual) {
     if (expected == actual) { // Take care of both being null
       return;
     }
@@ -461,5 +480,11 @@ public final class TestUtils {
       prev = next;
     }
     return true;
+  }
+
+  public static Long dateToTimestamp(String dateStr) throws ParseException {
+    DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+    Date date = formatter.parse(dateStr);
+    return date.getTime();
   }
 }

@@ -45,6 +45,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -77,7 +78,12 @@ public class DashboardServiceResource
   }
 
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(DashboardService.class, new DashboardServiceRepository(dao, secretsManager), authorizer, secretsManager);
+    super(
+        DashboardService.class,
+        new DashboardServiceRepository(dao, secretsManager),
+        authorizer,
+        secretsManager,
+        ServiceType.DASHBOARD);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -131,7 +137,7 @@ public class DashboardServiceResource
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<DashboardService> dashboardServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
   }
 
@@ -346,7 +352,7 @@ public class DashboardServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private DashboardService getService(CreateDashboardService create, String user) {
+  private DashboardService getService(CreateDashboardService create, String user) throws IOException {
     return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

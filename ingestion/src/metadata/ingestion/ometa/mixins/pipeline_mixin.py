@@ -47,6 +47,7 @@ class OMetaPipelineMixin:
             f"{self.get_suffix(Pipeline)}/{pipeline.id.__root__}/status",
             data=status.json(),
         )
+
         return Pipeline(**resp)
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:

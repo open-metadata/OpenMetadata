@@ -39,5 +39,4 @@ class SqliteSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected SQLiteConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)

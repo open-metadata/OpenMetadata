@@ -16,8 +16,6 @@ import json
 import traceback
 from typing import Iterable, List, Optional
 
-import dateutil.parser as dateparser
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -42,7 +40,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
-from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -87,22 +85,6 @@ def get_filter_name(filter_obj):
 
 
 class SupersetSource(DashboardServiceSource):
-    """
-    Superset source class
-
-    Args:
-        config:
-        metadata_config:
-
-    Attributes:
-        config:
-        metadata_config:
-        status:
-        platform:
-        service_type:
-        service:
-
-    """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection

@@ -61,6 +61,14 @@ def _(elements, compiler, **kwargs):
     return "percentile_cont(0.5)  WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
 
 
+@compiles(MedianFn, Dialects.MySQL)
+def _(elemenst, compiler, **kwargs):
+    """Median computation for MySQL currently not supported
+    Needs to be tackled in https://github.com/open-metadata/OpenMetadata/issues/6340
+    """
+    return "NULL"
+
+
 @compiles(MedianFn, Dialects.SQLite)
 def _(elements, compiler, **kwargs):
     col, table = [element for element in elements.clauses]

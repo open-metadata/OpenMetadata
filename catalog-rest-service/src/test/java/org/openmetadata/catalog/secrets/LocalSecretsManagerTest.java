@@ -16,25 +16,25 @@ import static org.openmetadata.catalog.services.connections.metadata.OpenMetadat
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.OPENMETADATA;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
-import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.fixtures.ConfigurationFixtures;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.services.connections.mlModel.SklearnConnection;
-import org.openmetadata.catalog.type.MlModelConnection;
 
 @ExtendWith(MockitoExtension.class)
 public class LocalSecretsManagerTest {
@@ -43,17 +43,21 @@ public class LocalSecretsManagerTest {
   private static final boolean DECRYPT = false;
   private static final String ENCRYPTED_VALUE = "fernet:abcdef";
   private static final String DECRYPTED_VALUE = "123456";
+  private static LocalSecretsManager secretsManager;
 
-  @Mock private Fernet fernet;
-
-  private LocalSecretsManager secretsManager;
-
-  @BeforeEach
-  void setUp() {
+  @BeforeAll
+  static void setUp() {
     secretsManager = LocalSecretsManager.getInstance();
+    Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
     secretsManager.setFernet(fernet);
+  }
+
+  @AfterAll
+  static void teardown() {
+    // At the end of the test, remove mocked fernet instance so other tests run fine
+    secretsManager.setFernet(Fernet.getInstance());
   }
 
   @Test
@@ -119,31 +123,29 @@ public class LocalSecretsManagerTest {
   }
 
   private void testEncryptDecryptServiceConnectionWithoutPassword(boolean decrypt) {
-    MlModelConnection mlModelConnection = new MlModelConnection();
     SklearnConnection sklearnConnection = new SklearnConnection();
-    mlModelConnection.setConfig(sklearnConnection);
     CreateMlModelService.MlModelServiceType databaseServiceType = CreateMlModelService.MlModelServiceType.Sklearn;
     String connectionName = "test";
 
-    secretsManager.encryptOrDecryptServiceConnection(
-        mlModelConnection, databaseServiceType.value(), connectionName, decrypt);
+    Object actualConfig =
+        secretsManager.encryptOrDecryptServiceConnectionConfig(
+            sklearnConnection, databaseServiceType.value(), connectionName, ServiceType.ML_MODEL, decrypt);
 
-    assertNotSame(sklearnConnection, mlModelConnection.getConfig());
+    assertNotSame(sklearnConnection, actualConfig);
   }
 
   private void testEncryptDecryptServiceConnection(String encryptedValue, String decryptedValue, boolean decrypt) {
-    DatabaseConnection databaseConnection = new DatabaseConnection();
     MysqlConnection mysqlConnection = new MysqlConnection();
     mysqlConnection.setPassword(encryptedValue);
-    databaseConnection.setConfig(mysqlConnection);
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
-    secretsManager.encryptOrDecryptServiceConnection(
-        databaseConnection, databaseServiceType.value(), connectionName, decrypt);
+    Object actualConfig =
+        secretsManager.encryptOrDecryptServiceConnectionConfig(
+            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
 
-    assertEquals(decryptedValue, ((MysqlConnection) databaseConnection.getConfig()).getPassword());
-    assertNotSame(mysqlConnection, databaseConnection.getConfig());
+    assertEquals(decryptedValue, ((MysqlConnection) actualConfig).getPassword());
+    assertNotSame(mysqlConnection, actualConfig);
   }
 
   private static Stream<Arguments> testDecryptAuthProviderConfigParams() {

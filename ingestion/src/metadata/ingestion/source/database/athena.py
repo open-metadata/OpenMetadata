@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 from typing import Iterable, Optional, Tuple
 
 from pyathena.sqlalchemy_athena import AthenaDialect
@@ -104,7 +105,6 @@ class AthenaSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected AthenaConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:

@@ -52,6 +52,9 @@
     },
     "taskDetails": {
       "$ref": "#/definitions/createTaskDetails"
+    },
+    "announcementDetails": {
+      "$ref": "../../entity/feed/thread.json#/definitions/announcementDetails"
     }
   },
   "required": ["message", "from", "about"],

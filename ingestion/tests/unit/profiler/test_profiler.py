@@ -12,15 +12,22 @@
 """
 Test Profiler behavior
 """
-from curses.ascii import US
+import os
 from unittest import TestCase
+from uuid import uuid4
 
 import pytest
 import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    ColumnProfile,
+    DataType,
+    Table,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -49,8 +56,24 @@ class ProfilerTest(TestCase):
     Run checks on different metrics
     """
 
-    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    db_path = os.path.join(
+        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
+    )
+    sqlite_conn = SQLiteConnection(
+        scheme=SQLiteScheme.sqlite_pysqlite,
+        databaseMode=db_path + "?check_same_thread=False",
+    )
     sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -77,6 +100,7 @@ class ProfilerTest(TestCase):
         simple = DefaultProfiler(
             profiler_interface=self.sqa_profiler_interface,
             table=User,
+            table_entity=self.table_entity,
         )
         simple.execute()
 
@@ -138,6 +162,7 @@ class ProfilerTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
             table=User,
             use_cols=[User.age],
+            table_entity=self.table_entity,
         )
 
         with pytest.raises(MissingMetricException):
@@ -148,6 +173,7 @@ class ProfilerTest(TestCase):
                 profiler_interface=self.sqa_profiler_interface,
                 table=User,
                 use_cols=[User.age],
+                table_entity=self.table_entity,
             )
 
     def test_skipped_types(self):
@@ -176,6 +202,12 @@ class ProfilerTest(TestCase):
                 NotCompute.map_col,
                 NotCompute.struct_col,
             ],
+            table_entity=self.table_entity,
         )
 
         assert not profiler.column_results
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        os.remove(cls.db_path)
+        return super().tearDownClass()

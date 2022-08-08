@@ -94,11 +94,14 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -113,10 +116,14 @@ import org.openmetadata.catalog.entity.type.Category;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.dqtests.TestCaseResourceTest;
+import org.openmetadata.catalog.resources.dqtests.TestDefinitionResourceTest;
+import org.openmetadata.catalog.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.catalog.resources.metadata.TypeResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
@@ -128,6 +135,8 @@ import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.tests.TestDefinition;
+import org.openmetadata.catalog.tests.TestSuite;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
@@ -154,7 +163,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
-  protected final boolean supportsFollowers;
+  protected boolean supportsFollowers;
   protected boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
@@ -186,6 +195,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference DATA_CONSUMER_ROLE_REFERENCE;
   public static Role ROLE1;
   public static EntityReference ROLE1_REFERENCE;
+
+  public static Policy POLICY1;
+  public static Policy POLICY2;
 
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
@@ -231,6 +243,22 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static DatabaseSchema DATABASE_SCHEMA;
   public static EntityReference DATABASE_SCHEMA_REFERENCE;
 
+  public static Table TEST_TABLE1;
+  public static TestSuite TEST_SUITE1;
+  public static EntityReference TEST_SUITE1_REFERENCE;
+
+  public static TestSuite TEST_SUITE2;
+  public static EntityReference TEST_SUITE2_REFERENCE;
+
+  public static TestDefinition TEST_DEFINITION1;
+  public static EntityReference TEST_DEFINITION1_REFERENCE;
+
+  public static TestDefinition TEST_DEFINITION2;
+  public static EntityReference TEST_DEFINITION2_REFERENCE;
+
+  public static TestDefinition TEST_DEFINITION3;
+  public static EntityReference TEST_DEFINITION3_REFERENCE;
+
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -263,17 +291,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
-    runWebhookTests = new Random().nextBoolean();
-    if (runWebhookTests) {
-      webhookCallbackResource.clearEvents();
-      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-      webhookResourceTest.startWebhookSubscription();
-      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
-    }
-
+    new PolicyResourceTest().setupPolicies();
     new RoleResourceTest().setupRoles(test);
-    new UserResourceTest().setupUsers(test);
     new TeamResourceTest().setupTeams(test);
+    new UserResourceTest().setupUsers(test);
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();
@@ -285,6 +306,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
+    new TestSuiteResourceTest().setupTestSuites(test);
+    new TestDefinitionResourceTest().setupTestDefinitions(test);
+    new TestCaseResourceTest().setupTestCase(test);
+
+    runWebhookTests = new Random().nextBoolean();
+    if (runWebhookTests) {
+      webhookCallbackResource.clearEvents();
+      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+      webhookResourceTest.startWebhookSubscription();
+      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
+    }
   }
 
   @AfterAll
@@ -311,7 +343,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final K createRequest(String name, String description, String displayName, EntityReference owner) {
-    return createRequest(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+    return createRequest(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withOwner(reduceEntityReference(owner));
   }
 
   public abstract K createRequest(String name);
@@ -675,13 +710,25 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void post_entityWithInvalidOwnerType_4xx(TestInfo test) {
+  void post_entityWithInvalidOwnerType_4xx(TestInfo test) throws HttpResponseException {
     if (!supportsOwner) {
       return;
     }
     EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
     K create = createRequest(getEntityName(test), "", "", owner);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "type must not be null");
+
+    // Only Team of type Group is allowed to own entities
+    List<Team> teams =
+        new TeamResourceTest().getTeamOfTypes(test, TeamType.BUSINESS_UNIT, TeamType.DEPARTMENT, TeamType.DEPARTMENT);
+    teams.add(ORG_TEAM);
+    for (Team team : teams) {
+      K create1 = createRequest(getEntityName(test), "", "", team.getEntityReference());
+      assertResponseContains(
+          () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+    }
   }
 
   @Test
@@ -833,6 +880,49 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     request = createRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+  }
+
+  @Test
+  void patch_entityUpdateOwner_200(TestInfo test) throws IOException {
+    if (!supportsOwner || !supportsPatch) {
+      return; // Entity doesn't support ownership
+    }
+    // Create an entity without owner
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Set TEAM_OWNER1 as owner using PATCH request
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(TEAM_OWNER1);
+    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1);
+    ChangeDescription change =
+        getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    checkOwnerOwns(TEAM_OWNER1, entity.getId(), true);
+
+    // Change owner from TEAM_OWNER1 to USER_OWNER1 using PATCH request
+    json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(USER_OWNER1);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
+    change = getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+    checkOwnerOwns(TEAM_OWNER1, entity.getId(), false);
+
+    // Set the owner to the existing owner. No ownership change must be recorded.
+    json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(USER_OWNER1);
+    change = getChangeDescription(entity.getVersion());
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+
+    // Remove ownership (from USER_OWNER1) using PATCH request. Owner is expected to remain the same and not removed.
+    json = JsonUtils.pojoToJson(entity);
+    entity.setOwner(null);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1);
+    change = getChangeDescription(entity.getVersion()).withFieldsDeleted(Collections.singletonList(fieldChange));
+    patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), false);
   }
 
   @Test
@@ -1392,6 +1482,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
       throws JsonProcessingException, HttpResponseException {
+    updated.setOwner(reduceEntityReference(updated.getOwner()));
     String updatedEntityJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
@@ -1600,7 +1691,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(create.getDisplayName(), entity.getDisplayName());
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertEquals(create.getOwner(), entity.getOwner());
+    assertReference(create.getOwner(), entity.getOwner());
     assertEquals(getPrincipalName(authHeaders), entity.getUpdatedBy());
   }
 
@@ -1610,7 +1701,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(expected.getDisplayName(), actual.getDisplayName());
     assertEquals(expected.getDescription(), actual.getDescription());
     assertEquals(JsonUtils.valueToTree(expected.getExtension()), JsonUtils.valueToTree(actual.getExtension()));
-    assertEquals(expected.getOwner(), actual.getOwner());
+    assertReference(expected.getOwner(), actual.getOwner());
     assertEquals(getPrincipalName(authHeaders), actual.getUpdatedBy());
   }
 
@@ -2028,5 +2119,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return String.valueOf((char) ('a' + index));
     }
     return getNthAlphanumericString(index / N_LETTERS) + (char) ('a' + (index % N_LETTERS));
+  }
+
+  public static EntityReference reduceEntityReference(EntityReference ref) {
+    // In requests send minimum entity reference information to ensure the server fills rest of the details
+    return ref != null ? new EntityReference().withType(ref.getType()).withId(ref.getId()) : null;
   }
 }

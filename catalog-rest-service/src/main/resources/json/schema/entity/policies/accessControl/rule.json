@@ -5,78 +5,47 @@
   "description": "Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user (subject) and entity (object) attributes are evaluated with logical AND.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.policies.accessControl.Rule",
-  "definitions": {
-    "operation": {
-      "javaType": "org.openmetadata.catalog.type.MetadataOperation",
-      "description": "This schema defines all possible operations on metadata of data entities.",
-      "type": "string",
-      "enum": [
-        "Create",
-        "Delete",
-        "ViewAll",
-        "ViewUsage",
-        "ViewTests",
-        "TableViewQueries",
-        "TableViewDataProfile",
-        "TableViewSampleData",
-        "EditAll",
-        "EditDescription",
-        "EditTags",
-        "EditOwner",
-        "EditTier",
-        "EditCustomFields",
-        "EditLineage",
-        "EditReviewers",
-        "EditTests",
-        "TableEditQueries",
-        "TableEditDataProfile",
-        "TableEditSampleData",
-        "TeamEditUsers"
-      ]
-    }
-  },
   "properties": {
     "name": {
-      "description": "Name for this Rule.",
+      "description": "Name of this Rule.",
       "type": "string"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName same as `name`.",
+      "description": "FullyQualifiedName in the form `policyName.ruleName`.",
       "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "entityTypeAttr": {
-      "description": "Entity type that the rule should match on.",
-      "type": "string",
-      "default": null
+    "description" : {
+      "description": "Description of the rule.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
     },
-    "entityTagAttr": {
-      "description": "Entity tag that the rule should match on.",
-      "$ref": "../../../type/tagLabel.json#/definitions/tagFQN",
-      "default": null
+    "effect" : {
+      "type" : "string",
+      "enum" : [
+        "allow",
+        "deny"
+      ]
     },
-    "operation": {
-      "description": "Operation on the entity.",
-      "$ref": "#/definitions/operation",
-      "default": null
+    "operations" : {
+      "description": "List of operation names related to the `resources`. Use `*` to include all the operations.",
+      "type" : "array",
+      "items" : {
+        "$ref": "resourceDescriptor.json#/definitions/operation"
+      },
+      "default" : null
     },
-    "allow": {
-      "description": "Allow or Deny operation on the entity.",
-      "type": "boolean",
-      "default": false
+    "resources": {
+      "description": "Resources/objects related to this rule. Resources are typically `entityTypes` such as `table`, `database`, etc. It also includes `non-entityType` resources such as `lineage`. Use `*` to include all the resources.",
+      "type": "array",
+      "items": {
+        "type" : "string"
+      },
+      "default" : null
     },
-    "priority": {
-      "description": "Priority of this rule among all rules across all policies.",
-      "type": "integer",
-      "default": 250000
-    },
-    "deleted": {
-      "description": "Is the rule soft-deleted.",
-      "type": "boolean",
-      "default": false
+    "condition" : {
+      "description": "Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes.",
+      "$ref" : "../../../type/basic.json#/definitions/expression"
     }
   },
-  "required": [
-    "name"
-  ],
+  "required": ["name", "effect", "operations", "resources"],
   "additionalProperties": false
 }

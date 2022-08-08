@@ -15,7 +15,7 @@ import { Popover } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { uniqueId } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { FC, HTMLAttributes, useMemo, useState } from 'react';
+import React, { FC, HTMLAttributes, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getDashboardByFqn } from '../../../axiosAPIs/dashboardAPI';
@@ -161,14 +161,30 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   const PopoverTitle = () => {
     return (
       <Link data-testid="entitylink" to={getEntityLink(entityType, entityFQN)}>
-        <button className="tw-text-info" disabled={AppState.isTourOpen}>
+        <button
+          className="tw-text-info"
+          disabled={AppState.isTourOpen}
+          onClick={(e) => e.stopPropagation()}>
           <span>{entityFQN}</span>
         </button>
       </Link>
     );
   };
 
+  const onMouseOver = () => {
+    const entitydetails = AppState.entityData[entityFQN];
+    if (entitydetails) {
+      setEntityData(entitydetails);
+    } else {
+      getData();
+    }
+  };
+
   const PopoverContent = () => {
+    useEffect(() => {
+      onMouseOver();
+    }, []);
+
     return (
       <div className="tw-w-80">
         <div className="tw-flex">
@@ -234,15 +250,6 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     );
   };
 
-  const onMouseOver = () => {
-    const entitydetails = AppState.entityData[entityFQN];
-    if (entitydetails) {
-      setEntityData(entitydetails);
-    } else {
-      getData();
-    }
-  };
-
   return (
     <Popover
       destroyTooltipOnHide
@@ -252,7 +259,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       title={<PopoverTitle />}
       trigger="hover"
       zIndex={9999}>
-      <div onMouseOver={onMouseOver}>{children}</div>
+      {children}
     </Popover>
   );
 };

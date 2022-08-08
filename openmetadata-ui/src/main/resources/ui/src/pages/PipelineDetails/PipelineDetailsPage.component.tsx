@@ -134,9 +134,8 @@ const PipelineDetailsPage = () => {
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
-  const [pipeLineStatus, setPipelineStatus] = useState<
-    Pipeline['pipelineStatus']
-  >([]);
+  const [pipeLineStatus, setPipelineStatus] =
+    useState<Pipeline['pipelineStatus']>();
   const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
@@ -317,14 +316,13 @@ const PipelineDetailsPage = () => {
             fqn: fullyQualifiedName,
             serviceType: serviceType,
             timestamp: 0,
+            id: id,
           });
 
           setPipelineUrl(pipelineUrl);
           setTasks(tasks || []);
 
-          setPipelineStatus(
-            (pipelineStatus as Pipeline['pipelineStatus']) || []
-          );
+          setPipelineStatus(pipelineStatus as Pipeline['pipelineStatus']);
 
           fetchServiceDetails(service.type, service.name)
             .then((hostPort: string) => {
@@ -687,6 +685,27 @@ const PipelineDetailsPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
+  const handleExtentionUpdate = async (updatedPipeline: Pipeline) => {
+    try {
+      const { data } = await saveUpdatedPipelineData(updatedPipeline);
+
+      if (data) {
+        const { version, owner: ownerValue, tags } = data;
+        setCurrentVersion(version);
+        setPipelineDetails(data);
+        setOwner(ownerValue);
+        setTier(getTierTags(tags));
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
+    }
+  };
+
   useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -757,6 +776,7 @@ const PipelineDetailsPage = () => {
           updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
+          onExtensionUpdate={handleExtentionUpdate}
         />
       )}
     </>

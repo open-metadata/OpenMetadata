@@ -11,27 +11,69 @@
  *  limitations under the License.
  */
 
+import { Icons } from '../utils/SvgUtils';
+
 export const GLOBAL_SETTINGS_MENU = [
   {
     category: 'Access',
-    items: ['Users', 'Teams', 'Roles', 'Policies'],
+    isProtected: false,
+    items: [
+      { label: 'Teams', isProtected: false, icon: Icons.TEAMS_GREY },
+      { label: 'Users', isProtected: true, icon: Icons.USERS },
+      { label: 'Admins', isProtected: true, icon: Icons.USERS },
+      { label: 'Roles', isProtected: true, icon: Icons.ROLE_GREY },
+    ],
   },
   {
     category: 'Services',
-    items: ['Databases', 'Messaging', 'Dashboards', 'Pipelines', 'ML Models'],
+    isProtected: false,
+    items: [
+      { label: 'Databases', isProtected: false, icon: Icons.TABLE_GREY },
+      { label: 'Messaging', isProtected: false, icon: Icons.TOPIC_GREY },
+      { label: 'Dashboards', isProtected: false, icon: Icons.DASHBOARD_GREY },
+      { label: 'Pipelines', isProtected: false, icon: Icons.PIPELINE_GREY },
+      { label: 'ML Models', isProtected: false, icon: Icons.MLMODAL },
+    ],
   },
   {
     category: 'Custom Attributes',
-    items: ['Tables'],
+    isProtected: true,
+    items: [
+      { label: 'Tables', isProtected: true, icon: Icons.TABLE_GREY },
+      { label: 'Topics', isProtected: true, icon: Icons.TOPIC_GREY },
+      { label: 'Dashboards', isProtected: true, icon: Icons.DASHBOARD_GREY },
+      { label: 'Pipelines', isProtected: true, icon: Icons.PIPELINE_GREY },
+      { label: 'ML Models', isProtected: true, icon: Icons.MLMODAL },
+    ],
   },
   {
     category: 'Integrations',
-    items: ['Webhook', 'Slack', 'Bots'],
+    isProtected: true,
+    items: [
+      { label: 'Webhook', isProtected: true, icon: Icons.WEBHOOK_GREY },
+      { label: 'Bots', isProtected: true, icon: Icons.BOT_PROFILE },
+    ],
   },
 ];
 
+export const customAttributesPath = {
+  tables: 'table',
+  topics: 'topic',
+  dashboards: 'dashboard',
+  pipelines: 'pipeline',
+  mlModels: 'mlmodel',
+};
+
+export enum GlobalSettingsMenuCategory {
+  ACCESS = 'access',
+  SERVICES = 'services',
+  CUSTOM_ATTRIBUTES = 'customAttributes',
+  INTEGRATIONS = 'integrations',
+}
+
 export enum GlobalSettingOptions {
   USERS = 'users',
+  ADMINS = 'admins',
   TEAMS = 'teams',
   ROLES = 'roles',
   POLICIES = 'policies',

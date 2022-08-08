@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -44,6 +45,9 @@ import javax.json.JsonPatch;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
@@ -54,6 +58,7 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
 
   static {
@@ -92,6 +97,22 @@ public final class JsonUtils {
       return null;
     }
     return OBJECT_MAPPER.readValue(json, clz);
+  }
+
+  public static <T> T readValueWithValidation(String json, Class<T> clz) throws IOException {
+    T pojo = readValue(json, clz);
+    if (pojo == null) {
+      return null;
+    }
+    Set<ConstraintViolation<T>> violations = VALIDATOR.validate(pojo);
+    if (violations.size() > 0) {
+      List<String> errors = new ArrayList<>();
+      for (ConstraintViolation<T> violation : violations) {
+        errors.add(violation.getPropertyPath().toString() + " " + violation.getMessage());
+      }
+      throw new IllegalArgumentException(errors.toString());
+    }
+    return pojo;
   }
 
   public static <T> T readValue(String json, TypeReference<T> valueTypeRef) throws IOException {

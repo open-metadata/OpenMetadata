@@ -356,6 +356,23 @@ const MlModelPage = () => {
       });
   };
 
+  const handleExtentionUpdate = async (updatedMlModel: Mlmodel) => {
+    try {
+      const { data } = await saveUpdatedMlModelData(updatedMlModel);
+
+      if (data) {
+        setMlModelDetail(data);
+      } else {
+        throw jsonData['api-error-messages']['update-entity-error'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
+    }
+  };
+
   const getMlModelDetail = () => {
     if (!isNil(mlModelDetail) && !isEmpty(mlModelDetail)) {
       return (
@@ -379,6 +396,7 @@ const MlModelPage = () => {
           tagUpdateHandler={onTagUpdate}
           unfollowMlModelHandler={unfollowMlModel}
           updateMlModelFeatures={updateMlModelFeatures}
+          onExtensionUpdate={handleExtentionUpdate}
         />
       );
     } else {

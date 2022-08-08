@@ -11,9 +11,6 @@
 """MSSQL source module"""
 from typing import Iterable
 
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
-
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -25,7 +22,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
@@ -33,14 +29,6 @@ logger = ingestion_logger()
 
 
 class MssqlSource(CommonDbSourceService):
-    """MSSQL Source class
-
-    Args:
-        config:
-        metadata_config:
-        ctx
-    """
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""

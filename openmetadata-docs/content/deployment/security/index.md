@@ -7,10 +7,9 @@ slug: /deployment/security
 
 This section provides detailed instructions to secure the REST endpoints of the OpenMetadata Server.
 
-OpenMetadata has support for Google SSO, Okta SSO, custom OIDC, Auth0, and Azure SSO as identity providers. Please see
-the next sections about how to configure them.
+OpenMetadata has support for Google SSO, Okta SSO, custom OIDC, Auth0, Azure SSO, Amazon Cognito, and OneLogin as identity providers. Please see the next sections about how to configure them.
 
-Enabling Security is only required for your **Production** installation. If you are testing OpenMetadata it will be easier 
+Enabling Security is only required for your **Production** installation. If you are testing OpenMetadata, it will be easier 
 and faster to set up without security. To get up and running quickly with OpenMetadata (without security), 
 please follow the [Quickstart](/quick-start/local-deployment) guide.
 
@@ -54,5 +53,21 @@ please follow the [Quickstart](/quick-start/local-deployment) guide.
     href="/deployment/security/okta"
   >
     Configure Okta SSO to access the UI and APIs
+  </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    bold="Amazon Cognito SSO"
+    icon="add_moderator"
+    href="/deployment/security/amazon-cognito"
+  >
+    Configure Amazon Cognito SSO to access the UI and APIs
+  </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    bold="OneLogin SSO"
+    icon="add_moderator"
+    href="/deployment/security/one-login"
+  >
+    Configure OneLogin SSO to access the UI and APIs
   </InlineCallout>
 </InlineCalloutContainer>

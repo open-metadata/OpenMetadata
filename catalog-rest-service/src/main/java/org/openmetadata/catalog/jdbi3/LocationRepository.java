@@ -166,7 +166,6 @@ public class LocationRepository extends EntityRepository<Location> {
     location.setService(storageService.getEntityReference());
     location.setServiceType(storageService.getServiceType());
     setFullyQualifiedName(location);
-    populateOwner(location.getOwner()); // Validate owner
     location.setTags(addDerivedTags(location.getTags()));
   }
 

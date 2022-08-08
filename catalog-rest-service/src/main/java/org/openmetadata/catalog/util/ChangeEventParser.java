@@ -20,11 +20,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,7 +49,6 @@ import org.openmetadata.catalog.type.FieldChange;
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
   public static final String FEED_REMOVE_MARKER = "<!remove>";
-  public static final String SLACK_STRIKE_MARKER = "~%s~ ";
   public static final String FEED_BOLD = "**%s**";
   public static final String SLACK_BOLD = "*%s* ";
   public static final String FEED_SPAN_ADD = "<span class=\"diff-added\">";
@@ -69,23 +70,35 @@ public final class ChangeEventParser {
     SLACK
   }
 
-  public static SlackMessage buildSlackMessage(ChangeEvent event, String omdurl) {
+  public static String getEntityUrl(ChangeEvent event) {
+    EntityInterface entity = (EntityInterface) event.getEntity();
+    URI urlInstance = entity.getHref();
+    String fqn = event.getEntityFullyQualifiedName();
+    if (Objects.nonNull(urlInstance)) {
+      String scheme = urlInstance.getScheme();
+      String host = urlInstance.getHost();
+      return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
+    }
+    return urlInstance.toString();
+  }
+
+  public static SlackMessage buildSlackMessage(ChangeEvent event) {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
       String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText = String.format(headerTxt, event.getUserName(), omdurl);
+      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(event));
       slackMessage.setText(headerText);
     }
     Map<EntityLink, String> messages =
         getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<SlackAttachment> attachmentList = new ArrayList<>();
-    for (var entryset : messages.entrySet()) {
+    for (var entry : messages.entrySet()) {
       SlackAttachment attachment = new SlackAttachment();
       List<String> mark = new ArrayList<>();
       mark.add("text");
       attachment.setMarkdownIn(mark);
-      attachment.setText(entryset.getValue());
+      attachment.setText(entry.getValue());
       attachmentList.add(attachment);
     }
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
@@ -338,9 +351,8 @@ public final class ChangeEventParser {
 
     if (oldValue == null || oldValue.toString().isEmpty()) {
       return String.format(
-          "Updated " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + " to %s",
-          updatedField,
-          getFieldValue(newValue));
+          "Updated %s to %s",
+          publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD, updatedField, getFieldValue(newValue));
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
       return getPlainTextUpdateMessage(publishTo, updatedField, getFieldValue(oldValue), getFieldValue(newValue));
     }

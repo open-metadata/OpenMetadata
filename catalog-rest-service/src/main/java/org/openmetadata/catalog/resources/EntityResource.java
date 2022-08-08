@@ -14,11 +14,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CreateEntity;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
+import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -164,16 +168,31 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
-  public T copy(T entity, CreateEntity request, String updatedBy) {
+  public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {
+    EntityReference owner = validateOwner(request.getOwner());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
     entity.setDescription(request.getDescription());
-    entity.setOwner(request.getOwner());
+    entity.setOwner(owner);
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
     return entity;
+  }
+
+  private EntityReference validateOwner(EntityReference owner) throws IOException {
+    if (owner == null) {
+      return null;
+    }
+    if (owner.getType().equals(Entity.TEAM)) {
+      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), Fields.EMPTY_FIELDS, Include.ALL);
+      if (!team.getTeamType().equals(TeamType.GROUP)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+      }
+      return team.getEntityReference();
+    }
+    return Entity.getEntityReferenceById(owner.getType(), owner.getId(), Include.ALL);
   }
 
   protected ResourceContext getResourceContext() {

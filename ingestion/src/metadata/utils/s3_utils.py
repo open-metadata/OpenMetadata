@@ -8,9 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 import json
 import os
-from itertools import islice
 from typing import Any
 
 import pandas as pd
@@ -26,7 +26,7 @@ def read_csv_from_s3(
     return pd.read_csv(stream, sep=sep, nrows=sample_size + 1)
 
 
-def read_tsv_from_gcs(
+def read_tsv_from_s3(
     client, key: str, bucket_name: str, sample_size: int = 100
 ) -> DataFrame:
     read_csv_from_s3(client, key, bucket_name, sep="\t", sample_size=sample_size)

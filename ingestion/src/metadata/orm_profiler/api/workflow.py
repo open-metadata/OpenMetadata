@@ -16,6 +16,7 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
+import traceback
 from copy import deepcopy
 from typing import Iterable, List
 
@@ -30,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -44,8 +46,12 @@ from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerRe
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.utils import fqn
+from metadata.utils.class_helper import (
+    get_service_class_from_service_type,
+    get_service_type_from_source_type,
+)
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_fqn
+from metadata.utils.filters import filter_by_fqn, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -67,6 +73,11 @@ class ProfilerWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
 
+        # OpenMetadata client to fetch tables
+        self.metadata = OpenMetadata(self.metadata_config)
+
+        self._retrieve_service_connection_if_needed()
+
         # Prepare the connection to the source service
         # We don't need the whole Source class, as it is the OM Server
 
@@ -85,9 +96,6 @@ class ProfilerWorkflow:
                 metadata_config=self.metadata_config,
                 _from="orm_profiler",
             )
-
-        # OpenMetadata client to fetch tables
-        self.metadata = OpenMetadata(self.metadata_config)
 
         if not self._validate_service_name():
             raise ValueError(
@@ -116,22 +124,36 @@ class ProfilerWorkflow:
         We will update the status on the SQLSource Status.
         """
         for table in tables:
+            try:
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    table.databaseSchema.name,
+                ):
+                    self.source_status.filter(
+                        table.databaseSchema.fullyQualifiedName,
+                        "Schema pattern not allowed",
+                    )
+                    continue
+                if filter_by_table(
+                    self.source_config.tableFilterPattern,
+                    table.name.__root__,
+                ):
+                    self.source_status.filter(
+                        table.fullyQualifiedName.__root__, "Table pattern not allowed"
+                    )
+                    continue
 
-            if filter_by_fqn(
-                fqn_filter_pattern=self.source_config.fqnFilterPattern,
-                fqn=table.fullyQualifiedName.__root__,
-            ):
-                self.source_status.filter(
-                    table.fullyQualifiedName.__root__, "Schema pattern not allowed"
-                )
-                continue
-
-            self.source_status.scanned(table.fullyQualifiedName.__root__)
-            yield table
+                self.source_status.scanned(table.fullyQualifiedName.__root__)
+                yield table
+            except Exception as err:  # pylint: disable=broad-except
+                self.source_status.filter(table.fullyQualifiedName.__root__, f"{err}")
+                logger.error(err)
+                logger.debug(traceback.format_exc())
 
     def create_processor(self, service_connection_config):
         self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
-            service_connection_config
+            service_connection_config,
+            thread_count=self.source_config.threadCount,
         )
         self.processor = get_processor(
             processor_type=self.config.processor.type,  # orm-profiler
@@ -177,8 +199,7 @@ class ProfilerWorkflow:
             entity=Table,
             fields=[
                 "tableProfile",
-                "profileSample",
-                "profileQuery",
+                "tableProfilerConfig",
                 "tests",
             ],
             params={
@@ -194,38 +215,48 @@ class ProfilerWorkflow:
 
         yield from self.filter_entities(all_tables)
 
+    def copy_service_config(self, database) -> None:
+        copy_service_connection_config = deepcopy(
+            self.config.source.serviceConnection.__root__.config
+        )
+        if hasattr(
+            self.config.source.serviceConnection.__root__.config,
+            "supportsDatabase",
+        ):
+            if hasattr(
+                self.config.source.serviceConnection.__root__.config, "database"
+            ):
+                copy_service_connection_config.database = database.name.__root__
+            if hasattr(self.config.source.serviceConnection.__root__.config, "catalog"):
+                copy_service_connection_config.catalog = database.name.__root__
+
+        self.create_processor(copy_service_connection_config)
+
     def execute(self):
         """
         Run the profiling and tests
         """
-        copy_service_connection_config = deepcopy(
-            self.config.source.serviceConnection.__root__.config
-        )
+
         for database in self.get_database_entities():
-            if hasattr(
-                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
-            ):
-                if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "database"
-                ):
-                    copy_service_connection_config.database = database.name.__root__
-                if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "catalog"
-                ):
-                    copy_service_connection_config.catalog = database.name.__root__
+            try:
+                self.copy_service_config(database)
 
-            self.create_processor(copy_service_connection_config)
+                for entity in self.get_table_entities(database=database):
+                    try:
+                        profile_and_tests: ProfilerResponse = self.processor.process(
+                            record=entity,
+                            generate_sample_data=self.source_config.generateSampleData,
+                        )
 
-            for entity in self.get_table_entities(database=database):
-                profile_and_tests: ProfilerResponse = self.processor.process(
-                    record=entity,
-                    generate_sample_data=self.source_config.generateSampleData,
-                )
-
-                if hasattr(self, "sink"):
-                    self.sink.write_record(profile_and_tests)
-
-            self.processor_interface.session.close()
+                        if hasattr(self, "sink"):
+                            self.sink.write_record(profile_and_tests)
+                    except Exception as err:  # pylint: disable=broad-except
+                        logger.error(err)
+                        logger.debug(traceback.format_exc())
+                self.processor_interface.session.close()
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error(err)
+                logger.debug(traceback.format_exc())
 
     def print_status(self) -> int:
         """
@@ -301,3 +332,30 @@ class ProfilerWorkflow:
         """
         self.metadata.close()
         self.processor.close()
+
+    def _retrieve_service_connection_if_needed(self) -> None:
+        """
+        We override the current `serviceConnection` source config object if source workflow service already exists
+        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
+        from the service object itself through the default `SecretsManager`.
+
+        :return:
+        """
+        if not self._is_sample_source(self.config.source.type):
+            service_type: ServiceType = get_service_type_from_source_type(
+                self.config.source.type
+            )
+            service = self.metadata.get_by_name(
+                get_service_class_from_service_type(service_type),
+                self.config.source.serviceName,
+            )
+            if service:
+                self.config.source.serviceConnection = (
+                    self.metadata.secrets_manager_client.retrieve_service_connection(
+                        service, service_type.name.lower()
+                    )
+                )
+
+    @staticmethod
+    def _is_sample_source(service_type):
+        return service_type == "sample-data" or service_type == "sample-usage"

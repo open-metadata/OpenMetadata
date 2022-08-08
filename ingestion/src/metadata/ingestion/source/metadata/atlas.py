@@ -1,19 +1,14 @@
 import traceback
 import uuid
 from dataclasses import dataclass, field
-from distutils.command.config import config
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 import yaml
-from importlib_metadata import SelectableGroups
 
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.clients.atlas_client import AtlasClient
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -24,12 +19,8 @@ from metadata.generated.schema.entity.services.connections.metadata.atlasConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-    DatabaseServiceType,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -38,9 +29,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.atlas_client import AtlasClient
-from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -60,7 +50,7 @@ class AtlasSourceStatus(SourceStatus):
 
 @dataclass
 class AtlasSource(Source):
-    config: AtlasConnection
+    config: WorkflowSource
     atlas_client: AtlasClient
     status: AtlasSourceStatus
     tables: Dict[str, Any]
@@ -68,15 +58,14 @@ class AtlasSource(Source):
 
     def __init__(
         self,
-        config: AtlasConnection,
+        config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.service_connection = config.serviceConnection.__root__.config
-
         self.metadata = OpenMetadata(metadata_config)
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.status = AtlasSourceStatus()
 
         self.schema_registry_url = "http://localhost:8081"

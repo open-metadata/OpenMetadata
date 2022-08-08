@@ -16,27 +16,50 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
+import { useAuth } from '../../hooks/authHooks';
 import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 
 const GlobalSettingLeftPanel = () => {
-  const { tab } = useParams<{ [key: string]: string }>();
+  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
+
+  const isHasAccess = isAdminUser || isAuthDisabled;
+
   const history = useHistory();
-  const items: ItemType[] = GLOBAL_SETTINGS_MENU.map(({ category, items }) => {
-    return getGlobalSettingMenus(category, camelCase(category), items, 'group');
+  const items: ItemType[] = GLOBAL_SETTINGS_MENU.filter(({ isProtected }) => {
+    if (isHasAccess) {
+      return isHasAccess;
+    }
+
+    return !isProtected;
+  }).map(({ category, items }) => {
+    return getGlobalSettingMenus(
+      category,
+      camelCase(category),
+      '',
+      '',
+      items,
+      'group',
+      isHasAccess
+    );
   });
 
   const onClick: MenuProps['onClick'] = (e) => {
-    history.push(getSettingPath(e.key));
+    // As we are setting key as "category.option" and extracting here category and option
+    const [category, option] = e.key.split('.');
+    history.push(getSettingPath(category, option));
   };
 
   return (
     <Menu
       className="global-setting-left-panel"
-      defaultSelectedKeys={[tab]}
       items={items}
       mode="inline"
+      selectedKeys={[`${settingCategory}.${tab}`]}
       onClick={onClick}
     />
   );

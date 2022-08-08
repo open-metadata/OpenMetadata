@@ -121,7 +121,7 @@ export const createUser = (
   return APIClient.post(`/users`, userDetails);
 };
 
-export const updateUser = (data: User): Promise<AxiosResponse> => {
+export const updateUser = (data: User | CreateUser): Promise<AxiosResponse> => {
   return APIClient.put('/users', data);
 };
 

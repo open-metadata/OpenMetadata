@@ -38,8 +38,8 @@ export const topicDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Manage',
-    path: 'manage',
+    name: 'Custom Properties',
+    path: 'custom_properties',
   },
 ];
 
@@ -62,7 +62,7 @@ export const getCurrentTopicTab = (tab: string) => {
       currentTab = 5;
 
       break;
-    case 'manage':
+    case 'custom_properties':
       currentTab = 6;
 
       break;

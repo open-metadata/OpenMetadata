@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)::([^<>]+?)>/;
+export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)(?:::([^<>]+?))?>/;
 
 export const EntityRegEx = new RegExp(EntityRegExPattern);
 
@@ -74,3 +74,7 @@ export enum EntityField {
   TAGS = 'tags',
   TASKS = 'tasks',
 }
+
+export const ANNOUNCEMENT_BG = '#fffbf3';
+export const ANNOUNCEMENT_BORDER = '#FFC143';
+export const TASK_BORDER = '#C6B5F6';

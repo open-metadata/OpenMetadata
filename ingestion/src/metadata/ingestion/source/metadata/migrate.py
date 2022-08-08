@@ -17,7 +17,6 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -30,7 +29,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata import MetadataSource
 
 logger = logging.getLogger(__name__)
@@ -72,22 +70,6 @@ class DatabaseServiceWrapper:
 
 
 class MigrateSource(MetadataSource):
-    """OpenmetadataSource class
-
-    Args:
-        config:
-        metadata_config:
-
-    Attributes:
-        config:
-        report:
-        metadata_config:
-        status:
-        wrote_something:
-        metadata:
-        tables:
-        topics:
-    """
 
     config: WorkflowSource
     report: SourceStatus
@@ -98,9 +80,6 @@ class MigrateSource(MetadataSource):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(self.service_connection)
-        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ServiceRepository;
 import org.openmetadata.catalog.secrets.SecretsManager;
@@ -57,7 +58,7 @@ public abstract class ServiceResourceTest<
     lenient()
         .when(
             secretsManager.encryptOrDecryptServiceConnectionConfig(
-                any(), anyString(), anyString(), anyString(), anyBoolean()))
+                any(), anyString(), anyString(), any(ServiceType.class), anyBoolean()))
         .thenReturn(service);
     serviceResource = newServiceResource(collectionDAO, authorizer, secretsManager);
   }
@@ -98,14 +99,17 @@ public abstract class ServiceResourceTest<
 
     verify(secretsManager, times(1)).isLocal();
     verify(secretsManager, times(shouldBeNull ? 0 : 1))
-        .encryptOrDecryptServiceConnection(notNull(), eq(serviceType()), any(), eq(false));
+        .encryptOrDecryptServiceConnectionConfig(
+            notNull(), eq(serviceConnectionType()), any(), eq(serviceType()), eq(false));
 
     verifyServiceWithConnectionCall(shouldBeNull, service);
 
     assertEquals(service, actual);
   }
 
-  protected abstract String serviceType();
+  protected abstract String serviceConnectionType();
+
+  protected abstract ServiceType serviceType();
 
   protected abstract void verifyServiceWithConnectionCall(boolean shouldBeNull, R service);
 

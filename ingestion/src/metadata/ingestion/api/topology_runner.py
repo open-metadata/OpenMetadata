@@ -90,9 +90,10 @@ class TopologyRunnerMixin(Generic[C]):
 
             if node.post_process:
                 logger.debug(f"Post processing node {node}")
-                node_post_process = getattr(self, node.post_process)
-                for entity_request in node_post_process():
-                    yield entity_request
+                for process in node.post_process:
+                    node_post_process = getattr(self, process)
+                    for entity_request in node_post_process():
+                        yield entity_request
 
     def next_record(self) -> Iterable[Entity]:
         """
@@ -159,22 +160,31 @@ class TopologyRunnerMixin(Generic[C]):
 
         if entity is not None:
             if stage.ack_sink:
-                tries = 3
                 entity = None
 
                 entity_fqn = self.fqn_from_context(
                     stage=stage, entity_request=entity_request
                 )
 
-                while not entity and tries > 0:
-                    yield entity_request
-                    # Improve validation logic
+                # we get entity from OM if we do not want to overwrite existing data in OM
+                if not stage.overwrite:
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
                         fqn=entity_fqn,
                         fields=["*"],  # Get all the available data from the Entity
                     )
-                    tries -= 1
+                # if entity does not exist in OM, or we want to overwrite, we will yield the entity_request
+                if entity is None:
+                    tries = 3
+                    while not entity and tries > 0:
+                        yield entity_request
+                        # Improve validation logic
+                        entity = self.metadata.get_by_name(
+                            entity=stage.type_,
+                            fqn=entity_fqn,
+                            fields=["*"],  # Get all the available data from the Entity
+                        )
+                        tries -= 1
             else:
                 yield entity
 

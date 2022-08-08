@@ -43,13 +43,14 @@ import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
-import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
@@ -100,6 +101,7 @@ const PipelineDetails = ({
   pipelineStatus,
   updateThreadHandler,
   entityFieldTaskCount,
+  onExtensionUpdate,
 }: PipeLineDetailsProp) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -117,7 +119,7 @@ const PipelineDetails = ({
   const [selectedExecution, setSelectedExecution] = useState<PipelineStatus>(
     () => {
       if (pipelineStatus) {
-        return pipelineStatus[0];
+        return pipelineStatus;
       } else {
         return {} as PipelineStatus;
       }
@@ -187,15 +189,8 @@ const PipelineDetails = ({
       position: 3,
     },
     {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: true,
-      protectedState: !owner || hasEditAccess(),
+      name: 'Custom Properties',
+      isProtected: false,
       position: 4,
     },
   ];
@@ -279,31 +274,6 @@ const PipelineDetails = ({
         tags: tierTag,
       };
       settingsUpdateHandler(updatedPipelineDetails);
-    }
-  };
-  const onSettingsUpdate = (newOwner?: Pipeline['owner'], newTier?: string) => {
-    if (newOwner || newTier) {
-      const tierTag: Pipeline['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : pipelineDetails.tags;
-      const updatedPipelineDetails = {
-        ...pipelineDetails,
-        owner: newOwner
-          ? { ...pipelineDetails.owner, ...newOwner }
-          : pipelineDetails.owner,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedPipelineDetails);
-    } else {
-      return Promise.reject();
     }
   };
 
@@ -402,6 +372,7 @@ const PipelineDetails = ({
             entityFieldThreadCount
           )}
           entityFqn={pipelineFQN}
+          entityId={pipelineDetails.id}
           entityName={entityName}
           entityType={EntityType.PIPELINE}
           extraInfo={extraInfo}
@@ -524,22 +495,13 @@ const PipelineDetails = ({
                 </div>
               )}
               {activeTab === 4 && (
-                <div>
-                  <ManageTabComponent
-                    allowDelete
-                    allowSoftDelete={!deleted}
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner}
-                    entityId={pipelineDetails.id}
-                    entityName={pipelineDetails.name}
-                    entityType={EntityType.PIPELINE}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={deleted}
-                    hideTier={deleted}
-                    manageSectionType={EntityType.PIPELINE}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
+                <CustomPropertyTable
+                  entityDetails={
+                    pipelineDetails as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.PIPELINE}
+                  handleExtentionUpdate={onExtensionUpdate}
+                />
               )}
               <div
                 data-testid="observer-element"

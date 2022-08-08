@@ -13,9 +13,9 @@ source:
     config:
       type: Profiler
       generateSampleData: true
-      fqnFilterPattern:
+      schemaFilterPattern:
         includes:
-        - local_mysql.openmetadata_db*
+        - openmetadata_db*
 
 processor:
   type: "orm-profiler"

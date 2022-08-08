@@ -12,19 +12,16 @@
 Airflow source to extract metadata from OM UI
 """
 import traceback
-from collections.abc import Iterable
 from typing import Any, Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
-    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -45,11 +42,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.connections import (
-    create_and_bind_session,
-    get_connection,
-    test_connection,
-)
+from metadata.utils.connections import create_and_bind_session, test_connection
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
@@ -75,11 +68,8 @@ class AirflowSource(PipelineServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        self._session = None
-        self.service_connection = config.serviceConnection.__root__.config
-        self.engine: Engine = get_connection(self.service_connection.connection)
         super().__init__(config, metadata_config)
-        # Create the connection to the database
+        self._session = None
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -128,7 +118,9 @@ class AirflowSource(PipelineServiceSource):
                         task.state, StatusType.Pending.value
                     ),
                     startTime=datetime_to_ts(task.start_date),
-                    endTime=datetime_to_ts(task.end_date),
+                    endTime=datetime_to_ts(
+                        task.end_date
+                    ),  # Might be None for running tasks
                     logLink=task.log_url,
                 )
                 for task in tasks
@@ -137,7 +129,7 @@ class AirflowSource(PipelineServiceSource):
             pipeline_status = PipelineStatus(
                 taskStatus=task_statuses,
                 executionStatus=STATUS_MAP.get(dag._state, StatusType.Pending.value),
-                executionDate=dag.execution_date.timestamp(),
+                timestamp=dag.execution_date.timestamp(),
             )
             yield OMetaPipelineStatus(
                 pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,

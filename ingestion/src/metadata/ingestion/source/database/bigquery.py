@@ -43,9 +43,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -101,7 +101,6 @@ class BigquerySource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def standardize_table_name(self, schema: str, table: str) -> str:
@@ -123,8 +122,6 @@ class BigquerySource(CommonDbSourceService):
         :param _:
         :return:
         """
-        if not self.source_config.includeTags:
-            return
         taxonomies = PolicyTagManagerClient().list_taxonomies(
             parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
         )

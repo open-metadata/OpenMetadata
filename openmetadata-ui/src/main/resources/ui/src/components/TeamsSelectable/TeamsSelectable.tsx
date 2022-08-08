@@ -14,12 +14,11 @@
 import { SelectableOption } from 'Models';
 import React, { useState } from 'react';
 import AsyncSelect from 'react-select/async';
-import { getSuggestedTeams, getTeamsByQuery } from '../../axiosAPIs/miscAPI';
-import { PAGE_SIZE } from '../../constants/constants';
+import { getTeamsByQuery } from '../../axiosAPIs/miscAPI';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/type/entityReference';
-import { formatTeamsResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 
 interface CustomOption extends SelectableOption {
@@ -27,28 +26,29 @@ interface CustomOption extends SelectableOption {
 }
 
 interface Props {
+  showTeamsAlert?: boolean;
   onSelectionChange: (teams: string[]) => void;
   filterJoinable?: boolean;
   placeholder?: string;
 }
 
+const TEAM_OPTION_PAGE_LIMIT = 100;
+
 const TeamsSelectable = ({
+  showTeamsAlert,
   onSelectionChange,
   filterJoinable,
-  placeholder = 'Start typing the name of team...',
+  placeholder = 'Search for teams',
 }: Props) => {
   const [teamSearchText, setTeamSearchText] = useState<string>('');
+  const [noTeam, setNoTeam] = useState<boolean>(false);
 
   const handleSelectionChange = (selectedOptions: SelectableOption[]) => {
     onSelectionChange(selectedOptions.map((option) => option.value));
   };
 
   const getOptions = (teams: Team[]) => {
-    const filteredTeams = filterJoinable
-      ? teams.filter((team) => team.isJoinable)
-      : teams;
-
-    return filteredTeams.map((team) => ({
+    return teams.map((team) => ({
       label: getEntityName(team as EntityReference),
       value: team.id,
     }));
@@ -56,49 +56,57 @@ const TeamsSelectable = ({
 
   const loadOptions = (text: string) => {
     return new Promise<SelectableOption[]>((resolve) => {
-      if (text) {
-        getSuggestedTeams(text).then((res) => {
-          const teams: Team[] = formatTeamsResponse(
-            res.data.suggest['metadata-suggest'][0].options
-          );
-          resolve(getOptions(teams));
-        });
-      } else {
-        getTeamsByQuery({
-          q: '*',
-          from: 0,
-          size: PAGE_SIZE,
-          isJoinable: filterJoinable,
-        }).then((res) => {
-          const teams: Team[] =
-            res.hits.hits.map((t: { _source: Team }) => t._source) || [];
-          resolve(getOptions(teams));
-        });
-      }
+      const trimmedText = text.trim();
+      getTeamsByQuery({
+        q:
+          (trimmedText ? `*${trimmedText}*` : '*') +
+          (filterJoinable ? ` AND isJoinable:true` : ''),
+        from: 0,
+        size: TEAM_OPTION_PAGE_LIMIT,
+      }).then((res) => {
+        const teams: Team[] =
+          res.hits.hits.map((t: { _source: Team }) => t._source) || [];
+        showTeamsAlert && setNoTeam(teams.length === 0);
+        resolve(getOptions(teams));
+      });
     });
   };
 
   return (
-    <AsyncSelect
-      cacheOptions
-      defaultOptions
-      isClearable
-      isMulti
-      aria-label="Select teams"
-      components={{
-        DropdownIndicator: null,
-      }}
-      inputValue={teamSearchText}
-      isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
-      loadOptions={loadOptions}
-      maxMenuHeight={200}
-      placeholder={placeholder}
-      styles={reactSingleSelectCustomStyle}
-      onChange={(value) => handleSelectionChange(value as SelectableOption[])}
-      onInputChange={(newText) => {
-        setTeamSearchText(newText);
-      }}
-    />
+    <>
+      <AsyncSelect
+        cacheOptions
+        defaultOptions
+        isClearable
+        isMulti
+        aria-label="Select teams"
+        components={{
+          DropdownIndicator: null,
+        }}
+        inputValue={teamSearchText}
+        isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
+        loadOptions={loadOptions}
+        maxMenuHeight={200}
+        placeholder={placeholder}
+        styles={reactSingleSelectCustomStyle}
+        onChange={(value) => handleSelectionChange(value as SelectableOption[])}
+        onInputChange={(newText) => {
+          setTeamSearchText(newText);
+        }}
+      />
+      {noTeam && (
+        <div
+          className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
+          data-testid="toast">
+          <div className="tw-font-semibold tw-flex-shrink-0">
+            <SVGIcons alt="info" icon="info" title="Info" width="16px" />
+          </div>
+          <div className="tw-font-semibold tw-px-1">
+            There is no team available.
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

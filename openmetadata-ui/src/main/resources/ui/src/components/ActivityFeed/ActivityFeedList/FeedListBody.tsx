@@ -14,16 +14,24 @@
 import { Card } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
+import { useHistory } from 'react-router-dom';
+import {
+  ANNOUNCEMENT_BG,
+  ANNOUNCEMENT_BORDER,
+  TASK_BORDER,
+} from '../../../constants/feed.constants';
 import {
   Post,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
 
@@ -39,6 +47,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onConfirmation,
   updateThreadHandler,
 }) => {
+  const history = useHistory();
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
   };
@@ -89,6 +98,12 @@ const FeedListBody: FC<FeedListBodyProp> = ({
     );
   };
 
+  const handleCardClick = (taskId: number, isTask: boolean) => {
+    if (isTask) {
+      history.push(getTaskDetailPath(String(taskId)));
+    }
+  };
+
   return (
     <Fragment>
       {updatedFeedList
@@ -102,6 +117,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             reactions: feed.reactions,
           } as Post;
           const isTask = isEqual(feed.type, ThreadType.Task);
+          const isAnnouncement = feed.type === ThreadType.Announcement;
           const postLength = feed?.posts?.length || 0;
           const replies = feed.postsCount ? feed.postsCount - 1 : 0;
           const repliedUsers = [
@@ -122,15 +138,23 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 marginTop: '20px',
                 paddingTop: isTask ? '8px' : '',
                 border: isTask
-                  ? '1px solid #C6B5F6'
+                  ? `1px solid ${TASK_BORDER}`
+                  : isAnnouncement
+                  ? `1px solid ${ANNOUNCEMENT_BORDER}`
                   : leftPanelAntCardStyle.border,
-              }}>
+                background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
+              }}
+              onClick={() =>
+                feed.task && handleCardClick(feed.task.id, isTask)
+              }>
               {isTask && (
                 <TaskBadge status={feed.task?.status as ThreadTaskStatus} />
               )}
+              {isAnnouncement && <AnnouncementBadge />}
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
                   isThread
+                  announcementDetails={feed.announcement}
                   data-testid="main-message"
                   entityLink={feed.about}
                   feed={mainFeed}

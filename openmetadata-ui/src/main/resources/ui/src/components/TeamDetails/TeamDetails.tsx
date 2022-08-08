@@ -343,7 +343,7 @@ const TeamDetails = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(userPermissions[Operation.TeamEditUsers]) ? (
+                {isActionAllowed(userPermissions[Operation.EditUsers]) ? (
                   <>
                     <p>Would like to start adding some?</p>
                     <Button
@@ -580,7 +580,7 @@ const TeamDetails = ({
     <div
       className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
       data-testid="team-details-container">
-      {teams.length && !isEmpty(currentTeam) ? (
+      {teams && teams.length && !isEmpty(currentTeam) ? (
         <Fragment>
           <div
             className="tw-flex tw-justify-between tw-items-center"

@@ -15,13 +15,13 @@ package org.openmetadata.catalog.resources.policies;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.ALLOW;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,6 +29,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
@@ -43,23 +44,23 @@ import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
+import org.openmetadata.catalog.resources.policies.PolicyResource.ResourceDescriptorList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
+import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy> {
-
   private static final String LOCATION_NAME = "aws-s3";
   private static Location location;
 
@@ -72,6 +73,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
     location = createLocation();
+  }
+
+  public void setupPolicies() throws HttpResponseException {
+    POLICY1 = createEntity(createRequest("policy1"), ADMIN_AUTH_HEADERS);
+    POLICY2 = createEntity(createRequest("policy2"), ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -128,8 +134,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.EDIT_DESCRIPTION, true, 0));
-    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.EDIT_TAGS, true, 1));
+    rules.add(accessControlRule(List.of("all"), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW));
+    rules.add(accessControlRule(List.of("all"), List.of(MetadataOperation.EDIT_TAGS), ALLOW));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -138,31 +144,17 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
     // Adding a rule without operation should be disallowed
     String policyName = getEntityName(test);
-    String ruleName = "rule21";
     List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule(ruleName, null, null, null, true, 0));
-    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidPolicyOperationNull(ruleName, policyName));
-  }
+    rules.add(accessControlRule(List.of("all"), null, ALLOW));
+    CreatePolicy create1 = createAccessControlPolicyWithRules(policyName, rules);
+    assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[operations must not be null]");
 
-  @Test
-  void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
-    List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule("rule1", null, null, MetadataOperation.EDIT_DESCRIPTION, true, 0));
-    rules.add(PolicyUtils.accessControlRule("rule2", null, null, MetadataOperation.EDIT_TAGS, true, 1));
-    rules.add(PolicyUtils.accessControlRule("rule3", null, null, MetadataOperation.EDIT_TAGS, true, 1));
-    String policyName = getEntityName(test);
-    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format(
-            "Found multiple rules with operation EditTags within policy %s. "
-                + "Please ensure that operation across all rules within the policy are distinct",
-            policyName));
+    // Adding a rule without resources should be disallowed
+    policyName = getEntityName(test, 1);
+    rules = new ArrayList<>();
+    rules.add(accessControlRule(null, List.of(MetadataOperation.DELETE), ALLOW));
+    CreatePolicy create2 = createAccessControlPolicyWithRules(policyName, rules);
+    assertResponse(() -> createEntity(create2, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[resources must not be null]");
   }
 
   @Test
@@ -189,10 +181,17 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void get_policyResources() throws HttpResponseException {
     // Get list of policy resources and make sure it has all the entities and other resources
-    List<String> resources = getPolicyResources(ADMIN_AUTH_HEADERS);
-    List<String> entities = Entity.listEntities();
-    assertTrue(resources.containsAll(entities));
-    assertTrue(resources.contains("lineage"));
+    ResourceDescriptorList actualResourceDescriptors = getPolicyResources(ADMIN_AUTH_HEADERS);
+    assertNotNull(actualResourceDescriptors.getData());
+    System.out.println(actualResourceDescriptors.getData());
+
+    // Ensure all entities are captured in resource descriptor list
+    List<String> entities = Entity.getEntityList();
+    for (String entity : entities) {
+      ResourceDescriptor resourceDescriptor =
+          actualResourceDescriptors.getData().stream().filter(rd -> rd.getName().equals(entity)).findFirst().get();
+      assertNotNull(resourceDescriptor);
+    }
   }
 
   @Override
@@ -231,8 +230,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     return TestUtils.post(getResource("locations"), createLocation, Location.class, ADMIN_AUTH_HEADERS);
   }
 
-  public final List<String> getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
+  public final ResourceDescriptorList getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/resources");
-    return (List<String>) TestUtils.get(target, List.class, authHeaders);
+    return TestUtils.get(target, ResourceDescriptorList.class, authHeaders);
+  }
+
+  private static Rule accessControlRule(List<String> resources, List<MetadataOperation> operations, Effect effect) {
+    String name = "rule" + new Random().nextInt(21);
+    return new Rule().withName(name).withResources(resources).withOperations(operations).withEffect(effect);
   }
 }

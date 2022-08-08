@@ -85,7 +85,7 @@
       "pattern": "^<#E::\\S+::\\S+>$"
     },
     "entityName": {
-      "description": "Name that identifies this dashboard service.",
+      "description": "Name that identifies a entity.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128
@@ -107,7 +107,11 @@
     },
     "markdown": {
       "$comment" : "@om-field-type",
-      "description": "Text in Markdown format",
+      "description": "Text in Markdown format.",
+      "type": "string"
+    },
+    "expression": {
+      "description": "Expression in SpEL.",
       "type": "string"
     },
     "jsonSchema": {

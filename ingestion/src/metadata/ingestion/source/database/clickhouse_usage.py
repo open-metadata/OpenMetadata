@@ -17,31 +17,32 @@ import ast
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
 
 
 class ClickhouseUsageSource(UsageSource):
-    def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.sql_stmt = CLICKHOUSE_SQL_USAGE_STATEMENT.format(
             start_time=self.start, end_time=self.end
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: WorkflowConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ClickhouseConnection):
             raise InvalidSourceException(
                 f"Expected ClickhouseConnection, but got {connection}"
             )
-
         return cls(config, metadata_config)
 
     def get_schema_name(self, data: dict) -> str:

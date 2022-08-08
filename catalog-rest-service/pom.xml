@@ -95,7 +95,23 @@
           <groupId>com.google.code.findbugs</groupId>
           <artifactId>annotations</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>jetty-io</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.glassfish</groupId>
+          <artifactId>jakarta.el</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-io</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>jakarta.el</artifactId>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -166,7 +182,15 @@
           <groupId>org.apache.lucene</groupId>
           <artifactId>lucene-suggest</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.dataformat</groupId>
+          <artifactId>jackson-dataformat-cbor</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-cbor</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
@@ -356,7 +380,7 @@
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt</artifactId>
-      <version>0.9.1</version>
+      <version>${jjwt.version}</version>
     </dependency>
 
 
@@ -364,14 +388,14 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.19.1</version>
+      <version>${java-jwt.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.21.1</version>
+      <version>${jwks-rsa.version}</version>
     </dependency>
 
 
@@ -384,7 +408,7 @@
     <dependency>
       <groupId>io.github.artsok</groupId>
       <artifactId>rerunner-jupiter</artifactId>
-      <version>2.1.6</version>
+      <version>${rerunner-jupiter.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -409,10 +433,6 @@
       <artifactId>disruptor</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.jeasy</groupId>
-      <artifactId>easy-rules-core</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.socket</groupId>
       <artifactId>socket.io-server</artifactId>
       <version>4.0.1</version>
@@ -426,6 +446,11 @@
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
       <version>9.4.46.v20220331</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-expression</artifactId>
+      <version>${spring-expression.version}</version>
     </dependency>
     <dependency>
       <groupId>com.onelogin</groupId>
@@ -504,7 +529,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../docs/openmetadata-apis/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>
@@ -535,6 +560,22 @@
           <execution>
             <goals>
               <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.10.3</version>
+        <configuration>
+          <additionalparam>-Xdoclint:none</additionalparam>
+        </configuration>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
             </goals>
           </execution>
         </executions>

@@ -50,7 +50,7 @@
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a location in the form `serviceName.locationName`.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of a location.",

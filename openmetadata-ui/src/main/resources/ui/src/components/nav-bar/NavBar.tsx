@@ -11,23 +11,42 @@
  *  limitations under the License.
  */
 
-import { debounce } from 'lodash';
-import React, { useCallback, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Badge, Dropdown, Input, Space } from 'antd';
+import { debounce, toString } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link, NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getUserPath, ROUTES } from '../../constants/constants';
+import Logo from '../../assets/svg/logo-monogram.svg';
+import {
+  NOTIFICATION_READ_TIMER,
+  ROUTES,
+  SOCKET_EVENTS,
+} from '../../constants/constants';
+import {
+  hasNotificationPermission,
+  shouldRequestPermission,
+} from '../../utils/BrowserNotificationUtils';
+import {
+  getEntityFQN,
+  getEntityType,
+  prepareFeedLink,
+} from '../../utils/FeedUtils';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
+import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import PopOver from '../common/popover/PopOver';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
+import NotificationBox from '../NotificationBox/NotificationBox.component';
+import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import { NavBarProps } from './NavBar.interface';
 
 const NavBar = ({
@@ -40,15 +59,23 @@ const NavBar = ({
   pathname,
   username,
   isSearchBoxOpen,
-  hasNotification,
   handleSearchBoxOpen,
   handleFeatureModal,
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
 }: NavBarProps) => {
+  const history = useHistory();
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
+  const [hasTaskNotification, setHasTaskNotification] =
+    useState<boolean>(false);
+  const [hasMentionNotification, setHasMentionNotification] =
+    useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>('Task');
+
+  const { socket } = useWebSocketConnector();
+
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -66,7 +93,112 @@ const NavBar = ({
     debouncedOnChange,
   ]);
 
-  const currentUser = AppState.getCurrentUserDetails();
+  const handleTaskNotificationRead = () => {
+    setHasTaskNotification(false);
+  };
+
+  const handleMentionsNotificationRead = () => {
+    setHasMentionNotification(false);
+  };
+
+  const handleBellClick = (visible: boolean) => {
+    if (visible) {
+      switch (activeTab) {
+        case 'Task':
+          hasTaskNotification &&
+            setTimeout(() => {
+              handleTaskNotificationRead();
+            }, NOTIFICATION_READ_TIMER);
+
+          break;
+
+        case 'Conversation':
+          hasMentionNotification &&
+            setTimeout(() => {
+              handleMentionsNotificationRead();
+            }, NOTIFICATION_READ_TIMER);
+
+          break;
+      }
+    }
+  };
+
+  const handleActiveTab = (key: string) => {
+    setActiveTab(key);
+  };
+
+  const showBrowserNotification = (
+    about: string,
+    createdBy: string,
+    type: string,
+    id?: string
+  ) => {
+    if (!hasNotificationPermission()) {
+      return;
+    }
+    const entityType = getEntityType(about);
+    const entityFQN = getEntityFQN(about);
+    let body;
+    let path: string;
+    switch (type) {
+      case 'Task':
+        body = `${createdBy} assigned you a new task.`;
+        path = getTaskDetailPath(toString(id)).pathname;
+
+        break;
+      case 'Conversation':
+        body = `${createdBy} mentioned you in a comment.`;
+        path = prepareFeedLink(entityType as string, entityFQN as string);
+    }
+    const notification = new Notification('Notification From OpenMetadata', {
+      body: body,
+      icon: Logo,
+    });
+    notification.onclick = () => {
+      history.push(path);
+    };
+  };
+
+  useEffect(() => {
+    if (shouldRequestPermission()) {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          const activity = JSON.parse(newActivity);
+          setHasTaskNotification(true);
+          showBrowserNotification(
+            activity.about,
+            activity.createdBy,
+            activity.type,
+            activity.task?.id
+          );
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MENTION_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          const activity = JSON.parse(newActivity);
+          setHasMentionNotification(true);
+          showBrowserNotification(
+            activity.about,
+            activity.createdBy,
+            activity.type,
+            activity.task?.id
+          );
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+    };
+  }, [socket]);
 
   return (
     <>
@@ -78,7 +210,7 @@ const NavBar = ({
             </NavLink>
             <div className="tw-ml-5">
               <NavLink
-                className="tw-nav focus:tw-no-underline"
+                className="focus:tw-no-underline"
                 data-testid="appbar-item"
                 id="explore"
                 style={navStyle(pathname.startsWith('/explore'))}
@@ -97,21 +229,31 @@ const NavBar = ({
           <div
             className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
             data-testid="appbar-item">
-            <span
-              className="tw-cursor-pointer tw-absolute tw-right-2.5 tw-top-2 tw-block tw-z-40 tw-w-4 tw-h-4 tw-text-center"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleOnClick();
-              }}>
-              <SVGIcons alt="icon-search" icon={searchIcon} />
-            </span>
-            <input
+            <Input
               autoComplete="off"
-              className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs tw-ml-4"
+              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
               placeholder="Search for Table, Topics, Dashboards,Pipeline and ML Models"
+              style={{
+                borderRadius: '0.24rem',
+                boxShadow: 'none',
+                height: '37px',
+              }}
+              suffix={
+                <span
+                  className="tw-flex tw-items-center"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleOnClick();
+                  }}>
+                  <CmdKIcon />
+                  <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
+                    <SVGIcons alt="icon-search" icon={searchIcon} />
+                  </span>
+                </span>
+              }
               type="text"
               value={searchValue}
               onBlur={() => setSearchIcon('icon-searchv1')}
@@ -144,87 +286,96 @@ const NavBar = ({
               ))}
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">
-            <button className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 tw-relative tw-inline-block tw-flex tw-items-center">
-              <Link
-                to={`${getUserPath(
-                  currentUser?.name as string
-                )}/tasks?feedFilter=ASSIGNED_TO`}>
-                <SVGIcons
-                  alt="Alert bell icon"
-                  className="tw-align-middle tw-mr-2"
-                  icon={Icons.ALERT_BELL}
-                  width="20"
+            <Space size={24}>
+              <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
+                <Dropdown
+                  destroyPopupOnHide
+                  overlay={
+                    <NotificationBox
+                      hasMentionNotification={hasMentionNotification}
+                      hasTaskNotification={hasTaskNotification}
+                      onMarkMentionsNotificationRead={
+                        handleMentionsNotificationRead
+                      }
+                      onMarkTaskNotificationRead={handleTaskNotificationRead}
+                      onTabChange={handleActiveTab}
+                    />
+                  }
+                  overlayStyle={{
+                    zIndex: 9999,
+                    width: '425px',
+                    minHeight: '375px',
+                  }}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onVisibleChange={handleBellClick}>
+                  <Badge dot={hasTaskNotification || hasMentionNotification}>
+                    <SVGIcons
+                      alt="Alert bell icon"
+                      icon={Icons.ALERT_BELL}
+                      width="20"
+                    />
+                  </Badge>
+                </Dropdown>
+              </button>
+              <button
+                className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
+                data-testid="whatsnew-modal"
+                onClick={() => handleFeatureModal(true)}>
+                <SVGIcons alt="Doc icon" icon={Icons.WHATS_NEW} width="20" />
+              </button>
+              <button
+                className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
+                data-testid="tour">
+                <Link to={ROUTES.TOUR}>
+                  <SVGIcons alt="tour icon" icon={Icons.TOUR} width="20" />
+                </Link>
+              </button>
+              <div className="tw-flex tw-flex-shrink-0 tw--ml-2 tw-items-center ">
+                <DropDown
+                  dropDownList={supportDropdown}
+                  icon={
+                    <SVGIcons
+                      alt="Doc icon"
+                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
+                      icon={Icons.HELP_CIRCLE}
+                      width="20"
+                    />
+                  }
+                  isDropDownIconVisible={false}
+                  isLableVisible={false}
+                  label="Need Help"
+                  type="link"
                 />
-                {hasNotification ? <span className="tw-bell-badge" /> : null}
-              </Link>
-            </button>
-            <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
-              data-testid="whatsnew-modal"
-              onClick={() => handleFeatureModal(true)}>
-              <SVGIcons
-                alt="Doc icon"
-                className="tw-align-middle tw-mr-1"
-                icon={Icons.WHATS_NEW}
-                width="20"
-              />
-            </button>
-            <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
-              data-testid="tour">
-              <Link to={ROUTES.TOUR}>
-                <SVGIcons
-                  alt="tour icon"
-                  className="tw-align-middle tw-mr-0.5"
-                  icon={Icons.TOUR}
-                  width="20"
-                />
-              </Link>
-            </button>
-            <div className="tw-flex-shrink-0">
+              </div>
+            </Space>
+            <div data-testid="dropdown-profile">
               <DropDown
-                dropDownList={supportDropdown}
+                dropDownList={profileDropdown}
                 icon={
-                  <SVGIcons
-                    alt="Doc icon"
-                    className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                    icon={Icons.HELP_CIRCLE}
-                    width="20"
-                  />
+                  <>
+                    <PopOver
+                      position="bottom"
+                      title="Profile"
+                      trigger="mouseenter">
+                      {AppState?.userDetails?.profile?.images?.image512 ? (
+                        <div className="profile-image square tw--mr-2">
+                          <img
+                            alt="user"
+                            referrerPolicy="no-referrer"
+                            src={AppState.userDetails.profile.images.image512}
+                          />
+                        </div>
+                      ) : (
+                        <Avatar name={username} width="30" />
+                      )}
+                    </PopOver>
+                  </>
                 }
                 isDropDownIconVisible={false}
-                isLableVisible={false}
-                label="Need Help"
                 type="link"
               />
             </div>
-          </div>
-          <div data-testid="dropdown-profile">
-            <DropDown
-              dropDownList={profileDropdown}
-              icon={
-                <>
-                  <PopOver
-                    position="bottom"
-                    title="Profile"
-                    trigger="mouseenter">
-                    {AppState?.userDetails?.profile?.images?.image512 ? (
-                      <div className="profile-image square tw--mr-2">
-                        <img
-                          alt="user"
-                          referrerPolicy="no-referrer"
-                          src={AppState.userDetails.profile.images.image512}
-                        />
-                      </div>
-                    ) : (
-                      <Avatar name={username} width="30" />
-                    )}
-                  </PopOver>
-                </>
-              }
-              isDropDownIconVisible={false}
-              type="link"
-            />
           </div>
         </div>
         {isFeatureModalOpen && (

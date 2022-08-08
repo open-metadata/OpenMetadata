@@ -14,7 +14,7 @@
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.USAGE_SUMMARY}, 
-${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DASHBOARD} `;
+${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DASHBOARD} ,${TabSpecificField.EXTENSION}`;
 
 export const mlModelTabs = [
   {
@@ -31,8 +31,8 @@ export const mlModelTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Manage',
-    path: 'manage',
+    name: 'Custom Properties',
+    path: 'custom_properties',
   },
 ];
 
@@ -47,10 +47,11 @@ export const getCurrentMlModelTab = (tab: string) => {
       currentTab = 3;
 
       break;
-    case 'manage':
+    case 'custom_properties':
       currentTab = 4;
 
       break;
+
     case 'features':
       currentTab = 1;
 

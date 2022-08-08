@@ -13,7 +13,6 @@
 
 import classNames from 'classnames';
 import React, { FC } from 'react';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { MAX_LENGTH } from './RichTextEditorPreviewer';
 
 interface BlurLayoutProp {
@@ -51,12 +50,7 @@ export const BlurLayout: FC<BlurLayoutProp> = ({
         data-testid="display-button"
         onClick={displayMoreHandler}>
         <span className="tw-flex tw-items-center tw-gap-2">
-          <SVGIcons
-            alt="expand-collapse"
-            className={classNames({ 'rotate-inverse': displayMoreText })}
-            icon={Icons.CHEVRON_DOWN}
-            width="32"
-          />
+          {displayMoreText ? 'Read less' : 'Read more'}
         </span>
       </p>
     </div>

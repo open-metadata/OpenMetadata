@@ -20,17 +20,11 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
-
-# This import verifies that the dependencies are available.
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_start_and_end
@@ -42,15 +36,6 @@ SNOWFLAKE_ABORTED_CODE = "1969"
 
 
 class SnowflakeUsageSource(UsageSource):
-    # CONFIG KEYS
-    WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
-    CLUSTER_SOURCE = "cluster_source"
-    CLUSTER_KEY = "cluster_key"
-    USE_CATALOG_AS_CLUSTER_NAME = "use_catalog_as_cluster_name"
-    DATABASE_KEY = "database_key"
-    SERVICE_TYPE = DatabaseServiceType.Snowflake.value
-    DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
-
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
 

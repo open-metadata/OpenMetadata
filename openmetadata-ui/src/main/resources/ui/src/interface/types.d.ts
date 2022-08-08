@@ -408,6 +408,14 @@ declare module 'Models' {
     | 'pipelineServices'
     | 'mlmodelServices';
 
+  export type ServiceCategory = {
+    databases: string;
+    messaging: string;
+    dashboards: string;
+    pipelines: string;
+    mlModels: string;
+  };
+
   export type SampleData = {
     columns: Array<string>;
     rows: Array<Array<string>>;
@@ -483,6 +491,7 @@ declare module 'Models' {
     fqn: string;
     serviceType?: string;
     timestamp: number;
+    id: number;
   }
 
   interface RecentlySearchedData {
@@ -574,7 +583,7 @@ declare module 'Models' {
     EditDescription: boolean;
     EditLineage: boolean;
     EditTags: boolean;
-    TeamEditUsers: boolean;
+    EditUsers: boolean;
   }
   export interface EditorContentRef {
     getEditorContent: () => string;

@@ -43,6 +43,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
@@ -76,7 +77,12 @@ public class PipelineServiceResource
   }
 
   public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(PipelineService.class, new PipelineServiceRepository(dao, secretsManager), authorizer, secretsManager);
+    super(
+        PipelineService.class,
+        new PipelineServiceRepository(dao, secretsManager),
+        authorizer,
+        secretsManager,
+        ServiceType.PIPELINE);
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {
@@ -347,7 +353,7 @@ public class PipelineServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private PipelineService getService(CreatePipelineService create, String user) {
+  private PipelineService getService(CreatePipelineService create, String user) throws IOException {
     return copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

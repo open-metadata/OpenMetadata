@@ -84,6 +84,7 @@ const jsonData = {
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
     'fetch-logged-in-user-error': 'Error while fetching logged-in user!',
+    'fetch-notifications-error': 'Error occurred while fetching notifications',
     'fetch-pipeline-details-error': 'Error while fetching pipeline details!',
     'fetch-pipeline-status-error': 'Error while fetching pipeline status!',
     'fetch-policy-error': 'Error while fetching policy details!',
@@ -152,6 +153,8 @@ const jsonData = {
     'delete-glossary-success': 'Glossary deleted successfully!',
     'delete-glossary-term-success': 'Glossary term deleted successfully!',
     'test-connection-success': 'Connection tested successfully!',
+
+    'user-restored-success': 'User restored successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',

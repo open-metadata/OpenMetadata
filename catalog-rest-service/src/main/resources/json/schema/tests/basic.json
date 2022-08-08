@@ -9,8 +9,8 @@
       "javaType": "org.openmetadata.catalog.tests.type.TestCaseResult",
       "type": "object",
       "properties": {
-        "executionTime": {
-          "description": "Data one which profile is taken.",
+        "timestamp": {
+          "description": "Data one which test case result is taken.",
           "$ref": "../type/basic.json#/definitions/timestamp"
         },
         "testCaseStatus": {
@@ -41,9 +41,9 @@
       },
       "additionalProperties": false
     },
-    "testCaseExecutionFrequency": {
+    "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",
-      "javaType": "org.openmetadata.catalog.tests.type.TestCaseExecutionFrequency",
+      "javaType": "org.openmetadata.catalog.tests.type.TestSuiteExecutionFrequency",
       "type": "string",
       "enum": ["Hourly", "Daily", "Weekly"],
       "javaEnums": [

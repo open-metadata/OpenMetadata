@@ -45,6 +45,16 @@ public class OpenMetadata {
   private final String requestInterceptorKey = "custom";
 
   public OpenMetadata(OpenMetadataServerConnection config) {
+    initClient(config);
+    validateVersion();
+  }
+
+  public OpenMetadata(OpenMetadataServerConnection config, boolean validateVersion) {
+    initClient(config);
+    if (validateVersion) validateVersion();
+  }
+
+  public void initClient(OpenMetadataServerConnection config) {
     serverConfig = config;
     apiClient = new ApiClient();
     Feign.Builder builder =
@@ -59,7 +69,6 @@ public class OpenMetadata {
     basePath = config.getHostPort() + "/";
     apiClient.setBasePath(basePath);
     apiClient.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
-    validateVersion();
   }
 
   public <T extends ApiClient.Api> T buildClient(Class<T> clientClass) {
@@ -91,9 +100,12 @@ public class OpenMetadata {
   }
 
   public void validateVersion() {
-    String clientVersion = getClientVersion();
-    String serverVersion = getServerVersion();
-    if (serverVersion.equals(clientVersion)) {
+    String[] clientVersion = getClientVersion();
+    String[] serverVersion = getServerVersion();
+    // MAJOR MINOR REVISION
+    if (serverVersion[0].equals(clientVersion[0])
+        && serverVersion[1].equals(clientVersion[1])
+        && serverVersion[2].equals(clientVersion[2])) {
       LOG.debug("OpenMetaData Client Initialized successfully.");
     } else {
       LOG.error(
@@ -101,13 +113,13 @@ public class OpenMetadata {
     }
   }
 
-  public String getServerVersion() {
+  public String[] getServerVersion() {
     CatalogApi api = apiClient.buildClient(CatalogApi.class);
     io.swagger.client.model.CatalogVersion serverVersion = api.getCatalogVersion();
     return VersionUtils.getVersionFromString(serverVersion.getVersion());
   }
 
-  public String getClientVersion() {
+  public String[] getClientVersion() {
     return VersionUtils.getVersionFromString(CATALOG_VERSION_CLIENT.getVersion());
   }
 }

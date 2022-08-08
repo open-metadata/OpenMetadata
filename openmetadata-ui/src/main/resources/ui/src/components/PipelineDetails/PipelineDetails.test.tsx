@@ -122,9 +122,10 @@ const PipelineDetailsProps = {
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
-  pipelineStatus: [],
+  pipelineStatus: {},
   isPipelineStatusLoading: false,
   updateThreadHandler: jest.fn(),
+  onExtensionUpdate: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -134,10 +135,6 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: mockObserve,
   unobserve: mockunObserve,
 }));
-
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
-});
 
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
@@ -209,7 +206,6 @@ describe('Test PipelineDetails component', () => {
     const detailsTab = await findByTestId(tabs, 'Details');
     const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
     const lineageTab = await findByTestId(tabs, 'Lineage');
-    const manageTab = await findByTestId(tabs, 'Manage');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -217,7 +213,6 @@ describe('Test PipelineDetails component', () => {
     expect(detailsTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
   });
 
   it('Check if active tab is details', async () => {
@@ -272,16 +267,19 @@ describe('Test PipelineDetails component', () => {
     expect(lineage).toBeInTheDocument();
   });
 
-  it('Check if active tab is manage', async () => {
+  it('Check if active tab is custom properties', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const manage = await findByTestId(container, 'manage');
+    const customProperties = await findByTestId(
+      container,
+      'custom-properties-table'
+    );
 
-    expect(manage).toBeInTheDocument();
+    expect(customProperties).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

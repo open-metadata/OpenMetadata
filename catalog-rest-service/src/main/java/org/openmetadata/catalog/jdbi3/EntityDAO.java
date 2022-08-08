@@ -150,6 +150,7 @@ public interface EntityDAO<T extends EntityInterface> {
     Class<T> clz = getEntityClass();
     T entity = null;
     if (json != null) {
+
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
