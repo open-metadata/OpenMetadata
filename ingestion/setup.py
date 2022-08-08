@@ -46,7 +46,6 @@ base_requirements = {
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
-    "requests-aws4auth==1.1.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",
@@ -82,7 +81,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
-    "elasticsearch": {"elasticsearch==7.13.1"},
+    "elasticsearch": {"elasticsearch==7.13.1", "requests-aws4auth==1.1.2"},
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
     "hive": {
