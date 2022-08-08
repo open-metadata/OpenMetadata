@@ -51,7 +51,10 @@ export const createTagCategory = async (data: TagsCategory) => {
   return response.data;
 };
 export const updateTagCategory = async (name: string, data: TagsCategory) => {
-  const response = await APIClient.put<TagCategory>(`/tags/${name}`, data);
+  const response = await APIClient.put<
+    TagsCategory,
+    AxiosResponse<TagCategory>
+  >(`/tags/${name}`, data);
 
   return response.data;
 };
