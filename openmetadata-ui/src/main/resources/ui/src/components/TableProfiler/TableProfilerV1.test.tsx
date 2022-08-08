@@ -12,8 +12,15 @@
  */
 
 // Library imports
-import { cleanup, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
+import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internel imports
 import TableProfilerV1 from './TableProfilerV1';
@@ -59,7 +66,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   formTwoDigitNmber: jest.fn(),
 }));
-// const mockGetCurrentDatasetTab = getCurrentDatasetTab as jest.Mock;
+const mockGetCurrentDatasetTab = getCurrentDatasetTab as jest.Mock;
 
 const mockProps: TableProfilerProps = {
   columns: [],
@@ -134,5 +141,39 @@ describe('Test TableProfiler component', () => {
     );
 
     expect(noProfiler).toBeInTheDocument();
+  });
+
+  it('CTA: Add table test should work properly', async () => {
+    render(<TableProfilerV1 {...mockProps} />);
+
+    const addTableTest = await screen.findByTestId(
+      'profiler-add-table-test-btn'
+    );
+
+    expect(addTableTest).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(addTableTest);
+    });
+
+    expect(mockProps.onAddTestClick).toHaveBeenCalledTimes(1);
+    expect(mockGetCurrentDatasetTab).toHaveBeenCalledTimes(1);
+  });
+
+  it('CTA: Setting button should work properly', async () => {
+    const setSettingModalVisible = jest.fn();
+    const handleClick = jest.spyOn(React, 'useState');
+    handleClick.mockImplementation(() => [false, setSettingModalVisible]);
+    render(<TableProfilerV1 {...mockProps} />);
+
+    const settingBtn = await screen.findByTestId('profiler-setting-btn');
+
+    expect(settingBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(settingBtn);
+    });
+
+    expect(setSettingModalVisible).toHaveBeenCalledTimes(1);
   });
 });
