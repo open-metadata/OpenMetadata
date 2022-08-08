@@ -179,8 +179,11 @@ class ElasticsearchSink(Sink[Entity]):
         )
         if self.config.use_AWS_credentials:
             credentials = boto3.Session().get_credentials()
+            region_from_boto3 = boto3.Session().region_name()
             http_auth = AWS4Auth(
-                region=self.config.region_name,
+                region=region_from_boto3
+                if region_from_boto3
+                else self.config.region_name,
                 service="es",
                 refreshable_credentials=credentials,
             )
