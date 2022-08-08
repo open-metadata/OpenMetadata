@@ -18,6 +18,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
+import './ManageButton.less';
 
 interface Props {
   allowSoftDelete?: boolean;
@@ -55,10 +56,10 @@ const ManageButton: FC<Props> = ({
                 setIsDelete(true);
                 setShowActions(false);
               }}>
-              <SVGIcons alt="Delete" icon={Icons.DELETE_GRADIANT} />
+              <SVGIcons alt="Delete" icon={Icons.DELETE} />
               <div className="tw-text-left" data-testid="delete-button">
                 <p className="tw-font-medium" data-testid="delete-button-title">
-                  Delete {entityType} {entityName}
+                  Delete {entityType}
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs">
                   Deleting this {entityType} will permanently remove its
@@ -81,11 +82,14 @@ const ManageButton: FC<Props> = ({
                       setShowActions(false);
                       onAnnouncementClick && onAnnouncementClick();
                     }}>
-                    <SVGIcons alt="Delete" icon={Icons.ANNOUNCEMENT} />
+                    <SVGIcons
+                      alt="announcement"
+                      icon={Icons.ANNOUNCEMENT_BLACK}
+                    />
                     <div
                       className="tw-text-left"
                       data-testid="announcement-button">
-                      <p className="tw-font-medium">Manage Announcement</p>
+                      <p className="tw-font-medium">Announcements</p>
                       <p className="tw-text-grey-muted tw-text-xs">
                         Set up banners to inform your team of upcoming
                         maintenance, updates, &amp; deletions.
@@ -107,7 +111,7 @@ const ManageButton: FC<Props> = ({
         arrow
         align={{ targetOffset: [-12, 8] }}
         overlay={menu}
-        overlayStyle={{ width: '400px' }}
+        overlayStyle={{ width: '350px' }}
         placement="bottomRight"
         trigger={['click']}
         visible={showActions}
