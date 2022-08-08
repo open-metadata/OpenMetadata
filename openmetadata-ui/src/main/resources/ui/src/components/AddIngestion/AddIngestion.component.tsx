@@ -127,9 +127,6 @@ const AddIngestion = ({
       (data?.sourceConfig.config as ConfigClass)?.pipelineFilterPattern
     )
   );
-  const [showFqnFilter, setShowFqnFilter] = useState(
-    !isUndefined((data?.sourceConfig.config as ConfigClass)?.fqnFilterPattern)
-  );
   const configData = useMemo(
     () =>
       (data?.sourceConfig.config as DatabaseServiceMetadataPipelineClass)
@@ -206,10 +203,6 @@ const AddIngestion = ({
       (data?.sourceConfig.config as ConfigClass)?.pipelineFilterPattern ??
         INITIAL_FILTER_PATTERN
     );
-  const [fqnFilterPattern, setFqnFilterPattern] = useState<FilterPattern>(
-    (data?.sourceConfig.config as ConfigClass)?.fqnFilterPattern ??
-      INITIAL_FILTER_PATTERN
-  );
 
   const [queryLogDuration, setQueryLogDuration] = useState<number>(
     (data?.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
@@ -262,10 +255,6 @@ const AddIngestion = ({
         setChartFilterPattern({ ...chartFilterPattern, includes: value });
 
         break;
-      case FilterPatternEnum.FQN:
-        setFqnFilterPattern({ ...fqnFilterPattern, includes: value });
-
-        break;
       case FilterPatternEnum.PIPELINE:
         setPipelineFilterPattern({ ...pipelineFilterPattern, includes: value });
 
@@ -301,10 +290,6 @@ const AddIngestion = ({
         setChartFilterPattern({ ...chartFilterPattern, excludes: value });
 
         break;
-      case FilterPatternEnum.FQN:
-        setFqnFilterPattern({ ...fqnFilterPattern, excludes: value });
-
-        break;
       case FilterPatternEnum.PIPELINE:
         setPipelineFilterPattern({ ...pipelineFilterPattern, excludes: value });
 
@@ -336,10 +321,6 @@ const AddIngestion = ({
         break;
       case FilterPatternEnum.CHART:
         setShowChartFilter(value);
-
-        break;
-      case FilterPatternEnum.FQN:
-        setShowFqnFilter(value);
 
         break;
       case FilterPatternEnum.PIPELINE:
@@ -469,10 +450,19 @@ const AddIngestion = ({
       }
       case PipelineType.Profiler: {
         return {
-          fqnFilterPattern: getFilterPatternData(
-            fqnFilterPattern,
-            showFqnFilter
+          databaseFilterPattern: getFilterPatternData(
+            databaseFilterPattern,
+            showDatabaseFilter
           ),
+          schemaFilterPattern: getFilterPatternData(
+            schemaFilterPattern,
+            showSchemaFilter
+          ),
+          tableFilterPattern: getFilterPatternData(
+            tableFilterPattern,
+            showTableFilter
+          ),
+
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
           profileSample: profileSample,
@@ -624,7 +614,6 @@ const AddIngestion = ({
             databaseServiceName={databaseServiceName}
             description={description}
             enableDebugLog={enableDebugLog}
-            fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
             handleDatasetServiceName={(val) => setDatabaseServiceName(val)}
@@ -658,7 +647,6 @@ const AddIngestion = ({
             showChartFilter={showChartFilter}
             showDashboardFilter={showDashboardFilter}
             showDatabaseFilter={showDatabaseFilter}
-            showFqnFilter={showFqnFilter}
             showPipelineFilter={showPipelineFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}

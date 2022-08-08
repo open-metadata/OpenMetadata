@@ -10,7 +10,9 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 ## Properties
 
 - **`type`**: Pipeline type. Refer to *#/definitions/profilerConfigType*. Default: `Profiler`.
-- **`fqnFilterPattern`**: Regex to only fetch tables with FQN matching the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`databaseFilterPattern`**: Regex to only fetch database with database name matching the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`schemaFilterPattern`**: Regex to only fetch schema with schema name matching the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`tableFilterPattern`**: Regex to only fetch tables with table name matching the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`generateSampleData`** *(boolean)*: Option to turn on/off generating sample data. Default: `True`.
 ## Definitions
 
