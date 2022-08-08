@@ -13,7 +13,6 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Any, Iterable, List, Optional
 
 from pydantic import BaseModel
@@ -136,7 +135,6 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
-@dataclass
 class DashboardSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
