@@ -8,8 +8,8 @@ I worked on the ..... because ...
 - [x] Bug fix
 - [x] Improvement
 - [x] New feature
-- [] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [] Documentation
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation
 
 #
 ### Frontend Preview (Screenshots) :
