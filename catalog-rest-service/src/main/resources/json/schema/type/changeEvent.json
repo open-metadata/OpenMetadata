@@ -5,7 +5,6 @@
   "description": "This schema defines the change event type to capture the changes to entities. Entities change due to user activity, such as updating description of a dataset, changing ownership, or adding new tags. Entity also changes due to activities at the metadata sources, such as a new dataset was created, a datasets was deleted, or schema of a dataset is modified. When state of entity changes, an event is produced. These events can be used to build apps and bots that respond to the change from activities.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.ChangeEvent",
-
   "definitions": {
     "eventType": {
       "javaType": "org.openmetadata.catalog.type.EventType",
@@ -17,6 +16,85 @@
         "entitySoftDeleted",
         "entityDeleted"
       ]
+    },
+    "eventFiltersType": {
+      "javaType": "org.openmetadata.catalog.filter.FiltersType",
+      "description": "This schema defines all possible filters enum in OpenMetadata.",
+      "type": "string",
+      "enum": [
+        "all",
+        "followEntity",
+        "unfollowEntity",
+        "updatedescription",
+        "updatetags",
+        "updateowner",
+        "updatetier",
+        "addtags",
+        "removetags",
+        "testcases",
+        "usagesummary",
+        "sampledata",
+        "queries",
+        "excludeFromBots",
+        "updateEventFilters"
+      ]
+    },
+    "basicFilter": {
+      "javaType": "org.openmetadata.catalog.filter.BasicFilter",
+      "description": "Represents a basic filter which has a Name and a flag to indicate if enabled",
+      "type": "object",
+      "properties": {
+        "filterType": {
+          "description": "Type of the filter",
+          "$ref": "#/definitions/eventFiltersType"
+        },
+        "enabled": {
+          "description": "Is the Filter Enabled",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": ["filterType"],
+      "additionalProperties": false
+    },
+    "eventFilter": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.filter.EventFilter",
+      "properties": {
+        "eventType": {
+          "description": "Event type that is being requested.",
+          "$ref": "#/definitions/eventType"
+        },
+        "events": {
+          "description": "Field on which to apply the filter on",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/basicFilter"
+          }
+        }
+      },
+      "required": ["eventType"],
+      "additionalProperties": false
+    },
+    "entityFilter": {
+      "javaType": "org.openmetadata.catalog.filter.EntityFilter",
+      "description": "Represents a Filter attached to a entity.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "description": "Entity type for filter , example : topic , table, dashboard, mlmodel , etc",
+          "type": "string"
+        },
+        "eventFilter": {
+          "description": "List of operations supported by the resource.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/eventFilter"
+          }
+        }
+      },
+      "required": ["entityType"],
+      "additionalProperties": false
     }
   },
   "properties": {

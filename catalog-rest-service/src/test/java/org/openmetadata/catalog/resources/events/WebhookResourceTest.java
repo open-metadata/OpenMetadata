@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -33,7 +34,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.events.CreateWebhook;
-import org.openmetadata.catalog.filter.*;
+import org.openmetadata.catalog.filter.BasicFilter;
+import org.openmetadata.catalog.filter.EntityFilter;
+import org.openmetadata.catalog.filter.EventFilter;
+import org.openmetadata.catalog.filter.FiltersType;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource.EventDetails;
 import org.openmetadata.catalog.resources.events.WebhookResource.WebhookList;
@@ -196,13 +200,11 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
         new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEvents(List.of(allowAllFilter));
     EventFilter deleteFilter =
         new EventFilter().withEventType(EventType.ENTITY_DELETED).withEvents(List.of(allowAllFilter));
-    EventFilter softDeleteFilter =
-        new EventFilter().withEventType(EventType.ENTITY_SOFT_DELETED).withEvents(List.of(allowAllFilter));
 
     EntityFilter f1 = new EntityFilter().withEntityType("*").withEventFilter(List.of(createFilter));
-    EntityFilter f2 = new EntityFilter().withEntityType("*").withEventFilter(List.of(updateFilter));
-    EntityFilter f3 = new EntityFilter().withEntityType("*").withEventFilter(List.of(deleteFilter));
-    EntityFilter f4 = new EntityFilter().withEntityType("*").withEventFilter(List.of(softDeleteFilter));
+    EntityFilter f2 = new EntityFilter().withEntityType("*").withEventFilter(List.of(createFilter, updateFilter, deleteFilter));
+    EntityFilter f3 = new EntityFilter().withEntityType("*").withEventFilter(List.of(updateFilter, deleteFilter));
+    EntityFilter f4 = new EntityFilter().withEntityType("*").withEventFilter(List.of(updateFilter));
 
     CreateWebhook create =
         createRequest("filterUpdate", "", "", null)
@@ -212,21 +214,24 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Now update the filter to include entity updated and deleted events
-    create.setEventFilters(List.of(f1, f2, f3));
+    create.setEventFilters(List.of(f2));
     ChangeDescription change = getChangeDescription(webhook.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f2, f3, f4)));
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f2)));
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f1)).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityCreated
-    create.setEventFilters(List.of(f2, f3));
+    create.setEventFilters(List.of(f3));
     change = getChangeDescription(webhook.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f1)));
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f3)));
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f2)).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Now remove the filter for entityDeleted
-    create.setEventFilters(List.of(f2));
+    create.setEventFilters(List.of(f4));
     change = getChangeDescription(webhook.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f3, f4)));
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f4)));
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f3)).withNewValue(null));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
@@ -249,14 +254,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
       throws HttpResponseException {
     assertEquals(createRequest.getName(), webhook.getName());
     List<EntityFilter> filters = createRequest.getEventFilters();
-    // EntityUtil.addSoftDeleteFilter(filters);
     assertEquals(filters, webhook.getEventFilters());
-
-    //    //
-    //    assertEquals(createRequest.getName(), webhook.getName());
-    //    ArrayList<EventFilter> filters = new ArrayList<>(createRequest.getEventFilters());
-    //    EntityUtil.addSoftDeleteFilter(filters);
-    //    assertEquals(filters, webhook.getEventFilters());
   }
 
   @Override
@@ -276,8 +274,9 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
       return;
     }
     if (fieldName.equals("eventFilters")) {
-      Filter expectedFilters = (Filter) expected;
-      Filter actualFilters = JsonUtils.readValue(actual.toString(), Filter.class);
+      List<EntityFilter> expectedFilters = (List<EntityFilter>) expected;
+      List<EntityFilter> actualFilters =
+          JsonUtils.readValue(actual.toString(), new TypeReference<ArrayList<EntityFilter>>() {});
       assertTrue(expectedFilters.equals(actualFilters));
     } else if (fieldName.equals("endPoint")) {
       URI expectedEndpoint = (URI) expected;

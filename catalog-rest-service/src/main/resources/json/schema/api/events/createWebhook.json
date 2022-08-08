@@ -29,7 +29,7 @@
       "description": "Event filters to filter for desired events.",
       "type": "array",
       "items": {
-        "$ref": "../../filter/filter.json#/definitions/entityFilter"
+        "$ref": "../../type/changeEvent.json#/definitions/entityFilter"
       }
     },
     "batchSize": {
