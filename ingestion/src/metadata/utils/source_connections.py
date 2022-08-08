@@ -87,6 +87,8 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
 
+CX_ORACLE_LIB_VERSION = "8.3.0"
+
 
 class OracleConnectionError(Exception):
     """
@@ -158,6 +160,15 @@ def _(connection: MssqlConnection):
 
 @get_connection_url.register
 def _(connection: OracleConnection):
+    # Patching the cx_Oracle module with oracledb lib
+    # to work take advantage of the thin mode of oracledb
+    # which doesn't require the oracle client libs to be installed
+    import sys
+
+    import oracledb
+
+    oracledb.version = CX_ORACLE_LIB_VERSION
+    sys.modules["cx_Oracle"] = oracledb
     if connection.oracleServiceName and connection.databaseSchema:
         raise OracleConnectionError(
             "Please pass either Service Name or Database Schema not both"
