@@ -28,7 +28,7 @@ import { ConfigureIngestionProps } from '../addIngestion.interface';
 const ConfigureIngestion = ({
   ingestionName,
   description = '',
-  databaseServiceName,
+  databaseServiceNames,
   databaseFilterPattern,
   dashboardFilterPattern,
   schemaFilterPattern,
@@ -257,6 +257,16 @@ const ConfigureIngestion = ({
     );
   };
 
+  const handleDashBoardServiceNames = (inputValue: string) => {
+    const separator = ',';
+
+    const databaseNames = inputValue.includes(separator)
+      ? inputValue.split(separator)
+      : Array(inputValue);
+
+    if (databaseNames) handleDatasetServiceName(databaseNames);
+  };
+
   const getDashboardDBServiceName = () => {
     return (
       <Field>
@@ -272,8 +282,8 @@ const ConfigureIngestion = ({
           id="name"
           name="name"
           type="text"
-          value={databaseServiceName}
-          onChange={(e) => handleDatasetServiceName(e.target.value)}
+          value={databaseServiceNames}
+          onChange={(e) => handleDashBoardServiceNames(e.target.value)}
         />
         {getSeparator('')}
       </Field>
