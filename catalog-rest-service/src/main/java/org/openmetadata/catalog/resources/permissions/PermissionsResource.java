@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -28,7 +29,8 @@ import lombok.NonNull;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.Permissions;
+import org.openmetadata.catalog.type.ResourcePermission;
+import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/permissions")
 @Api(value = "Get permissions")
@@ -50,9 +52,21 @@ public class PermissionsResource {
         @ApiResponse(
             responseCode = "200",
             description = "Permissions for logged in user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Permissions.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResourcePermissionList.class)))
       })
-  public Permissions getPermissions(@Context SecurityContext securityContext) {
-    return new Permissions(authorizer.listPermissions(securityContext));
+  public ResultList<ResourcePermission> getPermissions(@Context SecurityContext securityContext) {
+    return new ResourcePermissionList(authorizer.listPermissions(securityContext));
+  }
+
+  static class ResourcePermissionList extends ResultList<ResourcePermission> {
+    @SuppressWarnings("unused")
+    public ResourcePermissionList() {}
+
+    public ResourcePermissionList(List<ResourcePermission> data) {
+      super(data, null, null, data.size());
+    }
   }
 }
