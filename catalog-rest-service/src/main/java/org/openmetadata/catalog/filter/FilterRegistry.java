@@ -5,7 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.catalog.type.EventType;
 
 public class FilterRegistry {
-  private static final ConcurrentHashMap<String, Map<EventType, List<BasicFilter>>> FILTERS_MAP = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Map<EventType, List<BasicFilter>>> FILTERS_MAP =
+      new ConcurrentHashMap<>();
+
   private FilterRegistry() {}
 
   public static void add(List<EntityFilter> f) {
@@ -17,8 +19,7 @@ public class FilterRegistry {
             if (entityfilter.getEventFilter() != null) {
               entityfilter
                   .getEventFilter()
-                  .forEach(
-                      (eventFilter) -> eventFilterMap.put(eventFilter.getEventType(), eventFilter.getEvents()));
+                  .forEach((eventFilter) -> eventFilterMap.put(eventFilter.getEventType(), eventFilter.getEvents()));
             }
             FILTERS_MAP.put(entityType, eventFilterMap);
           });
@@ -27,8 +28,7 @@ public class FilterRegistry {
 
   public static List<Map<EventType, List<BasicFilter>>> listAllFilters() {
     List<Map<EventType, List<BasicFilter>>> filterList = new ArrayList<>();
-    FILTERS_MAP.forEach(
-        (key, value) -> filterList.add(value));
+    FILTERS_MAP.forEach((key, value) -> filterList.add(value));
     return filterList;
   }
 

@@ -3,7 +3,6 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.compareEntityFilter;
 import static org.openmetadata.catalog.util.EntityUtil.compareEventFilter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,17 +87,15 @@ public class SettingsRepository {
 
   private void checkDuplicateFilters(List<EntityFilter> newfilters, List<EntityFilter> existingFilters) {
     checkDuplicateFilters(newfilters);
-    newfilters
-        .forEach(
-            (newFilter) -> {
-              boolean duplicateFound =
-                  existingFilters.stream()
-                      .anyMatch(
-                          (existingFilter) -> existingFilter.getEntityType().equals(newFilter.getEntityType()));
-              if (duplicateFound) {
-                throw new RuntimeException("Filters for the Entity already exists, you need to add filters to entity.");
-              }
-            });
+    newfilters.forEach(
+        (newFilter) -> {
+          boolean duplicateFound =
+              existingFilters.stream()
+                  .anyMatch((existingFilter) -> existingFilter.getEntityType().equals(newFilter.getEntityType()));
+          if (duplicateFound) {
+            throw new RuntimeException("Filters for the Entity already exists, you need to add filters to entity.");
+          }
+        });
   }
 
   public Response addNewFilterToEntity(String entityType, List<EventFilter> filters) {
