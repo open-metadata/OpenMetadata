@@ -130,6 +130,7 @@ import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlusPrimery from '../assets/svg/plus-primery.svg';
 import IconPlus from '../assets/svg/plus.svg';
+import IconPolicies from '../assets/svg/policies.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
@@ -325,6 +326,7 @@ export const Icons = {
   TASK_OPEN: 'task-open',
   FOREGIN_KEY: 'foreign-key',
   ROLE_GREY: 'role-grey',
+  POLICIES: 'policies',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -950,6 +952,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.FOREGIN_KEY:
       IconComponent = IconForeignKey;
+
+      break;
+    case Icons.POLICIES:
+      IconComponent = IconPolicies;
 
       break;
 

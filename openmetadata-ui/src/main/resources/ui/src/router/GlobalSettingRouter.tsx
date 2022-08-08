@@ -35,9 +35,24 @@ const CustomPropertiesPageV1 = withSuspenseFallback(
     () => import('../pages/CustomPropertiesPage/CustomPropertiesPageV1')
   )
 );
-const RolesPageComponent = withSuspenseFallback(
-  React.lazy(() => import('../pages/RolesPage/RolesPage.component'))
+const RolesListPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/RolesPage/RolesListPage/RolesListPage'))
 );
+const RolesDetailPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/RolesPage/RolesDetailPage/RolesDetailPage'))
+);
+
+const PoliciesDetailPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
+  )
+);
+const PoliciesListPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
+  )
+);
+
 const UserListPageV1 = withSuspenseFallback(
   React.lazy(() => import('../pages/UserListPage/UserListPageV1'))
 );
@@ -72,10 +87,36 @@ const GlobalSettingRouter = () => {
       />
       <Route
         exact
-        component={RolesPageComponent}
+        component={RolesListPage}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
+        )}
+      />
+      <Route
+        exact
+        component={RolesDetailPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.ROLES,
+          true
+        )}
+      />
+      <Route
+        exact
+        component={PoliciesListPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.POLICIES
+        )}
+      />
+      <Route
+        exact
+        component={PoliciesDetailPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.POLICIES,
+          true
         )}
       />
       <Route
