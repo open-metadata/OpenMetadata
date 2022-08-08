@@ -59,7 +59,7 @@ const ManageButton: FC<Props> = ({
               <SVGIcons alt="Delete" icon={Icons.DELETE} />
               <div className="tw-text-left" data-testid="delete-button">
                 <p className="tw-font-medium" data-testid="delete-button-title">
-                  Delete {entityType}
+                  Delete
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs">
                   Deleting this {entityType} will permanently remove its
