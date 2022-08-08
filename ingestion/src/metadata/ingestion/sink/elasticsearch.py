@@ -16,8 +16,10 @@ import traceback
 from datetime import datetime
 from typing import List, Optional
 
-from elasticsearch import Elasticsearch
+import boto3
+from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.connection import create_ssl_context
+from requests_aws4auth import AWS4Auth
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -128,6 +130,8 @@ class ElasticSearchConfig(ConfigModel):
     timeout: int = 30
     ca_certs: Optional[str] = None
     recreate_indexes: Optional[bool] = False
+    use_AWS_credentials: Optional[bool] = False
+    region_name: str = "us-east-1"
 
 
 class ElasticsearchSink(Sink[Entity]):
@@ -162,17 +166,39 @@ class ElasticsearchSink(Sink[Entity]):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
 
-        self.elasticsearch_client = Elasticsearch(
-            [
-                {"host": self.config.es_host, "port": self.config.es_port},
-            ],
-            http_auth=http_auth,
-            scheme=self.config.scheme,
-            use_ssl=self.config.use_ssl,
-            verify_certs=self.config.verify_certs,
-            ssl_context=ssl_context,
-            ca_certs=self.config.ca_certs,
-        )
+        if self.config.use_AWS_credentials:
+            credentials = boto3.Session().get_credentials()
+            http_auth = AWS4Auth(
+                region=self.config.region_name,
+                service="es",
+                refreshable_credentials=credentials,
+            )
+
+            self.elasticsearch_client = Elasticsearch(
+                [
+                    {"host": self.config.es_host, "port": self.config.es_port},
+                ],
+                http_auth=http_auth,
+                scheme=self.config.scheme,
+                use_ssl=self.config.use_ssl,
+                verify_certs=self.config.verify_certs,
+                ssl_context=ssl_context,
+                ca_certs=self.config.ca_certs,
+                connection_class=RequestsHttpConnection,
+            )
+
+        elif not self.config.use_AWS_credentials:
+            self.elasticsearch_client = Elasticsearch(
+                [
+                    {"host": self.config.es_host, "port": self.config.es_port},
+                ],
+                http_auth=http_auth,
+                scheme=self.config.scheme,
+                use_ssl=self.config.use_ssl,
+                verify_certs=self.config.verify_certs,
+                ssl_context=ssl_context,
+                ca_certs=self.config.ca_certs,
+            )
 
         if self.config.index_tables:
             self._check_or_create_index(
