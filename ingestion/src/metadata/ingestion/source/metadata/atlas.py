@@ -174,7 +174,7 @@ class AtlasSource(Source):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.config.serviceConnection.__root__.config.dbService,
+                        service_name=self.service_connection.dbService,
                         database_name=database_request.name.__root__,
                     )
 

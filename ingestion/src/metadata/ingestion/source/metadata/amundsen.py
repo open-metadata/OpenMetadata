@@ -45,6 +45,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams import team
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -172,9 +173,9 @@ class AmundsenSource(Source[Entity]):
                 name=user["full_name"],
                 displayName=f"{user['first_name']} {user['last_name']}",
             )
-
             team_metadata = CreateTeamRequest(
-                name=user["team_name"], teamType="Department"
+                name=user["team_name"],
+                teamType=team.TeamType.Department.value,
             )
             self.status.scanned(str(user_metadata.email))
             yield OMetaUserProfile(
@@ -204,9 +205,9 @@ class AmundsenSource(Source[Entity]):
             service_name = table["database"]
             # TODO: use metadata.get_service_or_create
             service_entity = self.get_database_service(service_name)
+
             database_request = CreateDatabaseRequest(
                 name="default",
-                description=table.get("description"),
                 service=EntityReference(id=service_entity.id, type="databaseService"),
             )
 
@@ -225,7 +226,6 @@ class AmundsenSource(Source[Entity]):
 
             database_schema_request = CreateDatabaseSchemaRequest(
                 name=table["schema"],
-                description=database_request.description.__root__,
                 database=EntityReference(id=database_object.id, type="database"),
             )
             yield database_schema_request
