@@ -31,19 +31,14 @@ WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-<<<<<<< HEAD
 RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
-||||||| parent of aaf7352ed (Airflow Connectivity to Postgres)
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
-=======
-RUN pip install ".[postgres,mysql,redshift]"
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2
->>>>>>> aaf7352ed (Airflow Connectivity to Postgres)
+
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg
