@@ -139,6 +139,13 @@ services:
     depends_on:
       - postgres
       - elasticsearch
+    environment:
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
+      DB_USER: ${DB_USER:-airflow_user}
+      DB_SCHEME: ${DB_SCHEME:-postgresql+psycopg2}
+      DB_PASSWORD: ${DB_PASSWORD:-airflow_pass}
     expose:
       - 8080
     ports:
@@ -146,7 +153,7 @@ services:
     networks:
       - local_app_net
     extra_hosts:
-      - "localhost:172.16.239.10"
+      - "postgres:172.16.239.10"
       - "localhost:172.16.239.11"
       - "localhost:172.16.239.13"
     volumes:

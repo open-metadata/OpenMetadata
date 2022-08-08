@@ -1,7 +1,7 @@
 FROM python:3.9-slim as base
 ENV AIRFLOW_HOME=/airflow
 RUN apt-get update && \
-    apt-get install -y gcc libsasl2-modules libxml2 libsasl2-dev build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget openssl --no-install-recommends && \
+    apt-get install -y gcc netcat libpq-dev libxml2 postgresql postgresql-contrib libsasl2-modules libsasl2-dev build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget openssl --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Manually fix security vulnerability from curl
@@ -16,6 +16,7 @@ FROM base as airflow
 ENV AIRFLOW_VERSION=2.3.3
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 # Add docker provider for the DockerOperator
+RUN pip install --upgrade pip
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 
 
@@ -30,7 +31,19 @@ WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
+<<<<<<< HEAD
 RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
+||||||| parent of aaf7352ed (Airflow Connectivity to Postgres)
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
+=======
+RUN pip install ".[postgres,mysql,redshift]"
+
+# Uninstalling psycopg2-binary and installing psycopg2 instead 
+# because the psycopg2-binary generates a architecture specific error 
+# while authrenticating connection with the airflow, psycopg2 solves this error 
+RUN pip uninstall psycopg2-binary -y
+RUN pip install psycopg2
+>>>>>>> aaf7352ed (Airflow Connectivity to Postgres)
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg
