@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -36,19 +36,16 @@ import TagsViewer from '../tags-viewer/tags-viewer';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.css';
 
+type EntityData = Table | Pipeline | Dashboard | Topic;
+
 const EntityInfoDrawer = ({
   show,
   onCancel,
   selectedNode,
   isMainNode = false,
 }: LineageDrawerProps) => {
-  const [entityDetail, setEntityDetail] = useState<
-    Partial<Table> & Partial<Pipeline> & Partial<Dashboard> & Partial<Topic>
-  >(
-    {} as Partial<Table> &
-      Partial<Pipeline> &
-      Partial<Dashboard> &
-      Partial<Topic>
+  const [entityDetail, setEntityDetail] = useState<EntityData>(
+    {} as EntityData
   );
   const [serviceType, setServiceType] = useState<string>('');
 
@@ -65,10 +62,9 @@ const EntityInfoDrawer = ({
           'usageSummary',
           'tableProfile',
         ])
-          .then((res: AxiosResponse) => {
-            setEntityDetail(res.data);
-            setIsLoading(false);
-            setServiceType(res.data.serviceType);
+          .then((res) => {
+            setEntityDetail(res);
+            setServiceType(res.serviceType ?? '');
           })
           .catch((err: AxiosError) => {
             showErrorToast(
@@ -85,10 +81,10 @@ const EntityInfoDrawer = ({
       case EntityType.PIPELINE: {
         setIsLoading(true);
         getPipelineByFqn(getEncodedFqn(selectedNode.fqn), ['tags', 'owner'])
-          .then((res: AxiosResponse) => {
-            getServiceById('pipelineServices', res.data.service?.id)
-              .then((serviceRes: AxiosResponse) => {
-                setServiceType(serviceRes.data.serviceType);
+          .then((res) => {
+            getServiceById('pipelineServices', res.service?.id)
+              .then((serviceRes) => {
+                setServiceType(serviceRes.serviceType ?? '');
               })
               .catch((err: AxiosError) => {
                 showErrorToast(
@@ -96,7 +92,7 @@ const EntityInfoDrawer = ({
                   `Error while getting ${selectedNode.name} service`
                 );
               });
-            setEntityDetail(res.data);
+            setEntityDetail(res);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {
@@ -114,10 +110,10 @@ const EntityInfoDrawer = ({
       case EntityType.DASHBOARD: {
         setIsLoading(true);
         getDashboardByFqn(getEncodedFqn(selectedNode.fqn), ['tags', 'owner'])
-          .then((res: AxiosResponse) => {
-            getServiceById('dashboardServices', res.data.service?.id)
-              .then((serviceRes: AxiosResponse) => {
-                setServiceType(serviceRes.data.serviceType);
+          .then((res) => {
+            getServiceById('dashboardServices', res.service?.id)
+              .then((serviceRes) => {
+                setServiceType(serviceRes.serviceType ?? '');
               })
               .catch((err: AxiosError) => {
                 showErrorToast(
@@ -125,7 +121,7 @@ const EntityInfoDrawer = ({
                   `Error while getting ${selectedNode.name} service`
                 );
               });
-            setEntityDetail(res.data);
+            setEntityDetail(res);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {

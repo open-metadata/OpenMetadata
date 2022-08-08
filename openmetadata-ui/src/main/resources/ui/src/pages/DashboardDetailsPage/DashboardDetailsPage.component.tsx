@@ -58,7 +58,8 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Connection } from '../../generated/entity/services/dashboardService';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -177,8 +178,8 @@ const DashboardDetailsPage = () => {
       threadType,
       feedFilter
     )
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
         if (data) {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
@@ -197,15 +198,10 @@ const DashboardDetailsPage = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
-  const saveUpdatedDashboardData = (
-    updatedData: Dashboard
-  ): Promise<AxiosResponse> => {
+  const saveUpdatedDashboardData = (updatedData: Dashboard) => {
     const jsonPatch = compare(dashboardDetails, updatedData);
 
-    return patchDashboardDetails(
-      dashboardId,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchDashboardDetails(dashboardId, jsonPatch);
   };
 
   const fetchCharts = async (charts: Dashboard['charts']) => {
@@ -256,11 +252,11 @@ const DashboardDetailsPage = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName, node.type)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setLeafNode(res.data, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
+      .then((res) => {
+        if (res) {
+          setLeafNode(res, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res, pos));
         } else {
           showErrorToast(
             jsonData['api-error-messages']['fetch-lineage-node-error']
@@ -281,9 +277,9 @@ const DashboardDetailsPage = () => {
   const getLineageData = () => {
     setIsLineageLoading(true);
     getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityLineage(res.data);
+      .then((res) => {
+        if (res) {
+          setEntityLineage(res);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -302,9 +298,10 @@ const DashboardDetailsPage = () => {
   const fetchServiceDetails = (type: string, fqn: string) => {
     return new Promise<string>((resolve, reject) => {
       getServiceByFQN(type + 's', fqn, ['owner'])
-        .then((resService: AxiosResponse) => {
-          if (resService?.data) {
-            const hostPort = resService.data.connection?.config?.hostPort || '';
+        .then((resService) => {
+          if (resService) {
+            const hostPort =
+              (resService.connection?.config as Connection)?.hostPort || '';
             resolve(hostPort);
           } else {
             throw null;
@@ -323,8 +320,8 @@ const DashboardDetailsPage = () => {
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
     getDashboardByFqn(dashboardFQN, defaultFields)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           const {
             id,
             deleted,
@@ -340,21 +337,21 @@ const DashboardDetailsPage = () => {
             dashboardUrl,
             serviceType,
             version,
-          } = res.data;
+          } = res;
           setDisplayName(displayName || name);
-          setDashboardDetails(res.data);
-          setCurrentVersion(version);
+          setDashboardDetails(res);
+          setCurrentVersion(version + '');
           setDashboardId(id);
           setDescription(description ?? '');
-          setFollowers(followers);
+          setFollowers(followers ?? []);
           setOwner(owner);
-          setTier(getTierTags(tags));
-          setTags(getTagsWithoutTier(tags));
-          setServiceType(serviceType);
-          setDeleted(deleted);
+          setTier(getTierTags(tags ?? []));
+          setTags(getTagsWithoutTier(tags ?? []));
+          setServiceType(serviceType ?? '');
+          setDeleted(Boolean(deleted));
           setSlashedDashboardName([
             {
-              name: service.name,
+              name: service.name ?? '',
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,
@@ -364,22 +361,22 @@ const DashboardDetailsPage = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getEntityName(res.data),
+              name: getEntityName(res),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName: getEntityName(res.data),
+            displayName: getEntityName(res),
             entityType: EntityType.DASHBOARD,
-            fqn: fullyQualifiedName,
+            fqn: fullyQualifiedName ?? '',
             serviceType: serviceType,
             timestamp: 0,
             id: id,
           });
 
-          fetchServiceDetails(service.type, service.name)
+          fetchServiceDetails(service.type, service.name ?? '')
             .then((hostPort: string) => {
               setDashboardUrl(hostPort + dashboardUrl);
               fetchCharts(ChartIds)
@@ -449,12 +446,12 @@ const DashboardDetailsPage = () => {
 
   const descriptionUpdateHandler = (updatedDashboard: Dashboard) => {
     saveUpdatedDashboardData(updatedDashboard)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { description, version } = res.data;
-          setCurrentVersion(version);
-          setDashboardDetails(res.data);
-          setDescription(description);
+      .then((res) => {
+        if (res) {
+          const { description, version } = res;
+          setCurrentVersion(version + '');
+          setDashboardDetails(res);
+          setDescription(description + '');
           getEntityFeedCount();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -470,9 +467,9 @@ const DashboardDetailsPage = () => {
 
   const followDashboard = () => {
     addFollower(dashboardId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { newValue } = res.data.changeDescription.fieldsAdded[0];
+      .then((res) => {
+        if (res) {
+          const { newValue } = res.changeDescription.fieldsAdded[0];
 
           setFollowers([...followers, ...newValue]);
         } else {
@@ -489,9 +486,9 @@ const DashboardDetailsPage = () => {
 
   const unfollowDashboard = () => {
     removeFollower(dashboardId, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+      .then((res) => {
+        if (res) {
+          const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
           setFollowers(
             followers.filter((follower) => follower.id !== oldValue[0].id)
@@ -510,12 +507,12 @@ const DashboardDetailsPage = () => {
 
   const onTagUpdate = (updatedDashboard: Dashboard) => {
     saveUpdatedDashboardData(updatedDashboard)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setDashboardDetails(res.data);
-          setTier(getTierTags(res.data.tags));
-          setCurrentVersion(res.data.version);
-          setTags(getTagsWithoutTier(res.data.tags));
+      .then((res) => {
+        if (res) {
+          setDashboardDetails(res);
+          setTier(getTierTags(res.tags ?? []));
+          setCurrentVersion(res.version + '');
+          setTags(getTagsWithoutTier(res.tags ?? []));
           getEntityFeedCount();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -535,11 +532,11 @@ const DashboardDetailsPage = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedDashboardData(updatedDashboard)
         .then((res) => {
-          if (res.data) {
-            setDashboardDetails(res.data);
-            setCurrentVersion(res.data.version);
-            setOwner(res.data.owner);
-            setTier(getTierTags(res.data.tags));
+          if (res) {
+            setDashboardDetails(res);
+            setCurrentVersion(res.version + '');
+            setOwner(res.owner);
+            setTier(getTierTags(res.tags ?? []));
             getEntityFeedCount();
             resolve();
           } else {
@@ -562,11 +559,11 @@ const DashboardDetailsPage = () => {
     patch: Array<Operation>
   ) => {
     updateChart(chartId, patch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setCharts((prevCharts) => {
             const charts = [...prevCharts];
-            charts[index] = res.data;
+            charts[index] = res;
 
             return charts;
           });
@@ -588,11 +585,11 @@ const DashboardDetailsPage = () => {
     patch: Array<Operation>
   ) => {
     updateChart(chartId, patch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setCharts((prevCharts) => {
             const charts = [...prevCharts];
-            charts[index] = res.data;
+            charts[index] = res;
 
             return charts;
           });
@@ -654,15 +651,15 @@ const DashboardDetailsPage = () => {
     const data = {
       message: value,
       from: currentUser,
-    };
+    } as Post;
     postFeedById(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, posts } = res.data;
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === id) {
-                return { ...res.data, posts: posts.slice(-3) };
+                return { ...res, posts: posts?.slice(-3) };
               } else {
                 return thread;
               }
@@ -680,9 +677,9 @@ const DashboardDetailsPage = () => {
 
   const createThread = (data: CreateThread) => {
     postThread(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityThread((pre) => [...pre, res.data]);
+      .then((res) => {
+        if (res) {
+          setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
           showErrorToast(
@@ -749,14 +746,14 @@ const DashboardDetailsPage = () => {
 
   const handleExtentionUpdate = async (updatedDashboard: Dashboard) => {
     try {
-      const { data } = await saveUpdatedDashboardData(updatedDashboard);
+      const data = await saveUpdatedDashboardData(updatedDashboard);
 
       if (data) {
         const { version, owner: ownerValue, tags } = data;
-        setCurrentVersion(version);
+        setCurrentVersion(version + '');
         setDashboardDetails(data);
         setOwner(ownerValue);
-        setTier(getTierTags(tags));
+        setTier(getTierTags(tags ?? []));
       } else {
         throw jsonData['api-error-messages']['update-entity-error'];
       }

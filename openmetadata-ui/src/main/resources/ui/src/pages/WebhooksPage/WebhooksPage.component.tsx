@@ -40,9 +40,9 @@ const WebhooksPage: FunctionComponent = () => {
     setIsLoading(true);
     getWebhooks(paging)
       .then((res) => {
-        if (res.data?.data) {
-          setData(res.data.data);
-          setPaging(res.data.paging);
+        if (res.data) {
+          setData(res.data);
+          setPaging(res.paging);
         } else {
           setData([]);
           setPaging(pagingObject);

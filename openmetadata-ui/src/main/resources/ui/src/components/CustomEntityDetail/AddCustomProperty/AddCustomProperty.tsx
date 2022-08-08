@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { EditorContentRef, FormErrorData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
@@ -58,8 +58,8 @@ const AddCustomProperty = () => {
 
   const fetchPropertyType = () => {
     getTypeListByCategory(Category.Field)
-      .then((res: AxiosResponse) => {
-        setPropertyTypes(res.data.data);
+      .then((res) => {
+        setPropertyTypes(res.data);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -68,8 +68,8 @@ const AddCustomProperty = () => {
 
   const fetchTypeDetail = (typeFQN: string) => {
     getTypeByFQN(typeFQN)
-      .then((res: AxiosResponse) => {
-        setTypeDetail(res.data);
+      .then((res) => {
+        setTypeDetail(res);
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };

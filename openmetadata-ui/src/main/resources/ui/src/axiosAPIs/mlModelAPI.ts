@@ -12,38 +12,46 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
+import { EntityReference } from '../generated/type/entityReference';
+import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getMlModelByFQN: Function = (
-  fqn: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+export const getMlModelByFQN = async (fqn: string, arrQueryFields: string) => {
   const url = getURLWithQueryFields(`mlmodels/name/${fqn}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Mlmodel>(url);
+
+  return response.data;
 };
 
-export const getMlmodels = (
+export const getMlmodels = async (
   serviceName: string,
   paging: string,
   arrQueryFields: string[]
-): Promise<AxiosResponse> => {
+) => {
   const url = `${getURLWithQueryFields(
     `/mlmodels`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{
+    data: ServicePageData[];
+    paging: Paging;
+  }>(url);
+
+  return response.data;
 };
 
-export const getAllMlModal = (
+export const getAllMlModal = async (
   paging: string,
   arrQueryFields: string,
   limit?: number
-): Promise<AxiosResponse> => {
+) => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
@@ -56,45 +64,51 @@ export const getAllMlModal = (
     `${searchParams.toString()}${paging ? `&${paging}` : ''}`
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: Mlmodel; paging: Paging }>(url);
+
+  return response.data;
 };
 
-export const patchMlModelDetails: Function = (
-  id: string,
-  data: Mlmodel
-): Promise<AxiosResponse> => {
+export const patchMlModelDetails = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/mlmodels/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Mlmodel>>(
+    `/mlmodels/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const addFollower: Function = (
-  mlModelId: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const addFollower = async (mlModelId: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.put(
-    `/mlmodels/${mlModelId}/followers`,
-    userId,
-    configOptions
-  );
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`/mlmodels/${mlModelId}/followers`, userId, configOptions);
+
+  return response.data;
 };
 
-export const removeFollower: Function = (
-  mlModelId: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const removeFollower = async (mlModelId: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.delete(
-    `/mlmodels/${mlModelId}/followers/${userId}`,
-    configOptions
-  );
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(`/mlmodels/${mlModelId}/followers/${userId}`, configOptions);
+
+  return response.data;
 };

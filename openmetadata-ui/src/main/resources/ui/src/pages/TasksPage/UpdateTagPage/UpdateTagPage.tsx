@@ -12,7 +12,7 @@
  */
 
 import { Button, Card, Input } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -36,6 +36,7 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -102,7 +103,7 @@ const UpdateTag = () => {
   const columnObject = useMemo(() => {
     const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
-    return getColumnObject(column[0], entityData.columns || []);
+    return getColumnObject(column[0], (entityData as Table).columns || []);
   }, [field, entityData]);
 
   const getColumnDetails = useCallback(() => {
@@ -124,7 +125,7 @@ const UpdateTag = () => {
     } else {
       return null;
     }
-  }, [entityData.columns]);
+  }, [(entityData as Table).columns]);
 
   const getTags = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
@@ -169,9 +170,9 @@ const UpdateTag = () => {
         type: ThreadType.Task,
       };
       postThread(data)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           showSuccessToast('Task Created Successfully');
-          history.push(getTaskDetailPath(res.data.task.id));
+          history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {

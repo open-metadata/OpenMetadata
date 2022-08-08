@@ -19,7 +19,10 @@ import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { OwnerType } from '../../enums/user.enum';
-import { ChangeDescription } from '../../generated/entity/data/pipeline';
+import {
+  ChangeDescription,
+  Pipeline,
+} from '../../generated/entity/data/pipeline';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -156,7 +159,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       },
       {
         key: `${currentVersionData.serviceType} Url`,
-        value: currentVersionData.pipelineUrl,
+        value: (currentVersionData as Pipeline).pipelineUrl,
         placeholderText:
           currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
@@ -187,10 +190,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabelWithStatus) => {
+    ].forEach((elem) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem);
+        uniqueTags.push(elem as TagLabelWithStatus);
       }
     });
 
@@ -253,58 +256,62 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                         </tr>
                       </thead>
                       <tbody className="tableBody">
-                        {currentVersionData?.tasks?.map((task, index) => (
-                          <tr
-                            className={classNames(
-                              'tableBody-row',
-                              !isEven(index + 1) ? 'odd-row' : null
-                            )}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <Link
-                                target="_blank"
-                                to={{ pathname: task.taskUrl }}>
-                                <span className="tw-flex">
-                                  <span className="tw-mr-1">
-                                    {task.displayName}
-                                  </span>
-                                  <SVGIcons
-                                    alt="external-link"
-                                    className="tw-align-middle"
-                                    icon="external-link"
-                                    width="16px"
-                                  />
-                                </span>
-                              </Link>
-                            </td>
-                            <td className="tw-group tableBody-cell tw-relative">
-                              <div
-                                className="tw-cursor-pointer hover:tw-underline tw-flex"
-                                data-testid="description">
-                                <div>
-                                  {task.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={task.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
+                        {(currentVersionData as Pipeline)?.tasks?.map(
+                          (task, index) => (
+                            <tr
+                              className={classNames(
+                                'tableBody-row',
+                                !isEven(index + 1) ? 'odd-row' : null
+                              )}
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <Link
+                                  target="_blank"
+                                  to={{ pathname: task.taskUrl }}>
+                                  <span className="tw-flex">
+                                    <span className="tw-mr-1">
+                                      {task.displayName}
                                     </span>
-                                  )}
+                                    <SVGIcons
+                                      alt="external-link"
+                                      className="tw-align-middle"
+                                      icon="external-link"
+                                      width="16px"
+                                    />
+                                  </span>
+                                </Link>
+                              </td>
+                              <td className="tw-group tableBody-cell tw-relative">
+                                <div
+                                  className="tw-cursor-pointer hover:tw-underline tw-flex"
+                                  data-testid="description">
+                                  <div>
+                                    {task.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={task.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                    <SVGIcons
+                                      alt="edit"
+                                      icon="icon-edit"
+                                      title="Edit"
+                                      width="16px"
+                                    />
+                                  </button>
                                 </div>
-                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="16px"
-                                  />
-                                </button>
-                              </div>
-                            </td>
-                            <td className="tableBody-cell">{task.taskType}</td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="tableBody-cell">
+                                {task.taskType}
+                              </td>
+                            </tr>
+                          )
+                        )}
                       </tbody>
                     </table>
                   </div>

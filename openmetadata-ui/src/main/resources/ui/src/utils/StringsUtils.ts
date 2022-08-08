@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
-import { isString } from 'lodash';
+import { get, isString } from 'lodash';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -112,10 +112,10 @@ export const getErrorText = (
   if (isString(value)) {
     return value;
   } else if (value) {
-    errorText = value.response?.data?.message;
+    errorText = get(value, 'response.data.message', '');
     if (!errorText) {
       // if error text is undefined or null or empty, try responseMessage in data
-      errorText = value.response?.data?.responseMessage;
+      errorText = get(value, 'response.data.responseMessage', '');
     }
   }
 

@@ -12,7 +12,7 @@
  */
 
 import { Popover } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
 import {
@@ -41,11 +41,16 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { Database } from '../generated/entity/data/database';
+import { Pipeline } from '../generated/entity/data/pipeline';
+import { Table } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
-import { DataService } from '../interface/service.interface';
+import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -615,7 +620,16 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @returns - entity name
  */
 export const getEntityName = (
-  entity?: EntityReference | DataService | User | Team
+  entity?:
+    | EntityReference
+    | ServicesType
+    | User
+    | Topic
+    | Database
+    | Dashboard
+    | Table
+    | Pipeline
+    | Team
 ) => {
   return entity?.displayName || entity?.name || '';
 };
@@ -662,9 +676,9 @@ export const getFeedCounts = (
     getEntityFeedLink(entityType, entityFQN),
     ThreadType.Conversation
   )
-    .then((res: AxiosResponse) => {
-      if (res.data) {
-        conversationCallback(res.data.counts);
+    .then((res) => {
+      if (res) {
+        conversationCallback(res.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
       }
@@ -682,9 +696,9 @@ export const getFeedCounts = (
     ThreadType.Task,
     ThreadTaskStatus.Open
   )
-    .then((res: AxiosResponse) => {
-      if (res.data) {
-        taskCallback(res.data.counts);
+    .then((res) => {
+      if (res) {
+        taskCallback(res.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
       }
@@ -698,9 +712,9 @@ export const getFeedCounts = (
 
   // To get all thread count (task + conversation)
   getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res: AxiosResponse) => {
-      if (res.data) {
-        entityCallback(res.data.totalCount);
+    .then((res) => {
+      if (res) {
+        entityCallback(res.totalCount);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
       }

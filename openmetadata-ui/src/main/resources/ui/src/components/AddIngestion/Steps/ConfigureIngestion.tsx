@@ -36,7 +36,6 @@ const ConfigureIngestion = ({
   topicFilterPattern,
   chartFilterPattern,
   pipelineFilterPattern,
-  fqnFilterPattern,
   includeLineage,
   includeView,
   includeTags,
@@ -51,7 +50,6 @@ const ConfigureIngestion = ({
   showTopicFilter,
   showChartFilter,
   showPipelineFilter,
-  showFqnFilter,
   queryLogDuration,
   stageFileLocation,
   threadCount,
@@ -402,24 +400,6 @@ const ConfigureIngestion = ({
     }
   };
 
-  const getProfilerFilterPatternField = () => {
-    return (
-      <Fragment>
-        <FilterPattern
-          checked={showFqnFilter}
-          excludePattern={fqnFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternEnum.FQN)
-          }
-          includePattern={fqnFilterPattern?.includes ?? []}
-          type={FilterPatternEnum.FQN}
-        />
-      </Fragment>
-    );
-  };
-
   const getMetadataFields = () => {
     return (
       <>
@@ -521,7 +501,7 @@ const ConfigureIngestion = ({
             {getSeparator('')}
           </Field>
         </div>
-        <div>{getProfilerFilterPatternField()}</div>
+        <div>{getMetadataFilterPatternField()}</div>
         {getSeparator('')}
         {getProfileSample()}
         {getSeparator('')}

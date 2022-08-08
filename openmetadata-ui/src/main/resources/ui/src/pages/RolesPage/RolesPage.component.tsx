@@ -12,7 +12,7 @@
  */
 
 import { Card } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
@@ -173,9 +173,9 @@ const RolesPage = () => {
   const fetchPolicy = (id: string) => {
     setIsLoadingPolicy(true);
     getPolicy(id, 'displayName,description,owner,enabled,rules,location')
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setCurrentRolePolicies((preV) => [...preV, res.data]);
+      .then((res) => {
+        if (res) {
+          setCurrentRolePolicies((preV) => [...preV, res]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -192,9 +192,9 @@ const RolesPage = () => {
   const fetchRoles = () => {
     setIsLoading(true);
     getRoles(['policies', 'users', 'teams'])
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
-          const { data } = res.data;
+          const { data } = res;
           setRoles(data);
           setDefaultRole(data.find((role: Role) => role.defaultRole));
           setCurrentRole(data[0]);
@@ -216,9 +216,9 @@ const RolesPage = () => {
 
   const fetchTeams = () => {
     getTeams('defaultRoles')
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
-          setTeamList(res.data.data);
+          setTeamList(res.data);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -241,8 +241,8 @@ const RolesPage = () => {
         displayName: displayName || '',
         policies: policies || [],
       })
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             fetchRoles();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -264,7 +264,7 @@ const RolesPage = () => {
     if (currentRole?.name !== name || update) {
       setIsLoading(true);
       getRoleByName(name, ['users', 'policies', 'teams'])
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           if (res.data) {
             setCurrentRole(res.data);
             setRoles((pre) => {
@@ -302,9 +302,9 @@ const RolesPage = () => {
       const updatedRole = { ...currentRole, description: updatedHTML };
       const jsonPatch = compare(currentRole as Role, updatedRole);
       updateRole(currentRole?.id || '', jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentRole(res.data.name, true);
+        .then((res) => {
+          if (res) {
+            fetchCurrentRole(res.name, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -369,9 +369,9 @@ const RolesPage = () => {
       const updatedRole = { ...currentRole, defaultRole: true };
       const jsonPatch = compare(currentRole as Role, updatedRole);
       updateRole(currentRole?.id || '', jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentRole(res.data.name, true);
+        .then((res) => {
+          if (res) {
+            fetchCurrentRole(res.name, true);
             setRoles((pre) => {
               return pre.map((role) => ({
                 ...role,
@@ -409,12 +409,12 @@ const RolesPage = () => {
       };
 
       updatePolicy(updatedPolicy)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             setCurrentRolePolicies((prevPolicies) => {
               return prevPolicies.map((preVPolicy) => {
                 if (updatingPolicy?.id === preVPolicy.id) {
-                  return res.data;
+                  return res;
                 } else {
                   return preVPolicy;
                 }
@@ -453,12 +453,12 @@ const RolesPage = () => {
       };
 
       updatePolicy(updatedPolicy)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             setCurrentRolePolicies((previousPolicies) => {
               return previousPolicies.map((preVPolicy) => {
                 if (editingPolicy?.id === preVPolicy.id) {
-                  return res.data;
+                  return res;
                 } else {
                   return preVPolicy;
                 }
@@ -487,12 +487,12 @@ const RolesPage = () => {
           ) || [],
       };
       updatePolicy(updatedPolicy)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             setCurrentRolePolicies((policies) => {
               return policies.map((prevPolicy) => {
                 if (updatingPolicy?.id === prevPolicy.id) {
-                  return res.data;
+                  return res;
                 } else {
                   return prevPolicy;
                 }
@@ -848,8 +848,10 @@ const RolesPage = () => {
 
   const fetchUserCounts = () => {
     getUserCounts()
-      .then((res: AxiosResponse) => {
-        setUserCounts(res.data.hits.total.value);
+      .then((res) => {
+        // TODO: fix below types
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setUserCounts((res as any).data.hits.total.value);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -893,7 +895,9 @@ const RolesPage = () => {
         header={`Adding new rule for ${getEntityName(
           isAddingRule.policy as unknown as EntityReference
         )}`}
-        initialData={{ name: '', operation: '' as Operation } as Rule}
+        initialData={
+          { name: '', operation: '' as Operation } as unknown as Rule
+        }
         onCancel={() => setIsAddingRule(DEFAULT_UPDATE_POLICY_STATE)}
         onChange={(data) => validateRuleData(data as Rule)}
         onSave={createRule}
@@ -1087,9 +1091,9 @@ const RolesPage = () => {
 
   const fetchDefualtPolicies = () => {
     getPolicies()
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setDefaultPolicies(res.data.data);
+      .then((res) => {
+        if (res) {
+          setDefaultPolicies(res);
         } else {
           setDefaultPolicies([]);
         }

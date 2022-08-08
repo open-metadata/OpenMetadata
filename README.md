@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./docs/.gitbook/assets/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
+    <img src="./openmetadata-docs/images/readme/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
   <hr />
 
 [![Build Status](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml)
@@ -40,13 +40,13 @@ OpenMetadata includes the following:
 
 Check all the supported features [here](https://docs.open-metadata.org/features) ✨
 
-![](./docs/.gitbook/assets/lineage.gif)
+![](./openmetadata-docs/images/readme/lineage.gif)
 
 ## Try our Sandbox
 
 Take a look and play with sample data at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
 
-[<img src="./docs/.gitbook/assets/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
+[<img src="./openmetadata-docs/images/readme/assets/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
 
 
 ## Install and run OpenMetadata

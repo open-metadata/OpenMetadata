@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
@@ -46,7 +46,7 @@ import {
 } from '../../constants/feed.constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
@@ -114,8 +114,8 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllTables('', 0)
       .then((res) => {
-        if (res.data) {
-          setTableCount(res.data.paging.total);
+        if (res.paging) {
+          setTableCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -131,8 +131,8 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllTopics('', '', 0)
       .then((res) => {
-        if (res.data) {
-          setTopicCount(res.data.paging.total);
+        if (res.paging) {
+          setTopicCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -148,8 +148,8 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllPipelines('', '', 0)
       .then((res) => {
-        if (res.data) {
-          setPipelineCount(res.data.paging.total);
+        if (res.paging) {
+          setPipelineCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -165,8 +165,8 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllDashboards('', '', 0)
       .then((res) => {
-        if (res.data) {
-          setDashboardCount(res.data.paging.total);
+        if (res.paging) {
+          setDashboardCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -182,8 +182,8 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllMlModal('', '', 0)
       .then((res) => {
-        if (res.data) {
-          setCountMlModal(res.data.paging.total);
+        if (res.paging) {
+          setCountMlModal(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -200,8 +200,8 @@ const MyDataPage = () => {
   const fetchTeamsAndUsersCount = () => {
     getUsers('', 0, undefined, undefined, false)
       .then((res) => {
-        if (res.data) {
-          setUserCount(res.data.paging.total);
+        if (res.paging) {
+          setUserCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -216,8 +216,8 @@ const MyDataPage = () => {
 
     getTeams('', 0)
       .then((res) => {
-        if (res.data) {
-          setTeamCount(res.data.paging.total);
+        if (res.paging) {
+          setTeamCount(res.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -266,10 +266,7 @@ const MyDataPage = () => {
       return;
     }
     try {
-      const { data: userData } = await getUserById(
-        currentUser?.id,
-        'follows, owns'
-      );
+      const userData = await getUserById(currentUser?.id, 'follows, owns');
 
       if (userData) {
         const includeData = Object.values(AssetsType);
@@ -307,8 +304,8 @@ const MyDataPage = () => {
       after,
       type
     )
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
         setPaging(pagingObj);
         setEntityThread((prevData) => [...prevData, ...data]);
       })
@@ -336,14 +333,14 @@ const MyDataPage = () => {
       message: value,
       from: currentUser?.name,
     };
-    postFeedById(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, posts } = res.data;
+    postFeedById(id, data as Post)
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === id) {
-                return { ...res.data, posts: posts.slice(-3) };
+                return { ...res, posts: posts?.slice(-3) };
               } else {
                 return thread;
               }
@@ -398,8 +395,8 @@ const MyDataPage = () => {
   const fetchSandboxMode = () => {
     fetchSandboxConfig()
       .then((res) => {
-        if (res.data) {
-          setIsSandbox(Boolean(res.data.sandboxModeEnabled));
+        if (!isUndefined(res.sandboxModeEnabled)) {
+          setIsSandbox(Boolean(res.sandboxModeEnabled));
         } else {
           throw '';
         }
@@ -424,8 +421,8 @@ const MyDataPage = () => {
       FeedFilter.ASSIGNED_TO,
       undefined,
       ThreadType.Task
-    ).then((res: AxiosResponse) => {
-      res.data && setPendingTaskCount(res.data.paging.total);
+    ).then((res) => {
+      res.data && setPendingTaskCount(res.paging.total);
     });
   }, [currentUser]);
 

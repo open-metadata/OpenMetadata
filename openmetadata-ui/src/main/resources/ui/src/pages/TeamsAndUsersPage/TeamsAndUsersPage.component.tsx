@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -43,6 +43,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { UserType } from '../../enums/user.enum';
 import { Team } from '../../generated/entity/teams/team';
 import {
+  EntityReference,
   EntityReference as UserTeams,
   User,
 } from '../../generated/entity/teams/user';
@@ -105,9 +106,9 @@ const TeamsAndUsersPage = () => {
   const fetchUserCount = (isAdmin: boolean | undefined) => {
     return new Promise<number>((resolve) => {
       getUsers('', 0, undefined, isAdmin, false)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            resolve(res.data.paging.total);
+        .then((res) => {
+          if (res) {
+            resolve(res.paging.total);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -136,11 +137,11 @@ const TeamsAndUsersPage = () => {
   ) => {
     return new Promise<Array<User>>((resolve) => {
       getUsers('profile,teams,roles', limit, paging, isAdmin, false)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            const resUsers = res.data.data;
-            if (res.data.paging.total > limit) {
-              setUserPaging(res.data.paging);
+        .then((res) => {
+          if (res) {
+            const resUsers = res.data;
+            if (res.paging.total > limit) {
+              setUserPaging(res.paging);
             }
             resolve(resUsers);
           } else {
@@ -266,10 +267,10 @@ const TeamsAndUsersPage = () => {
   ) => {
     setIsTeamMemberLoading(true);
     getUsers('', PAGE_SIZE_MEDIUM, { team, ...pagin })
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setCurrentTeamUsers(res.data.data);
-          setTeamUserPagin(res.data.paging);
+      .then((res) => {
+        if (res) {
+          setCurrentTeamUsers(res.data);
+          setTeamUserPagin(res.paging);
         }
       })
       .catch(() => {
@@ -284,14 +285,14 @@ const TeamsAndUsersPage = () => {
    */
   const fetchTeams = () => {
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          if (!teamAndUser && res.data.data.length > 0) {
-            getCurrentTeamUsers(res.data.data[0].name);
-            setCurrentTeam(res.data.data[0]);
+      .then((res) => {
+        if (res) {
+          if (!teamAndUser && res.data.length > 0) {
+            getCurrentTeamUsers(res.data[0].name);
+            setCurrentTeam(res.data[0]);
             setIsRightPanelLoading(false);
           } else {
-            const team = res.data.data.find(
+            const team = res.data.find(
               (t: Team) =>
                 t.name === teamAndUser || t.displayName === teamAndUser
             );
@@ -302,8 +303,8 @@ const TeamsAndUsersPage = () => {
               setCurrentTeam({} as Team);
             }
           }
-          setTeams(res.data.data);
-          AppState.updateUserTeam(res.data.data);
+          setTeams(res.data);
+          AppState.updateUserTeam(res.data as unknown as EntityReference[]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -331,16 +332,16 @@ const TeamsAndUsersPage = () => {
   const fetchCurrentTeam = (name: string, update = false) => {
     if (currentTeam?.name !== name || update) {
       getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setCurrentTeam(res.data);
-            getCurrentTeamUsers(res.data.name);
+        .then((res) => {
+          if (res) {
+            setCurrentTeam(res);
+            getCurrentTeamUsers(res.name);
             if (teams.length <= 0) {
               fetchTeams();
             } else {
               const updatedTeams = teams.map((team) => {
-                if (team.id === res.data.id) {
-                  return res.data;
+                if (team.id === res.id) {
+                  return res;
                 }
 
                 return team;
@@ -454,9 +455,9 @@ const TeamsAndUsersPage = () => {
       };
       const jsonPatch = compare(currentTeam, updatedTeam);
       patchTeamDetail(currentTeam.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentTeam(res.data.name, true);
+        .then((res) => {
+          if (res) {
+            fetchCurrentTeam(res.name, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -476,9 +477,9 @@ const TeamsAndUsersPage = () => {
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
     setIsRightPanelLoading(true);
     updateUserDetail(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          AppState.updateUserDetails(res.data);
+      .then((res) => {
+        if (res) {
+          AppState.updateUserDetails(res);
           fetchCurrentTeam(currentTeam?.name || '', true);
           showSuccessToast(
             jsonData['api-success-messages']['join-team-success'],
@@ -499,9 +500,9 @@ const TeamsAndUsersPage = () => {
 
     return new Promise<void>((resolve) => {
       updateUserDetail(id, data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            AppState.updateUserDetails(res.data);
+        .then((res) => {
+          if (res) {
+            AppState.updateUserDetails(res);
             fetchCurrentTeam(currentTeam?.name || '', true);
             showSuccessToast(
               jsonData['api-success-messages']['leave-team-success'],
@@ -542,13 +543,17 @@ const TeamsAndUsersPage = () => {
   };
 
   const updateTeamHandler = (updatedData: Team) => {
+    if (isUndefined(currentTeam)) {
+      return new Promise<void>((res) => res());
+    }
+
     const jsonPatch = compare(currentTeam as Team, updatedData);
 
     return new Promise<void>((resolve, reject) => {
-      patchTeamDetail(currentTeam?.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentTeam(res.data.name, true);
+      patchTeamDetail(currentTeam.id, jsonPatch)
+        .then((res) => {
+          if (res) {
+            fetchCurrentTeam(res.name, true);
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -608,12 +613,12 @@ const TeamsAndUsersPage = () => {
     if (!Object.values(errData).length) {
       const teamData = {
         name: data.name,
-        displayName: data.displayName,
-        description: data.description,
-      };
+        displayName: data.displayName ?? '',
+        description: data.description ?? '',
+      } as Team;
       createTeam(teamData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             fetchTeams();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -636,7 +641,11 @@ const TeamsAndUsersPage = () => {
    * @param id - user id
    */
   const removeUserFromTeam = (id: string) => {
-    const newUsers = currentTeam?.users?.filter((user) => {
+    if (!currentTeam?.id) {
+      return new Promise<void>((res) => res());
+    }
+
+    const newUsers = currentTeam.users?.filter((user) => {
       return user.id !== id;
     });
     const updatedTeam = {
@@ -647,10 +656,10 @@ const TeamsAndUsersPage = () => {
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
 
     return new Promise<void>((resolve) => {
-      patchTeamDetail(currentTeam?.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentTeam(res.data.name, true);
+      patchTeamDetail(currentTeam.id, jsonPatch)
+        .then((res) => {
+          if (res) {
+            fetchCurrentTeam(res.name, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -676,9 +685,9 @@ const TeamsAndUsersPage = () => {
       const updatedTeam = { ...currentTeam, description: updatedHTML };
       const jsonPatch = compare(currentTeam as Team, updatedTeam);
       patchTeamDetail(currentTeam.id, jsonPatch)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentTeam(res.data.name, true);
+        .then((res) => {
+          if (res) {
+            fetchCurrentTeam(res.name, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
