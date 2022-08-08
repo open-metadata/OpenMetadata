@@ -25,6 +25,8 @@ import org.openmetadata.catalog.ResourceRegistry;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.Permission;
@@ -51,7 +53,7 @@ import org.openmetadata.catalog.type.ResourcePermission;
 @Slf4j
 public class PolicyEvaluator {
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
-  public static boolean hasPermission(
+  public static void hasPermission(
       @NonNull SubjectContext subjectContext,
       @NonNull ResourceContextInterface resourceContext,
       @NonNull OperationContext operationContext) {
@@ -61,10 +63,12 @@ public class PolicyEvaluator {
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (rule.getEffect() == Effect.DENY
-            && CompiledRule.matchRule(rule, operationContext, subjectContext, resourceContext)) {
-          return false;
-        }
+        LOG.debug(
+            "evaluating policy for deny {}:{}:{}",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
+        rule.evaluateDenyRule(policyContext, operationContext, subjectContext, resourceContext);
       }
     }
     // Next run through all the ALLOW policies
@@ -72,13 +76,20 @@ public class PolicyEvaluator {
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (rule.getEffect() == Effect.ALLOW
-            && CompiledRule.matchRule(rule, operationContext, subjectContext, resourceContext)) {
-          return true;
+        LOG.debug(
+            "evaluating policy for allow {}:{}:{}",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
+        rule.evaluateAllowRule(operationContext, subjectContext, resourceContext);
+        if (operationContext.getOperations().isEmpty()) {
+          return; // All operations are allowed
         }
       }
     }
-    return false;
+    throw new AuthorizationException(
+        CatalogExceptionMessage.permissionNotAllowed(
+            subjectContext.getUser().getName(), operationContext.getOperations()));
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
@@ -90,7 +101,8 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
-        if (CompiledRule.matchRuleForPermissions(rule, subjectContext)) {
+        // TODO fix this
+        if (rule.matchRuleForPermissions(subjectContext)) {
           if (rule.getResources().contains("all")) {
             setPermissionForAllResources(resourcePermissionMap, rule, policyContext);
           } else {

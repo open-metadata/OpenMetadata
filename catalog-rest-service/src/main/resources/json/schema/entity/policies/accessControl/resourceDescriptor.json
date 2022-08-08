@@ -22,6 +22,7 @@
         "ViewSampleData",
         "EditAll",
         "EditDescription",
+        "EditDisplayName",
         "EditTags",
         "EditOwner",
         "EditTier",

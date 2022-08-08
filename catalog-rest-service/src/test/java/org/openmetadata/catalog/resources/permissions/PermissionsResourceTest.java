@@ -16,6 +16,8 @@ package org.openmetadata.catalog.resources.permissions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.type.MetadataOperation.EDIT_DESCRIPTION;
+import static org.openmetadata.catalog.type.MetadataOperation.EDIT_DISPLAY_NAME;
+import static org.openmetadata.catalog.type.MetadataOperation.EDIT_LINEAGE;
 import static org.openmetadata.catalog.type.MetadataOperation.EDIT_OWNER;
 import static org.openmetadata.catalog.type.MetadataOperation.EDIT_TAGS;
 import static org.openmetadata.catalog.type.MetadataOperation.VIEW_ALL;
@@ -149,7 +151,8 @@ class PermissionsResourceTest extends CatalogApplicationTest {
     List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
 
     // Only allowed operations in DataConsumerRole. All other operations are notAllow by default
-    List<MetadataOperation> allowed = List.of(VIEW_ALL, EDIT_OWNER, EDIT_DESCRIPTION, EDIT_TAGS);
+    List<MetadataOperation> allowed =
+        List.of(VIEW_ALL, EDIT_OWNER, EDIT_DISPLAY_NAME, EDIT_LINEAGE, EDIT_DESCRIPTION, EDIT_TAGS);
     for (ResourcePermission actualPermission : actualPermissions) { // For all resources
       for (Permission permission : actualPermission.getPermissions()) {
         if (allowed.contains(permission.getOperation())) {
