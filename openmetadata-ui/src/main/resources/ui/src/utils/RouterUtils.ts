@@ -239,3 +239,14 @@ export const getTeamsWithFqnPath = (fqn: string) => {
 
   return path;
 };
+
+export const getRoleWithFqnPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.ACCESS)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.ROLES)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};

@@ -17,6 +17,7 @@ import React, { FC, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Role } from '../../../generated/entity/teams/role';
+import { getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface RolesListProps {
@@ -32,7 +33,9 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
         width: 100,
         key: 'name',
         render: (_, record) => (
-          <Link className="hover:tw-underline tw-cursor-pointer" to="#">
+          <Link
+            className="hover:tw-underline tw-cursor-pointer"
+            to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
             {record?.displayName || record?.name}
           </Link>
         ),
