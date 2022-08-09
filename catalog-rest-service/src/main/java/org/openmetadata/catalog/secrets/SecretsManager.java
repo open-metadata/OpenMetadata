@@ -13,12 +13,14 @@ import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServer
 
 public abstract class SecretsManager {
 
-  public static final String OPENMETADATA_PREFIX = "openmetadata";
+  @Getter private final String clusterPrefix;
 
   @Getter private final OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider;
 
-  protected SecretsManager(OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider) {
+  protected SecretsManager(
+      OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
     this.secretsManagerProvider = secretsManagerProvider;
+    this.clusterPrefix = clusterPrefix;
   }
 
   public abstract boolean isLocal();
@@ -41,16 +43,26 @@ public abstract class SecretsManager {
   protected abstract Object decryptAuthProviderConfig(
       OpenMetadataServerConnection.AuthProvider authProvider, AuthConfiguration authConfig);
 
-  protected String buildSecretId(String... suffixes) {
+  protected String getSecretSeparator() {
+    return "/";
+  }
+
+  protected boolean startsWithSeparator() {
+    return true;
+  }
+
+  protected String buildSecretId(String... secretIdValues) {
     StringBuilder format = new StringBuilder();
-    format.append(OPENMETADATA_PREFIX);
-    for (String suffix : List.of(suffixes)) {
-      if (isNull(suffix)) {
+    format.append(startsWithSeparator() ? getSecretSeparator() : "");
+    format.append(clusterPrefix);
+    for (String secretIdValue : List.of(secretIdValues)) {
+      if (isNull(secretIdValue)) {
         throw new SecretsManagerException("Cannot build a secret id with null values.");
       }
-      format.append("-%s");
+      format.append(getSecretSeparator());
+      format.append("%s");
     }
-    return String.format(format.toString(), (Object[]) suffixes).toLowerCase();
+    return String.format(format.toString(), (Object[]) secretIdValues).toLowerCase();
   }
 
   protected Class<?> createConnectionConfigClass(String connectionType, String connectionPackage)

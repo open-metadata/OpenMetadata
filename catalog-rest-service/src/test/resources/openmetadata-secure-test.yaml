@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+clusterName: openmetadata
+
 swagger:
   resourcePackage: org.openmetadata.catalog.webservice.resources
 

@@ -47,7 +47,7 @@ public class LocalSecretsManagerTest {
 
   @BeforeAll
   static void setUp() {
-    secretsManager = LocalSecretsManager.getInstance();
+    secretsManager = LocalSecretsManager.getInstance("openmetadata");
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);

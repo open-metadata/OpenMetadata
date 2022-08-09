@@ -4,16 +4,16 @@ import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServer
 
 public class SecretsManagerFactory {
 
-  public static SecretsManager createSecretsManager(SecretsManagerConfiguration config) {
+  public static SecretsManager createSecretsManager(SecretsManagerConfiguration config, String clusterName) {
     SecretsManagerProvider secretManager =
         config != null && config.getSecretsManager() != null
             ? config.getSecretsManager()
             : SecretsManagerConfiguration.DEFAULT_SECRET_MANAGER;
     switch (secretManager) {
       case LOCAL:
-        return LocalSecretsManager.getInstance();
+        return LocalSecretsManager.getInstance(clusterName);
       case AWS:
-        return AWSSecretsManager.getInstance(config);
+        return AWSSecretsManager.getInstance(config, clusterName);
       default:
         throw new IllegalArgumentException("Not implemented secret manager store: " + secretManager);
     }

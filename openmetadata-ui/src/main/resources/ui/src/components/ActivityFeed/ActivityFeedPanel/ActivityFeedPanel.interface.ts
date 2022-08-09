@@ -12,6 +12,7 @@
  */
 
 import { HTMLAttributes } from 'react';
+import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
@@ -29,7 +30,9 @@ export interface FeedPanelHeaderProp
   extends HTMLAttributes<HTMLHeadingElement>,
     Pick<ActivityFeedPanelProp, 'onCancel'> {
   entityField: string;
+  entityFQN?: string;
   noun?: string;
+  threadType?: ThreadType;
   onShowNewConversation?: (v: boolean) => void;
 }
 export interface FeedPanelOverlayProp
