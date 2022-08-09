@@ -30,7 +30,7 @@ import org.openmetadata.catalog.type.EntityReference;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectContext {
-  protected final User user;
+  @Getter protected final User user;
 
   protected SubjectContext(User user) {
     this.user = user;

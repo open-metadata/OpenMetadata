@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import {
@@ -45,7 +45,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
 
   useEffect(() => {
     getFeedById(selectedThread.id)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         setThreadData(res.data);
       })
       .catch((err: AxiosError) => {

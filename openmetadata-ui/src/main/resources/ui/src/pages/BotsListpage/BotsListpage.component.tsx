@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import React, { Fragment, useEffect, useState } from 'react';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import BotsList from '../../components/BotsList/BotsList';
@@ -27,9 +27,9 @@ const BotsListPage = () => {
   const fetchBots = () => {
     setIsLoading(true);
     getUsers('', 1000)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { data } = res.data;
+      .then((res) => {
+        if (res) {
+          const { data } = res;
           const botsUser = data.filter((user: User) => user?.isBot);
           setBots(botsUser);
         } else {

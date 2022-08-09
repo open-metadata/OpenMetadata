@@ -25,24 +25,11 @@ import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
-import {
-  DashboardService,
-  DashboardServiceType,
-} from '../../generated/entity/services/dashboardService';
-import {
-  DatabaseService,
-  DatabaseServiceType,
-} from '../../generated/entity/services/databaseService';
-import {
-  MessagingService,
-  MessagingServiceType,
-} from '../../generated/entity/services/messagingService';
-import { MlmodelService } from '../../generated/entity/services/mlmodelService';
-import {
-  PipelineService,
-  PipelineServiceType,
-} from '../../generated/entity/services/pipelineService';
-import { ConfigData, DataService } from '../../interface/service.interface';
+import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
+import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
+import { MessagingServiceType } from '../../generated/entity/services/messagingService';
+import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -58,12 +45,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
-  data?:
-    | DatabaseService
-    | MessagingService
-    | DashboardService
-    | PipelineService
-    | MlmodelService;
+  data?: ServicesType;
   okText?: string;
   cancelText?: string;
   serviceType: string;
@@ -90,7 +72,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   }, [serviceType]);
 
   const config = !isNil(data)
-    ? ((data as DataService).connection?.config as ConfigData)
+    ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {

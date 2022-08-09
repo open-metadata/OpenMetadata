@@ -13,9 +13,11 @@
 
 package org.openmetadata.catalog.exception;
 
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.type.MetadataOperation;
 
 public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
@@ -87,12 +89,25 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
+  // TODO delete this
   public static String noPermission(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
   }
 
-  public static String noPermission(String name, String operation) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions to %s", name, operation);
+  public static String permissionDenied(
+      String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
+    if (roleName != null) {
+      return String.format(
+          "Principal: CatalogPrincipal{name='%s'} operation %s denied by role %s, policy %s, rule %s",
+          user, operation, roleName, policyName, ruleName);
+    }
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operation %s denied policy %s, rule %s",
+        user, operation, policyName, ruleName);
+  }
+
+  public static String permissionNotAllowed(String user, List<MetadataOperation> operations) {
+    return String.format("Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
   public static String entityIsNotEmpty(String entityType) {

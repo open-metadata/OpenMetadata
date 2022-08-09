@@ -12,45 +12,54 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isNil } from 'lodash';
+import { EntityReference } from 'Models';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getDashboardVersions: Function = (
-  id: string
-): Promise<AxiosResponse> => {
+export const getDashboardVersions = async (id: string) => {
   const url = `/dashboards/${id}/versions`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
 };
-export const getDashboardVersion: Function = (
-  id: string,
-  version: string
-): Promise<AxiosResponse> => {
+export const getDashboardVersion = async (id: string, version: string) => {
   const url = `/dashboards/${id}/versions/${version}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Dashboard>(url);
+
+  return response.data;
 };
 
-export const getDashboards: Function = (
+export const getDashboards = async (
   serviceName: string,
-  paging: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[],
+  paging?: string
+) => {
   const url = `${getURLWithQueryFields(
     `/dashboards`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{
+    data: ServicePageData[];
+    paging: Paging;
+  }>(url);
+
+  return response.data;
 };
 
-export const getAllDashboards = (
+export const getAllDashboards = async (
   paging: string,
   arrQueryFields: string,
   limit?: number
-): Promise<AxiosResponse> => {
+) => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
@@ -63,7 +72,11 @@ export const getAllDashboards = (
     `${searchParams.toString()}${paging ? `&${paging}` : ''}`
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: Dashboard[]; paging: Paging }>(
+    url
+  );
+
+  return response.data;
 };
 
 export const getDashboardDetails: Function = (
@@ -75,55 +88,58 @@ export const getDashboardDetails: Function = (
   return APIClient.get(url);
 };
 
-export const getDashboardByFqn: Function = (
+export const getDashboardByFqn = async (
   fqn: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[]
+) => {
   const url = getURLWithQueryFields(
     `/dashboards/name/${fqn}`,
     arrQueryFields,
     'include=all'
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Dashboard>(url);
+
+  return response.data;
 };
 
-export const addFollower: Function = (
-  dashboardID: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const addFollower = async (dashboardID: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.put(
-    `/dashboards/${dashboardID}/followers`,
-    userId,
-    configOptions
-  );
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(`/dashboards/${dashboardID}/followers`, userId, configOptions);
+
+  return response.data;
 };
 
-export const removeFollower: Function = (
-  dashboardID: string,
-  userId: string
-): Promise<AxiosResponse> => {
+export const removeFollower = async (dashboardID: string, userId: string) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
 
-  return APIClient.delete(
-    `/dashboards/${dashboardID}/followers/${userId}`,
-    configOptions
-  );
+  const response = await APIClient.delete<{
+    changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+  }>(`/dashboards/${dashboardID}/followers/${userId}`, configOptions);
+
+  return response.data;
 };
 
-export const patchDashboardDetails: Function = (
-  id: string,
-  data: Dashboard
-): Promise<AxiosResponse> => {
+export const patchDashboardDetails = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/dashboards/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Dashboard>>(
+    `/dashboards/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };

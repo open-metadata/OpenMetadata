@@ -17,7 +17,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -47,6 +47,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -162,7 +163,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     assertResponse(
         () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        noPermission(TEST_USER_NAME));
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
   }
 
   private static void validateRole(

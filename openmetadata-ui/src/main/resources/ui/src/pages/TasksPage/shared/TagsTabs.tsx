@@ -27,8 +27,6 @@ interface Props {
 }
 
 export const TagsTabs = ({ tags, suggestedTags, onChange }: Props) => {
-  const { TabPane } = Tabs;
-
   const [diffs, setDiffs] = useState<ArrayChange<TagLabel>[]>([]);
   const [activeTab, setActiveTab] = useState<string>(TaskTabs.NEW);
 
@@ -48,7 +46,10 @@ export const TagsTabs = ({ tags, suggestedTags, onChange }: Props) => {
       size="small"
       type="card"
       onChange={onTabChange}>
-      <TabPane data-testid="current-tab" key={TaskTabs.CURRENT} tab="Current">
+      <Tabs.TabPane
+        data-testid="current-tab"
+        key={TaskTabs.CURRENT}
+        tab="Current">
         <div
           className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
           data-testid="tags">
@@ -56,13 +57,13 @@ export const TagsTabs = ({ tags, suggestedTags, onChange }: Props) => {
             <Tag key={uniqueId()}>{tag.tagFQN}</Tag>
           ))}
         </div>
-      </TabPane>
-      <TabPane data-testid="diff-tab" key={TaskTabs.DIFF} tab="Diff">
+      </Tabs.TabPane>
+      <Tabs.TabPane data-testid="diff-tab" key={TaskTabs.DIFF} tab="Diff">
         <TagsDiffView diffArr={diffs} />
-      </TabPane>
-      <TabPane data-testid="new-tab" key={TaskTabs.NEW} tab="New">
+      </Tabs.TabPane>
+      <Tabs.TabPane data-testid="new-tab" key={TaskTabs.NEW} tab="New">
         <TagSuggestion selectedTags={suggestedTags} onChange={onChange} />
-      </TabPane>
+      </Tabs.TabPane>
     </Tabs>
   );
 };

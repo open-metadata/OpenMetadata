@@ -63,7 +63,9 @@ const TeamsSelectable = ({
           (filterJoinable ? ` AND isJoinable:true` : ''),
         from: 0,
         size: TEAM_OPTION_PAGE_LIMIT,
-      }).then((res) => {
+        // TODO: Improve type below
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }).then((res: any) => {
         const teams: Team[] =
           res.hits.hits.map((t: { _source: Team }) => t._source) || [];
         showTeamsAlert && setNoTeam(teams.length === 0);

@@ -140,14 +140,14 @@ jest.mock('../../AppState', () => {
 jest.mock('../../axiosAPIs/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
+    .mockImplementation(() => Promise.resolve(mockDatabase)),
   patchDatabaseDetails: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
+    .mockImplementation(() => Promise.resolve(mockDatabase)),
 
   getDatabaseSchemas: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockSchemaData })),
+    .mockImplementation(() => Promise.resolve(mockSchemaData)),
 }));
 
 jest.mock('../../components/containers/PageContainer', () => {

@@ -75,7 +75,7 @@ jest.mock('../cardlist/CardListItem/CardWithListItem', () => {
 jest.mock('../../axiosAPIs/tagAPI', () => ({
   getCategory: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockTierData })),
+    .mockImplementation(() => Promise.resolve(mockTierData)),
 }));
 
 describe('Test Manage tab Component', () => {

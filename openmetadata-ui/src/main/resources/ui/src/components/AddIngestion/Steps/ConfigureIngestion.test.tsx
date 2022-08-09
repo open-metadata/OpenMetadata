@@ -92,7 +92,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleEnableDebugLog: jest.fn(),
   ingestSampleData: false,
   handleIngestSampleData: jest.fn(),
-  databaseServiceName: '',
+  databaseServiceNames: [''],
   handleDatasetServiceName: jest.fn(),
   threadCount: 5,
   handleThreadCount: jest.fn(),

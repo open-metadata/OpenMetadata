@@ -45,11 +45,11 @@ const AddGlossaryPage: FunctionComponent = () => {
     setStatus('waiting');
     addGlossaries(data)
       .then((res) => {
-        if (res.data) {
+        if (res) {
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');
-            goToGlossary(res.data.name);
+            goToGlossary(res.name);
           }, 500);
         } else {
           handleSaveFailure(

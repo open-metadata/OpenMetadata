@@ -14,7 +14,7 @@
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Card, Dropdown, Layout, Menu, Tabs } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
@@ -45,7 +45,9 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PanelTab, TaskOperation } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Table } from '../../../generated/entity/data/table';
 import {
+  Post,
   TaskDetails,
   TaskType,
   Thread,
@@ -141,7 +143,10 @@ const TaskDetailPage = () => {
      */
     const columnName = columnValue.split(FQN_SEPARATOR_CHAR).pop();
 
-    return getColumnObject(columnName as string, entityData.columns || []);
+    return getColumnObject(
+      columnName as string,
+      (entityData as Table).columns || []
+    );
   }, [taskDetail, entityData]);
 
   // const isRequestTag = isEqual(taskDetail.task?.type, TaskType.RequestTag);
@@ -170,8 +175,8 @@ const TaskDetailPage = () => {
 
   const fetchTaskDetail = () => {
     getTask(taskId)
-      .then((res: AxiosResponse) => {
-        setTaskDetail(res.data);
+      .then((res) => {
+        setTaskDetail(res);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, '', 5000, setError);
@@ -181,7 +186,7 @@ const TaskDetailPage = () => {
   const fetchTaskFeed = (id: string) => {
     setIsLoading(true);
     getFeedById(id)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         setTaskFeedDetail(res.data);
       })
       .catch((err: AxiosError) => {
@@ -194,10 +199,10 @@ const TaskDetailPage = () => {
     const data = {
       message: value,
       from: currentUser?.name,
-    };
+    } as Post;
     postFeedById(taskFeedDetail.id, data)
-      .then((res: AxiosResponse) => {
-        const { posts } = res.data;
+      .then((res) => {
+        const { posts } = res;
         setTaskFeedDetail((prev) => ({ ...prev, posts }));
       })
       .catch((err: AxiosError) => {
@@ -213,10 +218,10 @@ const TaskDetailPage = () => {
   ) => {
     if (isThread) {
       updateThread(threadId, data)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           setTaskFeedDetail((prev) => ({
             ...prev,
-            reactions: res.data.reactions,
+            reactions: res.reactions,
           }));
         })
         .catch((err: AxiosError) => {
@@ -224,11 +229,11 @@ const TaskDetailPage = () => {
         });
     } else {
       updatePost(threadId, postId, data)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           setTaskFeedDetail((prev) => {
             const updatedPosts = (prev.posts || []).map((post) => {
               if (isEqual(postId, post.id)) {
-                return { ...post, reactions: res.data.reactions };
+                return { ...post, reactions: res.reactions };
               } else {
                 return post;
               }
@@ -368,7 +373,7 @@ const TaskDetailPage = () => {
     const data = {
       message: value,
       from: currentUser?.name,
-    };
+    } as Post;
     postFeedById(id, data).catch((err: AxiosError) => {
       showErrorToast(err);
     });

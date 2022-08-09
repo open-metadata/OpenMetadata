@@ -7,7 +7,7 @@ source:
       username: <username>
       password: <password>
       hostPort: <hostPort>
-      dbServiceName: <dbServiceName>
+      dbServiceNames: [<dbServiceName>]
   sourceConfig:
     config:
       dashboardFilterPattern: <dashboard name regex list>
