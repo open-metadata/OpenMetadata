@@ -9,7 +9,7 @@ source:
       hostPort: http://hostPort
   sourceConfig:
     config:
-      dbServiceName: Database Service Name to create Lineage
+      dbServiceNames: list of database service name to create Lineage
       dashboardFilterPattern: {}
       chartFilterPattern: {}
 sink:

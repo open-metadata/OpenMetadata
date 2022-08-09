@@ -46,7 +46,7 @@ Check all the supported features [here](https://docs.open-metadata.org/features)
 
 Take a look and play with sample data at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
 
-[<img src="./openmetadata-docs/images/readme/assets/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
+[<img src="./openmetadata-docs/images/readme/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
 
 
 ## Install and run OpenMetadata

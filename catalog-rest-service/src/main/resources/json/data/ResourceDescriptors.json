@@ -13,6 +13,7 @@
       "ViewSampleData",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditTags",
       "EditOwner",
       "EditTier",
@@ -34,6 +35,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -46,6 +48,7 @@
       "ViewUsage",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditTags",
       "EditOwner",
       "EditTier",
@@ -62,6 +65,7 @@
       "ViewUsage",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditTags",
       "EditOwner",
       "EditTier",
@@ -77,6 +81,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -88,6 +93,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -99,6 +105,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -110,6 +117,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -121,6 +129,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -132,6 +141,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -143,6 +153,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -154,6 +165,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -165,6 +177,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -176,6 +189,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -188,6 +202,7 @@
       "ViewUsage",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -199,6 +214,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -210,6 +226,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields",
       "EditLineage"
     ]
@@ -222,6 +239,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -233,6 +251,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -244,6 +263,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -255,6 +275,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -266,6 +287,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -282,6 +304,7 @@
       "ViewSampleData",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditTags",
       "EditOwner",
       "EditTier",
@@ -301,6 +324,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -312,6 +336,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -323,6 +348,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields",
       "EditUsers"
     ]
@@ -335,6 +361,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -346,6 +373,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -357,6 +385,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },
@@ -368,6 +397,7 @@
       "ViewAll",
       "EditAll",
       "EditDescription",
+      "EditDisplayName",
       "EditCustomFields"
     ]
   },

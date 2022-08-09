@@ -91,8 +91,8 @@ const AddIngestion = ({
   const [ingestSampleData, setIngestSampleData] = useState(
     (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
   );
-  const [databaseServiceName, setDatabaseServiceName] = useState(
-    (data?.sourceConfig.config as ConfigClass)?.dbServiceName ?? ''
+  const [databaseServiceNames, setDatabaseServiceNames] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.dbServiceNames ?? []
   );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
@@ -418,7 +418,7 @@ const AddIngestion = ({
             dashboardFilterPattern,
             showDashboardFilter
           ),
-          dbServiceName: databaseServiceName,
+          dbServiceNames: databaseServiceNames,
           type: ConfigType.DashboardMetadata,
         };
       }
@@ -611,12 +611,12 @@ const AddIngestion = ({
             chartFilterPattern={chartFilterPattern}
             dashboardFilterPattern={dashboardFilterPattern}
             databaseFilterPattern={databaseFilterPattern}
-            databaseServiceName={databaseServiceName}
+            databaseServiceNames={databaseServiceNames}
             description={description}
             enableDebugLog={enableDebugLog}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
-            handleDatasetServiceName={(val) => setDatabaseServiceName(val)}
+            handleDatasetServiceName={(val) => setDatabaseServiceNames(val)}
             handleDescription={(val) => setDescription(val)}
             handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
             handleIncludeLineage={() => setIncludeLineage((pre) => !pre)}

@@ -27,8 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -43,13 +43,11 @@ import static org.openmetadata.catalog.util.TestUtils.validateAlphabeticalOrderi
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import com.auth0.jwk.JwkException;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,6 +87,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -570,7 +569,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             authHeaders("test23@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setDisplayName("newName");
-    assertResponse(() -> patchEntity(user.getId(), userJson, user, TEST_AUTH_HEADERS), FORBIDDEN, noPermission("test"));
+    assertResponse(
+        () -> patchEntity(user.getId(), userJson, user, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
   }
 
   @Test
@@ -735,8 +737,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void put_generateToken_bot_user_200_ok(TestInfo test)
-      throws HttpResponseException, MalformedURLException, JwkException {
+  void put_generateToken_bot_user_200_ok(TestInfo test) throws HttpResponseException {
     User user =
         createEntity(
             createRequest(test, 6)
@@ -745,7 +746,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .withEmail("ingestion-bot-jwt@email.com")
                 .withIsBot(true),
             authHeaders("ingestion-bot-jwt@email.com"));
-    JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
         new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
@@ -770,7 +770,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
   }
 
-  private DecodedJWT decodedJWT(String token) throws MalformedURLException, JwkException, HttpResponseException {
+  private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
       jwt = JWT.decode(token);
