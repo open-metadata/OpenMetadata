@@ -515,6 +515,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     deleted={deleted}
                     entityLineage={lineageTabData.entityLineage}
                     entityLineageHandler={lineageTabData.entityLineageHandler}
+                    entityType={EntityType.TOPIC}
                     isLoading={lineageTabData.isLineageLoading}
                     isNodeLoading={lineageTabData.isNodeLoading}
                     isOwner={hasEditAccess()}

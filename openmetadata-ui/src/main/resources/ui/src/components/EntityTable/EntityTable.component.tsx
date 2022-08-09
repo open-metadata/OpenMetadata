@@ -48,6 +48,7 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
@@ -325,8 +326,7 @@ const EntityTable = ({
     isAdminUser ||
     hasEditAccess ||
     isAuthDisabled ||
-    userPermissions[Operation.EditDescription];
-
+    hasPemission(Operation.EditDescription, EntityType.TABLE, userPermissions);
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const getColumnName = (cell: any) => {
     const fqn = cell?.row?.original?.fullyQualifiedName || '';

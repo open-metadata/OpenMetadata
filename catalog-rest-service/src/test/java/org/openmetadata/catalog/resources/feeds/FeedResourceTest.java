@@ -1473,7 +1473,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
-    TestUtils.put(target, userId.toString(), OK, authHeaders);
+    TestUtils.put(target, userId, OK, authHeaders);
   }
 
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)

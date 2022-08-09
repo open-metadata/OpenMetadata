@@ -96,7 +96,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return addHref(uriInfo, resultList);
   }
 
-  public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
+  public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include)
       throws IOException {
     authorizer.authorize(securityContext, getOperationContext, getResourceContextById(id), true);
     Fields fields = getFields(fieldsParam);
@@ -129,12 +129,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
-  public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, String id, JsonPatch patch)
+  public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
-    PatchResponse<T> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    PatchResponse<T> response = dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -142,7 +141,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response delete(
       UriInfo uriInfo,
       SecurityContext securityContext,
-      String id,
+      UUID id,
       boolean recursive,
       boolean hardDelete,
       boolean allowBots)
@@ -199,7 +198,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return ResourceContext.builder().resource(entityType).entityRepository(dao).build();
   }
 
-  protected ResourceContext getResourceContextById(String id) {
+  protected ResourceContext getResourceContextById(UUID id) {
     String fields = supportsOwner ? FIELD_OWNER : null;
     return ResourceContext.builder().resource(entityType).entityRepository(dao).id(id).fields(fields).build();
   }

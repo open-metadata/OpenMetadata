@@ -195,7 +195,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public TestCase get(
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -264,7 +264,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public TestCase getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Test version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -306,7 +306,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -357,7 +357,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
@@ -407,7 +407,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public ResultList<TestCaseResult> listTestCaseResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Filter testCase results after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -435,7 +435,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     ListFilter filter =
         new ListFilter(Include.ALL)
-            .addQueryParam("entityId", id)
+            .addQueryParam("entityId", id.toString())
             .addQueryParam("extension", TestCaseRepository.TESTCASE_RESULT_EXTENSION);
 
     if (startTs != null) {
@@ -463,13 +463,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public TestCase deleteTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the testCase", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    TestCase testCase = dao.deleteTestCaseResult(UUID.fromString(id), timestamp);
+    TestCase testCase = dao.deleteTestCaseResult(id, timestamp);
     return addHref(uriInfo, testCase);
   }
 

@@ -44,6 +44,7 @@ import {
   getTeamAndUserDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Team } from '../../generated/entity/teams/team';
@@ -61,6 +62,7 @@ import {
   hasEditAccess,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddUsersModal from './AddUsersModal';
@@ -452,7 +454,11 @@ const TeamsPage = () => {
           {isAdminUser ||
           isAuthDisabled ||
           isOwner() ||
-          userPermissions[Operation.EditUsers] ? (
+          hasPemission(
+            Operation.EditUsers,
+            EntityType.TEAM,
+            userPermissions
+          ) ? (
             <>
               <p>Would like to start adding some?</p>
               <Button
@@ -799,7 +805,11 @@ const TeamsPage = () => {
                                   'tw-opacity-40':
                                     !isAdminUser &&
                                     !isAuthDisabled &&
-                                    !userPermissions[Operation.EditUsers] &&
+                                    !hasPemission(
+                                      Operation.EditUsers,
+                                      EntityType.TEAM,
+                                      userPermissions
+                                    ) &&
                                     !isOwner(),
                                 }
                               )}

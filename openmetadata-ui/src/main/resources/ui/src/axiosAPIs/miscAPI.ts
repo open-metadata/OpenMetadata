@@ -13,12 +13,12 @@
 
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { isUndefined } from 'lodash';
-import { UserPermissionResponse } from 'Models';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
@@ -121,7 +121,13 @@ export const deleteLineageEdge: Function = (
 };
 
 export const getLoggedInUserPermissions = async () => {
-  const response = await APIClient.get<UserPermissionResponse>('/permissions');
+  const params = {
+    limit: 100,
+  };
+  const response = await APIClient.get<{
+    data: ResourcePermission[];
+    paging: Paging;
+  }>('/permissions', { params });
 
   return response.data;
 };

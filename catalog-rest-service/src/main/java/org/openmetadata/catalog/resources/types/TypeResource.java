@@ -188,7 +188,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Type get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = PROPERTIES))
@@ -277,7 +277,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Type getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "type Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "type version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -318,7 +318,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -364,7 +364,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, true, true);
   }

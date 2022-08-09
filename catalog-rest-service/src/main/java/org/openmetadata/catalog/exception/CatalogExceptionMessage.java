@@ -72,7 +72,7 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid fully qualified column name %s", fqn);
   }
 
-  public static String entityVersionNotFound(String entityType, String id, Double version) {
+  public static String entityVersionNotFound(String entityType, UUID id, Double version) {
     return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
 
