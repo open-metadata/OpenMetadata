@@ -51,6 +51,7 @@ export const GLOBAL_SETTINGS_MENU = [
     isProtected: true,
     items: [
       { label: 'Webhook', isProtected: true, icon: Icons.WEBHOOK_GREY },
+      { label: 'Slack', isProtected: true, icon: Icons.SLACK_GREY },
       { label: 'Bots', isProtected: true, icon: Icons.BOT_PROFILE },
     ],
   },

@@ -50,7 +50,6 @@ import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import { NavBarProps } from './NavBar.interface';
 
 const NavBar = ({
-  settingDropdown,
   supportDropdown,
   profileDropdown,
   searchValue,
@@ -208,7 +207,7 @@ const NavBar = ({
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="90" />
             </NavLink>
-            <div className="tw-ml-5">
+            <Space className="tw-ml-5" size={16}>
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item"
@@ -219,12 +218,17 @@ const NavBar = ({
                 }}>
                 Explore
               </NavLink>
-              <DropDown
-                dropDownList={settingDropdown}
-                label="Settings"
-                type="link"
-              />
-            </div>
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item"
+                id="explore"
+                style={navStyle(pathname.startsWith('/explore'))}
+                to={{
+                  pathname: ROUTES.SETTINGS,
+                }}>
+                Settings
+              </NavLink>
+            </Space>
           </div>
           <div
             className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
