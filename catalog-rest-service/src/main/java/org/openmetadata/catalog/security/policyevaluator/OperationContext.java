@@ -5,13 +5,15 @@ import java.util.List;
 import javax.json.JsonPatch;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonPatchUtils;
 
 /** OperationContext for Access Control Policy */
+@Slf4j
 public class OperationContext {
   @Getter @NonNull private final String resource;
-  List<MetadataOperation> operations;
+  List<MetadataOperation> operations; // All requested operations
   @Getter private JsonPatch patch;
 
   public OperationContext(@NonNull String resource, MetadataOperation... operations) {
@@ -37,21 +39,26 @@ public class OperationContext {
     return operations;
   }
 
-  public static boolean isEditOperation(List<MetadataOperation> operations) {
-    for (MetadataOperation operation : operations) {
-      if (!operation.value().startsWith("Edit")) {
-        return false;
-      }
-    }
-    return true;
+  public void allowAll() {
+    LOG.debug("allowAll operations");
+    operations.clear();
   }
 
-  public static boolean isViewOperation(List<MetadataOperation> operations) {
-    for (MetadataOperation operation : operations) {
-      if (!operation.value().startsWith("View")) {
-        return false;
-      }
-    }
-    return true;
+  public void allowViewAll() {
+    LOG.debug("allowViewAll operations");
+    operations.removeIf(OperationContext::isViewOperation);
+  }
+
+  public void allowEditAll() {
+    LOG.debug("allowEditAll operations");
+    operations.removeIf(OperationContext::isEditOperation);
+  }
+
+  public static boolean isEditOperation(MetadataOperation operation) {
+    return operation.value().startsWith("Edit");
+  }
+
+  public static boolean isViewOperation(MetadataOperation operation) {
+    return operation.value().startsWith("View");
   }
 }
