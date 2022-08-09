@@ -36,8 +36,7 @@ const NonAdminAction = ({
   isOwner = false,
   html,
   trigger = 'mouseenter',
-}: // permission,
-Props) => {
+}: Props) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
