@@ -340,12 +340,10 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
-          String userId)
+      @Parameter(description = "Id of the dashboard", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
