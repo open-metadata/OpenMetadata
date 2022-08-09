@@ -26,6 +26,10 @@
         "idpX509Certificate": {
           "description": "X509 Certificate ",
           "type": "string"
+        },
+        "authorityUrl": {
+          "description": "Authority URL to redirect the users on Sign In page",
+          "type": "string"
         }
       },
       "required": ["entityId", "ssoLoginUrl"],

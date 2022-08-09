@@ -31,7 +31,7 @@ public class SamlSettingsHolder {
   }
 
   public void initDefaultSettings(CatalogApplicationConfig catalogApplicationConfig) {
-    samlConfig = catalogApplicationConfig.getSamlConfiguration();
+    samlConfig = catalogApplicationConfig.getAuthenticationConfiguration().getSamlConfiguration();
     jwtTokenConfiguration = catalogApplicationConfig.getJwtTokenConfiguration();
     tokenValidity = JWTTokenExpiry.fromValue(samlConfig.getSp().getTokenValidity());
     if (samlData == null) {

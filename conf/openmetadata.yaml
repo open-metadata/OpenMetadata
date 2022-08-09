@@ -144,20 +144,20 @@ authenticationConfiguration:
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
-
-samlConfiguration:
-  idp:
-    entityId: ${SAML_IDP_ENTITY_ID:-""}
-    ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
-    ssoLogoutUrl: ${SAML_IDP_SSO_LOGOUT_URL:-""}
-    idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
-  sp:
-    entityId: ${SAML_SP_ENTITY_ID:-""}
-    acs: ${SAML_SP_ACS:-""}
-    logoutUrl: ${SAML_SP_SSO_LOGOUT_URL:-""}
-    spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
-    callback: ${SAML_SP_CALLBACK:-""}
-    tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"7"}
+  samlConfiguration:
+    idp:
+      entityId: ${SAML_IDP_ENTITY_ID:-""}
+      ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
+      ssoLogoutUrl: ${SAML_IDP_SSO_LOGOUT_URL:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
+      authorityUrl: ${SAML_AUTHORITY_URL:-""}
+    sp:
+      entityId: ${SAML_SP_ENTITY_ID:-""}
+      acs: ${SAML_SP_ACS:-""}
+      logoutUrl: ${SAML_SP_SSO_LOGOUT_URL:-""}
+      spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
+      callback: ${SAML_SP_CALLBACK:-""}
+      tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"7"}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}

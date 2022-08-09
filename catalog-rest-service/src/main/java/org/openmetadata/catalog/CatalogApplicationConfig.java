@@ -31,7 +31,6 @@ import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
-import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
@@ -86,11 +85,6 @@ public class CatalogApplicationConfig extends Configuration {
 
   @JsonProperty("sandboxModeEnabled")
   private boolean sandboxModeEnabled;
-
-  @JsonProperty("samlConfiguration")
-  @Getter
-  @Setter
-  private SamlSSOClientConfig samlConfiguration;
 
   @JsonProperty("slackChat")
   private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();

@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-export enum AuthTypes {
-  GOOGLE = 'google',
-  GITHUB = 'github',
-  OKTA = 'okta',
-  AUTH0 = 'auth0',
-  AZURE = 'azure',
-  CUSTOM_OIDC = 'custom-oidc',
-  AWS_COGNITO = 'aws-cognito',
-  SAML = 'saml',
-}
+import { getByTestId, render } from '@testing-library/react';
+import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import SamlCallback from './index';
+
+describe('Test SamlCallback Component', () => {
+  it('Component should render', () => {
+    const { container } = render(<SamlCallback />, {
+      wrapper: MemoryRouter,
+    });
+    const message = getByTestId(container, 'redirect-message');
+
+    expect(message).toBeInTheDocument();
+  });
+});

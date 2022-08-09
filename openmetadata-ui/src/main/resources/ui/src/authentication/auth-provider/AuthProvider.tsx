@@ -15,7 +15,7 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty, isNil } from 'lodash';
@@ -52,6 +52,7 @@ import {
 } from '../../constants/constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { AuthTypes } from '../../enums/signin.enum';
+import { AuthenticationConfiguration } from '../../generated/configuration/authenticationConfiguration';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
@@ -74,6 +75,7 @@ import Auth0Authenticator from '../authenticators/Auth0Authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
+import SamlAuthenticator from '../authenticators/SamlAuthenticator';
 import Auth0Callback from '../callbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import OktaAuthProvider from './okta-auth-provider';
@@ -455,19 +457,24 @@ export const AuthProvider = ({
       .then((authRes) => {
         const isSecureMode = !isNil(authRes) && authRes.provider !== NO_AUTH;
         if (isSecureMode) {
-          const { provider, providerName, authority, clientId, callbackUrl } =
-            authRes;
+          const {
+            provider,
+            providerName,
+            authority,
+            clientId,
+            callbackUrl,
+            samlConfiguration,
+          } = authRes;
           // show an error toast if provider is null or not supported
-          if (
-            provider &&
-            Object.values(AuthTypes).includes(provider as AuthTypes)
-          ) {
+          const authTypes: Array<string> = Object.values(AuthTypes);
+          if (provider && authTypes.includes(provider)) {
             const configJson = getAuthConfig({
               authority,
               clientId,
               callbackUrl,
               provider,
               providerName,
+              samlConfiguration,
             });
             initializeAxiosInterceptors();
             setAuthConfig(configJson);
@@ -545,6 +552,15 @@ export const AuthProvider = ({
           </OktaAuthProvider>
         );
       }
+      case AuthTypes.SAML: {
+        return (
+          <SamlAuthenticator
+            ref={authenticatorRef}
+            onLogoutSuccess={handleSuccessfulLogout}>
+            {children}
+          </SamlAuthenticator>
+        );
+      }
       case AuthTypes.GOOGLE:
       case AuthTypes.CUSTOM_OIDC:
       case AuthTypes.AWS_COGNITO: {
@@ -599,6 +615,7 @@ export const AuthProvider = ({
         if (
           (location.pathname === ROUTES.SIGNUP && isEmpty(appState.newUser)) ||
           (!location.pathname.includes(ROUTES.CALLBACK) &&
+            location.pathname !== ROUTES.SAML_CALLBACK &&
             location.pathname !== ROUTES.HOME &&
             location.pathname !== ROUTES.SIGNUP &&
             location.pathname !== ROUTES.SIGNIN)

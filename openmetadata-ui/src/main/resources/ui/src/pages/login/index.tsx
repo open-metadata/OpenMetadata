@@ -77,6 +77,13 @@ const SigninPage = () => {
 
         break;
       }
+      case AuthTypes.SAML: {
+        ssoBrandName = authConfig?.providerName
+          ? authConfig?.providerName
+          : 'SAML SSO';
+
+        break;
+      }
       case AuthTypes.OKTA: {
         ssoBrandLogo = Icons.OKTA_ICON;
         ssoBrandName = 'Okta';

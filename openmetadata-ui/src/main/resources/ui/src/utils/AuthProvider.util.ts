@@ -23,6 +23,7 @@ import { WebStorageStateStore } from 'oidc-client';
 import { ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
+import { SamlSSOClientConfig } from '../generated/security/client/samlSSOClientConfig';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
@@ -65,11 +66,26 @@ export const getUserManagerConfig = (
   };
 };
 
+export type AuthClient = {
+  authority: string;
+  clientId: string;
+  callbackUrl: string;
+  provider: string;
+  providerName: string;
+  samlConfiguration?: SamlSSOClientConfig;
+};
+
 export const getAuthConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthClient
 ): Record<string, string | boolean> => {
-  const { authority, clientId, callbackUrl, provider, providerName } =
-    authClient;
+  const {
+    authority,
+    clientId,
+    callbackUrl,
+    provider,
+    providerName,
+    samlConfiguration,
+  } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
@@ -81,6 +97,15 @@ export const getAuthConfig = (
           redirectUri,
           scopes: ['openid', 'profile', 'email', 'offline_access'],
           pkce: true,
+          provider,
+        };
+      }
+
+      break;
+    case AuthTypes.SAML:
+      {
+        config = {
+          samlConfiguration,
           provider,
         };
       }
@@ -184,7 +209,8 @@ export const isProtectedRoute = (pathname: string) => {
   return (
     pathname !== ROUTES.SIGNUP &&
     pathname !== ROUTES.SIGNIN &&
-    pathname !== ROUTES.CALLBACK
+    pathname !== ROUTES.CALLBACK &&
+    pathname !== ROUTES.SAML_CALLBACK
   );
 };
 

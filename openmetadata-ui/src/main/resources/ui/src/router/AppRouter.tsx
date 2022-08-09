@@ -21,6 +21,7 @@ import Loader from '../components/Loader/Loader';
 import SlackChat from '../components/SlackChat/SlackChat';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
+import SamlCallback from '../pages/SamlCallback';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AuthenticatedAppRouter = withSuspenseFallback(
@@ -109,6 +110,7 @@ const AppRouter = () => {
             {callbackComponent ? (
               <Route component={callbackComponent} path={ROUTES.CALLBACK} />
             ) : null}
+            <Route component={SamlCallback} path={ROUTES.SAML_CALLBACK} />
             <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
             {isAuthDisabled || isAuthenticated ? (
               <AuthenticatedAppRouter />
