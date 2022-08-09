@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.catalog.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,12 +63,11 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 public class AWSSecretsManagerTest {
 
   private static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
-
   private static final boolean ENCRYPT = true;
   private static final boolean DECRYPT = false;
   private static final String EXPECTED_CONNECTION_JSON =
       "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"password\":\"openmetadata-test\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true}";
-  private static final String EXPECTED_SECRET_ID = "openmetadata-database-mysql-test";
+  private static final String EXPECTED_SECRET_ID = "/openmetadata/service/database/mysql/test";
 
   @Mock private SecretsManagerClient secretsManagerClient;
 
@@ -70,7 +81,7 @@ public class AWSSecretsManagerTest {
     parameters.put("secretAccessKey", "654321");
     SecretsManagerConfiguration config = new SecretsManagerConfiguration();
     config.setParameters(parameters);
-    secretsManager = AWSSecretsManager.getInstance(config);
+    secretsManager = AWSSecretsManager.getInstance(config, "openmetadata");
     secretsManager.setSecretsClient(secretsManagerClient);
     reset(secretsManagerClient);
   }
@@ -136,7 +147,7 @@ public class AWSSecretsManagerTest {
       OpenMetadataServerConnection.AuthProvider authProvider,
       AuthConfiguration authConfig)
       throws JsonProcessingException {
-    String expectedSecretId = String.format("openmetadata-%s-%s", AUTH_PROVIDER_SECRET_ID_SUFFIX, authProvider);
+    String expectedSecretId = String.format("/openmetadata/%s/%s", AUTH_PROVIDER_SECRET_ID_SUFFIX, authProvider);
     AirflowConfiguration airflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);
     airflowConfiguration.setAuthConfig(authConfig);
     AirflowConfiguration expectedAirflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);

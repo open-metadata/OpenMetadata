@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -149,7 +150,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public StorageService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -240,7 +241,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public StorageService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "storage service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -314,8 +315,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }

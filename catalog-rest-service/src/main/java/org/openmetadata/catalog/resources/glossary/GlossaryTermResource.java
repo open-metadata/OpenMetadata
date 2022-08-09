@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -131,7 +132,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                       + "`parent` parameter.",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("parent")
-          String parentTermParam,
+          UUID parentTermParam,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -176,7 +177,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       // Ensure parent glossary term belongs to the glossary
       if ((glossary != null) && (!parentTerm.getGlossary().getId().equals(glossary.getId()))) {
         throw new IllegalArgumentException(
-            CatalogExceptionMessage.glossaryTermMismatch(parentTermParam, glossaryIdParam));
+            CatalogExceptionMessage.glossaryTermMismatch(parentTermParam.toString(), glossaryIdParam));
       }
     }
     ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
@@ -207,7 +208,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public GlossaryTerm get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -296,7 +297,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public GlossaryTerm getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "glossary term version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -338,7 +339,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -393,7 +394,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Glossary Term Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Glossary Term Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }

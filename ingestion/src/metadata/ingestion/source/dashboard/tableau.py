@@ -14,6 +14,7 @@ Tableau source module
 import traceback
 from typing import Iterable, List, Optional
 
+from requests.utils import urlparse
 from tableau_api_lib.utils.querying import (
     get_views_dataframe,
     get_workbook_connections_dataframe,
@@ -149,9 +150,11 @@ class TableauSource(DashboardServiceSource):
             Optional[EntityReference]
         """
         owner = self.owner[dashboard_details["owner"]["id"]]
-        yield CreateUserRequest(
-            name=owner["name"], displayName=owner["fullName"], email=owner["email"]
-        )
+        name = owner.get("name")
+        displayName = owner.get("fullName")
+        email = owner.get("email")
+        if name and email:
+            yield CreateUserRequest(name=name, displayName=displayName, email=email)
 
     def yield_tag(self, _) -> OMetaTagAndCategory:
         """
@@ -196,6 +199,8 @@ class TableauSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         dashboard_tag = dashboard_details.get("tags")
+        workbook_url = urlparse(dashboard_details.get("webpageUrl")).fragment
+        dashboard_url = f"#{workbook_url}"
         yield CreateDashboardRequest(
             name=dashboard_details.get("id"),
             displayName=dashboard_details.get("name"),
@@ -206,7 +211,7 @@ class TableauSource(DashboardServiceSource):
                 for chart in self.context.charts
             ],
             tags=self.get_tag_lables(dashboard_tag),
-            dashboardUrl=dashboard_details.get("webpageUrl"),
+            dashboardUrl=dashboard_url,
             service=EntityReference(
                 id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
@@ -284,10 +289,14 @@ class TableauSource(DashboardServiceSource):
                 ):
                     self.status.failure(chart["name"], "Chart Pattern not allowed")
                     continue
+                workbook_name = dashboard_details["name"].replace(" ", "")
+                site_url = (
+                    f"site/{self.service_connection.siteUrl}/"
+                    if self.service_connection.siteUrl
+                    else ""
+                )
                 chart_url = (
-                    f"/#/site/{self.service_connection.siteName}/"
-                    f"views/{dashboard_details['name']}/"
-                    f"{chart['viewUrlName']}"
+                    f"#/{site_url}" f"views/{workbook_name}/" f"{chart['viewUrlName']}"
                 )
                 yield CreateChartRequest(
                     name=chart["id"],
@@ -305,3 +314,6 @@ class TableauSource(DashboardServiceSource):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(err)
+
+    def close(self):
+        self.client.sign_out()

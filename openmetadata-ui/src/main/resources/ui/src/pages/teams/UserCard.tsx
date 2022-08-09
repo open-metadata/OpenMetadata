@@ -20,7 +20,7 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import { AssetsType, FqnPart } from '../../enums/entity.enum';
+import { AssetsType, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
@@ -28,6 +28,7 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
@@ -238,7 +239,11 @@ const UserCard = ({
                     !isAdminUser &&
                     !isAuthDisabled &&
                     !isOwner &&
-                    !userPermissions[Operation.EditUsers],
+                    !hasPemission(
+                      Operation.EditUsers,
+                      EntityType.TEAM,
+                      userPermissions
+                    ),
                 })}
                 data-testid="remove"
                 onClick={() => onRemove?.(item.id as string)}>

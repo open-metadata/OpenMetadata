@@ -480,7 +480,7 @@ public class TagResource {
   public Response deleteCategory(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Tag category id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     TagCategory tagCategory = daoCategory.delete(uriInfo, id);
@@ -499,7 +499,7 @@ public class TagResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
-      @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Tag id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     Tag tag = dao.delete(uriInfo, id);

@@ -24,6 +24,7 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
   TITLE_FOR_UPDATE_OWNER,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -32,6 +33,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
 import { getOwnerList } from '../../utils/ManageUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -313,7 +315,11 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           <Button
             data-testid="owner-dropdown"
             disabled={
-              !userPermissions[Operation.EditOwner] &&
+              !hasPemission(
+                Operation.EditOwner,
+                EntityType.GLOSSARY,
+                userPermissions
+              ) &&
               !isAuthDisabled &&
               !hasEditAccess
             }

@@ -506,3 +506,17 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 export const MarkdownToHTMLConverter = new Showdown.Converter({
   strikethrough: true,
 });
+
+export const getFeedPanelHeaderText = (
+  threadType: ThreadType = ThreadType.Conversation
+) => {
+  switch (threadType) {
+    case ThreadType.Announcement:
+      return 'Announcement';
+    case ThreadType.Task:
+      return 'Task';
+    case ThreadType.Conversation:
+    default:
+      return 'Conversation';
+  }
+};

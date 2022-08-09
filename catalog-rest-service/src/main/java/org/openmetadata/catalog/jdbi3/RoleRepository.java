@@ -163,8 +163,8 @@ public class RoleRepository extends EntityRepository<Role> {
           // Skip the current role which is being set with default=TRUE.
           continue;
         }
-        Role origDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), Fields.EMPTY_FIELDS);
-        Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), Fields.EMPTY_FIELDS);
+        Role origDefaultRole = roleRepository.get(null, defaultRole.getId(), Fields.EMPTY_FIELDS);
+        Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId(), Fields.EMPTY_FIELDS);
         updatedDefaultRole = updatedDefaultRole.withDefaultRole(false);
         new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
       }
