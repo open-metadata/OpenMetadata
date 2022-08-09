@@ -160,16 +160,16 @@ MOCK_PIPELINE = Pipeline(
     ),
 )
 
+
 class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
     @patch("sqlalchemy.engine.base.Engine.connect")
-    def __init__(self,  methodName, mock_connect,  test_connection) -> None:
+    def __init__(self, methodName, mock_connect, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        
-       
+
         config = OpenMetadataWorkflowConfig.parse_obj(mock_dagster_config)
-       
+
         self.dagster = DagsterSource.create(
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
@@ -178,11 +178,9 @@ class DagsterUnitTest(TestCase):
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
 
-   
     def test_pipeline_name(self):
-        
-        assert self.dagster.get_pipeline_name(
-            EXPECTED_DAGSTER_DETAILS
-        ) == mock_data[6]["pipeline_code_origin"]["pipeline_name"]
 
-    
+        assert (
+            self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
+            == mock_data[6]["pipeline_code_origin"]["pipeline_name"]
+        )
