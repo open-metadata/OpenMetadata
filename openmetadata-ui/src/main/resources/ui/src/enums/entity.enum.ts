@@ -29,6 +29,7 @@ export enum EntityType {
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
+  TEAM = 'team',
 }
 
 export enum AssetsType {
