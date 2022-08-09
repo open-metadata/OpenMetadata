@@ -184,9 +184,13 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({
-    userPermissions: {},
+    userPermissions: [],
     isAdminUser: false,
   }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  hasPemission: jest.fn().mockReturnValue(false),
 }));
 
 describe('Test EntityLineage Component', () => {
