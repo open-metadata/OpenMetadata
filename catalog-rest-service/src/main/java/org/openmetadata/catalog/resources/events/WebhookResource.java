@@ -161,7 +161,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Webhook get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -240,7 +240,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Webhook getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "webhook version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -306,7 +306,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -338,10 +338,10 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response deleteWebhook(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, false, true, false);
-    dao.deleteWebhookPublisher(UUID.fromString(id));
+    dao.deleteWebhookPublisher(id);
     return response;
   }
 

@@ -19,12 +19,14 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { getTeams } from '../../../axiosAPIs/teamsAPI';
 import { getUsers } from '../../../axiosAPIs/userAPI';
 import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
 import jsonData from '../../../jsons/en';
 import { hasEditAccess } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
+import { hasPemission } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { isCurrentUserAdmin } from '../../../utils/UserDataUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -160,7 +162,11 @@ const OwnerWidget = ({
           return false;
         }
 
-        return userPermissions[Operation.EditOwner];
+        return hasPemission(
+          Operation.EditOwner,
+          entityType as EntityType,
+          userPermissions
+        );
       }
     }
 

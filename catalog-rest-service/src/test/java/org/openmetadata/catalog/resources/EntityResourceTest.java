@@ -1965,7 +1965,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public ChangeEvent addFollower(UUID entityId, UUID userId, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getFollowersCollection(entityId);
-    return TestUtils.put(target, userId.toString(), ChangeEvent.class, status, authHeaders);
+    return TestUtils.put(target, userId, ChangeEvent.class, status, authHeaders);
   }
 
   protected void deleteAndCheckFollower(

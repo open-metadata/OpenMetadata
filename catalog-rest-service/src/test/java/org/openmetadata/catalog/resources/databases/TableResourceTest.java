@@ -1811,7 +1811,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public void addAndCheckLocation(Table table, UUID locationId, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
-    TestUtils.put(target, locationId.toString(), status, authHeaders);
+    TestUtils.put(target, locationId, status, authHeaders);
 
     // GET .../tables/{tableId} returns newly added location
     Table getTable = getEntity(table.getId(), "location", authHeaders);

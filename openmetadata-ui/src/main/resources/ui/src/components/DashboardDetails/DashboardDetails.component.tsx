@@ -684,6 +684,7 @@ const DashboardDetails = ({
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
+                    entityType={EntityType.DASHBOARD}
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
                     isOwner={hasEditAccess()}

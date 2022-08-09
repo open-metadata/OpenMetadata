@@ -775,6 +775,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
+                    entityType={EntityType.TABLE}
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
                     isOwner={hasEditAccess()}

@@ -485,6 +485,7 @@ const PipelineDetails = ({
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
+                    entityType={EntityType.PIPELINE}
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
                     isOwner={hasEditAccess()}

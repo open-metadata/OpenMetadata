@@ -203,7 +203,7 @@ class MetadataRestSink(Sink[Entity]):
             )
             self.metadata.add_location(table=table, location=location)
         except Exception as err:
-            logger.debug(traceback.format_exc())
+            logger.error(traceback.format_exc())
             logger.error(err)
             self.status.failure(
                 f"{table_location_link.table_fqn} <-> {table_location_link.location_fqn}"

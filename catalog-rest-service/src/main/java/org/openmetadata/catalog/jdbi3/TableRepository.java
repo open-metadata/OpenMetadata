@@ -164,6 +164,7 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
+
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
       throw new IllegalArgumentException("Date range can only include past 30 days starting today");
     }
@@ -606,8 +607,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public void deleteLocation(String tableId) {
-    deleteFrom(UUID.fromString(tableId), TABLE, Relationship.HAS, LOCATION);
+  public void deleteLocation(UUID tableId) {
+    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
