@@ -13,6 +13,7 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
+import json
 import traceback
 from typing import List, Optional, Union
 
@@ -33,6 +34,7 @@ from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.utils.lru_cache import LRUCache
+from metadata.utils.uuid_encoder import UUIDEncoder
 
 logger = ometa_logger()
 
@@ -57,7 +59,7 @@ class OMetaTableMixin:
         """
         self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/location",
-            data=str(location.id.__root__),
+            data=json.dumps(location.id.__root__, cls=UUIDEncoder),
         )
 
     def ingest_table_sample_data(

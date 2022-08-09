@@ -70,7 +70,7 @@ public class RoleCache {
   static class RoleLoader extends CacheLoader<UUID, Role> {
     @Override
     public Role load(@CheckForNull UUID roleId) throws IOException {
-      Role role = ROLE_REPOSITORY.get(null, roleId.toString(), FIELDS);
+      Role role = ROLE_REPOSITORY.get(null, roleId, FIELDS);
       LOG.info("Loaded role {}:{}", role.getName(), role.getId());
       return role;
     }

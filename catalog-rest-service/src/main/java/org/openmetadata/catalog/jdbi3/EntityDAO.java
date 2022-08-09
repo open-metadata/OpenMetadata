@@ -176,8 +176,8 @@ public interface EntityDAO<T extends EntityInterface> {
     return findEntityByName(fqn, include).getEntityReference();
   }
 
-  default String findJsonById(String id, Include include) {
-    return findById(getTableName(), id, getCondition(include));
+  default String findJsonById(UUID id, Include include) {
+    return findById(getTableName(), id.toString(), getCondition(include));
   }
 
   default String findJsonByFqn(String fqn, Include include) {
