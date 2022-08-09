@@ -42,6 +42,8 @@ site_menu:
     url: /deployment/kubernetes
   - category: Deployment / Kubernetes Deployment / GKE Deployment
     url: /deployment/kubernetes/gke
+  - category: Deployment / Kubernetes Deployment / Kubernetes On Premises Deployment
+    url: /deployment/kubernetes/onprem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
 
