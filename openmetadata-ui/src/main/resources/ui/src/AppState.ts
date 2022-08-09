@@ -13,11 +13,12 @@
 
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
-import { ClientAuth, NewUser, UserPermissions } from 'Models';
+import { ClientAuth, NewUser } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import { EntityData } from './components/common/PopOverCard/EntityPopOverCard';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { CurrentTourPageType } from './enums/tour.enum';
+import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import { Role } from './generated/entity/teams/role';
 import {
   EntityReference as UserTeams,
@@ -42,7 +43,7 @@ class AppState {
   entityData: Record<string, EntityData> = {};
   userTeams: Array<UserTeams> = [];
   userRoles: Array<Role> = [];
-  userPermissions: UserPermissions = {} as UserPermissions;
+  userPermissions: ResourcePermission[] = [];
   userProfilePics: Array<{
     id: string;
     name: string;
@@ -122,7 +123,7 @@ class AppState {
   updateAuthState(state: boolean) {
     this.authDisabled = state;
   }
-  updateUserPermissions(permissions: UserPermissions) {
+  updateUserPermissions(permissions: ResourcePermission[]) {
     this.userPermissions = permissions;
   }
   updateExplorePageTab(tab: string) {

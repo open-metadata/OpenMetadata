@@ -50,8 +50,8 @@ const Signup = () => {
   const getUserPermissions = () => {
     getLoggedInUserPermissions()
       .then((res) => {
-        if (res.metadataOperations) {
-          appState.updateUserPermissions(res.metadataOperations);
+        if (res.data) {
+          appState.updateUserPermissions(res.data);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }

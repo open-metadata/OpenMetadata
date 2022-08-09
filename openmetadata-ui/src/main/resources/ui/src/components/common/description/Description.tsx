@@ -25,6 +25,7 @@ import { Operation } from '../../../generated/entity/policies/accessControl/rule
 import { useAuth } from '../../../hooks/authHooks';
 import { isTaskSupported } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { hasPemission } from '../../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getRequestDescriptionPath,
@@ -76,7 +77,11 @@ const Description: FC<DescriptionProps> = ({
     return (
       isAdminUser ||
       Boolean(hasEditAccess) ||
-      userPermissions[Operation.EditDescription] ||
+      hasPemission(
+        Operation.EditDescription,
+        entityType as EntityType,
+        userPermissions
+      ) ||
       isAuthDisabled
     );
   };

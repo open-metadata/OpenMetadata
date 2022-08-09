@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { UserPermissions } from 'Models';
 import React from 'react';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
@@ -37,9 +36,8 @@ const NonAdminAction = ({
   isOwner = false,
   html,
   trigger = 'mouseenter',
-  permission,
 }: Props) => {
-  const { isAdminUser, userPermissions } = useAuth();
+  const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
   const handleCapturedEvent = (
@@ -51,10 +49,10 @@ const NonAdminAction = ({
 
   return (
     <span className={className}>
-      {isAdminUser ||
-      isOwner ||
-      isAuthDisabled ||
-      userPermissions[permission as keyof UserPermissions] ? (
+      {isAdminUser || isOwner || isAuthDisabled ? (
+        // TODO: uncomment this once UI AuthorizerProvider is added
+        // userPermissions[permission as keyof UserPermissions]
+
         <span>{children}</span>
       ) : (
         <PopOver
