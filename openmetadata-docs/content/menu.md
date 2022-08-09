@@ -217,6 +217,12 @@ site_menu:
     url: /openmetadata/connectors/database/databricks/airflow
   - category: OpenMetadata / Connectors / Database / Databricks / CLI
     url: /openmetadata/connectors/database/databricks/cli
+  - category: OpenMetadata / Connectors / Database / Datalake
+    url: /openmetadata/connectors/database/datalake
+  - category: OpenMetadata / Connectors / Database / Datalake / Airflow
+    url: /openmetadata/connectors/database/datalake/airflow
+  - category: OpenMetadata / Connectors / Database / Datalake / CLI
+    url: /openmetadata/connectors/database/datalake/cli
   - category: OpenMetadata / Connectors / Database / DB2
     url: /openmetadata/connectors/database/db2
   - category: OpenMetadata / Connectors / Database / DB2 / Airflow
