@@ -172,13 +172,16 @@ export const updateTask: Function = (
 };
 
 export const getActiveAnnouncement = async (entityLink: string) => {
-  const response = await APIClient.get<Thread[]>('/feed', {
-    params: {
-      entityLink,
-      type: ThreadType.Announcement,
-      activeAnnouncement: true,
-    },
-  });
+  const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
+    '/feed',
+    {
+      params: {
+        entityLink,
+        type: ThreadType.Announcement,
+        activeAnnouncement: true,
+      },
+    }
+  );
 
   return response.data;
 };
