@@ -62,13 +62,13 @@ public class SecretsManagerMigrationService {
 
   private final IngestionPipelineRepository ingestionPipelineRepository;
 
-  public SecretsManagerMigrationService(SecretsManager secretsManager) {
+  public SecretsManagerMigrationService(SecretsManager secretsManager, String clusterName) {
     this.newSecretManager = secretsManager;
     this.connectionTypeRepositoriesMap = retrieveConnectionTypeRepositoriesMap();
     this.changeEventRepository = retrieveChangeEventRepository();
     this.ingestionPipelineRepository = retrieveIngestionPipelineRepository();
     // by default, it is going to be LOCAL
-    this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null);
+    this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null, clusterName);
   }
 
   public void migrateServicesToSecretManagerIfNeeded() {

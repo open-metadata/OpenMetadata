@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, extend, isEmpty } from 'lodash';
 import {
@@ -145,8 +145,7 @@ const GlossaryPageV1 = () => {
     arrGlossary: ModifiedGlossaryData[]
   ) => {
     getGlossaryTermByFQN(fqn, ['children', 'relatedTerms', 'reviewers', 'tags'])
-      .then(async (res: AxiosResponse) => {
-        const { data } = res;
+      .then(async (data) => {
         if (data) {
           const clonedGlossaryList = cloneDeep(arrGlossary);
           let treeNode = clonedGlossaryList[pos[0]];
@@ -164,9 +163,9 @@ const GlossaryPageV1 = () => {
           let childTerms = [] as GlossaryTerm[];
           if (data.children?.length) {
             childTerms = await getChildGlossaryTerms(
-              (data.children as GlossaryTerm[]).map(
-                (item) => item.fullyQualifiedName || item.name
-              )
+              data.children?.map(
+                (item) => item.fullyQualifiedName ?? item.name ?? ''
+              ) ?? []
             );
           }
 
@@ -389,7 +388,7 @@ const GlossaryPageV1 = () => {
       Promise.all(promiseArr)
         .then((res) => {
           arrNewData = res.reduce((prev, curr) => {
-            return curr?.data ? [...prev, curr.data] : prev;
+            return curr ? [...prev, curr] : prev;
           }, [] as ModifiedGlossaryData[]);
           const arrData = updateGlossaryListBySearchedTerms(
             [...arrGlossaries, ...arrNewData],
@@ -424,7 +423,9 @@ const GlossaryPageV1 = () => {
   const fetchSearchedTerms = useCallback(() => {
     if (searchText) {
       searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-        .then((res: AxiosResponse) => {
+        // TODO: fix type issues below
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then((res: any) => {
           if (res.data) {
             const searchedTerms: FormattedGlossarySuggestion[] =
               res.data.hits?.hits?.map(
@@ -476,17 +477,14 @@ const GlossaryPageV1 = () => {
   /**
    * To save updated glossary using patch method
    * @param updatedData glossary with new values
-   * @returns promise of api response
+   * @returns {Promise<Glossary>} promise of api response
    */
   const saveUpdatedGlossaryData = (
     updatedData: Glossary
-  ): Promise<AxiosResponse> => {
+  ): Promise<Glossary> => {
     const jsonPatch = compare(selectedData as Glossary, updatedData);
 
-    return patchGlossaries(
-      selectedData?.id as string,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchGlossaries(selectedData?.id as string, jsonPatch);
   };
 
   /**
@@ -495,9 +493,8 @@ const GlossaryPageV1 = () => {
    */
   const updateGlossary = (updatedData: Glossary) => {
     saveUpdatedGlossaryData(updatedData)
-      .then((res: AxiosResponse) => {
-        if (res?.data) {
-          const { data } = res;
+      .then((data) => {
+        if (data) {
           setSelectedData(data);
           setGlossaries((pre) => {
             return pre.map((item) => {
@@ -542,13 +539,10 @@ const GlossaryPageV1 = () => {
    */
   const saveUpdatedGlossaryTermData = (
     updatedData: GlossaryTerm
-  ): Promise<AxiosResponse> => {
+  ): Promise<Glossary> => {
     const jsonPatch = compare(selectedData as GlossaryTerm, updatedData);
 
-    return patchGlossaryTerm(
-      selectedData?.id as string,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchGlossaryTerm(selectedData?.id as string, jsonPatch);
   };
 
   /**
@@ -557,9 +551,9 @@ const GlossaryPageV1 = () => {
    */
   const handleGlossaryTermUpdate = (updatedData: GlossaryTerm) => {
     saveUpdatedGlossaryTermData(updatedData)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setSelectedData(res.data);
+      .then((res) => {
+        if (res) {
+          setSelectedData(res);
         } else {
           throw jsonData['api-error-messages']['update-glossary-term-error'];
         }

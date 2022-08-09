@@ -72,10 +72,10 @@ jest.mock('../../axiosAPIs/userAPI', () => {
   return {
     generateUserToken: jest
       .fn()
-      .mockImplementation(() => Promise.resolve({ data: mockToken })),
+      .mockImplementation(() => Promise.resolve(mockToken)),
     getUserToken: jest
       .fn()
-      .mockImplementation(() => Promise.resolve({ data: mockToken })),
+      .mockImplementation(() => Promise.resolve(mockToken)),
   };
 });
 
@@ -116,7 +116,9 @@ describe('Test BotsDetail Component', () => {
   it('Should render no token placeholder if token is not present', async () => {
     (getUserToken as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        data: { ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' },
+        ...mockToken,
+        JWTToken: '',
+        JWTTokenExpiresAt: '',
       })
     );
     const { container } = render(<BotsDetail {...mockProp} />, {
@@ -136,9 +138,7 @@ describe('Test BotsDetail Component', () => {
 
   it('Should render generate token form if generate token button is clicked', async () => {
     (getUserToken as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        data: { ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' },
-      })
+      Promise.resolve({ ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' })
     );
     const { container } = render(<BotsDetail {...mockProp} />, {
       wrapper: MemoryRouter,

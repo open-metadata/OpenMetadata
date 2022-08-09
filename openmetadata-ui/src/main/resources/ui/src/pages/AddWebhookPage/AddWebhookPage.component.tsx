@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -43,8 +43,8 @@ const AddWebhookPage: FunctionComponent = () => {
   const handleSave = (data: CreateWebhook) => {
     setStatus('waiting');
     addWebhook(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');

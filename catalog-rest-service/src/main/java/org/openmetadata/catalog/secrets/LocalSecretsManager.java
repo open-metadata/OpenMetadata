@@ -32,8 +32,8 @@ public class LocalSecretsManager extends SecretsManager {
 
   private Fernet fernet;
 
-  private LocalSecretsManager(OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider) {
-    super(secretsManagerProvider);
+  private LocalSecretsManager(String clusterPrefix) {
+    super(LOCAL, clusterPrefix);
     this.fernet = Fernet.getInstance();
   }
 
@@ -102,8 +102,8 @@ public class LocalSecretsManager extends SecretsManager {
     }
   }
 
-  public static LocalSecretsManager getInstance() {
-    if (INSTANCE == null) INSTANCE = new LocalSecretsManager(LOCAL);
+  public static LocalSecretsManager getInstance(String clusterPrefix) {
+    if (INSTANCE == null) INSTANCE = new LocalSecretsManager(clusterPrefix);
     return INSTANCE;
   }
 

@@ -36,7 +36,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../axiosAPIs/userAPI', () => ({
   getUsers: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      data: MOCK_USER_DATA,
+      MOCK_USER_DATA,
     })
   ),
 }));
@@ -171,19 +171,18 @@ describe('Test UserListPage component', () => {
   });
 
   it('handlePagingChange function should work properly', async () => {
-    const userAPI = getUsers as jest.Mock;
     render(<UserListPageV1 />);
 
     const userlist = await screen.findByText('UserList.component');
-    const pagin = await screen.findByText('onPagingChange');
+    const paging = await screen.findByText('onPagingChange');
 
-    expect(pagin).toBeInTheDocument();
+    expect(paging).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(pagin);
+      fireEvent.click(paging);
     });
 
-    expect(userAPI).toHaveBeenCalled();
+    expect(getUsers).toHaveBeenCalled();
     expect(userlist).toBeInTheDocument();
   });
 });

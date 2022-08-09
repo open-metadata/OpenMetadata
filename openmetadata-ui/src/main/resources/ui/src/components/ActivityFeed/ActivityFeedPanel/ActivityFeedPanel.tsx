@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { Thread } from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';
-import { getEntityField } from '../../../utils/FeedUtils';
+import { getEntityField, getEntityFQN } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -40,6 +40,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
+  const entityFQN = getEntityFQN(selectedThread.about);
 
   const [confirmationState, setConfirmationState] = useState<ConfirmState>(
     confirmStateInitialValue
@@ -62,7 +63,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
 
   useEffect(() => {
     getFeedById(selectedThread.id)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         setThreadData(res.data);
       })
       .catch((err: AxiosError) => {
@@ -88,7 +89,9 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         id="feed-panel">
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
+          entityFQN={entityFQN}
           entityField={entityField as string}
+          threadType={selectedThread.type}
           onCancel={onCancel}
         />
 

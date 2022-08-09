@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { UserProfile } from 'Models';
 import React, { useState } from 'react';
@@ -49,9 +49,9 @@ const Signup = () => {
 
   const getUserPermissions = () => {
     getLoggedInUserPermissions()
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          appState.updateUserPermissions(res.data.metadataOperations);
+      .then((res) => {
+        if (res.metadataOperations) {
+          appState.updateUserPermissions(res.metadataOperations);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }

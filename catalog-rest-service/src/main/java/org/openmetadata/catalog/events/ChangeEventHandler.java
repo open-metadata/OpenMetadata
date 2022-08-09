@@ -22,6 +22,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -182,7 +183,12 @@ public class ChangeEventHandler implements EventHandler {
                 });
             break;
           case Announcement:
-          default:
+            AnnouncementDetails announcementDetails = thread.getAnnouncement();
+            Long currentTimestamp = Instant.now().getEpochSecond();
+            if (announcementDetails.getStartTime() <= currentTimestamp
+                && currentTimestamp <= announcementDetails.getEndTime()) {
+              WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
+            }
             break;
         }
       } catch (JsonProcessingException e) {

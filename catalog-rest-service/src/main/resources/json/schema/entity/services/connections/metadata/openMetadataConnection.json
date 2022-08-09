@@ -14,6 +14,11 @@
     }
   },
   "properties": {
+    "clusterName": {
+      "description": "Cluster name to differentiate OpenMetadata Server instance",
+      "type": "string",
+      "default": "openmetadata"
+    },
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/openmetadataType",

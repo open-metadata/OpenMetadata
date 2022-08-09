@@ -102,12 +102,10 @@ jest.mock('../../axiosAPIs/teamsAPI', () => ({
   createTeam: jest.fn(),
   getTeamByName: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockDataTeamByName })),
+    .mockImplementation(() => Promise.resolve(mockDataTeamByName)),
   getTeams: jest
     .fn()
-    .mockImplementation(() =>
-      Promise.resolve({ data: { data: mockTeamsData } })
-    ),
+    .mockImplementation(() => Promise.resolve({ data: mockTeamsData })),
   patchTeamDetail: jest.fn(),
   deleteTeam: jest.fn(),
 }));

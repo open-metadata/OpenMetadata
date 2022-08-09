@@ -97,7 +97,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
 
     final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(catalogConfig.getSecretsManagerConfiguration());
+        SecretsManagerFactory.createSecretsManager(
+            catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
 
@@ -159,7 +160,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     registerEventPublisher(catalogConfig);
 
     // Check if migration is need from local secret manager to configured one and migrate
-    new SecretsManagerMigrationService(secretsManager).migrateServicesToSecretManagerIfNeeded();
+    new SecretsManagerMigrationService(secretsManager, catalogConfig.getClusterName())
+        .migrateServicesToSecretManagerIfNeeded();
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer

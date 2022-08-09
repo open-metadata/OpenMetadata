@@ -13,59 +13,78 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Role } from '../generated/entity/teams/role';
 import { EntityReference } from '../generated/type/entityReference';
 import { Policy } from '../pages/RolesPage/role.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getRoles = (
-  arrQueryFields?: string | string[]
-): Promise<AxiosResponse> => {
+export const getRoles = async (arrQueryFields?: string | string[]) => {
   const url = getURLWithQueryFields('/roles', arrQueryFields);
 
-  return APIClient.get(`${url}${arrQueryFields ? '&' : '?'}limit=1000000`);
+  const response = await APIClient.get<{ data: Role[] }>(
+    `${url}${arrQueryFields ? '&' : '?'}limit=1000000`
+  );
+
+  return response.data;
 };
-export const getRoleByName = (
+export const getRoleByName = async (
   name: string,
   arrQueryFields?: string | string[]
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields(`/roles/name/${name}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<{ data: Role }>(url);
+
+  return response.data;
 };
 
-export const createRole = (
+export const createRole = async (
   data: Record<string, string | Array<EntityReference>>
-): Promise<AxiosResponse> => {
-  return APIClient.post('/roles', data);
+) => {
+  const response = await APIClient.post<unknown, AxiosResponse<Role>>(
+    '/roles',
+    data
+  );
+
+  return response.data;
 };
 
-export const updateRole = (
-  id: string,
-  patch: Operation[]
-): Promise<AxiosResponse> => {
+export const updateRole = async (id: string, patch: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  return APIClient.patch(`/roles/${id}`, patch, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Role>>(
+    `/roles/${id}`,
+    patch,
+    configOptions
+  );
+
+  return response.data;
 };
 
-export const getPolicy = (
+export const getPolicy = async (
   id: string,
   arrQueryFields?: string | string[]
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields(`/policies/${id}`, arrQueryFields);
 
-  return APIClient.get(url);
+  const response = await APIClient.get<Policy>(url);
+
+  return response.data;
 };
 
-export const updatePolicy = (
+export const updatePolicy = async (
   data: Pick<Policy, 'name' | 'policyType' | 'rules'>
-): Promise<AxiosResponse> => {
-  return APIClient.put(`/policies`, data);
+) => {
+  const response = await APIClient.put<Policy>(`/policies`, data as Policy);
+
+  return response.data;
 };
 
-export const getPolicies = (): Promise<AxiosResponse> => {
-  return APIClient.get('/policies');
+export const getPolicies = async () => {
+  const response = await APIClient.get<Policy[]>('/policies');
+
+  return response.data;
 };

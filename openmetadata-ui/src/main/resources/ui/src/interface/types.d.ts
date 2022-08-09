@@ -129,12 +129,6 @@ declare module 'Models' {
     columnJoins: Array<ColumnJoins>;
   };
 
-  export type Paging = {
-    after: string;
-    before: string;
-    total?: number;
-  };
-
   export type LoadingState = 'initial' | 'waiting' | 'success';
 
   export type TableDetail = {
@@ -438,27 +432,6 @@ declare module 'Models' {
     pipelineCount: number;
   };
 
-  // topic interface start
-  export interface Topic {
-    cleanupPolicies: string[];
-    description: string;
-    followers: Follower[];
-    fullyQualifiedName: string;
-    href: string;
-    id: string;
-    maximumMessageSize: number;
-    minimumInSyncReplicas: number;
-    name: string;
-    owner: Owner;
-    partitions: number;
-    retentionSize: number;
-    retentionTime: number;
-    schemaText: string;
-    schemaType: string;
-    service: Service;
-    tags: ColumnTags[];
-  }
-
   export interface Follower {
     description: string;
     href: string;
@@ -491,7 +464,7 @@ declare module 'Models' {
     fqn: string;
     serviceType?: string;
     timestamp: number;
-    id: number;
+    id: string;
   }
 
   interface RecentlySearchedData {
@@ -585,6 +558,11 @@ declare module 'Models' {
     EditTags: boolean;
     EditUsers: boolean;
   }
+
+  export interface UserPermissionResponse {
+    metadataOperations: UserPermissions;
+  }
+
   export interface EditorContentRef {
     getEditorContent: () => string;
   }
@@ -613,4 +591,8 @@ declare module 'Models' {
     left: boolean;
     right: boolean;
   }
+
+  // ES interface end
+
+  //   interface ESUserResponse {}
 }

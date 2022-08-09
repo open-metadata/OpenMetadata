@@ -27,7 +27,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { DataService } from '../../interface/service.interface';
+import { ServicesType } from '../../interface/service.interface';
 import {
   getEntityName,
   getServiceLogo,
@@ -42,7 +42,7 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 
 interface ServicesProps {
-  serviceData: DataService[];
+  serviceData: ServicesType[];
   serviceName: ServiceCategory;
   paging: Paging;
   currentPage: number;

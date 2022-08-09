@@ -54,7 +54,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
@@ -82,7 +81,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
-  private AirflowConfiguration airflowConfiguration;
+  private CatalogApplicationConfig catalogApplicationConfig;
   private final SecretsManager secretsManager;
 
   @Getter private final IngestionPipelineRepository ingestionPipelineRepository;
@@ -101,8 +100,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   public void initialize(CatalogApplicationConfig config) {
-    this.airflowConfiguration = config.getAirflowConfiguration();
-    this.pipelineServiceClient = new AirflowRESTClient(config.getAirflowConfiguration());
+    this.catalogApplicationConfig = config;
+    this.pipelineServiceClient = new AirflowRESTClient(catalogApplicationConfig.getAirflowConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
   }
 
@@ -554,7 +553,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
-        secretsManager.decryptServerConnection(airflowConfiguration);
+        secretsManager.decryptServerConnection(catalogApplicationConfig.getAirflowConfiguration());
+    openMetadataServerConnection.setClusterName(catalogApplicationConfig.getClusterName());
     openMetadataServerConnection.setSecretsManagerProvider(this.secretsManager.getSecretsManagerProvider());
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())

@@ -46,27 +46,36 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
   const fetchLogs = (id: string) => {
     setIsLoading(true);
     getIngestionPipelineLogById(id)
-      .then((res: AxiosResponse) => {
-        switch (pipelineType) {
-          case PipelineType.Metadata:
-            setLogs(gzipToStringConverter(res.data?.ingestion_task || ''));
+      .then(
+        (
+          // TODO: improve below types
+          res: AxiosResponse<{
+            ingestion_task?: string;
+            profiler_task?: string;
+            usage_task?: string;
+          }>
+        ) => {
+          switch (pipelineType) {
+            case PipelineType.Metadata:
+              setLogs(gzipToStringConverter(res.data?.ingestion_task || ''));
 
-            break;
-          case PipelineType.Profiler:
-            setLogs(gzipToStringConverter(res.data?.profiler_task || ''));
+              break;
+            case PipelineType.Profiler:
+              setLogs(gzipToStringConverter(res.data?.profiler_task || ''));
 
-            break;
-          case PipelineType.Usage:
-            setLogs(gzipToStringConverter(res.data?.usage_task || ''));
+              break;
+            case PipelineType.Usage:
+              setLogs(gzipToStringConverter(res.data?.usage_task || ''));
 
-            break;
+              break;
 
-          default:
-            setLogs('');
+            default:
+              setLogs('');
 
-            break;
+              break;
+          }
         }
-      })
+      )
       .catch((err: AxiosError) => {
         if (err.response?.status === 404) {
           setIsLogNotFound(true);
