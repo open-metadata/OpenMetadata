@@ -168,7 +168,7 @@ class OpenMetadata(
 
         # Load the secrets' manager client
         self.secrets_manager_client = get_secrets_manager(
-            config.secretsManagerProvider, config.secretsManagerCredentials
+            config, config.secretsManagerCredentials
         )
 
         # Load auth provider config from Secret Manager if necessary

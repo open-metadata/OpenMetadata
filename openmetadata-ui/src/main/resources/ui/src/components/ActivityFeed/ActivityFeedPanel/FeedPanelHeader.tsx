@@ -14,7 +14,10 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import React, { FC } from 'react';
-import { getEntityFieldDisplay } from '../../../utils/FeedUtils';
+import {
+  getEntityFieldDisplay,
+  getFeedPanelHeaderText,
+} from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
@@ -24,16 +27,18 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   className,
   noun,
   onShowNewConversation,
+  threadType,
+  entityFQN = '',
 }) => {
   return (
     <header className={className}>
       <div className="tw-flex tw-justify-between tw-py-3">
         <p data-testid="header-title">
           <span data-testid="header-noun">
-            {noun ? noun : 'Conversation'} on{' '}
+            {noun ? noun : getFeedPanelHeaderText(threadType)} on{' '}
           </span>
-          <span className="tw-heading">
-            {getEntityFieldDisplay(entityField)}
+          <span className="tw-heading" data-testid="entity-attribute">
+            {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
           </span>
         </p>
         <div className="tw-flex">

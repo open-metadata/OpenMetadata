@@ -14,6 +14,7 @@
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelHeader from './FeedPanelHeader';
 
 const mockFeedPanelHeaderProp = {
@@ -84,5 +85,41 @@ describe('Test FeedPanelHeader Component', () => {
 
     // noun is undefined so default noun should be present in text content
     expect(noun).toHaveTextContent('Conversation on');
+  });
+
+  it('Should render entityFQN if entityField is empty', async () => {
+    const { container } = render(
+      <FeedPanelHeader
+        {...mockFeedPanelHeaderProp}
+        entityFQN="x.y.z"
+        entityField=""
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const entityAttribute = await findByTestId(container, 'entity-attribute');
+
+    expect(entityAttribute).toHaveTextContent(/x.y.z/i);
+  });
+
+  it('Should render noun according to the threadtype', async () => {
+    const { container } = render(
+      <FeedPanelHeader
+        {...mockFeedPanelHeaderProp}
+        entityFQN="x.y.z"
+        entityField=""
+        noun={undefined}
+        threadType={ThreadType.Announcement}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const noun = await findByTestId(container, 'header-noun');
+
+    expect(noun).toHaveTextContent(/Announcement on/i);
   });
 });

@@ -18,7 +18,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
@@ -58,6 +58,7 @@ import org.openmetadata.catalog.type.EntitiesEdge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.LineageDetails;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -114,11 +115,11 @@ public class LineageResourceTest extends CatalogApplicationTest {
       assertResponse(
           () -> addEdge(TABLES.get(1), TABLES.get(2), null, authHeaders),
           FORBIDDEN,
-          noPermission(userName, "EditLineage"));
+          permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_LINEAGE)));
       assertResponse(
           () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders),
           FORBIDDEN,
-          noPermission(userName, "EditLineage"));
+          permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_LINEAGE)));
       return;
     }
 

@@ -98,7 +98,7 @@ class PowerbiSource(DashboardServiceSource):
         )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict
+        self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -119,7 +119,7 @@ class PowerbiSource(DashboardServiceSource):
                         from_fqn = fqn.build(
                             self.metadata,
                             entity_type=Database,
-                            service_name=self.source_config.dbServiceName,
+                            service_name=db_service_name,
                             database_name=database_name,
                         )
                         from_entity = self.metadata.get_by_name(

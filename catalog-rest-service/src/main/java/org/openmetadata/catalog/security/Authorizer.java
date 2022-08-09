@@ -20,15 +20,19 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.ResourcePermission;
 
 public interface Authorizer {
 
   /** Initialize the authorizer */
   void init(AuthorizerConfiguration config, Jdbi jdbi);
 
-  /** Returns a list of operations that the authenticated user (subject) can perform on the target entity (object). */
-  List<MetadataOperation> listPermissions(SecurityContext securityContext);
+  /**
+   * Returns a list of operations that the authenticated user (subject) can perform on the target entity (object).
+   *
+   * @return
+   */
+  List<ResourcePermission> listPermissions(SecurityContext securityContext);
 
   boolean isOwner(SecurityContext ctx, EntityReference entityReference);
 

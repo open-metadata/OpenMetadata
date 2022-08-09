@@ -49,7 +49,6 @@ class UsageSource(Source[TableQuery], ABC):
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.analysis_date = self.end
         self.report = SQLSourceStatus()
-        self.engine = get_connection(self.connection)
 
     def prepare(self):
         return super().prepare()
@@ -117,40 +116,41 @@ class UsageSource(Source[TableQuery], ABC):
                     f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
                 )
                 try:
-                    rows = self.engine.execute(
-                        self.get_sql_statement(
-                            start_time=self.start + timedelta(days=i),
-                            end_time=self.start + timedelta(days=i + 1),
-                        )
-                    )
-                    queries = []
-                    for row in rows:
-                        row = dict(row)
-                        try:
-                            if filter_by_database(
-                                self.source_config.databaseFilterPattern,
-                                self.get_database_name(row),
-                            ) or filter_by_schema(
-                                self.source_config.schemaFilterPattern,
-                                schema_name=row["schema_name"],
-                            ):
-                                continue
-                            queries.append(
-                                TableQuery(
-                                    query=row["query_text"],
-                                    userName=row["user_name"],
-                                    startTime=str(row["start_time"]),
-                                    endTime=str(row["end_time"]),
-                                    analysisDate=row["start_time"],
-                                    aborted=self.get_aborted_status(row),
-                                    databaseName=self.get_database_name(row),
-                                    serviceName=self.config.serviceName,
-                                    databaseSchema=self.get_schema_name(row),
-                                )
+                    with get_connection(self.connection).connect() as conn:
+                        rows = conn.execute(
+                            self.get_sql_statement(
+                                start_time=self.start + timedelta(days=i),
+                                end_time=self.start + timedelta(days=i + 1),
                             )
-                        except Exception as err:
-                            logger.debug(traceback.format_exc())
-                            logger.error(str(err))
+                        )
+                        queries = []
+                        for row in rows:
+                            row = dict(row)
+                            try:
+                                if filter_by_database(
+                                    self.source_config.databaseFilterPattern,
+                                    self.get_database_name(row),
+                                ) or filter_by_schema(
+                                    self.source_config.schemaFilterPattern,
+                                    schema_name=row["schema_name"],
+                                ):
+                                    continue
+                                queries.append(
+                                    TableQuery(
+                                        query=row["query_text"],
+                                        userName=row["user_name"],
+                                        startTime=str(row["start_time"]),
+                                        endTime=str(row["end_time"]),
+                                        analysisDate=row["start_time"],
+                                        aborted=self.get_aborted_status(row),
+                                        databaseName=self.get_database_name(row),
+                                        serviceName=self.config.serviceName,
+                                        databaseSchema=self.get_schema_name(row),
+                                    )
+                                )
+                            except Exception as err:
+                                logger.debug(traceback.format_exc())
+                                logger.error(str(err))
                     yield TableQueries(queries=queries)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
