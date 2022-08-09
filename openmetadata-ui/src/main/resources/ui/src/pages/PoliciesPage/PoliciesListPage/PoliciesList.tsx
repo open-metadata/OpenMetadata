@@ -47,18 +47,6 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
         ),
       },
       {
-        title: 'Rules',
-        dataIndex: 'rules',
-        width: '200px',
-        key: 'rules',
-        render: (_, record) => {
-          return record.rules
-            ? record.rules.map((rule) => rule.name).join(', ')
-            : '--';
-        },
-      },
-
-      {
         title: 'Actions',
         dataIndex: 'actions',
         width: 100,
