@@ -16,6 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { UserType } from '../../enums/user.enum';
+import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import MyAssetStats from './MyAssetStats.component';
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
@@ -31,14 +32,16 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 });
 
 const mockProp = {
-  countDashboards: 10,
-  countPipelines: 3,
-  countServices: 193,
-  countTables: 40,
-  countTeams: 7,
-  countTopics: 13,
-  countUsers: 100,
-  countMlModal: 2,
+  entityCounts: {
+    tableCount: 40,
+    topicCount: 13,
+    dashboardCount: 10,
+    pipelineCount: 3,
+    mlmodelCount: 2,
+    servicesCount: 193,
+    userCount: 100,
+    teamCount: 7,
+  } as EntitiesCount,
 };
 
 describe('Test MyDataHeader Component', () => {
@@ -63,12 +66,9 @@ describe('Test MyDataHeader Component', () => {
   });
 
   it('OnClick it should redirect to respective page', () => {
-    const { container } = render(
-      <MyAssetStats {...mockProp} countServices={4} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<MyAssetStats {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
     const tables = getByTestId(container, 'tables');
     const topics = getByTestId(container, 'topics');
     const dashboards = getByTestId(container, 'dashboards');

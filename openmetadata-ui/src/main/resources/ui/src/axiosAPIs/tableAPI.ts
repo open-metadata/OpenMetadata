@@ -13,14 +13,12 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil, isUndefined } from 'lodash';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import { ColumnTestType, Table } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
-import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -63,32 +61,6 @@ export const getTableDetailsByFQN = async (
   );
 
   const response = await APIClient.get<Table>(url);
-
-  return response.data;
-};
-
-export const getAllTables = async (
-  arrQueryFields?: string,
-  limit?: number,
-  database?: string
-) => {
-  const searchParams = new URLSearchParams();
-
-  if (!isNil(limit)) {
-    searchParams.set('limit', `${limit}`);
-  }
-
-  if (!isUndefined(database)) {
-    searchParams.set('database', database);
-  }
-
-  const url = getURLWithQueryFields(
-    '/tables',
-    arrQueryFields,
-    searchParams.toString()
-  );
-
-  const response = await APIClient.get<{ data: Table[]; paging: Paging }>(url);
 
   return response.data;
 };

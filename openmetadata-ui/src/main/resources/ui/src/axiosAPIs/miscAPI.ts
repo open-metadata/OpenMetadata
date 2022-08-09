@@ -19,6 +19,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
+import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
@@ -274,4 +275,8 @@ export const getEntityCount = async (
   const response = await APIClient.get(`/${path}`, { params });
 
   return response.data;
+};
+
+export const getAllEntityCount = (): Promise<AxiosResponse<EntitiesCount>> => {
+  return APIClient.get('/util/entities/count');
 };
