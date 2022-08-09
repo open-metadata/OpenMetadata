@@ -156,14 +156,16 @@ class REST:
             self.config.auth_header
         ] = f"{self._auth_token_mode} {self.config.access_token}"
 
-        opts.update({
-            "headers": headers,
-            # Since we allow users to set endpoint URL via env var,
-            # human error to put non-SSL endpoint could exploit
-            # uncanny issues in non-GET request redirecting http->https.
-            # It's better to fail early if the URL isn't right.
-            "allow_redirects": self.config.allow_redirects,
-        })
+        opts.update(
+            {
+                "headers": headers,
+                # Since we allow users to set endpoint URL via env var,
+                # human error to put non-SSL endpoint could exploit
+                # uncanny issues in non-GET request redirecting http->https.
+                # It's better to fail early if the URL isn't right.
+                "allow_redirects": self.config.allow_redirects,
+            }
+        )
 
         total_retries = self._retry if self._retry > 0 else 0
         retry = total_retries

@@ -59,7 +59,7 @@ class OMetaTableMixin:
         """
         self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/location",
-            data=json.dumps(location.id.__root__, cls=UUIDEncoder)
+            data=json.dumps(location.id.__root__, cls=UUIDEncoder),
         )
 
     def ingest_table_sample_data(
