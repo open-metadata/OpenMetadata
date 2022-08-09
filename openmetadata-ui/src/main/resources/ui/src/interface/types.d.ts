@@ -551,18 +551,6 @@ declare module 'Models' {
     pipelineUrl?: string;
   };
 
-  export interface UserPermissions {
-    EditOwner: boolean;
-    EditDescription: boolean;
-    EditLineage: boolean;
-    EditTags: boolean;
-    EditUsers: boolean;
-  }
-
-  export interface UserPermissionResponse {
-    metadataOperations: UserPermissions;
-  }
-
   export interface EditorContentRef {
     getEditorContent: () => string;
   }

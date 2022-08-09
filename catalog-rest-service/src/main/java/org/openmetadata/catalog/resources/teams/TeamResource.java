@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -193,7 +194,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Team get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -262,7 +263,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Team getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Team version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -322,7 +323,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -354,7 +355,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Team Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
