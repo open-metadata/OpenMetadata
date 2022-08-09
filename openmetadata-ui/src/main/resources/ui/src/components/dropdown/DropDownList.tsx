@@ -123,7 +123,6 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         ) : (
           <>
             {item.icon}
-            <span className="tw-p-1" />
             <p
               className={classNames('tw-truncate', widthClass)}
               title={item.name as string}>
