@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { LoadingStateValue } from 'Models';
+import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -40,9 +40,7 @@ const AddWebhookPage: FunctionComponent = () => {
   const params = useParams<{ webhookType?: WebhookType }>();
 
   const webhookType: WebhookType = params.webhookType ?? WebhookType.Generic;
-  const [status, setStatus] = useState<LoadingStateValue>(
-    LoadingStateValue.INITIAL
-  );
+  const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToWebhooks = () => {
     if (webhookType === WebhookType.Slack) {
@@ -67,13 +65,13 @@ const AddWebhookPage: FunctionComponent = () => {
   };
 
   const handleSave = (data: CreateWebhook) => {
-    setStatus(LoadingStateValue.WAITING);
+    setStatus('waiting');
     addWebhook(data)
       .then((res) => {
         if (res) {
-          setStatus(LoadingStateValue.SUCCESS);
+          setStatus('success');
           setTimeout(() => {
-            setStatus(LoadingStateValue.INITIAL);
+            setStatus('initial');
             goToWebhooks();
           }, 500);
         } else {
@@ -82,7 +80,7 @@ const AddWebhookPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
-        setStatus(LoadingStateValue.INITIAL);
+        setStatus('initial');
       });
   };
 

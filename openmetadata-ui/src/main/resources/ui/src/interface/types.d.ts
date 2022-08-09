@@ -129,14 +129,7 @@ declare module 'Models' {
     columnJoins: Array<ColumnJoins>;
   };
 
-  // TODO: replace all occurrences of LoadingState with LoadingStateValue and use them
   export type LoadingState = 'initial' | 'waiting' | 'success';
-
-  export enum LoadingStateValue {
-    INITIAL = 'initial',
-    WAITING = 'waiting',
-    SUCCESS = 'success',
-  }
 
   export type TableDetail = {
     description: string;
