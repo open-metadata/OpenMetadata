@@ -46,6 +46,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   visible,
   onVisibilityChange,
 }) => {
+  const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
   const [profileSample, setProfileSample] = useState<number>();
   const [excludeCol, setExcludeCol] = useState<string[]>([]);
@@ -76,29 +77,34 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     return metricsOptions;
   }, [columnProfile]);
 
+  const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
+    const { includeColumns } = tableProfilerConfig;
+    setSqlQuery(tableProfilerConfig.profileQuery || '');
+    setProfileSample(tableProfilerConfig.profileSample);
+    setExcludeCol(tableProfilerConfig.excludeColumns || []);
+    if (includeColumns && includeColumns?.length > 0) {
+      const includeColValue = includeColumns.map((col) => {
+        if (
+          isUndefined(col.metrics) ||
+          (col.metrics && col.metrics.length === 0)
+        ) {
+          col.metrics = ['all'];
+        }
+
+        return col;
+      });
+      setIncludeCol(includeColValue);
+    }
+  };
+
   const fetchProfileConfig = async () => {
     try {
       const response = await getTableProfilerConfig(tableId);
       if (response) {
         const { tableProfilerConfig } = response;
         if (tableProfilerConfig) {
-          const { includeColumns } = tableProfilerConfig;
-          setSqlQuery(tableProfilerConfig.profileQuery || '');
-          setProfileSample(tableProfilerConfig.profileSample);
-          setExcludeCol(tableProfilerConfig.excludeColumns || []);
-          if (includeColumns && includeColumns?.length > 0) {
-            const includeColValue = includeColumns.map((col) => {
-              if (
-                isUndefined(col.metrics) ||
-                (col.metrics && col.metrics.length === 0)
-              ) {
-                col.metrics = ['all'];
-              }
-
-              return col;
-            });
-            setIncludeCol(includeColValue);
-          }
+          setData(tableProfilerConfig);
+          updateInitialConfig(tableProfilerConfig);
         }
       } else {
         throw jsonData['api-error-messages'][
@@ -158,12 +164,18 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     }
   };
 
+  const handleCancel = () => {
+    data && updateInitialConfig(data);
+    onVisibilityChange(false);
+  };
+
   useEffect(() => {
     fetchProfileConfig();
   }, []);
 
   return (
     <Modal
+      centered
       destroyOnClose
       cancelButtonProps={{
         type: 'link',
@@ -174,7 +186,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       title="Settings"
       visible={visible}
       width={630}
-      onCancel={() => onVisibilityChange(false)}
+      onCancel={handleCancel}
       onOk={handleSave}>
       <div className="tw-pb-4" data-testid="profile-sample-container">
         <p>Profile Sample %</p>
@@ -228,7 +240,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           includeColumns: includeCol,
         }}
         layout="vertical"
-        name="dynamic_form_nest_item"
+        name="includeColumnsProfiler"
         onValuesChange={(_, data) => {
           setIncludeCol(data.includeColumns);
         }}>
@@ -248,7 +260,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               <div
                 className={classNames({
                   'tw-h-40 tw-overflow-auto': includeCol.length > 1,
-                })}>
+                })}
+                data-testid="include-column-container">
                 {fields.map(({ key, name, ...restField }) => (
                   <div className="tw-flex tw-gap-2 tw-w-full" key={key}>
                     <Form.Item
@@ -270,6 +283,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       <TreeSelect
                         treeCheckable
                         className="tw-w-full"
+                        maxTagCount={2}
                         placeholder="Please select"
                         showCheckedStrategy="SHOW_PARENT"
                         treeData={metricsOptions}
