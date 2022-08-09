@@ -349,7 +349,7 @@ public class PipelineServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+          UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }

@@ -510,7 +510,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean hardDelete)
+  public final DeleteResponse<T> delete(String updatedBy, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.getEntity());
@@ -534,7 +534,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  private DeleteResponse<T> delete(String updatedBy, String json, String id, boolean recursive, boolean hardDelete)
+  private DeleteResponse<T> delete(String updatedBy, String json, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     T original = JsonUtils.readValue(json, entityClass);
     preDelete(original);
@@ -568,12 +568,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (json == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, name));
     }
-    String id = String.valueOf(JsonUtils.readValue(json, entityClass).getId());
+    UUID id = JsonUtils.readValue(json, entityClass).getId();
     return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
   @Transaction
-  public final DeleteResponse<T> deleteInternal(String updatedBy, String id, boolean recursive, boolean hardDelete)
+  public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     // Validate entity
     String json = dao.findJsonById(id, ALL);
@@ -583,10 +583,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
-  private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
+  private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
+        daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
 
     if (records.isEmpty()) {
       return;

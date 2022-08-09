@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
 
+
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 
 
@@ -40,7 +41,7 @@ def format_name(name: str) -> str:
 
 
 def get_entity_type(
-    entity: Union[Type[T], str],
+        entity: Union[Type[T], str],
 ) -> str:
     """
     Given an Entity T, return its type.

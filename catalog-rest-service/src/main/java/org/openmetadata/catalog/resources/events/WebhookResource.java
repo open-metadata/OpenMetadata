@@ -338,10 +338,10 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response deleteWebhook(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, false, true, false);
-    dao.deleteWebhookPublisher(UUID.fromString(id));
+    dao.deleteWebhookPublisher(id);
     return response;
   }
 

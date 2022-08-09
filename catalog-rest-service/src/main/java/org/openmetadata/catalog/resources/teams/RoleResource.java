@@ -392,12 +392,12 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @PathParam("id") String id)
+      @PathParam("id") UUID id)
       throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
     Response response = delete(uriInfo, securityContext, id, true, hardDelete, true);
-    RoleCache.getInstance().invalidateRole(UUID.fromString(id));
+    RoleCache.getInstance().invalidateRole(id);
     return response;
   }
 

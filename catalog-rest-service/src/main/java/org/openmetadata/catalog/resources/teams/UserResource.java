@@ -539,7 +539,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }

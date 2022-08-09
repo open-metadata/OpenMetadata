@@ -358,11 +358,11 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
+    Pipeline pipeline = dao.addPipelineStatus(id, pipelineStatus);
     return addHref(uriInfo, pipeline);
   }
 
@@ -444,13 +444,13 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline deletePipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Pipeline pipeline = dao.deletePipelineStatus(UUID.fromString(id), timestamp);
+    Pipeline pipeline = dao.deletePipelineStatus(id, timestamp);
     return addHref(uriInfo, pipeline);
   }
 
@@ -472,7 +472,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string")) UUID userId)
       throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
@@ -493,13 +493,13 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId)
+          UUID userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(), id, userId)
         .toResponse();
   }
 
@@ -521,7 +521,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }

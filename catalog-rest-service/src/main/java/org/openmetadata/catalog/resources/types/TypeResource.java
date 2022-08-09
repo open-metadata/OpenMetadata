@@ -364,7 +364,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, true, true);
   }

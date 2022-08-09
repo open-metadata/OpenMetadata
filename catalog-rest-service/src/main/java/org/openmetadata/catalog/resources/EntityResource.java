@@ -141,7 +141,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response delete(
       UriInfo uriInfo,
       SecurityContext securityContext,
-      String id,
+      UUID id,
       boolean recursive,
       boolean hardDelete,
       boolean allowBots)

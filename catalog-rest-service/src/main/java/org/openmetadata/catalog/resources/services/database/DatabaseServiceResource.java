@@ -354,7 +354,7 @@ public class DatabaseServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+          UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }

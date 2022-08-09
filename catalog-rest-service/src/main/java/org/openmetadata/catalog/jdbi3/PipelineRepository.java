@@ -40,7 +40,6 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -51,6 +50,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension";
   private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
+
 
   public PipelineRepository(CollectionDAO dao) {
     super(
@@ -98,6 +98,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
+    pipeline.setService(getContainer(pipeline.getId()));
+
     // validate all the Tasks
     for (Status taskStatus : pipelineStatus.getTaskStatus()) {
       validateTask(pipeline, taskStatus.getName());
@@ -127,7 +129,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               PIPELINE_STATUS_EXTENSION,
               "pipelineStatus",
               JsonUtils.pojoToJson(pipelineStatus));
-      setFields(pipeline, EntityUtil.Fields.EMPTY_FIELDS);
     }
     return pipeline.withPipelineStatus(pipelineStatus);
   }
@@ -136,6 +137,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public Pipeline deletePipelineStatus(UUID pipelineId, Long timestamp) throws IOException {
     // Validate the request content
     Pipeline pipeline = dao.findEntityById(pipelineId);
+    pipeline.setService(getContainer(pipeline.getId()));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection

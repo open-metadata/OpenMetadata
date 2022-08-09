@@ -377,7 +377,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
@@ -676,9 +676,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response addLocation(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "uuid")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the location to be added", schema = @Schema(type = "string")) UUID locationId)
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the location to be added", schema = @Schema(type = "UUID")) UUID locationId)
       throws IOException {
+
     Table table = dao.addLocation(id, locationId);
     return Response.ok().entity(table).build();
   }

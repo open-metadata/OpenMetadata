@@ -388,10 +388,10 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Policy Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Policy Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
-    PolicyCache.getInstance().invalidatePolicy(UUID.fromString(id));
+    PolicyCache.getInstance().invalidatePolicy(id);
     return response;
   }
 

@@ -315,8 +315,8 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }

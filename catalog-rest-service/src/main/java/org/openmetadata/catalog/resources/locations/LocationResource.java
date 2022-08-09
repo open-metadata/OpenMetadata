@@ -306,14 +306,14 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public List<EntityReference> getTableFromLocation(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "location Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "location version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getEntityDetails(id);
+    return dao.getEntityDetails(id.toString());
   }
 
   @GET
@@ -429,7 +429,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Location Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }

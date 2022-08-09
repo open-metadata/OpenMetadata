@@ -303,7 +303,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the Bot", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, true, hardDelete, false);
   }
