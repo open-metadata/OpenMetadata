@@ -11,21 +11,9 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.secrets;
+package org.openmetadata.catalog;
 
-import java.util.Map;
-import javax.validation.constraints.NotEmpty;
-import lombok.Getter;
-import lombok.Setter;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider;
-
-@Getter
-@Setter
-public class SecretsManagerConfiguration {
-
-  public static final SecretsManagerProvider DEFAULT_SECRET_MANAGER = SecretsManagerProvider.LOCAL;
-
-  @NotEmpty private SecretsManagerProvider secretsManager;
-
-  private Map<String, String> parameters;
+/** Interface which could be implemented by Enums classes */
+public interface EnumInterface {
+  String value();
 }

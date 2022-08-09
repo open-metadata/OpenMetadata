@@ -228,6 +228,7 @@ fernetConfiguration:
 secretsManagerConfiguration:
   secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws"
 #  secretsManager: aws
+# it will use the default auth provider for the secrets' manager service if parameters are not set
 #  parameters:
 #    region:
 #    accessKeyId:

@@ -26,10 +26,10 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class ChangeEventRepository {
-  private final CollectionDAO dao;
+  private final CollectionDAO.ChangeEventDAO dao;
 
   public ChangeEventRepository(CollectionDAO dao) {
-    this.dao = dao;
+    this.dao = dao.changeEventDAO();
   }
 
   @Transaction
@@ -37,15 +37,20 @@ public class ChangeEventRepository {
       long timestamp, List<String> entityCreatedList, List<String> entityUpdatedList, List<String> entityDeletedList)
       throws IOException {
     List<String> jsons = new ArrayList<>();
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, timestamp));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, timestamp));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_DELETED.value(), entityDeletedList, timestamp));
-    jsons.addAll(dao.changeEventDAO().list(ENTITY_SOFT_DELETED.value(), entityDeletedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_CREATED.value(), entityCreatedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_UPDATED.value(), entityUpdatedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_DELETED.value(), entityDeletedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_SOFT_DELETED.value(), entityDeletedList, timestamp));
 
     List<ChangeEvent> changeEvents = new ArrayList<>();
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
     }
     return changeEvents;
+  }
+
+  @Transaction
+  public void deleteAll(String entityType) throws IOException {
+    dao.deleteAll(entityType);
   }
 }
