@@ -39,7 +39,8 @@ swagger.html
 .DS_Store
 
 # antlr
-src/antlr/generated/
+src/generated/antlr
+
 
 # Generated TS
 src/generated/
