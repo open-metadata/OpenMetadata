@@ -78,6 +78,6 @@ public class DashboardServiceResourceUnitTest
 
   @Override
   protected DashboardService callGetFromResource(DashboardServiceResource resource) throws IOException {
-    return resource.get(mock(UriInfo.class), securityContext, UUID.randomUUID().toString(), FIELD_OWNER, Include.ALL);
+    return resource.get(mock(UriInfo.class), securityContext, UUID.randomUUID(), FIELD_OWNER, Include.ALL);
   }
 }

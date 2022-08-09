@@ -157,10 +157,10 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /* Validate if the user is already part of the given team */
-  public void validateTeamAddition(String userId, String teamId) throws IOException {
-    User user = dao.findEntityById(UUID.fromString(userId));
+  public void validateTeamAddition(UUID userId, UUID teamId) throws IOException {
+    User user = dao.findEntityById(userId);
     List<EntityReference> teams = getTeams(user);
-    Optional<EntityReference> team = teams.stream().filter(t -> t.getId().equals(UUID.fromString(teamId))).findFirst();
+    Optional<EntityReference> team = teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
     if (team.isPresent()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.userAlreadyPartOfTeam(user.getName(), team.get().getDisplayName()));

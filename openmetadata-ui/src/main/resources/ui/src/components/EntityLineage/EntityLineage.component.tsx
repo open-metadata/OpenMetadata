@@ -77,6 +77,7 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -110,6 +111,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  entityType,
 }: EntityLineageProp) => {
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -1161,7 +1163,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 },
                 {
                   'tw-opacity-40':
-                    !userPermissions[Operation.EditLineage] &&
+                    !hasPemission(
+                      Operation.EditLineage,
+                      entityType,
+                      userPermissions
+                    ) &&
                     !isAuthDisabled &&
                     !isAdminUser,
                 }

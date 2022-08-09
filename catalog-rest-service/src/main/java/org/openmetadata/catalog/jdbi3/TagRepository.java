@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -127,9 +128,9 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Transaction
-  public Tag delete(UriInfo uriInfo, String id) throws IOException {
+  public Tag delete(UriInfo uriInfo, UUID id) throws IOException {
     Tag tag = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
-    dao.delete(id);
+    dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(tag.getFullyQualifiedName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
     daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
