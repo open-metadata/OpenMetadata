@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Form, InputNumber, Select } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
+import { Form, InputNumber, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isUndefined } from 'lodash';
@@ -136,6 +135,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   return (
     <Modal
       destroyOnClose
+      data-testid="profiler-settings-modal"
       maskClosable={false}
       okText="Save"
       title="Settings"
@@ -151,6 +151,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <InputNumber
               addonAfter="%"
               className="tw-w-full"
+              data-testid="profile-sample-input"
               max={100}
               min={0}
               placeholder="Enter Profile Sample %"
@@ -163,6 +164,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           <Form.Item label="Profile Sample Query" labelCol={labelCol}>
             <CodeMirror
               className="profiler-setting-sql-editor"
+              data-testid="profiler-setting-sql-editor"
               options={options}
               value={sqlQuery}
               onBeforeChange={(_Editor, _EditorChange, value) => {
@@ -181,6 +183,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <Select
               allowClear
               className="tw-w-full"
+              data-testid="include-column-select"
               defaultValue={includeCol}
               mode="tags"
               options={selectOptions}
@@ -196,6 +199,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <Select
               allowClear
               className="tw-w-full"
+              data-testid="exclude-column-select"
               defaultValue={excludeCol}
               mode="tags"
               options={selectOptions}
