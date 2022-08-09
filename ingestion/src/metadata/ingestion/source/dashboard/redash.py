@@ -112,7 +112,7 @@ class RedashSource(DashboardServiceSource):
         self.status.scanned(dashboard_details["name"])
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict
+        self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -133,7 +133,7 @@ class RedashSource(DashboardServiceSource):
                 table_entities = search_table_entities(
                     metadata=self.metadata,
                     database=None,
-                    service_name=self.source_config.dbServiceName,
+                    service_name=db_service_name,
                     database_schema=database_schema,
                     table=table_name,
                 )

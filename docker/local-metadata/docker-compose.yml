@@ -122,7 +122,7 @@ services:
   ingestion:
     build:
       context: ../../.
-      dockerfile: ingestion/Dockerfile
+      dockerfile: ingestion/Dockerfile_local
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion

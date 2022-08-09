@@ -16,7 +16,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { ServiceDataObj } from '../../interface/service.interface';
+import { ServicesType } from '../../interface/service.interface';
 
 export interface ConnectorConfig {
   username: string;
@@ -50,7 +50,7 @@ export interface IngestionData {
 
 export interface IngestionProps {
   airflowEndpoint: string;
-  serviceDetails: ServiceDataObj;
+  serviceDetails: ServicesType;
   serviceName: string;
   serviceCategory: ServiceCategory;
   isRequiredDetailsAvailable: boolean;

@@ -187,15 +187,13 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
   addPropertyToEntity: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes[0] })),
+    .mockImplementation(() => Promise.resolve(mockPropertyTypes[0])),
   getTypeByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes[0] })),
+    .mockImplementation(() => Promise.resolve(mockPropertyTypes[0])),
   getTypeListByCategory: jest
     .fn()
-    .mockImplementation(() =>
-      Promise.resolve({ data: { data: mockPropertyTypes } })
-    ),
+    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
 jest.mock('../../../utils/CommonUtils', () => ({

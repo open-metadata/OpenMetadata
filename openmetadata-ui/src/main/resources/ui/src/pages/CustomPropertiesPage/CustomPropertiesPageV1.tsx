@@ -42,7 +42,7 @@ const CustomEntityDetailV1 = () => {
   const fetchTypeDetail = async (typeFQN: string) => {
     setIsLoading(true);
     try {
-      const { data } = await getTypeByFQN(typeFQN);
+      const data = await getTypeByFQN(typeFQN);
       setSelectedEntityTypeDetail(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -85,10 +85,7 @@ const CustomEntityDetailV1 = () => {
     });
 
     try {
-      const { data } = await updateType(
-        selectedEntityTypeDetail.id || '',
-        patch
-      );
+      const data = await updateType(selectedEntityTypeDetail.id || '', patch);
       setSelectedEntityTypeDetail((prev) => ({
         ...prev,
         customProperties: data.customProperties,

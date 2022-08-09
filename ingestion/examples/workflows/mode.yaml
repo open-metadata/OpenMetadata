@@ -20,7 +20,7 @@ source:
         includes:
           - Supplier Quality Analysis Sample
           - "Customer"
-      dbServiceName: local_redshift
+      dbServiceNames: [local_redshift]
 sink:
   type: metadata-rest
   config: {}

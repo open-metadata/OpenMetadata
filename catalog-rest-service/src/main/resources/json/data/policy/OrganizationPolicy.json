@@ -20,7 +20,7 @@
       "resources" : ["all"],
       "operations": ["EditOwner"],
       "effect": "allow",
-      "condition": "isOwner()"
+      "condition": "noOwner()"
     }
   ]
 }

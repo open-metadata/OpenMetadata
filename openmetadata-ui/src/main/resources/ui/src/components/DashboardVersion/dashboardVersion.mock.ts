@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +12,9 @@
  *  limitations under the License.
  */
 
-/* eslint-disable max-len */
+import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.component';
+import { DashboardVersionProp } from './DashboardVersion.interface';
+
 export const dashboardVersionProp = {
   version: '0.3',
   currentVersionData: {
@@ -100,7 +103,7 @@ export const dashboardVersionProp = {
     ],
   },
   deleted: false,
-};
+} as unknown as DashboardVersionProp;
 
 export const mockTagChangeVersion = {
   id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
@@ -162,7 +165,8 @@ export const mockTagChangeVersion = {
     previousVersion: 0.3,
   },
   deleted: false,
-};
+} as unknown as VersionData;
+
 export const mockNoChartData = {
   id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
   description: 'test description',
@@ -213,4 +217,4 @@ export const mockNoChartData = {
     previousVersion: 0.3,
   },
   deleted: false,
-};
+} as unknown as VersionData;

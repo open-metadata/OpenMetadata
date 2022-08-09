@@ -14,16 +14,25 @@
 package org.openmetadata.catalog.security.policyevaluator;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.ResourceRegistry;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.Permission;
+import org.openmetadata.catalog.type.Permission.Access;
+import org.openmetadata.catalog.type.ResourceDescriptor;
+import org.openmetadata.catalog.type.ResourcePermission;
 
 /**
  * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link Policy}
@@ -44,7 +53,7 @@ import org.openmetadata.catalog.type.MetadataOperation;
 @Slf4j
 public class PolicyEvaluator {
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
-  public static boolean hasPermission(
+  public static void hasPermission(
       @NonNull SubjectContext subjectContext,
       @NonNull ResourceContextInterface resourceContext,
       @NonNull OperationContext operationContext) {
@@ -54,10 +63,12 @@ public class PolicyEvaluator {
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (rule.getEffect() == Effect.DENY
-            && CompiledRule.matchRule(rule, operationContext, subjectContext, resourceContext)) {
-          return false;
-        }
+        LOG.debug(
+            "evaluating policy for deny {}:{}:{}",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
+        rule.evaluateDenyRule(policyContext, operationContext, subjectContext, resourceContext);
       }
     }
     // Next run through all the ALLOW policies
@@ -65,31 +76,115 @@ public class PolicyEvaluator {
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (rule.getEffect() == Effect.ALLOW
-            && CompiledRule.matchRule(rule, operationContext, subjectContext, resourceContext)) {
-          return true;
+        LOG.debug(
+            "evaluating policy for allow {}:{}:{}",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
+        rule.evaluateAllowRule(operationContext, subjectContext, resourceContext);
+        if (operationContext.getOperations().isEmpty()) {
+          return; // All operations are allowed
         }
       }
     }
-    return false;
+    throw new AuthorizationException(
+        CatalogExceptionMessage.permissionNotAllowed(
+            subjectContext.getUser().getName(), operationContext.getOperations()));
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
-  public static List<MetadataOperation> getAllowedOperations(@NonNull SubjectContext subjectContext) {
-    List<MetadataOperation> list = new ArrayList<>();
-    Iterator<PolicyContext> policies = subjectContext.getPolicies();
+  public static List<ResourcePermission> getAllowedOperations(@NonNull SubjectContext subjectContext) {
+    Map<String, ResourcePermission> resourcePermissionMap = initResourcePermissions();
 
+    Iterator<PolicyContext> policies = subjectContext.getPolicies();
     while (policies.hasNext()) {
-      // TODO clean up (add resource name and allow/deny)
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
-        if (CompiledRule.matchRuleForPermissions(rule, subjectContext)) {
-          if (rule.getEffect() == Effect.ALLOW) {
-            list.addAll(rule.getOperations());
+        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        // TODO fix this
+        if (rule.matchRuleForPermissions(subjectContext)) {
+          if (rule.getResources().contains("all")) {
+            setPermissionForAllResources(resourcePermissionMap, rule, policyContext);
+          } else {
+            setPermissionForResources(resourcePermissionMap, rule, policyContext);
           }
         }
       }
     }
-    return list.stream().distinct().collect(Collectors.toList());
+    return new ArrayList<>(resourcePermissionMap.values());
+  }
+
+  /** Get list of resources with all their permissions set to given Access */
+  public static List<ResourcePermission> getResourcePermissions(Access access) {
+    List<ResourcePermission> resourcePermissions = new ArrayList<>();
+    for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
+      List<Permission> permissions = new ArrayList<>();
+      for (MetadataOperation operation : rd.getOperations()) {
+        permissions.add(new Permission().withOperation(operation).withAccess(access));
+      }
+      ResourcePermission resourcePermission =
+          new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
+      resourcePermissions.add(resourcePermission);
+    }
+    return resourcePermissions;
+  }
+
+  /**
+   * Initialize a map of Resource name to ResourcePermission with for each resource permission for all operations set as
+   * NOT_ALLOW
+   */
+  public static Map<String, ResourcePermission> initResourcePermissions() {
+    // For each resource, initialize permission for each operation as NOT_ALLOW
+    Collection<ResourcePermission> resourcePermissions = getResourcePermissions(Access.NOT_ALLOW);
+    Map<String, ResourcePermission> resourcePermissionMap = new HashMap<>();
+    resourcePermissions.forEach(rp -> resourcePermissionMap.put(rp.getResource(), rp));
+    return resourcePermissionMap;
+  }
+
+  public static void setPermissionForAllResources(
+      Map<String, ResourcePermission> resourcePermissionMap, Rule rule, PolicyContext policyContext) {
+    // For all resources, set the permission
+    for (ResourcePermission resourcePermission : resourcePermissionMap.values()) {
+      setPermission(resourcePermission, rule, policyContext);
+    }
+  }
+
+  private static void setPermissionForResources(
+      Map<String, ResourcePermission> resourcePermissionMap, CompiledRule rule, PolicyContext policyContext) {
+    for (String resource : rule.getResources()) {
+      ResourcePermission resourcePermission = resourcePermissionMap.get(resource);
+      setPermission(resourcePermission, rule, policyContext);
+    }
+  }
+
+  private static void setPermission(ResourcePermission resourcePermission, Rule rule, PolicyContext policyContext) {
+    Access access = getAccess(rule);
+    for (MetadataOperation ruleOperation : rule.getOperations()) {
+      for (Permission permission : resourcePermission.getPermissions()) {
+        if (permission.getOperation().equals(ruleOperation)) {
+          if (overrideAccess(access, permission.getAccess())) {
+            permission
+                .withAccess(access)
+                .withRole(policyContext.getRoleName())
+                .withPolicy(policyContext.getPolicyName())
+                .withRule(rule);
+            LOG.debug("Updated permission {}", permission);
+          }
+        }
+      }
+    }
+  }
+
+  private static Access getAccess(Rule rule) {
+    if (rule.getCondition() != null) {
+      return rule.getEffect() == Effect.DENY ? Access.CONDITIONAL_DENY : Access.CONDITIONAL_ALLOW;
+    }
+    return rule.getEffect() == Effect.DENY ? Access.DENY : Access.ALLOW;
+  }
+
+  // Returns true if access1 has precedence over access2
+  public static boolean overrideAccess(Access newAccess, Access currentAccess) {
+    // Lower the ordinal number of access overrides higher ordinal number
+    return currentAccess.ordinal() > newAccess.ordinal();
   }
 }

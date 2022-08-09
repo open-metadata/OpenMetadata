@@ -28,7 +28,7 @@ import { ConfigureIngestionProps } from '../addIngestion.interface';
 const ConfigureIngestion = ({
   ingestionName,
   description = '',
-  databaseServiceName,
+  databaseServiceNames,
   databaseFilterPattern,
   dashboardFilterPattern,
   schemaFilterPattern,
@@ -36,7 +36,6 @@ const ConfigureIngestion = ({
   topicFilterPattern,
   chartFilterPattern,
   pipelineFilterPattern,
-  fqnFilterPattern,
   includeLineage,
   includeView,
   includeTags,
@@ -51,7 +50,6 @@ const ConfigureIngestion = ({
   showTopicFilter,
   showChartFilter,
   showPipelineFilter,
-  showFqnFilter,
   queryLogDuration,
   stageFileLocation,
   threadCount,
@@ -257,6 +255,16 @@ const ConfigureIngestion = ({
     );
   };
 
+  const handleDashBoardServiceNames = (inputValue: string) => {
+    const separator = ',';
+
+    const databaseNames = inputValue.includes(separator)
+      ? inputValue.split(separator)
+      : Array(inputValue);
+
+    if (databaseNames) handleDatasetServiceName(databaseNames);
+  };
+
   const getDashboardDBServiceName = () => {
     return (
       <Field>
@@ -272,8 +280,8 @@ const ConfigureIngestion = ({
           id="name"
           name="name"
           type="text"
-          value={databaseServiceName}
-          onChange={(e) => handleDatasetServiceName(e.target.value)}
+          value={databaseServiceNames}
+          onChange={(e) => handleDashBoardServiceNames(e.target.value)}
         />
         {getSeparator('')}
       </Field>
@@ -402,24 +410,6 @@ const ConfigureIngestion = ({
     }
   };
 
-  const getProfilerFilterPatternField = () => {
-    return (
-      <Fragment>
-        <FilterPattern
-          checked={showFqnFilter}
-          excludePattern={fqnFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternEnum.FQN)
-          }
-          includePattern={fqnFilterPattern?.includes ?? []}
-          type={FilterPatternEnum.FQN}
-        />
-      </Fragment>
-    );
-  };
-
   const getMetadataFields = () => {
     return (
       <>
@@ -521,7 +511,7 @@ const ConfigureIngestion = ({
             {getSeparator('')}
           </Field>
         </div>
-        <div>{getProfilerFilterPatternField()}</div>
+        <div>{getMetadataFilterPatternField()}</div>
         {getSeparator('')}
         {getProfileSample()}
         {getSeparator('')}

@@ -12,7 +12,7 @@
  */
 
 import { Empty, Select } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -265,10 +265,17 @@ const GlobalSearchSuggestions = ({
   useEffect(() => {
     if (!isMounting.current) {
       getSuggestions(searchText)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           if (res.data) {
-            setOptions(res.data.suggest['metadata-suggest'][0].options);
-            setSuggestions(res.data.suggest['metadata-suggest'][0].options);
+            // TODO: improve suggest api types
+            setOptions(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (res.data as any).suggest['metadata-suggest'][0].options
+            );
+            setSuggestions(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (res.data as any).suggest['metadata-suggest'][0].options
+            );
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
 import { FormattedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
@@ -57,10 +57,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       searchValue,
       SearchIndex[entityType as keyof typeof SearchIndex]
     )
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
           setData(
-            formatDataResponse(res.data.suggest['metadata-suggest'][0].options)
+            // TODO: fix types below
+            formatDataResponse(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (res.data as any).suggest['metadata-suggest'][0].options
+            )
           );
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];

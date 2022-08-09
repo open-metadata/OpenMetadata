@@ -1,5 +1,5 @@
 import { Card, Popover, Typography } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TableDetail } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
@@ -8,6 +8,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';
+import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
@@ -51,21 +52,22 @@ const TierCard = ({
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const tierData = res.data.children.map(
-            (tier: { name: string; description: string }) => ({
-              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-              title: tier.name,
-              description: tier.description.substring(
-                0,
-                tier.description.indexOf('\n\n')
-              ),
-              data: tier.description.substring(
-                tier.description.indexOf('\n\n') + 1
-              ),
-            })
-          );
+      .then((res) => {
+        if (res) {
+          const tierData: CardWithListItems[] =
+            (res as TagsCategory).children?.map(
+              (tier: { name: string; description: string }) => ({
+                id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+                title: tier.name,
+                description: tier.description.substring(
+                  0,
+                  tier.description.indexOf('\n\n')
+                ),
+                data: tier.description.substring(
+                  tier.description.indexOf('\n\n') + 1
+                ),
+              })
+            ) ?? [];
 
           setTierData(tierData);
         } else {
