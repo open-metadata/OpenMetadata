@@ -50,6 +50,7 @@ export const PROFILER_METRIC = [
 export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
   {
     columnName: undefined,
+    metrics: ['all'],
   },
 ];
 
