@@ -106,7 +106,7 @@ public class SubjectCache {
   static class TeamLoader extends CacheLoader<UUID, Team> {
     @Override
     public Team load(@NonNull UUID teamId) throws IOException {
-      Team team = TEAM_REPOSITORY.get(null, teamId.toString(), TEAM_FIELDS);
+      Team team = TEAM_REPOSITORY.get(null, teamId, TEAM_FIELDS);
       LOG.info("Loaded team {}:{}", team.getName(), team.getId());
       return team;
     }

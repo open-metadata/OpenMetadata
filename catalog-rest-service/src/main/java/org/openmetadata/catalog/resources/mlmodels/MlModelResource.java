@@ -164,7 +164,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public MlModel get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -245,7 +245,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -370,7 +370,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public MlModel getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "ML Model version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))

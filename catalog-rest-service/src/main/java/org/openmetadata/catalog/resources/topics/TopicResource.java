@@ -182,7 +182,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       })
   public Topic get(
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -251,7 +251,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public Topic getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Topic version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -292,7 +292,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =

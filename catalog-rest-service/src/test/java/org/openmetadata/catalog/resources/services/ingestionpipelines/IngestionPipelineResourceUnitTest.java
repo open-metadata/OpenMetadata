@@ -45,7 +45,7 @@ import org.openmetadata.catalog.util.PipelineServiceClient;
 @ExtendWith(MockitoExtension.class)
 public class IngestionPipelineResourceUnitTest {
 
-  private static final String DAG_ID = UUID.randomUUID().toString();
+  private static final UUID DAG_ID = UUID.randomUUID();
 
   private IngestionPipelineResource ingestionPipelineResource;
 
@@ -72,7 +72,7 @@ public class IngestionPipelineResourceUnitTest {
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(entityDAO.findEntityById(any(), any())).thenReturn(ingestionPipeline);
     when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(mock(EntityReference.class));
-    when(ingestionPipeline.getId()).thenReturn(UUID.fromString(DAG_ID));
+    when(ingestionPipeline.getId()).thenReturn(DAG_ID);
     ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer, mock(SecretsManager.class));
   }
 

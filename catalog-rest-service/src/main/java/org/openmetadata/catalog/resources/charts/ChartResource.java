@@ -180,7 +180,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Chart get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -248,7 +248,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Chart getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Chart Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Chart version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -289,7 +289,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =

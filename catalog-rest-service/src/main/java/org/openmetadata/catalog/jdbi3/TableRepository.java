@@ -606,8 +606,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public void deleteLocation(String tableId) {
-    deleteFrom(UUID.fromString(tableId), TABLE, Relationship.HAS, LOCATION);
+  public void deleteLocation(UUID tableId) {
+    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {

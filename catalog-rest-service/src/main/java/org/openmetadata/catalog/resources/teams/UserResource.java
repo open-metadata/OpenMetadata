@@ -210,7 +210,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -309,7 +309,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "User version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -387,7 +387,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public JWTAuthMechanism generateToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
 
@@ -421,7 +421,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response revokeToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id)
       throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
@@ -452,7 +452,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public JWTAuthMechanism getToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id)
       throws IOException {
 
     User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
@@ -481,7 +481,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -511,7 +511,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           }
           if (value != null) {
             String teamId = value.getString("id");
-            dao.validateTeamAddition(id, teamId);
+            dao.validateTeamAddition(id, UUID.fromString(teamId));
             if (!dao.isTeamJoinable(teamId)) {
               // Only admin can join closed teams
               authorizer.authorizeAdmin(securityContext, false);

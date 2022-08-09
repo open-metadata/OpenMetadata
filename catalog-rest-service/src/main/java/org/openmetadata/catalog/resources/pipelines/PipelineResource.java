@@ -197,7 +197,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -265,7 +265,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Pipeline version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -307,7 +307,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =

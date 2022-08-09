@@ -225,7 +225,7 @@ public final class Entity {
       throws IOException {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id.toString(), fields, include);
+    T entity = (T) entityRepository.get(null, id, fields, include);
     if (entity == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }

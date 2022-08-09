@@ -276,13 +276,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final T get(UriInfo uriInfo, String id, Fields fields) throws IOException {
+  public final T get(UriInfo uriInfo, UUID id, Fields fields) throws IOException {
     return get(uriInfo, id, fields, NON_DELETED);
   }
 
   @Transaction
-  public final T get(UriInfo uriInfo, String id, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id), include), fields));
+  public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include) throws IOException {
+    return withHref(uriInfo, setFields(dao.findEntityById(id, include), fields));
   }
 
   @Transaction
@@ -347,17 +347,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public T getVersion(String id, String version) throws IOException {
+  public T getVersion(UUID id, String version) throws IOException {
     Double requestedVersion = Double.parseDouble(version);
     String extension = EntityUtil.getVersionExtension(entityType, requestedVersion);
 
     // Get previous version from version history
-    String json = daoCollection.entityExtensionDAO().getExtension(id, extension);
+    String json = daoCollection.entityExtensionDAO().getExtension(id.toString(), extension);
     if (json != null) {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
+    T entity = setFields(dao.findEntityById(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
       return entity;
     }
