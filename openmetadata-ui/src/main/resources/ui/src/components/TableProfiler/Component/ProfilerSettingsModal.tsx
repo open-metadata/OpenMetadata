@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Form, InputNumber, Modal, Select } from 'antd';
+import { Modal, Select, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isUndefined } from 'lodash';
@@ -45,12 +45,7 @@ const options = {
     name: CSMode.SQL,
   },
 };
-const labelCol = {
-  span: 24,
-  style: {
-    paddingBottom: '0px',
-  },
-};
+
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
   columnProfile,
@@ -147,21 +142,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <Loader />
       ) : (
         <>
-          <Form.Item label="Profile Sample %" labelCol={labelCol}>
-            <InputNumber
-              addonAfter="%"
-              className="tw-w-full"
-              data-testid="profile-sample-input"
-              max={100}
-              min={0}
-              placeholder="Enter Profile Sample %"
-              value={profileSample}
-              onChange={(value) => {
-                setProfileSample(value);
-              }}
-            />
-          </Form.Item>
-          <Form.Item label="Profile Sample Query" labelCol={labelCol}>
+          <div className="tw-pb-4" data-testid="profile-sample-container">
+            <p>Profile Sample %</p>
+            <div className="tw-px-2">
+              <Slider
+                marks={{ 0: '0%', 100: '100%' }}
+                max={100}
+                min={0}
+                value={profileSample}
+                onChange={(value) => {
+                  setProfileSample(value);
+                }}
+              />
+            </div>
+          </div>
+          <div className="tw-pb-4" data-testid="sql-editor-container">
+            <p>Profile Sample Query</p>
             <CodeMirror
               className="profiler-setting-sql-editor"
               data-testid="profiler-setting-sql-editor"
@@ -174,12 +170,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 setSqlQuery(value);
               }}
             />
-          </Form.Item>
-          <p>Enable column profile</p>
-          <Form.Item
-            className="tw-text-xs tw-mb-0"
-            label="Include:"
-            labelCol={labelCol}>
+          </div>
+          <p className="tw-mb-1">Enable column profile</p>
+          <div className="tw-pb-4" data-testid="include-column-container">
+            <p className="tw-text-xs">Include:</p>
             <Select
               allowClear
               className="tw-w-full"
@@ -191,11 +185,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               size="middle"
               onChange={(value) => setIncludeCol(value)}
             />
-          </Form.Item>
-          <Form.Item
-            className="tw-text-xs"
-            label="Exclude:"
-            labelCol={labelCol}>
+          </div>
+          <div className="tw-pb-4" data-testid="exclude-column-container">
+            <p className="tw-text-xs">Exclude:</p>
             <Select
               allowClear
               className="tw-w-full"
@@ -207,7 +199,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               size="middle"
               onChange={(value) => setExcludeCol(value)}
             />
-          </Form.Item>
+          </div>
         </>
       )}
     </Modal>
