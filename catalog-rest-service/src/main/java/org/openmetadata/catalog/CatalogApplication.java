@@ -96,7 +96,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
 
     final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(catalogConfig.getSecretsManagerConfiguration());
+        SecretsManagerFactory.createSecretsManager(
+            catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
 

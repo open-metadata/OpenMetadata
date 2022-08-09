@@ -28,8 +28,10 @@ public class AWSSecretsManager extends SecretsManager {
   private SecretsManagerClient secretsClient;
 
   private AWSSecretsManager(
-      OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider, SecretsManagerConfiguration config) {
-    super(secretsManagerProvider);
+      OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider,
+      SecretsManagerConfiguration config,
+      String clusterPrefix) {
+    super(secretsManagerProvider, clusterPrefix);
     if (config == null) {
       throw new SecretsManagerException("Secrets manager configuration is empty.");
     }
@@ -52,7 +54,8 @@ public class AWSSecretsManager extends SecretsManager {
   @Override
   public Object encryptOrDecryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
-    String secretName = buildSecretId(serviceType.value().toLowerCase(Locale.ROOT), connectionType, connectionName);
+    String secretName =
+        buildSecretId("service", serviceType.value().toLowerCase(Locale.ROOT), connectionType, connectionName);
     try {
       if (encrypt) {
         String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
@@ -160,8 +163,8 @@ public class AWSSecretsManager extends SecretsManager {
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();
   }
 
-  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config) {
-    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(AWS, config);
+  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
+    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(AWS, config, clusterPrefix);
     return INSTANCE;
   }
 
