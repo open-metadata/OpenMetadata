@@ -123,25 +123,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.glueConnecti
     GlueConnection as GluePipelineConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
-from metadata.utils.connection_clients import (
-    AirByteClient,
-    DatalakeClient,
-    DeltaLakeClient,
-    DynamoClient,
-    FivetranClient,
-    GlueDBClient,
-    GluePipelineClient,
-    KafkaClient,
-    LookerClient,
-    MetabaseClient,
-    MlflowClientWrapper,
-    ModeClient,
-    PowerBiClient,
-    RedashClient,
-    SalesforceClient,
-    SupersetClient,
-    TableauClient,
-)
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout

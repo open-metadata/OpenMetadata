@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from typing import Dict, Iterable, Optional
 
 from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -150,7 +150,7 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run["status"].lower(), StatusType.Pending.value
                 ),
-                executionDate=run[10].timestamp(),
+                timestamp=run[10].timestamp(),
             )
             yield OMetaPipelineStatus(
                 pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
@@ -180,4 +180,4 @@ class DagsterSource(PipelineServiceSource):
         """
         Get Pipeline Name
         """
-        return pipeline_details.pipeline_name
+        return pipeline_details.get("pipeline_name")

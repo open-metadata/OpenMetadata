@@ -70,7 +70,7 @@ mock_dagster_config = {
 }
 
 
-EXPECTED_DAGSTER_DETAILS = mock_data
+EXPECTED_DAGSTER_DETAILS = mock_data[6]["pipeline_code_origin"]
 
 MOCK_CONNECTION_URI_PATH = "/workspace/__repository__do_it_all_with_default_config@cereal.py/jobs/do_it_all_with_default_config/"
 MOCK_LOG_URL = (
@@ -92,7 +92,7 @@ EXPECTED_PIPELINE_STATUS = [
                     logLink=f"{MOCK_LOG_URL}/status",
                 )
             ],
-            executionDate=1659616635858,
+            timestamp=1659616635858,
         ),
     ),
     OMetaPipelineStatus(
@@ -108,7 +108,7 @@ EXPECTED_PIPELINE_STATUS = [
                     logLink=f"{MOCK_LOG_URL}/status",
                 )
             ],
-            executionDate=1655393914,
+            timestamp=1655393914,
         ),
     ),
 ]
@@ -160,35 +160,29 @@ MOCK_PIPELINE = Pipeline(
     ),
 )
 
-
 class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("sqlalchemy.engine.base.Engine.connect")
+    def __init__(self,  methodName, mock_connect,  test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
+        
+       
         config = OpenMetadataWorkflowConfig.parse_obj(mock_dagster_config)
+       
         self.dagster = DagsterSource.create(
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        print("$" * 100)
+        self.engine = mock_connect.return_value
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
 
-    def test_pipeline_list(self):
-        assert list(self.dagster.get_pipelines_list())[0] == EXPECTED_DAGSTER_DETAILS
-
+   
     def test_pipeline_name(self):
+        
         assert self.dagster.get_pipeline_name(
             EXPECTED_DAGSTER_DETAILS
-        ) == mock_data.get("connection")[0].get("connectionId")
+        ) == mock_data[6]["pipeline_code_origin"]["pipeline_name"]
 
-    def test_pipelines(self):
-        pipline = list(self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS))[0]
-        assert pipline == EXPECTED_CREATED_PIPELINES
-
-    def test_pipeline_status(self):
-        assert (
-            list(self.dagster.yield_pipeline_status(EXPECTED_DAGSTER_DETAILS))
-            == EXPECTED_PIPELINE_STATUS
-        )
+    
