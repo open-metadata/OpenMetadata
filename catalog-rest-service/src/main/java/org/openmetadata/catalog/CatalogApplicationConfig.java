@@ -41,6 +41,7 @@ import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.validators.AirflowConfigValidation;
 
 @Getter
@@ -96,6 +97,9 @@ public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
+  @JsonProperty("clusterName")
+  private String clusterName;
+
   public void fetchActivityFeedConfigurationFromDB(Jdbi jdbi) {
     try {
       CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);
@@ -128,9 +132,6 @@ public class CatalogApplicationConfig extends Configuration {
           }
         });
   }
-
-  @JsonProperty("clusterName")
-  private String clusterName;
 
   @Override
   public String toString() {
