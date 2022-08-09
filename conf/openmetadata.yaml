@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
+
 swagger:
   resourcePackage: org.openmetadata.catalog.resources
 

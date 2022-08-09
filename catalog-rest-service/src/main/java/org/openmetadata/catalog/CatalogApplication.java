@@ -97,7 +97,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     catalogConfig.fetchActivityFeedConfigurationFromDB(jdbi);
 
     final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(catalogConfig.getSecretsManagerConfiguration());
+        SecretsManagerFactory.createSecretsManager(
+            catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
 

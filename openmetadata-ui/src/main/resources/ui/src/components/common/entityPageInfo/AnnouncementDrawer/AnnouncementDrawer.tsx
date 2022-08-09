@@ -15,6 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import AppState from '../../../../AppState';
@@ -123,6 +124,7 @@ const AnnouncementDrawer: FC<Props> = ({
           className="tw-p-0"
           createThread={createThread}
           deletePostHandler={deletePostHandler}
+          key={uniqueId()}
           postFeedHandler={postFeedHandler}
           showHeader={false}
           threadLink={getEntityFeedLink(entityType, entityFQN)}
