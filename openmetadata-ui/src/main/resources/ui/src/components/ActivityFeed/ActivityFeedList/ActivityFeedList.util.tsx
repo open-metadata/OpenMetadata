@@ -40,6 +40,11 @@ export const threadFilterList = [
     value: 'Conversation',
     icon: <SVGIcons alt="" icon={Icons.COMMENT_GREY} width="16px" />,
   },
+  {
+    name: 'Announcement',
+    value: 'Announcement',
+    icon: <SVGIcons alt="" icon={Icons.ANNOUNCEMENT_BLACK} width="16px" />,
+  },
 ];
 
 export const filterListTasks = [
