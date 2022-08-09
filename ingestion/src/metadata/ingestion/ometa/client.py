@@ -129,7 +129,7 @@ class REST:
         self,
         method,
         path,
-        opts: dict = None,
+        data=None,
         base_url: URL = None,
         api_version: str = None,
         headers: dict = None,
@@ -156,16 +156,18 @@ class REST:
             self.config.auth_header
         ] = f"{self._auth_token_mode} {self.config.access_token}"
 
-        opts.update(
-            {
-                "headers": headers,
-                # Since we allow users to set endpoint URL via env var,
-                # human error to put non-SSL endpoint could exploit
-                # uncanny issues in non-GET request redirecting http->https.
-                # It's better to fail early if the URL isn't right.
-                "allow_redirects": self.config.allow_redirects,
-            }
-        )
+        opts = {
+            "headers": headers,
+            # Since we allow users to set endpoint URL via env var,
+            # human error to put non-SSL endpoint could exploit
+            # uncanny issues in non-GET request redirecting http->https.
+            # It's better to fail early if the URL isn't right.
+            "allow_redirects": self.config.allow_redirects,
+        }
+        if method.upper() == "GET":
+            opts["params"] = data
+        else:
+            opts["data"] = data
 
         total_retries = self._retry if self._retry > 0 else 0
         retry = total_retries
@@ -223,7 +225,7 @@ class REST:
         Returns:
             Response
         """
-        return self._request("GET", path, {"params": data})
+        return self._request("GET", path, data)
 
     def post(self, path, data=None):
         """
@@ -236,21 +238,20 @@ class REST:
         Returns:
             Response
         """
-        return self._request("POST", path, {"data": data})
+        return self._request("POST", path, data)
 
-    def put(self, path, data=None, opt_arg="data"):
+    def put(self, path, data=None):
         """
         PUT method
 
         Parameters:
             path (str):
             data ():
-            opt_arg (str):
 
         Returns:
             Response
         """
-        return self._request("PUT", path, {opt_arg: data})
+        return self._request("PUT", path, data)
 
     def patch(self, path, data=None):
         """
@@ -266,7 +267,7 @@ class REST:
         return self._request(
             method="PATCH",
             path=path,
-            opts={"params": data},
+            data=data,
             headers={"Content-type": "application/json-patch+json"},
         )
 
@@ -281,7 +282,7 @@ class REST:
         Returns:
             Response
         """
-        return self._request("DELETE", path, {"data": data})
+        return self._request("DELETE", path, data)
 
     def __enter__(self):
         return self
