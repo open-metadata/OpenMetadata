@@ -3,7 +3,6 @@ package org.openmetadata.catalog.security.policyevaluator;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-
 import lombok.Builder;
 import lombok.NonNull;
 import org.openmetadata.catalog.EntityInterface;

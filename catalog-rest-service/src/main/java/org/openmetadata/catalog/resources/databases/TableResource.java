@@ -423,11 +423,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
-          UUID userId)
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @PUT
@@ -598,7 +596,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     RestUtil.validateCursors(before, after);
 
     ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("entityId", id.toString()).addQueryParam("extension", "table.tableProfile");
+        new ListFilter(Include.ALL)
+            .addQueryParam("entityId", id.toString())
+            .addQueryParam("extension", "table.tableProfile");
 
     if (startTs != null) {
       filter.addQueryParam("startTs", String.valueOf(startTs));
@@ -906,9 +906,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("userId")
           String userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId)).toResponse();
   }
 
   @DELETE

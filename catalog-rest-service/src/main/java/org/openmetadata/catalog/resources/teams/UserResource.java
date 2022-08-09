@@ -421,8 +421,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response revokeToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     authorizeGenerateJWT(user);
@@ -452,8 +451,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public JWTAuthMechanism getToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
 
     User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
     if (!Boolean.TRUE.equals(user.getIsBot())) {

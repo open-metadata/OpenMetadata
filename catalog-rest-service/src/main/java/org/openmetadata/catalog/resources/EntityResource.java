@@ -133,8 +133,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
-    PatchResponse<T> response =
-        dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    PatchResponse<T> response = dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

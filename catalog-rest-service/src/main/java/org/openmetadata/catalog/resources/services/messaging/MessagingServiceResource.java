@@ -321,8 +321,7 @@ public class MessagingServiceResource
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
