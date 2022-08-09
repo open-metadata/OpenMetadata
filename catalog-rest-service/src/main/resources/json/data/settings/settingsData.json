@@ -80,6 +80,16 @@
                 "enabled":true
               }
             ]
+          },
+          {
+            "eventType":"entitySoftDeleted",
+            "events":
+            [
+              {
+                "filterType":"all",
+                "enabled":true
+              }
+            ]
           }
         ]
       }
