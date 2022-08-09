@@ -498,9 +498,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @PathParam("userId")
           UUID userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE

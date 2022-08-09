@@ -361,9 +361,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @PathParam("userId")
           UUID userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE

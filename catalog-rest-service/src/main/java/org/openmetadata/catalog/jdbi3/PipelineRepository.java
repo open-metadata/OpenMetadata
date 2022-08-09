@@ -51,7 +51,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
-
   public PipelineRepository(CollectionDAO dao) {
     super(
         PipelineResource.COLLECTION_PATH,

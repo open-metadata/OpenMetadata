@@ -349,8 +349,7 @@ public class MlModelServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the mlModel service", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
+      @Parameter(description = "Id of the mlModel service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
