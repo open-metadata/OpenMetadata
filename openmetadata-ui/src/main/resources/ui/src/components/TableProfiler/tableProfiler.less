@@ -15,6 +15,7 @@
 @failedColor: #cb2431;
 @abortedColor: #efae2f;
 @grayColor: #dde3ea;
+@primary-color: #7147e8;
 
 .table-profiler-container {
   .profiler-setting-btn {
@@ -86,5 +87,16 @@
   border-radius: 2px;
   .CodeMirror {
     height: 200px;
+  }
+}
+.include-columns-add-button.ant-btn-icon-only.ant-btn-sm {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+}
+
+.profiler-slider {
+  .ant-slider-track {
+    background: @primary-color;
   }
 }
