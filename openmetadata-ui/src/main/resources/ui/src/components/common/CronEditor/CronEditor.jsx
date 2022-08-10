@@ -590,7 +590,7 @@ const CronEditor = (props) => {
           {getMonthComponent(cronPeriodString)}
           {getYearComponent(cronPeriodString)}
           {isEmpty(value) && (
-            <p className="tw-col-span-2">
+            <p className="tw-col-span-2" data-testid="manual-segment-container">
               Pipeline will only be triggered manually.
             </p>
           )}
