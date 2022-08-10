@@ -11,8 +11,61 @@
  *  limitations under the License.
  */
 
+import { CSMode } from '../enums/codemirror.enum';
+import { ColumnProfilerConfig } from '../generated/entity/data/table';
+import { JSON_TAB_SIZE } from './constants';
+
 export const ENTITY_DELETE_STATE = {
   loading: 'initial',
   state: false,
   softDelete: true,
+};
+
+export const PROFILER_METRIC = [
+  'valuesCount',
+  'valuesPercentage',
+  'validCount',
+  'duplicateCount',
+  'nullCount',
+  'nullProportion',
+  'missingPercentage',
+  'missingCount',
+  'uniqueCount',
+  'uniqueProportion',
+  'distinctCount',
+  'distinctProportion',
+  'min',
+  'max',
+  'minLength',
+  'maxLength',
+  'mean',
+  'sum',
+  'stddev',
+  'variance',
+  'median',
+  'histogram',
+  'customMetricsProfile',
+];
+
+export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
+  {
+    columnName: undefined,
+    metrics: ['all'],
+  },
+];
+
+export const codeMirrorOption = {
+  tabSize: JSON_TAB_SIZE,
+  indentUnit: JSON_TAB_SIZE,
+  indentWithTabs: true,
+  lineNumbers: true,
+  lineWrapping: true,
+  styleActiveLine: true,
+  matchBrackets: true,
+  autoCloseBrackets: true,
+  foldGutter: true,
+  gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+  mode: {
+    name: CSMode.SQL,
+  },
 };

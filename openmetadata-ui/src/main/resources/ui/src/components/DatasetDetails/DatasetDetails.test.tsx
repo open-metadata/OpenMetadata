@@ -171,7 +171,7 @@ jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
 
-jest.mock('../TableProfiler/TableProfiler.component', () => {
+jest.mock('../TableProfiler/TableProfilerV1', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="TableProfiler">TableProfiler</p>);

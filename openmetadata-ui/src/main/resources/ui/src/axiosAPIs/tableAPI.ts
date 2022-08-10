@@ -15,7 +15,11 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
-import { ColumnTestType, Table } from '../generated/entity/data/table';
+import {
+  ColumnTestType,
+  Table,
+  TableProfilerConfig,
+} from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -183,4 +187,28 @@ export const deleteColumnTestCase = (
     `/tables/${tableId}/columnTest/${columnName}/${columnTestType}`,
     configOptions
   );
+};
+
+export const getTableProfilerConfig = async (tableId: string) => {
+  const response = await APIClient.get<Table>(
+    `/tables/${tableId}/tableProfilerConfig`
+  );
+
+  return response.data;
+};
+
+export const putTableProfileConfig = async (
+  tableId: string,
+  data: TableProfilerConfig
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.put<
+    TableProfilerConfig,
+    AxiosResponse<Table>
+  >(`/tables/${tableId}/tableProfilerConfig`, data, configOptions);
+
+  return response.data;
 };
