@@ -47,6 +47,11 @@
       "description": "Tableau Site Name.",
       "type": "string"
     },
+    "siteUrl": {
+      "title": "Site Url",
+      "description": "Tableau Site Url.",
+      "type": "string"
+    },
     "personalAccessTokenName": {
       "title": "Personal Access Token",
       "description": "Personal Access Token Name.",
@@ -70,5 +75,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["apiVersion", "siteName", "env"]
+  "required": ["apiVersion", "env"]
 }

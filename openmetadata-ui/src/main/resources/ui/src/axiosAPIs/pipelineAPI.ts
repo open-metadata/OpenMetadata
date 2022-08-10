@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil } from 'lodash';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -51,30 +50,6 @@ export const getPipelines = async (
     data: ServicePageData[];
     paging: Paging;
   }>(url);
-
-  return response.data;
-};
-
-export const getAllPipelines = async (
-  paging: string,
-  arrQueryFields: string,
-  limit?: number
-) => {
-  const searchParams = new URLSearchParams();
-
-  if (!isNil(limit)) {
-    searchParams.set('limit', `${limit}`);
-  }
-
-  const url = getURLWithQueryFields(
-    `/pipelines`,
-    arrQueryFields,
-    `${searchParams.toString()}${paging ? `&${paging}` : ''}`
-  );
-
-  const response = await APIClient.get<{ data: Pipeline[]; paging: Paging }>(
-    url
-  );
 
   return response.data;
 };

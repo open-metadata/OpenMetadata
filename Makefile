@@ -216,49 +216,51 @@ SNYK_ARGS := --severity-threshold=high
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
 	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) >> security/ingestion-docker-scan.out | true;
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) --json > security-report/ingestion-docker-scan.json | true;
 	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
-		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> ../security/ingestion-dep-scan.out | true; \
-		snyk code test $(SNYK_ARGS) >> ../security/ingestion-code-scan.out | true;
+		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) --json > ../security-report/ingestion-dep-scan.json | true; \
+		snyk code test $(SNYK_ARGS) --json > ../security-report/ingestion-code-scan.json | true;
 
 .PHONY: snyk-airflow-apis-report
 snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
 	@echo "Validating airflow dependencies. Make sure the venv is activated."
 	cd openmetadata-airflow-apis; \
-    	snyk code test $(SNYK_ARGS) >> ../security/airflow-apis-code-scan.out | true;
+    	snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
 
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
 	@echo "Validating catalog container... Make sure the code is built and available under openmetadata-dist"
 	docker build -t openmetadata-server:scan -f docker/local-metadata/Dockerfile .
-	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) >> security/server-docker-scan.out | true;
-	snyk test --all-projects $(SNYK_ARGS) >> security/server-dep-scan.out | true;
-	snyk code test --all-projects $(SNYK_ARGS) >> security/server-code-scan.out | true;
+	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
+	snyk test --all-projects $(SNYK_ARGS) --json > security-report/server-dep-scan.json | true;
+	snyk code test --all-projects --severity-threshold=high --json > security-report/server-code-scan.json | true;
 
 .PHONY: snyk-ui-report
 snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop the execution
-	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) >> security/ui-dep-scan.out | true;
+	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) --json > security-report/ui-dep-scan.json | true;
 
 .PHONY: snyk-dependencies-report
 snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES. Only local testing.
 	@echo "Validating dependencies images..."
-	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) >> security/mysql-scan.out | true;
-	snyk container test postgres:latest $(SNYK_ARGS) >> security/postgres-scan.out | true;
-	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) >> security/es-scan.out | true;
+	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) --json > security-report/mysql-scan.json | true;
+	snyk container test postgres:latest $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
+	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) --json > security-report/es-scan.json | true;
 
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
 	@echo "To run this locally, make sure to install and authenticate using the Snyk CLI: https://docs.snyk.io/snyk-cli/install-the-snyk-cli"
-	mkdir -p security
+	rm -rf security-report
+	mkdir -p security-report
 	$(MAKE) snyk-ingestion-report
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
-	$(MAKE)	read-report
+	$(MAKE)	export-snyk-html-report
 
-.PHONY: read-report
-read-report:  ## Read files from security/
+.PHONY: export-snyk-html-report
+export-snyk-html-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
-	ls security | xargs -I % cat security/%
+	npm install snyk-to-html -g
+	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html

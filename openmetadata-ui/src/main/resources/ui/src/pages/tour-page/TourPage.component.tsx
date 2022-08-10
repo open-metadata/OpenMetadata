@@ -125,14 +125,16 @@ const TourPage = () => {
       case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
-            countDashboards={10}
-            countMlModal={2}
-            countPipelines={8}
-            countServices={4}
-            countTables={21}
-            countTeams={7}
-            countTopics={20}
-            countUsers={100}
+            entityCounts={{
+              tableCount: 21,
+              topicCount: 20,
+              dashboardCount: 10,
+              pipelineCount: 8,
+              mlmodelCount: 2,
+              servicesCount: 4,
+              userCount: 100,
+              teamCount: 7,
+            }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
             fetchData={() => {

@@ -204,20 +204,20 @@ public class UserRepository extends EntityRepository<User> {
     return EntityUtil.populateEntityReferences(refs);
   }
 
-  /* Add all the roles that user has been assigned and inherited from the team to User entity */
+  /* Get all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
     List<EntityRelationshipRecord> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
   }
 
-  /* Add all the roles that user has been assigned and inherited from the team to User entity */
+  /* Get all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getInheritedRoles(User user) throws IOException {
     List<EntityReference> roles = getDefaultRole();
     roles.addAll(getTeamDefaultRoles(user));
     return roles.stream().distinct().collect(Collectors.toList()); // Remove duplicates
   }
 
-  /* Add all the teams that user belongs to User entity */
+  /* Get all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<EntityRelationshipRecord> records = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
     List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
