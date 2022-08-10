@@ -14,6 +14,7 @@
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   IN_PAGE_SEARCH_ROUTES,
+  PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
   PLACEHOLDER_ROUTE_FQN,
@@ -236,6 +237,14 @@ export const getTeamsWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.ACCESS)
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
     .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getProfilerDashboardWithFqnPath = (entityTypeFQN: string) => {
+  let path = ROUTES.PROFILER_DASHBOARD;
+
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
 
   return path;
 };
