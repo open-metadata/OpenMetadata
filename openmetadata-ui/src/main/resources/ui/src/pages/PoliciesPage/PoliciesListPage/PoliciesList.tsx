@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { uniqueId } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Policy } from '../../../generated/entity/policies/policy';
-import { getPolicyWithFqnPath } from '../../../utils/RouterUtils';
+import { getEntityName } from '../../../utils/CommonUtils';
+import {
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+} from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface PolicyListProps {
@@ -47,6 +52,27 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
         render: (_, record) => (
           <RichTextEditorPreviewer markdown={record?.description || ''} />
         ),
+      },
+      {
+        title: 'Roles',
+        dataIndex: 'roles',
+        width: '200px',
+        key: 'roles',
+        render: (_, record) => {
+          return record.roles?.length ? (
+            <Space wrap size={4}>
+              {record.roles.map((role) => (
+                <Link
+                  key={uniqueId()}
+                  to={getRoleWithFqnPath(role.fullyQualifiedName || '')}>
+                  {getEntityName(role)}
+                </Link>
+              ))}
+            </Space>
+          ) : (
+            '-- '
+          );
+        },
       },
       {
         title: 'Actions',
