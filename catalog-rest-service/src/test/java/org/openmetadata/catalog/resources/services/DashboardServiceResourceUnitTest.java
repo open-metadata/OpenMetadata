@@ -57,7 +57,6 @@ public class DashboardServiceResourceUnitTest
     service = mock(DashboardService.class);
     serviceConnectionConfig = new TableauConnection();
     DashboardConnection serviceConnection = mock(DashboardConnection.class);
-    lenient().when(serviceConnection.getServiceConnectionConfigInterface()).thenReturn(serviceConnectionConfig);
     lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.DashboardServiceDAO entityDAO = mock(CollectionDAO.DashboardServiceDAO.class);
     when(collectionDAO.dashboardServiceDAO()).thenReturn(entityDAO);

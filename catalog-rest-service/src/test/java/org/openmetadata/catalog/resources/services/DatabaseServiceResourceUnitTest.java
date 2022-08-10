@@ -57,7 +57,6 @@ public class DatabaseServiceResourceUnitTest
     service = mock(DatabaseService.class);
     serviceConnectionConfig = new MssqlConnection();
     DatabaseConnection serviceConnection = mock(DatabaseConnection.class);
-    lenient().when(serviceConnection.getServiceConnectionConfigInterface()).thenReturn(serviceConnectionConfig);
     lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.DatabaseServiceDAO entityDAO = mock(CollectionDAO.DatabaseServiceDAO.class);
     when(collectionDAO.dbServiceDAO()).thenReturn(entityDAO);

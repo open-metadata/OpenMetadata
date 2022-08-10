@@ -114,7 +114,7 @@ public abstract class ServiceResourceTest<
     R actual = callGetFromResource(serviceResource);
 
     verify(secretsManager, times(1)).isLocal();
-    verify(secretsManager, times(allowPartialNullification() ? 1 : shouldBeNull ? 0 : 1))
+    verify(secretsManager)
         .encryptOrDecryptServiceConnectionConfig(
             notNull(), eq(serviceConnectionType()), any(), eq(serviceType()), eq(false));
 

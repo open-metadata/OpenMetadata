@@ -59,8 +59,7 @@ public abstract class ServiceEntityResource<
     try {
       authorizer.authorizeAdmin(securityContext, secretsManager.isLocal());
     } catch (AuthorizationException e) {
-      return nullifyRequiredConnectionParameters(
-          service, service.getConnection().getServiceConnectionConfigInterface());
+      return nullifyRequiredConnectionParameters(service);
     }
     service.getConnection().setConfig(retrieveServiceConnectionConfig(service));
     return service;
@@ -76,11 +75,12 @@ public abstract class ServiceEntityResource<
     return services;
   }
 
-  protected T nullifyRequiredConnectionParameters(T service, ServiceConnectionConfigInterface connectionConfig) {
+  protected T nullifyRequiredConnectionParameters(T service) {
+    ServiceConnectionConfigInterface connectionConfig =
+        (ServiceConnectionConfigInterface) retrieveServiceConnectionConfig(service);
     if (connectionConfig.isExposingFields()) {
       try {
-        String json =
-            JsonUtils.jsonWithFields(retrieveServiceConnectionConfig(service), connectionConfig.getExposedFields());
+        String json = JsonUtils.jsonWithFields(connectionConfig, connectionConfig.getExposedFields());
         service.getConnection().setConfig(JsonUtils.readValue(json, connectionConfig.getClass()));
         return service;
       } catch (IOException e) {

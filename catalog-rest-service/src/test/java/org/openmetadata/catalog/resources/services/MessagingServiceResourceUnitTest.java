@@ -57,7 +57,6 @@ public class MessagingServiceResourceUnitTest
     service = mock(MessagingService.class);
     serviceConnectionConfig = new KafkaConnection();
     MessagingConnection serviceConnection = mock(MessagingConnection.class);
-    lenient().when(serviceConnection.getServiceConnectionConfigInterface()).thenReturn(serviceConnectionConfig);
     lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.MessagingServiceDAO entityDAO = mock(CollectionDAO.MessagingServiceDAO.class);
     when(collectionDAO.messagingServiceDAO()).thenReturn(entityDAO);

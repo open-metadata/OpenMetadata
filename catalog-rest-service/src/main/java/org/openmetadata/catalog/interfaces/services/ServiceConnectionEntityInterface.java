@@ -13,17 +13,10 @@
 
 package org.openmetadata.catalog.interfaces.services;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /** Interface to be implemented by all services entities to provide a way to access all the common fields. */
 public interface ServiceConnectionEntityInterface {
 
   Object getConfig();
 
   void setConfig(Object config);
-
-  @JsonIgnore
-  default ServiceConnectionConfigInterface getServiceConnectionConfigInterface() {
-    return (ServiceConnectionConfigInterface) getConfig();
-  }
 }

@@ -59,7 +59,6 @@ public class MlModelServiceResourceUnitTest
     service = mock(MlModelService.class);
     serviceConnectionConfig = new MlflowConnection();
     MlModelConnection serviceConnection = mock(MlModelConnection.class);
-    lenient().when(serviceConnection.getServiceConnectionConfigInterface()).thenReturn(serviceConnectionConfig);
     lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.MlModelServiceDAO entityDAO = mock(CollectionDAO.MlModelServiceDAO.class);
     when(collectionDAO.mlModelServiceDAO()).thenReturn(entityDAO);

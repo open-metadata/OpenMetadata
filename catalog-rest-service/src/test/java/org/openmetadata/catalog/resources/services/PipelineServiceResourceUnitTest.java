@@ -60,7 +60,6 @@ public class PipelineServiceResourceUnitTest
     service = mock(PipelineService.class);
     serviceConnectionConfig = new AirbyteConnection();
     PipelineConnection serviceConnection = mock(PipelineConnection.class);
-    lenient().when(serviceConnection.getServiceConnectionConfigInterface()).thenReturn(serviceConnectionConfig);
     lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.PipelineServiceDAO entityDAO = mock(CollectionDAO.PipelineServiceDAO.class);
     when(collectionDAO.pipelineServiceDAO()).thenReturn(entityDAO);
