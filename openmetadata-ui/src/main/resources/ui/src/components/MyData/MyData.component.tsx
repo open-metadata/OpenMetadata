@@ -46,16 +46,9 @@ const MyData: React.FC<MyDataProps> = ({
   activityFeeds,
   onRefreshFeeds,
   error,
-  countDashboards,
-  countPipelines,
-  countServices,
-  countTables,
-  countTopics,
-  countTeams,
-  countUsers,
+  entityCounts,
   ownedData,
   pendingTaskCount,
-  countMlModal,
   followedData,
   feedData,
   ownedDataCount,
@@ -75,16 +68,7 @@ const MyData: React.FC<MyDataProps> = ({
   const getLeftPanel = () => {
     return (
       <div className="tw-mt-4">
-        <MyAssetStats
-          countDashboards={countDashboards}
-          countMlModal={countMlModal}
-          countPipelines={countPipelines}
-          countServices={countServices}
-          countTables={countTables}
-          countTeams={countTeams}
-          countTopics={countTopics}
-          countUsers={countUsers}
-        />
+        <MyAssetStats entityCounts={entityCounts} />
         <div className="tw-mb-5" />
         <RecentlyViewed />
         <div className="tw-mb-5" />

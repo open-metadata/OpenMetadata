@@ -15,6 +15,7 @@ package org.openmetadata.catalog.interfaces.services;
 
 import java.util.List;
 import org.openmetadata.catalog.EntityInterface;
+import org.openmetadata.catalog.EnumInterface;
 import org.openmetadata.catalog.type.EntityReference;
 
 /** Interface to be implemented by all services entities to provide a way to access all the common fields. */
@@ -25,4 +26,6 @@ public interface ServiceEntityInterface extends EntityInterface {
   ServiceEntityInterface withOwner(EntityReference owner);
 
   void setPipelines(List<EntityReference> pipelines);
+
+  EnumInterface getServiceType();
 }

@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.resources.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,7 +39,7 @@ import org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInter
 import org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.interfaces.services.ServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.ServiceRepository;
+import org.openmetadata.catalog.jdbi3.ServiceEntityRepository;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
@@ -35,7 +48,7 @@ import org.openmetadata.catalog.security.Authorizer;
 public abstract class ServiceResourceTest<
     T extends ServiceEntityResource<R, S, U>,
     R extends ServiceEntityInterface,
-    S extends ServiceRepository<R, U>,
+    S extends ServiceEntityRepository<R, U>,
     U extends ServiceConnectionEntityInterface> {
 
   T serviceResource;

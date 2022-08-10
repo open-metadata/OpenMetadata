@@ -10,6 +10,9 @@
     "mlModelServiceType": {
       "description": "Type of MlModel service",
       "type": "string",
+      "javaInterfaces": [
+        "org.openmetadata.core.entity.interfaces.EnumInterface"
+      ],
       "enum": ["Mlflow", "Sklearn"],
       "javaEnums": [
         {

@@ -657,8 +657,8 @@ def _(connection: TableauConnection, verbose: bool = False):
         f"{connection.env}": {
             "server": connection.hostPort,
             "api_version": connection.apiVersion,
-            "site_name": connection.siteName,
-            "site_url": connection.siteName,
+            "site_name": connection.siteName if connection.siteName else "",
+            "site_url": connection.siteUrl if connection.siteUrl else "",
         }
     }
     if connection.username and connection.password:
