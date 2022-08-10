@@ -46,7 +46,7 @@ setup(
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
-    description="Airflow REST APIs to create and manage DAGS"
+    description="Airflow REST APIs to create and manage DAGS",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
     python_requires=">=3.7",
