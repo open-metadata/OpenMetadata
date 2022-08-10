@@ -29,7 +29,10 @@ import {
 } from '../../../constants/globalSettings.constants';
 import { Role } from '../../../generated/entity/teams/role';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { getSettingPath } from '../../../utils/RouterUtils';
+import {
+  getPolicyWithFqnPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './RolesDetail.less';
 
@@ -79,7 +82,9 @@ const RolesDetailPage = () => {
           width: '200px',
           key: 'name',
           render: (_, record) => (
-            <Link className="hover:tw-underline tw-cursor-pointer" to="#">
+            <Link
+              className="hover:tw-underline tw-cursor-pointer"
+              to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
               {getEntityName(record)}
             </Link>
           ),

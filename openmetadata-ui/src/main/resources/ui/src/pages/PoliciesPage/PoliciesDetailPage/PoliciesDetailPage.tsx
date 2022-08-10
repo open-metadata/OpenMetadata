@@ -29,7 +29,7 @@ import {
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { getSettingPath } from '../../../utils/RouterUtils';
+import { getRoleWithFqnPath, getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
 
@@ -79,7 +79,9 @@ const PoliciesDetailPage = () => {
           width: '200px',
           key: 'name',
           render: (_, record) => (
-            <Link className="hover:tw-underline tw-cursor-pointer" to="#">
+            <Link
+              className="hover:tw-underline tw-cursor-pointer"
+              to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
               {getEntityName(record)}
             </Link>
           ),
