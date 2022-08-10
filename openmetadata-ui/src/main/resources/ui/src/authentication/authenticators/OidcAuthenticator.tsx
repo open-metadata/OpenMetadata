@@ -163,7 +163,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             <AppWithAuth />
           )}
         </Switch>
-        {loading && <Loader />}
+        {loading && isSigningIn && <Loader />}
       </>
     );
   }
