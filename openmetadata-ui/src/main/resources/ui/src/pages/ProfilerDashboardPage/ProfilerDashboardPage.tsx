@@ -18,15 +18,22 @@ import {
   getTableDetailsByFQN,
   getTableProfilesList,
 } from '../../axiosAPIs/tableAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
 import { Table, TableProfile } from '../../generated/entity/data/table';
 import jsonData from '../../jsons/en';
-import { getTableFQNFromColumnFQN } from '../../utils/CommonUtils';
+import {
+  getNameFromFQN,
+  getTableFQNFromColumnFQN,
+} from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
   const { entityTypeFQN } = useParams<Record<string, string>>();
   const [table, setTable] = useState<Table>({} as Table);
   const [profilerData, setProfilerData] = useState<TableProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const fetchProfilerData = async (tableId: string) => {
     try {
@@ -34,6 +41,8 @@ const ProfilerDashboardPage = () => {
       setProfilerData(data.data || []);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -51,14 +60,34 @@ const ProfilerDashboardPage = () => {
         error as AxiosError,
         jsonData['api-error-messages']['fetch-table-details-error']
       );
+      setIsLoading(false);
+      setError(true);
     }
   };
 
   useEffect(() => {
     if (entityTypeFQN) {
       fetchTableEntity(entityTypeFQN);
+    } else {
+      setIsLoading(false);
+      setError(true);
     }
   }, [entityTypeFQN]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (error) {
+    return (
+      <ErrorPlaceHolder>
+        <p className="tw-text-center">
+          No data found{' '}
+          {entityTypeFQN ? `for column ${getNameFromFQN(entityTypeFQN)}` : ''}
+        </p>
+      </ErrorPlaceHolder>
+    );
+  }
 
   return <div>ProfilerDashboardPage</div>;
 };
