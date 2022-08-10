@@ -22,7 +22,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion[airflow-container]~=0.11.4.1",
+    "openmetadata-ingestion[airflow-container]~=0.11.4.2",
     "pendulum~=2.1.2",
     "packaging~=21.2",
     "setuptools~=58.3.0",
@@ -42,11 +42,11 @@ dev_requirements = {
 
 setup(
     name="openmetadata-airflow-managed-apis",
-    version="0.11.4.1",
+    version="0.11.4.2",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
-    description="Airflow REST APIs to create and manage DAGS",
+    description="Airflow REST APIs to create and manage DAGS"
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
     python_requires=">=3.7",
