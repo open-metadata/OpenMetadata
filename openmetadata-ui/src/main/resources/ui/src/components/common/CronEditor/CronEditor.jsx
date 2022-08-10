@@ -59,7 +59,7 @@ const getCron = (state) => {
     case 'year':
       return getYearCron(selectedYearOption);
     default:
-      return '';
+      return null;
   }
 };
 
@@ -105,7 +105,7 @@ const CronEditor = (props) => {
     };
     let t = getCronType(valueStr);
 
-    let d = valueStr.split(' ');
+    let d = valueStr ? valueStr.split(' ') : [];
     let v = {
       min: d[0],
       hour: d[1],
