@@ -5,6 +5,9 @@
   "description": "Lineage Backend Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.pipeline.BackendConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "BackendType": {
       "description": "Service type.",

@@ -5,6 +5,9 @@
   "description": "Airbyte Metadata Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.pipeline.AirbyteConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.PipelineConnectionConfigInterface"
+  ],
   "definitions": {
     "AirbyteType": {
       "description": "Service type.",

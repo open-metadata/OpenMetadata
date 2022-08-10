@@ -5,6 +5,9 @@
   "description": "SingleStore Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.SingleStoreConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "singleStoreType": {
       "description": "Service type.",

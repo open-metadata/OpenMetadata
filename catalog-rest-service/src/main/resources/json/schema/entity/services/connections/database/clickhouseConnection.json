@@ -5,6 +5,9 @@
   "description": "Clickhouse Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.ClickhouseConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "clickhouseType": {
       "description": "Service type.",

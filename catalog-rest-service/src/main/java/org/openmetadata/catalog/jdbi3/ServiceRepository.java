@@ -4,9 +4,9 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
-import org.openmetadata.catalog.ServiceConnectionEntityInterface;
-import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ServiceType;
+import org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface;
+import org.openmetadata.catalog.interfaces.services.ServiceEntityInterface;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;

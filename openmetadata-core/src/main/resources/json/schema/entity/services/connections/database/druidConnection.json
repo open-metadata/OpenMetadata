@@ -5,6 +5,9 @@
   "description": "Druid Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.DruidConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "druidType": {
       "description": "Service type.",

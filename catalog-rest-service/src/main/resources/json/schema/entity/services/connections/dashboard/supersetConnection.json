@@ -5,6 +5,9 @@
   "description": "Superset Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.SupersetConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.DashboardConnectionConfigInterface"
+  ],
   "definitions": {
     "supersetType": {
       "description": "Superset service type",

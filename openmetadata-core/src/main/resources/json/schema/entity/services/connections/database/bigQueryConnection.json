@@ -5,6 +5,9 @@
   "description": "Google BigQuery Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.BigQueryConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "bigqueryType": {
       "description": "Service type.",

@@ -5,6 +5,9 @@
   "description": "Presto Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.PrestoConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "prestoType": {
       "description": "Service type.",

@@ -383,4 +383,10 @@ public final class JsonUtils {
   private static String getSchemaGroup(String path) {
     return Paths.get(path).getParent().getFileName().toString();
   }
+
+  public static String jsonWithFields(Object obj, Set<String> fields) throws IOException {
+    Map<String, Object> jsonMap = getMap(obj);
+    jsonMap.keySet().retainAll(fields);
+    return pojoToJson(jsonMap);
+  }
 }

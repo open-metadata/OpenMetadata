@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog;
+package org.openmetadata.catalog.interfaces.services;
 
-import java.util.List;
-import org.openmetadata.catalog.type.EntityReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /** Interface to be implemented by all services entities to provide a way to access all the common fields. */
-public interface ServiceEntityInterface extends EntityInterface {
+public interface ServiceConnectionEntityInterface {
 
-  ServiceConnectionEntityInterface getConnection();
+  Object getConfig();
 
-  ServiceEntityInterface withOwner(EntityReference owner);
+  void setConfig(Object config);
 
-  void setPipelines(List<EntityReference> pipelines);
+  @JsonIgnore
+  default ServiceConnectionConfigInterface getServiceConnectionConfigInterface() {
+    return (ServiceConnectionConfigInterface) getConfig();
+  }
 }

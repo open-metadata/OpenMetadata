@@ -5,6 +5,9 @@
   "description": "Hive SQL Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.HiveConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "hiveType": {
       "description": "Service type.",

@@ -5,6 +5,9 @@
   "description": "MariaDB Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.MariaDBConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "mariaDBType": {
       "description": "Service type.",

@@ -11,12 +11,21 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog;
+package org.openmetadata.core.entity.interfaces.services;
 
-/** Interface to be implemented by all services entities to provide a way to access all the common fields. */
-public interface ServiceConnectionEntityInterface {
+import java.net.URI;
+import java.util.Set;
 
-  Object getConfig();
+/** Interface to be implemented by services connection configuration entities */
+public interface PipelineConnectionConfigInterface extends ServiceConnectionConfigInterface {
 
-  void setConfig(Object config);
+  URI getHostPort();
+
+  default boolean isExposingFields() {
+    return true;
+  }
+
+  default Set<String> getExposedFields() {
+    return Set.of("hostPort");
+  }
 }

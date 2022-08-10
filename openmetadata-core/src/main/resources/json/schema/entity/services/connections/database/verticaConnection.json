@@ -5,6 +5,9 @@
   "description": "Vertica Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.VerticaConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "verticaType": {
       "description": "Service type.",

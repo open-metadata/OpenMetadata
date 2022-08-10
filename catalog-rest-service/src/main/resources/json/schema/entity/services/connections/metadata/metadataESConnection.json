@@ -5,6 +5,9 @@
   "description": "Metadata to ElasticSearch Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.metadata.MetadataESConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "metadataESType": {
       "description": "Metadata to Elastic Search type",

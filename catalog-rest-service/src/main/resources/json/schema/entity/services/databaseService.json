@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.entity.services.DatabaseService",
   "javaInterfaces": [
     "org.openmetadata.catalog.EntityInterface",
-    "org.openmetadata.catalog.ServiceEntityInterface"
+    "org.openmetadata.catalog.interfaces.services.ServiceEntityInterface"
   ],
   "definitions": {
     "databaseServiceType": {
@@ -130,7 +130,7 @@
       "type": "object",
       "description": "Database Connection.",
       "javaInterfaces": [
-        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
+        "org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface"
       ],
       "properties": {
         "config": {

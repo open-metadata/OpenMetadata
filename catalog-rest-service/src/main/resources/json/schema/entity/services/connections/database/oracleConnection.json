@@ -5,6 +5,9 @@
   "description": "Oracle Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.OracleConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "oracleType": {
       "description": "Service type.",

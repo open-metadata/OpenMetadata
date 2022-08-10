@@ -5,6 +5,9 @@
   "description": "Tableau Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.TableauConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.DashboardConnectionConfigInterface"
+  ],
   "definitions": {
     "tableauType": {
       "description": "Tableau service type",

@@ -48,10 +48,17 @@ public class DashboardServiceResourceUnitTest
   }
 
   @Override
+  protected boolean allowPartialNullification() {
+    return true;
+  }
+
+  @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(DashboardService.class);
+    serviceConnectionConfig = new TableauConnection();
     DashboardConnection serviceConnection = mock(DashboardConnection.class);
-    lenient().when(serviceConnection.getConfig()).thenReturn(mock(TableauConnection.class));
+    lenient().when(serviceConnection.getServiceConnectionConfigInterface()).thenReturn(serviceConnectionConfig);
+    lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.DashboardServiceDAO entityDAO = mock(CollectionDAO.DashboardServiceDAO.class);
     when(collectionDAO.dashboardServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateDashboardService.DashboardServiceType.Tableau);

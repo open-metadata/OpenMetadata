@@ -5,6 +5,9 @@
   "description": "Mode Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.ModeConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.DashboardConnectionConfigInterface"
+  ],
   "definitions": {
     "modeType": {
       "description": "Mode service type",

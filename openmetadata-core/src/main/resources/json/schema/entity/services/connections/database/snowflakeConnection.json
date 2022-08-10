@@ -5,6 +5,9 @@
   "description": "Snowflake Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.SnowflakeConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "snowflakeType": {
       "description": "Service type.",

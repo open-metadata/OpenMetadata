@@ -48,10 +48,17 @@ public class MessagingServiceResourceUnitTest
   }
 
   @Override
+  protected boolean allowPartialNullification() {
+    return false;
+  }
+
+  @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(MessagingService.class);
+    serviceConnectionConfig = new KafkaConnection();
     MessagingConnection serviceConnection = mock(MessagingConnection.class);
-    lenient().when(serviceConnection.getConfig()).thenReturn(mock(KafkaConnection.class));
+    lenient().when(serviceConnection.getServiceConnectionConfigInterface()).thenReturn(serviceConnectionConfig);
+    lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.MessagingServiceDAO entityDAO = mock(CollectionDAO.MessagingServiceDAO.class);
     when(collectionDAO.messagingServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateMessagingService.MessagingServiceType.Kafka);

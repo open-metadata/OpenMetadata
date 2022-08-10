@@ -5,6 +5,9 @@
   "description": "PowerBI Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.PowerBIConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.DashboardConnectionConfigInterface"
+  ],
   "definitions": {
     "powerBiType": {
       "description": "PowerBI service type",

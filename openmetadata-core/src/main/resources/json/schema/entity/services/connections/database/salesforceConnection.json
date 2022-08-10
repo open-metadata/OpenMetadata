@@ -5,6 +5,9 @@
   "description": "Salesforce Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.SalesforceConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "salesforceType": {
       "description": "Service type.",

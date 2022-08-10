@@ -5,6 +5,9 @@
   "description": "Mssql Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.MssqlConnection",
+  "javaInterfaces": [
+    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "mssqlType": {
       "description": "Service type.",

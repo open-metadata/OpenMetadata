@@ -21,9 +21,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.catalog.ServiceConnectionEntityInterface;
-import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ServiceType;
+import org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface;
+import org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface;
+import org.openmetadata.catalog.interfaces.services.ServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ServiceRepository;
 import org.openmetadata.catalog.secrets.SecretsManager;
@@ -47,6 +48,8 @@ public abstract class ServiceResourceTest<
 
   protected R service;
 
+  protected ServiceConnectionConfigInterface serviceConnectionConfig;
+
   @Mock protected SecurityContext securityContext;
 
   @BeforeEach
@@ -58,8 +61,8 @@ public abstract class ServiceResourceTest<
     lenient()
         .when(
             secretsManager.encryptOrDecryptServiceConnectionConfig(
-                any(), anyString(), anyString(), any(ServiceType.class), anyBoolean()))
-        .thenReturn(service);
+                any(), anyString(), any(), any(ServiceType.class), anyBoolean()))
+        .thenReturn(serviceConnectionConfig);
     serviceResource = newServiceResource(collectionDAO, authorizer, secretsManager);
   }
 
@@ -98,14 +101,16 @@ public abstract class ServiceResourceTest<
     R actual = callGetFromResource(serviceResource);
 
     verify(secretsManager, times(1)).isLocal();
-    verify(secretsManager, times(shouldBeNull ? 0 : 1))
+    verify(secretsManager, times(allowPartialNullification() ? 1 : shouldBeNull ? 0 : 1))
         .encryptOrDecryptServiceConnectionConfig(
             notNull(), eq(serviceConnectionType()), any(), eq(serviceType()), eq(false));
 
-    verifyServiceWithConnectionCall(shouldBeNull, service);
+    verifyServiceWithConnectionCall(!allowPartialNullification() && shouldBeNull, service);
 
     assertEquals(service, actual);
   }
+
+  protected abstract boolean allowPartialNullification();
 
   protected abstract String serviceConnectionType();
 

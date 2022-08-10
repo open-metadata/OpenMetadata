@@ -5,6 +5,9 @@
   "description": "DeltaLake Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.DeltaLakeConnection",
+  "javaInterfaces": [
+    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
+  ],
   "definitions": {
     "deltaLakeType": {
       "description": "Service type.",
