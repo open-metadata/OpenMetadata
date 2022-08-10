@@ -13,6 +13,7 @@
 
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
+import { ROUTES } from '../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -40,6 +41,10 @@ const RolesListPage = withSuspenseFallback(
 );
 const RolesDetailPage = withSuspenseFallback(
   React.lazy(() => import('../pages/RolesPage/RolesDetailPage/RolesDetailPage'))
+);
+
+const AddRolePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/RolesPage/AddRolePage/AddRolePage'))
 );
 
 const PoliciesDetailPage = withSuspenseFallback(
@@ -85,6 +90,9 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
+      {/* Roles route start
+       * Do not change the order of these route
+       */}
       <Route
         exact
         component={RolesListPage}
@@ -93,6 +101,7 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.ROLES
         )}
       />
+      <Route exact component={AddRolePage} path={ROUTES.ADD_ROLE} />
       <Route
         exact
         component={RolesDetailPage}
@@ -102,6 +111,10 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
+      {/* Roles route end
+       * Do not change the order of these route
+       */}
+
       <Route
         exact
         component={PoliciesListPage}

@@ -14,8 +14,10 @@
 import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { getRoles } from '../../../axiosAPIs/rolesAPIV1';
 import Loader from '../../../components/Loader/Loader';
+import { ROUTES } from '../../../constants/constants';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -23,6 +25,8 @@ import RolesList from './RolesList';
 import './RolesList.less';
 
 const RolesListPage = () => {
+  const history = useHistory();
+
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -43,6 +47,10 @@ const RolesListPage = () => {
     }
   };
 
+  const handleAddRole = () => {
+    history.push(ROUTES.ADD_ROLE);
+  };
+
   useEffect(() => {
     fetchRoles();
   }, []);
@@ -53,7 +61,9 @@ const RolesListPage = () => {
     <Row className="roles-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <Button type="primary">Add Role</Button>
+          <Button type="primary" onClick={handleAddRole}>
+            Add Role
+          </Button>
         </Space>
       </Col>
       <Col span={24}>

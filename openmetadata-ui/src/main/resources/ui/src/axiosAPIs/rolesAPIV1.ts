@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
+import { CreateRole } from '../generated/api/teams/createRole';
 import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Paging } from '../generated/type/paging';
@@ -74,4 +76,13 @@ export const getPolicyByName = async (name: string, fields: string) => {
   });
 
   return response.data;
+};
+
+export const addRole = async (data: CreateRole) => {
+  const dataResponse = await APIClient.post<CreateRole, AxiosResponse<Role>>(
+    '/roles',
+    data
+  );
+
+  return dataResponse.data;
 };
