@@ -162,12 +162,17 @@ export const testServiceCreationAndIngestion = (
 export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.goToHomePage();
 
-  cy.get('#menu-button-Settings').scrollIntoView().should('be.visible').click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-  cy.wait(1000);
+  //Click on settings page
+  cy.get('[data-testid="appbar-item"]')
+    .contains('Settings')
+    .should('be.visible')
+    .click();
 
-  //redirecting to services page
-  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+  // Services page
+  cy.get('.ant-menu-title-content')
+    .contains(typeOfService)
+    .should('be.visible')
+    .click();
 
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
@@ -217,25 +222,35 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.clickOnLogo();
 
   cy.wait(1000);
-  cy.get('#menu-button-Settings').scrollIntoView().should('be.visible').click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-  cy.wait(1000);
+  //Click on settings page
+  cy.get('[data-testid="appbar-item"]')
+    .contains('Settings')
+    .should('be.visible')
+    .click();
 
-  //redirecting to services page
-  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+  // Services page
+  cy.get('.ant-menu-title-content')
+    .contains(typeOfService)
+    .should('be.visible')
+    .click();
 
   cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };
 
-export const editOwnerforCreatedService = (typeOfService, service_Name) => {
+export const editOwnerforCreatedService = (service_type, service_Name) => {
   cy.goToHomePage();
 
-  cy.get('#menu-button-Settings').scrollIntoView().should('be.visible').click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-  cy.wait(1000);
+  //Click on settings page
+  cy.get('[data-testid="appbar-item"]')
+    .contains('Settings')
+    .should('be.visible')
+    .click();
 
-  //redirecting to services page
-  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
+  // Services page
+  cy.get('.ant-menu-title-content')
+    .contains(service_type)
+    .should('be.visible')
+    .click();
 
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
@@ -273,27 +288,34 @@ export const editOwnerforCreatedService = (typeOfService, service_Name) => {
     });
 };
 
-export const goToAddNewServicePage = () => {
+export const goToAddNewServicePage = (service_type) => {
   cy.visit('/');
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
   cy.get('[data-testid="closeWhatsNew"]').click();
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
   cy.get('[data-testid="tables"]').should('be.visible');
 
-  cy.get('[data-testid="menu-button"]').should('be.visible');
-  cy.get('[data-testid="menu-button"]').first().click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+  //Click on settings page
+  cy.get('[data-testid="appbar-item"]')
+    .contains('Settings')
+    .should('be.visible')
+    .click();
 
   // Services page
-  cy.contains('Services').should('be.visible');
+  cy.get('.ant-menu-title-content')
+    .contains(service_type)
+    .should('be.visible')
+    .click();
+
   cy.wait(500);
-  cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
-    if ($databaseServiceCount.text() === '0') {
-      cy.get('[data-testid="add-service-button"]').should('be.visible').click();
-    } else {
+
+  cy.get('.ant-card').then(($serviceCount) => {
+    if ($serviceCount.length > 0) {
       cy.get('[data-testid="add-new-service-button"]')
         .should('be.visible')
         .click();
+    } else {
+      cy.get('[data-testid="add-service-button"]').should('be.visible').click();
     }
   });
 
