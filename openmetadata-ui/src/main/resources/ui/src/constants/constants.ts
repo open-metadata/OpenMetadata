@@ -226,6 +226,7 @@ export const ROUTES = {
   TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
 
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
+  ADD_ROLE: '/settings/access/roles/add-role',
 };
 
 export const SOCKET_EVENTS = {
