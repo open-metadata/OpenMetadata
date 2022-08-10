@@ -19,6 +19,7 @@ from typing import Iterable, Optional
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
