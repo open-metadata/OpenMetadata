@@ -15,6 +15,7 @@ import { EntityReference, SearchDataFunctionType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
+import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
@@ -22,17 +23,10 @@ export interface MyDataProps {
   activityFeeds?: Thread[] | undefined;
   onRefreshFeeds?: () => void;
   error: string;
-  countServices: number;
-  countTables: number;
-  countTopics: number;
-  countTeams: number;
-  countUsers: number;
-  countMlModal: number;
-  countDashboards: number;
+  entityCounts: EntitiesCount;
   followedDataCount: number;
   pendingTaskCount: number;
   ownedDataCount: number;
-  countPipelines: number;
   userDetails?: User;
   ownedData: Array<EntityReference>;
   followedData: Array<EntityReference>;
