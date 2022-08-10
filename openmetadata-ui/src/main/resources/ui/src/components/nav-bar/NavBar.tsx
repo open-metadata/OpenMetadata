@@ -210,8 +210,7 @@ const NavBar = ({
             <Space className="tw-ml-5" size={16}>
               <NavLink
                 className="focus:tw-no-underline"
-                data-testid="appbar-item"
-                id="explore"
+                data-testid="appbar-item-explore"
                 style={navStyle(pathname.startsWith('/explore'))}
                 to={{
                   pathname: '/explore/tables',
@@ -220,13 +219,32 @@ const NavBar = ({
               </NavLink>
               <NavLink
                 className="focus:tw-no-underline"
-                data-testid="appbar-item"
-                id="explore"
-                style={navStyle(pathname.startsWith('/explore'))}
+                data-testid="appbar-item-settings"
+                style={navStyle(pathname.startsWith('/settings'))}
                 to={{
                   pathname: ROUTES.SETTINGS,
                 }}>
                 Settings
+              </NavLink>
+
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-glossary"
+                style={navStyle(pathname.startsWith('/glossary'))}
+                to={{
+                  pathname: ROUTES.GLOSSARY,
+                }}>
+                Glossary
+              </NavLink>
+
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-tags"
+                style={navStyle(pathname.startsWith('/tags'))}
+                to={{
+                  pathname: ROUTES.TAGS,
+                }}>
+                Tags
               </NavLink>
             </Space>
           </div>
