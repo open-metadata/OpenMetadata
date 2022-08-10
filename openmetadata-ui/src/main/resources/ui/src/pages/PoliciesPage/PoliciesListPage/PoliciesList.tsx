@@ -17,6 +17,7 @@ import React, { FC, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface PolicyListProps {
@@ -32,7 +33,9 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
         width: 100,
         key: 'name',
         render: (_, record) => (
-          <Link className="hover:tw-underline tw-cursor-pointer" to="#">
+          <Link
+            className="hover:tw-underline tw-cursor-pointer"
+            to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
             {record?.displayName || record?.name}
           </Link>
         ),

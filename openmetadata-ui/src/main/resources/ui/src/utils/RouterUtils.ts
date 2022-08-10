@@ -250,3 +250,14 @@ export const getRoleWithFqnPath = (fqn: string) => {
 
   return path;
 };
+
+export const getPolicyWithFqnPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.ACCESS)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.POLICIES)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};

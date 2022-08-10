@@ -67,3 +67,11 @@ export const getRoleByName = async (name: string, fields: string) => {
 
   return response.data;
 };
+
+export const getPolicyByName = async (name: string, fields: string) => {
+  const response = await APIClient.get<Policy>(`/policies/name/${name}`, {
+    params: { fields },
+  });
+
+  return response.data;
+};
