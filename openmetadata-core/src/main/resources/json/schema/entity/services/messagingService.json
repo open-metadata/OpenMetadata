@@ -10,6 +10,9 @@
     "messagingServiceType": {
       "description": "Type of messaging service - Kafka or Pulsar.",
       "type": "string",
+      "javaInterfaces": [
+        "org.openmetadata.core.entity.interfaces.EnumInterface"
+      ],
       "enum": ["Kafka", "Pulsar"],
       "javaEnums": [
         {

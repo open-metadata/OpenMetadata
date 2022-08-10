@@ -38,6 +38,7 @@ import org.apache.http.client.HttpResponseException;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
@@ -261,6 +262,17 @@ public final class EntityUtil {
 
   public static List<String> getJsonDataResources(String path) throws IOException {
     return CommonUtil.getResources(Pattern.compile(path));
+  }
+
+  public static <T extends EntityInterface> List<EntityReference> toEntityReferences(List<T> entities) {
+    if (entities == null) {
+      return null;
+    }
+    List<EntityReference> entityReferences = new ArrayList<>();
+    for (T entity : entities) {
+      entityReferences.add(entity.getEntityReference());
+    }
+    return entityReferences;
   }
 
   public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {

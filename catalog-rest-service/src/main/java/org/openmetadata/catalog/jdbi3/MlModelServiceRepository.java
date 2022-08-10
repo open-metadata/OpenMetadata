@@ -20,7 +20,7 @@ import org.openmetadata.catalog.resources.services.mlmodel.MlModelServiceResourc
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.MlModelConnection;
 
-public class MlModelServiceRepository extends ServiceRepository<MlModelService, MlModelConnection> {
+public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
   private static final String UPDATE_FIELDS = "owner,connection";
 
   public MlModelServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
@@ -33,10 +33,5 @@ public class MlModelServiceRepository extends ServiceRepository<MlModelService, 
         MlModelConnection.class,
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);
-  }
-
-  @Override
-  protected String getServiceType(MlModelService mlModelService) {
-    return mlModelService.getServiceType().value();
   }
 }

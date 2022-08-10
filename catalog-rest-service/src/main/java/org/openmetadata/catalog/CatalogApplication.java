@@ -73,6 +73,7 @@ import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.search.SearchResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.secrets.SecretsManagerFactory;
+import org.openmetadata.catalog.secrets.SecretsManagerMigrationService;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
@@ -157,6 +158,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
     registerEventPublisher(catalogConfig);
+
+    // Check if migration is need from local secret manager to configured one and migrate
+    new SecretsManagerMigrationService(secretsManager, catalogConfig.getClusterName())
+        .migrateServicesToSecretManagerIfNeeded();
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
