@@ -47,6 +47,8 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
+import { Policy } from '../generated/entity/policies/policy';
+import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
@@ -630,6 +632,8 @@ export const getEntityName = (
     | Table
     | Pipeline
     | Team
+    | Policy
+    | Role
 ) => {
   return entity?.displayName || entity?.name || '';
 };

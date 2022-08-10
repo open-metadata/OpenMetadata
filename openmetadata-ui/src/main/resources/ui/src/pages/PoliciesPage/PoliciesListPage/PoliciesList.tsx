@@ -41,7 +41,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
           <Link
             className="hover:tw-underline tw-cursor-pointer"
             to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
-            {record?.displayName || record?.name}
+            {getEntityName(record)}
           </Link>
         ),
       },

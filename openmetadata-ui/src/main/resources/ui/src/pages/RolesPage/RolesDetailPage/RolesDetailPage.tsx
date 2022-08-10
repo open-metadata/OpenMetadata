@@ -38,6 +38,44 @@ import './RolesDetail.less';
 
 const { TabPane } = Tabs;
 
+const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
+  const columns: ColumnsType<EntityReference> = useMemo(() => {
+    return [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        width: '200px',
+        key: 'name',
+        render: (_, record) => (
+          <Link
+            className="hover:tw-underline tw-cursor-pointer"
+            to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
+            {getEntityName(record)}
+          </Link>
+        ),
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (_, record) => (
+          <RichTextEditorPreviewer markdown={record?.description || ''} />
+        ),
+      },
+    ];
+  }, []);
+
+  return (
+    <Table
+      className="policies-list-table"
+      columns={columns}
+      dataSource={policies}
+      pagination={false}
+      size="middle"
+    />
+  );
+};
+
 const RolesDetailPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
 
@@ -73,54 +111,18 @@ const RolesDetailPage = () => {
     }
   };
 
-  const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
-    const columns: ColumnsType<EntityReference> = useMemo(() => {
-      return [
-        {
-          title: 'Name',
-          dataIndex: 'name',
-          width: '200px',
-          key: 'name',
-          render: (_, record) => (
-            <Link
-              className="hover:tw-underline tw-cursor-pointer"
-              to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
-              {getEntityName(record)}
-            </Link>
-          ),
-        },
-        {
-          title: 'Description',
-          dataIndex: 'description',
-          key: 'description',
-          render: (_, record) => (
-            <RichTextEditorPreviewer markdown={record?.description || ''} />
-          ),
-        },
-      ];
-    }, []);
-
-    return (
-      <Table
-        className="policies-list-table"
-        columns={columns}
-        dataSource={policies}
-        pagination={false}
-        size="middle"
-      />
-    );
-  };
-
   useEffect(() => {
     fetchRole();
   }, [fqn]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      {isLoading && <Loader />}
-
-      {isEmpty(role) && !isLoading ? (
+      {isEmpty(role) ? (
         <Empty description={`No roles found for ${fqn}`} />
       ) : (
         <div className="roles-detail" data-testid="role-details">

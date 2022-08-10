@@ -41,7 +41,7 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
           <Link
             className="hover:tw-underline tw-cursor-pointer"
             to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
-            {record?.displayName || record?.name}
+            {getEntityName(record)}
           </Link>
         ),
       },
