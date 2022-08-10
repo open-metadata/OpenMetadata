@@ -22,6 +22,7 @@ export const GLOBAL_SETTINGS_MENU = [
       { label: 'Users', isProtected: true, icon: Icons.USERS },
       { label: 'Admins', isProtected: true, icon: Icons.USERS },
       { label: 'Roles', isProtected: true, icon: Icons.ROLE_GREY },
+      { label: 'Policies', isProtected: true, icon: Icons.POLICIES },
     ],
   },
   {
