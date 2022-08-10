@@ -163,10 +163,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.goToHomePage();
 
   //Click on settings page
-  cy.get('[data-testid="appbar-item"]')
-    .contains('Settings')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page
   cy.get('.ant-menu-title-content')
@@ -223,10 +220,7 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
   cy.wait(1000);
   //Click on settings page
-  cy.get('[data-testid="appbar-item"]')
-    .contains('Settings')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page
   cy.get('.ant-menu-title-content')
@@ -241,10 +235,7 @@ export const editOwnerforCreatedService = (service_type, service_Name) => {
   cy.goToHomePage();
 
   //Click on settings page
-  cy.get('[data-testid="appbar-item"]')
-    .contains('Settings')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page
   cy.get('.ant-menu-title-content')
@@ -296,10 +287,7 @@ export const goToAddNewServicePage = (service_type) => {
   cy.get('[data-testid="tables"]').should('be.visible');
 
   //Click on settings page
-  cy.get('[data-testid="appbar-item"]')
-    .contains('Settings')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page
   cy.get('.ant-menu-title-content')
