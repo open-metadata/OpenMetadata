@@ -11,9 +11,55 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import { AxiosError } from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  getTableDetailsByFQN,
+  getTableProfilesList,
+} from '../../axiosAPIs/tableAPI';
+import { Table, TableProfile } from '../../generated/entity/data/table';
+import jsonData from '../../jsons/en';
+import { getTableFQNFromColumnFQN } from '../../utils/CommonUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
+  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const [table, setTable] = useState<Table>({} as Table);
+  const [profilerData, setProfilerData] = useState<TableProfile[]>([]);
+
+  const fetchProfilerData = async (tableId: string) => {
+    try {
+      const data = await getTableProfilesList(tableId);
+      setProfilerData(data.data || []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchTableEntity = async (fqn: string) => {
+    try {
+      getTableFQNFromColumnFQN(fqn);
+      const data = await getTableDetailsByFQN(
+        getTableFQNFromColumnFQN(fqn),
+        ''
+      );
+      setTable(data ?? ({} as Table));
+      fetchProfilerData(data.id);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-table-details-error']
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (entityTypeFQN) {
+      fetchTableEntity(entityTypeFQN);
+    }
+  }, [entityTypeFQN]);
+
   return <div>ProfilerDashboardPage</div>;
 };
 

@@ -13,16 +13,19 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import {
   ColumnTestType,
   Table,
+  TableProfile,
   TableProfilerConfig,
 } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -209,6 +212,30 @@ export const putTableProfileConfig = async (
     TableProfilerConfig,
     AxiosResponse<Table>
   >(`/tables/${tableId}/tableProfilerConfig`, data, configOptions);
+
+  return response.data;
+};
+
+export const getTableProfilesList = async (
+  tableId: string,
+  params?: {
+    startTs?: string;
+    endTs?: string;
+    limit?: number;
+    before?: string;
+    after?: string;
+  }
+) => {
+  let url = `/tables/${tableId}/tableProfile`;
+  if (!isEmpty(params)) {
+    const urlParams = new URLSearchParams(params as Record<string, string>);
+    url = `${url}?${urlParams.toString()}`;
+  }
+
+  const response = await APIClient.get<{
+    data: TableProfile[];
+    paging: Paging;
+  }>(url);
 
   return response.data;
 };
