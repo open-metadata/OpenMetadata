@@ -193,9 +193,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <div className="tw-px-2 tw-mb-1.5">
           <Slider
             className="profiler-slider"
-            marks={{ 0: '0%', 100: '100%' }}
+            marks={{
+              0: '0%',
+              100: '100%',
+              [profileSample as number]: `${profileSample}%`,
+            }}
             max={100}
             min={0}
+            tooltipPlacement="bottom"
+            tooltipVisible={false}
             value={profileSample}
             onChange={(value) => {
               setProfileSample(value);
