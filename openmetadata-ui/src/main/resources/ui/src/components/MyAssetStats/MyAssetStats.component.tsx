@@ -26,7 +26,7 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { MyAssetStatsProps, Summary } from './MyAssetStats.Interface';
+import { MyAssetStatsProps, Summary } from './MyAssetStats.interface';
 
 const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
   entityCounts,

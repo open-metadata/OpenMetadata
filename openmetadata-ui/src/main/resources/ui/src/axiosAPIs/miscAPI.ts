@@ -277,6 +277,8 @@ export const getEntityCount = async (
   return response.data;
 };
 
-export const getAllEntityCount = (): Promise<AxiosResponse<EntitiesCount>> => {
-  return APIClient.get('/util/entities/count');
+export const getAllEntityCount = async () => {
+  const response = await APIClient.get<EntitiesCount>('/util/entities/count');
+
+  return response.data;
 };

@@ -83,7 +83,7 @@ const MyDataPage = () => {
   const fetchEntityCount = () => {
     getAllEntityCount()
       .then((res) => {
-        setEntityCounts(res.data);
+        setEntityCounts(res);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
