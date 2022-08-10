@@ -308,7 +308,7 @@ export const goToAddNewServicePage = (service_type) => {
   });
 
   // Add new service page
-  cy.url().should('include', 'databaseServices/add-service');
+  cy.url().should('include', '/add-service');
   cy.get('[data-testid="header"]').should('be.visible');
   cy.contains('Add New Service').should('be.visible');
   cy.get('[data-testid="service-category"]').should('be.visible');
