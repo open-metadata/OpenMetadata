@@ -14,6 +14,7 @@
 import { Button, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   PRIMERY_COLOR,
   SECONDARY_COLOR,
@@ -23,6 +24,7 @@ import { ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCaseStatus } from '../../../generated/tests/tableTest';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
+import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
@@ -57,6 +59,18 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
+        render: (name: string) => {
+          const data = columns.find((col) => col.name === name);
+
+          return (
+            <Link
+              to={getProfilerDashboardWithFqnPath(
+                data?.fullyQualifiedName || ''
+              )}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: 'Data Type',
