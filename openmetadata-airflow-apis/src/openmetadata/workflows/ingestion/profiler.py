@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
     Processor,
     Sink,
@@ -52,7 +53,8 @@ def build_profiler_workflow_config(
             config={},
         ),
         workflowConfig=WorkflowConfig(
-            openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
+            loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
+            openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
     )
 

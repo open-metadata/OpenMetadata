@@ -18,7 +18,7 @@ Workflow definition for the ORM Profiler.
 """
 from copy import deepcopy
 from typing import Iterable, List
-
+import traceback
 import click
 from pydantic import ValidationError
 
@@ -118,18 +118,22 @@ class ProfilerWorkflow:
         We will update the status on the SQLSource Status.
         """
         for table in tables:
+            try:
+                if filter_by_fqn(
+                    fqn_filter_pattern=self.source_config.fqnFilterPattern,
+                    fqn=table.fullyQualifiedName.__root__,
+                ):
+                    self.source_status.filter(
+                        table.fullyQualifiedName.__root__, "Schema pattern not allowed"
+                    )
+                    continue
 
-            if filter_by_fqn(
-                fqn_filter_pattern=self.source_config.fqnFilterPattern,
-                fqn=table.fullyQualifiedName.__root__,
-            ):
-                self.source_status.filter(
-                    table.fullyQualifiedName.__root__, "Schema pattern not allowed"
-                )
-                continue
-
-            self.source_status.scanned(table.fullyQualifiedName.__root__)
-            yield table
+                self.source_status.scanned(table.fullyQualifiedName.__root__)
+                yield table
+            except Exception as err:
+                self.source_status.filter(table.fullyQualifiedName.__root__, f"{err}")
+                logger.error(err)
+                logger.debug(traceback.format_exc())
 
     def create_processor(self, service_connection_config):
         self.processor = get_processor(
@@ -203,29 +207,37 @@ class ProfilerWorkflow:
             self.config.source.serviceConnection.__root__.config
         )
         for database in self.get_database_entities():
-            if hasattr(
-                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
-            ):
+            try:
                 if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "database"
+                    self.config.source.serviceConnection.__root__.config,
+                    "supportsDatabase",
                 ):
-                    copy_service_connection_config.database = database.name.__root__
-                if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "catalog"
-                ):
-                    copy_service_connection_config.catalog = database.name.__root__
+                    if hasattr(
+                        self.config.source.serviceConnection.__root__.config, "database"
+                    ):
+                        copy_service_connection_config.database = database.name.__root__
+                    if hasattr(
+                        self.config.source.serviceConnection.__root__.config, "catalog"
+                    ):
+                        copy_service_connection_config.catalog = database.name.__root__
 
-            self.create_processor(copy_service_connection_config)
+                self.create_processor(copy_service_connection_config)
 
-            for entity in self.get_table_entities(database=database):
-                profile_and_tests: ProfilerResponse = self.processor.process(
-                    record=entity,
-                    generate_sample_data=self.source_config.generateSampleData,
-                )
+                for entity in self.get_table_entities(database=database):
+                    try:
+                        profile_and_tests: ProfilerResponse = self.processor.process(
+                            record=entity,
+                            generate_sample_data=self.source_config.generateSampleData,
+                        )
 
-                if hasattr(self, "sink"):
-                    self.sink.write_record(profile_and_tests)
-
+                        if hasattr(self, "sink"):
+                            self.sink.write_record(profile_and_tests)
+                    except Exception as err:
+                        logger.error(err)
+                        logger.debug(traceback.format_exc())
+            except Exception as err:
+                logger.error(err)
+                logger.debug(traceback.format_exc())
             self.processor.session.close()
 
     def print_status(self) -> int:
