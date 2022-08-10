@@ -17,13 +17,11 @@ import {
   Bucket,
   DynamicFormFieldType,
   DynamicObj,
-  ServiceCollection,
   ServicesData,
   ServiceTypes,
 } from 'Models';
 import React from 'react';
 import { getEntityCount } from '../axiosAPIs/miscAPI';
-import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import {
   addMetadataIngestionGuide,
   addProfilerIngestionGuide,
@@ -34,7 +32,6 @@ import {
 import {
   AIRBYTE,
   AIRFLOW,
-  arrServiceTypes,
   ATHENA,
   AZURESQL,
   BIGQUERY,
@@ -95,8 +92,7 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
-import { Paging } from '../generated/type/paging';
-import { ServiceResponse, ServicesType } from '../interface/service.interface';
+import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
@@ -252,73 +248,6 @@ export const getFrequencyTime = (isoDate: string): string => {
   const { day, hour, minute } = fromISOString(isoDate);
 
   return `${day}D-${hour}H-${minute}M`;
-};
-
-const getAllServiceList = (
-  allServiceCollectionArr: Array<ServiceCollection>,
-  limit?: number
-): Promise<Array<ServiceResponse>> => {
-  // fetch services of all individual collection
-  return new Promise<Array<ServiceResponse>>((resolve, reject) => {
-    if (allServiceCollectionArr.length) {
-      let promiseArr = [];
-      promiseArr = allServiceCollectionArr.map((obj) => {
-        return getServices(obj.value, limit);
-      });
-      Promise.allSettled(promiseArr)
-        .then((result) => {
-          if (result.length) {
-            let serviceArr = [];
-            serviceArr = result.map((service) =>
-              service.status === 'fulfilled'
-                ? service.value
-                : ({
-                    data: [],
-                    paging: { total: 0 } as Paging,
-                  } as ServiceResponse)
-            );
-            resolve(serviceArr);
-          } else {
-            resolve([]);
-          }
-        })
-        .catch((err) => reject(err));
-    } else {
-      resolve([]);
-    }
-  });
-};
-
-export const getAllServices = (
-  onlyVisibleServices = true,
-  limit?: number
-): Promise<Array<ServiceResponse>> => {
-  return new Promise<Array<ServiceResponse>>((resolve, reject) => {
-    getServiceDetails().then((res) => {
-      let allServiceCollectionArr: Array<ServiceCollection> = [];
-      if (res.data?.length) {
-        const arrServiceCat: Array<ServiceCollection> = res.data.map(
-          (service) => {
-            return {
-              name: service.collection.name,
-              value: service.collection.name,
-            };
-          }
-        );
-
-        if (onlyVisibleServices) {
-          allServiceCollectionArr = arrServiceCat.filter((service) =>
-            arrServiceTypes.includes(service.name as ServiceTypes)
-          );
-        } else {
-          allServiceCollectionArr = arrServiceCat;
-        }
-      }
-      getAllServiceList(allServiceCollectionArr, limit)
-        .then((resAll) => resolve(resAll))
-        .catch((err) => reject(err));
-    });
-  });
 };
 
 export const getServiceCategoryFromType = (type: string): ServiceTypes => {

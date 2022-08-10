@@ -92,6 +92,7 @@ import IconReports from '../assets/svg/ic-reports.svg';
 import IconRestore from '../assets/svg/ic-restore.svg';
 import IconSchema from '../assets/svg/ic-schema.svg';
 import IconSearch from '../assets/svg/ic-search.svg';
+import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
 import IconStar from '../assets/svg/ic-star.svg';
@@ -130,6 +131,7 @@ import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlusPrimery from '../assets/svg/plus-primery.svg';
 import IconPlus from '../assets/svg/plus.svg';
+import IconPolicies from '../assets/svg/policies.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
@@ -189,6 +191,7 @@ export const Icons = {
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
   SETTINGS: 'icon-settings',
+  SETTINGS_PRIMERY: 'icon-settings-primery',
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
@@ -325,6 +328,7 @@ export const Icons = {
   TASK_OPEN: 'task-open',
   FOREGIN_KEY: 'foreign-key',
   ROLE_GREY: 'role-grey',
+  POLICIES: 'policies',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -377,6 +381,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SETTINGS:
       IconComponent = IconSettings;
+
+      break;
+    case Icons.SETTINGS_PRIMERY:
+      IconComponent = IconSettingPrimery;
 
       break;
     case Icons.LOGO:
@@ -950,6 +958,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.FOREGIN_KEY:
       IconComponent = IconForeignKey;
+
+      break;
+    case Icons.POLICIES:
+      IconComponent = IconPolicies;
 
       break;
 

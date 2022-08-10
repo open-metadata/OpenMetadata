@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -136,7 +137,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
-      @PathParam("id") String id)
+      @PathParam("id") UUID id)
       throws IOException {
     return getInternal(uriInfo, securityContext, id, "", include);
   }
@@ -210,7 +211,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Bot getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "bot Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "bot Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "bot version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -270,7 +271,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the bot", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -302,7 +303,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the Bot", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, true, hardDelete, false);
   }

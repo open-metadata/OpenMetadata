@@ -96,7 +96,7 @@ public class PolicyCache {
   static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
     @Override
     public List<CompiledRule> load(@CheckForNull UUID policyId) throws IOException {
-      Policy policy = POLICY_REPOSITORY.get(null, policyId.toString(), FIELDS);
+      Policy policy = POLICY_REPOSITORY.get(null, policyId, FIELDS);
       LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
       return PolicyCache.getInstance().getRules(policy);
     }

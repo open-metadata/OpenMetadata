@@ -225,7 +225,7 @@ public final class Entity {
       throws IOException {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id.toString(), fields, include);
+    T entity = (T) entityRepository.get(null, id, fields, include);
     if (entity == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
@@ -245,7 +245,7 @@ public final class Entity {
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) throws IOException {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.delete(updatedBy, entityId.toString(), recursive, hardDelete);
+    dao.delete(updatedBy, entityId, recursive, hardDelete);
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) throws IOException {

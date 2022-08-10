@@ -13,14 +13,16 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil, isUndefined } from 'lodash';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
-import { ColumnTestType, Table } from '../generated/entity/data/table';
+import {
+  ColumnTestType,
+  Table,
+  TableProfilerConfig,
+} from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
-import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -63,32 +65,6 @@ export const getTableDetailsByFQN = async (
   );
 
   const response = await APIClient.get<Table>(url);
-
-  return response.data;
-};
-
-export const getAllTables = async (
-  arrQueryFields?: string,
-  limit?: number,
-  database?: string
-) => {
-  const searchParams = new URLSearchParams();
-
-  if (!isNil(limit)) {
-    searchParams.set('limit', `${limit}`);
-  }
-
-  if (!isUndefined(database)) {
-    searchParams.set('database', database);
-  }
-
-  const url = getURLWithQueryFields(
-    '/tables',
-    arrQueryFields,
-    searchParams.toString()
-  );
-
-  const response = await APIClient.get<{ data: Table[]; paging: Paging }>(url);
 
   return response.data;
 };
@@ -211,4 +187,28 @@ export const deleteColumnTestCase = (
     `/tables/${tableId}/columnTest/${columnName}/${columnTestType}`,
     configOptions
   );
+};
+
+export const getTableProfilerConfig = async (tableId: string) => {
+  const response = await APIClient.get<Table>(
+    `/tables/${tableId}/tableProfilerConfig`
+  );
+
+  return response.data;
+};
+
+export const putTableProfileConfig = async (
+  tableId: string,
+  data: TableProfilerConfig
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await APIClient.put<
+    TableProfilerConfig,
+    AxiosResponse<Table>
+  >(`/tables/${tableId}/tableProfilerConfig`, data, configOptions);
+
+  return response.data;
 };

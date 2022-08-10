@@ -26,36 +26,11 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { MyAssetStatsProps, Summary } from './MyAssetStats.interface';
 
-type Props = {
-  countDashboards: number;
-  countPipelines: number;
-  countServices: number;
-  countMlModal: number;
-  countTables: number;
-  countTopics: number;
-  countTeams: number;
-  countUsers: number;
-};
-type Summary = {
-  icon: string;
-  data: string;
-  count?: number;
-  link?: string;
-  dataTestId?: string;
-  adminOnly?: boolean;
-};
-
-const MyAssetStats: FunctionComponent<Props> = ({
-  countDashboards,
-  countPipelines,
-  countMlModal,
-  countServices,
-  countTables,
-  countTopics,
-  countTeams,
-  countUsers,
-}: Props) => {
+const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
+  entityCounts,
+}: MyAssetStatsProps) => {
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
 
   const getSummarydata = () => {
@@ -63,49 +38,49 @@ const MyAssetStats: FunctionComponent<Props> = ({
       tables: {
         icon: Icons.TABLE_GREY,
         data: 'Tables',
-        count: countTables,
+        count: entityCounts.tableCount,
         link: getExplorePathWithSearch(undefined, 'tables'),
         dataTestId: 'tables',
       },
       topics: {
         icon: Icons.TOPIC_GREY,
         data: 'Topics',
-        count: countTopics,
+        count: entityCounts.topicCount,
         link: getExplorePathWithSearch(undefined, 'topics'),
         dataTestId: 'topics',
       },
       dashboards: {
         icon: Icons.DASHBOARD_GREY,
         data: 'Dashboards',
-        count: countDashboards,
+        count: entityCounts.dashboardCount,
         link: getExplorePathWithSearch(undefined, 'dashboards'),
         dataTestId: 'dashboards',
       },
       pipelines: {
         icon: Icons.PIPELINE_GREY,
         data: 'Pipelines',
-        count: countPipelines,
+        count: entityCounts.pipelineCount,
         link: getExplorePathWithSearch(undefined, 'pipelines'),
         dataTestId: 'pipelines',
       },
       mlModal: {
         icon: Icons.MLMODAL,
         data: 'ML Models',
-        count: countMlModal,
+        count: entityCounts.mlmodelCount,
         link: getExplorePathWithSearch(undefined, 'mlmodels'),
         dataTestId: 'mlmodels',
       },
       service: {
         icon: Icons.SERVICE,
         data: 'Services',
-        count: countServices,
+        count: entityCounts.servicesCount,
         link: ROUTES.SERVICES,
         dataTestId: 'service',
       },
       user: {
         icon: Icons.USERS,
         data: 'Users',
-        count: countUsers,
+        count: entityCounts.userCount,
         link: getTeamAndUserDetailsPath(UserType.USERS),
         dataTestId: 'user',
         adminOnly: true,
@@ -113,7 +88,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
       teams: {
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
-        count: countTeams,
+        count: entityCounts.teamCount,
         link: getTeamAndUserDetailsPath(),
         dataTestId: 'terms',
       },
