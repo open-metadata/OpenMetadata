@@ -109,6 +109,8 @@ const jsonData = {
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
     'fetch-users-error': 'Error while fetching users!',
+    'fetch-table-profiler-config-error':
+      'Error while fetching table profiler config!',
 
     'test-connection-error': 'Error while testing connection!',
 
@@ -135,6 +137,7 @@ const jsonData = {
       'Error while updating the admin user profile!',
     'update-service-error': 'Error while updating service!',
     'update-reviewer-error': 'Error while updating reviewer!',
+    'update-profiler-config-error': 'Error while updating profiler config!',
 
     'feed-post-error': 'Error while posting the message!',
 
@@ -155,6 +158,8 @@ const jsonData = {
     'test-connection-success': 'Connection tested successfully!',
 
     'user-restored-success': 'User restored successfully!',
+
+    'update-profile-congif-success': 'Profile config updated successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',

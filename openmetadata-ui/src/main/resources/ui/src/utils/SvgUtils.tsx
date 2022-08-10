@@ -92,6 +92,7 @@ import IconReports from '../assets/svg/ic-reports.svg';
 import IconRestore from '../assets/svg/ic-restore.svg';
 import IconSchema from '../assets/svg/ic-schema.svg';
 import IconSearch from '../assets/svg/ic-search.svg';
+import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
 import IconStar from '../assets/svg/ic-star.svg';
@@ -189,6 +190,7 @@ export const Icons = {
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
   SETTINGS: 'icon-settings',
+  SETTINGS_PRIMERY: 'icon-settings-primery',
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
@@ -377,6 +379,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SETTINGS:
       IconComponent = IconSettings;
+
+      break;
+    case Icons.SETTINGS_PRIMERY:
+      IconComponent = IconSettingPrimery;
 
       break;
     case Icons.LOGO:

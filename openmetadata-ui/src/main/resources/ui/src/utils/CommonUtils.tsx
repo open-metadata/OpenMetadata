@@ -776,3 +776,16 @@ export const getTeamsText = (teams: EntityReference[]) => {
     `${getEntityName(teams[0])}`
   );
 };
+
+export const formatNumberWithComma = (number: number) => {
+  return new Intl.NumberFormat('en-IN', { maximumSignificantDigits: 3 }).format(
+    number
+  );
+};
+
+export const formTwoDigitNmber = (number: number) => {
+  return number.toLocaleString('en-US', {
+    minimumIntegerDigits: 2,
+    useGrouping: false,
+  });
+};
