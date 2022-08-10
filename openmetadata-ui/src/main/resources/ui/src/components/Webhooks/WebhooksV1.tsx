@@ -88,7 +88,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add {webhookType === WebhookType.Slack ? 'Slack' : ''} Webhook
+                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
               </Button>
             </NonAdminAction>
           </p>
@@ -131,7 +131,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add {webhookType === WebhookType.Slack ? 'Slack' : ''} Webhook
+                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
               </Button>
             </NonAdminAction>
           )}
@@ -145,6 +145,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                   endpoint={webhook.endpoint}
                   name={webhook.name}
                   status={webhook.status}
+                  type={webhook.webhookType}
                   onClick={onClickWebhook}
                 />
               </div>
