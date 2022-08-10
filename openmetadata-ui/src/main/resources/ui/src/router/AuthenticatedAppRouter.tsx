@@ -315,6 +315,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={CreateUserPage}
         path={ROUTES.CREATE_USER}
       />
+      <AdminProtectedRoute
+        exact
+        component={CreateUserPage}
+        path={ROUTES.CREATE_USER_WITH_BOT}
+      />
       <AdminProtectedRoute exact component={BotsListPage} path={ROUTES.BOTS} />
       <AdminProtectedRoute
         exact
