@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table } from '../../generated/entity/data/table';
+import { Table } from '../generated/entity/data/table';
 
 export const MOCK_TABLE = {
   id: 'cb726d24-774b-4603-8ec8-1975760ac2f8',

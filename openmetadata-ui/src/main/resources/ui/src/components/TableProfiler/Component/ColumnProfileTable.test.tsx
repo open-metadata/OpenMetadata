@@ -22,7 +22,7 @@ import {
 import { ColumnsType } from 'antd/lib/table';
 import React from 'react';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
-import { MOCK_TABLE } from '../mockTableData';
+import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ColumnProfileTable from './ColumnProfileTable';
 

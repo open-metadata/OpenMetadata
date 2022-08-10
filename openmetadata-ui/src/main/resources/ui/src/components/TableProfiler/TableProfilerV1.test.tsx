@@ -20,8 +20,8 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
+import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
-import { MOCK_TABLE } from './mockTableData';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internel imports
 import TableProfilerV1 from './TableProfilerV1';

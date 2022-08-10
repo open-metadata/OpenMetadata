@@ -15,6 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Modal, Select, Slider, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { List } from 'antd/lib/form/Form';
+import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
@@ -188,131 +189,135 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       width={630}
       onCancel={handleCancel}
       onOk={handleSave}>
-      <div className="tw-pb-4" data-testid="profile-sample-container">
-        <p>Profile Sample %</p>
-        <div className="tw-px-2 tw-mb-1.5">
-          <Slider
-            className="profiler-slider"
-            marks={{
-              0: '0%',
-              100: '100%',
-              [profileSample as number]: `${profileSample}%`,
+      <Row gutter={[16, 16]}>
+        <Col data-testid="profile-sample-container" span={24}>
+          <p>Profile Sample %</p>
+          <div className="tw-px-2 tw-mb-1.5">
+            <Slider
+              className="profiler-slider"
+              marks={{
+                0: '0%',
+                100: '100%',
+                [profileSample as number]: `${profileSample}%`,
+              }}
+              max={100}
+              min={0}
+              tooltipPlacement="bottom"
+              tooltipVisible={false}
+              value={profileSample}
+              onChange={(value) => {
+                setProfileSample(value);
+              }}
+            />
+          </div>
+        </Col>
+        <Col data-testid="sql-editor-container" span={24}>
+          <p className="tw-mb-1.5">Profile Sample Query</p>
+          <CodeMirror
+            className="profiler-setting-sql-editor"
+            data-testid="profiler-setting-sql-editor"
+            options={codeMirrorOption}
+            value={sqlQuery}
+            onBeforeChange={(_Editor, _EditorChange, value) => {
+              setSqlQuery(value);
             }}
-            max={100}
-            min={0}
-            tooltipPlacement="bottom"
-            tooltipVisible={false}
-            value={profileSample}
-            onChange={(value) => {
-              setProfileSample(value);
+            onChange={(_Editor, _EditorChange, value) => {
+              setSqlQuery(value);
             }}
           />
-        </div>
-      </div>
-      <div className="tw-pb-4" data-testid="sql-editor-container">
-        <p className="tw-mb-1.5">Profile Sample Query</p>
-        <CodeMirror
-          className="profiler-setting-sql-editor"
-          data-testid="profiler-setting-sql-editor"
-          options={codeMirrorOption}
-          value={sqlQuery}
-          onBeforeChange={(_Editor, _EditorChange, value) => {
-            setSqlQuery(value);
-          }}
-          onChange={(_Editor, _EditorChange, value) => {
-            setSqlQuery(value);
-          }}
-        />
-      </div>
-      <p className="tw-mb-4">Enable column profile</p>
-      <div className="tw-pb-4" data-testid="exclude-column-container">
-        <p className="tw-text-xs tw-mb-1.5">Exclude:</p>
-        <Select
-          allowClear
-          className="tw-w-full"
-          data-testid="exclude-column-select"
-          mode="tags"
-          options={selectOptions}
-          placeholder="Select columns to exclude"
-          size="middle"
-          value={excludeCol}
-          onChange={(value) => setExcludeCol(value)}
-        />
-      </div>
+        </Col>
+        <Col data-testid="exclude-column-container" span={24}>
+          <p className="tw-mb-4">Enable column profile</p>
+          <p className="tw-text-xs tw-mb-1.5">Exclude:</p>
+          <Select
+            allowClear
+            className="tw-w-full"
+            data-testid="exclude-column-select"
+            mode="tags"
+            options={selectOptions}
+            placeholder="Select columns to exclude"
+            size="middle"
+            value={excludeCol}
+            onChange={(value) => setExcludeCol(value)}
+          />
+        </Col>
 
-      <Form
-        autoComplete="off"
-        initialValues={{
-          includeColumns: includeCol,
-        }}
-        layout="vertical"
-        name="includeColumnsProfiler"
-        onValuesChange={(_, data) => {
-          setIncludeCol(data.includeColumns);
-        }}>
-        <List name="includeColumns">
-          {(fields, { add, remove }) => (
-            <>
-              <div className="tw-flex tw-items-center tw-mb-1.5">
-                <p className="w-form-label tw-text-xs tw-mr-3">Include:</p>
-                <Button
-                  className="include-columns-add-button"
-                  icon={<PlusOutlined />}
-                  size="small"
-                  type="primary"
-                  onClick={() => add({ metrics: ['all'] })}
-                />
-              </div>
-              <div
-                className={classNames({
-                  'tw-h-40 tw-overflow-auto': includeCol.length > 1,
-                })}
-                data-testid="include-column-container">
-                {fields.map(({ key, name, ...restField }) => (
-                  <div className="tw-flex tw-gap-2 tw-w-full" key={key}>
-                    <Form.Item
-                      className="tw-w-11/12 tw-mb-4"
-                      {...restField}
-                      name={[name, 'columnName']}>
-                      <Select
-                        className="tw-w-full"
-                        data-testid="exclude-column-select"
-                        options={selectOptions}
-                        placeholder="Select columns to include"
-                        size="middle"
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      className="tw-w-11/12 tw-mb-4"
-                      {...restField}
-                      name={[name, 'metrics']}>
-                      <TreeSelect
-                        treeCheckable
-                        className="tw-w-full"
-                        maxTagCount={2}
-                        placeholder="Please select"
-                        showCheckedStrategy="SHOW_PARENT"
-                        treeData={metricsOptions}
-                      />
-                    </Form.Item>
+        <Col span={24}>
+          <Form
+            autoComplete="off"
+            initialValues={{
+              includeColumns: includeCol,
+            }}
+            layout="vertical"
+            name="includeColumnsProfiler"
+            onValuesChange={(_, data) => {
+              setIncludeCol(data.includeColumns);
+            }}>
+            <List name="includeColumns">
+              {(fields, { add, remove }) => (
+                <>
+                  <div className="tw-flex tw-items-center tw-mb-1.5">
+                    <p className="w-form-label tw-text-xs tw-mr-3">Include:</p>
                     <Button
-                      icon={
-                        <SVGIcons
-                          alt="delete"
-                          className="tw-w-4"
-                          icon={Icons.DELETE}
-                        />
-                      }
-                      type="text"
-                      onClick={() => remove(name)}
+                      className="include-columns-add-button"
+                      icon={<PlusOutlined />}
+                      size="small"
+                      type="primary"
+                      onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </List>
-      </Form>
+                  <div
+                    className={classNames({
+                      'tw-h-40 tw-overflow-auto': includeCol.length > 1,
+                    })}
+                    data-testid="include-column-container">
+                    {fields.map(({ key, name, ...restField }) => (
+                      <div className="tw-flex tw-gap-2 tw-w-full" key={key}>
+                        <Form.Item
+                          className="tw-w-11/12 tw-mb-4"
+                          {...restField}
+                          name={[name, 'columnName']}>
+                          <Select
+                            className="tw-w-full"
+                            data-testid="exclude-column-select"
+                            options={selectOptions}
+                            placeholder="Select columns to include"
+                            size="middle"
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          className="tw-w-11/12 tw-mb-4"
+                          {...restField}
+                          name={[name, 'metrics']}>
+                          <TreeSelect
+                            treeCheckable
+                            className="tw-w-full"
+                            maxTagCount={2}
+                            placeholder="Please select"
+                            showCheckedStrategy="SHOW_PARENT"
+                            treeData={metricsOptions}
+                          />
+                        </Form.Item>
+                        <Button
+                          icon={
+                            <SVGIcons
+                              alt="delete"
+                              className="tw-w-4"
+                              icon={Icons.DELETE}
+                            />
+                          }
+                          type="text"
+                          onClick={() => remove(name)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </List>
+          </Form>
+        </Col>
+      </Row>
     </Modal>
   );
 };

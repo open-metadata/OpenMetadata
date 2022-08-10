@@ -13,7 +13,7 @@
 
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
-import { MOCK_TABLE } from '../mockTableData';
+import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
 
@@ -22,6 +22,14 @@ jest.mock('antd/lib/form', () => {
     .fn()
     .mockImplementation(({ children }) => <form>{children}</form>);
 });
+jest.mock('antd/lib/grid', () => ({
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Col: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div data-testid={props['data-testid']}>{children}</div>
+    )),
+}));
 
 jest.mock('../../../axiosAPIs/tableAPI', () => ({
   getTableProfilerConfig: jest

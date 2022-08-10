@@ -69,7 +69,28 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
     ];
   }, [tableProfile]);
 
-  return !isUndefined(tableProfile) ? (
+  if (isUndefined(tableProfile)) {
+    return (
+      <div
+        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+        data-testid="no-profiler-placeholder-container">
+        <span>
+          Data Profiler is an optional configuration in Ingestion. Please enable
+          the data profiler by following the documentation
+        </span>
+        <Link
+          className="tw-ml-1"
+          target="_blank"
+          to={{
+            pathname: 'https://docs.open-metadata.org/connectors',
+          }}>
+          here.
+        </Link>
+      </div>
+    );
+  }
+
+  return (
     <div
       className="table-profiler-container"
       data-testid="table-profiler-container">
@@ -129,23 +150,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
         visible={settingModalVisible}
         onVisibilityChange={handleSettingModal}
       />
-    </div>
-  ) : (
-    <div
-      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-      data-testid="no-profiler-placeholder-container">
-      <span>
-        Data Profiler is an optional configuration in Ingestion. Please enable
-        the data profiler by following the documentation
-      </span>
-      <Link
-        className="tw-ml-1"
-        target="_blank"
-        to={{
-          pathname: 'https://docs.open-metadata.org/connectors',
-        }}>
-        here.
-      </Link>
     </div>
   );
 };

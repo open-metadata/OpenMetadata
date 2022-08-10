@@ -218,7 +218,7 @@ export const deleteColumnTestCase = (
 };
 
 export const getTableProfilerConfig = async (tableId: string) => {
-  const response = await APIClient.get<string, AxiosResponse<Table>>(
+  const response = await APIClient.get<Table>(
     `/tables/${tableId}/tableProfilerConfig`
   );
 
