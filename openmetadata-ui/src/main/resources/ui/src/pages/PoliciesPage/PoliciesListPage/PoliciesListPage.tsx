@@ -30,7 +30,7 @@ const PoliciesListPage = () => {
     setIsLoading(true);
     try {
       const data = await getPolicies(
-        'owner,location',
+        'owner,location,roles,teams',
         paging?.after,
         paging?.before
       );

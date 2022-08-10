@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { uniqueId } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Role } from '../../../generated/entity/teams/role';
-import { getRoleWithFqnPath } from '../../../utils/RouterUtils';
+import { getEntityName } from '../../../utils/CommonUtils';
+import {
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+} from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface RolesListProps {
@@ -30,7 +35,7 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
       {
         title: 'Name',
         dataIndex: 'name',
-        width: 100,
+        width: '200px',
         key: 'name',
         render: (_, record) => (
           <Link
@@ -43,7 +48,6 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
       {
         title: 'Description',
         dataIndex: 'description',
-        width: '300px',
         key: 'description',
         render: (_, record) => (
           <RichTextEditorPreviewer markdown={record?.description || ''} />
@@ -52,20 +56,28 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
       {
         title: 'Policies',
         dataIndex: 'policies',
-        width: 100,
+        width: '200px',
         key: 'policies',
         render: (_, record) => {
-          return record.policies?.length
-            ? record.policies
-                .map((policy) => policy?.displayName || policy?.name)
-                .join(', ')
-            : '-- ';
+          return record.policies?.length ? (
+            <Space wrap size={4}>
+              {record.policies.map((policy) => (
+                <Link
+                  key={uniqueId()}
+                  to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
+                  {getEntityName(policy)}
+                </Link>
+              ))}
+            </Space>
+          ) : (
+            '-- '
+          );
         },
       },
       {
         title: 'Actions',
         dataIndex: 'actions',
-        width: 100,
+        width: '80px',
         key: 'actions',
         render: () => {
           return <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />;

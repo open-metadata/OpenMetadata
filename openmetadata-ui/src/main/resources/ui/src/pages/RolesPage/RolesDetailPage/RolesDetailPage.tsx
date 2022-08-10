@@ -35,60 +35,11 @@ import './RolesDetail.less';
 
 const { TabPane } = Tabs;
 
-const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
-  const columns: ColumnsType<EntityReference> = useMemo(() => {
-    return [
-      {
-        title: 'Name',
-        dataIndex: 'name',
-        width: 100,
-        key: 'name',
-        render: (_, record) => (
-          <Link className="hover:tw-underline tw-cursor-pointer" to="#">
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: 'Description',
-        dataIndex: 'description',
-        width: 100,
-        key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
-        ),
-      },
-    ];
-  }, []);
-
-  return (
-    <Table
-      className="policies-list-table"
-      columns={columns}
-      dataSource={policies}
-      pagination={false}
-      size="middle"
-    />
-  );
-};
-
 const RolesDetailPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
-
-  const fetchRole = async () => {
-    setLoading(true);
-    try {
-      const data = await getRoleByName(fqn, 'policies,teams,users');
-      setRole(data ?? ({} as Role));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const breadcrumb = useMemo(
     () => [
@@ -106,6 +57,54 @@ const RolesDetailPage = () => {
     ],
     [fqn]
   );
+
+  const fetchRole = async () => {
+    setLoading(true);
+    try {
+      const data = await getRoleByName(fqn, 'policies,teams,users');
+      setRole(data ?? ({} as Role));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
+    const columns: ColumnsType<EntityReference> = useMemo(() => {
+      return [
+        {
+          title: 'Name',
+          dataIndex: 'name',
+          width: '200px',
+          key: 'name',
+          render: (_, record) => (
+            <Link className="hover:tw-underline tw-cursor-pointer" to="#">
+              {getEntityName(record)}
+            </Link>
+          ),
+        },
+        {
+          title: 'Description',
+          dataIndex: 'description',
+          key: 'description',
+          render: (_, record) => (
+            <RichTextEditorPreviewer markdown={record?.description || ''} />
+          ),
+        },
+      ];
+    }, []);
+
+    return (
+      <Table
+        className="policies-list-table"
+        columns={columns}
+        dataSource={policies}
+        pagination={false}
+        size="middle"
+      />
+    );
+  };
 
   useEffect(() => {
     fetchRole();

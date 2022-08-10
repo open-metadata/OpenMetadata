@@ -15,7 +15,6 @@ import { Card, Col, Empty, Row, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
-import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getPolicyByName } from '../../../axiosAPIs/rolesAPIV1';
@@ -28,6 +27,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -35,60 +35,11 @@ import './PoliciesDetail.less';
 
 const { TabPane } = Tabs;
 
-const RolesList = ({ roles }: { roles: EntityReference[] }) => {
-  const columns: ColumnsType<EntityReference> = useMemo(() => {
-    return [
-      {
-        title: 'Name',
-        dataIndex: 'name',
-        width: 100,
-        key: 'name',
-        render: (_, record) => (
-          <Link className="hover:tw-underline tw-cursor-pointer" to="#">
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: 'Description',
-        dataIndex: 'description',
-        width: 100,
-        key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
-        ),
-      },
-    ];
-  }, []);
-
-  return (
-    <Table
-      className="roles-list-table"
-      columns={columns}
-      dataSource={roles}
-      pagination={false}
-      size="middle"
-    />
-  );
-};
-
 const PoliciesDetailPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
-
-  const fetchPolicy = async () => {
-    setLoading(true);
-    try {
-      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
-      setPolicy(data ?? ({} as Policy));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const breadcrumb = useMemo(
     () => [
@@ -106,6 +57,54 @@ const PoliciesDetailPage = () => {
     ],
     [fqn]
   );
+
+  const fetchPolicy = async () => {
+    setLoading(true);
+    try {
+      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
+      setPolicy(data ?? ({} as Policy));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const RolesList = ({ roles }: { roles: EntityReference[] }) => {
+    const columns: ColumnsType<EntityReference> = useMemo(() => {
+      return [
+        {
+          title: 'Name',
+          dataIndex: 'name',
+          width: '200px',
+          key: 'name',
+          render: (_, record) => (
+            <Link className="hover:tw-underline tw-cursor-pointer" to="#">
+              {getEntityName(record)}
+            </Link>
+          ),
+        },
+        {
+          title: 'Description',
+          dataIndex: 'description',
+          key: 'description',
+          render: (_, record) => (
+            <RichTextEditorPreviewer markdown={record?.description || ''} />
+          ),
+        },
+      ];
+    }, []);
+
+    return (
+      <Table
+        className="roles-list-table"
+        columns={columns}
+        dataSource={roles}
+        pagination={false}
+        size="middle"
+      />
+    );
+  };
 
   useEffect(() => {
     fetchPolicy();

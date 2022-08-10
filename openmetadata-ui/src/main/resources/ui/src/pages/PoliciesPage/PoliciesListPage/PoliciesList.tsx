@@ -30,7 +30,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
       {
         title: 'Name',
         dataIndex: 'name',
-        width: 100,
+        width: '200px',
         key: 'name',
         render: (_, record) => (
           <Link
@@ -43,7 +43,6 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
       {
         title: 'Description',
         dataIndex: 'description',
-        width: '300px',
         key: 'description',
         render: (_, record) => (
           <RichTextEditorPreviewer markdown={record?.description || ''} />
@@ -52,7 +51,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
       {
         title: 'Actions',
         dataIndex: 'actions',
-        width: 100,
+        width: '80px',
         key: 'actions',
         render: () => {
           return <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />;
