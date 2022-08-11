@@ -64,13 +64,10 @@ public class ChangeEventHandler implements EventHandler {
   private FeedRepository feedDao;
   private ObjectMapper mapper;
 
-  private CatalogApplicationConfig config;
-
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
     this.mapper = new ObjectMapper();
-    this.config = config;
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -245,10 +242,10 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
-      EventType eventType = null;
+      EventType eventType;
       if (RestUtil.ENTITY_UPDATED.equals(changeType)) {
         eventType = ENTITY_UPDATED;
-      } else if (RestUtil.ENTITY_SOFT_DELETED.equals(changeType)) {
+      } else {
         eventType = ENTITY_SOFT_DELETED;
       }
 
