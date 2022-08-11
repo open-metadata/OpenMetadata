@@ -15,43 +15,45 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
+  getAddWebhookPath,
   getEditWebhookPath,
-  pagingObject,
-  ROUTES,
 } from '../../constants/constants';
-import {
-  Status,
-  Webhook,
-  WebhookType,
-} from '../../generated/entity/events/webhook';
+import { WebhookType } from '../../generated/api/events/createWebhook';
+import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const WebhooksPageV1 = () => {
-  const history = useHistory();
+export const SlackSettingsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [data, setData] = useState<Array<Webhook>>([]);
+  const [data, setData] = useState<Webhook[]>([]);
+
+  const history = useHistory();
+
+  const [paging, setPaging] = useState<Paging>({} as Paging);
   const [selectedStatus, setSelectedStatus] = useState<Status[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
     getWebhooks(paging)
-      .then((res) => {
-        if (res.data) {
-          const genericWebhooks = res.data.filter(
-            (d) => d.webhookType === WebhookType.Generic
+      .then((response) => {
+        if (response.data) {
+          // TODO: We are expecting filter support from BE (backend)
+          // Once we got it remove below lines and provide filter API calls
+          const slackData = response.data.filter(
+            (res) => res.webhookType === 'slack'
           );
-          setData(genericWebhooks);
-          setPaging(res.paging);
+          setData(slackData);
+          setData(slackData);
+          setPaging(response.paging);
         } else {
           setData([]);
-          setPaging(pagingObject);
+          setPaging({} as Paging);
 
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -82,34 +84,54 @@ const WebhooksPageV1 = () => {
     setSelectedStatus(status);
   };
 
-  const handleAddWebhook = () => {
-    history.push(ROUTES.ADD_WEBHOOK);
-  };
-
   const handleClickWebhook = (name: string) => {
     history.push(getEditWebhookPath(name));
   };
 
+  const handleAddWebhook = () => {
+    history.push(getAddWebhookPath(WebhookType.Slack));
+  };
+
+  const fetchSlackData = async () => {
+    try {
+      const response = await getWebhooks();
+
+      if (response.data) {
+        const slackData = response.data.filter(
+          (res) => res.webhookType === 'slack'
+        );
+        setData(slackData);
+      }
+      setIsLoading(false);
+    } catch (error) {
+      setData([]);
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchSlackData();
   }, []);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
-    <WebhooksV1
-      currentPage={currentPage}
-      data={data}
-      paging={paging}
-      selectedStatus={selectedStatus}
-      onAddWebhook={handleAddWebhook}
-      onClickWebhook={handleClickWebhook}
-      onPageChange={handlePageChange}
-      onStatusFilter={handleStatusFilter}
-    />
+    <PageContainerV1 className="tw-pt-4">
+      {!isLoading ? (
+        <WebhooksV1
+          currentPage={currentPage}
+          data={data}
+          paging={paging}
+          selectedStatus={selectedStatus}
+          webhookType={WebhookType.Slack}
+          onAddWebhook={handleAddWebhook}
+          onClickWebhook={handleClickWebhook}
+          onPageChange={handlePageChange}
+          onStatusFilter={handleStatusFilter}
+        />
+      ) : (
+        <Loader />
+      )}
+    </PageContainerV1>
   );
 };
 
-export default WebhooksPageV1;
+export default SlackSettingsPage;

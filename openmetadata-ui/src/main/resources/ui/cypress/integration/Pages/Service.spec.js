@@ -13,77 +13,69 @@
 
 import { service } from '../../constants/constants';
 
-const updateService = () => {
-  cy.get('[data-testid="edit-description"]')
-    .should('exist')
-    .should('be.visible')
-    .click({ force: true });
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .clear()
-    .type(service.newDescription);
-  cy.get('[data-testid="save"]').click();
-  cy.get(
-    '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
-  ).contains(service.newDescription);
-  cy.get(':nth-child(1) > .link-title').click();
-  cy.get('.toastui-editor-contents > p').contains(
-    service.newDescription
-  );
-};
-
-const updateOwner = () => {
-  cy.get('[data-testid="Manage"]').should('be.visible').click();
-
-  cy.get('[data-testid="owner-dropdown"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="dropdown-list"] > .tw-flex > :nth-child(1)')
-    .should('exist')
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="list-item"]')
-    .contains(service.Owner)
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
-};
+const updateOwner = () => {};
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
     //redirecting to services page
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
-      .scrollIntoView()
+
+    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
+    cy.get('.ant-menu-title-content')
+      .contains('Database')
       .should('be.visible')
       .click();
-    cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
   });
 
   it('Update service description', () => {
-    cy.intercept('GET', '/**').as('serviceApi');
-    cy.wait('@serviceApi');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-    cy.wait('@serviceApi');
+    cy.wait(1000);
     //need wait here
-    updateService();
+    cy.get('[data-testid="edit-description"]')
+      .should('exist')
+      .should('be.visible')
+      .click({ force: true });
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .clear()
+      .type(service.newDescription);
+    cy.get('[data-testid="save"]').click();
+    cy.get(
+      '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
+    ).contains(service.newDescription);
+    cy.get(':nth-child(1) > .link-title').click();
+    cy.get('.toastui-editor-contents > p').contains(service.newDescription);
   });
 
   it.skip('Update owner and check description', () => {
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-    cy.intercept('GET', '/**').as('serviceApi');
-    cy.wait('@serviceApi');
-    updateOwner();
+
+    cy.wait(1000);
+
+    cy.get('[data-testid="edit-Owner-icon"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="dropdown-list"]')
+      .contains('Teams')
+      .should('exist')
+      .should('be.visible')
+      .click();
+    cy.wait(1000);
+    cy.get('[data-testid="list-item"]')
+      .contains(service.Owner)
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
     //Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     //need wait here
-    cy.wait('@serviceApi');
+    cy.wait(1000);
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
   });
 });

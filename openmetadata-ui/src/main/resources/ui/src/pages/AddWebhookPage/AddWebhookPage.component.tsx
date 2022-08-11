@@ -14,26 +14,50 @@
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addWebhook } from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
-import { CreateWebhook } from '../../generated/api/events/createWebhook';
+import {
+  CreateWebhook,
+  WebhookType,
+} from '../../generated/api/events/createWebhook';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddWebhookPage: FunctionComponent = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
+  const params = useParams<{ webhookType?: WebhookType }>();
+
+  const webhookType: WebhookType = params.webhookType ?? WebhookType.Generic;
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToWebhooks = () => {
-    history.push(ROUTES.WEBHOOKS);
+    if (webhookType === WebhookType.Slack) {
+      history.push(
+        getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.SLACK
+        )
+      );
+    } else {
+      history.push(
+        getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.WEBHOOK
+        )
+      );
+    }
   };
 
   const handleCancel = () => {
@@ -65,9 +89,12 @@ const AddWebhookPage: FunctionComponent = () => {
       <div className="tw-self-center">
         <AddWebhook
           allowAccess={isAdminUser || isAuthDisabled}
-          header="Add Webhook"
+          header={`Add ${
+            webhookType === WebhookType.Slack ? 'Slack' : ''
+          }  Webhook`}
           mode={FormSubmitType.ADD}
           saveState={status}
+          webhookType={webhookType}
           onCancel={handleCancel}
           onSave={handleSave}
         />
