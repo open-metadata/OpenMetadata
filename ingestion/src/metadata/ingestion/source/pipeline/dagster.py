@@ -180,4 +180,4 @@ class DagsterSource(PipelineServiceSource):
         """
         Get Pipeline Name
         """
-        return pipeline_details.get("pipeline_name")
+        return pipeline_details["pipeline_name"]
