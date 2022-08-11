@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil } from 'lodash';
 import { EntityReference } from 'Models';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -51,30 +50,6 @@ export const getDashboards = async (
     data: ServicePageData[];
     paging: Paging;
   }>(url);
-
-  return response.data;
-};
-
-export const getAllDashboards = async (
-  paging: string,
-  arrQueryFields: string,
-  limit?: number
-) => {
-  const searchParams = new URLSearchParams();
-
-  if (!isNil(limit)) {
-    searchParams.set('limit', `${limit}`);
-  }
-
-  const url = getURLWithQueryFields(
-    `/dashboards`,
-    arrQueryFields,
-    `${searchParams.toString()}${paging ? `&${paging}` : ''}`
-  );
-
-  const response = await APIClient.get<{ data: Dashboard[]; paging: Paging }>(
-    url
-  );
 
   return response.data;
 };

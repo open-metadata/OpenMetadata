@@ -20,7 +20,7 @@ import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResou
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.PipelineConnection;
 
-public class PipelineServiceRepository extends ServiceRepository<PipelineService, PipelineConnection> {
+public class PipelineServiceRepository extends ServiceEntityRepository<PipelineService, PipelineConnection> {
 
   public PipelineServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
@@ -31,10 +31,5 @@ public class PipelineServiceRepository extends ServiceRepository<PipelineService
         secretsManager,
         PipelineConnection.class,
         ServiceType.PIPELINE);
-  }
-
-  @Override
-  protected String getServiceType(PipelineService pipelineService) {
-    return pipelineService.getServiceType().value();
   }
 }

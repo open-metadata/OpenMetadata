@@ -31,6 +31,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import org.openmetadata.catalog.Entity.EntityList;
 import org.openmetadata.catalog.jdbi3.ChangeEventRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -46,7 +47,8 @@ import org.openmetadata.catalog.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
 public class EventResource {
-  private final ChangeEventRepository dao;
+
+  @Getter private final ChangeEventRepository dao;
   private final Authorizer authorizer;
 
   public static class ChangeEventList extends ResultList<ChangeEvent> {

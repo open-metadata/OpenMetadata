@@ -51,6 +51,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -84,6 +85,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private CatalogApplicationConfig catalogApplicationConfig;
   private final SecretsManager secretsManager;
 
+  @Getter private final IngestionPipelineRepository ingestionPipelineRepository;
+
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
     Entity.withHref(uriInfo, ingestionPipeline.getOwner());
@@ -94,6 +97,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
     this.secretsManager = secretsManager;
+    this.ingestionPipelineRepository = new IngestionPipelineRepository(dao);
   }
 
   public void initialize(CatalogApplicationConfig config) {

@@ -41,14 +41,20 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
+import org.openmetadata.catalog.api.teams.CreateRole;
+import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
+import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.catalog.resources.policies.PolicyResource.ResourceDescriptorList;
+import org.openmetadata.catalog.resources.teams.RoleResourceTest;
+import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -183,7 +189,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Get list of policy resources and make sure it has all the entities and other resources
     ResourceDescriptorList actualResourceDescriptors = getPolicyResources(ADMIN_AUTH_HEADERS);
     assertNotNull(actualResourceDescriptors.getData());
-    System.out.println(actualResourceDescriptors.getData());
 
     // Ensure all entities are captured in resource descriptor list
     List<String> entities = Entity.getEntityList();
@@ -191,6 +196,38 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       ResourceDescriptor resourceDescriptor =
           actualResourceDescriptors.getData().stream().filter(rd -> rd.getName().equals(entity)).findFirst().get();
       assertNotNull(resourceDescriptor);
+    }
+  }
+
+  @Test
+  void get_policyTeamsAndRoles(TestInfo test) throws IOException {
+    // Ensure policy returns teams and roles that are part of
+
+    // Create 5 policies
+    List<Policy> policies = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      CreatePolicy create = createRequest(test, i);
+      policies.add(createEntity(create, ADMIN_AUTH_HEADERS));
+    }
+
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    List<Team> teams = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      // Team X has Policy X
+      CreateTeam createTeam = teamResourceTest.createRequest(test, i).withPolicies(List.of(policies.get(i).getId()));
+      teams.add(teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS));
+    }
+
+    // Create a role with all the policies
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    CreateRole createRole = roleResourceTest.createRequest(test).withPolicies(EntityUtil.toEntityReferences(policies));
+    Role role = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
+
+    // Get each policy and ensure the teams and roles are listed correctly
+    for (int i = 0; i < 3; i++) {
+      Policy getPolicy = getEntity(policies.get(i).getId(), "teams,roles", ADMIN_AUTH_HEADERS);
+      assertReference(teams.get(i).getEntityReference(), getPolicy.getTeams().get(0));
+      assertReference(role.getEntityReference(), getPolicy.getRoles().get(0));
     }
   }
 

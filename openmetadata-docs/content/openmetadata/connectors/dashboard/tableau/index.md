@@ -14,8 +14,9 @@ slug: /openmetadata/connectors/dashboard/tableau
 - **Host and Port**: URL to the Tableau instance.
 - **Username**: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
 - **Password**: Password for Tableau.
-- **API Version**: Tableau API version.
-- **Site Name**: Tableau Site Name.
+- **API Version**: Tableau API version. 
+- **Site Name**: Tableau Site Name. To be kept empty if you are using the default Tableau site
+- **Site Url**: Tableau Site Url. To be kept empty if you are using the default Tableau site
 - **Personal Access Token**: Access token. To be used if not logging in with user/password.
 - **Personal Access Token Secret**: Access token Secret. To be used if not logging in with user/password.
 - **Environment**: Tableau Environment.
