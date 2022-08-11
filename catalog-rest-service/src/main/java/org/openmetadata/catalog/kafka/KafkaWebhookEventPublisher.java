@@ -18,7 +18,6 @@ public class KafkaWebhookEventPublisher extends WebhookPublisher {
 
   protected final Webhook webhook;
   private static KafkaProducer<String, String> producer;
-  Properties props = new Properties();
 
   public KafkaWebhookEventPublisher(Webhook webhook, CollectionDAO dao) {
     super(webhook, dao);
@@ -32,24 +31,32 @@ public class KafkaWebhookEventPublisher extends WebhookPublisher {
 
   @Override
   public void onShutdown() {
+    producer.flush();
     producer.close();
+  }
+
+  private Properties setKafkaProperties(Webhook webhook) {
+    Properties properties = new Properties();
+    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, webhook.getEndpoint().toString());
+    properties.put(ProducerConfig.ACKS_CONFIG, webhook.getKafkaProperties().getAcks());
+    properties.put(ProducerConfig.RETRIES_CONFIG, webhook.getKafkaProperties().getRetries());
+    properties.put(ProducerConfig.BATCH_SIZE_CONFIG, webhook.getBatchSize());
+    properties.put(ProducerConfig.LINGER_MS_CONFIG, webhook.getKafkaProperties().getLingerMS());
+    properties.put(ProducerConfig.BUFFER_MEMORY_CONFIG, webhook.getKafkaProperties().getBufferMemory());
+    properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, webhook.getKafkaProperties().getKeySerializer());
+    properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, webhook.getKafkaProperties().getValueSerializer());
+    return properties;
   }
 
   @Override
   public void publish(EventResource.ChangeEventList events) throws JsonProcessingException {
-    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, webhook.getEndpoint().toString());
-    props.put(ProducerConfig.ACKS_CONFIG, webhook.getKafkaProperties().getAcks());
-    props.put(ProducerConfig.RETRIES_CONFIG, webhook.getKafkaProperties().getRetries());
-    props.put(ProducerConfig.BATCH_SIZE_CONFIG, webhook.getBatchSize());
-    props.put(ProducerConfig.LINGER_MS_CONFIG, webhook.getKafkaProperties().getLingerMS());
-    props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, webhook.getKafkaProperties().getBufferMemory());
-    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, webhook.getKafkaProperties().getKeySerializer());
-    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, webhook.getKafkaProperties().getValueSerializer());
-    producer = new KafkaProducer<>(props);
-    for (String topic : webhook.getKafkaProperties().getTopics()) {
-      for (ChangeEvent event : events.getData()) {
-        String eventJson = JsonUtils.pojoToJson(event);
-        producer.send(new ProducerRecord<>(topic, eventJson));
+    producer = new KafkaProducer<>(setKafkaProperties(webhook));
+    if (webhook.getKafkaProperties().getTopics() != null) {
+      for (String topic : webhook.getKafkaProperties().getTopics()) {
+        for (ChangeEvent event : events.getData()) {
+          String eventJson = JsonUtils.pojoToJson(event);
+          producer.send(new ProducerRecord<>(topic, eventJson));
+        }
       }
     }
   }

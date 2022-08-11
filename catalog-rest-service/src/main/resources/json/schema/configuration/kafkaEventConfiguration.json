@@ -39,6 +39,6 @@
       "type": "string"
     }
   },
-  "required": ["keySerializer", "valueSerializer"],
+  "required": ["topics", "keySerializer", "valueSerializer"],
   "additionalProperties": false
 }
