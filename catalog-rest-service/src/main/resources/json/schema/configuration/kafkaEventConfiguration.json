@@ -39,6 +39,6 @@
       "type": "string"
     }
   },
-  "required": ["bootstrapServer", "keySerializer", "valueSerializer"],
+  "required": ["keySerializer", "valueSerializer"],
   "additionalProperties": false
 }
