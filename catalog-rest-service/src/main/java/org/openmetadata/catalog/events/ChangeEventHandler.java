@@ -37,9 +37,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
-import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -47,10 +45,15 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.socket.WebSocketManager;
-import org.openmetadata.catalog.type.*;
+import org.openmetadata.catalog.type.AnnouncementDetails;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -90,7 +93,7 @@ public class ChangeEventHandler implements EventHandler {
       if (changeEvent.getEntity() != null) {
         Object entity = changeEvent.getEntity();
         changeEvent = copyChangeEvent(changeEvent);
-        changeEvent.setEntity(JsonUtils.pojoToJson(entity));
+        changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
       }
       dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
@@ -226,7 +229,7 @@ public class ChangeEventHandler implements EventHandler {
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
       return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
-          .withEntity(nullifySensitiveInformation(entityInterface))
+          .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
     }
 
@@ -366,28 +369,6 @@ public class ChangeEventHandler implements EventHandler {
         .withUpdatedBy(loggedInUserName)
         .withUpdatedAt(System.currentTimeMillis())
         .withMessage(message);
-  }
-
-  private Object nullifySensitiveInformation(EntityInterface entityInterface) {
-    SecretsManagerConfiguration secretsManagerConfiguration = config.getSecretsManagerConfiguration();
-    if (secretsManagerConfiguration != null
-        && !OpenMetadataServerConnection.SecretsManagerProvider.LOCAL.equals(
-            secretsManagerConfiguration.getSecretsManager())) {
-      // if it is a service
-      if (ServiceEntityInterface.class.isAssignableFrom(entityInterface.getClass())) {
-        ServiceEntityInterface serviceEntityInterface = (ServiceEntityInterface) entityInterface;
-        serviceEntityInterface.getConnection().setConfig(null);
-        return serviceEntityInterface;
-      }
-      // if it is an ingestion pipeline
-      if (entityInterface.getClass().equals(IngestionPipeline.class)) {
-        IngestionPipeline ingestionPipeline = (IngestionPipeline) entityInterface;
-        ingestionPipeline.getSourceConfig().setConfig(null);
-        ingestionPipeline.getOpenMetadataServerConnection().setSecurityConfig(null);
-        return ingestionPipeline;
-      }
-    }
-    return entityInterface;
   }
 
   public void close() {
