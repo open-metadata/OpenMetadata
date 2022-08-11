@@ -95,8 +95,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
     final Jdbi jdbi = createandSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-    catalogConfig.fetchActivityFeedConfigurationFromDB(jdbi);
-
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());

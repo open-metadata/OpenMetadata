@@ -18,30 +18,20 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.StatementException;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
-import org.openmetadata.catalog.filter.EntityFilter;
-import org.openmetadata.catalog.filter.FilterRegistry;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.SettingsRepository;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
-import org.openmetadata.catalog.settings.Settings;
-import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
-import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.validators.AirflowConfigValidation;
 
 @Getter
@@ -99,39 +89,6 @@ public class CatalogApplicationConfig extends Configuration {
 
   @JsonProperty("clusterName")
   private String clusterName;
-
-  public void fetchActivityFeedConfigurationFromDB(Jdbi jdbi) {
-    try {
-      CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);
-      SettingsRepository repository = new SettingsRepository(dao);
-      ResultList<Settings> settings = repository.listAllConfigs();
-      if (settings.getData() != null) {
-        settings
-            .getData()
-            .forEach(
-                (setting) -> {
-                  if (setting.getConfigType().equals(SettingsType.ACTIVITY_FEED_FILTER_SETTING)) {
-                    List<EntityFilter> filters = (List<EntityFilter>) setting.getConfigValue();
-                    // if we have the filters on server startup , populate the config to Filter Registry
-                    FilterRegistry.add(filters);
-                  }
-                });
-      }
-    } catch (StatementException e) {
-      throw new IllegalArgumentException("Exception encountered when trying to obtain configuration from Database.", e);
-    }
-  }
-
-  public void setConfigFromDB(List<Settings> dbConfig) {
-    dbConfig.forEach(
-        (config) -> {
-          switch (config.getConfigType()) {
-            case ACTIVITY_FEED_FILTER_SETTING:
-              List<EntityFilter> filter = (List<EntityFilter>) config.getConfigValue();
-              FilterRegistry.add(filter);
-          }
-        });
-  }
 
   @Override
   public String toString() {

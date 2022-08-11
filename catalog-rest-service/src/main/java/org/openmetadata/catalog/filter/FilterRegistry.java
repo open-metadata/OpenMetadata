@@ -5,29 +5,28 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.catalog.type.EventType;
 
 public class FilterRegistry {
-  private static final ConcurrentHashMap<String, Map<EventType, List<BasicFilter>>> FILTERS_MAP =
-      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Map<EventType, Filters>> FILTERS_MAP = new ConcurrentHashMap<>();
 
   private FilterRegistry() {}
 
-  public static void add(List<EntityFilter> f) {
+  public static void add(List<EventFilter> f) {
     if (f != null) {
       f.forEach(
           (entityfilter) -> {
             String entityType = entityfilter.getEntityType();
-            Map<EventType, List<BasicFilter>> eventFilterMap = new HashMap<>();
-            if (entityfilter.getEventFilter() != null) {
+            Map<EventType, Filters> eventFilterMap = new HashMap<>();
+            if (entityfilter.getFilters() != null) {
               entityfilter
-                  .getEventFilter()
-                  .forEach((eventFilter) -> eventFilterMap.put(eventFilter.getEventType(), eventFilter.getEvents()));
+                  .getFilters()
+                  .forEach((eventFilter) -> eventFilterMap.put(eventFilter.getEventType(), eventFilter));
             }
             FILTERS_MAP.put(entityType, eventFilterMap);
           });
     }
   }
 
-  public static List<Map<EventType, List<BasicFilter>>> listAllFilters() {
-    List<Map<EventType, List<BasicFilter>>> filterList = new ArrayList<>();
+  public static List<Map<EventType, Filters>> listAllFilters() {
+    List<Map<EventType, Filters>> filterList = new ArrayList<>();
     FILTERS_MAP.forEach((key, value) -> filterList.add(value));
     return filterList;
   }
@@ -36,11 +35,11 @@ public class FilterRegistry {
     return List.copyOf(FILTERS_MAP.keySet());
   }
 
-  public static Map<EventType, List<BasicFilter>> getFilterForEntity(String key) {
+  public static Map<EventType, Filters> getFilterForEntity(String key) {
     return FILTERS_MAP.get(key);
   }
 
-  public static Map<String, Map<EventType, List<BasicFilter>>> getAllFilters() {
+  public static Map<String, Map<EventType, Filters>> getAllFilters() {
     return FILTERS_MAP;
   }
 }

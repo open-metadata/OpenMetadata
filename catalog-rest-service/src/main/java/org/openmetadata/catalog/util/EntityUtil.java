@@ -47,8 +47,8 @@ import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.filter.EntityFilter;
 import org.openmetadata.catalog.filter.EventFilter;
+import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
@@ -89,8 +89,8 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
-  public static final Comparator<EntityFilter> compareEntityFilter = Comparator.comparing(EntityFilter::getEntityType);
-  public static final Comparator<EventFilter> compareEventFilter = Comparator.comparing(EventFilter::getEventType);
+  public static final Comparator<Filters> compareFilters = Comparator.comparing(Filters::getEventType);
+  public static final Comparator<EventFilter> compareEventFilters = Comparator.comparing(EventFilter::getEntityType);
   //
   // Matchers used for matching two items in a list
   //
@@ -127,10 +127,9 @@ public final class EntityUtil {
           Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
               && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
 
-  public static final BiPredicate<EntityFilter, EntityFilter> eventFilterMatch =
+  public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
       (filter1, filter2) ->
-          filter1.getEntityType().equals(filter2.getEntityType())
-              && filter1.getEventFilter().equals(filter2.getEventFilter());
+          filter1.getEntityType().equals(filter2.getEntityType()) && filter1.getFilters().equals(filter2.getFilters());
 
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
@@ -383,14 +382,14 @@ public final class EntityUtil {
     return Math.round((version + 1.0) * 10.0) / 10.0;
   }
 
-  public static void addSoftDeleteFilter(List<EventFilter> filters) {
+  public static void addSoftDeleteFilter(List<Filters> filters) {
     // Add filter for soft delete events if delete event type is requested
-    Optional<EventFilter> deleteFilter =
+    Optional<Filters> deleteFilter =
         filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
     deleteFilter.ifPresent(
         eventFilter ->
             filters.add(
-                new EventFilter().withEventType(EventType.ENTITY_SOFT_DELETED).withEvents(eventFilter.getEvents())));
+                new Filters().withEventType(EventType.ENTITY_SOFT_DELETED).withFields(eventFilter.getFields())));
   }
 
   public static EntityReference copy(EntityReference from, EntityReference to) {

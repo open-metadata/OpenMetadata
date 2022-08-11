@@ -17,67 +17,29 @@
         "entityDeleted"
       ]
     },
-    "eventFiltersType": {
-      "javaType": "org.openmetadata.catalog.filter.FiltersType",
-      "description": "This schema defines all possible filters enum in OpenMetadata.",
-      "type": "string",
-      "enum": [
-        "all",
-        "followEntity",
-        "unfollowEntity",
-        "updatedescription",
-        "updatetags",
-        "updateowner",
-        "updatetier",
-        "addtags",
-        "removetags",
-        "testcases",
-        "usagesummary",
-        "sampledata",
-        "queries",
-        "excludeFromBots",
-        "updateEventFilters"
-      ]
-    },
-    "basicFilter": {
-      "javaType": "org.openmetadata.catalog.filter.BasicFilter",
-      "description": "Represents a basic filter which has a Name and a flag to indicate if enabled",
+    "filters": {
       "type": "object",
-      "properties": {
-        "filterType": {
-          "description": "Type of the filter",
-          "$ref": "#/definitions/eventFiltersType"
-        },
-        "enabled": {
-          "description": "Is the Filter Enabled",
-          "type": "boolean",
-          "default": true
-        }
-      },
-      "required": ["filterType"],
-      "additionalProperties": false
-    },
-    "eventFilter": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.filter.EventFilter",
+      "javaType": "org.openmetadata.catalog.filter.Filters",
       "properties": {
         "eventType": {
           "description": "Event type that is being requested.",
           "$ref": "#/definitions/eventType"
         },
-        "events": {
+        "fields": {
           "description": "Field on which to apply the filter on",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/basicFilter"
-          }
+            "type": "string"
+          },
+          "default": ["all"],
+          "uniqueItems": true
         }
       },
       "required": ["eventType"],
       "additionalProperties": false
     },
-    "entityFilter": {
-      "javaType": "org.openmetadata.catalog.filter.EntityFilter",
+    "eventFilter": {
+      "javaType": "org.openmetadata.catalog.filter.EventFilter",
       "description": "Represents a Filter attached to a entity.",
       "type": "object",
       "properties": {
@@ -85,11 +47,11 @@
           "description": "Entity type for filter , example : topic , table, dashboard, mlmodel , etc",
           "type": "string"
         },
-        "eventFilter": {
+        "filters": {
           "description": "List of operations supported by the resource.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/eventFilter"
+            "$ref": "#/definitions/filters"
           }
         }
       },

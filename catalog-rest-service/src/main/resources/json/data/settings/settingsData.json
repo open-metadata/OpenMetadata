@@ -48,47 +48,30 @@
     "config_type": "activityFeedFilterSetting",
     "config_value": [
       {
-        "entityType":"*",
-        "eventFilter":
-        [
+        "entityType": "all",
+        "filters": [
           {
-            "eventType":"entityCreated",
-            "events":
-            [
-              {
-                "filterType":"all",
-                "enabled":true
-              }
+            "eventType": "entityCreated",
+            "fields": [
+              "all"
             ]
           },
           {
-            "eventType":"entityUpdated",
-            "events":
-            [
-              {
-                "filterType":"all",
-                "enabled":true
-              }
+            "eventType": "entityUpdated",
+            "fields": [
+              "all"
             ]
           },
           {
-            "eventType":"entityDeleted",
-            "events":
-            [
-              {
-                "filterType":"all",
-                "enabled":true
-              }
+            "eventType": "entityDeleted",
+            "fields": [
+              "all"
             ]
           },
           {
-            "eventType":"entitySoftDeleted",
-            "events":
-            [
-              {
-                "filterType":"all",
-                "enabled":true
-              }
+            "eventType": "entitySoftDeleted",
+            "fields": [
+              "all"
             ]
           }
         ]
