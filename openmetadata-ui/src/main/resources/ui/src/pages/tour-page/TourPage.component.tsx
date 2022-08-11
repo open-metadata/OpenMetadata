@@ -271,7 +271,6 @@ const TourPage = () => {
         pathname={location.pathname}
         profileDropdown={[]}
         searchValue={searchValue}
-        settingDropdown={[]}
         supportDropdown={[]}
         username="User"
       />

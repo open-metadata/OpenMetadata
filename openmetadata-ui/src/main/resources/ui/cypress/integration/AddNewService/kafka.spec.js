@@ -12,13 +12,14 @@
  */
 
 import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Kafka';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Kafka Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage(SERVICE_TYPE.Messaging);
 
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').select('messagingServices');
@@ -46,10 +47,10 @@ describe('Kafka Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService('Messaging', serviceName);
+    editOwnerforCreatedService(SERVICE_TYPE.Messaging, serviceName);
   });
 
   it('delete created service', () => {
-    deleteCreatedService('Messaging', serviceName);
+    deleteCreatedService(SERVICE_TYPE.Messaging, serviceName);
   });
 });

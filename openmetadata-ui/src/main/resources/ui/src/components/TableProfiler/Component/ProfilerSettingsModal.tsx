@@ -49,7 +49,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 }) => {
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
-  const [profileSample, setProfileSample] = useState<number>();
+  const [profileSample, setProfileSample] = useState<number>(0);
   const [excludeCol, setExcludeCol] = useState<string[]>([]);
   const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
     DEFAULT_INCLUDE_PROFILE
@@ -81,7 +81,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
     const { includeColumns } = tableProfilerConfig;
     setSqlQuery(tableProfilerConfig.profileQuery || '');
-    setProfileSample(tableProfilerConfig.profileSample);
+    setProfileSample(tableProfilerConfig.profileSample || 0);
     setExcludeCol(tableProfilerConfig.excludeColumns || []);
     if (includeColumns && includeColumns?.length > 0) {
       const includeColValue = includeColumns.map((col) => {
