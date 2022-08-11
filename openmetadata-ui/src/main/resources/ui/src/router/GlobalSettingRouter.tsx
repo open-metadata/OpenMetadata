@@ -61,6 +61,11 @@ const PoliciesListPage = withSuspenseFallback(
 const UserListPageV1 = withSuspenseFallback(
   React.lazy(() => import('../pages/UserListPage/UserListPageV1'))
 );
+const SlackSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/SlackSettingsPage/SlackSettingsPage.component')
+  )
+);
 
 const GlobalSettingRouter = () => {
   return (
@@ -152,6 +157,15 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
+        )}
+      />
+
+      <Route
+        exact
+        component={SlackSettingsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.SLACK
         )}
       />
 

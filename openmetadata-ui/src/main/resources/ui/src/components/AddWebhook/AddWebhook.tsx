@@ -28,6 +28,7 @@ import {
   EventFilter,
   EventType,
 } from '../../generated/api/events/createWebhook';
+import { WebhookType } from '../../generated/entity/events/webhook';
 import {
   errorMsg,
   getSeparator,
@@ -125,6 +126,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   saveState = 'initial',
   deleteState = 'initial',
   allowAccess = true,
+  webhookType = WebhookType.Generic,
   onCancel,
   onDelete,
   onSave,
@@ -371,6 +373,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         timeout: connectionTimeout,
         enabled: active,
         secretKey,
+        webhookType,
       };
       onSave(oData);
     }
