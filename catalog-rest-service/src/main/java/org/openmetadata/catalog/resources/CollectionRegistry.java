@@ -29,6 +29,8 @@ import java.util.Objects;
 import java.util.Set;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
@@ -80,7 +82,7 @@ public final class CollectionRegistry {
     return children;
   }
 
-  Map<String, CollectionDetails> getCollectionMap() {
+  public Map<String, CollectionDetails> getCollectionMap() {
     return Collections.unmodifiableMap(collectionMap);
   }
 
@@ -135,6 +137,7 @@ public final class CollectionRegistry {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
         Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
         Object resource = createResource(daoObject, resourceClass, config, authorizer, secretsManager);
+        details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
       } catch (Exception ex) {
@@ -232,9 +235,12 @@ public final class CollectionRegistry {
 
   public static class CollectionDetails {
     private final int order;
-    private final String resourceClass;
+
+    @Getter private final String resourceClass;
     private final CollectionDescriptor cd;
     private final List<CollectionDescriptor> childCollections = new ArrayList<>();
+
+    @Getter @Setter private Object resource;
 
     CollectionDetails(CollectionDescriptor cd, String resourceClass, int order) {
       this.cd = cd;

@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil } from 'lodash';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
@@ -43,28 +42,6 @@ export const getMlmodels = async (
     data: ServicePageData[];
     paging: Paging;
   }>(url);
-
-  return response.data;
-};
-
-export const getAllMlModal = async (
-  paging: string,
-  arrQueryFields: string,
-  limit?: number
-) => {
-  const searchParams = new URLSearchParams();
-
-  if (!isNil(limit)) {
-    searchParams.set('limit', `${limit}`);
-  }
-
-  const url = getURLWithQueryFields(
-    `/mlmodels`,
-    arrQueryFields,
-    `${searchParams.toString()}${paging ? `&${paging}` : ''}`
-  );
-
-  const response = await APIClient.get<{ data: Mlmodel; paging: Paging }>(url);
 
   return response.data;
 };

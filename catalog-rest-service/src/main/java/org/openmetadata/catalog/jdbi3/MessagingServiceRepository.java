@@ -20,7 +20,7 @@ import org.openmetadata.catalog.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.MessagingConnection;
 
-public class MessagingServiceRepository extends ServiceRepository<MessagingService, MessagingConnection> {
+public class MessagingServiceRepository extends ServiceEntityRepository<MessagingService, MessagingConnection> {
   private static final String UPDATE_FIELDS = "owner, connection";
 
   public MessagingServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
@@ -33,10 +33,5 @@ public class MessagingServiceRepository extends ServiceRepository<MessagingServi
         MessagingConnection.class,
         UPDATE_FIELDS,
         ServiceType.MESSAGING);
-  }
-
-  @Override
-  protected String getServiceType(MessagingService messagingService) {
-    return messagingService.getServiceType().value();
   }
 }

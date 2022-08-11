@@ -1,9 +1,22 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
+import lombok.Getter;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ServiceType;
@@ -12,17 +25,18 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 
-public abstract class ServiceRepository<T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
+public abstract class ServiceEntityRepository<
+        T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
   private static final String UPDATE_FIELDS = "owner";
 
-  private final Class<S> serviceConnectionClass;
+  @Getter private final Class<S> serviceConnectionClass;
 
   protected final SecretsManager secretsManager;
 
-  private final ServiceType serviceType;
+  @Getter private final ServiceType serviceType;
 
-  protected ServiceRepository(
+  protected ServiceEntityRepository(
       String collectionPath,
       String service,
       CollectionDAO dao,
@@ -37,7 +51,7 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
     this.serviceType = serviceType;
   }
 
-  protected ServiceRepository(
+  protected ServiceEntityRepository(
       String collectionPath,
       String service,
       CollectionDAO dao,
@@ -65,8 +79,6 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
     setFullyQualifiedName(service);
   }
 
-  protected abstract String getServiceType(T service);
-
   @Override
   public void storeEntity(T service, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
@@ -81,7 +93,11 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
           .getConnection()
           .setConfig(
               secretsManager.encryptOrDecryptServiceConnectionConfig(
-                  service.getConnection().getConfig(), getServiceType(service), service.getName(), serviceType, true));
+                  service.getConnection().getConfig(),
+                  service.getServiceType().value(),
+                  service.getName(),
+                  serviceType,
+                  true));
       store(service.getId(), service, update);
     } else {
       // otherwise, nullify the config since it will be kept outside OM
@@ -93,7 +109,7 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
           .getConnection()
           .setConfig(
               secretsManager.encryptOrDecryptServiceConnectionConfig(
-                  connectionConfig, getServiceType(service), service.getName(), serviceType, true));
+                  connectionConfig, service.getServiceType().value(), service.getName(), serviceType, true));
     }
 
     // Restore the relationships
@@ -132,10 +148,18 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
         S decryptedUpdatedConn = JsonUtils.readValue(updatedJson, serviceConnectionClass);
         decryptedOrigConn.setConfig(
             secretsManager.encryptOrDecryptServiceConnectionConfig(
-                decryptedOrigConn.getConfig(), getServiceType(original), original.getName(), serviceType, false));
+                decryptedOrigConn.getConfig(),
+                original.getServiceType().value(),
+                original.getName(),
+                serviceType,
+                false));
         decryptedUpdatedConn.setConfig(
             secretsManager.encryptOrDecryptServiceConnectionConfig(
-                decryptedUpdatedConn.getConfig(), getServiceType(updated), updated.getName(), serviceType, false));
+                decryptedUpdatedConn.getConfig(),
+                updated.getServiceType().value(),
+                updated.getName(),
+                serviceType,
+                false));
         if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
           recordChange("connection", origConn, updatedConn, true);
         }
@@ -145,7 +169,7 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
             .setConfig(
                 secretsManager.encryptOrDecryptServiceConnectionConfig(
                     original.getConnection().getConfig(),
-                    getServiceType(original),
+                    original.getServiceType().value(),
                     original.getName(),
                     serviceType,
                     false));

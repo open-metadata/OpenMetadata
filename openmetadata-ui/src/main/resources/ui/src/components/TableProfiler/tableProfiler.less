@@ -1,0 +1,102 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@succesColor: #28a745;
+@failedColor: #cb2431;
+@abortedColor: #efae2f;
+@grayColor: #dde3ea;
+@primary-color: #7147e8;
+
+.table-profiler-container {
+  .profiler-setting-btn {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .overall-summery-card:not(:first-child) {
+    border-left: 1px solid rgb(229, 231, 235);
+    padding-left: 16px;
+  }
+
+  .success {
+    color: @succesColor;
+  }
+  .failed {
+    color: @failedColor;
+  }
+  .aborted {
+    color: @abortedColor;
+  }
+
+  .profiler-progress-bar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+
+    .progress-bar {
+      width: 100px;
+    }
+  }
+
+  .test-indicator {
+    display: inline-block;
+    height: 8px;
+    width: 8px;
+    border-radius: 50%;
+
+    &.success {
+      background: @succesColor;
+    }
+    &.failed {
+      background: @failedColor;
+    }
+    &.aborted {
+      background: @abortedColor;
+    }
+  }
+
+  .ant-table-thead > tr > th {
+    font-weight: bold;
+    background: #fff;
+  }
+
+  .ant-table-row .ant-table-cell:first-child,
+  .ant-table-thead .ant-table-cell:first-child {
+    padding-left: 16px;
+  }
+
+  table {
+    border: 1px solid @grayColor;
+    box-shadow: 1px 1px 3px 0px rgba(0, 0, 0, 0.12);
+  }
+}
+.profiler-setting-sql-editor {
+  border: 1px solid @grayColor;
+  border-radius: 2px;
+  .CodeMirror {
+    height: 200px;
+  }
+}
+.include-columns-add-button.ant-btn-icon-only.ant-btn-sm {
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+}
+
+.profiler-slider {
+  .ant-slider-track {
+    background: @primary-color;
+  }
+}

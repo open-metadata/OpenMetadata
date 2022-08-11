@@ -81,6 +81,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
     Entity.withHref(uriInfo, policy.getOwner());
+    Entity.withHref(uriInfo, policy.getTeams());
+    Entity.withHref(uriInfo, policy.getRoles());
     return policy;
   }
 
@@ -117,7 +119,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
   }
 
-  public static final String FIELDS = "owner,location";
+  public static final String FIELDS = "owner,location,teams,roles";
 
   @GET
   @Valid

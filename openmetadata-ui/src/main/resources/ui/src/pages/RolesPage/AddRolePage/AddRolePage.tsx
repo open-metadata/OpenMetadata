@@ -1,0 +1,167 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
+import { AxiosError } from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/globalSettings.constants';
+import { Policy } from '../../../generated/entity/policies/policy';
+import { getRoleWithFqnPath, getSettingPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+const { Option } = Select;
+const breadcrumb = [
+  {
+    name: 'Roles',
+    url: getSettingPath(
+      GlobalSettingsMenuCategory.ACCESS,
+      GlobalSettingOptions.ROLES
+    ),
+  },
+  {
+    name: 'Add New Role',
+    url: '',
+  },
+];
+
+const AddRolePage = () => {
+  const history = useHistory();
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [name, setName] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
+  const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
+
+  const fetchPolicies = async () => {
+    try {
+      const data = await getPolicies('owner,location,roles,teams');
+
+      setPolicies(data.data || []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleCancel = () => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.ROLES
+      )
+    );
+  };
+
+  const handleSumbit = async () => {
+    const data = {
+      name,
+      description,
+      policies: selectedPolicies.map((policy) => ({
+        id: policy,
+        type: 'policy',
+      })),
+    };
+
+    try {
+      const dataResponse = await addRole(data);
+      if (dataResponse) {
+        history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchPolicies();
+  }, []);
+
+  return (
+    <Row gutter={[16, 16]}>
+      <Col span={24}>
+        <TitleBreadcrumb titleLinks={breadcrumb} />
+      </Col>
+      <Col span={18}>
+        <Card title="Add New Role">
+          <Form
+            data-testid="role-form"
+            id="role-form"
+            layout="vertical"
+            onFinish={handleSumbit}>
+            <Form.Item
+              label="Name:"
+              name="name"
+              rules={[
+                {
+                  required: true,
+                  max: 128,
+                  min: 1,
+                },
+              ]}>
+              <Input
+                placeholder="Role name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </Form.Item>
+            <Form.Item label="Description:" name="description">
+              <RichTextEditor
+                height="200px"
+                initialValue={description}
+                placeHolder="write your description"
+                style={{ margin: 0 }}
+                onTextChange={(value) => setDescription(value)}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Select a policy:"
+              name="policies"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}>
+              <Select
+                mode="multiple"
+                placeholder="Select Policy"
+                value={selectedPolicies}
+                onChange={(values) => setSelectedPolicies(values)}>
+                {policies.map((policy) => (
+                  <Option key={policy.id}>
+                    {policy.displayName || policy.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Space align="center" className="tw-w-full tw-justify-end">
+              <Button type="link" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button form="role-form" htmlType="submit" type="primary">
+                Submit
+              </Button>
+            </Space>
+          </Form>
+        </Card>
+      </Col>
+    </Row>
+  );
+};
+
+export default AddRolePage;

@@ -10,6 +10,9 @@
     "dashboardServiceType": {
       "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode",
       "type": "string",
+      "javaInterfaces": [
+        "org.openmetadata.core.entity.interfaces.EnumInterface"
+      ],
       "enum": [
         "Superset",
         "Looker",
