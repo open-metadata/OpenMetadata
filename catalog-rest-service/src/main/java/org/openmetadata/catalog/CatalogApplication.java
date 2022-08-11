@@ -94,7 +94,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
-    final Jdbi jdbi = createandSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
@@ -156,7 +156,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     intializeWebsockets(catalogConfig, environment);
   }
 
-  private Jdbi createandSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
+  private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
     jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
 
