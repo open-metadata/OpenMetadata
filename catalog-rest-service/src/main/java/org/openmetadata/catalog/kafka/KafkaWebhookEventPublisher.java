@@ -54,6 +54,8 @@ public class KafkaWebhookEventPublisher extends WebhookPublisher {
           producer.send(new ProducerRecord<>(topic, eventJson));
         }
       }
+    } else {
+      LOG.info("Topics are null");
     }
   }
 }

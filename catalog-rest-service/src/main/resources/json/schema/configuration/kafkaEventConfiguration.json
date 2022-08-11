@@ -15,14 +15,17 @@
     },
     "acks": {
       "description": "Acknowledgment",
+      "default": "all",
       "type": "string"
     },
     "retries": {
       "description": "No. of retries",
+      "default": 3,
       "type": "integer"
     },
     "lingerMS": {
-      "description": "Artificial Delay",
+      "description": "Artificial Delay in milliseconds",
+      "default": 1,
       "type": "integer"
     },
     "bufferMemory": {
@@ -32,13 +35,15 @@
     },
     "keySerializer": {
       "description": "Serializer class for key",
+      "default": "org.apache.kafka.common.serialization.StringSerializer",
       "type": "string"
     },
     "valueSerializer": {
       "description": "Serializer class for value",
+      "default": "org.apache.kafka.common.serialization.StringSerializer",
       "type": "string"
     }
   },
-  "required": ["topics", "keySerializer", "valueSerializer"],
+  "required": ["topics"],
   "additionalProperties": false
 }
