@@ -24,21 +24,8 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack,generic etc",
-      "type": "string",
-      "default": "generic",
-      "enum": ["slack", "generic", "kafka"],
-      "javaEnums": [
-        {
-          "name": "slack"
-        },
-        {
-          "name": "generic"
-        },
-        {
-          "name": "kafka"
-        }
-      ]
+      "description": "Type of webhook slack,generic,kafka etc",
+      "$ref": "../../api/events/createWebhook.json#/properties/webhookType"
     },
     "description": {
       "description": "Description of the application.",

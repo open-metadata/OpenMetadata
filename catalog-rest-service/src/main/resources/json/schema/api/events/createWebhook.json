@@ -56,7 +56,7 @@
       "$ref": "../../configuration/kafkaEventConfiguration.json"
     },
     "webhookType": {
-      "description": "Type of webhook slack,generic etc",
+      "description": "Type of webhook slack,generic,kafka etc",
       "type": "string",
       "default": "generic",
       "enum": ["slack", "generic", "kafka"],

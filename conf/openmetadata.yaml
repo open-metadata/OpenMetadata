@@ -220,15 +220,6 @@ slackEventPublishers:
         entities:
          - "*"
 
-kafkaEventPublishers:
-  topics: ${KAFKA_TOPICS:-[]}
-  acks: ${KAFKA_ACKNOWLEDGEMENT:-""}
-  retries: ${KAFKA_RETRIES:-0}
-  lingerMS: ${KAFKA_LINGER_MS:-1}
-  bufferMemory: ${KAFKA_BUFFER_MEMORY:-33554432}
-  keySerializer: ${KAFKA_KEY_SERIALIZER_CLASS:-""}
-  valueSerializer: ${KAFKA_VALUE_SERIALIZER_CLASS:-""}
-
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
 fernetConfiguration:
