@@ -452,6 +452,11 @@
       <artifactId>spring-expression</artifactId>
       <version>${spring-expression.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.dropwizard.modules</groupId>
+      <artifactId>dropwizard-kafka</artifactId>
+      <version>1.8.0</version>
+    </dependency>
   </dependencies>
 
   <build>
