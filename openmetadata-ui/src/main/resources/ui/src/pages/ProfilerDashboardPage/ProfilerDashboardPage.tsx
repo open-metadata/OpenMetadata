@@ -20,6 +20,7 @@ import {
 } from '../../axiosAPIs/tableAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
+import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
 import { Table, TableProfile } from '../../generated/entity/data/table';
 import jsonData from '../../jsons/en';
 import {
@@ -89,7 +90,7 @@ const ProfilerDashboardPage = () => {
     );
   }
 
-  return <div>ProfilerDashboardPage</div>;
+  return <ProfilerDashboard profilerData={profilerData} table={table} />;
 };
 
 export default ProfilerDashboardPage;
