@@ -51,7 +51,7 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_fqn, filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -116,6 +116,19 @@ class ProfilerWorkflow:
             logger.error("Error trying to parse the Profiler Workflow configuration")
             raise err
 
+    def filter_databases(self, database: Database) -> Database:
+        """Returns filtered database entities"""
+        if filter_by_database(
+            self.source_config.databaseFilterPattern,
+            database.name.__root__,
+        ):
+            self.source_status.filter(
+                database.name.__root__, "Database pattern not allowed"
+            )
+            return None
+        else:
+            return database
+
     def filter_entities(self, tables: List[Table]) -> Iterable[Table]:
         """
         From a list of tables, apply the SQLSourceConfig
@@ -174,11 +187,14 @@ class ProfilerWorkflow:
     def get_database_entities(self):
         """List all databases in service"""
 
-        for database in self.metadata.list_all_entities(
-            entity=Database,
-            params={"service": self.config.source.serviceName},
-        ):
-            yield database
+        return [
+            self.filter_databases(database)
+            for database in self.metadata.list_all_entities(
+                entity=Database,
+                params={"service": self.config.source.serviceName},
+            )
+            if self.filter_databases(database)
+        ]
 
     def get_table_entities(self, database):
         """
@@ -224,22 +240,30 @@ class ProfilerWorkflow:
             "supportsDatabase",
         ):
             if hasattr(
-                self.config.source.serviceConnection.__root__.config, "database"
+                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
             ):
                 copy_service_connection_config.database = database.name.__root__
             if hasattr(self.config.source.serviceConnection.__root__.config, "catalog"):
                 copy_service_connection_config.catalog = database.name.__root__
 
-        self.create_processor(copy_service_connection_config)
+        return copy_service_connection_config
 
     def execute(self):
         """
         Run the profiling and tests
         """
 
-        for database in self.get_database_entities():
+        databases = self.get_database_entities()
+
+        if not databases:
+            raise ValueError(
+                "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
+                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes}\n\t- excludes: {self.source_config.databaseFilterPattern.excludes}"
+            )
+
+        for database in databases:
             try:
-                self.copy_service_config(database)
+                self.create_processor(self.copy_service_config(database))
 
                 for entity in self.get_table_entities(database=database):
                     try:
