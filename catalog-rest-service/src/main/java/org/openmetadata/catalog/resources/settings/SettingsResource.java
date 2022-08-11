@@ -86,10 +86,14 @@ public class SettingsResource {
                 FilterRegistry.add((List<EventFilter>) storedSettings.getConfigValue());
                 exec.scheduleAtFixedRate(
                     () -> {
-                      // activityFeedFilters Update every 5 minutes
-                      Settings filterSettings =
-                          settingsRepository.getConfigWithKey(ACTIVITY_FEED_FILTER_SETTING.toString());
-                      FilterRegistry.add((List<EventFilter>) filterSettings.getConfigValue());
+                      // activityFeedFilters Update every 3 minutes
+                      try {
+                        Settings filterSettings =
+                            settingsRepository.getConfigWithKey(ACTIVITY_FEED_FILTER_SETTING.toString());
+                        FilterRegistry.add((List<EventFilter>) filterSettings.getConfigValue());
+                      } catch (Exception ex) {
+                        LOG.error("Fetching from DB failed during filter update ", ex);
+                      }
                     },
                     0,
                     180,

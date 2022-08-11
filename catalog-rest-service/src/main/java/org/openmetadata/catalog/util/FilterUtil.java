@@ -66,7 +66,7 @@ public class FilterUtil {
       return getUpdatedField(fieldsDeleted.get(0));
     } else {
       // TODO: how do i handle this??
-      return getUpdatedField(fieldsAdded.get(0));
+      return getUpdatedField(fieldsUpdated.get(0));
     }
   }
 
