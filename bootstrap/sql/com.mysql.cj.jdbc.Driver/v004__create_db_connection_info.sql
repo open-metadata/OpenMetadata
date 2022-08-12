@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS test_case (
 UPDATE webhook_entity
 SET json = JSON_INSERT(json, '$.webhookType', 'generic');
 
+ALTER TABLE webhook_entity
+ADD webhookType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.webhookType') NOT NULL;
+
 CREATE TABLE IF NOT EXISTS entity_extension_time_series (
     entityId VARCHAR(36) NOT NULL,                    -- ID of the from entity
     entityFqn VARCHAR(512) NOT NULL,

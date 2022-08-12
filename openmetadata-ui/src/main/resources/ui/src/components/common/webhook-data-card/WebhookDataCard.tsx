@@ -12,7 +12,7 @@
  */
 
 import React, { FunctionComponent } from 'react';
-import { Status } from '../../../generated/entity/events/webhook';
+import { Status, WebhookType } from '../../../generated/entity/events/webhook';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import WebhookDataCardBody from './WebhookDataCardBody';
@@ -22,6 +22,7 @@ type Props = {
   description?: string;
   endpoint: string;
   status?: Status;
+  type?: WebhookType;
   onClick?: (name: string) => void;
 };
 
@@ -29,6 +30,7 @@ const WebhookDataCard: FunctionComponent<Props> = ({
   name,
   description,
   endpoint,
+  type,
   status = Status.Disabled,
   onClick,
 }: Props) => {
@@ -42,7 +44,11 @@ const WebhookDataCard: FunctionComponent<Props> = ({
       data-testid="webhook-data-card">
       <div>
         <div className="tw-flex tw-items-center">
-          <SVGIcons alt="webhook" icon={Icons.WEBHOOK} width="16" />
+          <SVGIcons
+            alt="webhook"
+            icon={type === WebhookType.Slack ? Icons.SLACK_GREY : Icons.WEBHOOK}
+            width="16"
+          />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-1">
             <button
               className="tw-text-grey-body tw-font-medium"

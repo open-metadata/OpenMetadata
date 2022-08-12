@@ -12,13 +12,14 @@
  */
 
 import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root_username').type('openmetadata_user');
       cy.get('#root_password').type('openmetadata_password');
@@ -42,10 +43,10 @@ describe('MySQL Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService('Database', serviceName);
+    editOwnerforCreatedService(SERVICE_TYPE.Database, serviceName);
   });
 
   it('delete created service', () => {
-    deleteCreatedService('Database', serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
   });
 });

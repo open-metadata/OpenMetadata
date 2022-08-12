@@ -19,6 +19,7 @@ import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import { statuses } from '../AddWebhook/WebhookConstants';
@@ -33,6 +34,7 @@ import './webhookV1.less';
 
 const WebhooksV1: FC<WebhooksProps> = ({
   data = [],
+  webhookType,
   paging,
   selectedStatus = [],
   onAddWebhook,
@@ -86,7 +88,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add Webhook
+                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
               </Button>
             </NonAdminAction>
           </p>
@@ -129,7 +131,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add Webhook
+                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
               </Button>
             </NonAdminAction>
           )}
@@ -143,6 +145,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                   endpoint={webhook.endpoint}
                   name={webhook.name}
                   status={webhook.status}
+                  type={webhook.webhookType}
                   onClick={onClickWebhook}
                 />
               </div>

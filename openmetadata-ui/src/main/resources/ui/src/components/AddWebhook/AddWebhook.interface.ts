@@ -13,7 +13,10 @@
 
 import { LoadingState } from 'Models';
 import { FormSubmitType } from '../../enums/form.enum';
-import { CreateWebhook } from '../../generated/api/events/createWebhook';
+import {
+  CreateWebhook,
+  WebhookType,
+} from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 
 export interface AddWebhookProps {
@@ -23,6 +26,7 @@ export interface AddWebhookProps {
   saveState?: LoadingState;
   deleteState?: LoadingState;
   allowAccess?: boolean;
+  webhookType?: WebhookType;
   onCancel: () => void;
   onDelete?: (id: string) => void;
   onSave: (data: CreateWebhook) => void;
