@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.entity.services.MessagingService",
   "javaInterfaces": [
     "org.openmetadata.catalog.EntityInterface",
-    "org.openmetadata.catalog.interfaces.services.ServiceEntityInterface"
+    "org.openmetadata.catalog.ServiceEntityInterface"
   ],
   "definitions": {
     "messagingServiceType": {
@@ -37,7 +37,7 @@
       "javaType": "org.openmetadata.catalog.type.MessagingConnection",
       "description": "Dashboard Connection.",
       "javaInterfaces": [
-        "org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface"
+        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
       ],
       "properties": {
         "config": {

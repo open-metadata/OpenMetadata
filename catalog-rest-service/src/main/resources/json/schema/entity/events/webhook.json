@@ -24,18 +24,8 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack,generic etc",
-      "type": "string",
-      "default": "generic",
-      "enum": ["slack", "generic"],
-      "javaEnums": [
-        {
-          "name": "slack"
-        },
-        {
-          "name": "generic"
-        }
-      ]
+      "description": "Type of webhook slack,generic,kafka etc",
+      "$ref": "../../api/events/createWebhook.json#/properties/webhookType"
     },
     "description": {
       "description": "Description of the application.",
@@ -57,6 +47,10 @@
       "description": "Maximum number of events sent in a batch (Default 10).",
       "type": "integer",
       "default": 10
+    },
+    "kafkaProperties": {
+      "description": "Properties of Kafka Producer",
+      "$ref": "../../configuration/kafkaEventConfiguration.json"
     },
     "timeout": {
       "description": "Connection timeout in seconds. (Default 10s).",

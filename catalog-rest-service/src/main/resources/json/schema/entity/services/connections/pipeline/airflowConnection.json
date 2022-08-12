@@ -5,9 +5,6 @@
   "description": "Airflow Metadata Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.pipeline.AirflowConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.PipelineConnectionConfigInterface"
-  ],
   "definitions": {
     "AirflowType": {
       "description": "Service type.",

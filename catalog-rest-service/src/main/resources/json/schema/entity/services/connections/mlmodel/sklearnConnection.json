@@ -5,9 +5,6 @@
   "description": "Sklearn Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.mlModel.SklearnConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "sklearnType": {
       "description": "Service type.",

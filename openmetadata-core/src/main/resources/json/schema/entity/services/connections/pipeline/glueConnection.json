@@ -5,9 +5,6 @@
   "description": "Glue Pipeline Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.pipeline.GlueConnection",
-  "javaInterfaces": [
-    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "glueType": {
       "description": "Service type.",

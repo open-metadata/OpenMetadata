@@ -5,9 +5,6 @@
   "description": "Glue Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.GlueConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "glueType": {
       "description": "Service type.",

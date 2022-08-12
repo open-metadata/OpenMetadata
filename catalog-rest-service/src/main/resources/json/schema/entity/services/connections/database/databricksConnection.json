@@ -5,9 +5,6 @@
   "description": "Databricks Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.DatabricksConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "databricksType": {
       "description": "Service type.",

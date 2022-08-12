@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.entity.services.DashboardService",
   "javaInterfaces": [
     "org.openmetadata.catalog.EntityInterface",
-    "org.openmetadata.catalog.interfaces.services.ServiceEntityInterface"
+    "org.openmetadata.catalog.ServiceEntityInterface"
   ],
   "definitions": {
     "dashboardServiceType": {
@@ -52,7 +52,7 @@
       "javaType": "org.openmetadata.catalog.type.DashboardConnection",
       "description": "Dashboard Connection.",
       "javaInterfaces": [
-        "org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface"
+        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
       ],
       "properties": {
         "config": {

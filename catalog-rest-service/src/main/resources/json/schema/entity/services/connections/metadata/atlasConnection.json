@@ -5,9 +5,6 @@
   "description": "Atlas Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.metadata.AtlasConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "atlasType": {
       "description": "Service type.",

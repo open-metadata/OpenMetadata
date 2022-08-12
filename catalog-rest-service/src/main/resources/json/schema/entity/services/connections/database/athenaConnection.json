@@ -5,9 +5,6 @@
   "description": "AWS Athena Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.AthenaConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "athenaType": {
       "description": "Service type.",

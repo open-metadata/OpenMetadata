@@ -5,9 +5,6 @@
   "description": "OpenMetadata Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "openmetadataType": {
       "description": "OpenMetadata service type",

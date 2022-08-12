@@ -5,9 +5,6 @@
   "description": "Db2 Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.Db2Connection",
-  "javaInterfaces": [
-    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "db2Type": {
       "description": "Service type.",

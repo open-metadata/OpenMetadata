@@ -5,9 +5,6 @@
   "description": "Amundsen Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.metadata.AmundsenConnection",
-  "javaInterfaces": [
-    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "amundsenType": {
       "description": "Amundsen service type",

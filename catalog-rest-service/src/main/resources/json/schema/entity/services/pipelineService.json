@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.entity.services.PipelineService",
   "javaInterfaces": [
     "org.openmetadata.catalog.EntityInterface",
-    "org.openmetadata.catalog.interfaces.services.ServiceEntityInterface"
+    "org.openmetadata.catalog.ServiceEntityInterface"
   ],
   "definitions": {
     "pipelineServiceType": {
@@ -35,7 +35,7 @@
       "javaType": "org.openmetadata.catalog.type.PipelineConnection",
       "description": "Pipeline Connection.",
       "javaInterfaces": [
-        "org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface"
+        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
       ],
       "properties": {
         "config": {

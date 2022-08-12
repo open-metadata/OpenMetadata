@@ -5,9 +5,6 @@
   "description": "Sample Data Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.SampleDataConnection",
-  "javaInterfaces": [
-    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "sampleDataType": {
       "description": "Service type.",

@@ -5,9 +5,6 @@
   "description": "Fivetran Metadata Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.pipeline.FivetranConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.PipelineConnectionConfigInterface"
-  ],
   "definitions": {
     "FivetranType": {
       "description": "Service type.",

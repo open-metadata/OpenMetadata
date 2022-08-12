@@ -5,9 +5,6 @@
   "description": "Pulsar Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.messaging.PulsarConnection",
-  "javaInterfaces": [
-    "org.openmetadata.core.entity.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "pulsarType": {
       "description": "Pulsar service type",

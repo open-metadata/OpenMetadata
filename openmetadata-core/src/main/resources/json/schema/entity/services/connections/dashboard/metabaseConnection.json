@@ -5,9 +5,6 @@
   "description": "Metabase Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.MetabaseConnection",
-  "javaInterfaces": [
-    "org.openmetadata.core.entity.interfaces.services.DashboardConnectionConfigInterface"
-  ],
   "definitions": {
     "metabaseType": {
       "description": "Metabase service type",

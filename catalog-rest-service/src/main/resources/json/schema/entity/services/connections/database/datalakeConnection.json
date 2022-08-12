@@ -5,9 +5,6 @@
   "description": "Datalake Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.DatalakeConnection",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface"
-  ],
   "definitions": {
     "datalakeType": {
       "description": "Service type.",
