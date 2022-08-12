@@ -2,6 +2,7 @@ package org.openmetadata.catalog.resources.settings;
 
 import static org.openmetadata.catalog.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executors;
@@ -83,14 +85,17 @@ public class SettingsResource {
                 storedSettings = setting;
               }
               if (storedSettings.getConfigType().equals(ACTIVITY_FEED_FILTER_SETTING)) {
-                FilterRegistry.add((List<EventFilter>) storedSettings.getConfigValue());
+                String filterJson = JsonUtils.pojoToJson(storedSettings.getConfigValue());
+                List<EventFilter> eventFilterList =
+                    JsonUtils.readValue(filterJson, new TypeReference<ArrayList<EventFilter>>() {});
+                FilterRegistry.add(eventFilterList);
                 exec.scheduleAtFixedRate(
                     () -> {
                       // activityFeedFilters Update every 3 minutes
                       try {
                         Settings filterSettings =
                             settingsRepository.getConfigWithKey(ACTIVITY_FEED_FILTER_SETTING.toString());
-                        FilterRegistry.add((List<EventFilter>) filterSettings.getConfigValue());
+                        FilterRegistry.add(eventFilterList);
                       } catch (Exception ex) {
                         LOG.error("Fetching from DB failed during filter update ", ex);
                       }
