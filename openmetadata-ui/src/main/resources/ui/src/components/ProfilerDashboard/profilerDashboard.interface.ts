@@ -14,6 +14,7 @@
 import { Table, TableProfile } from '../../generated/entity/data/table';
 
 export interface ProfilerDashboardProps {
+  onTableChange: (table: Table) => void;
   table: Table;
   profilerData: TableProfile[];
 }

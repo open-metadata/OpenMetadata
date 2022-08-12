@@ -12,13 +12,16 @@
  */
 
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   getTableDetailsByFQN,
   getTableProfilesList,
+  patchTableDetails,
 } from '../../axiosAPIs/tableAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
 import { Table, TableProfile } from '../../generated/entity/data/table';
@@ -52,7 +55,7 @@ const ProfilerDashboardPage = () => {
       getTableFQNFromColumnFQN(fqn);
       const data = await getTableDetailsByFQN(
         getTableFQNFromColumnFQN(fqn),
-        ''
+        'tags, usageSummary'
       );
       setTable(data ?? ({} as Table));
       fetchProfilerData(data.id);
@@ -63,6 +66,20 @@ const ProfilerDashboardPage = () => {
       );
       setIsLoading(false);
       setError(true);
+    }
+  };
+
+  const updateTableHandler = async (updatedTable: Table) => {
+    const jsonPatch = compare(table, updatedTable);
+
+    try {
+      const tableRes = await patchTableDetails(table.id, jsonPatch);
+      setTable(tableRes);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-entity-error']
+      );
     }
   };
 
@@ -90,7 +107,15 @@ const ProfilerDashboardPage = () => {
     );
   }
 
-  return <ProfilerDashboard profilerData={profilerData} table={table} />;
+  return (
+    <PageContainerV1 className="tw-py-4">
+      <ProfilerDashboard
+        profilerData={profilerData}
+        table={table}
+        onTableChange={updateTableHandler}
+      />
+    </PageContainerV1>
+  );
 };
 
 export default ProfilerDashboardPage;
