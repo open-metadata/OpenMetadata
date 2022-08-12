@@ -180,21 +180,22 @@ class OrmProfilerProcessor(Processor[Table]):
                     else None
                 )
 
-                if my_record_profile.profile_sample_query:
-                    return None
+                if my_record_profile:
+                    if my_record_profile.profile_sample_query:
+                        return None
 
-                start, end = get_start_and_end(
-                    my_record_profile.partition_query_duration
-                )
-                partition_details = {
-                    "partition_field": my_record_profile.partition_field
-                    or get_partition_cols(self.processor_interface.session, orm),
-                    "partition_start": start,
-                    "partition_end": end,
-                    "partition_values": my_record_profile.partition_values,
-                }
+                    start, end = get_start_and_end(
+                        my_record_profile.partition_query_duration
+                    )
+                    partition_details = {
+                        "partition_field": my_record_profile.partition_field
+                        or get_partition_cols(self.processor_interface.session, orm),
+                        "partition_start": start,
+                        "partition_end": end,
+                        "partition_values": my_record_profile.partition_values,
+                    }
 
-                return partition_details
+                    return partition_details
 
         return None
 
@@ -503,7 +504,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
     def validate_config_tests(
         self, table: Table, profiler_results: TableProfile
-    ) -> List[TestCaseResult]:
+    ) -> Optional[List[TestCaseResult]]:
         """
         Here we take care of new incoming tests in the workflow
         definition. Run them and prepare the new TestCaseResult

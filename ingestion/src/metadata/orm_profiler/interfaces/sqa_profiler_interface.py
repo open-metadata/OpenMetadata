@@ -264,7 +264,7 @@ class SQAProfilerInterface(InterfaceProtocol):
             )
         return self.sampler.fetch_sample_data()
 
-    def create_sampler(self) -> None:
+    def create_sampler(self) -> Sampler:
         """Create sampler instance"""
         return Sampler(
             session=self.session,

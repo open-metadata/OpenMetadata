@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.orm_profiler.validations.models import TestCase
 
 
-def get_record_test_def(self, table: Table) -> List[Optional[TestCase]]:
+def get_record_test_def(table: Table) -> List[Optional[TestCase]]:
     """
     Fetch a record from the Workflow JSON config
     if the processed table is informed there.
