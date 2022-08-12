@@ -48,11 +48,6 @@ public class DatabaseServiceResourceUnitTest
   }
 
   @Override
-  protected boolean allowPartialNullification() {
-    return false;
-  }
-
-  @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(DatabaseService.class);
     serviceConnectionConfig = new MssqlConnection();

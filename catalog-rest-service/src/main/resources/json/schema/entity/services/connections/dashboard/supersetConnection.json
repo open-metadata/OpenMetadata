@@ -21,6 +21,7 @@
       "default": "Superset"
     },
     "hostPort": {
+      "exposed": true,
       "title": "Host and Port",
       "description": "URL for the superset instance.",
       "type": "string",

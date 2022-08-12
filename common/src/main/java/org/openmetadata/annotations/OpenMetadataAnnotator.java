@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.core.entity.interfaces.services;
+package org.openmetadata.annotations;
 
-/** Interface to be implemented by all services entities to provide a way to access all the common fields. */
-public interface ServiceConnectionEntityInterface {
+import org.jsonschema2pojo.CompositeAnnotator;
 
-  Object getConfig();
+public class OpenMetadataAnnotator extends CompositeAnnotator {
 
-  void setConfig(Object config);
+  public OpenMetadataAnnotator() {
+    // we can add multiple annotators
+    super(new ExposedAnnotator());
+  }
 }

@@ -30,9 +30,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.catalog.ServiceConnectionEntityInterface;
+import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ServiceType;
-import org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface;
-import org.openmetadata.catalog.interfaces.services.ServiceEntityInterface;
 import org.openmetadata.catalog.secrets.SecretsManager;
 
 @ExtendWith(MockitoExtension.class)

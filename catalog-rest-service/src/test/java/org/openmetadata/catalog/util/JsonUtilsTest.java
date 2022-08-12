@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -112,12 +111,10 @@ class JsonUtilsTest {
 
   @Test
   void testJsonWithFieldsRemoveFields() throws IOException {
-    MssqlConnection mssqlConnection = new MssqlConnection();
-    mssqlConnection.setDatabase("database");
-    mssqlConnection.setHostPort("localhost:3306");
-    mssqlConnection.setUsername("username");
-    String expectedJson = "{\"hostPort\":\"localhost:3306\"}";
-    String actualJson = JsonUtils.jsonWithFields(mssqlConnection, Set.of("hostPort"));
-    assertEquals(expectedJson, actualJson);
+    MssqlConnection mssqlConnection =
+        new MssqlConnection().withDatabase("database").withHostPort("localhost:3306").withUsername("username");
+    MssqlConnection expectedConnection = new MssqlConnection().withHostPort("localhost:3306");
+    MssqlConnection actualConnection = JsonUtils.toExposedEntity(mssqlConnection, MssqlConnection.class);
+    assertEquals(expectedConnection, actualConnection);
   }
 }

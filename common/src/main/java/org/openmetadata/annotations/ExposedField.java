@@ -11,21 +11,17 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.core.entity.interfaces.services;
+package org.openmetadata.annotations;
 
-import java.net.URI;
-import java.util.Set;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/** Interface to be implemented by services connection configuration entities */
-public interface PipelineConnectionConfigInterface extends ServiceConnectionConfigInterface {
-
-  URI getHostPort();
-
-  default boolean isExposingFields() {
-    return true;
-  }
-
-  default Set<String> getExposedFields() {
-    return Set.of("hostPort");
-  }
-}
+/**
+ * Specifies that the field or method is exposed, i.e., if the serialization will take into account those fields
+ * annotated with
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
+public @interface ExposedField {}

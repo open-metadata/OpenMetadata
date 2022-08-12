@@ -18,11 +18,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.io.IOException;
 import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
+import org.openmetadata.annotations.utils.AnnotationChecker;
+import org.openmetadata.catalog.ServiceConnectionEntityInterface;
+import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.exception.UnhandledServerException;
-import org.openmetadata.catalog.interfaces.services.ServiceConnectionConfigInterface;
-import org.openmetadata.catalog.interfaces.services.ServiceConnectionEntityInterface;
-import org.openmetadata.catalog.interfaces.services.ServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.ServiceEntityRepository;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
@@ -76,12 +76,10 @@ public abstract class ServiceEntityResource<
   }
 
   protected T nullifyRequiredConnectionParameters(T service) {
-    ServiceConnectionConfigInterface connectionConfig =
-        (ServiceConnectionConfigInterface) retrieveServiceConnectionConfig(service);
-    if (connectionConfig.isExposingFields()) {
+    Object connectionConfig = retrieveServiceConnectionConfig(service);
+    if (AnnotationChecker.isExposedFieldPresent(connectionConfig.getClass())) {
       try {
-        String json = JsonUtils.jsonWithFields(connectionConfig, connectionConfig.getExposedFields());
-        service.getConnection().setConfig(JsonUtils.readValue(json, connectionConfig.getClass()));
+        service.getConnection().setConfig(JsonUtils.toExposedEntity(connectionConfig, connectionConfig.getClass()));
         return service;
       } catch (IOException e) {
         throw new UnhandledServerException(e.getMessage(), e.getCause());

@@ -50,11 +50,6 @@ public class MlModelServiceResourceUnitTest
   }
 
   @Override
-  protected boolean allowPartialNullification() {
-    return false;
-  }
-
-  @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(MlModelService.class);
     serviceConnectionConfig = new MlflowConnection();

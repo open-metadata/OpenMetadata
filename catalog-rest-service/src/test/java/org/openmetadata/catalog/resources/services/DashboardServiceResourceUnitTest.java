@@ -48,11 +48,6 @@ public class DashboardServiceResourceUnitTest
   }
 
   @Override
-  protected boolean allowPartialNullification() {
-    return true;
-  }
-
-  @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(DashboardService.class);
     serviceConnectionConfig = new TableauConnection();
@@ -79,7 +74,8 @@ public class DashboardServiceResourceUnitTest
 
   @Override
   protected void verifyServiceWithConnectionCall(boolean shouldBeNull, DashboardService service) {
-    verify(service, times(shouldBeNull ? 1 : 0)).withConnection(isNull());
+    verify(service.getConnection(), times(shouldBeNull ? 1 : 0))
+        .setConfig(!shouldBeNull ? isNull() : any(TableauConnection.class));
   }
 
   @Override

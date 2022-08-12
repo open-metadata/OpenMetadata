@@ -11,21 +11,19 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.interfaces.services;
+package org.openmetadata.catalog;
 
-import java.net.URI;
-import java.util.Set;
+import java.util.List;
+import org.openmetadata.catalog.type.EntityReference;
 
-/** Interface to be implemented by services connection configuration entities */
-public interface PipelineConnectionConfigInterface extends ServiceConnectionConfigInterface {
+/** Interface to be implemented by all services entities to provide a way to access all the common fields. */
+public interface ServiceEntityInterface extends EntityInterface {
 
-  URI getHostPort();
+  ServiceConnectionEntityInterface getConnection();
 
-  default boolean isExposingFields() {
-    return true;
-  }
+  ServiceEntityInterface withOwner(EntityReference owner);
 
-  default Set<String> getExposedFields() {
-    return Set.of("hostPort");
-  }
+  void setPipelines(List<EntityReference> pipelines);
+
+  EnumInterface getServiceType();
 }
