@@ -25,7 +25,6 @@ import {
   getExplorePathWithSearch,
   getTeamAndUserDetailsPath,
   getUserPath,
-  navLinkSettings,
   ROUTES,
   TERM_ADMIN,
   TERM_USER,
@@ -305,7 +304,6 @@ const Appbar: React.FC = (): JSX.Element => {
           pathname={location.pathname}
           profileDropdown={profileDropdown}
           searchValue={searchValue || ''}
-          settingDropdown={navLinkSettings}
           supportDropdown={supportLinks}
           username={getUserName()}
         />

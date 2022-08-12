@@ -73,8 +73,8 @@ import SampleDataTable, {
 } from '../SampleDataTable/SampleDataTable.component';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
-import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
+import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
@@ -727,20 +727,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
               )}
               {activeTab === 5 && (
-                <div>
-                  <TableProfiler
-                    columns={columns.map((col) => ({
-                      constraint: col.constraint as string,
-                      colName: col.name,
-                      colType: col.dataTypeDisplay as string,
-                      dataType: col.dataType as string,
-                      colTests: col.columnTests,
-                    }))}
-                    isTableDeleted={deleted}
-                    qualityTestFormHandler={qualityTestFormHandler}
-                    tableProfiles={tableProfile}
-                  />
-                </div>
+                <TableProfilerV1
+                  table={tableDetails}
+                  onAddTestClick={qualityTestFormHandler}
+                />
               )}
 
               {activeTab === 6 && (

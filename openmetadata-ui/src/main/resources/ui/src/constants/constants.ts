@@ -12,11 +12,14 @@
  */
 
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { WebhookType } from '../generated/api/events/createWebhook';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#7147E8';
+export const SECONDARY_COLOR = '#B02AAC';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
+export const SUCCESS_COLOR = '#008376';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 export const SUPPORTED_DOMAIN_TYPES = [
@@ -85,6 +88,7 @@ export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
+export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -200,7 +204,8 @@ export const ROUTES = {
   USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   ROLES: '/roles',
   WEBHOOKS: '/webhooks',
-  ADD_WEBHOOK: '/add-webhook',
+  ADD_WEBHOOK: '/add-webhook/',
+  ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/add-glossary',
@@ -224,6 +229,7 @@ export const ROUTES = {
   TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
 
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
+  ADD_ROLE: '/settings/access/roles/add-role',
 };
 
 export const SOCKET_EVENTS = {
@@ -312,6 +318,15 @@ export const getDatabaseSchemaDetailsPath = (
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getAddWebhookPath = (webhookType?: WebhookType) => {
+  let path = webhookType ? ROUTES.ADD_WEBHOOK_WITH_TYPE : ROUTES.ADD_WEBHOOK;
+  if (webhookType) {
+    path = path.replace(PLACEHOLDER_WEBHOOK_TYPE, webhookType);
   }
 
   return path;

@@ -1320,13 +1320,6 @@ div.ant-typography-ellipsis-custom {
   overflow: hidden;
 }
 
-.ant-input:hover,
-.ant-input:focus {
-  border-color: #7147e8;
-  border-right-width: 0px;
-  box-shadow: none;
-}
-
 .add-webhook-container #center {
   padding-right: 0px;
 }
