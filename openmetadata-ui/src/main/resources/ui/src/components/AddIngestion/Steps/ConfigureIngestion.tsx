@@ -288,45 +288,53 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getFilterPatterns = () => {
+    return (
+      <div>
+        <FilterPattern
+          checked={showDatabaseFilter}
+          excludePattern={databaseFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.DATABASE)
+          }
+          includePattern={databaseFilterPattern?.includes ?? []}
+          type={FilterPatternEnum.DATABASE}
+        />
+        <FilterPattern
+          checked={showSchemaFilter}
+          excludePattern={schemaFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.SCHEMA)
+          }
+          includePattern={schemaFilterPattern?.includes ?? []}
+          type={FilterPatternEnum.SCHEMA}
+        />
+        <FilterPattern
+          checked={showTableFilter}
+          excludePattern={tableFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.TABLE)
+          }
+          includePattern={tableFilterPattern?.includes ?? []}
+          showSeparator={false}
+          type={FilterPatternEnum.TABLE}
+        />
+      </div>
+    );
+  };
+
   const getMetadataFilterPatternField = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
         return (
           <Fragment>
-            <FilterPattern
-              checked={showDatabaseFilter}
-              excludePattern={databaseFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.DATABASE)
-              }
-              includePattern={databaseFilterPattern?.includes ?? []}
-              type={FilterPatternEnum.DATABASE}
-            />
-            <FilterPattern
-              checked={showSchemaFilter}
-              excludePattern={schemaFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.SCHEMA)
-              }
-              includePattern={schemaFilterPattern?.includes ?? []}
-              type={FilterPatternEnum.SCHEMA}
-            />
-            <FilterPattern
-              checked={showTableFilter}
-              excludePattern={tableFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.TABLE)
-              }
-              includePattern={tableFilterPattern?.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.TABLE}
-            />
+            {getFilterPatterns()}
             {getSeparator('')}
             {getDatabaseFieldToggles()}
           </Fragment>
@@ -511,7 +519,7 @@ const ConfigureIngestion = ({
             {getSeparator('')}
           </Field>
         </div>
-        <div>{getMetadataFilterPatternField()}</div>
+        {getFilterPatterns()}
         {getSeparator('')}
         {getProfileSample()}
         {getSeparator('')}
