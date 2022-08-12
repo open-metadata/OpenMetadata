@@ -22,11 +22,8 @@ from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from typing_extensions import Self
 
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfile,
-    Table,
-    TableProfile,
-)
+from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import (
@@ -38,10 +35,8 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TMetric,
 )
-from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
-from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -70,15 +65,7 @@ class Profiler(Generic[TMetric]):
         self,
         *metrics: Type[TMetric],
         profiler_interface: InterfaceProtocol,
-        table: DeclarativeMeta,
-        table_entity: Table,
         profile_date: datetime = datetime.now(),
-        ignore_cols: Optional[List[str]] = None,
-        use_cols: Optional[List[Column]] = None,
-        profile_sample: Optional[float] = None,
-        timeout_seconds: Optional[int] = TEN_MIN,
-        partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -88,19 +75,10 @@ class Profiler(Generic[TMetric]):
         :param profile_sample: % of rows to use for sampling column metrics
         """
 
-        if not isinstance(table, DeclarativeMeta):
-            raise ValueError(f"Table {table} should be a DeclarativeMeta.")
-
         self.profiler_interface = profiler_interface
-        self._table = table
-        self.table_entity = table_entity
         self._metrics = metrics
-        self._ignore_cols = ignore_cols
-        self._use_cols = use_cols
-        self._profile_sample = profile_sample
         self._profile_date = profile_date
-        self._partition_details = partition_details
-        self._profile_sample_query = profile_sample_query
+        self.status = ProcessorStatus()
 
         self.validate_composed_metric()
 
@@ -128,7 +106,7 @@ class Profiler(Generic[TMetric]):
 
     @property
     def table(self) -> DeclarativeMeta:
-        return self._table
+        return self.profiler_interface.table
 
     @property
     def metrics(self) -> Tuple[Type[TMetric], ...]:
@@ -136,7 +114,7 @@ class Profiler(Generic[TMetric]):
 
     @property
     def ignore_cols(self) -> List[str]:
-        return self._ignore_cols
+        return self._get_excluded_columns()
 
     @property
     def use_cols(self) -> List[Column]:
@@ -147,7 +125,7 @@ class Profiler(Generic[TMetric]):
         instead of picking up all table's columns
         and ignoring the specified ones.
         """
-        return self._use_cols
+        return self._get_included_columns()
 
     @property
     def profile_date(self) -> datetime:
@@ -166,14 +144,14 @@ class Profiler(Generic[TMetric]):
         if self._get_included_columns():
             self._columns = [
                 column
-                for column in inspect(self.table).c
+                for column in inspect(self.profiler_interface.table).c
                 if column.name in self._get_included_columns()
             ]
 
         if not self._get_included_columns():
             self._columns = [
                 column
-                for column in inspect(self.table).c
+                for column in self.profiler_interface.get_columns()
                 if column.name not in self._get_excluded_columns()
             ]
 
@@ -182,24 +160,24 @@ class Profiler(Generic[TMetric]):
     def _get_excluded_columns(self) -> Set[str]:
         """Get excluded  columns from table"""
         if (
-            self.table_entity.tableProfilerConfig
-            and self.table_entity.tableProfilerConfig.excludeColumns
+            self.profiler_interface.table_entity.tableProfilerConfig
+            and self.profiler_interface.table_entity.tableProfilerConfig.excludeColumns
         ):
             return {
                 excl_cln
-                for excl_cln in self.table_entity.tableProfilerConfig.excludeColumns
+                for excl_cln in self.profiler_interface.table_entity.tableProfilerConfig.excludeColumns
             }
 
         return {}
 
     def _get_included_columns(self) -> Optional[Set[str]]:
         if (
-            self.table_entity.tableProfilerConfig
-            and self.table_entity.tableProfilerConfig.includeColumns
+            self.profiler_interface.table_entity.tableProfilerConfig
+            and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
         ):
             return {
                 incl_cln.columnName
-                for incl_cln in self.table_entity.tableProfilerConfig.includeColumns
+                for incl_cln in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
                 if incl_cln.columnName not in self._get_excluded_columns()
             }
 
@@ -238,12 +216,12 @@ class Profiler(Generic[TMetric]):
             return [metric for metric in metrics if metric.is_col_metric()]
 
         if (
-            self.table_entity.tableProfilerConfig
-            and self.table_entity.tableProfilerConfig.includeColumns
+            self.profiler_interface.table_entity.tableProfilerConfig
+            and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
         ):
             metric_names = (
                 metric_array
-                for col_name, metric_array in self.table_entity.tableProfilerConfig.includeColumns
+                for col_name, metric_array in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
                 if col_name == column
             )
             if metric_names:
@@ -308,10 +286,7 @@ class Profiler(Generic[TMetric]):
                     metrics,  # metric functions
                     MetricTypes.Table,  # metric type for function mapping
                     None,  # column name
-                    self.table,  # ORM table object
-                    self._profile_sample,  # profile sample
-                    self._partition_details,  # partition details if any
-                    self._profile_sample_query,  # profile sample query
+                    self.table,  # table name
                 )
             ]
         return []
@@ -336,9 +311,6 @@ class Profiler(Generic[TMetric]):
                     MetricTypes.Static,
                     column,
                     self.table,
-                    self._profile_sample,
-                    self._partition_details,
-                    self._profile_sample_query,
                 )
                 for column in columns
             ],
@@ -348,9 +320,6 @@ class Profiler(Generic[TMetric]):
                     MetricTypes.Query,
                     column,
                     self.table,
-                    self._profile_sample,
-                    self._partition_details,
-                    self._profile_sample_query,
                 )
                 for column in self.columns
                 for metric in self.get_col_metrics(self.query_metrics, column)
@@ -361,9 +330,6 @@ class Profiler(Generic[TMetric]):
                     MetricTypes.Window,
                     column,
                     self.table,
-                    self._profile_sample,
-                    self._partition_details,
-                    self._profile_sample_query,
                 )
                 for column in self.columns
                 for metric in [
@@ -399,6 +365,22 @@ class Profiler(Generic[TMetric]):
             self.run_composed_metrics(column)
 
         return self
+
+    def process(self) -> TableProfile:
+        """
+        Given a table, we will prepare the profiler for
+        all its columns and return all the run profilers
+        in a Dict in the shape {col_name: Profiler}
+        """
+        logger.info(
+            f"Executing profilers for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+        )
+        self.execute()
+
+        self.status.processed(
+            self.profiler_interface.table_entity.fullyQualifiedName.__root__
+        )
+        return self.get_profile()
 
     def get_profile(self) -> TableProfile:
         """
@@ -439,8 +421,8 @@ class Profiler(Generic[TMetric]):
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
                 columnProfile=computed_profiles,
-                profileQuery=self._profile_sample_query,
-                profileSample=self._profile_sample,
+                profileQuery=self.profiler_interface._profile_sample_query,
+                profileSample=self.profiler_interface._profile_sample,
             )
 
             return profile

@@ -15,13 +15,31 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Optional
 
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.orm_profiler.api.models import ProfilerProcessorConfig
+from metadata.utils.processor_config_helper import get_record_test_def
 
 
 class InterfaceProtocol(ABC):
     """Protocol interface for the processor"""
+
+    @abstractmethod
+    def __init__(
+        self,
+        metadata_config: OpenMetadataConnection = None,
+        profiler_config: ProfilerProcessorConfig = None,
+        workflow_profile_sample: float = None,
+        thread_count: int = 5,
+        table: Table = None,
+    ):
+        """Required attribute for the interface"""
+        raise NotImplementedError
 
     @abstractmethod
     def create_sampler(*args, **kwargs) -> None:
@@ -34,36 +52,34 @@ class InterfaceProtocol(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_table_metrics(*args, **kwargs) -> Dict:
-        """Method to retrieve table metrics"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_window_metrics(*args, **kwargs) -> Dict:
-        """Method to retrieve window metrics"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_static_metrics(*args, **kwargs) -> Dict:
-        """Method to retrieve static metrics"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_query_metrics(*args, **kwargs) -> Dict:
-        """Method to retrieve query metrics"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_composed_metrics(*args, **kwargs) -> Dict:
-        """Method to retrieve composed metrics"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def run_table_test(*args, **kwargs) -> Optional[TestCaseResult]:
-        """run table data quality tests"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def run_column_test(*args, **kwargs) -> Optional[TestCaseResult]:
+    def run_test_case(*args, **kwargs) -> Optional[TestCaseResult]:
         """run column data quality tests"""
         raise NotImplementedError
+
+    def get_table_profile_sample(self) -> Optional[float]:
+        """
+        Pick the Table profileSample value, either from the test
+        definition or the value from the instance.
+
+        :param table: Table instance
+        :return: profileSample value to use
+        """
+        if self.profiler_config.testSuites:
+            # If the processed table has information about the profile_sample,
+            # use that instead of the Entity stored profileSample
+            my_record_tests = get_record_test_def(self.table)
+            if my_record_tests and my_record_tests.profile_sample:
+                return my_record_tests.profile_sample
+
+        if self.workflow_profile_sample:
+            if (
+                self.table.tableProfilerConfig.profileSample is not None
+                and self.workflow_profile_sample != self.table.profileSample
+            ):
+                return self.table.tableProfilerConfig.profileSample
+            return self.workflow_profile_sample
+
+        if not self.table.tableProfilerConfig:
+            return None
+
+        return self.table.tableProfilerConfig.profileSample

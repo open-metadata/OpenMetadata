@@ -45,6 +45,9 @@ from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.core import Profiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
@@ -87,7 +90,7 @@ class ProfilerWorkflow:
         )
         self.source_status = SQLSourceStatus()
 
-        self.processor = None
+        self.processor_obj = None
 
         if self.config.sink:
             self.sink = get_sink(
@@ -115,6 +118,38 @@ class ProfilerWorkflow:
         except ValidationError as err:
             logger.error("Error trying to parse the Profiler Workflow configuration")
             raise err
+
+    def create_profiler_interface(self, service_connection_config, table_entity: Table):
+        """Creates a profiler interface object"""
+        self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
+            service_connection_config,
+            metadata_config=self.metadata_config,
+            profiler_config=ProfilerProcessorConfig.parse_obj(
+                self.config.processor.dict().get("config")
+            )
+            or ProfilerProcessorConfig(),
+            workflow_profile_sample=self.source_config.profileSample,
+            thread_count=self.source_config.threadCount,
+            table_entity=table_entity,
+        )
+
+    def create_profiler_obj(self):
+        """Profile a single entity"""
+        if not self.processor_interface.profiler_config.profiler:
+            self.profiler_obj = DefaultProfiler(
+                profiler_interface=self.processor_interface,
+            )
+        else:
+            metrics = (
+                [Metrics.get(name) for name in self.config.profiler.metrics]
+                if self.processor_interface.profiler_config.profiler.metrics
+                else get_default_metrics(self.processor_interface.table)
+            )
+
+            self.profiler_obj = Profiler(
+                *metrics,
+                profiler_interface=self.processor_interface,
+            )
 
     def filter_databases(self, database: Database) -> Database:
         """Returns filtered database entities"""
@@ -163,12 +198,8 @@ class ProfilerWorkflow:
                 logger.error(err)
                 logger.debug(traceback.format_exc())
 
-    def create_processor(self, service_connection_config):
-        self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
-            service_connection_config,
-            thread_count=self.source_config.threadCount,
-        )
-        self.processor = get_processor(
+    def create_processor_obj(self):
+        self.processor_obj = get_processor(
             processor_type=self.config.processor.type,  # orm-profiler
             processor_config=self.config.processor or ProfilerProcessorConfig(),
             metadata_config=self.metadata_config,
@@ -240,7 +271,7 @@ class ProfilerWorkflow:
             "supportsDatabase",
         ):
             if hasattr(
-                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
+                self.config.source.serviceConnection.__root__.config, "database"
             ):
                 copy_service_connection_config.database = database.name.__root__
             if hasattr(self.config.source.serviceConnection.__root__.config, "catalog"):
@@ -262,14 +293,18 @@ class ProfilerWorkflow:
             )
 
         for database in databases:
+            copied_service_config = self.copy_service_config(database)
             try:
-                self.create_processor(self.copy_service_config(database))
-
                 for entity in self.get_table_entities(database=database):
                     try:
-                        profile_and_tests: ProfilerResponse = self.processor.process(
+                        self.create_profiler_interface(copied_service_config, entity)
+                        self.create_profiler_obj()
+                        profile = self.profiler_obj.process()
+                        self.create_processor_obj()
+                        profile_and_tests: ProfilerResponse = self.processor_obj.process(
                             record=entity,
                             generate_sample_data=self.source_config.generateSampleData,
+                            entity_profile=profile,
                         )
 
                         if hasattr(self, "sink"):
@@ -291,7 +326,7 @@ class ProfilerWorkflow:
         click.secho("Source Status:", bold=True)
         click.echo(self.source_status.as_string())
         click.secho("Processor Status:", bold=True)
-        click.echo(self.processor.get_status().as_string())
+        click.echo(self.processor_obj.get_status().as_string())
         if hasattr(self, "sink"):
             click.secho("Sink Status:", bold=True)
             click.echo(self.sink.get_status().as_string())
@@ -299,14 +334,14 @@ class ProfilerWorkflow:
 
         if (
             self.source_status.failures
-            or self.processor.get_status().failures
+            or self.processor_obj.get_status().failures
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
             click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
         if (
             self.source_status.warnings
-            or self.processor.get_status().failures
+            or self.processor_obj.get_status().failures
             or (hasattr(self, "sink") and self.sink.get_status().warnings)
         ):
             click.secho("Workflow finished with warnings", fg="yellow", bold=True)
@@ -323,9 +358,9 @@ class ProfilerWorkflow:
         as we are just picking up data from OM.
         """
 
-        if self.processor.get_status().failures:
+        if self.processor_obj.get_status().failures:
             raise WorkflowExecutionError(
-                "Processor reported errors", self.processor.get_status()
+                "Processor reported errors", self.processor_obj.get_status()
             )
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
@@ -335,9 +370,9 @@ class ProfilerWorkflow:
                 raise WorkflowExecutionError(
                     "Source reported warnings", self.source_status
                 )
-            if self.processor.get_status().warnings:
+            if self.processor_obj.get_status().warnings:
                 raise WorkflowExecutionError(
-                    "Processor reported warnings", self.processor.get_status()
+                    "Processor reported warnings", self.processor_obj.get_status()
                 )
             if hasattr(self, "sink") and self.sink.get_status().warnings:
                 raise WorkflowExecutionError(
@@ -355,7 +390,7 @@ class ProfilerWorkflow:
         Close all connections
         """
         self.metadata.close()
-        self.processor.close()
+        self.processor_obj.close()
 
     def _retrieve_service_connection_if_needed(self) -> None:
         """
