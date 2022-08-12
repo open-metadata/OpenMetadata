@@ -298,7 +298,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
             description = "Policy for instance {id} and version {version} is" + " " + "not found")
       })
   public ResultList<ResourceDescriptor> listPolicyResources(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new ResourceDescriptorList(ResourceRegistry.listResourceDescriptors());
   }
 
