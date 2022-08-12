@@ -84,6 +84,25 @@ export const addUsageIngestionGuide = [
   },
 ];
 
+export const addLineageIngestionGuide = [
+  {
+    step: 1,
+    title: 'Add Lineage Ingestion',
+    description: `Lineage ingestion can be configured and deployed after a metadata ingestion has been set up. The lineage ingestion workflow obtains the query history,
+    parses CREATE, INSERT, MERGE... queries and prepares the lineage between the involved entities. The lineage ingestion can have only one pipeline for a database service. 
+    Define the Query Log Duration (in days) and Result Limit to start.`,
+  },
+  {
+    ...schedulingIngestionGuide,
+  },
+  {
+    step: 4,
+    title: 'Lineage Ingestion Added Successfully',
+    description:
+      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The lineage will be ingested at a regular interval as per the schedule.',
+  },
+];
+
 export const addProfilerIngestionGuide = [
   {
     step: 1,

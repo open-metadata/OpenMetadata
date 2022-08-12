@@ -496,6 +496,55 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getLineageFields = () => {
+    return (
+      <>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-1"
+            htmlFor="query-log-duration">
+            Query Log Duration
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Configuration to tune how far we want to look back in query logs to
+            process usage data.
+          </p>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="query-log-duration"
+            id="query-log-duration"
+            name="query-log-duration"
+            type="number"
+            value={queryLogDuration}
+            onChange={(e) => handleQueryLogDuration(parseInt(e.target.value))}
+          />
+          {getSeparator('')}
+        </Field>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-1"
+            htmlFor="result-limit">
+            Result Limit
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Configuration to set the limit for query logs.
+          </p>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="result-limit"
+            id="result-limit"
+            name="result-limit"
+            type="number"
+            value={resultLimit}
+            onChange={(e) => handleResultLimit(parseInt(e.target.value))}
+          />
+          {getSeparator('')}
+        </Field>
+        {getDebugLogToggle()}
+      </>
+    );
+  };
+
   const getProfilerFields = () => {
     return (
       <>
@@ -554,6 +603,9 @@ const ConfigureIngestion = ({
     switch (pipelineType) {
       case PipelineType.Usage: {
         return getUsageFields();
+      }
+      case PipelineType.Lineage: {
+        return getLineageFields();
       }
       case PipelineType.Profiler: {
         return getProfilerFields();

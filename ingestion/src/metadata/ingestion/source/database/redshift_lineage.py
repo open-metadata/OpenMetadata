@@ -10,23 +10,40 @@
 #  limitations under the License.
 """
 Redshift usage module
+
+Execute with
+
+source:
+  type: redshift-lineage
+  serviceName: aws_redshift_demo_2
+  sourceConfig:
+    config:
+      queryLogDuration: 1
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+
 """
 
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.redshift_query_parser import (
     RedshiftQueryParserSource,
 )
-from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
 
-class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
+class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
 
     filters = """
-        AND querytxt NOT ILIKE 'fetch %%'
-        AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
-        AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
-        AND querytxt NOT ILIKE 'create table %% as select %%'
-        AND querytxt NOT ILIKE 'insert %%'
+        AND (
+          querytxt ILIKE 'create table %% as select %%'
+          OR querytxt ILIKE 'insert %%'
+        )
     """
 
     sql_stmt = REDSHIFT_SQL_STATEMENT

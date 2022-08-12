@@ -11,7 +11,6 @@
 """
 Common Query Log Connector
 """
-from datetime import datetime
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -19,14 +18,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.source.database.usage_source import UsageSource
+from metadata.ingestion.source.database.lineage_source import LineageSource
 
 
-class QueryLogUsageSource(UsageSource):
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.analysis_date = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-
+class QueryLogLineageSource(LineageSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
