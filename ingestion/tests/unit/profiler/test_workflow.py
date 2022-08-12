@@ -34,9 +34,27 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.orm_profiler.profiler.models import ProfilerDef
+
+TABLE = Table(
+    id=uuid.uuid4(),
+    name="users",
+    fullyQualifiedName="service.db.users",
+    columns=[
+        Column(name="id", dataType=DataType.INT),
+        Column(name="name", dataType=DataType.STRING),
+        Column(name="fullname", dataType=DataType.STRING),
+        Column(name="nickname", dataType=DataType.STRING),
+        Column(name="age", dataType=DataType.INT),
+    ],
+    database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
+    tableProfilerConfig=TableProfilerConfig(
+        profilerCo=80.0,
+    ),
+)
 
 config = {
     "source": {
@@ -55,13 +73,29 @@ config = {
     },
 }
 
+Base = declarative_base()
 
+
+class User(Base):
+    __tablename__ = "users"
+    id = sqa.Column(sqa.Integer, primary_key=True)
+    name = sqa.Column(sqa.String(256))
+    fullname = sqa.Column(sqa.String(256))
+    nickname = sqa.Column(sqa.String(256))
+    age = sqa.Column(sqa.Integer)
+
+
+@patch.object(
+    SQAProfilerInterface,
+    "_convert_table_to_orm_object",
+    return_value=User,
+)
 @patch.object(
     ProfilerWorkflow,
     "_validate_service_name",
     return_value=True,
 )
-def test_init_workflow(mocked_method):
+def test_init_workflow(mocked_method, mocked_orm):
     """
     We can initialise the workflow from a config
     """
@@ -71,11 +105,15 @@ def test_init_workflow(mocked_method):
     assert isinstance(workflow.source_config, DatabaseServiceProfilerPipeline)
     assert isinstance(workflow.metadata_config, OpenMetadataConnection)
 
-    workflow.create_processor(workflow.config.source.serviceConnection.__root__.config)
+    workflow.create_profiler_interface(
+        workflow.config.source.serviceConnection.__root__.config,
+        TABLE,
+    )
+    workflow.create_processor_obj()
 
-    assert isinstance(workflow.processor, OrmProfilerProcessor)
-    assert workflow.processor.config.profiler is None
-    assert workflow.processor.config.testSuites is None
+    assert isinstance(workflow.processor_obj, OrmProfilerProcessor)
+    assert workflow.processor_obj.config.profiler is None
+    assert workflow.processor_obj.config.testSuites is None
 
 
 @patch.object(
@@ -156,11 +194,16 @@ def test_filter_entities(mocked_method):
 
 
 @patch.object(
+    SQAProfilerInterface,
+    "_convert_table_to_orm_object",
+    return_value=User,
+)
+@patch.object(
     ProfilerWorkflow,
     "_validate_service_name",
     return_value=True,
 )
-def test_profile_def(mocked_method):
+def test_profile_def(mocked_method, mocked_orm):
     """
     Validate the definitions of the profile in the JSON
     """
@@ -172,9 +215,11 @@ def test_profile_def(mocked_method):
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
-    profile_workflow.create_processor(
-        profile_workflow.config.source.serviceConnection.__root__.config
+    profile_workflow.create_profiler_interface(
+        profile_workflow.config.source.serviceConnection.__root__.config,
+        TABLE,
     )
+    profile_workflow.create_processor_obj()
 
     profile_definition = ProfilerDef(
         name="my_profiler",
@@ -183,16 +228,21 @@ def test_profile_def(mocked_method):
         custom_metrics=None,
     )
 
-    assert isinstance(profile_workflow.processor, OrmProfilerProcessor)
-    assert profile_workflow.processor.config.profiler == profile_definition
+    assert isinstance(profile_workflow.processor_obj, OrmProfilerProcessor)
+    assert profile_workflow.processor_obj.config.profiler == profile_definition
 
 
+@patch.object(
+    SQAProfilerInterface,
+    "_convert_table_to_orm_object",
+    return_value=User,
+)
 @patch.object(
     ProfilerWorkflow,
     "_validate_service_name",
     return_value=True,
 )
-def test_default_profile_def(mocked_method):
+def test_default_profile_def(mocked_method, mocked_orm):
     """
     If no information is specified for the profiler, let's
     use the SimpleTableProfiler and SimpleProfiler
@@ -200,42 +250,19 @@ def test_default_profile_def(mocked_method):
 
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
-    profile_workflow.create_processor(
-        profile_workflow.config.source.serviceConnection.__root__.config
+
+    profile_workflow.create_profiler_interface(
+        profile_workflow.config.source.serviceConnection.__root__.config, TABLE
     )
+    profile_workflow.create_processor_obj()
 
-    assert isinstance(profile_workflow.processor, OrmProfilerProcessor)
-    assert profile_workflow.processor.config.profiler is None
+    assert isinstance(profile_workflow.processor_obj, OrmProfilerProcessor)
+    assert profile_workflow.processor_obj.config.profiler is None
 
-    Base = declarative_base()
-
-    class User(Base):
-        __tablename__ = "users"
-        id = sqa.Column(sqa.Integer, primary_key=True)
-        name = sqa.Column(sqa.String(256))
-        fullname = sqa.Column(sqa.String(256))
-        nickname = sqa.Column(sqa.String(256))
-        age = sqa.Column(sqa.Integer)
-
-    table = Table(
-        id=uuid.uuid4(),
-        name="users",
-        fullyQualifiedName="service.db.users",
-        columns=[
-            Column(name="id", dataType=DataType.INT),
-            Column(name="name", dataType=DataType.STRING),
-            Column(name="fullname", dataType=DataType.STRING),
-            Column(name="nickname", dataType=DataType.STRING),
-            Column(name="age", dataType=DataType.INT),
-        ],
-        database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
-        tableProfilerConfig=TableProfilerConfig(
-            profilerCo=80.0,
-        ),
-    )
+    profile_workflow.create_profiler_obj()
 
     assert isinstance(
-        profile_workflow.processor.build_profiler(User, table=table),
+        profile_workflow.profiler_obj,
         DefaultProfiler,
     )
 

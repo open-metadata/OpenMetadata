@@ -63,7 +63,7 @@ class ProfilerTest(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+
     table_entity = Table(
         id=uuid4(),
         name="user",
@@ -73,6 +73,9 @@ class ProfilerTest(TestCase):
                 dataType=DataType.INT,
             )
         ],
+    )
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, table=User, table_entity=table_entity
     )
 
     @classmethod
@@ -89,18 +92,12 @@ class ProfilerTest(TestCase):
         cls.sqa_profiler_interface.session.add_all(data)
         cls.sqa_profiler_interface.session.commit()
 
-    def setUp(self) -> None:
-        self.sqa_profiler_interface.create_sampler(User)
-        self.sqa_profiler_interface.create_runner(User)
-
     def test_default_profiler(self):
         """
         Check our pre-cooked profiler
         """
         simple = DefaultProfiler(
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            table_entity=self.table_entity,
         )
         simple.execute()
 
@@ -160,9 +157,6 @@ class ProfilerTest(TestCase):
             count,
             like_ratio,
             profiler_interface=self.sqa_profiler_interface,
-            table=User,
-            use_cols=[User.age],
-            table_entity=self.table_entity,
         )
 
         with pytest.raises(MissingMetricException):
@@ -171,9 +165,6 @@ class ProfilerTest(TestCase):
                 like,
                 like_ratio,
                 profiler_interface=self.sqa_profiler_interface,
-                table=User,
-                use_cols=[User.age],
-                table_entity=self.table_entity,
             )
 
     def test_skipped_types(self):
@@ -194,15 +185,6 @@ class ProfilerTest(TestCase):
         profiler = Profiler(
             Metrics.COUNT.value,
             profiler_interface=self.sqa_profiler_interface,
-            table=NotCompute,
-            use_cols=[
-                NotCompute.null_col,
-                NotCompute.array_col,
-                NotCompute.json_col,
-                NotCompute.map_col,
-                NotCompute.struct_col,
-            ],
-            table_entity=self.table_entity,
         )
 
         assert not profiler.column_results

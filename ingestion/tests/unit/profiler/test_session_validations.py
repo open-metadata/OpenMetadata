@@ -63,7 +63,7 @@ class SessionValidation(UnitestTestCase):
     """
 
     sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn, table=User)
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
 
@@ -92,10 +92,6 @@ class SessionValidation(UnitestTestCase):
         ]
         cls.session.add_all(data)
         cls.session.commit()
-
-    def setUp(self) -> None:
-        self.sqa_profiler_interface.create_sampler(User)
-        self.sqa_profiler_interface.create_runner(User)
 
     def test_column_values_not_in_set(self):
         """
