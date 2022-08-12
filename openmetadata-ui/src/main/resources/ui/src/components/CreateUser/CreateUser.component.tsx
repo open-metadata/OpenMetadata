@@ -212,7 +212,9 @@ const CreateUser = ({
 
   return (
     <PageLayout classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-py-4">
-      <h6 className="tw-heading tw-text-base">Create User</h6>
+      <h6 className="tw-heading tw-text-base">
+        Create {forceBot ? 'Bot' : 'User'}
+      </h6>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
           {requiredField('Email')}

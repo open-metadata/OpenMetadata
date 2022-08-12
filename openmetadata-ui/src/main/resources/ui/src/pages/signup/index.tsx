@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { UserProfile } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
@@ -24,6 +23,8 @@ import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
 import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
+import { CreateUser } from '../../generated/api/teams/createUser';
+import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
@@ -34,9 +35,7 @@ import { fetchAllUsers } from '../../utils/UserDataUtils';
 const cookieStorage = new CookieStorage();
 
 const Signup = () => {
-  const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
-    []
-  );
+  const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [details, setDetails] = useState({
     displayName: appState.newUser.name || '',
@@ -64,14 +63,12 @@ const Signup = () => {
       });
   };
 
-  const createNewUser = (details: {
-    [name: string]: string | Array<string> | UserProfile;
-  }) => {
+  const createNewUser = (details: User | CreateUser) => {
     setLoading(true);
-    createUser(details)
+    createUser(details as CreateUser)
       .then((res) => {
-        if (res.data) {
-          appState.updateUserDetails(res.data);
+        if (res) {
+          appState.updateUserDetails(res);
           fetchAllUsers();
           getUserPermissions();
           cookieStorage.removeItem(REDIRECT_PATHNAME);

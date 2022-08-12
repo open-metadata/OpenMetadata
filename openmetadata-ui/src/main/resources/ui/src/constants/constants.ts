@@ -29,7 +29,7 @@ export const SUPPORTED_DOMAIN_TYPES = [
 ];
 
 export const FOLLOWERS_VIEW_CAP = 20;
-export const INITIAL_PAGIN_VALUE = 1;
+export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 12;
