@@ -32,7 +32,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 import javax.validation.Validator;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -58,7 +57,6 @@ import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
-@Slf4j
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
@@ -291,16 +289,16 @@ public final class TablesInitializer {
 
   private static void printToConsoleInDebug(String message) {
     if (DEBUG_MODE) {
-      LOG.debug(message);
+      System.out.println(message);
     }
   }
 
   private static void printError(String message) {
-    LOG.error(message);
+    System.err.println(message);
   }
 
   private static void printToConsoleMandatory(String message) {
-    LOG.info(message);
+    System.out.println(message);
   }
 
   private static void createIngestionBot(CatalogApplicationConfig config) {
