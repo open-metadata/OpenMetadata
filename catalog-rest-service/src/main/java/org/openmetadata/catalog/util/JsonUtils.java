@@ -49,6 +49,8 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
+import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
 
@@ -58,6 +60,7 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
 
@@ -67,6 +70,11 @@ public final class JsonUtils {
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
+  }
+
+  static {
+    MASKER_OBJECT_MAPPER = OBJECT_MAPPER.copy();
+    MASKER_OBJECT_MAPPER.setAnnotationIntrospector(new IgnoreMaskedFieldAnnotationIntrospector());
   }
 
   private JsonUtils() {}
@@ -382,5 +390,14 @@ public final class JsonUtils {
   /** Given a json schema file name .../json/schema/entity/data/table.json - return data */
   private static String getSchemaGroup(String path) {
     return Paths.get(path).getParent().getFileName().toString();
+  }
+
+  /**
+   * Serialize object removing all the fields annotated with @{@link MaskedField}
+   *
+   * @return Serialized JSON string
+   */
+  public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
+    return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
   }
 }

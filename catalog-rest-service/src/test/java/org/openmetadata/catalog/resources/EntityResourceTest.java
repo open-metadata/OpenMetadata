@@ -392,6 +392,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public abstract void compareEntities(T expected, T updated, Map<String, String> authHeaders)
       throws HttpResponseException;
 
+  protected void compareChangeEventsEntities(T expected, T updated, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    compareEntities(expected, updated, authHeaders);
+  }
+
   /**
    * GET by id and GET by name with different `fields` parameter and ensure the requested fields are returned. Common
    * fields for all entities - `owner`, `followers`, and `tags` need not be tested by implementations as it is done
@@ -1804,7 +1809,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertNull(changeEvent.getChangeDescription());
       T changeEventEntity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
       validateCommonEntityFields(entity, changeEventEntity, authHeaders);
-      compareEntities(entity, changeEventEntity, authHeaders);
+      compareChangeEventsEntities(entity, changeEventEntity, authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
