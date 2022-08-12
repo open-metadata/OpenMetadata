@@ -29,7 +29,7 @@ public class ExposedAnnotator extends AbstractAnnotator {
   @Override
   public void propertyField(JFieldVar field, JDefinedClass clazz, String propertyName, JsonNode propertyNode) {
     super.propertyField(field, clazz, propertyName, propertyNode);
-    if (propertyNode.get("exposed") != null && propertyNode.get("exposed").asBoolean()) {
+    if (propertyNode.get("expose") != null && propertyNode.get("expose").asBoolean()) {
       field.annotate(ExposedField.class);
     }
   }

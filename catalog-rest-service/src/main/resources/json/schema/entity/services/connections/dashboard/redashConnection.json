@@ -26,7 +26,7 @@
       "type": "string"
     },
     "hostPort": {
-      "exposed": true,
+      "expose": true,
       "title": "Host and Port",
       "description": "URL for the Redash instance",
       "type": "string",

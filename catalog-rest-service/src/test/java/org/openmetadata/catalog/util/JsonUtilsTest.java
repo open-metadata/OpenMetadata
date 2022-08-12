@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.Json;
@@ -30,7 +32,7 @@ import javax.json.JsonPatchBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.services.connections.database.MssqlConnection;
+import org.openmetadata.catalog.services.connections.dashboard.TableauConnection;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
@@ -110,11 +112,14 @@ class JsonUtilsTest {
   }
 
   @Test
-  void testJsonWithFieldsRemoveFields() throws IOException {
-    MssqlConnection mssqlConnection =
-        new MssqlConnection().withDatabase("database").withHostPort("localhost:3306").withUsername("username");
-    MssqlConnection expectedConnection = new MssqlConnection().withHostPort("localhost:3306");
-    MssqlConnection actualConnection = JsonUtils.toExposedEntity(mssqlConnection, MssqlConnection.class);
+  void testJsonWithFieldsRemoveFields() throws IOException, URISyntaxException {
+    TableauConnection airflowConnection =
+        new TableauConnection()
+            .withHostPort(new URI("localhost:3306"))
+            .withUsername("username")
+            .withPassword("password");
+    TableauConnection expectedConnection = new TableauConnection().withHostPort(new URI("localhost:3306"));
+    TableauConnection actualConnection = JsonUtils.toExposedEntity(airflowConnection, TableauConnection.class);
     assertEquals(expectedConnection, actualConnection);
   }
 }
