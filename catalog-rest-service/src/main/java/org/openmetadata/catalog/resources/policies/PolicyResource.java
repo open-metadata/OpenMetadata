@@ -48,6 +48,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.ResourceRegistry;
@@ -416,7 +417,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
     String jsonDataFile = jsonDataFiles.get(0);
     try {
-      String json = PolicyResource.class.getClassLoader().getResourceAsStream(jsonDataFile).toString();
+      String json = IOUtil.toString(PolicyResource.class.getClassLoader().getResourceAsStream(jsonDataFile));
       return JsonUtils.readObjects(json, ResourceDescriptor.class);
     } catch (Exception e) {
       LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);

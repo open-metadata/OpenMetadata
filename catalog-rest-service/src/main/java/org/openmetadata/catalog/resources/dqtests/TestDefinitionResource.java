@@ -35,6 +35,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tests.CreateTestDefinition;
@@ -87,8 +88,8 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           try {
             LOG.info("Loading test definitions from file {}", testDefinitionFile);
             String testDefinitionJson =
-                (Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(testDefinitionFile)))
-                    .toString();
+                IOUtil.toString(
+                    Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(testDefinitionFile)));
             testDefinitionJson = testDefinitionJson.replace("<separator>", Entity.SEPARATOR);
             TestDefinition testDefinition = JsonUtils.readValue(testDefinitionJson, TestDefinition.class);
             long now = System.currentTimeMillis();

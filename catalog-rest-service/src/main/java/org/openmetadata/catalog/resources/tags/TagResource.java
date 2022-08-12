@@ -43,6 +43,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tags.CreateTag;
@@ -100,7 +101,7 @@ public class TagResource {
           try {
             LOG.info("Loading tag definitions from file {}", tagFile);
             String tagJson =
-                (Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile))).toString();
+                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
             tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             long now = System.currentTimeMillis();
