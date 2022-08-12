@@ -68,4 +68,10 @@ export const reactSingleSelectCustomStyle: StylesConfig = {
     background: isSelected ? `#DBD1F9` : '#ffffff',
     color: `${bodyTextColor}`,
   }),
+  multiValue: (styles) => {
+    return {
+      ...styles,
+      width: '70px',
+    };
+  },
 };
