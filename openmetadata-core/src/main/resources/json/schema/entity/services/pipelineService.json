@@ -5,28 +5,30 @@
   "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.services.PipelineService",
-  "javaInterfaces": [
-    "org.openmetadata.catalog.EntityInterface",
-    "org.openmetadata.catalog.ServiceEntityInterface"
-  ],
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface", "org.openmetadata.core.entity.interfaces.ServiceEntityInterface"],
   "definitions": {
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
-      "javaInterfaces": ["org.openmetadata.catalog.EnumInterface"],
-      "enum": ["Airflow", "Glue", "Airbyte", "Fivetran", "Dagster"],
+      "javaInterfaces": [
+        "org.openmetadata.core.entity.interfaces.EnumInterface"
+      ],
+      "enum": ["Airflow", "Prefect", "Glue", "Generic", "Airbyte", "Dagster"],
       "javaEnums": [
         {
           "name": "Airflow"
         },
         {
+          "name": "Prefect"
+        },
+        {
           "name": "Glue"
         },
         {
-          "name": "Airbyte"
+          "name": "Generic"
         },
         {
-          "name": "Fivetran"
+          "name": "Airbyte"
         },
         {
           "name": "Dagster"
@@ -37,9 +39,7 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.PipelineConnection",
       "description": "Pipeline Connection.",
-      "javaInterfaces": [
-        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
-      ],
+      "javaInterfaces": ["org.openmetadata.core.entity.interfaces.ServiceConnectionEntityInterface"],
       "properties": {
         "config": {
           "oneOf": [
@@ -51,9 +51,6 @@
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
-            },
-            {
-              "$ref": "./connections/pipeline/fivetranConnection.json"
             },
             {
               "$ref": "./connections/pipeline/dagsterConnection.json"
