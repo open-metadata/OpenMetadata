@@ -74,7 +74,7 @@ class SampleUsageSource(UsageSource):
             )
         return cls(config, metadata_config)
 
-    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, str]]]:
+    def get_table_query(self) -> Optional[Iterable[Dict[str, str]]]:
         yield TableQueries(
             queries=[
                 TableQuery(

@@ -9,15 +9,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MSSQL usage module
+Snowflake lineage module
 """
-from metadata.ingestion.source.database.mssql_query_parser import MssqlQueryParserSource
-from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import MSSQL_SQL_STATEMENT
+
+from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.snowflake_query_parser import (
+    SnowflakeQueryParserSource,
+)
+from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
-class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
+class SnowflakeLineageSource(SnowflakeQueryParserSource, LineageSource):
+    """
+    Snowflake class for Lineage
+    """
 
-    sql_stmt = MSSQL_SQL_STATEMENT
+    sql_stmt = SNOWFLAKE_SQL_STATEMENT
 
-    filters = ""  # No filtering in the queries
+    filters = """
+        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','COPY','CREATE_TABLE_AS_SELECT')
+    """

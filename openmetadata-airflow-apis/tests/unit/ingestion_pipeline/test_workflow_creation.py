@@ -16,7 +16,9 @@ import json
 import uuid
 from unittest import TestCase
 
-from openmetadata_managed_apis.api.utils import clean_dag_id
+from openmetadata_managed_apis.workflows.ingestion.lineage import (
+    build_lineage_workflow_config,
+)
 from openmetadata_managed_apis.workflows.ingestion.metadata import (
     build_metadata_workflow_config,
 )
@@ -41,6 +43,9 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
     DatabaseServiceQueryUsagePipeline,
@@ -83,7 +88,6 @@ class OMetaServiceTest(TestCase):
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    # TODO update to "snowflake-usage" after https://github.com/open-metadata/OpenMetadata/issues/4469
     usage_data = {
         "type": "snowflake",
         "serviceName": "local_snowflake",
@@ -96,7 +100,22 @@ class OMetaServiceTest(TestCase):
                 "account": "account",
             }
         },
-        "sourceConfig": {"config": {"queryLogDuration": 10}},
+        "sourceConfig": {"config": {"type": "DatabaseUsage", "queryLogDuration": 10}},
+    }
+
+    lineage_data = {
+        "type": "snowflake",
+        "serviceName": "local_snowflake",
+        "serviceConnection": {
+            "config": {
+                "type": "Snowflake",
+                "username": "openmetadata_user",
+                "password": "random",
+                "warehouse": "warehouse",
+                "account": "account",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseLineage", "queryLogDuration": 10}},
     }
 
     workflow_source = WorkflowSource(**data)
@@ -183,6 +202,36 @@ class OMetaServiceTest(TestCase):
 
         workflow_config = build_usage_workflow_config(ingestion_pipeline)
         self.assertIn("usage", workflow_config.source.type)
+
+        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+        Workflow.create(config)
+
+    def test_lineage_workflow(self):
+        """
+        Validate that the ingestionPipeline can be parsed
+        and properly load a lineage Workflow
+        """
+
+        ingestion_pipeline = IngestionPipeline(
+            id=uuid.uuid4(),
+            name="test_lineage_workflow",
+            pipelineType=PipelineType.lineage,
+            fullyQualifiedName="local_snowflake.test_lineage_workflow",
+            sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
+            openMetadataServerConnection=self.server_config,
+            airflowConfig=AirflowConfig(
+                startDate="2022-06-10T15:06:47+00:00",
+            ),
+            service=EntityReference(
+                id=self.usage_service.id,
+                type="databaseService",
+                name=self.usage_service.name.__root__,
+            ),
+        )
+
+        workflow_config = build_lineage_workflow_config(ingestion_pipeline)
+        self.assertIn("lineage", workflow_config.source.type)
 
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 

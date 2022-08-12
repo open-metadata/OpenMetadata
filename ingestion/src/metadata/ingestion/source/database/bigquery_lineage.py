@@ -9,15 +9,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MSSQL usage module
+Handle big query usage extraction
 """
-from metadata.ingestion.source.database.mssql_query_parser import MssqlQueryParserSource
-from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import MSSQL_SQL_STATEMENT
+from metadata.ingestion.source.database.bigquery_query_parser import (
+    BigqueryQueryParserSource,
+)
+from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.utils.sql_queries import BIGQUERY_STATEMENT
 
 
-class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
+class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):
 
-    sql_stmt = MSSQL_SQL_STATEMENT
+    sql_stmt = BIGQUERY_STATEMENT
 
-    filters = ""  # No filtering in the queries
+    filters = """
+        AND statement_type IN ("INSERT", "MERGE", "CREATE_TABLE_AS_SELECT", "UPDATE")
+    """
