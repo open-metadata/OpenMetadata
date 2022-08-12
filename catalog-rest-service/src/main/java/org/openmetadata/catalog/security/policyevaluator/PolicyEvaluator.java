@@ -52,6 +52,9 @@ import org.openmetadata.catalog.type.ResourcePermission;
  */
 @Slf4j
 public class PolicyEvaluator {
+
+  private PolicyEvaluator() {}
+
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
   public static void hasPermission(
       @NonNull SubjectContext subjectContext,

@@ -49,7 +49,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
@@ -98,7 +97,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         jsonFile -> {
           try {
             String roleJson =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonFile)));
+                (Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonFile))).toString();
             Role role = JsonUtils.readValue(roleJson, entityClass);
             List<EntityReference> policies = role.getPolicies();
             for (EntityReference policy : policies) {

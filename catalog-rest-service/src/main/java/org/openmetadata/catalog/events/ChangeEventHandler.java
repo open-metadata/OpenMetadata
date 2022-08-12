@@ -294,7 +294,7 @@ public class ChangeEventHandler implements EventHandler {
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
     if (entity == null) {
-      return null; // Response has no entity to produce change event from
+      return Collections.emptyList(); // Response has no entity to produce change event from
     }
 
     // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
@@ -305,7 +305,7 @@ public class ChangeEventHandler implements EventHandler {
       if (realEntity != null) {
         return getThreads(realEntity, changeEvent.getChangeDescription(), loggedInUserName);
       }
-      return null; // Cannot create a thread without entity
+      return Collections.emptyList(); // Cannot create a thread without entity
     }
 
     var entityInterface = (EntityInterface) entity;
@@ -329,7 +329,7 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     if (entityInterface.getChangeDescription() == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     return getThreads(entityInterface, entityInterface.getChangeDescription(), loggedInUserName);

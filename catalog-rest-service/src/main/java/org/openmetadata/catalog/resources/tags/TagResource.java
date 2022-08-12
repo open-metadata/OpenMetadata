@@ -43,7 +43,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tags.CreateTag;
@@ -101,7 +100,7 @@ public class TagResource {
           try {
             LOG.info("Loading tag definitions from file {}", tagFile);
             String tagJson =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
+                (Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile))).toString();
             tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             long now = System.currentTimeMillis();
@@ -412,7 +411,7 @@ public class TagResource {
     authorizer.authorizeAdmin(securityContext, true);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
-    RestUtil.PutResponse response;
+    RestUtil.PutResponse<?> response;
     if (primaryTag.equals(create.getName())) { // Not changing the name
       response = dao.createOrUpdate(uriInfo, tag);
     } else {
@@ -457,7 +456,7 @@ public class TagResource {
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
-    RestUtil.PutResponse response;
+    RestUtil.PutResponse<?> response;
     // TODO clean this up
     if (secondaryTag.equals(create.getName())) { // Not changing the name
       response = dao.createOrUpdate(uriInfo, tag);

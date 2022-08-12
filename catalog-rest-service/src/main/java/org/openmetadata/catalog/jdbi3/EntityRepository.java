@@ -54,7 +54,6 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -246,7 +245,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         jsonDataFile -> {
           try {
             String json =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
+                (Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile))).toString();
             initSeedData(JsonUtils.readValue(json, entityClass));
           } catch (Exception e) {
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
@@ -713,7 +712,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public void removeExtension(EntityInterface entity) throws JsonProcessingException {
+  public void removeExtension(EntityInterface entity) {
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
@@ -814,7 +813,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getFollowers(T entity) throws IOException {
     if (!supportsFollower || entity == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
@@ -1068,7 +1067,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static List<UUID> toIds(List<String> ids) {
     if (ids == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<UUID> uuids = new ArrayList<>();
     for (String id : ids) {

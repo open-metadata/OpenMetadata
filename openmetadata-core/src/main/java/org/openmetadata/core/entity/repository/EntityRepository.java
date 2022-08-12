@@ -243,7 +243,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         jsonDataFile -> {
           try {
             String json =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
+                (Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile))).toString();
             initSeedData(JsonUtils.readValue(json, entityClass));
           } catch (Exception e) {
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);

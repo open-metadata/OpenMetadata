@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.POLICIES;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
@@ -37,12 +38,12 @@ import org.openmetadata.catalog.util.ResultList;
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
   public RoleRepository(CollectionDAO dao) {
-    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, "policies", "policies");
+    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, POLICIES, POLICIES);
   }
 
   @Override
   public Role setFields(Role role, Fields fields) throws IOException {
-    role.setPolicies(fields.contains("policies") ? getPolicies(role) : null);
+    role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : null);
     role.setTeams(fields.contains("teams") ? getTeams(role) : null);
     role.setUsers(fields.contains("users") ? getUsers(role) : null);
     return role;

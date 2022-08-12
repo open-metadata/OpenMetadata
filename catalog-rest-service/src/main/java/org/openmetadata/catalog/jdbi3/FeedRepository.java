@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD;
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.PIPELINE;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.TOPIC;
@@ -239,7 +240,7 @@ public class FeedRepository {
                     String.format(
                         "The Column with name '%s' is not found in the table.", entityLink.getArrayFieldName()));
               }
-            } else if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+            } else if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
               table.setDescription(newValue);
             } else if (tagTasks.contains(taskType) && entityLink.getFieldName().equals("tags")) {
               List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
@@ -264,7 +265,7 @@ public class FeedRepository {
         case TOPIC:
           Topic topic = JsonUtils.readValue(json, Topic.class);
           oldJson = JsonUtils.pojoToJson(topic);
-          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
             topic.setDescription(newValue);
           } else if (tagTasks.contains(taskType) && entityLink.getFieldName().equals("tags")) {
             List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
@@ -282,7 +283,7 @@ public class FeedRepository {
         case DASHBOARD:
           Dashboard dashboard = JsonUtils.readValue(json, Dashboard.class);
           oldJson = JsonUtils.pojoToJson(dashboard);
-          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
             dashboard.setDescription(newValue);
           } else if (entityLink.getFieldName().equals("charts")) {
             Optional<EntityReference> ch =
@@ -312,7 +313,7 @@ public class FeedRepository {
         case PIPELINE:
           Pipeline pipeline = JsonUtils.readValue(json, Pipeline.class);
           oldJson = JsonUtils.pojoToJson(pipeline);
-          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
             pipeline.setDescription(newValue);
           } else if (entityLink.getFieldName().equals("tasks")) {
             Optional<Task> tsk =

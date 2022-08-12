@@ -17,6 +17,7 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.type.Include.ALL;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
@@ -87,7 +88,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   private List<EntityReference> getTables(DatabaseSchema schema) throws IOException {
     if (schema == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityRelationshipRecord> tableIds =
         findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);

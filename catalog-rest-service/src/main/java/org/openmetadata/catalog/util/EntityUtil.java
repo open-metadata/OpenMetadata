@@ -34,7 +34,6 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.HttpResponseException;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
@@ -266,7 +265,7 @@ public final class EntityUtil {
 
   public static <T extends EntityInterface> List<EntityReference> toEntityReferences(List<T> entities) {
     if (entities == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityReference> entityReferences = new ArrayList<>();
     for (T entity : entities) {
@@ -331,7 +330,7 @@ public final class EntityUtil {
 
   public static List<UUID> getIDList(List<EntityReference> refList) {
     if (refList == null) {
-      return null;
+      return Collections.emptyList();
     }
     return refList.stream().sorted(compareEntityReference).map(EntityReference::getId).collect(Collectors.toList());
   }
@@ -418,7 +417,7 @@ public final class EntityUtil {
         .withSource(TagSource.GLOSSARY);
   }
 
-  public static TagLabel getTagLabel(Tag tag) throws HttpResponseException {
+  public static TagLabel getTagLabel(Tag tag) {
     return new TagLabel()
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
