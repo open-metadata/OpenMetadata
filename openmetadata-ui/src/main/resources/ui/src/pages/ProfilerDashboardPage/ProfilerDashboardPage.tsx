@@ -55,7 +55,7 @@ const ProfilerDashboardPage = () => {
       getTableFQNFromColumnFQN(fqn);
       const data = await getTableDetailsByFQN(
         getTableFQNFromColumnFQN(fqn),
-        'tags, usageSummary'
+        'tags, usageSummary, owner, followers'
       );
       setTable(data ?? ({} as Table));
       fetchProfilerData(data.id);

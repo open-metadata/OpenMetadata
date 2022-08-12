@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
+import { Col, Radio, Row } from 'antd';
+import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { addFollower, removeFollower } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
+  getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -45,15 +49,22 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import PageLayout from '../containers/PageLayout';
-import { ProfilerDashboardProps } from './profilerDashboard.interface';
+import {
+  ProfilerDashboardProps,
+  ProfilerDashboardTab,
+} from './profilerDashboard.interface';
 
 const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   table,
   profilerData,
   onTableChange,
 }) => {
+  const history = useHistory();
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
+    ProfilerDashboardTab.PROFILER
+  );
 
   const tier = useMemo(() => getTierTags(table.tags ?? []), [table]);
   const breadcrumb = useMemo(() => {
@@ -213,6 +224,14 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
   };
 
+  const handleTabChange = (e: RadioChangeEvent) => {
+    const value = e.target.value as ProfilerDashboardTab;
+    if (ProfilerDashboardTab.SUMMERY === value) {
+      history.push(getTableTabPath(table.fullyQualifiedName || '', 'profiler'));
+    }
+    setActiveTab(value);
+  };
+
   useEffect(() => {
     if (table) {
       setFollower(table?.followers || []);
@@ -224,29 +243,45 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   return (
     <PageLayout>
-      <EntityPageInfo
-        isTagEditable
-        deleted={table.deleted}
-        entityFqn={table.fullyQualifiedName}
-        entityId={table.id}
-        entityName={table.name}
-        entityType={EntityType.TABLE}
-        extraInfo={extraInfo}
-        followHandler={handleFollowClick}
-        followers={follower.length}
-        followersList={follower}
-        hasEditAccess={hasEditAccess(
-          table.owner?.type || '',
-          table.owner?.id || ''
-        )}
-        isFollowing={isFollowing}
-        tags={getTagsWithoutTier(table.tags || [])}
-        tagsHandler={onTagUpdate}
-        tier={tier}
-        titleLinks={breadcrumb}
-        updateOwner={onOwnerUpdate}
-        updateTier={onTierUpdate}
-      />
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <EntityPageInfo
+            isTagEditable
+            deleted={table.deleted}
+            entityFqn={table.fullyQualifiedName}
+            entityId={table.id}
+            entityName={table.name}
+            entityType={EntityType.TABLE}
+            extraInfo={extraInfo}
+            followHandler={handleFollowClick}
+            followers={follower.length}
+            followersList={follower}
+            hasEditAccess={hasEditAccess(
+              table.owner?.type || '',
+              table.owner?.id || ''
+            )}
+            isFollowing={isFollowing}
+            tags={getTagsWithoutTier(table.tags || [])}
+            tagsHandler={onTagUpdate}
+            tier={tier}
+            titleLinks={breadcrumb}
+            updateOwner={onOwnerUpdate}
+            updateTier={onTierUpdate}
+          />
+        </Col>
+        <Col span={8}>
+          <Radio.Group
+            buttonStyle="solid"
+            optionType="button"
+            options={Object.values(ProfilerDashboardTab)}
+            value={activeTab}
+            onChange={handleTabChange}
+          />
+        </Col>
+        <Col offset={8} span={8}>
+          col-8
+        </Col>
+      </Row>
     </PageLayout>
   );
 };

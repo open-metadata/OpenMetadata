@@ -18,3 +18,9 @@ export interface ProfilerDashboardProps {
   table: Table;
   profilerData: TableProfile[];
 }
+
+export enum ProfilerDashboardTab {
+  SUMMERY = 'Summery',
+  PROFILER = 'Profiler',
+  DATA_QUALITY = 'Data Quality',
+}
