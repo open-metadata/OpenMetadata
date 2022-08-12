@@ -713,7 +713,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public void removeExtension(EntityInterface entity) throws JsonProcessingException {
+  public void removeExtension(EntityInterface entity) {
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
@@ -814,7 +814,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getFollowers(T entity) throws IOException {
     if (!supportsFollower || entity == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
@@ -1068,7 +1068,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static List<UUID> toIds(List<String> ids) {
     if (ids == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<UUID> uuids = new ArrayList<>();
     for (String id : ids) {

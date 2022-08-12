@@ -13,8 +13,7 @@ DAG builder registry.
 
 Add a function for each type from PipelineType
 """
-
-
+from openmetadata_managed_apis.workflows.ingestion.lineage import build_lineage_dag
 from openmetadata_managed_apis.workflows.ingestion.metadata import build_metadata_dag
 from openmetadata_managed_apis.workflows.ingestion.profiler import build_profiler_dag
 from openmetadata_managed_apis.workflows.ingestion.usage import build_usage_dag
@@ -28,4 +27,5 @@ build_registry = enum_register()
 
 build_registry.add(PipelineType.metadata.value)(build_metadata_dag)
 build_registry.add(PipelineType.usage.value)(build_usage_dag)
+build_registry.add(PipelineType.lineage.value)(build_lineage_dag)
 build_registry.add(PipelineType.profiler.value)(build_profiler_dag)

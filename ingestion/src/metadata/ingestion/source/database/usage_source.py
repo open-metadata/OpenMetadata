@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Usage Souce Module
+Usage Source Module
 """
 import csv
 import traceback
@@ -17,67 +17,23 @@ from abc import ABC
 from datetime import datetime, timedelta
 from typing import Iterable, Optional
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.utils.connections import get_connection, test_connection
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class UsageSource(Source[TableQuery], ABC):
+class UsageSource(QueryParserSource, ABC):
+    """
+    Base class for all usage ingestion.
 
-    sql_stmt: str
+    Parse a query log to extract a `TableQuery` object
+    """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__()
-        self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
-        self.connection = self.config.serviceConnection.__root__.config
-        self.source_config = self.config.sourceConfig.config
-        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.analysis_date = self.end
-        self.report = SQLSourceStatus()
-
-    def prepare(self):
-        return super().prepare()
-
-    def get_database_name(self, data: dict) -> str:
-        """
-        Method to get database name
-        """
-        return data.get("database_name")
-
-    def get_schema_name(self, data: dict) -> str:
-        """
-        Method to get schema name
-        """
-        return data.get("schema_name")
-
-    def get_aborted_status(self, data: dict) -> bool:
-        """
-        Method to get aborted status of query
-        """
-        return data.get("aborted", False)
-
-    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
-        """
-        returns sql statement to fetch query logs
-        """
-        return self.sql_stmt.format(start_time=start_time, end_time=end_time)
-
-    def _get_raw_extract_iter(self) -> Optional[Iterable[TableQuery]]:
+    def get_table_query(self) -> Optional[Iterable[TableQuery]]:
         """
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data
@@ -104,7 +60,7 @@ class UsageSource(Source[TableQuery], ABC):
                             aborted=self.get_aborted_status(query_dict),
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
-                            databaseSchema=query_dict.get("schema_name"),
+                            databaseSchema=self.get_schema_name(query_dict),
                         )
                     )
             yield TableQueries(queries=query_list)
@@ -113,7 +69,8 @@ class UsageSource(Source[TableQuery], ABC):
             daydiff = self.end - self.start
             for i in range(daydiff.days):
                 logger.info(
-                    f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
+                    f"Scanning query logs for {(self.start + timedelta(days=i)).date()} - "
+                    f"{(self.start + timedelta(days=i+1)).date()}"
                 )
                 try:
                     with get_connection(self.connection).connect() as conn:
@@ -153,32 +110,10 @@ class UsageSource(Source[TableQuery], ABC):
                                 logger.error(str(err))
                     yield TableQueries(queries=queries)
                 except Exception as err:
+                    logger.error(f"Source usage processing error - {err}")
                     logger.debug(traceback.format_exc())
-                    logger.error(str(err))
 
     def next_record(self) -> Iterable[TableQuery]:
-        """
-        Using itertools.groupby and raw level iterator,
-        it groups to table and yields TableMetadata
-        :return:
-        """
-        for table_queries in self._get_raw_extract_iter():
+        for table_queries in self.get_table_query():
             if table_queries:
                 yield table_queries
-
-    def get_report(self):
-        """
-        get report
-
-        Returns:
-        """
-        return self.report
-
-    def close(self):
-        pass
-
-    def get_status(self) -> SourceStatus:
-        return self.report
-
-    def test_connection(self) -> None:
-        test_connection(self.engine)

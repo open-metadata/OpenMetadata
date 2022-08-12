@@ -106,6 +106,7 @@ public final class Entity {
   // Policy entity
   //
   public static final String POLICY = "policy";
+  public static final String POLICIES = "policies";
 
   //
   // Service

@@ -85,18 +85,15 @@ public class OpenMetadata {
       apiClient.getApiAuthorizations().remove(requestInterceptorKey);
     }
     CustomRequestInterceptor<K> newInterceptor =
-        new CustomRequestInterceptor(apiClient.getObjectMapper(), requestClass);
+        new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
     apiClient.addAuthorization(requestInterceptorKey, newInterceptor);
-    return;
   }
 
   public void addRequestInterceptor(String requestInterceptorKey, RequestInterceptor interceptor) {
     if (apiClient.getApiAuthorizations().containsKey(requestInterceptorKey)) {
       LOG.info("Interceptor with this key already exists");
-      return;
     }
     apiClient.addAuthorization(requestInterceptorKey, interceptor);
-    return;
   }
 
   public void validateVersion() {

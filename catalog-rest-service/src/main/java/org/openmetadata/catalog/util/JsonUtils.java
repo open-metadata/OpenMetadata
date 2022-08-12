@@ -125,7 +125,7 @@ public final class JsonUtils {
   /** Read an array of objects of type {@code T} from json */
   public static <T> List<T> readObjects(String json, Class<T> clz) throws IOException {
     if (json == null) {
-      return null;
+      return Collections.emptyList();
     }
     TypeFactory typeFactory = OBJECT_MAPPER.getTypeFactory();
     return OBJECT_MAPPER.readValue(json, typeFactory.constructCollectionType(List.class, clz));
@@ -134,7 +134,7 @@ public final class JsonUtils {
   /** Read an object of type {@code T} from json */
   public static <T> List<T> readObjects(List<String> jsons, Class<T> clz) throws IOException {
     if (jsons == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<T> list = new ArrayList<>();
     for (String json : jsons) {

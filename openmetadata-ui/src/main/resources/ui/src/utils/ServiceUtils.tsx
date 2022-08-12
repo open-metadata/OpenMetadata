@@ -23,6 +23,7 @@ import {
 import React from 'react';
 import { getEntityCount } from '../axiosAPIs/miscAPI';
 import {
+  addLineageIngestionGuide,
   addMetadataIngestionGuide,
   addProfilerIngestionGuide,
   addServiceGuide,
@@ -417,6 +418,11 @@ export const getServiceIngestionStepGuide = (
     switch (ingestionType) {
       case IngestionPipelineType.Usage: {
         guide = addUsageIngestionGuide.find((item) => item.step === step);
+
+        break;
+      }
+      case IngestionPipelineType.Lineage: {
+        guide = addLineageIngestionGuide.find((item) => item.step === step);
 
         break;
       }
