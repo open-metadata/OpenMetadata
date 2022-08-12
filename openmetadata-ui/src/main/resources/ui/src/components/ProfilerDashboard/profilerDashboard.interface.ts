@@ -24,3 +24,10 @@ export enum ProfilerDashboardTab {
   PROFILER = 'Profiler',
   DATA_QUALITY = 'Data Quality',
 }
+
+export enum TimeRangeOptions {
+  latest = 'Latest',
+  last7days = 'Last 7 days',
+  last14days = 'Last 14 days',
+  last30days = 'Last 30 days',
+}

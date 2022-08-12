@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, Row } from 'antd';
+import { Button, Col, Radio, Row, Select, Space } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -52,6 +52,7 @@ import PageLayout from '../containers/PageLayout';
 import {
   ProfilerDashboardProps,
   ProfilerDashboardTab,
+  TimeRangeOptions,
 } from './profilerDashboard.interface';
 
 const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
@@ -65,6 +66,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
     ProfilerDashboardTab.PROFILER
   );
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRangeOptions>(
+    TimeRangeOptions.last7days
+  );
+
+  const timeRangeOption = useMemo(() => {
+    return Object.entries(TimeRangeOptions).map(([key, value]) => ({
+      label: value,
+      value: key,
+    }));
+  }, []);
 
   const tier = useMemo(() => getTierTags(table.tags ?? []), [table]);
   const breadcrumb = useMemo(() => {
@@ -232,6 +243,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     setActiveTab(value);
   };
 
+  const handleAddTestClick = () => {
+    history.push(
+      getTableTabPath(table.fullyQualifiedName || '', 'data-quality')
+    );
+  };
+
   useEffect(() => {
     if (table) {
       setFollower(table?.followers || []);
@@ -269,17 +286,28 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             updateTier={onTierUpdate}
           />
         </Col>
-        <Col span={8}>
-          <Radio.Group
-            buttonStyle="solid"
-            optionType="button"
-            options={Object.values(ProfilerDashboardTab)}
-            value={activeTab}
-            onChange={handleTabChange}
-          />
-        </Col>
-        <Col offset={8} span={8}>
-          col-8
+        <Col span={24}>
+          <Row justify="space-between">
+            <Radio.Group
+              buttonStyle="solid"
+              optionType="button"
+              options={Object.values(ProfilerDashboardTab)}
+              value={activeTab}
+              onChange={handleTabChange}
+            />
+
+            <Space size={16}>
+              <Select
+                options={timeRangeOption}
+                style={{ width: 120 }}
+                value={selectedTimeRange}
+                onChange={(value) => setSelectedTimeRange(value)}
+              />
+              <Button type="primary" onClick={handleAddTestClick}>
+                Add Test
+              </Button>
+            </Space>
+          </Row>
         </Col>
       </Row>
     </PageLayout>
