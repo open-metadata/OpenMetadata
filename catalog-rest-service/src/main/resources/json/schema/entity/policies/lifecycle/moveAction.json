@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/policies/lifecycle/moveAction.json",
+  "$id": "https://open-metadata.org/schema/entity/policies/lifecycle/moveAction.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LifecycleMoveAction",
   "description": "An action to move the entity to a different location. For eg: Move from Standard storage tier to Archive storage tier.",

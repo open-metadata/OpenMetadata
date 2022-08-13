@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -50,10 +51,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
@@ -81,8 +82,10 @@ import org.openmetadata.catalog.util.ResultList;
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
-  private AirflowConfiguration airflowConfiguration;
+  private CatalogApplicationConfig catalogApplicationConfig;
   private final SecretsManager secretsManager;
+
+  @Getter private final IngestionPipelineRepository ingestionPipelineRepository;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -94,11 +97,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
     this.secretsManager = secretsManager;
+    this.ingestionPipelineRepository = new IngestionPipelineRepository(dao);
   }
 
   public void initialize(CatalogApplicationConfig config) {
-    this.airflowConfiguration = config.getAirflowConfiguration();
-    this.pipelineServiceClient = new AirflowRESTClient(config.getAirflowConfiguration());
+    this.catalogApplicationConfig = config;
+    this.pipelineServiceClient = new AirflowRESTClient(catalogApplicationConfig.getAirflowConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
   }
 
@@ -212,7 +216,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -252,7 +256,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Ingestion version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -333,7 +337,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -383,8 +387,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public IngestionPipeline deployIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
-      throws IOException {
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     pipelineServiceClient.deployPipeline(pipeline);
@@ -407,8 +410,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public IngestionPipeline triggerIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
-      throws IOException {
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     pipelineServiceClient.runPipeline(pipeline.getName());
@@ -431,8 +433,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response toggleIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
-      throws IOException {
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
@@ -456,8 +457,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response killIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
-      throws IOException {
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     HttpResponse<String> response = pipelineServiceClient.killIngestion(ingestionPipeline);
     return Response.status(200, response.body()).build();
@@ -520,7 +520,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
@@ -541,7 +541,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response getLastIngestionLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline);
@@ -550,7 +550,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
-        secretsManager.decryptServerConnection(airflowConfiguration);
+        secretsManager.decryptServerConnection(catalogApplicationConfig.getAirflowConfiguration());
+    openMetadataServerConnection.setClusterName(catalogApplicationConfig.getClusterName());
     openMetadataServerConnection.setSecretsManagerProvider(this.secretsManager.getSecretsManagerProvider());
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())

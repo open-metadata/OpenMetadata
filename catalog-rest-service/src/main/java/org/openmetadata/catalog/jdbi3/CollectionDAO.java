@@ -2390,6 +2390,9 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
+    @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
+    void deleteAll(@Bind("entityType") String entityType);
+
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
       if (CommonUtil.nullOrEmpty(entityTypes)) {
         return Collections.emptyList();

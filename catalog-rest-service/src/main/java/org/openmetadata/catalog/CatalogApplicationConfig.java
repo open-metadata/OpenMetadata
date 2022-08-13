@@ -92,6 +92,9 @@ public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
+  @JsonProperty("clusterName")
+  private String clusterName;
+
   @Override
   public String toString() {
     return "catalogConfig{"

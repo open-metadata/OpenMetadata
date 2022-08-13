@@ -501,6 +501,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     deleted={mlModelDetail.deleted}
                     entityLineage={lineageTabData.entityLineage}
                     entityLineageHandler={lineageTabData.entityLineageHandler}
+                    entityType={EntityType.MLMODEL}
                     isLoading={lineageTabData.isLineageLoading}
                     isNodeLoading={lineageTabData.isNodeLoading}
                     isOwner={hasEditAccess()}

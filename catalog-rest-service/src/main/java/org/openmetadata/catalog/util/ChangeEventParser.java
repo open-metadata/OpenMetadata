@@ -310,10 +310,12 @@ public final class ChangeEventParser {
       PUBLISH_TO publishTo, String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(publishTo, oldValue, newValue);
-    return nullOrEmpty(diff)
-        ? StringUtils.EMPTY
-        : String.format(
-            "Updated " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + ": %s", updatedField, diff);
+    if (nullOrEmpty(diff)) {
+      return StringUtils.EMPTY;
+    } else {
+      String field = String.format("Updated %s: %s", (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD), diff);
+      return String.format(field, updatedField);
+    }
   }
 
   private static String getObjectUpdateMessage(
@@ -333,14 +335,13 @@ public final class ChangeEventParser {
     if (newJson.containsKey("name")) {
       updatedField = String.format("%s.%s", updatedField, newJson.getString("name"));
     }
-    return String.format(
-        "Updated "
-            + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD)
-            + ":"
-            + (publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK)
-            + "%s",
-        updatedField,
-        updates);
+    String format =
+        String.format(
+            "Updated %s:%s%s",
+            publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD,
+            publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK,
+            updates);
+    return String.format(format, updatedField);
   }
 
   private static String getUpdateMessage(PUBLISH_TO publishTo, String updatedField, Object oldValue, Object newValue) {
@@ -350,9 +351,10 @@ public final class ChangeEventParser {
     }
 
     if (oldValue == null || oldValue.toString().isEmpty()) {
-      return String.format(
-          "Updated %s to %s",
-          publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD, updatedField, getFieldValue(newValue));
+      String format =
+          String.format(
+              "Updated %s to %s", publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD, getFieldValue(newValue));
+      return String.format(format, updatedField);
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
       return getPlainTextUpdateMessage(publishTo, updatedField, getFieldValue(oldValue), getFieldValue(newValue));
     }

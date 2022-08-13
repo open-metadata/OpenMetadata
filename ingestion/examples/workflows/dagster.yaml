@@ -1,0 +1,26 @@
+source:
+  type: dagster
+  serviceName: dagster_source
+  serviceConnection:
+    config:
+      type: Dagster
+      hostPort: http://localhost:8080
+      numberOfStatus: 10
+      dbConnection:
+        type: Mysql
+        username: dagster_user
+        password: dagter_pass
+        databaseSchema: dagster_db
+        hostPort: localhost:3306
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+sink:
+  type: metadata-rest
+  config: { }
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+  

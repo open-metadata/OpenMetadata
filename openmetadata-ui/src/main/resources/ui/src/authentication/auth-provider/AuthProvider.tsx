@@ -20,7 +20,6 @@ import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { UserPermissions } from 'Models';
 import React, {
   ComponentType,
   createContext,
@@ -155,7 +154,7 @@ export const AuthProvider = ({
 
   const resetUserDetails = (forceLogout = false) => {
     appState.updateUserDetails({} as User);
-    appState.updateUserPermissions({} as UserPermissions);
+    appState.updateUserPermissions([]);
     localStorage.removeItem(oidcTokenKey);
     setIsUserAuthenticated(false);
     setLoadingIndicator(false);
@@ -171,7 +170,7 @@ export const AuthProvider = ({
     setLoading(true);
     getLoggedInUserPermissions()
       .then((res) => {
-        appState.updateUserPermissions(res.metadataOperations);
+        appState.updateUserPermissions(res.data);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -380,7 +379,7 @@ export const AuthProvider = ({
         if (err && err.response && err.response.status === 404) {
           appState.updateNewUser(user.profile);
           appState.updateUserDetails({} as User);
-          appState.updateUserPermissions({} as UserPermissions);
+          appState.updateUserPermissions([]);
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
         } else {

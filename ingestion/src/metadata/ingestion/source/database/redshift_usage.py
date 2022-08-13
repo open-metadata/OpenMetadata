@@ -11,43 +11,22 @@
 """
 Redshift usage module
 """
-from typing import Iterator, Union
 
-from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
-    RedshiftConnection,
+from metadata.ingestion.source.database.redshift_query_parser import (
+    RedshiftQueryParserSource,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
-logger = ingestion_logger()
 
+class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
 
-class RedshiftUsageSource(UsageSource):
+    filters = """
+        AND querytxt NOT ILIKE 'fetch %%'
+        AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
+        AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
+        AND querytxt NOT ILIKE 'create table %% as select %%'
+        AND querytxt NOT ILIKE 'insert %%'
+    """
 
-    SQL_STATEMENT = REDSHIFT_SQL_STATEMENT
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
-            start_time=self.start, end_time=self.end
-        )
-        self._extract_iter: Union[None, Iterator] = None
-        self._database = "redshift"
-
-    @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedshiftConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, RedshiftConnection):
-            raise InvalidSourceException(
-                f"Expected RedshiftConnection, but got {connection}"
-            )
-        return cls(config, metadata_config)
+    sql_stmt = REDSHIFT_SQL_STATEMENT

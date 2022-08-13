@@ -20,7 +20,7 @@ import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.DashboardConnection;
 
-public class DashboardServiceRepository extends ServiceRepository<DashboardService, DashboardConnection> {
+public class DashboardServiceRepository extends ServiceEntityRepository<DashboardService, DashboardConnection> {
 
   public DashboardServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
@@ -31,10 +31,5 @@ public class DashboardServiceRepository extends ServiceRepository<DashboardServi
         secretsManager,
         DashboardConnection.class,
         ServiceType.DASHBOARD);
-  }
-
-  @Override
-  protected String getServiceType(DashboardService dashboardService) {
-    return dashboardService.getServiceType().value();
   }
 }

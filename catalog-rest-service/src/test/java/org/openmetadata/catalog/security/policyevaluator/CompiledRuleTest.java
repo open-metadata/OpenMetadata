@@ -21,7 +21,7 @@ class CompiledRuleTest {
     assertTrue(resourceDescriptors.size() > 0);
 
     for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
-      assertTrue(CompiledRule.matchResource(rule, resourceDescriptor.getName()));
+      assertTrue(rule.matchResource(resourceDescriptor.getName()));
     }
   }
 
@@ -43,7 +43,7 @@ class CompiledRuleTest {
     for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
       String resourceName = resourceDescriptor.getName();
       assertEquals(
-          CompiledRule.matchResource(rule, resourceName),
+          rule.matchResource(resourceName),
           ruleResources.contains(resourceName),
           "Resource name " + resourceName + " not matched");
     }

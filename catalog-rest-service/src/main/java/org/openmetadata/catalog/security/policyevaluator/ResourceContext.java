@@ -2,6 +2,7 @@ package org.openmetadata.catalog.security.policyevaluator;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.NonNull;
 import org.openmetadata.catalog.EntityInterface;
@@ -15,7 +16,7 @@ public class ResourceContext implements ResourceContextInterface {
   @NonNull private String resource;
   @NonNull private EntityRepository<? extends EntityInterface> entityRepository;
   private String fields;
-  private String id;
+  private UUID id;
   private String name;
   private EntityInterface entity; // Will be lazily initialized
 

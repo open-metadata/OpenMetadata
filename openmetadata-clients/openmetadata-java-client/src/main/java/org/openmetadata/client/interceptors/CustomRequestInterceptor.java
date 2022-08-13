@@ -38,7 +38,7 @@ public class CustomRequestInterceptor<K> implements RequestInterceptor {
       K value = mapper.readValue(body, this.getType());
       requestTemplate.body(mapper.writeValueAsString(value));
     } catch (Exception ex) {
-      LOG.error("[CustomInterceptor] Failed in transforming request with exception :" + ex.getMessage());
+      LOG.error("[CustomInterceptor] Failed in transforming request with exception {}", ex.getMessage());
     }
   }
 

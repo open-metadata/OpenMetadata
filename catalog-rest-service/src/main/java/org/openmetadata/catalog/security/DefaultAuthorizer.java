@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
@@ -23,8 +22,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -42,6 +39,8 @@ import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.Permission.Access;
+import org.openmetadata.catalog.type.ResourcePermission;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
@@ -98,7 +97,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(SecurityContext securityContext) {
+  public List<ResourcePermission> listPermissions(SecurityContext securityContext) {
     SubjectContext subjectContext;
     try {
       subjectContext = getSubjectContext(securityContext);
@@ -108,7 +107,7 @@ public class DefaultAuthorizer implements Authorizer {
 
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
       // Admins and bots have permissions to do all operations.
-      return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+      return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
     }
     return PolicyEvaluator.getAllowedOperations(subjectContext);
   }
@@ -147,17 +146,7 @@ public class DefaultAuthorizer implements Authorizer {
         && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
       return;
     }
-    List<MetadataOperation> metadataOperations = operationContext.getOperations();
-
-    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
-    if (metadataOperations.isEmpty()) {
-      throw new AuthorizationException(noPermission(securityContext.getUserPrincipal().getName()));
-    }
-    for (MetadataOperation operation : metadataOperations) {
-      if (!PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext)) {
-        throw new AuthorizationException(noPermission(securityContext.getUserPrincipal().getName(), operation.value()));
-      }
-    }
+    PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
 
   @Override

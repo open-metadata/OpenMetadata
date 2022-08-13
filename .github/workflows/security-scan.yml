@@ -60,3 +60,9 @@ jobs:
         run: |
           source env/bin/activate
           make snyk-report
+
+      - name: Upload Snyk Report HTML files
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-report

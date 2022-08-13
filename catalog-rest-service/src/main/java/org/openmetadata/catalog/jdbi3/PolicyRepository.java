@@ -28,6 +28,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.PolicyType;
@@ -63,7 +64,23 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public Policy setFields(Policy policy, Fields fields) throws IOException {
     policy.setOwner(fields.contains(FIELD_OWNER) ? getOwner(policy) : null);
     policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
+    policy.setTeams(fields.contains("teams") ? getTeams(policy) : null);
+    policy.setRoles(fields.contains("roles") ? getRoles(policy) : null);
     return policy;
+  }
+
+  /* Get all the teams that use this policy */
+  private List<EntityReference> getTeams(Policy policy) throws IOException {
+    List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
+    List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
+    return teams;
+  }
+
+  /* Get all the roles that use this policy */
+  private List<EntityReference> getRoles(Policy policy) throws IOException {
+    List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
+    List<EntityReference> roles = EntityUtil.populateEntityReferences(records, Entity.ROLE);
+    return roles;
   }
 
   /** Generate EntityReference for a given Policy's Location. * */

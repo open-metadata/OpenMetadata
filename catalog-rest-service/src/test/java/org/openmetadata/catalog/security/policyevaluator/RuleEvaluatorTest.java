@@ -1,6 +1,8 @@
 package org.openmetadata.catalog.security.policyevaluator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -58,10 +60,10 @@ class RuleEvaluatorTest {
 
     // Set owner to the entity and test noOwner method
     table.setOwner(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER));
-    assertFalse(
-        Boolean.TRUE.equals(expressionParser.parseExpression("noOwner()").getValue(evaluationContext, Boolean.class)));
-    assertTrue(
-        Boolean.TRUE.equals(expressionParser.parseExpression("!noOwner()").getValue(evaluationContext, Boolean.class)));
+    assertNotEquals(
+        Boolean.TRUE, expressionParser.parseExpression("noOwner()").getValue(evaluationContext, Boolean.class));
+    assertEquals(
+        Boolean.TRUE, expressionParser.parseExpression("!noOwner()").getValue(evaluationContext, Boolean.class));
   }
 
   @Test
@@ -71,35 +73,35 @@ class RuleEvaluatorTest {
 
     // Table owner is a different user (random ID) and hence isOwner returns false
     table.setOwner(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("otherUser"));
-    assertFalse(
-        Boolean.TRUE.equals(expressionParser.parseExpression("isOwner()").getValue(evaluationContext, Boolean.class)));
-    assertTrue(
-        Boolean.TRUE.equals(expressionParser.parseExpression("!isOwner()").getValue(evaluationContext, Boolean.class)));
+    assertNotEquals(
+        Boolean.TRUE, expressionParser.parseExpression("isOwner()").getValue(evaluationContext, Boolean.class));
+    assertEquals(
+        Boolean.TRUE, expressionParser.parseExpression("!isOwner()").getValue(evaluationContext, Boolean.class));
 
     // Table owner is same as the user in subjectContext and hence isOwner returns true
     table.setOwner(new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
-    assertTrue(
-        Boolean.TRUE.equals(expressionParser.parseExpression("isOwner()").getValue(evaluationContext, Boolean.class)));
-    assertFalse(
-        Boolean.TRUE.equals(expressionParser.parseExpression("!isOwner()").getValue(evaluationContext, Boolean.class)));
+    assertEquals(
+        Boolean.TRUE, expressionParser.parseExpression("isOwner()").getValue(evaluationContext, Boolean.class));
+    assertNotEquals(
+        Boolean.TRUE, expressionParser.parseExpression("!isOwner()").getValue(evaluationContext, Boolean.class));
 
     // noOwner() || isOwner() - with noOwner being true and isOwner false
     table.setOwner(null);
-    assertTrue(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("noOwner() || isOwner()").getValue(evaluationContext, Boolean.class)));
-    assertFalse(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("!noOwner() && !isOwner()").getValue(evaluationContext, Boolean.class)));
+    assertEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("noOwner() || isOwner()").getValue(evaluationContext, Boolean.class));
+    assertNotEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("!noOwner() && !isOwner()").getValue(evaluationContext, Boolean.class));
 
     // noOwner() || isOwner() - with noOwner is false and isOwner true
     table.setOwner(new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
-    assertTrue(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("noOwner() || isOwner()").getValue(evaluationContext, Boolean.class)));
-    assertFalse(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("!noOwner() && !isOwner()").getValue(evaluationContext, Boolean.class)));
+    assertEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("noOwner() || isOwner()").getValue(evaluationContext, Boolean.class));
+    assertNotEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("!noOwner() && !isOwner()").getValue(evaluationContext, Boolean.class));
   }
 
   @Test
@@ -109,45 +111,45 @@ class RuleEvaluatorTest {
 
     // All tags present
     table.withTags(getTags("tag1", "tag2", "tag3"));
-    assertTrue(
-        Boolean.TRUE.equals(
-            expressionParser
-                .parseExpression("matchAllTags('tag1', 'tag2', 'tag3')")
-                .getValue(evaluationContext, Boolean.class)));
-    assertFalse(
-        Boolean.TRUE.equals(
-            expressionParser
-                .parseExpression("!matchAllTags('tag1', 'tag2', 'tag3')")
-                .getValue(evaluationContext, Boolean.class)));
+    assertEquals(
+        Boolean.TRUE,
+        expressionParser
+            .parseExpression("matchAllTags('tag1', 'tag2', 'tag3')")
+            .getValue(evaluationContext, Boolean.class));
+    assertNotEquals(
+        Boolean.TRUE,
+        expressionParser
+            .parseExpression("!matchAllTags('tag1', 'tag2', 'tag3')")
+            .getValue(evaluationContext, Boolean.class));
 
     // One tag `tag4` is missing
     table.withTags(getTags("tag1", "tag2", "tag4"));
-    assertFalse(
-        Boolean.TRUE.equals(
-            expressionParser
-                .parseExpression("matchAllTags('tag1', 'tag2', 'tag3')")
-                .getValue(evaluationContext, Boolean.class)));
-    assertTrue(
-        Boolean.TRUE.equals(
-            expressionParser
-                .parseExpression("!matchAllTags('tag1', 'tag2', 'tag3')")
-                .getValue(evaluationContext, Boolean.class)));
+    assertNotEquals(
+        Boolean.TRUE,
+        expressionParser
+            .parseExpression("matchAllTags('tag1', 'tag2', 'tag3')")
+            .getValue(evaluationContext, Boolean.class));
+    assertEquals(
+        Boolean.TRUE,
+        expressionParser
+            .parseExpression("!matchAllTags('tag1', 'tag2', 'tag3')")
+            .getValue(evaluationContext, Boolean.class));
 
     // Tag `tag1` is present
-    assertTrue(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("matchAnyTag('tag1')").getValue(evaluationContext, Boolean.class)));
-    assertFalse(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("!matchAnyTag('tag1')").getValue(evaluationContext, Boolean.class)));
+    assertEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("matchAnyTag('tag1')").getValue(evaluationContext, Boolean.class));
+    assertNotEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("!matchAnyTag('tag1')").getValue(evaluationContext, Boolean.class));
 
     // Tag `tag4` is not present
-    assertTrue(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("matchAnyTag('tag4')").getValue(evaluationContext, Boolean.class)));
-    assertFalse(
-        Boolean.TRUE.equals(
-            expressionParser.parseExpression("!matchAnyTag('tag4')").getValue(evaluationContext, Boolean.class)));
+    assertEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("matchAnyTag('tag4')").getValue(evaluationContext, Boolean.class));
+    assertNotEquals(
+        Boolean.TRUE,
+        expressionParser.parseExpression("!matchAnyTag('tag4')").getValue(evaluationContext, Boolean.class));
   }
 
   private List<TagLabel> getTags(String... tags) {

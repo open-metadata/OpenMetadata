@@ -121,11 +121,14 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         {item.type === 'user' ? (
           <UserTag id={item.value as string} name={item.name as string} />
         ) : (
-          <p
-            className={classNames('tw-truncate', widthClass)}
-            title={item.name as string}>
-            {item.name}
-          </p>
+          <>
+            {item.icon}
+            <p
+              className={classNames('tw-truncate', widthClass)}
+              title={item.name as string}>
+              {item.name}
+            </p>
+          </>
         )}
       </div>
     );

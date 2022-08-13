@@ -377,8 +377,8 @@ const EntityPageInfo = ({
         getEntityFeedLink(entityType, entityFqn)
       );
 
-      if (!isEmpty(announcements)) {
-        setActiveAnnouncement(announcements[0]);
+      if (!isEmpty(announcements.data)) {
+        setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

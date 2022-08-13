@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.announcementInvalidStartTime;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.announcementOverlap;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
@@ -1263,7 +1263,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> deletePost(threadId, postId, AUTH_HEADERS),
         FORBIDDEN,
-        noPermission(USER.getName(), MetadataOperation.DELETE.value()));
+        permissionNotAllowed(USER.getName(), List.of(MetadataOperation.DELETE)));
   }
 
   @Test
@@ -1473,7 +1473,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
-    TestUtils.put(target, userId.toString(), OK, authHeaders);
+    TestUtils.put(target, userId, OK, authHeaders);
   }
 
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)

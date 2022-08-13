@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
@@ -87,7 +87,7 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-type ChartType = {
+export type ChartType = {
   displayName: string;
 } & Chart;
 
@@ -206,17 +206,16 @@ const DashboardDetailsPage = () => {
 
   const fetchCharts = async (charts: Dashboard['charts']) => {
     let chartsData: ChartType[] = [];
-    let promiseArr: Array<AxiosPromise> = [];
+    let promiseArr: Array<Promise<ChartType>> = [];
     if (charts?.length) {
       promiseArr = charts.map((chart) => getChartById(chart.id, ['tags']));
       await Promise.allSettled(promiseArr)
-        .then((res: PromiseSettledResult<AxiosResponse>[]) => {
+        .then((res) => {
           if (res.length) {
             chartsData = res
               .filter((chart) => chart.status === 'fulfilled')
               .map(
-                (chart) =>
-                  (chart as PromiseFulfilledResult<AxiosResponse>).value.data
+                (chart) => (chart as PromiseFulfilledResult<ChartType>).value
               );
           }
         })

@@ -95,6 +95,9 @@
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"

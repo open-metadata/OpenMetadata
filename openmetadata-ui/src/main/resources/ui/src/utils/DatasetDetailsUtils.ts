@@ -40,6 +40,7 @@ export const datasetTableTabs = [
   {
     name: 'Profiler',
     path: 'profiler',
+    field: TabSpecificField.TABLE_QUERIES,
   },
   {
     name: 'Data Quality',

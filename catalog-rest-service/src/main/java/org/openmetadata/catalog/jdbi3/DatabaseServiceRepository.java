@@ -20,7 +20,7 @@ import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 
-public class DatabaseServiceRepository extends ServiceRepository<DatabaseService, DatabaseConnection> {
+public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
   public DatabaseServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
         DatabaseServiceResource.COLLECTION_PATH,
@@ -30,10 +30,5 @@ public class DatabaseServiceRepository extends ServiceRepository<DatabaseService
         secretsManager,
         DatabaseConnection.class,
         ServiceType.DATABASE);
-  }
-
-  @Override
-  protected String getServiceType(DatabaseService databaseService) {
-    return databaseService.getServiceType().value();
   }
 }
