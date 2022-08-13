@@ -52,7 +52,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.ChangeEventParser;
