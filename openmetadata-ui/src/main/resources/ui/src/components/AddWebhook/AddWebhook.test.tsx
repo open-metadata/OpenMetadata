@@ -86,8 +86,25 @@ const mockData = {
   endpoint: 'http://test.com',
   eventFilters: [
     {
-      eventType: 'entityCreated',
-      entities: ['*'],
+      entityType: 'all',
+      filters: [
+        {
+          eventType: 'entityCreated',
+          fields: ['all'],
+        },
+        {
+          eventType: 'entityUpdated',
+          fields: ['all'],
+        },
+        {
+          eventType: 'entityDeleted',
+          fields: ['all'],
+        },
+        {
+          eventType: 'entitySoftDeleted',
+          fields: ['all'],
+        },
+      ],
     },
   ],
   batchSize: 10,
