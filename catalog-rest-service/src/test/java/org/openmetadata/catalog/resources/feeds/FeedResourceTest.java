@@ -1303,7 +1303,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> deleteThread(threadId, AUTH_HEADERS),
         FORBIDDEN,
-        noPermission(USER.getName(), MetadataOperation.DELETE.value()));
+        permissionNotAllowed(USER.getName(), List.of(MetadataOperation.DELETE)));
   }
 
   @Test
