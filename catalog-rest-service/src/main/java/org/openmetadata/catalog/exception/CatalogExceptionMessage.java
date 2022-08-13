@@ -169,4 +169,12 @@ public final class CatalogExceptionMessage {
   public static String announcementInvalidStartTime() {
     return "Announcement start time must be earlier than the end time";
   }
+
+  public static String failedToParse(String message) {
+    return String.format("Failed to parse - %s", message);
+  }
+
+  public static String failedToEvaluate(String message) {
+    return String.format("Failed to evaluate - %s", message);
+  }
 }

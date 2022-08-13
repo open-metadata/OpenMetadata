@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -30,12 +31,39 @@ public class CompiledRule extends Rule {
         .withResources(rule.getResources());
   }
 
+  public static Expression parseExpression(String condition) {
+    if (condition == null) {
+      return null;
+    }
+    try {
+      return EXPRESSION_PARSER.parseExpression(condition);
+    } catch (Exception exception) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.failedToParse(exception.getMessage()));
+    }
+  }
+
+  /** Used only for validating the expressions when new rule is created */
+  public static <T> T validateExpression(String condition, Class<T> clz) {
+    if (condition == null) {
+      return null;
+    }
+    Expression expression = parseExpression(condition);
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, null, null);
+    try {
+      return expression.getValue(ruleEvaluator, clz);
+    } catch (Exception exception) {
+      // Remove unnecessary class details in the exception message
+      String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
+      throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
+    }
+  }
+
   public Expression getExpression() {
     if (this.getCondition() == null) {
       return null;
     }
     if (expression == null) {
-      expression = EXPRESSION_PARSER.parseExpression(this.getCondition());
+      expression = parseExpression(getCondition());
     }
     return expression;
   }
