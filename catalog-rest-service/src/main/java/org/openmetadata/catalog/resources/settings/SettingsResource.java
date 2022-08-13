@@ -95,7 +95,7 @@ public class SettingsResource {
                       try {
                         Settings filterSettings =
                             settingsRepository.getConfigWithKey(ACTIVITY_FEED_FILTER_SETTING.toString());
-                        FilterRegistry.add((List<EventFilter>) filterSettings);
+                        FilterRegistry.add((List<EventFilter>) filterSettings.getConfigValue());
                       } catch (Exception ex) {
                         LOG.error("Fetching from DB failed during filter update ", ex);
                       }
