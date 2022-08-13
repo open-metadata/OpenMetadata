@@ -105,6 +105,14 @@ site_menu:
     url: /deployment/security/one-login/bare-metal
   - category: Deployment / Enable Security / One Login SSO / Kubernetes
     url: /deployment/security/one-login/kubernetes
+  - category: Deployment / Enable Security / Keycloak SSO
+    url: /deployment/security/keycloak
+  - category: Deployment / Enable Security / Keycloak SSO / Docker
+    url: /deployment/security/keycloak/docker
+  - category: Deployment / Enable Security / Keycloak SSO / Bare Metal
+    url: /deployment/security/keycloak/bare-metal
+  - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
+    url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
