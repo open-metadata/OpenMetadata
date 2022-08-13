@@ -24,16 +24,19 @@ public class RuleEvaluator {
 
   /** Returns true if the resource being accessed has no owner */
   public boolean noOwner() throws IOException {
-    return resourceContext.getOwner() == null;
+    return resourceContext != null && resourceContext.getOwner() == null;
   }
 
   /** Returns true if the resource is owned by the subject/user */
   public boolean isOwner() throws IOException {
-    return subjectContext.isOwner(resourceContext.getOwner());
+    return subjectContext != null && subjectContext.isOwner(resourceContext.getOwner());
   }
 
   /** Returns true if the tags of a resource being accessed matches all the tags provided as parameters */
   public boolean matchAllTags(String... tagFQNs) throws IOException {
+    if (resourceContext == null) {
+      return false;
+    }
     List<TagLabel> tags = resourceContext.getTags();
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
@@ -46,6 +49,9 @@ public class RuleEvaluator {
 
   /** Returns true if the tags of a resource being accessed matches at least one tag provided as parameters */
   public boolean matchAnyTag(List<String> tagFQNs) throws IOException {
+    if (resourceContext == null) {
+      return false;
+    }
     List<TagLabel> tags = resourceContext.getTags();
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);

@@ -22,6 +22,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
@@ -161,6 +162,61 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     rules.add(accessControlRule(null, List.of(MetadataOperation.DELETE), ALLOW));
     CreatePolicy create2 = createAccessControlPolicyWithRules(policyName, rules);
     assertResponse(() -> createEntity(create2, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[resources must not be null]");
+  }
+
+  @Test
+  void post_policiesWithInvalidConditions(TestInfo test) {
+    String policyName = getEntityName(test);
+    Rule rule = accessControlRule(List.of("all"), List.of(MetadataOperation.ALL), ALLOW);
+    CreatePolicy create = createAccessControlPolicyWithRules(policyName, List.of(rule));
+
+    // No ending parenthesis
+    rule.withCondition("!matchAnyTag('tag1'");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+
+    // No starting parenthesis
+    rule.withCondition("!matchAnyTag'tag1')");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+
+    // Non-terminating quoted string 'unexpectedParam (missing end quote) or unexpectedParam' (missing beginning quote)
+    rule.withCondition("!isOwner('unexpectedParam)");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+    rule.withCondition("!isOwner(unexpectedParam')");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+
+    // Incomplete expressions - right operand problem
+    rule.withCondition("!isOwner() ||");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+    rule.withCondition("|| isOwner()");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+
+    // Incomplete expressions
+    rule.withCondition("!");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+
+    // matchAnyTag() method does not input parameters
+    rule.withCondition("!matchAnyTag()");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+
+    // isOwner() has Unexpected input parameter
+    rule.withCondition("!isOwner('unexpectedParam')");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+
+    // Invalid function name
+    rule.withCondition("invalidFunction()");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+    rule.withCondition("isOwner() || invalidFunction()");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+
+    // Function matchTags() has no input parameter
+    rule.withCondition("matchTags()");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+
+    // Invalid text
+    rule.withCondition("a");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+    rule.withCondition("abc");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
   }
 
   @Test

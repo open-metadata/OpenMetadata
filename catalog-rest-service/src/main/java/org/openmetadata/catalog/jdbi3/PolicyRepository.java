@@ -27,9 +27,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.security.policyevaluator.CompiledRule;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
@@ -72,15 +74,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /* Get all the teams that use this policy */
   private List<EntityReference> getTeams(Policy policy) throws IOException {
     List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
-    List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
-    return teams;
+    return EntityUtil.populateEntityReferences(records, Entity.TEAM);
   }
 
   /* Get all the roles that use this policy */
   private List<EntityReference> getRoles(Policy policy) throws IOException {
     List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
-    List<EntityReference> roles = EntityUtil.populateEntityReferences(records, Entity.ROLE);
-    return roles;
+    return EntityUtil.populateEntityReferences(records, Entity.ROLE);
   }
 
   /** Generate EntityReference for a given Policy's Location. * */
@@ -137,7 +137,14 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
       return;
     }
-    EntityUtil.resolveRules(policy.getRules()); // Resolve rules performs JSON schema constraint based validation
+
+    // Resolve JSON blobs into Rule object and perform schema based validation
+    List<Rule> rules = EntityUtil.resolveRules(policy.getRules());
+
+    // Validate all the expressions in the rule
+    for (Rule rule : rules) {
+      CompiledRule.validateExpression(rule.getCondition(), Boolean.class);
+    }
   }
 
   public List<Policy> getAccessControlPolicies() throws IOException {
