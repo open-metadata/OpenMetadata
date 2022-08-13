@@ -13,6 +13,7 @@
 
 import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
 import { Edge as FlowEdge, Node } from 'react-flow-renderer';
+import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import {
   EntityLineage,
@@ -32,6 +33,7 @@ export interface EntityLineageProp {
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
+  entityType: EntityType;
   deleted?: boolean;
   isOwner?: boolean;
   isLoading?: boolean;

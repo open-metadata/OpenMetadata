@@ -40,6 +40,7 @@ const propsValue: CreateUserProps = {
   allowAccess: true,
   saveState: 'initial',
   roles: [],
+  forceBot: false,
   onSave: jest.fn(),
   onCancel: jest.fn(),
 };

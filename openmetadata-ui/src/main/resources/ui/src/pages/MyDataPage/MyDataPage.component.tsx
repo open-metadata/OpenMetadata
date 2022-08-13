@@ -25,15 +25,9 @@ import React, {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { fetchSandboxConfig } from '../../axiosAPIs/miscAPI';
-import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
-import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
-import { getAllTables } from '../../axiosAPIs/tableAPI';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { getAllTopics } from '../../axiosAPIs/topicsAPI';
-import { getUserById, getUsers } from '../../axiosAPIs/userAPI';
+import { fetchSandboxConfig, getAllEntityCount } from '../../axiosAPIs/miscAPI';
+import { getUserById } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
@@ -47,6 +41,7 @@ import {
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
@@ -55,21 +50,15 @@ import {
   getUpdatedThread,
   updateThreadData,
 } from '../../utils/FeedUtils';
-import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
-  const [countServices, setCountServices] = useState<number>();
-  const [countTables, setCountTables] = useState<number>();
-  const [countTopics, setCountTopics] = useState<number>();
-  const [countDashboards, setCountDashboards] = useState<number>();
-  const [countPipelines, setCountPipelines] = useState<number>();
-  const [countMlModal, setCountMlModal] = useState<number>();
-  const [countUsers, setCountUsers] = useState<number>();
-  const [countTeams, setCountTeams] = useState<number>();
+  const [entityCounts, setEntityCounts] = useState<EntitiesCount>(
+    {} as EntitiesCount
+  );
 
   const [ownedData, setOwnedData] = useState<Array<EntityReference>>();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
@@ -86,179 +75,37 @@ const MyDataPage = () => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const { socket } = useWebSocketConnector();
 
-  const setTableCount = (count = 0) => {
-    setCountTables(count);
-  };
-  const setTopicCount = (count = 0) => {
-    setCountTopics(count);
-  };
-  const setPipelineCount = (count = 0) => {
-    setCountPipelines(count);
-  };
-  const setDashboardCount = (count = 0) => {
-    setCountDashboards(count);
-  };
-  const setUserCount = (count = 0) => {
-    setCountUsers(count);
-  };
-  const setTeamCount = (count = 0) => {
-    setCountTeams(count);
-  };
-
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const fetchEntityCount = () => {
-    // limit=0 will fetch empty data list with total count
-    getAllTables('', 0)
+    getAllEntityCount()
       .then((res) => {
-        if (res.paging) {
-          setTableCount(res.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
+        setEntityCounts(res);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['unexpected-server-response']
+          jsonData['api-error-messages']['fetch-entity-count-error']
         );
-        setCountTables(0);
-      });
-
-    // limit=0 will fetch empty data list with total count
-    getAllTopics('', '', 0)
-      .then((res) => {
-        if (res.paging) {
-          setTopicCount(res.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setCountTopics(0);
-      });
-
-    // limit=0 will fetch empty data list with total count
-    getAllPipelines('', '', 0)
-      .then((res) => {
-        if (res.paging) {
-          setPipelineCount(res.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setCountPipelines(0);
-      });
-
-    // limit=0 will fetch empty data list with total count
-    getAllDashboards('', '', 0)
-      .then((res) => {
-        if (res.paging) {
-          setDashboardCount(res.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setCountDashboards(0);
-      });
-
-    // limit=0 will fetch empty data list with total count
-    getAllMlModal('', '', 0)
-      .then((res) => {
-        if (res.paging) {
-          setCountMlModal(res.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setCountMlModal(0);
+        setEntityCounts({
+          tableCount: 0,
+          topicCount: 0,
+          dashboardCount: 0,
+          pipelineCount: 0,
+          mlmodelCount: 0,
+          servicesCount: 0,
+          userCount: 0,
+          teamCount: 0,
+        });
       });
   };
 
-  const fetchTeamsAndUsersCount = () => {
-    getUsers('', 0, undefined, undefined, false)
-      .then((res) => {
-        if (res.paging) {
-          setUserCount(res.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setUserCount(0);
-      });
-
-    getTeams('', 0)
-      .then((res) => {
-        if (res.paging) {
-          setTeamCount(res.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setTeamCount(0);
-      });
-  };
-
-  const fetchServiceCount = () => {
-    // limit=0 will fetch empty data list with total count
-    getAllServices(true, 0)
-      .then((res) => {
-        const total = res.reduce((prev, curr) => {
-          return prev + (curr?.paging?.total || 0);
-        }, 0);
-        setCountServices(total);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setCountServices(0);
-      });
-  };
-
-  const fetchData = (fetchService = false) => {
+  const fetchData = () => {
     setError('');
-
     fetchEntityCount();
-
-    fetchTeamsAndUsersCount();
-
-    if (fetchService) {
-      fetchServiceCount();
-    }
   };
 
   const fetchMyData = async () => {
@@ -428,7 +275,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchSandboxMode();
-    fetchData(true);
+    fetchData();
     fetchMyTaskData();
   }, []);
 
@@ -479,26 +326,12 @@ const MyDataPage = () => {
 
   return (
     <PageContainerV1>
-      {!isUndefined(countServices) &&
-      !isUndefined(countTables) &&
-      !isUndefined(countTopics) &&
-      !isUndefined(countDashboards) &&
-      !isUndefined(countPipelines) &&
-      !isUndefined(countTeams) &&
-      !isUndefined(countMlModal) &&
-      !isUndefined(countUsers) ? (
+      {!isEmpty(entityCounts) ? (
         <Fragment>
           <MyData
             activityFeeds={activityFeeds}
-            countDashboards={countDashboards}
-            countMlModal={countMlModal}
-            countPipelines={countPipelines}
-            countServices={countServices}
-            countTables={countTables}
-            countTeams={countTeams}
-            countTopics={countTopics}
-            countUsers={countUsers}
             deletePostHandler={deletePostHandler}
+            entityCounts={entityCounts}
             error={error}
             feedData={entityThread || []}
             fetchFeedHandler={handleFeedFetchFromFeedList}

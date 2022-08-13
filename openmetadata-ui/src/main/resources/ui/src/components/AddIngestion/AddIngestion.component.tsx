@@ -220,6 +220,12 @@ const AddIngestion = ({
       ConfigType.DatabaseUsage
     );
   }, [data]);
+  const lineageIngestionType = useMemo(() => {
+    return (
+      (data?.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.DatabaseLineage
+    );
+  }, [data]);
   const profilerIngestionType = useMemo(() => {
     return (
       (data?.sourceConfig.config as ConfigClass)?.type ?? ConfigType.Profiler
@@ -446,6 +452,13 @@ const AddIngestion = ({
           resultLimit,
           stageFileLocation,
           type: usageIngestionType,
+        };
+      }
+      case PipelineType.Lineage: {
+        return {
+          queryLogDuration,
+          resultLimit,
+          type: lineageIngestionType,
         };
       }
       case PipelineType.Profiler: {

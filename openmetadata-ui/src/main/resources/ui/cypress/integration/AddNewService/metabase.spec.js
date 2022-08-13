@@ -12,13 +12,14 @@
  */
 
 import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Metabase';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Metabase Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage(SERVICE_TYPE.Dashboard);
 
     // Select Dashboard services
     cy.get('[data-testid="service-category"]').select('dashboardServices');
@@ -47,10 +48,10 @@ describe('Metabase Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService('Dashboard', serviceName);
+    editOwnerforCreatedService(SERVICE_TYPE.Dashboard, serviceName);
   });
 
   it('delete created service', () => {
-    deleteCreatedService('Dashboard', serviceName);
+    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName);
   });
 });

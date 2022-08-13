@@ -21,4 +21,5 @@ export interface CreateUserProps {
   roles: Array<Role>;
   onSave: (data: CreateUser) => void;
   onCancel: () => void;
+  forceBot: boolean;
 }

@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil } from 'lodash';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -52,28 +51,6 @@ export const getTopics = async (
     data: ServicePageData[];
     paging: Paging;
   }>(url);
-
-  return response.data;
-};
-
-export const getAllTopics = async (
-  paging: string,
-  arrQueryFields: string,
-  limit?: number
-) => {
-  const searchParams = new URLSearchParams();
-
-  if (!isNil(limit)) {
-    searchParams.set('limit', `${limit}`);
-  }
-
-  const url = getURLWithQueryFields(
-    `/topics`,
-    arrQueryFields,
-    `${searchParams.toString()}${paging ? `&${paging}` : ''}`
-  );
-
-  const response = await APIClient.get<{ data: Topic[]; paging: Paging }>(url);
 
   return response.data;
 };

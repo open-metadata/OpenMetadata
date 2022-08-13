@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -178,7 +179,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       })
   public Database get(
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -247,7 +248,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Database getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Database Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Database Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Database version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -289,7 +290,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -332,7 +333,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Database deleteLocation(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     dao.deleteLocation(id);
     Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
@@ -361,7 +362,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @PathParam("id") String id)
+      @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }

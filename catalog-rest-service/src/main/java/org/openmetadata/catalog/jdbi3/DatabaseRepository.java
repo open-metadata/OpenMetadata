@@ -55,8 +55,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Transaction
-  public void deleteLocation(String databaseId) {
-    deleteFrom(UUID.fromString(databaseId), Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
+  public void deleteLocation(UUID databaseId) {
+    deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
   }
 
   @Override

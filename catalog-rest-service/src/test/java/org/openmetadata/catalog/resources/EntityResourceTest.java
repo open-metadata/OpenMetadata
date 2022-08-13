@@ -34,8 +34,8 @@ import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
@@ -391,6 +391,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Entity specific validate for entity create using PATCH
   public abstract void compareEntities(T expected, T updated, Map<String, String> authHeaders)
       throws HttpResponseException;
+
+  protected void compareChangeEventsEntities(T expected, T updated, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    compareEntities(expected, updated, authHeaders);
+  }
 
   /**
    * GET by id and GET by name with different `fields` parameter and ensure the requested fields are returned. Common
@@ -941,7 +946,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        noPermission(TEST_USER_NAME, MetadataOperation.CREATE.value()));
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
   }
 
   @Test
@@ -1098,7 +1103,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return;
     }
 
-    // Set the owner for the table.
+    // Set the owner for the entity
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
@@ -1111,7 +1116,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
   }
 
   @Test
@@ -1676,7 +1681,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertResponse(
           () -> patchEntity(entity.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
-          noPermission(userName, "editDescription"));
+          permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_OWNER)));
       // Revert to original.
       entity.setDescription(originalDescription);
       return entity;
@@ -1804,7 +1809,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertNull(changeEvent.getChangeDescription());
       T changeEventEntity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
       validateCommonEntityFields(entity, changeEventEntity, authHeaders);
-      compareEntities(entity, changeEventEntity, authHeaders);
+      compareChangeEventsEntities(entity, changeEventEntity, authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
@@ -1965,7 +1970,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public ChangeEvent addFollower(UUID entityId, UUID userId, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getFollowersCollection(entityId);
-    return TestUtils.put(target, userId.toString(), ChangeEvent.class, status, authHeaders);
+    return TestUtils.put(target, userId, ChangeEvent.class, status, authHeaders);
   }
 
   protected void deleteAndCheckFollower(

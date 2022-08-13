@@ -11,46 +11,17 @@
 """
 Clickhouse usage module
 """
-
-import ast
-
-from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
-    ClickhouseConnection,
+from metadata.ingestion.source.database.clickhouse_query_parser import (
+    ClickhouseQueryParserSource,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
+from metadata.utils.sql_queries import CLICKHOUSE_SQL_STATEMENT
 
 
-class ClickhouseUsageSource(UsageSource):
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.sql_stmt = CLICKHOUSE_SQL_USAGE_STATEMENT.format(
-            start_time=self.start, end_time=self.end
-        )
+class ClickhouseUsageSource(ClickhouseQueryParserSource, UsageSource):
 
-    @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: ClickhouseConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, ClickhouseConnection):
-            raise InvalidSourceException(
-                f"Expected ClickhouseConnection, but got {connection}"
-            )
-        return cls(config, metadata_config)
+    sql_stmt = CLICKHOUSE_SQL_STATEMENT
 
-    def get_schema_name(self, data: dict) -> str:
-        """
-        Method to fetch schema name from row data
-        """
-        schema = None
-        if data.get("schema_name"):
-            schema_list = ast.literal_eval(data["schema_name"])
-            schema = schema_list[0] if len(schema_list) == 1 else None
-        return schema
+    filters = """
+        and query_kind = 'Select'
+    """

@@ -153,3 +153,11 @@ export const service = {
   newDescription: 'This is updated Glue service description',
   Owner: 'Cloud_Infra',
 };
+
+export const SERVICE_TYPE = {
+  Database: 'Database',
+  Messaging: 'Messaging',
+  Dashboard: 'Dashboard',
+  Pipelines: 'Pipelines',
+  MLModels: 'ML Models',
+};

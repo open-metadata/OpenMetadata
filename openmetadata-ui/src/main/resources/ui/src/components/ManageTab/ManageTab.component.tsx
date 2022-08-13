@@ -29,12 +29,14 @@ import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../../constants/char.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { TagsCategory } from '../../pages/tags/tagsTypes';
 import { getOwnerList } from '../../utils/ManageUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   searchFormattedUsersAndTeams,
@@ -282,7 +284,11 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return (
       isAdminUser ||
       isAuthDisabled ||
-      userPermissions[Operation.EditUsers] ||
+      hasPemission(
+        Operation.EditUsers,
+        entityType as EntityType,
+        userPermissions
+      ) ||
       !hasEditAccess
     );
   };

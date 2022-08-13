@@ -75,7 +75,7 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
         LOG.error("Credentials Path or Target Audience is null");
       }
     } catch (Exception ex) {
-      LOG.error("Google Authentication Provider error in getting access token" + ex.getMessage());
+      LOG.error("Google Authentication Provider error in getting access token: {}", ex.getMessage());
     }
     return generatedAuthToken;
   }

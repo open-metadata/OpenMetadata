@@ -27,7 +27,7 @@ describe('Test CronEditor component', () => {
     expect(await screen.findByTestId('ingestion-type')).toBeInTheDocument();
   });
 
-  it('Hour option should render corrosponding component', async () => {
+  it('Hour option should render corresponding component', async () => {
     render(<CronEditor disabled={false} onChange={jest.fn} />);
 
     const ingestionType = await screen.findByTestId('ingestion-type');
@@ -65,7 +65,7 @@ describe('Test CronEditor component', () => {
     expect(await screen.findByText('10')).toBeInTheDocument();
   });
 
-  it('Day option should render corrosponding component', async () => {
+  it('Day option should render corresponding component', async () => {
     render(<CronEditor disabled={false} onChange={jest.fn} />);
 
     const ingestionType = await screen.findByTestId('ingestion-type');
@@ -91,7 +91,7 @@ describe('Test CronEditor component', () => {
     expect((await screen.findAllByText('02')).length).toBe(2);
   });
 
-  it('week option should render corrosponding component', async () => {
+  it('week option should render corresponding component', async () => {
     render(<CronEditor disabled={false} onChange={jest.fn} />);
 
     const ingestionType = await screen.findByTestId('ingestion-type');
@@ -118,5 +118,16 @@ describe('Test CronEditor component', () => {
 
     expect((await screen.findAllByText('10')).length).toBe(2);
     expect((await screen.findAllByText('02')).length).toBe(2);
+  });
+
+  it('None option should render corresponding component', async () => {
+    render(<CronEditor disabled={false} onChange={jest.fn} />);
+
+    const ingestionType = await screen.findByTestId('ingestion-type');
+    userEvent.selectOptions(ingestionType, '');
+
+    expect(
+      await screen.findByTestId('manual-segment-container')
+    ).toBeInTheDocument();
   });
 });

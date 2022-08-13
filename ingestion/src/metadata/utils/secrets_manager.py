@@ -84,6 +84,11 @@ class SecretsManager(metaclass=Singleton):
     providers.
     """
 
+    cluster_prefix: str
+
+    def __init__(self, cluster_prefix: str):
+        self.cluster_prefix = cluster_prefix
+
     @abstractmethod
     def retrieve_service_connection(
         self,
@@ -105,8 +110,15 @@ class SecretsManager(metaclass=Singleton):
         """
         pass
 
-    @staticmethod
-    def build_secret_id(*args: str) -> str:
+    @property
+    def secret_id_separator(self) -> str:
+        return "/"
+
+    @property
+    def starts_with_separator(self) -> bool:
+        return True
+
+    def build_secret_id(self, *args: str) -> str:
         """
         Returns a secret_id used by the secrets' manager providers for retrieving a secret.
         For example:
@@ -114,8 +126,8 @@ class SecretsManager(metaclass=Singleton):
         :param args: sorted parameters for building the secret_id
         :return: the secret_id
         """
-        secret_suffix = "-".join([arg.lower() for arg in args])
-        return f"openmetadata-{secret_suffix}"
+        secret_id = self.secret_id_separator.join([arg.lower() for arg in args])
+        return f"{self.secret_id_separator if self.starts_with_separator else ''}{self.cluster_prefix}{self.secret_id_separator}{secret_id}"
 
     @staticmethod
     def get_service_connection_class(service_type: str) -> object:
@@ -181,13 +193,19 @@ class LocalSecretsManager(SecretsManager):
 
 
 class AWSSecretsManager(SecretsManager):
-    def __init__(self, credentials: AWSCredentials):
-        session = boto3.Session(
-            aws_access_key_id=credentials.awsAccessKeyId,
-            aws_secret_access_key=credentials.awsSecretAccessKey.get_secret_value(),
-            region_name=credentials.awsRegion,
-        )
-        self.secretsmanager_client = session.client("secretsmanager")
+    def __init__(self, credentials: AWSCredentials, cluster_prefix: str):
+        super().__init__(cluster_prefix)
+        # initialize the secret client depending on the SecretsManagerConfiguration passed
+        if credentials:
+            session = boto3.Session(
+                aws_access_key_id=credentials.awsAccessKeyId,
+                aws_secret_access_key=credentials.awsSecretAccessKey.get_secret_value(),
+                region_name=credentials.awsRegion,
+            )
+            self.secretsmanager_client = session.client("secretsmanager")
+        else:
+            # initialized with the credentials loaded from running machine
+            self.secretsmanager_client = boto3.client("secretsmanager")
 
     def retrieve_service_connection(
         self,
@@ -197,7 +215,7 @@ class AWSSecretsManager(SecretsManager):
         service_connection_type = service.serviceType.value
         service_name = service.name.__root__
         secret_id = self.build_secret_id(
-            service_type, service_connection_type, service_name
+            "service", service_type, service_connection_type, service_name
         )
         connection_class = self.get_connection_class(
             service_type, service_connection_type
@@ -251,12 +269,14 @@ class AWSSecretsManager(SecretsManager):
 
 
 def get_secrets_manager(
-    secret_manager: SecretsManagerProvider,
+    open_metadata_config: OpenMetadataConnection,
     credentials: Optional[Union[AWSCredentials]] = None,
 ) -> SecretsManager:
-    if secret_manager == SecretsManagerProvider.local:
-        return LocalSecretsManager()
-    elif secret_manager == SecretsManagerProvider.aws:
-        return AWSSecretsManager(credentials)
+    if open_metadata_config.secretsManagerProvider == SecretsManagerProvider.local:
+        return LocalSecretsManager(open_metadata_config.clusterName)
+    elif open_metadata_config.secretsManagerProvider == SecretsManagerProvider.aws:
+        return AWSSecretsManager(credentials, open_metadata_config.clusterName)
     else:
-        raise NotImplementedError(f"[{secret_manager}] is not implemented.")
+        raise NotImplementedError(
+            f"[{open_metadata_config.secretsManagerProvider}] is not implemented."
+        )
