@@ -50,7 +50,7 @@ mock_dagster_config = {
             "config": {
                 "type": "Dagster",
                 "hostPort": "http://localhost:3000",
-                "connection": {
+                "dbConnection": {
                     "username": "dagster_user",
                     "password": "dagter_pass",
                     "databaseSchema": "dagster_db",
