@@ -61,6 +61,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
+import org.openmetadata.catalog.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -290,7 +291,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       operationId = "listPolicyResources",
       summary = "Get list of policy resources used in authoring a policy.",
       tags = "policies",
-      description = "Get all the resources used in policy authoring",
+      description = "Get list of policy resources used in authoring a policy.",
       responses = {
         @ApiResponse(responseCode = "200", description = "policy", content = @Content(mediaType = "application/json")),
         @ApiResponse(
@@ -300,6 +301,24 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public ResultList<ResourceDescriptor> listPolicyResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new ResourceDescriptorList(ResourceRegistry.listResourceDescriptors());
+  }
+
+  @GET
+  @Path("/functions")
+  @Operation(
+      operationId = "listPolicyFunctions",
+      summary = "Get list of policy functions used in authoring conditions in policy rules.",
+      tags = "policies",
+      description = "Get list of policy functions used in authoring conditions in policy rules.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "policy", content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Policy for instance {id} and version {version} is" + " " + "not found")
+      })
+  public ResultList<ResourceDescriptor> listPolicyFunctions(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return new ResourceDescriptorList(RuleEvaluator.listFunctions());
   }
 
   @POST

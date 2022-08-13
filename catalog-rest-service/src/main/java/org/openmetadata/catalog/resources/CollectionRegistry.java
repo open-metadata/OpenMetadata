@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import java.io.File;
@@ -37,6 +38,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.Function;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
@@ -54,7 +56,11 @@ public final class CollectionRegistry {
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
 
+  /** Map of class name to list of functions exposed for writing conditions */
+  private final Map<Class<?>, List<org.openmetadata.catalog.type.Function>> functionMap = new LinkedHashMap<>();
+
   /** Resources used only for testing */
+  @VisibleForTesting
   private final List<Object> testResources = new ArrayList<>();
 
   private CollectionRegistry() {}
@@ -69,6 +75,7 @@ public final class CollectionRegistry {
 
   private void initialize() {
     loadCollectionDescriptors();
+    loadConditionFunctions();
   }
 
   /** For a collection at {@code collectionPath} returns JSON document that describes it and it's children */
@@ -118,6 +125,33 @@ public final class CollectionRegistry {
     }
   }
 
+  /**
+   * Resource such as Policy provide a set of functions for authoring SpEL based conditions. The registry loads all
+   * those conditions and makes it available listing them.
+   */
+  private void loadConditionFunctions() {
+    Reflections reflections = new Reflections("org.openmetadata.catalog.resources");
+
+    // Get classes marked with @Collection annotation
+    Set<Method> methods = reflections.getMethodsAnnotatedWith(Function.class);
+    for (Method method : methods) {
+      Function annotation = method.getAnnotation(Function.class);
+      List<org.openmetadata.catalog.type.Function> functions = functionMap.get(method.getClass());
+      if (functions == null) {
+        functions = new ArrayList<>();
+        functionMap.put(method.getClass(), functions);
+        org.openmetadata.catalog.type.Function function = new org.openmetadata.catalog.type.Function()
+                .withName(annotation.name())
+                .withInput(annotation.input())
+                .withDescription(annotation.description())
+                .withExamples(List.of(annotation.examples()));
+        functions.add(function);
+        LOG.info("XXX Initialized for {} function {}", method.getClass().getSimpleName(), function);
+      }
+    }
+  }
+
+  @VisibleForTesting
   public static void addTestResource(Object testResource) {
     getInstance().testResources.add(testResource);
   }
