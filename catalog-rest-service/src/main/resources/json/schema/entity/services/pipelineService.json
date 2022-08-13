@@ -39,6 +39,7 @@
       ],
       "properties": {
         "config": {
+          "mask": true,
           "oneOf": [
             {
               "$ref": "./connections/pipeline/airflowConnection.json"

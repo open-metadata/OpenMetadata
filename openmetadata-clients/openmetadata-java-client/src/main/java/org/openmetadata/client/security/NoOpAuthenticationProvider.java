@@ -37,7 +37,6 @@ public class NoOpAuthenticationProvider implements AuthenticationProvider {
 
   @Override
   public void apply(RequestTemplate requestTemplate) {
-    // no-auth we dont apply anything
-    return;
+    // no-auth we don't apply anything
   }
 }

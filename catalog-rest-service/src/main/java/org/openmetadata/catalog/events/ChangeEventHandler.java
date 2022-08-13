@@ -47,8 +47,14 @@ import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
-import org.openmetadata.catalog.type.*;
+import org.openmetadata.catalog.type.AnnouncementDetails;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.FilterUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -86,7 +92,7 @@ public class ChangeEventHandler implements EventHandler {
       if (changeEvent.getEntity() != null) {
         Object entity = changeEvent.getEntity();
         changeEvent = copyChangeEvent(changeEvent);
-        changeEvent.setEntity(JsonUtils.pojoToJson(entity));
+        changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
       }
       dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
@@ -196,7 +202,7 @@ public class ChangeEventHandler implements EventHandler {
     }
   }
 
-  public static ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
+  public ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
     // GET operations don't produce change events
     if (method.equals("GET")) {
       return null;
@@ -293,7 +299,7 @@ public class ChangeEventHandler implements EventHandler {
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
     if (entity == null) {
-      return null; // Response has no entity to produce change event from
+      return Collections.emptyList(); // Response has no entity to produce change event from
     }
 
     // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
@@ -304,7 +310,7 @@ public class ChangeEventHandler implements EventHandler {
       if (realEntity != null) {
         return getThreads(realEntity, changeEvent.getChangeDescription(), loggedInUserName);
       }
-      return null; // Cannot create a thread without entity
+      return Collections.emptyList(); // Cannot create a thread without entity
     }
 
     var entityInterface = (EntityInterface) entity;
@@ -328,7 +334,7 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     if (entityInterface.getChangeDescription() == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     return getThreads(entityInterface, entityInterface.getChangeDescription(), loggedInUserName);

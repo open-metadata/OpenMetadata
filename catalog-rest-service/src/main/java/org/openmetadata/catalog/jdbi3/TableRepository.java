@@ -101,6 +101,8 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
+  public static final String TABLE_COLUMN_EXTENSION = "table.column.";
+  public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
 
   public TableRepository(CollectionDAO daoCollection) {
     super(
@@ -455,7 +457,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     storedMapColumnTests.put(columnTest.getName(), columnTest);
     List<ColumnTest> updatedTests = new ArrayList<>(storedMapColumnTests.values());
-    String extension = "table.column." + columnName + ".tests";
+    String extension = TABLE_COLUMN_EXTENSION + columnName + ".tests";
     daoCollection
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "columnTest", JsonUtils.pojoToJson(updatedTests));
@@ -492,7 +494,7 @@ public class TableRepository extends EntityRepository<Table> {
     ColumnTest deleteColumnTest = storedMapColumnTests.get(columnTestName);
     storedMapColumnTests.remove(columnTestName);
     List<ColumnTest> updatedTests = new ArrayList<>(storedMapColumnTests.values());
-    String extension = "table.column." + columnName + ".tests";
+    String extension = TABLE_COLUMN_EXTENSION + columnName + ".tests";
     daoCollection
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "columnTest", JsonUtils.pojoToJson(updatedTests));
@@ -529,7 +531,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     storedMapCustomMetrics.put(customMetric.getName(), customMetric);
     List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
-    String extension = "table.column." + columnName + ".customMetrics";
+    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     daoCollection
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
@@ -565,7 +567,7 @@ public class TableRepository extends EntityRepository<Table> {
     CustomMetric deleteCustomMetric = storedMapCustomMetrics.get(metricName);
     storedMapCustomMetrics.remove(metricName);
     List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
-    String extension = "table.column." + columnName + ".customMetrics";
+    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     daoCollection
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
@@ -1024,7 +1026,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private List<ColumnTest> getColumnTests(Table table, String columnName) throws IOException {
-    String extension = "table.column." + columnName + ".tests";
+    String extension = TABLE_COLUMN_EXTENSION + columnName + ".tests";
     return JsonUtils.readObjects(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), ColumnTest.class);
   }
@@ -1037,7 +1039,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) throws IOException {
-    String extension = "table.column." + columnName + ".customMetrics";
+    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     return JsonUtils.readObjects(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
   }
