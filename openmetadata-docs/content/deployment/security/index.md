@@ -76,6 +76,6 @@ please follow the [Quickstart](/quick-start/local-deployment) guide.
     icon="add_moderator"
     href="/deployment/security/keycloak"
   >
-    Configure OneLogin SSO to access the UI and APIs
+    Configure Keycloak SSO to access the UI and APIs
   </InlineCallout>
 </InlineCalloutContainer>
