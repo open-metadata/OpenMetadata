@@ -34,7 +34,7 @@ import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.componen
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   getTeamAndUserDetailsPath,
-  INITIAL_PAGIN_VALUE,
+  INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
@@ -72,8 +72,8 @@ const TeamsAndUsersPage = () => {
   const [teamUserPagin, setTeamUserPagin] = useState<Paging>({} as Paging);
   const [userPaging, setUserPaging] = useState<Paging>({} as Paging);
   const [currentTeamUserPage, setCurrentTeamUserPage] =
-    useState(INITIAL_PAGIN_VALUE);
-  const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGIN_VALUE);
+    useState(INITIAL_PAGING_VALUE);
+  const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGING_VALUE);
   const [teamUsersSearchText, setTeamUsersSearchText] = useState<string>('');
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -125,7 +125,7 @@ const TeamsAndUsersPage = () => {
   };
 
   const resetCurrentUserTeamPage = () => {
-    setCurrentTeamUserPage(INITIAL_PAGIN_VALUE);
+    setCurrentTeamUserPage(INITIAL_PAGING_VALUE);
   };
   /**
    * Make API call to fetch all the users
@@ -223,9 +223,9 @@ const TeamsAndUsersPage = () => {
 
   const handleUserSearchTerm = (value: string) => {
     setUserSearchTerm(value);
-    setCurrentUserPage(INITIAL_PAGIN_VALUE);
+    setCurrentUserPage(INITIAL_PAGING_VALUE);
     if (value) {
-      getSearchedUsers(value, INITIAL_PAGIN_VALUE);
+      getSearchedUsers(value, INITIAL_PAGING_VALUE);
     } else {
       setAllTabList(activeUserTab || '');
     }
@@ -411,7 +411,7 @@ const TeamsAndUsersPage = () => {
     setTeamUsersSearchText(text);
     resetCurrentUserTeamPage();
     if (text) {
-      searchUsers(text, INITIAL_PAGIN_VALUE);
+      searchUsers(text, INITIAL_PAGING_VALUE);
     } else {
       getCurrentTeamUsers(currentTeam?.name as string);
     }
@@ -722,7 +722,7 @@ const TeamsAndUsersPage = () => {
           setIsTeamVisible(false);
           setActiveUserTab(teamAndUser as UserType);
           setCurrentTeam({} as Team);
-          setCurrentUserPage(INITIAL_PAGIN_VALUE);
+          setCurrentUserPage(INITIAL_PAGING_VALUE);
           setAllTabList(teamAndUser as UserType);
           setUserPaging({} as Paging);
         } else {

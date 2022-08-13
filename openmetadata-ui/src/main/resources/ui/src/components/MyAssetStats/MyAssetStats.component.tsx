@@ -17,12 +17,14 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getExplorePathWithSearch,
-  getTeamAndUserDetailsPath,
-  ROUTES,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
-import { UserType } from '../../enums/user.enum';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
@@ -74,14 +76,20 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         icon: Icons.SERVICE,
         data: 'Services',
         count: entityCounts.servicesCount,
-        link: ROUTES.SERVICES,
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.SERVICES,
+          GlobalSettingOptions.DATABASES
+        ),
         dataTestId: 'service',
       },
       user: {
         icon: Icons.USERS,
         data: 'Users',
         count: entityCounts.userCount,
-        link: getTeamAndUserDetailsPath(UserType.USERS),
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.USERS
+        ),
         dataTestId: 'user',
         adminOnly: true,
       },
@@ -89,7 +97,10 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
         count: entityCounts.teamCount,
-        link: getTeamAndUserDetailsPath(),
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.TEAMS
+        ),
         dataTestId: 'terms',
       },
     };

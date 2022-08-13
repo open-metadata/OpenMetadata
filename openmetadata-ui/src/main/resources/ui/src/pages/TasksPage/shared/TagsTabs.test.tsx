@@ -27,17 +27,6 @@ jest.mock('./TagsDiffView', () => ({
     .mockReturnValue(<div data-testid="DiffView">DiffView</div>),
 }));
 
-// jest.mock('antd', () => ({
-//   Tabs: {
-//     __esModule: true,
-//     TabPane: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
-//     default: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
-//   },
-//   Tag: jest
-//     .fn()
-//     .mockImplementation(({ children }) => <p data-testid="tag">{children}</p>),
-// }));
-
 const mockProps = {
   tags: [],
   suggestedTags: [],
@@ -54,9 +43,9 @@ describe('Test Description Tabs Component', () => {
 
     expect(tabs).toHaveLength(tabList.length);
 
-    tabs.forEach(async (_tab, index) => {
-      expect(await screen.findByText(tabList[index])).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Current')).toBeInTheDocument();
+    expect(await screen.findByText('Diff')).toBeInTheDocument();
+    expect(await screen.findByText('New')).toBeInTheDocument();
   });
 
   it('Should render the component relavant tab component', async () => {

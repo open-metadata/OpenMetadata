@@ -29,7 +29,7 @@ export const SUPPORTED_DOMAIN_TYPES = [
 ];
 
 export const FOLLOWERS_VIEW_CAP = 20;
-export const INITIAL_PAGIN_VALUE = 1;
+export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 12;
@@ -88,6 +88,7 @@ export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
+export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 
 export const pagingObject = { after: '', before: '', total: 0 };
@@ -200,6 +201,7 @@ export const ROUTES = {
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
+  CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
   USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   ROLES: '/roles',
@@ -418,6 +420,16 @@ export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
 export const getCustomEntityPath = (entityTypeFQN: string) => {
   let path = ROUTES.CUSTOM_ENTITY_DETAIL;
   path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getCreateUserPath = (bot: boolean) => {
+  let path = bot ? ROUTES.CREATE_USER_WITH_BOT : ROUTES.CREATE_USER;
+
+  if (bot) {
+    path = path.replace(PLACEHOLDER_USER_BOT, 'bot');
+  }
 
   return path;
 };

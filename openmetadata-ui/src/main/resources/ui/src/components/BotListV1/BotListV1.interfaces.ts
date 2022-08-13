@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,6 @@
  *  limitations under the License.
  */
 
-.policies-list-container {
-  .ant-btn {
-    border-radius: 4px;
-  }
-}
-
-.policies-list-table {
-  .ant-table-row .ant-table-cell:first-child,
-  .ant-table-thead .ant-table-cell:first-child {
-    padding-left: 16px;
-  }
+export interface BotListV1Props {
+  showDeleted: boolean;
 }
