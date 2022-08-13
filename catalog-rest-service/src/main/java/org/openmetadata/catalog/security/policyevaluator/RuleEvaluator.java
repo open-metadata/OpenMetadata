@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Function;
-import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.type.TagLabel;
 
 /**
@@ -23,8 +22,6 @@ public class RuleEvaluator {
     this.subjectContext = subjectContext;
     this.resourceContext = resourceContext;
   }
-
-  public static List<ResourceDescriptor> listFunctions() {}
 
   /** Returns true if the resource being accessed has no owner */
   @Function(
