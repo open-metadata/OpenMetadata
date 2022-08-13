@@ -75,7 +75,7 @@ class DagsterSource(PipelineServiceSource):
     ):
         self._session = None
         self.service_connection = config.serviceConnection.__root__.config
-        self.engine: Engine = get_connection(self.service_connection.connection)
+        self.engine: Engine = get_connection(self.service_connection.dbConnection)
         super().__init__(config, metadata_config)
         # Create the connection to the database
 

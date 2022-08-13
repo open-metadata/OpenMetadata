@@ -6,7 +6,7 @@ source:
       type: Dagster
       hostPort: http://localhost:8080
       numberOfStatus: 10
-      connection:
+      dbConnection:
         type: Mysql
         username: dagster_user
         password: dagter_pass
@@ -19,7 +19,7 @@ sink:
   type: metadata-rest
   config: { }
 workflowConfig:
-  loggerLevel: DEBUG
+  loggerLevel: INFO
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth

@@ -857,7 +857,7 @@ def _(_: BackendConnection, verbose: bool = False):
 @test_connection.register
 def _(connection: DagsterConnection) -> None:
     try:
-        test_connection(connection.connection)
+        test_connection(connection.dbConnection)
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
@@ -867,7 +867,7 @@ def _(connection: DagsterConnection) -> None:
 @get_connection.register
 def _(connection: DagsterConnection) -> None:
     try:
-        return get_connection(connection.connection)
+        return get_connection(connection.dbConnection)
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

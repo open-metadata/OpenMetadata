@@ -31,7 +31,7 @@
       "type": "integer",
       "default": "10"
     },
-    "connection": {
+    "dbConnection": {
       "title": "Metadata Database Connection",
       "description": "Underlying database connection. See https://docs.dagster.io/getting-started for supported backends.",
       "oneOf": [
@@ -52,5 +52,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "connection"]
+  "required": ["hostPort", "dbConnection"]
 }
