@@ -13,7 +13,7 @@
       "javaInterfaces": [
         "org.openmetadata.core.entity.interfaces.EnumInterface"
       ],
-      "enum": ["Airflow", "Prefect", "Glue", "Generic", "Airbyte"],
+      "enum": ["Airflow", "Prefect", "Glue", "Generic", "Airbyte", "Dagster"],
       "javaEnums": [
         {
           "name": "Airflow"
@@ -29,6 +29,9 @@
         },
         {
           "name": "Airbyte"
+        },
+        {
+          "name": "Dagster"
         }
       ]
     },
@@ -49,6 +52,9 @@
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dagsterConnection.json"
             }
           ]
         }
