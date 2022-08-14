@@ -104,7 +104,6 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
-        // TODO fix this
         if (rule.matchRuleForPermissions(subjectContext)) {
           if (rule.getResources().contains("all")) {
             setPermissionForAllResources(resourcePermissionMap, rule, policyContext);
@@ -130,6 +129,20 @@ public class PolicyEvaluator {
       resourcePermissions.add(resourcePermission);
     }
     return resourcePermissions;
+  }
+
+  /** Get list of resources with all their permissions set to given Access */
+  public static ResourcePermission getResourcePermission(String resource, Access access) {
+    for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
+      if (rd.getName().equals(resource)) {
+        List<Permission> permissions = new ArrayList<>();
+        for (MetadataOperation operation : rd.getOperations()) {
+          permissions.add(new Permission().withOperation(operation).withAccess(access));
+        }
+        return new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
+      }
+    }
+    throw new IllegalArgumentException(CatalogExceptionMessage.resourceTypeNotFound(resource))
   }
 
   /**

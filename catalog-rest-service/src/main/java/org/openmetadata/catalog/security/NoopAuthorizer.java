@@ -47,6 +47,16 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
+  public ResourcePermission getPermission(SecurityContext securityContext, String resource) {
+    return PolicyEvaluator.getResourcePermission(resource, Access.ALLOW);
+  }
+
+  @Override
+  public ResourcePermission getPermission(SecurityContext securityContext, String resource, UUID id) {
+    return PolicyEvaluator.getResourcePermission(resource, Access.ALLOW);
+  }
+
+  @Override
   public boolean isOwner(SecurityContext securityContext, EntityReference entityReference) {
     return true;
   }

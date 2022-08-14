@@ -15,12 +15,14 @@ package org.openmetadata.catalog.resources.permissions;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -46,6 +48,7 @@ public class PermissionsResource {
 
   @GET
   @Operation(
+          operationId = "getResourcePermissions",
       summary = "Get permissions for logged in user",
       tags = "permission",
       responses = {
@@ -58,6 +61,46 @@ public class PermissionsResource {
                     schema = @Schema(implementation = ResourcePermissionList.class)))
       })
   public ResultList<ResourcePermission> getPermissions(@Context SecurityContext securityContext) {
+    return new ResourcePermissionList(authorizer.listPermissions(securityContext));
+  }
+
+  @GET
+  @Path("/{resource}")
+  @Operation(
+          operationId = "getResourcePermission",
+          summary = "Get permissions for logged in user",
+          tags = "permission",
+          responses = {
+                  @ApiResponse(
+                          responseCode = "200",
+                          description = "Permissions for logged in user",
+                          content =
+                          @Content(
+                                  mediaType = "application/json",
+                                  schema = @Schema(implementation = ResourcePermissionList.class)))
+          })
+  public ResourcePermission getPermission(@Context SecurityContext securityContext,
+      @Parameter(description = "Resource type", schema = @Schema(type = "String")) @PathParam("resource") String resource
+  ) {
+    return authorizer.getPermission(securityContext, resource));
+  }
+
+  @GET
+  @Path("/{resource}/{id}")
+  @Operation(
+          operationId = "getResourcePermission",
+          summary = "Get permissions for logged in user",
+          tags = "permission",
+          responses = {
+                  @ApiResponse(
+                          responseCode = "200",
+                          description = "Permissions for logged in user",
+                          content =
+                          @Content(
+                                  mediaType = "application/json",
+                                  schema = @Schema(implementation = ResourcePermissionList.class)))
+          })
+  public ResourcePermission getPermission(@Context SecurityContext securityContext) {
     return new ResourcePermissionList(authorizer.listPermissions(securityContext));
   }
 
