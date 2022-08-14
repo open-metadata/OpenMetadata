@@ -15,6 +15,7 @@ package org.openmetadata.catalog.security;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
@@ -36,6 +37,16 @@ public interface Authorizer {
   /** Returns a list of operations that the authenticated user (subject) can perform on a given resource */
   ResourcePermission getPermission(
       SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
+
+  /**
+   * Returns a list of operations that the authenticated user (subject) can perform on a given resource
+   */
+  ResourcePermission getPermission(SecurityContext securityContext, String resource);
+
+  /**
+   * Returns a list of operations that the authenticated user (subject) can perform on a given resource
+   */
+  ResourcePermission getPermission(SecurityContext securityContext, String resource, UUID id);
 
   boolean isOwner(SecurityContext ctx, EntityReference entityReference);
 
