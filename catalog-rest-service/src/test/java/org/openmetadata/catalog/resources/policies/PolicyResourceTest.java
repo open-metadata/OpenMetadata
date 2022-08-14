@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.ALLOW;
+import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.DENY;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -40,6 +41,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.FunctionList;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.api.teams.CreateRole;
@@ -50,15 +52,18 @@ import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.catalog.resources.policies.PolicyResource.ResourceDescriptorList;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
+import org.openmetadata.catalog.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Function;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.ResourceDescriptor;
@@ -142,7 +147,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
     rules.add(accessControlRule(List.of("all"), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW));
-    rules.add(accessControlRule(List.of("all"), List.of(MetadataOperation.EDIT_TAGS), ALLOW));
+    rules.add(accessControlRule(List.of("all"), List.of(MetadataOperation.EDIT_TAGS), DENY));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -287,6 +292,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     }
   }
 
+  @Test
+  void get_policyFunctions() throws HttpResponseException {
+    // Ensure all the functions for authoring policy rule conditions are returned
+    List<Function> actualFunctions = getPolicyFunctions(ADMIN_AUTH_HEADERS).getData();
+    List<Function> expectedFunctions = CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class);
+    assertEquals(expectedFunctions, actualFunctions);
+  }
+
   @Override
   public Policy validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
     String fields = "";
@@ -326,6 +339,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   public final ResourceDescriptorList getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/resources");
     return TestUtils.get(target, ResourceDescriptorList.class, authHeaders);
+  }
+
+  public final FunctionList getPolicyFunctions(Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(collectionName + "/functions");
+    return TestUtils.get(target, FunctionList.class, authHeaders);
   }
 
   private static Rule accessControlRule(List<String> resources, List<MetadataOperation> operations, Effect effect) {
