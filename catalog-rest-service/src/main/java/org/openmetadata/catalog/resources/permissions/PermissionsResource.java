@@ -140,46 +140,6 @@ public class PermissionsResource {
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
-  @GET
-  @Path("/{resource}")
-  @Operation(
-          operationId = "getResourcePermission",
-          summary = "Get permissions for logged in user",
-          tags = "permission",
-          responses = {
-                  @ApiResponse(
-                          responseCode = "200",
-                          description = "Permissions for logged in user",
-                          content =
-                          @Content(
-                                  mediaType = "application/json",
-                                  schema = @Schema(implementation = ResourcePermissionList.class)))
-          })
-  public ResourcePermission getPermission(@Context SecurityContext securityContext,
-      @Parameter(description = "Resource type", schema = @Schema(type = "String")) @PathParam("resource") String resource
-  ) {
-    return authorizer.getPermission(securityContext, resource));
-  }
-
-  @GET
-  @Path("/{resource}/{id}")
-  @Operation(
-          operationId = "getResourcePermission",
-          summary = "Get permissions for logged in user",
-          tags = "permission",
-          responses = {
-                  @ApiResponse(
-                          responseCode = "200",
-                          description = "Permissions for logged in user",
-                          content =
-                          @Content(
-                                  mediaType = "application/json",
-                                  schema = @Schema(implementation = ResourcePermissionList.class)))
-          })
-  public ResourcePermission getPermission(@Context SecurityContext securityContext) {
-    return new ResourcePermissionList(authorizer.listPermissions(securityContext));
-  }
-
   static class ResourcePermissionList extends ResultList<ResourcePermission> {
     @SuppressWarnings("unused")
     public ResourcePermissionList() {}

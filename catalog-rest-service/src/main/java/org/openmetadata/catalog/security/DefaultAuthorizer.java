@@ -133,16 +133,6 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public ResourcePermission getPermission(SecurityContext securityContext, String resource) {
-    return null;
-  }
-
-  @Override
-  public ResourcePermission getPermission(SecurityContext securityContext, String resource, UUID id) {
-    return null;
-  }
-
-  @Override
   public boolean isOwner(SecurityContext securityContext, EntityReference owner) {
     if (owner == null) {
       return false;
