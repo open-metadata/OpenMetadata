@@ -14,9 +14,11 @@
 import { Button, Col, Radio, Row, Select, Space } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
+import { cloneDeep, sortBy, startCase } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
+import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -26,6 +28,10 @@ import {
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
+import {
+  DEFAULT_CHART_COLLECTION_VALUE,
+  PROFILER_FILTER_RANGE,
+} from '../../constants/entity.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -37,6 +43,7 @@ import {
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
+  getNameFromFQN,
   getPartialNameFromTableFQN,
   hasEditAccess,
 } from '../../utils/CommonUtils';
@@ -49,30 +56,35 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import PageLayout from '../containers/PageLayout';
+import Loader from '../Loader/Loader';
+import ProfilerDetailsCard from './component/ProfilerDetailsCard';
 import {
+  ChartDataCollection,
   ProfilerDashboardProps,
   ProfilerDashboardTab,
-  TimeRangeOptions,
 } from './profilerDashboard.interface';
 
 const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   table,
+  fetchProfilerData,
   profilerData,
   onTableChange,
 }) => {
   const history = useHistory();
+  const { entityTypeFQN } = useParams<Record<string, string>>();
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
     ProfilerDashboardTab.PROFILER
   );
-  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRangeOptions>(
-    TimeRangeOptions.last7days
-  );
+  const [selectedTimeRange, setSelectedTimeRange] =
+    useState<keyof typeof PROFILER_FILTER_RANGE>('last7days');
+  const [chartData, setChartData] = useState<ChartDataCollection>({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const timeRangeOption = useMemo(() => {
-    return Object.entries(TimeRangeOptions).map(([key, value]) => ({
-      label: value,
+    return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
+      label: value.title,
       value: key,
     }));
   }, []);
@@ -249,6 +261,14 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     );
   };
 
+  const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
+    if (value !== selectedTimeRange) {
+      setSelectedTimeRange(value);
+      setChartData({});
+      fetchProfilerData(table.id, PROFILER_FILTER_RANGE[value].days);
+    }
+  };
+
   useEffect(() => {
     if (table) {
       setFollower(table?.followers || []);
@@ -257,6 +277,49 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       );
     }
   }, [table]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const sortedProfilerData = sortBy(profilerData, 'timestamp');
+    const chartDataCollection: ChartDataCollection = cloneDeep(
+      DEFAULT_CHART_COLLECTION_VALUE
+    );
+    const columnName = getNameFromFQN(entityTypeFQN);
+
+    sortedProfilerData.forEach((dataPoint) => {
+      const x = moment.unix(dataPoint.timestamp || 0).format('MM.DD');
+      const col = dataPoint.columnProfile?.find(
+        (col) => col.name === columnName
+      );
+
+      chartDataCollection['distinctCount'].data.push({
+        name: x,
+        value: col?.distinctCount || 0,
+        timestamp: dataPoint.timestamp || 0,
+      });
+
+      chartDataCollection['uniqueCount'].data.push({
+        name: x,
+        value: col?.uniqueCount || 0,
+        timestamp: dataPoint.timestamp || 0,
+      });
+
+      chartDataCollection['nullCount'].data.push({
+        name: x,
+        value: col?.nullCount || 0,
+        timestamp: dataPoint.timestamp || 0,
+      });
+
+      chartDataCollection['nullProportion'].data.push({
+        name: x,
+        value: (col?.nullProportion || 0) * 100,
+        timestamp: dataPoint.timestamp || 0,
+      });
+    });
+
+    setChartData(chartDataCollection);
+    setIsLoading(false);
+  }, [profilerData]);
 
   return (
     <PageLayout>
@@ -298,10 +361,10 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
             <Space size={16}>
               <Select
+                className="tw-w-32"
                 options={timeRangeOption}
-                style={{ width: 120 }}
                 value={selectedTimeRange}
-                onChange={(value) => setSelectedTimeRange(value)}
+                onChange={handleTimeRangeChange}
               />
               <Button type="primary" onClick={handleAddTestClick}>
                 Add Test
@@ -309,6 +372,18 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             </Space>
           </Row>
         </Col>
+        {isLoading ? (
+          <Loader />
+        ) : (
+          Object.entries(chartData).map(([key, value], index) => (
+            <Col key={index} span={24}>
+              <ProfilerDetailsCard
+                chartCollection={value}
+                title={startCase(key)}
+              />
+            </Col>
+          ))
+        )}
       </Row>
     </PageLayout>
   );

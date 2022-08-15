@@ -47,6 +47,21 @@ export const PROFILER_METRIC = [
   'customMetricsProfile',
 ];
 
+export const PROFILER_FILTER_RANGE = {
+  latest: { days: 7, title: 'Latest' },
+  last7days: { days: 7, title: 'Last 7 days' },
+  last14days: { days: 14, title: 'Last 14 days' },
+  last30days: { days: 30, title: 'Last 30 days' },
+  last60days: { days: 60, title: 'Last 60 days' },
+};
+
+export const DEFAULT_CHART_COLLECTION_VALUE = {
+  distinctCount: { data: [], color: '#1890FF' },
+  uniqueCount: { data: [], color: '#008376' },
+  nullCount: { data: [], color: '#7147E8' },
+  nullProportion: { data: [], color: '#B02AAC' },
+};
+
 export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
   {
     columnName: undefined,

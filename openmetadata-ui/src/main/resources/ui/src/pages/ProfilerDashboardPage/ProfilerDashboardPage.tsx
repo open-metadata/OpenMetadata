@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import moment from 'moment';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -24,6 +25,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
+import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { Table, TableProfile } from '../../generated/entity/data/table';
 import jsonData from '../../jsons/en';
 import {
@@ -39,9 +41,14 @@ const ProfilerDashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const fetchProfilerData = async (tableId: string) => {
+  const fetchProfilerData = async (tableId: string, days = 7) => {
     try {
-      const data = await getTableProfilesList(tableId);
+      const startTs = moment().subtract(days, 'days').unix();
+
+      const data = await getTableProfilesList(tableId, {
+        startTs: startTs,
+        limit: API_RES_MAX_SIZE,
+      });
       setProfilerData(data.data || []);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -110,6 +117,7 @@ const ProfilerDashboardPage = () => {
   return (
     <PageContainerV1 className="tw-py-4">
       <ProfilerDashboard
+        fetchProfilerData={fetchProfilerData}
         profilerData={profilerData}
         table={table}
         onTableChange={updateTableHandler}

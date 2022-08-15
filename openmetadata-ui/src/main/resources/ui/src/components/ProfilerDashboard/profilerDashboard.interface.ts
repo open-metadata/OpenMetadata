@@ -17,6 +17,12 @@ export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
   table: Table;
   profilerData: TableProfile[];
+  fetchProfilerData: (tableId: string, days?: number) => void;
+}
+
+export interface ProfilerDetailsCardProps {
+  title: string;
+  chartCollection: ChartCollection;
 }
 
 export enum ProfilerDashboardTab {
@@ -25,9 +31,15 @@ export enum ProfilerDashboardTab {
   DATA_QUALITY = 'Data Quality',
 }
 
-export enum TimeRangeOptions {
-  latest = 'Latest',
-  last7days = 'Last 7 days',
-  last14days = 'Last 14 days',
-  last30days = 'Last 30 days',
-}
+export type ChartData = {
+  name: string;
+  value: number;
+  timestamp: number;
+};
+
+export type ChartCollection = {
+  data: ChartData[];
+  color: string;
+};
+
+export type ChartDataCollection = Record<string, ChartCollection>;

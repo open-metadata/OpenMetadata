@@ -219,8 +219,8 @@ export const putTableProfileConfig = async (
 export const getTableProfilesList = async (
   tableId: string,
   params?: {
-    startTs?: string;
-    endTs?: string;
+    startTs?: number;
+    endTs?: number;
     limit?: number;
     before?: string;
     after?: string;
