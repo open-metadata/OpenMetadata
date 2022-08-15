@@ -2,16 +2,22 @@ package org.openmetadata.catalog.security.policyevaluator;
 
 import java.io.IOException;
 import java.util.List;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 
 /** Conversation threads require special handling */
 public class ThreadResourceContext implements ResourceContextInterface {
-  private EntityReference owner;
+  private final EntityReference owner;
 
   public ThreadResourceContext(EntityReference owner) {
     this.owner = owner;
+  }
+
+  @Override
+  public String getResource() {
+    return Entity.THREAD;
   }
 
   @Override
