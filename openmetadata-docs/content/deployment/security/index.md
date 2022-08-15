@@ -70,4 +70,12 @@ please follow the [Quickstart](/quick-start/local-deployment) guide.
   >
     Configure OneLogin SSO to access the UI and APIs
   </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    bold="Keycloak SSO"
+    icon="add_moderator"
+    href="/deployment/security/keycloak"
+  >
+    Configure Keycloak SSO to access the UI and APIs
+  </InlineCallout>
 </InlineCalloutContainer>
