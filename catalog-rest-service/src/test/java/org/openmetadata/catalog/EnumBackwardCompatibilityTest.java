@@ -16,6 +16,7 @@ package org.openmetadata.catalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.type.Permission.Access;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
@@ -66,5 +67,19 @@ class EnumBackwardCompatibilityTest {
   void testTagSourceEnumBackwardCompatible() {
     assertEquals(0, TagSource.TAG.ordinal());
     assertEquals(1, TagSource.GLOSSARY.ordinal());
+  }
+
+  /**
+   * Any time a new enum is added, this test will fail. Update the test with total number of enums and test the ordinal
+   * number of the last enum. This will help catch new enum inadvertently being added in the middle.
+   */
+  @Test
+  void testAccessCardinality() {
+    // Don't change the ordinal values of the Access
+    assertEquals(Access.DENY.ordinal(), 0);
+    assertEquals(Access.ALLOW.ordinal(), 1);
+    assertEquals(Access.CONDITIONAL_DENY.ordinal(), 2);
+    assertEquals(Access.CONDITIONAL_ALLOW.ordinal(), 3);
+    assertEquals(Access.NOT_ALLOW.ordinal(), 4);
   }
 }

@@ -24,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.ResourceRegistry;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
-import org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
@@ -95,8 +94,8 @@ public class PolicyEvaluator {
             subjectContext.getUser().getName(), operationContext.getOperations()));
   }
 
-  /** Returns a list of operations that a user can perform on the given entity. */
-  public static List<ResourcePermission> getAllowedOperations(@NonNull SubjectContext subjectContext) {
+  /** Returns a list of operations that a user can perform on all the resources. */
+  public static List<ResourcePermission> listPermission(@NonNull SubjectContext subjectContext) {
     Map<String, ResourcePermission> resourcePermissionMap = initResourcePermissions();
 
     Iterator<PolicyContext> policies = subjectContext.getPolicies();
@@ -104,16 +103,44 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
-        if (rule.matchRuleForPermissions(subjectContext)) {
-          if (rule.getResources().contains("all")) {
-            setPermissionForAllResources(resourcePermissionMap, rule, policyContext);
-          } else {
-            setPermissionForResources(resourcePermissionMap, rule, policyContext);
-          }
-        }
+        rule.setPermission(resourcePermissionMap, policyContext);
       }
     }
     return new ArrayList<>(resourcePermissionMap.values());
+  }
+
+  /** Returns a list of operations that a user can perform on the given resource/entity type */
+  public static ResourcePermission getPermission(@NonNull SubjectContext subjectContext, String resourceType) {
+    // Initialize all permissions to NOT_ALLOW
+    ResourcePermission resourcePermission = getResourcePermission(resourceType, Access.NOT_ALLOW);
+
+    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or CONDITIONAL_ALLOW
+    Iterator<PolicyContext> policies = subjectContext.getPolicies();
+    while (policies.hasNext()) {
+      PolicyContext policyContext = policies.next();
+      for (CompiledRule rule : policyContext.getRules()) {
+        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        rule.setPermission(resourceType, resourcePermission, policyContext);
+      }
+    }
+    return resourcePermission;
+  }
+
+  public static ResourcePermission getPermission(
+      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+    // Initialize all permissions to NOT_ALLOW
+    ResourcePermission resourcePermission = getResourcePermission(resourceContext.getResource(), Access.NOT_ALLOW);
+
+    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or CONDITIONAL_ALLOW
+    Iterator<PolicyContext> policies = subjectContext.getPolicies();
+    while (policies.hasNext()) {
+      PolicyContext policyContext = policies.next();
+      for (CompiledRule rule : policyContext.getRules()) {
+        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        rule.setPermission(subjectContext, resourceContext, resourcePermission, policyContext);
+      }
+    }
+    return resourcePermission;
   }
 
   /** Get list of resources with all their permissions set to given Access */
@@ -133,16 +160,12 @@ public class PolicyEvaluator {
 
   /** Get list of resources with all their permissions set to given Access */
   public static ResourcePermission getResourcePermission(String resource, Access access) {
-    for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
-      if (rd.getName().equals(resource)) {
-        List<Permission> permissions = new ArrayList<>();
-        for (MetadataOperation operation : rd.getOperations()) {
-          permissions.add(new Permission().withOperation(operation).withAccess(access));
-        }
-        return new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
-      }
+    ResourceDescriptor rd = ResourceRegistry.getResourceDescriptor(resource);
+    List<Permission> permissions = new ArrayList<>();
+    for (MetadataOperation operation : rd.getOperations()) {
+      permissions.add(new Permission().withOperation(operation).withAccess(access));
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.resourceTypeNotFound(resource))
+    return new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
   }
 
   /**
@@ -155,52 +178,5 @@ public class PolicyEvaluator {
     Map<String, ResourcePermission> resourcePermissionMap = new HashMap<>();
     resourcePermissions.forEach(rp -> resourcePermissionMap.put(rp.getResource(), rp));
     return resourcePermissionMap;
-  }
-
-  public static void setPermissionForAllResources(
-      Map<String, ResourcePermission> resourcePermissionMap, Rule rule, PolicyContext policyContext) {
-    // For all resources, set the permission
-    for (ResourcePermission resourcePermission : resourcePermissionMap.values()) {
-      setPermission(resourcePermission, rule, policyContext);
-    }
-  }
-
-  private static void setPermissionForResources(
-      Map<String, ResourcePermission> resourcePermissionMap, CompiledRule rule, PolicyContext policyContext) {
-    for (String resource : rule.getResources()) {
-      ResourcePermission resourcePermission = resourcePermissionMap.get(resource);
-      setPermission(resourcePermission, rule, policyContext);
-    }
-  }
-
-  private static void setPermission(ResourcePermission resourcePermission, Rule rule, PolicyContext policyContext) {
-    Access access = getAccess(rule);
-    for (MetadataOperation ruleOperation : rule.getOperations()) {
-      for (Permission permission : resourcePermission.getPermissions()) {
-        if (permission.getOperation().equals(ruleOperation)) {
-          if (overrideAccess(access, permission.getAccess())) {
-            permission
-                .withAccess(access)
-                .withRole(policyContext.getRoleName())
-                .withPolicy(policyContext.getPolicyName())
-                .withRule(rule);
-            LOG.debug("Updated permission {}", permission);
-          }
-        }
-      }
-    }
-  }
-
-  private static Access getAccess(Rule rule) {
-    if (rule.getCondition() != null) {
-      return rule.getEffect() == Effect.DENY ? Access.CONDITIONAL_DENY : Access.CONDITIONAL_ALLOW;
-    }
-    return rule.getEffect() == Effect.DENY ? Access.DENY : Access.ALLOW;
-  }
-
-  // Returns true if access1 has precedence over access2
-  public static boolean overrideAccess(Access newAccess, Access currentAccess) {
-    // Lower the ordinal number of access overrides higher ordinal number
-    return currentAccess.ordinal() > newAccess.ordinal();
   }
 }
