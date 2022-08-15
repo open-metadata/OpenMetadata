@@ -21,7 +21,7 @@
         <dependency>
             <groupId>org.open-metadata</groupId>
             <artifactId>openmetadata-core</artifactId>
-            <version>0.11.4</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.swagger</groupId>

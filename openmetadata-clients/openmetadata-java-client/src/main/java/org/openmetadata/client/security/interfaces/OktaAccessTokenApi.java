@@ -13,11 +13,11 @@
 
 package org.openmetadata.client.security.interfaces;
 
-import java.util.Map;
 import feign.Headers;
 import feign.Param;
 import feign.QueryMap;
 import feign.RequestLine;
+import java.util.Map;
 import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.model.AccessTokenResponse;
 
