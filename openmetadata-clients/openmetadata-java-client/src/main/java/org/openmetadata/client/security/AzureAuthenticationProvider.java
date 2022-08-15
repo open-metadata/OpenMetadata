@@ -22,14 +22,13 @@ import com.microsoft.aad.msal4j.IClientCredential;
 import feign.RequestTemplate;
 import java.io.IOException;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class AzureAuthenticationProvider implements AuthenticationProvider {
-  private static final Logger LOG = LoggerFactory.getLogger(AzureAuthenticationProvider.class);
   private OpenMetadataServerConnection serverConfig;
   private final AzureSSOClientConfig securityConfig;
   private String generatedAuthToken;

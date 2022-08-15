@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import java.io.File;
@@ -22,6 +23,7 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.Function;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
@@ -41,6 +44,9 @@ import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
 import org.reflections.Reflections;
+import org.reflections.scanners.MethodAnnotationsScanner;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
 
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
@@ -54,8 +60,11 @@ public final class CollectionRegistry {
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
 
+  /** Map of class name to list of functions exposed for writing conditions */
+  private final Map<Class<?>, List<org.openmetadata.catalog.type.Function>> functionMap = new LinkedHashMap<>();
+
   /** Resources used only for testing */
-  private final List<Object> testResources = new ArrayList<>();
+  @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
   private CollectionRegistry() {}
 
@@ -67,8 +76,13 @@ public final class CollectionRegistry {
     return instance;
   }
 
+  public List<org.openmetadata.catalog.type.Function> getFunctions(Class<?> clz) {
+    return functionMap.get(clz);
+  }
+
   private void initialize() {
     loadCollectionDescriptors();
+    loadConditionFunctions();
   }
 
   /** For a collection at {@code collectionPath} returns JSON document that describes it and it's children */
@@ -118,6 +132,37 @@ public final class CollectionRegistry {
     }
   }
 
+  /**
+   * Resource such as Policy provide a set of functions for authoring SpEL based conditions. The registry loads all
+   * those conditions and makes it available listing them.
+   */
+  private void loadConditionFunctions() {
+    Reflections reflections =
+        new Reflections(
+            new ConfigurationBuilder()
+                .setUrls(ClasspathHelper.forPackage("org.openmetadata.catalog"))
+                .setScanners(new MethodAnnotationsScanner()));
+
+    // Get classes marked with @Collection annotation
+    Set<Method> methods = reflections.getMethodsAnnotatedWith(Function.class);
+    for (Method method : methods) {
+      Function annotation = method.getAnnotation(Function.class);
+      List<org.openmetadata.catalog.type.Function> functionList =
+          functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
+
+      org.openmetadata.catalog.type.Function function =
+          new org.openmetadata.catalog.type.Function()
+              .withName(annotation.name())
+              .withInput(annotation.input())
+              .withDescription(annotation.description())
+              .withExamples(List.of(annotation.examples()));
+      functionList.add(function);
+      functionList.sort(Comparator.comparing(org.openmetadata.catalog.type.Function::getName));
+      LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
+    }
+  }
+
+  @VisibleForTesting
   public static void addTestResource(Object testResource) {
     getInstance().testResources.add(testResource);
   }

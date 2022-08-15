@@ -14,8 +14,6 @@
 import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import { getTeamAndUserDetailsPath } from '../../constants/constants';
-import { UserType } from '../../enums/user.enum';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import MyAssetStats from './MyAssetStats.component';
 
@@ -83,11 +81,8 @@ describe('Test MyDataHeader Component', () => {
     expect(dashboards).toHaveAttribute('href', '/explore/dashboards/');
     expect(pipelines).toHaveAttribute('href', '/explore/pipelines/');
     expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels/');
-    expect(service).toHaveAttribute('href', '/services');
-    expect(user).toHaveAttribute(
-      'href',
-      getTeamAndUserDetailsPath(UserType.USERS)
-    );
-    expect(terms).toHaveAttribute('href', getTeamAndUserDetailsPath());
+    expect(service).toHaveAttribute('href', '/settings/services/databases');
+    expect(user).toHaveAttribute('href', '/settings/access/users');
+    expect(terms).toHaveAttribute('href', '/settings/access/teams');
   });
 });

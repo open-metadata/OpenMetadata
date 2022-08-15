@@ -113,6 +113,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
+    DagsterConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
@@ -849,3 +852,23 @@ def _(_: BackendConnection, verbose: bool = False):
 
     with settings.Session() as session:
         return session.get_bind()
+
+
+@test_connection.register
+def _(connection: DagsterConnection) -> None:
+    try:
+        test_connection(connection.dbConnection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: DagsterConnection) -> None:
+    try:
+        return get_connection(connection.dbConnection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )

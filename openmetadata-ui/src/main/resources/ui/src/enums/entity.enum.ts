@@ -30,6 +30,8 @@ export enum EntityType {
   MLMODEL = 'mlmodel',
   TYPE = 'type',
   TEAM = 'team',
+  USER = 'user',
+  BOT = 'bot',
 }
 
 export enum AssetsType {

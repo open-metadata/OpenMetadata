@@ -15,19 +15,25 @@ import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { createBot } from '../../axiosAPIs/botsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
-import { getTeamAndUserDetailsPath } from '../../constants/constants';
-import { UserType } from '../../enums/user.enum';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
+import { Bot } from '../../generated/entity/bot';
 import { Role } from '../../generated/entity/teams/role';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const CreateUserPage = () => {
   const { isAdminUser } = useAuth();
@@ -37,8 +43,24 @@ const CreateUserPage = () => {
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
 
+  const { bot } = useParams<{ bot: string }>();
+
   const goToUserListPage = () => {
-    history.push(getTeamAndUserDetailsPath(UserType.USERS));
+    if (bot) {
+      history.push(
+        getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.BOTS
+        )
+      );
+    } else {
+      history.push(
+        getSettingPath(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.USERS
+        )
+      );
+    }
   };
 
   const handleCancel = () => {
@@ -66,12 +88,29 @@ const CreateUserPage = () => {
     setStatus('waiting');
     createUser(userData)
       .then((res) => {
-        if (res.data) {
-          setStatus('success');
-          setTimeout(() => {
-            setStatus('initial');
-            goToUserListPage();
-          }, 500);
+        if (res) {
+          if (bot) {
+            createBot({
+              botUser: { id: res.id, type: EntityType.USER },
+              name: res.name,
+              displayName: res.displayName,
+              description: res.description,
+            } as Bot).then((res) => {
+              setStatus('success');
+              res && showSuccessToast(`Bot created successfully`);
+              setTimeout(() => {
+                setStatus('initial');
+
+                goToUserListPage();
+              }, 500);
+            });
+          } else {
+            setStatus('success');
+            setTimeout(() => {
+              setStatus('initial');
+              goToUserListPage();
+            }, 500);
+          }
         } else {
           handleSaveFailure(
             jsonData['api-error-messages']['create-user-error']
@@ -95,6 +134,7 @@ const CreateUserPage = () => {
       <div className="tw-self-center">
         <CreateUserComponent
           allowAccess={isAdminUser || isAuthDisabled}
+          forceBot={Boolean(bot)}
           roles={roles}
           saveState={status}
           onCancel={handleCancel}

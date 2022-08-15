@@ -51,6 +51,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.FunctionList;
 import org.openmetadata.catalog.ResourceRegistry;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.policies.Policy;
@@ -58,11 +59,14 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
+import org.openmetadata.catalog.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Function;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -290,16 +294,21 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       operationId = "listPolicyResources",
       summary = "Get list of policy resources used in authoring a policy.",
       tags = "policies",
-      description = "Get all the resources used in policy authoring",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "policy", content = @Content(mediaType = "application/json")),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Policy for instance {id} and version {version} is" + " " + "not found")
-      })
+      description = "Get list of policy resources used in authoring a policy.")
   public ResultList<ResourceDescriptor> listPolicyResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new ResourceDescriptorList(ResourceRegistry.listResourceDescriptors());
+  }
+
+  @GET
+  @Path("/functions")
+  @Operation(
+      operationId = "listPolicyFunctions",
+      summary = "Get list of policy functions used in authoring conditions in policy rules.",
+      tags = "policies",
+      description = "Get list of policy functions used in authoring conditions in policy rules.")
+  public ResultList<Function> listPolicyFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return new FunctionList(CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class));
   }
 
   @POST

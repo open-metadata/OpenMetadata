@@ -505,8 +505,25 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  public EntityReference getOwnerOfPost(Post post) {
-    User fromUser = dao.userDAO().findEntityByName(post.getFrom());
+  @Transaction
+  public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) throws IOException {
+    String id = thread.getId().toString();
+
+    // Delete all the relationships to other entities
+    dao.relationshipDAO().deleteAll(id, Entity.THREAD);
+
+    // Delete all the field relationships to other entities
+    dao.fieldRelationshipDAO().deleteAllByPrefix(id);
+
+    // Finally, delete the entity
+    dao.feedDAO().delete(id);
+
+    LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
+    return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
+  }
+
+  public EntityReference getOwnerReference(String username) {
+    User fromUser = dao.userDAO().findEntityByName(username);
     return fromUser.getEntityReference();
   }
 
