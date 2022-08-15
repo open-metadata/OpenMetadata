@@ -28,7 +28,9 @@
     <module>catalog-rest-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
+    <module>openmetadata-core</module>
     <module>openmetadata-clients</module>
+    <module>openmetadata-clients/openmetadata-java-client</module>
   </modules>
   <packaging>pom</packaging>
 
@@ -420,7 +422,6 @@
         <artifactId>slf4j-simple</artifactId>
         <version>${slf4j.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>
