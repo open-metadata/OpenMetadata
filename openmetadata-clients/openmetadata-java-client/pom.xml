@@ -21,7 +21,7 @@
         <dependency>
             <groupId>org.open-metadata</groupId>
             <artifactId>openmetadata-core</artifactId>
-            <version>0.11.4</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.swagger</groupId>
@@ -99,6 +99,10 @@
             <artifactId>feign-okhttp</artifactId>
             <version>11.7</version>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
         <!-- TEST -->
         <dependency>
             <groupId>junit</groupId>
@@ -160,6 +164,8 @@
                             <library>feign</library>
                             <generateApiTests>true</generateApiTests>
                             <generateModelTests>true</generateModelTests>
+                            <apiPackage>org.openmetadata.client.api</apiPackage>
+                            <modelPackage>org.openmetadata.client.model</modelPackage>
                             <configOptions>
                                 <generateForOpenFeign>true</generateForOpenFeign>
                                 <sourceFolder>src/main/java/</sourceFolder>
