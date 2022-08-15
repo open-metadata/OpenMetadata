@@ -14,15 +14,13 @@
 package org.openmetadata.client.security;
 
 import feign.RequestTemplate;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class OpenMetadataAuthenticationProvider implements AuthenticationProvider {
-
-  private static final Logger LOG = LoggerFactory.getLogger(OpenMetadataAuthenticationProvider.class);
   private final OpenMetadataJWTClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;

@@ -19,14 +19,13 @@ import com.google.auth.oauth2.ServiceAccountCredentials;
 import feign.RequestTemplate;
 import java.io.FileInputStream;
 import java.util.Arrays;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class GoogleAuthenticationProvider implements AuthenticationProvider {
-  private static final Logger LOG = LoggerFactory.getLogger(GoogleAuthenticationProvider.class);
   private OpenMetadataServerConnection serverConfig;
   private GoogleSSOClientConfig securityConfig;
   private String generatedAuthToken;

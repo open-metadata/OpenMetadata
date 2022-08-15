@@ -21,18 +21,17 @@ import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
-import io.swagger.client.ApiClient;
-import io.swagger.client.api.CatalogApi;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.api.CatalogVersion;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.client.ApiClient;
+import org.openmetadata.client.api.CatalogApi;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.core.util.VersionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class OpenMetadata {
-  private static final Logger LOG = LoggerFactory.getLogger(OpenMetadata.class);
   private static final CatalogVersion CATALOG_VERSION_CLIENT;
 
   static {
@@ -112,7 +111,7 @@ public class OpenMetadata {
 
   public String[] getServerVersion() {
     CatalogApi api = apiClient.buildClient(CatalogApi.class);
-    io.swagger.client.model.CatalogVersion serverVersion = api.getCatalogVersion();
+    org.openmetadata.client.model.CatalogVersion serverVersion = api.getCatalogVersion();
     return VersionUtils.getVersionFromString(serverVersion.getVersion());
   }
 
