@@ -88,9 +88,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     location = createLocation();
   }
 
-  public void setupPolicies() throws HttpResponseException {
+  public void setupPolicies() throws IOException {
     POLICY1 = createEntity(createRequest("policy1").withOwner(null), ADMIN_AUTH_HEADERS);
     POLICY2 = createEntity(createRequest("policy2").withOwner(null), ADMIN_AUTH_HEADERS);
+    TEAM_ONLY_POLICY = getEntityByName("TeamOnlyPolicy", "", ADMIN_AUTH_HEADERS);
+    TEAM_ONLY_POLICY_RULES = EntityUtil.resolveRules(TEAM_ONLY_POLICY.getRules());
   }
 
   @Override
@@ -375,7 +377,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         .withDescription("description")
         .withPolicyType(PolicyType.AccessControl)
         .withRules(rules.stream().map(rule -> (Object) rule).collect(Collectors.toList()))
-        .withOwner(USER_OWNER1);
+        .withOwner(USER1_REF);
   }
 
   private void validateCondition(String expression) throws HttpResponseException {

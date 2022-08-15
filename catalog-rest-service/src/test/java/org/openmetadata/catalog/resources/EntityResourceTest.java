@@ -35,6 +35,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -102,6 +103,7 @@ import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -179,25 +181,31 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   // Users
   public static User USER1;
-  public static EntityReference USER_OWNER1;
+  public static EntityReference USER1_REF;
   public static User USER2;
-  public static EntityReference USER_OWNER2;
+  public static EntityReference USER2_REF;
+  public static User USER_TEAM21;
 
   public static Team ORG_TEAM;
   public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
+  public static Team TEAM11; // Team under Team1
+  public static EntityReference TEAM11_REF;
+  public static Team TEAM2; // Team 2 has team only policy and does not allow access to users not in team hierarchy
+  public static Team TEAM21; // Team under Team2
 
   public static User USER_WITH_DATA_STEWARD_ROLE;
   public static Role DATA_STEWARD_ROLE;
-  public static EntityReference DATA_STEWARD_ROLE_REFERENCE;
+  public static EntityReference DATA_STEWARD_ROLE_REF;
   public static User USER_WITH_DATA_CONSUMER_ROLE;
   public static Role DATA_CONSUMER_ROLE;
-  public static EntityReference DATA_CONSUMER_ROLE_REFERENCE;
+  public static EntityReference DATA_CONSUMER_ROLE_REF;
   public static Role ROLE1;
-  public static EntityReference ROLE1_REFERENCE;
+  public static EntityReference ROLE1_REF;
 
   public static Policy POLICY1;
   public static Policy POLICY2;
+  public static Policy TEAM_ONLY_POLICY;
+  public static List<Rule> TEAM_ONLY_POLICY_RULES;
 
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
@@ -625,7 +633,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    K create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    K create = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
 
     T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     if (supportsTags) {
@@ -759,7 +767,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Entity with user as owner is created successfully
-    createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER_OWNER1), ADMIN_AUTH_HEADERS);
+    createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
 
     // Entity with team as owner is created successfully
     T entity =
@@ -824,7 +832,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   void put_entityUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a chart with POST
-    K request = createRequest(getEntityName(test), "description", "display", USER_OWNER1);
+    K request = createRequest(getEntityName(test), "description", "display", USER1_REF);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update chart two times successfully with PUT requests
@@ -839,11 +847,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
-    K request = createRequest(getEntityName(test), "", null, USER_OWNER1);
+    K request = createRequest(getEntityName(test), "", null, USER1_REF);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update the entity as USER_OWNER1
-    request = createRequest(getEntityName(test), "newDescription", null, USER_OWNER1);
+    request = createRequest(getEntityName(test), "newDescription", null, USER1_REF);
     FieldChange fieldChange = new FieldChange().withName("description").withOldValue("").withNewValue("newDescription");
     ChangeDescription change =
         getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
@@ -860,32 +868,32 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1);
-    request = createRequest(getEntityName(test), "description", "displayName", TEAM_OWNER1);
+    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM11_REF);
+    request = createRequest(getEntityName(test), "description", "displayName", TEAM11_REF);
     ChangeDescription change =
         getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    checkOwnerOwns(TEAM_OWNER1, entity.getId(), true);
+    checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
-    request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
+    request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM11_REF).withNewValue(USER1_REF);
     change = getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
-    checkOwnerOwns(TEAM_OWNER1, entity.getId(), false);
+    checkOwnerOwns(USER1_REF, entity.getId(), true);
+    checkOwnerOwns(TEAM11_REF, entity.getId(), false);
 
     // Set the owner to the existing owner. No ownership change must be recorded.
-    request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
     change = getChangeDescription(entity.getVersion());
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
-    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+    checkOwnerOwns(USER1_REF, entity.getId(), true);
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
     request = createRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
-    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+    checkOwnerOwns(USER1_REF, entity.getId(), true);
   }
 
   @Test
@@ -899,36 +907,36 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Set TEAM_OWNER1 as owner using PATCH request
     String json = JsonUtils.pojoToJson(entity);
-    entity.setOwner(TEAM_OWNER1);
-    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1);
+    entity.setOwner(TEAM11_REF);
+    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM11_REF);
     ChangeDescription change =
         getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    checkOwnerOwns(TEAM_OWNER1, entity.getId(), true);
+    checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PATCH request
     json = JsonUtils.pojoToJson(entity);
-    entity.setOwner(USER_OWNER1);
-    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
+    entity.setOwner(USER1_REF);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM11_REF).withNewValue(USER1_REF);
     change = getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
-    checkOwnerOwns(TEAM_OWNER1, entity.getId(), false);
+    checkOwnerOwns(USER1_REF, entity.getId(), true);
+    checkOwnerOwns(TEAM11_REF, entity.getId(), false);
 
     // Set the owner to the existing owner. No ownership change must be recorded.
     json = JsonUtils.pojoToJson(entity);
-    entity.setOwner(USER_OWNER1);
+    entity.setOwner(USER1_REF);
     change = getChangeDescription(entity.getVersion());
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
-    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+    checkOwnerOwns(USER1_REF, entity.getId(), true);
 
     // Remove ownership (from USER_OWNER1) using PATCH request. Owner is expected to remain the same and not removed.
     json = JsonUtils.pojoToJson(entity);
     entity.setOwner(null);
-    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF);
     change = getChangeDescription(entity.getVersion()).withFieldsDeleted(Collections.singletonList(fieldChange));
     patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    checkOwnerOwns(USER_OWNER1, entity.getId(), false);
+    checkOwnerOwns(USER1_REF, entity.getId(), false);
   }
 
   @Test
@@ -938,7 +946,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Create an entity with owner
-    K request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    K request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
     createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update description and remove owner as non-owner
@@ -1107,8 +1115,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Set the owner for the entity
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
-    entity.setOwner(USER_OWNER1);
+    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER1_REF));
+    entity.setOwner(USER1_REF);
     entity =
         patchEntityAndCheck(
             entity, originalJson, authHeaders(USER1.getName() + "@open-metadata.org"), MINOR_UPDATE, change);
@@ -1117,7 +1125,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
+    patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
   }
 
   @Test
@@ -1150,8 +1158,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .getFieldsUpdated()
         .add(new FieldChange().withName("description").withOldValue("").withNewValue("description"));
     if (supportsOwner) {
-      entity.setOwner(TEAM_OWNER1);
-      change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1));
+      entity.setOwner(TEAM11_REF);
+      change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM11_REF));
     }
     if (supportsTags) {
       entity.setTags(new ArrayList<>());
@@ -1190,10 +1198,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .getFieldsUpdated()
         .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("displayName1"));
     if (supportsOwner) {
-      entity.setOwner(USER_OWNER1);
+      entity.setOwner(USER1_REF);
       change
           .getFieldsUpdated()
-          .add(new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1));
+          .add(new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM11_REF).withNewValue(USER1_REF));
     }
 
     if (supportsTags) {
@@ -1217,7 +1225,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     change = getChangeDescription(entity.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
     if (supportsOwner) {
-      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1));
+      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF));
     }
     if (supportsTags) {
       change.getFieldsDeleted().add(new FieldChange().withName(FIELD_TAGS).withOldValue(removedTags));
@@ -1297,13 +1305,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     ObjectNode jsonNode = mapper.createObjectNode();
     jsonNode.set("intA", mapper.convertValue(1, JsonNode.class));
     K create = createRequest(test).withExtension(jsonNode);
-    T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // PUT and update the entity with extension field intA to a new value
     // TODO to do change description for stored customProperties
     jsonNode.set("intA", mapper.convertValue(2, JsonNode.class));
     create = createRequest(test).withExtension(jsonNode);
-    entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    T entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
     // PATCH and update the entity with extension field stringB
@@ -1413,6 +1421,55 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityDeleted");
+  }
+
+  @Test
+  void testTeamOnlyPolicy(TestInfo test) throws HttpResponseException {
+    if (!supportsOwner) {
+      return;
+    }
+    // TEAM2 allows operations on its entities to users only with in that team due to team only policy attached to it
+    K createRequest = createRequest("policyTestTable", "", "", TEAM21.getEntityReference());
+    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User userInTeam21 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 21).withTeams(List.of(TEAM21.getId())), ADMIN_AUTH_HEADERS);
+    User userInTeam2 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 2).withTeams(List.of(TEAM2.getId())), ADMIN_AUTH_HEADERS);
+    User userInTeam11 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 11).withTeams(List.of(TEAM11.getId())), ADMIN_AUTH_HEADERS);
+    User userInTeam1 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 1).withTeams(List.of(TEAM1.getId())), ADMIN_AUTH_HEADERS);
+
+    // users in team21 and team2 have all the operations allowed
+    T getEntity = getEntity(entity.getId(), authHeaders(userInTeam21.getName()));
+    assertEquals(getEntity.getId(), entity.getId());
+    getEntity = getEntity(entity.getId(), authHeaders(userInTeam2.getName()));
+    assertEquals(getEntity.getId(), entity.getId());
+
+    // users in team11 and team12 have all the operations denied due to Team2 team only policy
+    assertResponse(
+        () -> getEntity(entity.getId(), authHeaders(userInTeam11.getName())),
+        FORBIDDEN,
+        permissionDenied(
+            userInTeam11.getName(),
+            MetadataOperation.VIEW_ALL,
+            null,
+            TEAM_ONLY_POLICY.getName(),
+            TEAM_ONLY_POLICY_RULES.get(0).getName()));
+    assertResponse(
+        () -> getEntity(entity.getId(), authHeaders(userInTeam1.getName())),
+        FORBIDDEN,
+        permissionDenied(
+            userInTeam1.getName(),
+            MetadataOperation.VIEW_ALL,
+            null,
+            TEAM_ONLY_POLICY.getName(),
+            TEAM_ONLY_POLICY_RULES.get(0).getName()));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

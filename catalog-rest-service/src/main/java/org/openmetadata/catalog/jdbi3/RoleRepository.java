@@ -141,7 +141,6 @@ public class RoleRepository extends EntityRepository<Role> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateDefault(original, updated);
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 
@@ -161,46 +160,6 @@ public class RoleRepository extends EntityRepository<Role> {
         // Add Role to policy relationships back based on Updated entity
         storeRelationships(updated);
       }
-    }
-
-    private void updateDefault(Role origRole, Role updatedRole) throws IOException {
-      long startTime = System.nanoTime();
-      if (Boolean.FALSE.equals(origRole.getDefaultRole()) && Boolean.TRUE.equals(updatedRole.getDefaultRole())) {
-        setDefaultToTrue(updatedRole);
-      }
-      if (Boolean.TRUE.equals(origRole.getDefaultRole()) && Boolean.FALSE.equals(updatedRole.getDefaultRole())) {
-        setDefaultToFalse(updatedRole);
-      }
-      recordChange("default", origRole.getDefaultRole(), updatedRole.getDefaultRole());
-      LOG.debug(
-          "Took {} ns to update {} role field default from {} to {}",
-          System.nanoTime() - startTime,
-          updatedRole.getName(),
-          origRole.getDefaultRole(),
-          updatedRole.getDefaultRole());
-    }
-
-    private void setDefaultToTrue(Role role) throws IOException {
-      List<Role> defaultRoles = getDefaultRoles(null, Fields.EMPTY_FIELDS);
-      EntityRepository<Role> roleRepository = Entity.getEntityRepository(Entity.ROLE);
-      // Set default=FALSE for all existing default roles.
-      for (Role defaultRole : defaultRoles) {
-        if (defaultRole.getId().equals(role.getId())) {
-          // Skip the current role which is being set with default=TRUE.
-          continue;
-        }
-        Role origDefaultRole = roleRepository.get(null, defaultRole.getId(), Fields.EMPTY_FIELDS);
-        Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId(), Fields.EMPTY_FIELDS);
-        updatedDefaultRole = updatedDefaultRole.withDefaultRole(false);
-        new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
-      }
-    }
-
-    private void setDefaultToFalse(Role role) {
-      LOG.info("Deleting 'user --- has ---> role' relationship for {} role", role.getName());
-      daoCollection
-          .relationshipDAO()
-          .deleteTo(role.getId().toString(), Entity.ROLE, Relationship.HAS.ordinal(), Entity.USER);
     }
   }
 }
