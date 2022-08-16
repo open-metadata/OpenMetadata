@@ -39,6 +39,9 @@ const CustomEntityDetailV1 = () => {
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
 
+  const tabAttributePath =
+    customAttributesPath[tab as keyof typeof customAttributesPath];
+
   const fetchTypeDetail = async (typeFQN: string) => {
     setIsLoading(true);
     try {
@@ -56,7 +59,7 @@ const CustomEntityDetailV1 = () => {
   };
 
   const handleAddProperty = () => {
-    const path = getAddCustomPropertyPath(tab);
+    const path = getAddCustomPropertyPath(tabAttributePath);
     history.push(path);
   };
 
@@ -99,9 +102,7 @@ const CustomEntityDetailV1 = () => {
     if (!isUndefined(tab)) {
       setActiveTab(1);
       setIsError(false);
-      fetchTypeDetail(
-        customAttributesPath[tab as keyof typeof customAttributesPath]
-      );
+      fetchTypeDetail(tabAttributePath);
     }
   }, [tab]);
 
