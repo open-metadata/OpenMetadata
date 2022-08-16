@@ -47,4 +47,5 @@ export type ChartDataCollection = Record<string, ChartCollection>;
 
 export interface ProfilerTabProp {
   chartData: ChartDataCollection;
+  tableProfiler: TableProfile;
 }

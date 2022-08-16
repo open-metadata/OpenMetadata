@@ -33,7 +33,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
 
   return (
     <Card className="tw-rounded-md tw-border">
-      <Row>
+      <Row gutter={[16, 16]}>
         <Col span={4}>
           <Statistic
             title={<span className="tw-text-grey-body">{title}</span>}

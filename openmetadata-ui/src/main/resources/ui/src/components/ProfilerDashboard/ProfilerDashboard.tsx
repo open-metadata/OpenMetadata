@@ -35,7 +35,7 @@ import {
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { Table } from '../../generated/entity/data/table';
+import { Column, Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -63,6 +63,7 @@ import {
   ProfilerDashboardProps,
   ProfilerDashboardTab,
 } from './profilerDashboard.interface';
+import './profilerDashboard.less';
 
 const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   table,
@@ -81,6 +82,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     useState<keyof typeof PROFILER_FILTER_RANGE>('last7days');
   const [chartData, setChartData] = useState<ChartDataCollection>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
+    {} as Column
+  );
 
   const timeRangeOption = useMemo(() => {
     return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
@@ -378,7 +382,14 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           </Row>
         </Col>
         <Col span={24}>
-          {isLoading ? <Loader /> : <ProfilerTab chartData={chartData} />}
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <ProfilerTab
+              chartData={chartData}
+              tableProfiler={profilerData[0]}
+            />
+          )}
         </Col>
       </Row>
     </PageLayout>

@@ -11,23 +11,83 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Statistic } from 'antd';
 import { startCase } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ProfilerTabProp } from '../profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 
-const ProfilerTab: React.FC<ProfilerTabProp> = ({ chartData }) => {
+const ProfilerTab: React.FC<ProfilerTabProp> = ({
+  chartData,
+  tableProfiler,
+}) => {
+  const tableState = useMemo(
+    () => [
+      {
+        title: 'Row Count',
+        value: tableProfiler.rowCount || 0,
+      },
+      {
+        title: 'Column Count',
+        value: tableProfiler.columnCount || 0,
+      },
+      {
+        title: 'Table Sample %',
+        value: `${tableProfiler.profileSample || 100}%`,
+      },
+    ],
+    [tableProfiler]
+  );
+  const testSummary = useMemo(
+    () => [
+      {
+        title: 'Success',
+        value: 0,
+      },
+      {
+        title: 'Aborted',
+        value: 0,
+      },
+      {
+        title: 'Failed',
+        value: 0,
+      },
+    ],
+    []
+  );
+
   return (
-    <Row>
+    <Row gutter={[16, 16]}>
       <Col span={8}>
         <Card className="tw-rounded-md tw-border">card</Card>
       </Col>
       <Col span={8}>
-        <Card className="tw-rounded-md tw-border">card</Card>
+        <Card className="tw-rounded-md tw-border">
+          <p className="tw-text-base tw-font-medium tw-mb-7">
+            Table Metrics Summary
+          </p>
+          <Row className="table-profiler-summary">
+            {tableState.map((item) => (
+              <Col className="overall-summary-card" key={item.title} span={8}>
+                <Statistic title={item.title} value={item.value} />
+              </Col>
+            ))}
+          </Row>
+        </Card>
       </Col>
       <Col span={8}>
-        <Card className="tw-rounded-md tw-border">card</Card>
+        <Card className="tw-rounded-md tw-border">
+          <p className="tw-text-base tw-font-medium tw-mb-7">
+            Quality Tests Summary
+          </p>
+          <Row className="table-profiler-summary">
+            {testSummary.map((item) => (
+              <Col className="overall-summary-card" key={item.title} span={8}>
+                <Statistic title={item.title} value={item.value} />
+              </Col>
+            ))}
+          </Row>
+        </Card>
       </Col>
 
       {Object.entries(chartData).map(([key, value], index) => (
