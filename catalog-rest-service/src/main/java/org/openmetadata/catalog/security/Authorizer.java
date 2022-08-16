@@ -27,12 +27,15 @@ public interface Authorizer {
   /** Initialize the authorizer */
   void init(AuthorizerConfiguration config, Jdbi jdbi);
 
-  /**
-   * Returns a list of operations that the authenticated user (subject) can perform on the target entity (object).
-   *
-   * @return
-   */
-  List<ResourcePermission> listPermissions(SecurityContext securityContext);
+  /** Returns a list of operations that the authenticated user (subject) can perform */
+  List<ResourcePermission> listPermissions(SecurityContext securityContext, String user);
+
+  /** Returns a list of operations that the authenticated user (subject) can perform on a given resource type */
+  ResourcePermission getPermission(SecurityContext securityContext, String user, String resource);
+
+  /** Returns a list of operations that the authenticated user (subject) can perform on a given resource */
+  ResourcePermission getPermission(
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
 
   boolean isOwner(SecurityContext ctx, EntityReference entityReference);
 

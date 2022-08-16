@@ -56,6 +56,10 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
+  public static String resourceTypeNotFound(String resourceType) {
+    return String.format("Resource type %s not found", resourceType);
+  }
+
   public static String entityTypeNotSupported(String entityType) {
     return String.format("Entity type %s not supported", entityType);
   }

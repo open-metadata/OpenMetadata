@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmi
 import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -97,19 +96,40 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public List<ResourcePermission> listPermissions(SecurityContext securityContext) {
-    SubjectContext subjectContext;
-    try {
-      subjectContext = getSubjectContext(securityContext);
-    } catch (EntityNotFoundException ex) {
-      return Collections.emptyList();
-    }
+  public List<ResourcePermission> listPermissions(SecurityContext securityContext, String user) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    subjectContext = changeSubjectContext(user, subjectContext);
 
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
       // Admins and bots have permissions to do all operations.
       return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
     }
-    return PolicyEvaluator.getAllowedOperations(subjectContext);
+    return PolicyEvaluator.listPermission(subjectContext);
+  }
+
+  @Override
+  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resourceType) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    subjectContext = changeSubjectContext(user, subjectContext);
+
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      // Admins and bots have permissions to do all operations.
+      return PolicyEvaluator.getResourcePermission(resourceType, Access.ALLOW);
+    }
+    return PolicyEvaluator.getPermission(subjectContext, resourceType);
+  }
+
+  @Override
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    subjectContext = changeSubjectContext(user, subjectContext);
+
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      // Admins and bots have permissions to do all operations.
+      return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
+    }
+    return PolicyEvaluator.getPermission(subjectContext, resourceContext);
   }
 
   @Override
@@ -136,10 +156,6 @@ public class DefaultAuthorizer implements Authorizer {
     if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
       return;
     }
-
-    //    if (subjectContext.isOwner(resourceContext.getOwner())) {
-    //      return;
-    //    }
 
     // TODO view is currently allowed for everyone
     if (operationContext.getOperations().size() == 1
@@ -174,6 +190,22 @@ public class DefaultAuthorizer implements Authorizer {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
-    return SubjectCache.getInstance().getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
+    return getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
+  }
+
+  private SubjectContext getSubjectContext(String userName) {
+    return SubjectCache.getInstance().getSubjectContext(userName);
+  }
+
+  private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {
+    // Asking for some other user's permissions is admin only operation
+    if (user != null && !loggedInUser.getUser().getName().equals(user)) {
+      if (!loggedInUser.isAdmin()) {
+        throw new AuthorizationException(notAdmin(loggedInUser.getUser().getName()));
+      }
+      LOG.debug("Changing subject context from logged-in user to {}", user);
+      return getSubjectContext(user);
+    }
+    return loggedInUser;
   }
 }
