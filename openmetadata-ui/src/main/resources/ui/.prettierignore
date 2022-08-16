@@ -40,6 +40,7 @@ swagger.html
 
 # antlr
 src/generated/antlr
+src/antlr/generated
 
 
 # Generated TS
