@@ -34,6 +34,7 @@ export enum ProfilerDashboardTab {
 
 export type ChartData = {
   name: string;
+  proportion?: number;
   value: number;
   timestamp: number;
 };
@@ -58,4 +59,8 @@ export interface ProfilerSummaryCardProps {
     value: number | string;
   }[];
   showIndicator?: boolean;
+}
+
+export interface ProfilerLatestDetailsProps {
+  chartData: ChartDataCollection;
 }

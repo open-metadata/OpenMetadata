@@ -56,7 +56,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import PageLayout from '../containers/PageLayout';
-import Loader from '../Loader/Loader';
+import ProfilerLatestDetails from './component/ProfilerLatestDetails';
 import ProfilerTab from './component/ProfilerTab';
 import {
   ChartDataCollection,
@@ -309,17 +309,20 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       chartDataCollection['distinctCount'].data.push({
         name: x,
         value: col?.distinctCount || 0,
+        proportion: col?.distinctProportion || 0,
         timestamp: dataPoint.timestamp || 0,
       });
 
       chartDataCollection['uniqueCount'].data.push({
         name: x,
+        proportion: col?.uniqueProportion || 0,
         value: col?.uniqueCount || 0,
         timestamp: dataPoint.timestamp || 0,
       });
 
       chartDataCollection['nullCount'].data.push({
         name: x,
+        proportion: col?.nullProportion || 0,
         value: col?.nullCount || 0,
         timestamp: dataPoint.timestamp || 0,
       });
@@ -387,8 +390,8 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           </Row>
         </Col>
         <Col span={24}>
-          {isLoading ? (
-            <Loader />
+          {selectedTimeRange === 'latest' ? (
+            <ProfilerLatestDetails chartData={chartData} />
           ) : (
             <ProfilerTab
               activeColumnDetails={activeColumnDetails}
