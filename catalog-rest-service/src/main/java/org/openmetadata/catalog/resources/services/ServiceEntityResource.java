@@ -15,16 +15,20 @@ package org.openmetadata.catalog.resources.services;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.io.IOException;
 import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
+import org.openmetadata.annotations.utils.AnnotationChecker;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ServiceType;
+import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.ServiceEntityRepository;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
 public abstract class ServiceEntityResource<
@@ -55,23 +59,33 @@ public abstract class ServiceEntityResource<
     try {
       authorizer.authorizeAdmin(securityContext, secretsManager.isLocal());
     } catch (AuthorizationException e) {
-      return nullifyConnection(service);
+      return nullifyRequiredConnectionParameters(service);
     }
-    service
-        .getConnection()
-        .setConfig(
-            secretsManager.encryptOrDecryptServiceConnectionConfig(
-                service.getConnection().getConfig(),
-                extractServiceType(service),
-                service.getName(),
-                serviceType,
-                false));
+    service.getConnection().setConfig(retrieveServiceConnectionConfig(service));
     return service;
+  }
+
+  private Object retrieveServiceConnectionConfig(T service) {
+    return secretsManager.encryptOrDecryptServiceConnectionConfig(
+        service.getConnection().getConfig(), extractServiceType(service), service.getName(), serviceType, false);
   }
 
   protected ResultList<T> decryptOrNullify(SecurityContext securityContext, ResultList<T> services) {
     listOrEmpty(services.getData()).forEach(service -> decryptOrNullify(securityContext, service));
     return services;
+  }
+
+  protected T nullifyRequiredConnectionParameters(T service) {
+    Object connectionConfig = retrieveServiceConnectionConfig(service);
+    if (AnnotationChecker.isExposedFieldPresent(connectionConfig.getClass())) {
+      try {
+        service.getConnection().setConfig(JsonUtils.toExposedEntity(connectionConfig, connectionConfig.getClass()));
+        return service;
+      } catch (IOException e) {
+        throw new UnhandledServerException(e.getMessage(), e.getCause());
+      }
+    }
+    return nullifyConnection(service);
   }
 
   protected abstract T nullifyConnection(T service);

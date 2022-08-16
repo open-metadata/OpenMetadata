@@ -34,7 +34,7 @@ import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.services.connections.database.MysqlConnection;
+import org.openmetadata.catalog.services.connections.database.MssqlConnection;
 import org.openmetadata.catalog.type.Include;
 
 public class DatabaseServiceResourceUnitTest
@@ -50,8 +50,9 @@ public class DatabaseServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(DatabaseService.class);
+    serviceConnectionConfig = new MssqlConnection();
     DatabaseConnection serviceConnection = mock(DatabaseConnection.class);
-    lenient().when(serviceConnection.getConfig()).thenReturn(mock(MysqlConnection.class));
+    lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.DatabaseServiceDAO entityDAO = mock(CollectionDAO.DatabaseServiceDAO.class);
     when(collectionDAO.dbServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateDatabaseService.DatabaseServiceType.Mysql);

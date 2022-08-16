@@ -13,12 +13,15 @@
 
 package org.openmetadata.annotations;
 
-import org.jsonschema2pojo.CompositeAnnotator;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public class OpenMetadataAnnotator extends CompositeAnnotator {
-
-  public OpenMetadataAnnotator() {
-    // we can add multiple annotators
-    super(new ExposedAnnotator(), new MaskedAnnotator());
-  }
-}
+/**
+ * Specifies that the field or method is exposed, i.e., if the serialization will take into account those fields
+ * annotated with
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
+public @interface ExposedField {}

@@ -49,8 +49,10 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
+import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
 
@@ -60,6 +62,7 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
@@ -70,6 +73,11 @@ public final class JsonUtils {
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
+  }
+
+  static {
+    EXPOSED_OBJECT_MAPPER = OBJECT_MAPPER.copy();
+    EXPOSED_OBJECT_MAPPER.setAnnotationIntrospector(new OnlyExposedFieldAnnotationIntrospector());
   }
 
   static {
@@ -399,5 +407,15 @@ public final class JsonUtils {
    */
   public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
     return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
+  }
+
+  /**
+   * Serialize object removing all the fields annotated with @{@link ExposedField}
+   *
+   * @return Object if the serialization of `entity` does not result in an empty JSON string.
+   */
+  public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
+    String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
+    return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
   }
 }

@@ -32,6 +32,7 @@
       "format": "password"
     },
     "hostPort": {
+      "expose": true,
       "title": "Host and Port",
       "description": "URL to the Looker instance.",
       "type": "string",

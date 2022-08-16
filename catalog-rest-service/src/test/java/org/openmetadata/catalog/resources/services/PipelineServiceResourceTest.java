@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -133,9 +134,16 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
 
     update.withConnection(updatedConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
-    validatePipelineConnection(updatedConnection, service.getConnection(), service.getServiceType());
+    validatePipelineConnection(
+        updatedConnection, service.getConnection(), service.getServiceType(), ADMIN_AUTH_HEADERS);
     service = getEntity(service.getId(), TEST_AUTH_HEADERS);
-    assertNull(service.getConnection());
+    assertNotNull(service.getConnection());
+    assertNotNull(
+        JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
+            .getHostPort());
+    assertNull(
+        JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
+            .getConnection());
   }
 
   @Test
@@ -194,7 +202,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   public void validateCreatedEntity(
       PipelineService service, CreatePipelineService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
-    validatePipelineConnection(createRequest.getConnection(), service.getConnection(), service.getServiceType());
+    validatePipelineConnection(
+        createRequest.getConnection(), service.getConnection(), service.getServiceType(), authHeaders);
   }
 
   @Override
@@ -224,7 +233,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   private void validatePipelineConnection(
       PipelineConnection expectedPipelineConnection,
       PipelineConnection actualPipelineConnection,
-      PipelineServiceType pipelineServiceType) {
+      PipelineServiceType pipelineServiceType,
+      Map<String, String> authHeaders) {
     if (expectedPipelineConnection != null && actualPipelineConnection != null) {
       if (pipelineServiceType == PipelineServiceType.Airflow) {
         AirflowConnection expectedAirflowConnection = (AirflowConnection) expectedPipelineConnection.getConfig();
@@ -235,7 +245,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
           actualAirflowConnection =
               JsonUtils.convertValue(actualPipelineConnection.getConfig(), AirflowConnection.class);
         }
-        validateAirflowConnection(expectedAirflowConnection, actualAirflowConnection);
+        validateAirflowConnection(expectedAirflowConnection, actualAirflowConnection, authHeaders);
       }
     }
   }
@@ -247,25 +257,33 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
       PipelineConnection actualConnection = JsonUtils.readValue((String) actual, PipelineConnection.class);
       actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), AirflowConnection.class));
       // TODO remove this hardcoding
-      validatePipelineConnection(expectedConnection, actualConnection, PipelineServiceType.Airflow);
+      validatePipelineConnection(expectedConnection, actualConnection, PipelineServiceType.Airflow, null);
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
   public static void validateAirflowConnection(
-      AirflowConnection expectedAirflowConnection, AirflowConnection actualAirflowConnection) {
+      AirflowConnection expectedAirflowConnection,
+      AirflowConnection actualAirflowConnection,
+      Map<String, String> authHeaders) {
     assertEquals(expectedAirflowConnection.getHostPort(), actualAirflowConnection.getHostPort());
     // Currently, just checking for MySQL as metadata db for Airflow
     // We need to get inside the general DatabaseConnection and fetch the MysqlConnection
     DatabaseConnection expectedDatabaseConnection = (DatabaseConnection) expectedAirflowConnection.getConnection();
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
-
-    DatabaseConnection actualDatabaseConnection =
-        JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
-    MysqlConnection actualMysqlConnection =
-        JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
     // Use the database service tests utilities for the comparison
-    validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
+    // only admin can see all connection parameters
+    if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
+      DatabaseConnection actualDatabaseConnection =
+          JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
+      MysqlConnection actualMysqlConnection =
+          JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
+      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
+    } else {
+      assertNotNull(actualAirflowConnection);
+      assertNotNull(actualAirflowConnection.getHostPort());
+      assertNull(actualAirflowConnection.getConnection());
+    }
   }
 }
