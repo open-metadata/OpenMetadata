@@ -58,27 +58,17 @@ export const getFeedsWithFilter = async (
   type?: ThreadType,
   taskStatus?: ThreadTaskStatus
 ) => {
-  let config = {};
+  const feedFilterType = filterType === FeedFilter.ALL ? undefined : filterType;
 
-  if (filterType !== FeedFilter.ALL) {
-    config = {
-      params: {
-        userId,
-        filterType,
-        after,
-        type,
-        taskStatus,
-      },
-    };
-  } else {
-    config = {
-      params: {
-        after,
-        type,
-        taskStatus,
-      },
-    };
-  }
+  const config = {
+    params: {
+      userId,
+      filterType: feedFilterType,
+      after,
+      type,
+      taskStatus,
+    },
+  };
 
   const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
     `/feed`,
