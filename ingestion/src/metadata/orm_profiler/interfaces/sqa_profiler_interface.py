@@ -28,17 +28,24 @@ from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
+from metadata.orm_profiler.profiler.handle_partition import (
+    get_partition_cols,
+    is_partitioned,
+)
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.validations.core import validation_enum_registry
+from metadata.orm_profiler.validations.models import TablePartitionConfig
 from metadata.utils.connections import (
     create_and_bind_thread_safe_session,
     get_connection,
@@ -46,6 +53,7 @@ from metadata.utils.connections import (
 )
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.dispatch import enum_register
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import sqa_interface_registry_logger
 from metadata.utils.timeout import cls_timeout
 
@@ -64,31 +72,34 @@ class SQAProfilerInterface(InterfaceProtocol):
         self,
         service_connection_config,
         metadata_config: Optional[OpenMetadataConnection] = None,
-        profiler_config: Optional[ProfilerProcessorConfig] = None,
-        workflow_profile_sample: Optional[float] = None,
         thread_count: Optional[int] = 5,
         table_entity: Optional[Table] = None,
         table: Optional[DeclarativeMeta] = None,
+        profile_sample: Optional[float] = None,
+        profile_query: Optional[str] = None,
+        partition_config: Optional[TablePartitionConfig] = None,
     ):
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count
-        self.profiler_config = profiler_config
         self.table_entity = table_entity
         self._create_ometa_obj(metadata_config)
-        self.table = (
-            table or self._convert_table_to_orm_object()
-        )  # Allows SQA Interface to be used without OM server config
-        self.workflow_profile_sample = workflow_profile_sample
+
+        # Allows SQA Interface to be used without OM server config
+        self.table = table or self._convert_table_to_orm_object()
+
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()
 
+        self.profile_sample = profile_sample
+        self.profile_query = profile_query
+        self.partition_details = (
+            self._get_partition_details(partition_config)
+            if not self.profile_query
+            else None
+        )
+
         self._sampler = self.create_sampler()
         self._runner = self.create_runner()
-
-        # Need to re-implement the logic with https://github.com/open-metadata/OpenMetadata/issues/5831
-        self._profile_sample = None
-        self._profile_sample_query = None
-        self.partition_details = None
 
     @property
     def sample(self):
@@ -118,6 +129,38 @@ class SQAProfilerInterface(InterfaceProtocol):
         engine = get_connection(service_connection_config)
         return create_and_bind_thread_safe_session(engine)
 
+    def _get_engine(self, service_connection_config):
+        """Get engine for database
+
+        Args:
+            service_connection_config: connection details for the specific service
+        Returns:
+            sqlalchemy engine
+        """
+        engine = get_connection(service_connection_config)
+        test_connection(engine)
+
+        return engine
+
+    def _get_partition_details(
+        self, partition_config: TablePartitionConfig
+    ) -> Optional[Dict]:
+        """From partition config, get the partition table for a table entity"""
+        if self.table_entity.serviceType == DatabaseServiceType.BigQuery:
+            if is_partitioned(self.session, self.table):
+                start, end = get_start_and_end(partition_config.partitionQueryDuration)
+                partition_details = {
+                    "partition_field": partition_config.partitionField
+                    or get_partition_cols(self.session, self.table),
+                    "partition_start": start,
+                    "partition_end": end,
+                    "partition_values": partition_config.partitionValues,
+                }
+
+                return partition_details
+
+        return None
+
     def _create_ometa_obj(self, metadata_config):
         try:
             self._metadata = OpenMetadata(metadata_config)
@@ -132,18 +175,15 @@ class SQAProfilerInterface(InterfaceProtocol):
         self,
         session,
         table,
-        profile_sample=None,
-        partition_details=None,
-        profile_sample_query=None,
     ):
         """Create thread safe runner"""
         if not hasattr(thread_local, "sampler"):
             thread_local.sampler = Sampler(
                 session=session,
                 table=table,
-                profile_sample=profile_sample,
-                partition_details=partition_details,
-                profile_sample_query=profile_sample_query,
+                profile_sample=self.profile_sample,
+                partition_details=self.partition_details,
+                profile_sample_query=self.profile_query,
             )
         return thread_local.sampler
 
@@ -151,9 +191,7 @@ class SQAProfilerInterface(InterfaceProtocol):
         self,
         session,
         table,
-        sample=None,
-        partition_details=None,
-        profile_sample_query=None,
+        sample,
     ):
         """Create thread safe runner"""
         if not hasattr(thread_local, "runner"):
@@ -161,8 +199,8 @@ class SQAProfilerInterface(InterfaceProtocol):
                 session=session,
                 table=table,
                 sample=sample,
-                partition_details=partition_details,
-                profile_sample_query=profile_sample_query,
+                partition_details=self.partition_details,
+                profile_sample_query=self.profile_query,
             )
         return thread_local.runner
 
@@ -244,19 +282,6 @@ class SQAProfilerInterface(InterfaceProtocol):
                 profile_results["columns"][column].update({"name": column, **profile})
         return profile_results
 
-    def _get_engine(self, service_connection_config):
-        """Get engine for database
-
-        Args:
-            service_connection_config: connection details for the specific service
-        Returns:
-            sqlalchemy engine
-        """
-        engine = get_connection(service_connection_config)
-        test_connection(engine)
-
-        return engine
-
     def fetch_sample_data(self):
         if not self.sampler:
             raise RuntimeError(
@@ -269,9 +294,9 @@ class SQAProfilerInterface(InterfaceProtocol):
         return Sampler(
             session=self.session,
             table=self.table,
-            profile_sample=self.workflow_profile_sample,
-            partition_details=None,
-            profile_sample_query=None,
+            profile_sample=self.profile_sample,
+            partition_details=self.partition_details,
+            profile_sample_query=self.profile_query,
         )
 
     def create_runner(self) -> None:
@@ -282,8 +307,8 @@ class SQAProfilerInterface(InterfaceProtocol):
                 session=self.session,
                 table=self.table(),
                 sample=self.sample,
-                partition_details=None,
-                profile_sample_query=None,
+                partition_details=self.partition_details,
+                profile_sample_query=self.profile_sample,
             )
         )
 
@@ -330,6 +355,10 @@ class SQAProfilerInterface(InterfaceProtocol):
             table=self.table,
             profile_sample=profile_sample,
         )
+
+    def close(self):
+        """close session"""
+        self.session.close()
 
 
 def get_table_metrics(
