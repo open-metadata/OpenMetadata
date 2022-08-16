@@ -34,6 +34,7 @@ import org.openmetadata.catalog.util.PipelineServiceClient;
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
   private static final String API_ENDPOINT = "api/v1/openmetadata";
+  private static final String DAG_ID = "dag_id";
 
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     super(
@@ -84,7 +85,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerEndPoint = "%s/%s/trigger";
       String triggerUrl = String.format(triggerEndPoint, serviceURL, API_ENDPOINT);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("dag_id", pipelineName);
+      requestPayload.put(DAG_ID, pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response.body();
@@ -104,7 +105,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String toggleEndPoint;
       String toggleUrl;
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("dag_id", ingestionPipeline.getName());
+      requestPayload.put(DAG_ID, ingestionPipeline.getName());
       // If the pipeline is currently enabled, disable it
       if (ingestionPipeline.getEnabled().equals(Boolean.TRUE)) {
         toggleEndPoint = "%s/%s/disable";
@@ -201,7 +202,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String killEndPoint = "%s/%s/kill";
       String killUrl = String.format(killEndPoint, serviceURL, API_ENDPOINT);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("dag_id", ingestionPipeline.getName());
+      requestPayload.put(DAG_ID, ingestionPipeline.getName());
       response = post(killUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response;

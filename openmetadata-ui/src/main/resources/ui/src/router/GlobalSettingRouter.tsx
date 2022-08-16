@@ -28,8 +28,8 @@ const WebhooksPageV1 = withSuspenseFallback(
 const ServicesPage = withSuspenseFallback(
   React.lazy(() => import('../pages/services/ServicesPage'))
 );
-const BotsListPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/BotsListpage/BotsListpage.component'))
+const BotsPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../pages/BotsPageV1/BotsPageV1.component'))
 );
 const CustomPropertiesPageV1 = withSuspenseFallback(
   React.lazy(
@@ -153,7 +153,7 @@ const GlobalSettingRouter = () => {
       />
       <Route
         exact
-        component={BotsListPage}
+        component={BotsPageV1}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS

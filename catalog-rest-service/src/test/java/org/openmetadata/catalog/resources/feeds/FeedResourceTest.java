@@ -311,6 +311,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     }
 
     // Test the /api/v1/feed/count API
+    assertEquals(userThreadCount, listThreads(USER_LINK, null, userAuthHeaders).getPaging().getTotal());
     assertEquals(userThreadCount, listThreadsCount(USER_LINK, userAuthHeaders).getTotalCount());
     assertEquals(tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, userAuthHeaders));
     assertEquals(tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, userAuthHeaders));
@@ -1226,6 +1227,15 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void delete_thread_404() {
+    // Test with an invalid thread id
+    assertResponse(
+        () -> deleteThread(NON_EXISTENT_ENTITY, AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
+  }
+
+  @Test
   void delete_post_200() throws HttpResponseException {
     // Create a thread and add a post
     Thread thread = createAndCheck(create(), AUTH_HEADERS);
@@ -1248,6 +1258,20 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void delete_thread_200() throws HttpResponseException {
+    // Create a thread
+    Thread thread = createAndCheck(create(), AUTH_HEADERS);
+    assertNotNull(thread);
+
+    // delete the thread
+    Thread deletedThread = deleteThread(thread.getId(), AUTH_HEADERS);
+    assertEquals(thread.getId(), deletedThread.getId());
+
+    // Check if thread is not found
+    assertResponse(() -> getThread(thread.getId(), AUTH_HEADERS), NOT_FOUND, entityNotFound("Thread", thread.getId()));
+  }
+
+  @Test
   void delete_post_unauthorized_403() throws HttpResponseException {
     // Create a thread and add a post as admin user
     Thread thread = createAndCheck(create(), ADMIN_AUTH_HEADERS);
@@ -1262,6 +1286,22 @@ public class FeedResourceTest extends CatalogApplicationTest {
     UUID postId = post.getId();
     assertResponse(
         () -> deletePost(threadId, postId, AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(USER.getName(), List.of(MetadataOperation.DELETE)));
+  }
+
+  @Test
+  void delete_thread_unauthorized_403() throws HttpResponseException {
+    // Create a thread as admin user
+    CreateThread create = create();
+    Thread thread = createAndCheck(create.withFrom(ADMIN_USER_NAME), ADMIN_AUTH_HEADERS);
+    assertNotNull(thread);
+
+    // delete the thread using a different user who is not an admin
+    // Here thread author is ADMIN, and we try to delete as USER
+    UUID threadId = thread.getId();
+    assertResponse(
+        () -> deleteThread(threadId, AUTH_HEADERS),
         FORBIDDEN,
         permissionNotAllowed(USER.getName(), List.of(MetadataOperation.DELETE)));
   }
@@ -1350,6 +1390,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static Thread addPost(UUID threadId, CreatePost post, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getResource("feed/" + threadId + "/posts"), post, Thread.class, authHeaders);
+  }
+
+  public static Thread deleteThread(UUID threadId, Map<String, String> authHeaders) throws HttpResponseException {
+    return TestUtils.delete(getResource("feed/" + threadId), Thread.class, authHeaders);
   }
 
   public static Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders)

@@ -2,7 +2,7 @@ package org.openmetadata.client.security.interfaces;
 
 import feign.Headers;
 import feign.RequestLine;
-import io.swagger.client.ApiClient;
+import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.model.AccessTokenResponse;
 
 public interface CustomOIDCAccessTokenApi extends ApiClient.Api {

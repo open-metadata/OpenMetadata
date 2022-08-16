@@ -7,6 +7,8 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 
 public interface ResourceContextInterface {
+  String getResource();
+
   // Get owner of a resource. If the resource does not support owner or has no owner, return null
   EntityReference getOwner() throws IOException;
 

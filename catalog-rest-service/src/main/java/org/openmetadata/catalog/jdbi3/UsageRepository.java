@@ -75,28 +75,28 @@ public class UsageRepository {
   }
 
   @Transaction
-  public RestUtil.PutResponse create(String entityType, String id, DailyCount usage) throws IOException {
+  public RestUtil.PutResponse<?> create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return addUsage(POST, entityType, id, usage);
   }
 
   @Transaction
-  public RestUtil.PutResponse createByName(String entityType, String fullyQualifiedName, DailyCount usage)
+  public RestUtil.PutResponse<?> createByName(String entityType, String fullyQualifiedName, DailyCount usage)
       throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(POST, entityType, ref.getId().toString(), usage);
   }
 
   @Transaction
-  public RestUtil.PutResponse createOrUpdate(String entityType, String id, DailyCount usage) throws IOException {
+  public RestUtil.PutResponse<?> createOrUpdate(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return addUsage(PUT, entityType, id, usage);
   }
 
   @Transaction
-  public RestUtil.PutResponse createOrUpdateByName(String entityType, String fullyQualifiedName, DailyCount usage)
+  public RestUtil.PutResponse<?> createOrUpdateByName(String entityType, String fullyQualifiedName, DailyCount usage)
       throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(PUT, entityType, ref.getId().toString(), usage);
@@ -107,7 +107,7 @@ public class UsageRepository {
     dao.usageDAO().computePercentile(entityType, date);
   }
 
-  private RestUtil.PutResponse addUsage(String method, String entityType, String entityId, DailyCount usage)
+  private RestUtil.PutResponse<?> addUsage(String method, String entityType, String entityId, DailyCount usage)
       throws IOException {
     Fields fields = new Fields(List.of("usageSummary"));
     // If table usage was reported, add the usage count to schema and database
@@ -127,7 +127,7 @@ public class UsageRepository {
     }
   }
 
-  private RestUtil.PutResponse tableEntityUsage(
+  private RestUtil.PutResponse<?> tableEntityUsage(
       String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
     // we accept usage for deleted entities
     Table table = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
@@ -145,7 +145,7 @@ public class UsageRepository {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  private RestUtil.PutResponse dashboardEntityUsage(
+  private RestUtil.PutResponse<?> dashboardEntityUsage(
       String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
     Dashboard dashboard = Entity.getEntity(Entity.DASHBOARD, UUID.fromString(entityId), fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
@@ -158,7 +158,7 @@ public class UsageRepository {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  private RestUtil.PutResponse chartEntityUsage(
+  private RestUtil.PutResponse<?> chartEntityUsage(
       String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
     Chart chart = Entity.getEntity(Entity.CHART, UUID.fromString(entityId), fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
@@ -171,7 +171,7 @@ public class UsageRepository {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  private RestUtil.PutResponse mlModelEntityUsage(
+  private RestUtil.PutResponse<?> mlModelEntityUsage(
       String method, Fields fields, String entityId, String entityType, DailyCount usage) throws IOException {
     MlModel mlModel = Entity.getEntity(Entity.MLMODEL, UUID.fromString(entityId), fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);

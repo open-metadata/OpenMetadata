@@ -53,6 +53,7 @@ import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -132,8 +133,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final CollectionDAO daoCollection;
   protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
-  protected final boolean supportsTags;
-  protected final boolean supportsOwner;
+  @Getter protected final boolean supportsTags;
+  @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
   protected boolean allowEdits = false;
 
@@ -713,7 +714,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public void removeExtension(EntityInterface entity) throws JsonProcessingException {
+  public void removeExtension(EntityInterface entity) {
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
@@ -814,7 +815,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getFollowers(T entity) throws IOException {
     if (!supportsFollower || entity == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
@@ -1068,7 +1069,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static List<UUID> toIds(List<String> ids) {
     if (ids == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<UUID> uuids = new ArrayList<>();
     for (String id : ids) {

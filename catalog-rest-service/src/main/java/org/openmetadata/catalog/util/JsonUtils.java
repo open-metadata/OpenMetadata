@@ -51,6 +51,8 @@ import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
+import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
+import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
 
@@ -61,6 +63,7 @@ public final class JsonUtils {
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
+  private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
 
@@ -75,6 +78,11 @@ public final class JsonUtils {
   static {
     EXPOSED_OBJECT_MAPPER = OBJECT_MAPPER.copy();
     EXPOSED_OBJECT_MAPPER.setAnnotationIntrospector(new OnlyExposedFieldAnnotationIntrospector());
+  }
+
+  static {
+    MASKER_OBJECT_MAPPER = OBJECT_MAPPER.copy();
+    MASKER_OBJECT_MAPPER.setAnnotationIntrospector(new IgnoreMaskedFieldAnnotationIntrospector());
   }
 
   private JsonUtils() {}
@@ -133,7 +141,7 @@ public final class JsonUtils {
   /** Read an array of objects of type {@code T} from json */
   public static <T> List<T> readObjects(String json, Class<T> clz) throws IOException {
     if (json == null) {
-      return null;
+      return Collections.emptyList();
     }
     TypeFactory typeFactory = OBJECT_MAPPER.getTypeFactory();
     return OBJECT_MAPPER.readValue(json, typeFactory.constructCollectionType(List.class, clz));
@@ -142,7 +150,7 @@ public final class JsonUtils {
   /** Read an object of type {@code T} from json */
   public static <T> List<T> readObjects(List<String> jsons, Class<T> clz) throws IOException {
     if (jsons == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<T> list = new ArrayList<>();
     for (String json : jsons) {
@@ -390,6 +398,15 @@ public final class JsonUtils {
   /** Given a json schema file name .../json/schema/entity/data/table.json - return data */
   private static String getSchemaGroup(String path) {
     return Paths.get(path).getParent().getFileName().toString();
+  }
+
+  /**
+   * Serialize object removing all the fields annotated with @{@link MaskedField}
+   *
+   * @return Serialized JSON string
+   */
+  public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
+    return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
   }
 
   /**

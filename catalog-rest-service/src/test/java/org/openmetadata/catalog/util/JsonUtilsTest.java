@@ -31,8 +31,11 @@ import javax.json.JsonObjectBuilder;
 import javax.json.JsonPatchBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.services.connections.dashboard.TableauConnection;
+import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
@@ -121,5 +124,16 @@ class JsonUtilsTest {
     TableauConnection expectedConnection = new TableauConnection().withHostPort(new URI("localhost:3306"));
     TableauConnection actualConnection = JsonUtils.toExposedEntity(airflowConnection, TableauConnection.class);
     assertEquals(expectedConnection, actualConnection);
+  }
+
+  @Test
+  void testPojoToMaskedJson() throws IOException {
+    String expectedJson = "{\"name\":\"test\",\"connection\":{},\"version\":0.1,\"deleted\":false}";
+    DatabaseService databaseService =
+        new DatabaseService()
+            .withName("test")
+            .withConnection(new DatabaseConnection().withConfig(new MysqlConnection().withPassword("password")));
+    String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
+    assertEquals(expectedJson, actualJson);
   }
 }

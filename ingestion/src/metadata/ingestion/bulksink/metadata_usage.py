@@ -14,7 +14,7 @@ import os
 import shutil
 import traceback
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import ValidationError
 
@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
     JoinedWith,
-    SqlQuery,
     Table,
     TableJoins,
 )
@@ -35,14 +34,12 @@ from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
-    get_lineage_by_query,
     get_table_entities_from_query,
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.lru_cache import LRUCache
 
 logger = ingestion_logger()
 
@@ -77,35 +74,6 @@ class MetadataUsageBulkSink(BulkSink):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def ingest_sql_queries_lineage(
-        self, queries: List[SqlQuery], database_name: str, schema_name: str
-    ) -> None:
-        """
-        Method to ingest lineage by sql queries
-        """
-
-        create_or_insert_queries = [
-            query.query
-            for query in queries
-            if "create" in query.query.lower() or "insert" in query.query.lower()
-        ]
-        seen_queries = LRUCache(LRU_CACHE_SIZE)
-
-        for query in create_or_insert_queries:
-            if query in seen_queries:
-                continue
-            lineages = get_lineage_by_query(
-                self.metadata,
-                query=query,
-                service_name=self.service_name,
-                database_name=database_name,
-                schema_name=schema_name,
-            )
-            for lineage in lineages or []:
-                created_lineage = self.metadata.add_lineage(lineage)
-                logger.info(f"Successfully added Lineage {created_lineage}")
-            seen_queries.put(query, None)  # None because it really doesn't matter.
-
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount
     ) -> None:
@@ -132,7 +100,7 @@ class MetadataUsageBulkSink(BulkSink):
 
     def __publish_usage_records(self) -> None:
         """
-        Method to publish SQL Queries, Table Usage & Lineage
+        Method to publish SQL Queries, Table Usage
         """
         for _, value_dict in self.table_usage_map.items():
             table_usage_request = None
@@ -143,11 +111,6 @@ class MetadataUsageBulkSink(BulkSink):
                 self.metadata.ingest_table_queries_data(
                     table=value_dict["table_entity"],
                     table_queries=value_dict["sql_queries"],
-                )
-                self.ingest_sql_queries_lineage(
-                    queries=value_dict["sql_queries"],
-                    database_name=value_dict["database"],
-                    schema_name=value_dict["database_schema"],
                 )
                 self.metadata.publish_table_usage(
                     value_dict["table_entity"], table_usage_request

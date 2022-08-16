@@ -232,6 +232,12 @@ public class LineageResource {
   }
 
   class LineageResourceContext implements ResourceContextInterface {
+
+    @Override
+    public String getResource() {
+      return "lineage";
+    }
+
     @Override
     public EntityReference getOwner() throws IOException {
       return null;
