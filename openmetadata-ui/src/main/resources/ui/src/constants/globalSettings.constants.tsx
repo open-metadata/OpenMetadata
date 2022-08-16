@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-// import { Icons } from '../utils/SvgUtils';
 import React from 'react';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
