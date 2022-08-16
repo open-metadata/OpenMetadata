@@ -51,9 +51,9 @@ Replace the `NFS_HOSTNAME_OR_IP` with your NFS Server value and run the commands
 This will create a new StorageClass with `nfs-subdir-external-provisioner`. You can view the same using the kubectl command `kubectl get storageclass -n nfs-provisioner`.
 </p>
 
-### Provision NFS backed PV and PVC for Airflow DAGs and Airflow Logs
+## Provision NFS backed PVC for Airflow DAGs and Airflow Logs
 
-<Collapse title="Code Samples for PV and PVC for Airflow DAGs">
+<Collapse title="Code Samples for PVC for Airflow DAGs">
 
 ```yaml
 # dags_pvc.yml
@@ -82,7 +82,7 @@ kubectl create -f dags_pvc.yml
 
 </Collapse>
 
-<Collapse title="Code Samples for PV and PVC for Airflow Logs">
+<Collapse title="Code Samples for PVC for Airflow Logs">
 
 ```yaml
 # logs_pvc.yml
@@ -149,7 +149,9 @@ spec:
 ```
 
 <Note>
+
 Airflow runs the pods with linux user name as airflow and linux user id as 50000.
+
 </Note>
 
 Run the below command to create the pod and fix the permissions
@@ -193,7 +195,7 @@ airflow:
 For more information on airflow helm chart values, please refer to [airflow-helm](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.5.3).
 
 Follow [OpenMetadata Kubernetes Deployment](/deployment/kubernetes) to install and deploy helm charts with nfs volumes.
-When deploying openmeteadata dependencies helm chart, use the below command -
+When deploying openmetadata dependencies helm chart, use the below command -
 
 ```commandline
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values-dependencies.yaml
