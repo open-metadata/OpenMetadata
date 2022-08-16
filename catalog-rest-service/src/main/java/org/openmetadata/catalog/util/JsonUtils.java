@@ -50,9 +50,9 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
-import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
+import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
 
