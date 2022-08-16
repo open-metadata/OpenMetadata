@@ -384,7 +384,7 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isTeamsEdit ? (
-              <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
+              <div className="tw-flex tw-flex-col tw-justify-between tw-gap-2">
                 <Select
                   isClearable
                   isMulti
@@ -518,7 +518,7 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isRolesEdit ? (
-              <div className="tw-flex tw-items-center tw-justify-between tw-gap-2">
+              <div className="tw-flex tw-flex-col tw-justify-between tw-gap-2">
                 <Select
                   isClearable
                   isMulti
