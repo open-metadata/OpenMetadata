@@ -40,17 +40,15 @@ export const getGlobalSettingMenus = (
     icon,
     children: children
       ? children
-          .filter(({ isProtected }) => {
-            return hasAccess ?? !isProtected;
-          })
-          .map(({ label, icon }) =>
-            getGlobalSettingMenus(
+          .filter((menu) => (hasAccess ? menu : !menu.isProtected))
+          .map(({ label, icon }) => {
+            return getGlobalSettingMenus(
               label,
               camelCase(label),
               key,
               <SVGIcons alt={label} className="tw-w-4" icon={icon} />
-            )
-          )
+            );
+          })
       : undefined,
     label,
     type,
