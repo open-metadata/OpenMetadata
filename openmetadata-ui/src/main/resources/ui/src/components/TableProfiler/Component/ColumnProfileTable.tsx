@@ -27,9 +27,9 @@ import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
 import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
+import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
-import TestIndicator from './TestIndicator';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnProfile,

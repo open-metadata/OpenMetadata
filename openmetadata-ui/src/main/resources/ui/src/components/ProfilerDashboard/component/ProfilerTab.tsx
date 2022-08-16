@@ -14,6 +14,9 @@
 import { Card, Col, Row, Statistic } from 'antd';
 import { startCase } from 'lodash';
 import React, { useMemo } from 'react';
+import { TestCaseStatus } from '../../../generated/tests/tableTest';
+import { formTwoDigitNmber } from '../../../utils/CommonUtils';
+import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ProfilerTabProp } from '../profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 
@@ -83,7 +86,15 @@ const ProfilerTab: React.FC<ProfilerTabProp> = ({
           <Row className="table-profiler-summary">
             {testSummary.map((item) => (
               <Col className="overall-summary-card" key={item.title} span={8}>
-                <Statistic title={item.title} value={item.value} />
+                <Statistic
+                  title={item.title}
+                  valueRender={() => (
+                    <TestIndicator
+                      type={item.title as TestCaseStatus}
+                      value={formTwoDigitNmber(item.value)}
+                    />
+                  )}
+                />
               </Col>
             ))}
           </Row>
