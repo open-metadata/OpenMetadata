@@ -11,10 +11,8 @@
 """
 MSSQL lineage module
 """
-from metadata.ingestion.source.database.mssql_query_parser import (
-    MssqlQueryParserSource,
-)
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.mssql_query_parser import MssqlQueryParserSource
 from metadata.utils.sql_queries import MSSQL_SQL_STATEMENT
 
 
