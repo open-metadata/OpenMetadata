@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table, TableProfile } from '../../generated/entity/data/table';
+import { Column, Table, TableProfile } from '../../generated/entity/data/table';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
@@ -45,7 +45,17 @@ export type ChartCollection = {
 
 export type ChartDataCollection = Record<string, ChartCollection>;
 
-export interface ProfilerTabProp {
+export interface ProfilerTabProps {
   chartData: ChartDataCollection;
   tableProfiler: TableProfile;
+  activeColumnDetails: Column;
+}
+
+export interface ProfilerSummaryCardProps {
+  title: string;
+  data: {
+    title: string;
+    value: number | string;
+  }[];
+  showIndicator?: boolean;
 }

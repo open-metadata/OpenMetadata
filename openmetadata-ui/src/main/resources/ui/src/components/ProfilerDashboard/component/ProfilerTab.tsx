@@ -14,13 +14,13 @@
 import { Card, Col, Row, Statistic } from 'antd';
 import { startCase } from 'lodash';
 import React, { useMemo } from 'react';
-import { TestCaseStatus } from '../../../generated/tests/tableTest';
-import { formTwoDigitNmber } from '../../../utils/CommonUtils';
-import TestIndicator from '../../common/TestIndicator/TestIndicator';
-import { ProfilerTabProp } from '../profilerDashboard.interface';
+import Ellipses from '../../common/Ellipses/Ellipses';
+import { ProfilerTabProps } from '../profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
+import ProfilerSummaryCard from './ProfilerSummaryCard';
 
-const ProfilerTab: React.FC<ProfilerTabProp> = ({
+const ProfilerTab: React.FC<ProfilerTabProps> = ({
+  activeColumnDetails,
   chartData,
   tableProfiler,
 }) => {
@@ -62,43 +62,37 @@ const ProfilerTab: React.FC<ProfilerTabProp> = ({
   return (
     <Row gutter={[16, 16]}>
       <Col span={8}>
-        <Card className="tw-rounded-md tw-border">card</Card>
-      </Col>
-      <Col span={8}>
-        <Card className="tw-rounded-md tw-border">
-          <p className="tw-text-base tw-font-medium tw-mb-7">
-            Table Metrics Summary
-          </p>
-          <Row className="table-profiler-summary">
-            {tableState.map((item) => (
-              <Col className="overall-summary-card" key={item.title} span={8}>
-                <Statistic title={item.title} value={item.value} />
-              </Col>
-            ))}
+        <Card className="tw-rounded-md tw-border tw-h-full">
+          <Row gutter={16}>
+            <Col span={18}>
+              <p className="tw-font-medium tw-text-base">Column summary</p>
+              <Ellipses className="tw-text-grey-muted" rows={4}>
+                {activeColumnDetails.description}
+              </Ellipses>
+            </Col>
+            <Col span={6}>
+              <Statistic
+                title="Data type"
+                value={activeColumnDetails.dataTypeDisplay || ''}
+                valueStyle={{
+                  color: '#1890FF',
+                  fontSize: '24px',
+                  fontWeight: 600,
+                }}
+              />
+            </Col>
           </Row>
         </Card>
       </Col>
       <Col span={8}>
-        <Card className="tw-rounded-md tw-border">
-          <p className="tw-text-base tw-font-medium tw-mb-7">
-            Quality Tests Summary
-          </p>
-          <Row className="table-profiler-summary">
-            {testSummary.map((item) => (
-              <Col className="overall-summary-card" key={item.title} span={8}>
-                <Statistic
-                  title={item.title}
-                  valueRender={() => (
-                    <TestIndicator
-                      type={item.title as TestCaseStatus}
-                      value={formTwoDigitNmber(item.value)}
-                    />
-                  )}
-                />
-              </Col>
-            ))}
-          </Row>
-        </Card>
+        <ProfilerSummaryCard data={tableState} title="Table Metrics Summary" />
+      </Col>
+      <Col span={8}>
+        <ProfilerSummaryCard
+          showIndicator
+          data={testSummary}
+          title="Quality Tests Summary"
+        />
       </Col>
 
       {Object.entries(chartData).map(([key, value], index) => (

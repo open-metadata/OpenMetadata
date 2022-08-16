@@ -280,6 +280,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   useEffect(() => {
     if (table) {
+      const columnName = getNameFromFQN(entityTypeFQN);
+      const selectedColumn = table.columns.find(
+        (col) => col.name === columnName
+      );
+      setActiveColumnDetails(selectedColumn || ({} as Column));
       setFollower(table?.followers || []);
       setIsFollowing(
         follower.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -386,6 +391,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Loader />
           ) : (
             <ProfilerTab
+              activeColumnDetails={activeColumnDetails}
               chartData={chartData}
               tableProfiler={profilerData[0]}
             />
