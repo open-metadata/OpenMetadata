@@ -173,7 +173,7 @@ kubectl create -f permissions_pod.yml
 
 ## Create OpenMetadata dependencies Values
 
-Override openmetadata dependencies airflow helm values to bind the nfs persistent volumes for DAGs and logs.
+Override openmetadata dependencies airflow helm values to bind the efs persistent volumes for DAGs and logs.
 
 ```yaml
 # values-dependencies.yml
