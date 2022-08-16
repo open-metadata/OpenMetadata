@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Empty, Row, Statistic } from 'antd';
+import { Card, Col, Empty, Row, Statistic } from 'antd';
 import React, { useMemo } from 'react';
 import {
   Line,
@@ -32,33 +32,37 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   const latestValue = useMemo(() => data[data.length - 1]?.value || 0, [data]);
 
   return (
-    <Row className="tw-bg-white tw-rounded-md tw-border tw-p-4">
-      <Col span={4}>
-        <Statistic
-          title={<span className="tw-text-grey-body">{title}</span>}
-          value={tickFormatter ? `${latestValue}${tickFormatter}` : latestValue}
-          valueStyle={{ color }}
-        />
-      </Col>
-      <Col span={20}>
-        {data.length > 0 ? (
-          <ResponsiveContainer minHeight={300}>
-            <LineChart className="tw-w-full" data={data}>
-              <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
-              <YAxis
-                allowDataOverflow
-                padding={{ top: 16, bottom: 16 }}
-                tickFormatter={(props) => `${props}${tickFormatter}`}
-              />
-              <Tooltip />
-              <Line dataKey="value" stroke={color} type="monotone" />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <Empty description="No Data Available" />
-        )}
-      </Col>
-    </Row>
+    <Card className="tw-rounded-md tw-border">
+      <Row>
+        <Col span={4}>
+          <Statistic
+            title={<span className="tw-text-grey-body">{title}</span>}
+            value={
+              tickFormatter ? `${latestValue}${tickFormatter}` : latestValue
+            }
+            valueStyle={{ color }}
+          />
+        </Col>
+        <Col span={20}>
+          {data.length > 0 ? (
+            <ResponsiveContainer minHeight={300}>
+              <LineChart className="tw-w-full" data={data}>
+                <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
+                <YAxis
+                  allowDataOverflow
+                  padding={{ top: 16, bottom: 16 }}
+                  tickFormatter={(props) => `${props}${tickFormatter}`}
+                />
+                <Tooltip />
+                <Line dataKey="value" stroke={color} type="monotone" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <Empty description="No Data Available" />
+          )}
+        </Col>
+      </Row>
+    </Card>
   );
 };
 

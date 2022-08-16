@@ -14,7 +14,7 @@
 import { Button, Col, Radio, Row, Select, Space } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
-import { cloneDeep, sortBy, startCase } from 'lodash';
+import { cloneDeep, sortBy } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -57,7 +57,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
-import ProfilerDetailsCard from './component/ProfilerDetailsCard';
+import ProfilerTab from './component/ProfilerTab';
 import {
   ChartDataCollection,
   ProfilerDashboardProps,
@@ -93,6 +93,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const breadcrumb = useMemo(() => {
     const serviceName = getEntityName(table.service);
     const fqn = table.fullyQualifiedName || '';
+    const columnName = getNameFromFQN(entityTypeFQN);
 
     return [
       {
@@ -117,6 +118,10 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       },
       {
         name: getEntityName(table),
+        url: getTableTabPath(table.fullyQualifiedName || ''),
+      },
+      {
+        name: columnName,
         url: '',
         activeTitle: true,
       },
@@ -372,19 +377,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             </Space>
           </Row>
         </Col>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          Object.entries(chartData).map(([key, value], index) => (
-            <Col key={index} span={24}>
-              <ProfilerDetailsCard
-                chartCollection={value}
-                tickFormatter={key === 'nullProportion' ? '%' : ''}
-                title={startCase(key)}
-              />
-            </Col>
-          ))
-        )}
+        <Col span={24}>
+          {isLoading ? <Loader /> : <ProfilerTab chartData={chartData} />}
+        </Col>
       </Row>
     </PageLayout>
   );
