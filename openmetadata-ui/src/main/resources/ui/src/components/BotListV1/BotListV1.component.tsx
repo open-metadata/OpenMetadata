@@ -19,6 +19,7 @@ import { getBots } from '../../axiosAPIs/botsAPI';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -44,7 +45,7 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
       const { data, paging } = await getBots({
         after,
         limit: PAGE_SIZE,
-        include: showDeleted ? 'deleted' : 'non-deleted',
+        include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       setPaging(paging);
       setBotUsers(data);
