@@ -23,10 +23,12 @@ import { Policy } from '../../../generated/entity/policies/policy';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
+const rolesPath = getPath(GlobalSettingOptions.ROLES);
+
 const breadcrumb = [
   {
     name: 'Roles',
-    url: getPath(GlobalSettingOptions.ROLES),
+    url: rolesPath,
   },
   {
     name: 'Add New Role',
@@ -52,7 +54,7 @@ const AddRolePage = () => {
   };
 
   const handleCancel = () => {
-    history.push(getPath(GlobalSettingOptions.ROLES));
+    history.push(rolesPath);
   };
 
   const handleSumbit = async () => {
