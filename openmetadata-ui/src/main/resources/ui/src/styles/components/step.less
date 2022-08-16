@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+@background: #d9ceee;
+@border: #7147e8;
+
 .ingestion-wrapper {
   display: flex;
 }
@@ -18,17 +21,17 @@
   display: block;
   width: 20px;
   height: 20px;
-  border: 3px solid #d9ceee;
+  border: 3px solid @background;
   background: white;
   border-radius: 50%;
   margin-top: 0.15rem;
   z-index: 1;
 }
 .ingestion-rounder.active {
-  border-color: #7147e8;
+  border-color: @border;
 }
 .ingestion-rounder.completed {
-  background-color: #d9ceee;
+  background-color: @background;
 }
 
 .ingestion-rounder.completed::after {
@@ -37,7 +40,7 @@
   display: block;
   margin-top: -4px;
   font-weight: 900;
-  color: #7147e8;
+  color: @border;
 }
 
 .ingestion-deploy-rounder {
@@ -56,27 +59,27 @@
 .ant-steps-item-finish
   > .ant-steps-item-container
   > .ant-steps-item-tail::after {
-  background-color: #d9ceee;
+  background-color: @background;
   height: 2px;
 }
 
 .ant-steps-item-process
   > .ant-steps-item-container
   > .ant-steps-item-tail::after {
-  background-color: #d9ceee;
+  background-color: @background;
   height: 2px;
 }
 
 .ant-steps-small .ant-steps-item-title {
   font-size: 12px;
-  color: #7147e8;
+  color: @border;
 }
 
 .ant-steps-item-finish
   > .ant-steps-item-container
   > .ant-steps-item-content
   > .ant-steps-item-title {
-  color: #7147e8;
+  color: @border;
 }
 
 .ant-steps-item-process
