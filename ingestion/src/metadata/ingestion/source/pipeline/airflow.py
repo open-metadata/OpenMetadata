@@ -87,11 +87,11 @@ class AirflowSource(PipelineServiceSource):
         Return the SQLAlchemy session from the engine
         """
         if not self._session:
-            self._session = create_and_bind_session(self.engine)
+            self._session = create_and_bind_session(self.connection)
 
         return self._session
 
-    def get_pipeline_status(self, dag_id: str) -> DagRun:
+    def get_pipeline_status(self, dag_id: str) -> List[DagRun]:
         dag_run_list: DagRun = (
             self.session.query(DagRun)
             .filter(DagRun.dag_id == dag_id)
@@ -178,7 +178,7 @@ class AirflowSource(PipelineServiceSource):
     ) -> Iterable[CreatePipelineRequest]:
         """
         Convert a DAG into a Pipeline Entity
-        :param serialized_dag: SerializedDAG from airflow metadata DB
+        :param pipeline_details: SerializedDAG from airflow metadata DB
         :return: Create Pipeline request with tasks
         """
         dag: SerializedDAG = pipeline_details.dag
@@ -294,6 +294,3 @@ class AirflowSource(PipelineServiceSource):
 
     def close(self):
         self.session.close()
-
-    def test_connection(self) -> None:
-        test_connection(self.engine)

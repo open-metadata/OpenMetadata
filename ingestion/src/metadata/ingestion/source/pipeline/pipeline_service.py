@@ -194,7 +194,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """
-        Method to implement any required logic after the ingesion process is completed
+        Method to implement any required logic after the ingestion process is completed
         """
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -223,5 +223,5 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         """
-        Method to implement any required logic before starting the ingesion process
+        Method to implement any required logic before starting the ingestion process
         """

@@ -67,7 +67,7 @@ class TestWorkflowParse(TestCase):
 
     def test_get_service_type(self):
         """
-        Test that we can get the service type of a source
+        Test that we can get the service type of source
         """
 
         database_service = get_service_type("Mysql")
