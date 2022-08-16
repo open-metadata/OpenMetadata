@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
+import java.util.LinkedHashMap;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.provider.Arguments;
 import org.openmetadata.catalog.Entity;
@@ -72,7 +73,7 @@ public class IngestionPipelineResourceUnitTestParams {
   public static Stream<Arguments> params() {
     return Stream.of(
         Arguments.of(
-            new DatabaseServiceMetadataPipeline(),
+            new DatabaseServiceMetadataPipeline().withDbtConfigSource(new LinkedHashMap<>()),
             DATABASE_SERVICE_ENTITY,
             DatabaseService.class,
             PipelineType.METADATA,

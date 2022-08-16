@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
@@ -125,6 +126,17 @@ public class IngestionPipelineResourceUnitTest {
 
     Entity.registerEntity(serviceClass, service.getType(), mock(EntityDAO.class), mock(EntityRepository.class));
 
+    doAnswer(
+            invocation -> {
+              if (mustBeEncrypted) {
+                IngestionPipeline arg0 = invocation.getArgument(0);
+                ((DatabaseServiceMetadataPipeline) arg0.getSourceConfig().getConfig()).setDbtConfigSource(null);
+              }
+              return null;
+            })
+        .when(secretsManager)
+        .encryptOrDecryptDbtConfigSource(any(IngestionPipeline.class), anyBoolean());
+
     when(entityDAO.findEntityById(eq(id), any())).thenReturn(ingestionPipeline);
     when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(service);
 
@@ -152,6 +164,17 @@ public class IngestionPipelineResourceUnitTest {
 
     when(entityDAO.findEntityByName(eq(PIPELINE_NAME), any())).thenReturn(ingestionPipeline);
     when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(service);
+
+    doAnswer(
+            invocation -> {
+              if (mustBeEncrypted) {
+                IngestionPipeline arg0 = invocation.getArgument(0);
+                ((DatabaseServiceMetadataPipeline) arg0.getSourceConfig().getConfig()).setDbtConfigSource(null);
+              }
+              return null;
+            })
+        .when(secretsManager)
+        .encryptOrDecryptDbtConfigSource(any(IngestionPipeline.class), anyBoolean());
 
     IngestionPipeline actualIngestionPipeline =
         ingestionPipelineResource.getByName(null, PIPELINE_NAME, securityContext, null, null);

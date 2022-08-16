@@ -48,7 +48,7 @@ public abstract class SecretsManager {
   public abstract Object encryptOrDecryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt);
 
-  protected abstract Object encryptOrDecryptDbtConfigSource(
+  abstract Object encryptOrDecryptDbtConfigSource(
       Object dbtConfigSource, String ingestionPipelineName, boolean encrypt);
 
   public void encryptOrDecryptDbtConfigSource(IngestionPipeline ingestionPipeline, boolean encrypt) {

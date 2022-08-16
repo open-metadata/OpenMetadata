@@ -35,13 +35,18 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+    DbtHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
     GoogleSSOClientConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
-    SecretsManager,
+    AWSSecretsManager,
     Singleton,
     get_secrets_manager,
 )
@@ -57,6 +62,11 @@ DATABASE_SERVICE = {
 
 AUTH_PROVIDER_CONFIG = {"secretKey": "/fake/path"}
 
+DBT_SOURCE_CONFIG = {
+    "dbtCatalogHttpPath": "/fake/path",
+    "dbtManifestHttpPath": "/fake/path",
+}
+
 
 class TestSecretsManager(TestCase):
     service_type: str = "database"
@@ -65,6 +75,7 @@ class TestSecretsManager(TestCase):
     database_connection = MysqlConnection(**DATABASE_CONNECTION)
     auth_provider_config = GoogleSSOClientConfig(**AUTH_PROVIDER_CONFIG)
     om_connection: OpenMetadataConnection
+    dbt_source_config: DbtHttpConfig
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -75,6 +86,7 @@ class TestSecretsManager(TestCase):
             authProvider=AuthProvider.google,
             hostPort="http://localhost:8585/api",
         )
+        cls.dbt_source_config = DbtHttpConfig.parse_obj(DBT_SOURCE_CONFIG)
 
     @classmethod
     def setUp(cls) -> None:
@@ -107,6 +119,21 @@ class TestSecretsManager(TestCase):
         self.assertEqual(self.auth_provider_config, actual_om_connection.securityConfig)
         assert id(self.auth_provider_config) == id(actual_om_connection.securityConfig)
 
+    def test_local_manager_retrieve_dbt_source_config(self):
+        local_manager = get_secrets_manager(
+            self._build_open_metadata_connection(SecretsManagerProvider.local), None
+        )
+        source_config = SourceConfig()
+        source_config.config = DatabaseServiceMetadataPipeline(
+            dbtConfigSource=self.dbt_source_config
+        )
+
+        actual_dbt_source_config = local_manager.retrieve_dbt_source_config(
+            source_config, "test-pipeline"
+        )
+
+        self.assertEqual(self.dbt_source_config.dict(), actual_dbt_source_config)
+
     @patch("metadata.utils.secrets_manager.boto3")
     def test_aws_manager_add_service_config_connection(self, boto3_mock):
         aws_manager = self._build_secret_manager(
@@ -130,7 +157,9 @@ class TestSecretsManager(TestCase):
         )
 
     @patch("metadata.utils.secrets_manager.boto3")
-    def test_aws_manager_fails_add_auth_provider_security_config(self, mocked_boto3):
+    def test_aws_manager_fails_add_service_config_connection_when_not_stored(
+        self, mocked_boto3
+    ):
         aws_manager = self._build_secret_manager(mocked_boto3, {})
 
         with self.assertRaises(ValueError) as value_error:
@@ -157,13 +186,50 @@ class TestSecretsManager(TestCase):
         assert id(self.auth_provider_config) != id(actual_om_connection.securityConfig)
 
     @patch("metadata.utils.secrets_manager.boto3")
-    def test_aws_manager_fails_add_service_config_connection_when_not_stored(
+    def test_aws_manager_retrieve_dbt_source_config(self, boto3_mock):
+        aws_manager = self._build_secret_manager(
+            boto3_mock, {"SecretString": json.dumps(DBT_SOURCE_CONFIG)}
+        )
+        source_config = SourceConfig()
+        source_config.config = DatabaseServiceMetadataPipeline(
+            dbtConfigSource=self.dbt_source_config
+        )
+
+        actual_dbt_source_config = aws_manager.retrieve_dbt_source_config(
+            source_config, "test-pipeline"
+        )
+
+        expected_call = {
+            "SecretId": "/openmetadata/database-metadata-pipeline/test-pipeline"
+        }
+        aws_manager.secretsmanager_client.get_secret_value.assert_called_once_with(
+            **expected_call
+        )
+        self.assertEqual(self.dbt_source_config.dict(), actual_dbt_source_config)
+
+    @patch("metadata.utils.secrets_manager.boto3")
+    def test_aws_manager_fails_add_auth_provider_security_config(self, mocked_boto3):
+        aws_manager = self._build_secret_manager(mocked_boto3, {})
+
+        with self.assertRaises(ValueError) as value_error:
+            aws_manager.add_auth_provider_security_config(self.om_connection)
+            self.assertEqual(
+                "[SecretString] not present in the response.", value_error.exception
+            )
+
+    @patch("metadata.utils.secrets_manager.boto3")
+    def test_aws_manager_aws_manager_fails_retrieve_dbt_source_config_when_not_stored(
         self, mocked_boto3
     ):
         aws_manager = self._build_secret_manager(mocked_boto3, {})
 
+        source_config = SourceConfig()
+        source_config.config = DatabaseServiceMetadataPipeline(
+            dbtConfigSource=self.dbt_source_config
+        )
+
         with self.assertRaises(ValueError) as value_error:
-            aws_manager.retrieve_service_connection(self.service, self.service_type)
+            aws_manager.retrieve_dbt_source_config(source_config, "test-pipeline")
             self.assertEqual(
                 "[SecretString] not present in the response.", value_error.exception
             )
@@ -188,17 +254,16 @@ class TestSecretsManager(TestCase):
 
     def _build_secret_manager(
         self, mocked_boto3: Mock, expected_json: Dict[str, Any]
-    ) -> SecretsManager:
+    ) -> AWSSecretsManager:
         self._init_boto3_mock(mocked_boto3, expected_json)
-        aws_manager = get_secrets_manager(
-            self._build_open_metadata_connection(SecretsManagerProvider.aws),
+        return AWSSecretsManager(
             AWSCredentials(
                 awsAccessKeyId="fake_key",
                 awsSecretAccessKey="fake_access",
                 awsRegion="fake-region",
             ),
+            "openmetadata",
         )
-        return aws_manager
 
     @staticmethod
     def _build_open_metadata_connection(
