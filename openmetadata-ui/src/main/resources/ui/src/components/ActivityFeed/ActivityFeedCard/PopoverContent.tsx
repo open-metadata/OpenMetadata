@@ -70,11 +70,7 @@ const PopoverContent: FC<Props> = ({
   };
 
   const deleteButtonCheck =
-    threadId &&
-    postId &&
-    onConfirmation &&
-    (isAuthor || currentUser?.isAdmin) &&
-    !isThread;
+    threadId && postId && onConfirmation && isAuthor && !isThread;
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -145,8 +141,7 @@ const PopoverContent: FC<Props> = ({
     onEdit && onEdit();
   };
 
-  const editCheck =
-    (isAnnouncement || !isThread) && (isAuthor || currentUser?.isAdmin);
+  const editCheck = (isAnnouncement || !isThread) && isAuthor;
 
   return (
     <Space>
