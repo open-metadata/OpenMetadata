@@ -229,7 +229,7 @@ const Users = ({
       return (
         <div className="tw-mt-4 tw-w-full tw-px-3">
           {isDisplayNameEdit ? (
-            <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
+            <div className="tw-flex tw-flex-col tw-justify-between tw-gap-2">
               <input
                 className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
                 data-testid="displayName"
