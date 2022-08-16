@@ -160,7 +160,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   };
 
   const updatedColumns = (): Table['columns'] => {
-    const colList = cloneDeep(currentVersionData.columns);
+    const colList = cloneDeep((currentVersionData as Table).columns);
     const columnsDiff = getDiffByFieldName(
       EntityField.COLUMNS,
       changeDescription
@@ -336,10 +336,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabelWithStatus) => {
+    ].forEach((elem: TagLabel) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem);
+        uniqueTags.push(elem as TagLabelWithStatus);
       }
     });
 
@@ -414,7 +414,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                         FQN_SEPARATOR_CHAR
                       )}
                       columns={updatedColumns()}
-                      joins={currentVersionData.joins as ColumnJoins[]}
+                      joins={
+                        // TODO: Below we should have separate type for Dataset instead casting it to `Table`
+                        (currentVersionData as Table).joins as ColumnJoins[]
+                      }
                       tableConstraints={[]}
                     />
                   </div>

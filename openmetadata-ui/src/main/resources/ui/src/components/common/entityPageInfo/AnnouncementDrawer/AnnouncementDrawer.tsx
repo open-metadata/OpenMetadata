@@ -15,6 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import AppState from '../../../../AppState';
@@ -23,11 +24,12 @@ import {
   CreateThread,
   ThreadType,
 } from '../../../../generated/api/feed/createThread';
+import { Post } from '../../../../generated/entity/feed/thread';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import AddAnnouncementModal from '../../../Modals/AddAnnouncementModal/AddAnnouncementModal';
+import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
   open: boolean;
@@ -58,7 +60,7 @@ const AnnouncementDrawer: FC<Props> = ({
       data-testid="title"
       style={{ width: '100%' }}>
       <Typography.Text className="tw-font-medium">
-        Announcement on {entityName}
+        Announcements on {entityName}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
     </Space>
@@ -80,7 +82,7 @@ const AnnouncementDrawer: FC<Props> = ({
     const data = {
       message: value,
       from: currentUser?.name,
-    };
+    } as Post;
     postFeedById(id, data).catch((err: AxiosError) => {
       showErrorToast(err);
     });
@@ -122,6 +124,7 @@ const AnnouncementDrawer: FC<Props> = ({
           className="tw-p-0"
           createThread={createThread}
           deletePostHandler={deletePostHandler}
+          key={uniqueId()}
           postFeedHandler={postFeedHandler}
           showHeader={false}
           threadLink={getEntityFeedLink(entityType, entityFQN)}

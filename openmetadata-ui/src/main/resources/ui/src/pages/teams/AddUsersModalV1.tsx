@@ -70,7 +70,8 @@ const AddUsersModalV1 = ({
 
     try {
       if (data) {
-        setAllUsers(data.data);
+        // TODO: fix type issue
+        setAllUsers(data as unknown as UserTeams[]);
       } else {
         throw jsonData['api-error-messages']['fetch-users-error'];
       }

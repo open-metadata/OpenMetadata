@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
@@ -73,10 +73,10 @@ const MlModelPage = () => {
 
   const getLineageData = () => {
     setIsLineageLoading(true);
-    getLineageByFQN(mlModelDetail.fullyQualifiedName, EntityType.MLMODEL)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setEntityLineage(res.data);
+    getLineageByFQN(mlModelDetail.fullyQualifiedName ?? '', EntityType.MLMODEL)
+      .then((res) => {
+        if (res) {
+          setEntityLineage(res);
         } else {
           showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
         }
@@ -113,11 +113,11 @@ const MlModelPage = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName, node.type)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setLeafNode(res.data, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
+      .then((res) => {
+        if (res) {
+          setLeafNode(res, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res, pos));
         } else {
           showErrorToast(
             jsonData['api-error-messages']['fetch-lineage-node-error']
@@ -197,8 +197,8 @@ const MlModelPage = () => {
   const fetchMlModelDetails = (name: string) => {
     setIsDetailLoading(true);
     getMlModelByFQN(name, defaultFields)
-      .then((response: AxiosResponse) => {
-        const mlModelData = response.data;
+      .then((response) => {
+        const mlModelData = response;
         if (mlModelData) {
           setMlModelDetail(mlModelData);
         } else {
@@ -213,22 +213,17 @@ const MlModelPage = () => {
       });
   };
 
-  const saveUpdatedMlModelData = (
-    updatedData: Mlmodel
-  ): Promise<AxiosResponse> => {
+  const saveUpdatedMlModelData = (updatedData: Mlmodel) => {
     const jsonPatch = compare(mlModelDetail, updatedData);
 
-    return patchMlModelDetails(
-      mlModelDetail.id,
-      jsonPatch
-    ) as unknown as Promise<AxiosResponse>;
+    return patchMlModelDetails(mlModelDetail.id, jsonPatch);
   };
 
   const descriptionUpdateHandler = (updatedMlModel: Mlmodel) => {
     saveUpdatedMlModelData(updatedMlModel)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { description } = res.data;
+      .then((res) => {
+        if (res) {
+          const { description } = res;
           setMlModelDetail((preVDetail) => ({
             ...preVDetail,
             description: description,
@@ -247,9 +242,9 @@ const MlModelPage = () => {
 
   const followMlModel = () => {
     addFollower(mlModelDetail.id, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { newValue } = res.data.changeDescription.fieldsAdded[0];
+      .then((res) => {
+        if (res) {
+          const { newValue } = res.changeDescription.fieldsAdded[0];
 
           setMlModelDetail((preVDetail) => ({
             ...preVDetail,
@@ -269,9 +264,9 @@ const MlModelPage = () => {
 
   const unfollowMlModel = () => {
     removeFollower(mlModelDetail.id, USERId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+      .then((res) => {
+        if (res) {
+          const { oldValue } = res.changeDescription.fieldsDeleted[0];
           setMlModelDetail((preVDetail) => ({
             ...preVDetail,
             followers: (mlModelDetail.followers || []).filter(
@@ -294,11 +289,11 @@ const MlModelPage = () => {
 
   const onTagUpdate = (updatedMlModel: Mlmodel) => {
     saveUpdatedMlModelData(updatedMlModel)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setMlModelDetail((preVDetail) => ({
             ...preVDetail,
-            tags: res.data.tags,
+            tags: res.tags,
           }));
         } else {
           throw jsonData['api-error-messages']['update-tags-error'];
@@ -316,11 +311,11 @@ const MlModelPage = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedMlModelData(updatedMlModel)
         .then((res) => {
-          if (res.data) {
+          if (res) {
             setMlModelDetail((preVDetail) => ({
               ...preVDetail,
-              owner: res.data.owner,
-              tags: res.data.tags,
+              owner: res.owner,
+              tags: res.tags,
             }));
             resolve();
           } else {
@@ -341,11 +336,11 @@ const MlModelPage = () => {
 
   const updateMlModelFeatures = (updatedMlModel: Mlmodel) => {
     saveUpdatedMlModelData(updatedMlModel)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setMlModelDetail((preVDetail) => ({
             ...preVDetail,
-            mlFeatures: res.data.mlFeatures,
+            mlFeatures: res.mlFeatures,
           }));
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];
@@ -358,7 +353,7 @@ const MlModelPage = () => {
 
   const handleExtentionUpdate = async (updatedMlModel: Mlmodel) => {
     try {
-      const { data } = await saveUpdatedMlModelData(updatedMlModel);
+      const data = await saveUpdatedMlModelData(updatedMlModel);
 
       if (data) {
         setMlModelDetail(data);

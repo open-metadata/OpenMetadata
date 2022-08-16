@@ -24,6 +24,7 @@ import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { Connection } from '../../generated/entity/services/databaseService';
 import {
   IngestionPipeline,
   PipelineType,
@@ -88,16 +89,18 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const getSupportedPipelineTypes = () => {
     let pipelineType = [];
-    const config = serviceDetails.connection?.config;
+    const config = serviceDetails.connection?.config as Connection;
     if (config) {
       config.supportsMetadataExtraction &&
         pipelineType.push(PipelineType.Metadata);
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
+      config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
       config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
     } else {
       pipelineType = [
         PipelineType.Metadata,
         PipelineType.Usage,
+        PipelineType.Lineage,
         PipelineType.Profiler,
       ];
     }
@@ -120,7 +123,12 @@ const Ingestion: React.FC<IngestionProps> = ({
       }, [] as PipelineType[]);
     }
 
-    return [PipelineType.Metadata, PipelineType.Usage, PipelineType.Profiler];
+    return [
+      PipelineType.Metadata,
+      PipelineType.Usage,
+      PipelineType.Lineage,
+      PipelineType.Profiler,
+    ];
   };
 
   const handleTriggerIngestion = (id: string, displayName: string) => {

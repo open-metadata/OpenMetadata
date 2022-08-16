@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root_username').type('openmetadata_user');
       cy.get('#root_password').type('openmetadata_password');
@@ -37,11 +38,15 @@ describe('MySQL Ingestion', () => {
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName,
+      serviceName
     );
   });
 
-    it('delete created service', () => {
-      deleteCreatedService('Database', serviceName);
-    });
+  it('Edit and validate owner', () => {
+    editOwnerforCreatedService(SERVICE_TYPE.Database, serviceName);
+  });
+
+  it('delete created service', () => {
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
+  });
 });

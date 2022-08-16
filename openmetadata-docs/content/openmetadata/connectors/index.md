@@ -14,6 +14,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [BigQuery](/openmetadata/connectors/database/bigquery)
 - [Clickhouse](/openmetadata/connectors/database/clickhouse)
 - [Databricks](/openmetadata/connectors/database/databricks)
+- [Datalake](/openmetadata/connectors/database/datalake)
 - [DB2](/openmetadata/connectors/database/db2)
 - [DeltaLake](/openmetadata/connectors/database/deltalake)
 - [Druid](/openmetadata/connectors/database/druid)

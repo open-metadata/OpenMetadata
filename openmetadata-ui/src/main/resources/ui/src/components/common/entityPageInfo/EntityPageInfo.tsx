@@ -373,14 +373,12 @@ const EntityPageInfo = ({
 
   const fetchActiveAnnouncement = async () => {
     try {
-      const { data } = await getActiveAnnouncement(
+      const announcements = await getActiveAnnouncement(
         getEntityFeedLink(entityType, entityFqn)
       );
 
-      const announcements = data?.data || [];
-
-      if (!isEmpty(announcements)) {
-        setActiveAnnouncement(announcements[0]);
+      if (!isEmpty(announcements.data)) {
+        setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

@@ -1,5 +1,5 @@
 UPDATE team_entity
-SET json = JSONB_SET(json, '{teamType}', '"Department"', true);
+SET json = JSONB_SET(json, '{teamType}', '"Group"', true);
 
 ALTER TABLE team_entity
 ADD teamType VARCHAR(64) GENERATED ALWAYS AS (json ->> 'teamType') STORED NOT NULL;
@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS test_case (
 
 UPDATE webhook_entity
 SET json = JSONB_SET(json::jsonb, '{webhookType}', '"generic"', true);
+
+ALTER TABLE webhook_entity
+    ADD webhookType VARCHAR(36) GENERATED ALWAYS AS (json ->> 'webhookType') STORED NOT NULL;
 
 CREATE TABLE IF NOT EXISTS entity_extension_time_series (
     entityId VARCHAR(36) NOT NULL,                    -- ID of the from entity

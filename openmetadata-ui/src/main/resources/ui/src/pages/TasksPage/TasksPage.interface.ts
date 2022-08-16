@@ -16,7 +16,7 @@ import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 
-export type EntityData = Table & Topic & Dashboard & Pipeline;
+export type EntityData = Table | Topic | Dashboard | Pipeline;
 
 export interface Option {
   label: string;

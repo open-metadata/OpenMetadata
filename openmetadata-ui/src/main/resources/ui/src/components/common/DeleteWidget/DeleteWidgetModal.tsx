@@ -12,7 +12,7 @@
  */
 
 import { Modal, Radio, RadioChangeEvent } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -30,6 +30,7 @@ import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 const DeleteWidgetModal = ({
   allowSoftDelete = true,
   visible,
+  deleteMessage,
   entityName,
   entityType,
   onCancel,
@@ -61,7 +62,7 @@ const DeleteWidgetModal = ({
     },
     {
       title: `Permanently Delete ${entityType} “${entityName}”`,
-      description: prepareDeleteMessage(),
+      description: deleteMessage || prepareDeleteMessage(),
       type: DeleteType.HARD_DELETE,
       isAllowd: true,
     },
@@ -107,11 +108,11 @@ const DeleteWidgetModal = ({
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(
       prepareEntityType(),
-      entityId,
-      isRecursiveDelete,
+      entityId ?? '',
+      Boolean(isRecursiveDelete),
       entityDeleteState.softDelete
     )
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.status === 200) {
           setTimeout(() => {
             handleOnEntityDeleteCancel();
@@ -222,7 +223,9 @@ const DeleteWidgetModal = ({
                 data-testid={option.type}
                 key={option.type}
                 value={option.type}>
-                <p className="tw-text-sm tw-mb-1 tw-font-medium">
+                <p
+                  className="tw-text-sm tw-mb-1 tw-font-medium"
+                  data-testid={`${option.type}-option`}>
                   {option.title}
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs tw-mb-2">

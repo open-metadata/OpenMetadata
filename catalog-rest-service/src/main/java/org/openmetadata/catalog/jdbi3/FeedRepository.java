@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD;
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.PIPELINE;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.TOPIC;
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -68,6 +70,7 @@ import org.openmetadata.catalog.resources.feeds.FeedResource;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.type.AnnouncementDetails;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -125,6 +128,18 @@ public class FeedRepository {
     // if thread is of type "task", assign a taskId
     if (thread.getType().equals(ThreadType.Task)) {
       thread.withTask(thread.getTask().withId(getNextTaskId()));
+    }
+
+    // if thread is of type "announcement", validate start and end time
+    if (thread.getType().equals(ThreadType.Announcement)) {
+      validateAnnouncement(thread.getAnnouncement());
+      long startTime = thread.getAnnouncement().getStartTime();
+      long endTime = thread.getAnnouncement().getEndTime();
+      List<String> announcements = dao.feedDAO().listAnnouncementBetween(entityId.toString(), startTime, endTime);
+      if (announcements.size() > 0) {
+        // There is already an announcement that overlaps the new one
+        throw new IllegalArgumentException(CatalogExceptionMessage.announcementOverlap());
+      }
     }
 
     // Insert a new thread
@@ -225,7 +240,7 @@ public class FeedRepository {
                     String.format(
                         "The Column with name '%s' is not found in the table.", entityLink.getArrayFieldName()));
               }
-            } else if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+            } else if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
               table.setDescription(newValue);
             } else if (tagTasks.contains(taskType) && entityLink.getFieldName().equals("tags")) {
               List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
@@ -250,7 +265,7 @@ public class FeedRepository {
         case TOPIC:
           Topic topic = JsonUtils.readValue(json, Topic.class);
           oldJson = JsonUtils.pojoToJson(topic);
-          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
             topic.setDescription(newValue);
           } else if (tagTasks.contains(taskType) && entityLink.getFieldName().equals("tags")) {
             List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
@@ -268,7 +283,7 @@ public class FeedRepository {
         case DASHBOARD:
           Dashboard dashboard = JsonUtils.readValue(json, Dashboard.class);
           oldJson = JsonUtils.pojoToJson(dashboard);
-          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
             dashboard.setDescription(newValue);
           } else if (entityLink.getFieldName().equals("charts")) {
             Optional<EntityReference> ch =
@@ -298,7 +313,7 @@ public class FeedRepository {
         case PIPELINE:
           Pipeline pipeline = JsonUtils.readValue(json, Pipeline.class);
           oldJson = JsonUtils.pojoToJson(pipeline);
-          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+          if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
             pipeline.setDescription(newValue);
           } else if (entityLink.getFieldName().equals("tasks")) {
             Optional<Task> tsk =
@@ -490,8 +505,25 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  public EntityReference getOwnerOfPost(Post post) {
-    User fromUser = dao.userDAO().findEntityByName(post.getFrom());
+  @Transaction
+  public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) throws IOException {
+    String id = thread.getId().toString();
+
+    // Delete all the relationships to other entities
+    dao.relationshipDAO().deleteAll(id, Entity.THREAD);
+
+    // Delete all the field relationships to other entities
+    dao.fieldRelationshipDAO().deleteAllByPrefix(id);
+
+    // Finally, delete the entity
+    dao.feedDAO().delete(id);
+
+    LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
+    return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
+  }
+
+  public EntityReference getOwnerReference(String username) {
+    User fromUser = dao.userDAO().findEntityByName(username);
     return fromUser.getEntityReference();
   }
 
@@ -749,6 +781,21 @@ public class FeedRepository {
       updated.getTask().getAssignees().sort(compareEntityReference);
     }
 
+    if (updated.getAnnouncement() != null) {
+      validateAnnouncement(updated.getAnnouncement());
+      // check if the announcement start and end time clashes with other existing announcements
+      List<String> announcements =
+          dao.feedDAO()
+              .listAnnouncementBetween(
+                  id.toString(),
+                  updated.getEntityId().toString(),
+                  updated.getAnnouncement().getStartTime(),
+                  updated.getAnnouncement().getEndTime());
+      if (announcements.size() > 0) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.announcementOverlap());
+      }
+    }
+
     // Update the attributes
     String change = patchUpdate(original, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     sortPosts(updated);
@@ -756,9 +803,15 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updatedHref, change);
   }
 
+  private void validateAnnouncement(AnnouncementDetails announcementDetails) {
+    if (announcementDetails.getStartTime() >= announcementDetails.getEndTime()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.announcementInvalidStartTime());
+    }
+  }
+
   private void restorePatchAttributes(Thread original, Thread updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated.withId(original.getId()).withAbout(original.getAbout());
+    updated.withId(original.getId()).withAbout(original.getAbout()).withType(original.getType());
   }
 
   private void restorePatchAttributes(Post original, Post updated) {
@@ -810,13 +863,17 @@ public class FeedRepository {
   }
 
   private boolean fieldsChanged(Thread original, Thread updated) {
-    // Patch supports isResolved, message, task assignees, and reactions for now
+    // Patch supports isResolved, message, task assignees, reactions, and announcements for now
     return !original.getResolved().equals(updated.getResolved())
         || !original.getMessage().equals(updated.getMessage())
         || (Collections.isEmpty(original.getReactions()) && !Collections.isEmpty(updated.getReactions()))
         || (!Collections.isEmpty(original.getReactions()) && Collections.isEmpty(updated.getReactions()))
         || original.getReactions().size() != updated.getReactions().size()
         || !original.getReactions().containsAll(updated.getReactions())
+        || (original.getAnnouncement() != null
+            && (!original.getAnnouncement().getDescription().equals(updated.getAnnouncement().getDescription())
+                || !Objects.equals(original.getAnnouncement().getStartTime(), updated.getAnnouncement().getStartTime())
+                || !Objects.equals(original.getAnnouncement().getEndTime(), updated.getAnnouncement().getEndTime())))
         || (original.getTask() != null
             && (original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
                 || !original.getTask().getAssignees().containsAll(updated.getTask().getAssignees())));

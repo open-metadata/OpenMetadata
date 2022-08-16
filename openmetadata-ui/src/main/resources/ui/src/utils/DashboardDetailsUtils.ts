@@ -35,10 +35,6 @@ export const dashboardDetailsTabs = [
     name: 'Custom Properties',
     path: 'custom_properties',
   },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
 ];
 
 export const getCurrentDashboardTab = (tab: string) => {
@@ -56,11 +52,6 @@ export const getCurrentDashboardTab = (tab: string) => {
 
     case 'custom_properties':
       currentTab = 4;
-
-      break;
-
-    case 'manage':
-      currentTab = 5;
 
       break;
 

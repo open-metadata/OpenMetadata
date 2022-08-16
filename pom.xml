@@ -93,7 +93,7 @@
     <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.29</mysql.connector.version>
-    <postgres.connector.version>42.3.6</postgres.connector.version>
+    <postgres.connector.version>42.4.1</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
@@ -167,7 +167,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>2.13.3</version>
+        <version>${jackson.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -421,7 +421,6 @@
         <artifactId>slf4j-simple</artifactId>
         <version>${slf4j.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>

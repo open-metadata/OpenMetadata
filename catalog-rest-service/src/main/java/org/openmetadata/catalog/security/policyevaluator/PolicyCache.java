@@ -47,7 +47,7 @@ public class PolicyCache {
   }
 
   /** To be called during application startup by Default Authorizer */
-  public void initialize() {
+  public static void initialize() {
     if (!INITIALIZED) {
       POLICY_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
       POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
@@ -88,7 +88,7 @@ public class PolicyCache {
     return rules;
   }
 
-  public void cleanUp() {
+  public static void cleanUp() {
     POLICY_CACHE.cleanUp();
     INITIALIZED = false;
   }
@@ -96,7 +96,7 @@ public class PolicyCache {
   static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
     @Override
     public List<CompiledRule> load(@CheckForNull UUID policyId) throws IOException {
-      Policy policy = POLICY_REPOSITORY.get(null, policyId.toString(), FIELDS);
+      Policy policy = POLICY_REPOSITORY.get(null, policyId, FIELDS);
       LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
       return PolicyCache.getInstance().getRules(policy);
     }

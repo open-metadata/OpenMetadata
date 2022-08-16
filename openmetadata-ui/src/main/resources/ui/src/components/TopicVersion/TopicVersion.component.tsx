@@ -18,7 +18,7 @@ import React, { FC, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { OwnerType } from '../../enums/user.enum';
-import { ChangeDescription } from '../../generated/entity/data/topic';
+import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getDescriptionDiff,
@@ -70,30 +70,30 @@ const TopicVersion: FC<TopicVersionProp> = ({
     return [
       {
         key: 'Partitions',
-        value: `${currentVersionData.partitions ?? '--'} partitions`,
+        value: `${(currentVersionData as Topic).partitions ?? '--'} partitions`,
       },
       {
         key: 'Replication Factor',
         value: `${
-          currentVersionData.replicationFactor ?? '--'
+          (currentVersionData as Topic).replicationFactor ?? '--'
         } replication factor`,
       },
       {
         key: 'Retention Size',
         value: `${bytesToSize(
-          currentVersionData.retentionSize ?? 0
+          (currentVersionData as Topic).retentionSize ?? 0
         )} retention size`,
       },
       {
         key: 'Clean-up Policies',
-        value: `${currentVersionData?.cleanupPolicies?.join(
+        value: `${(currentVersionData as Topic)?.cleanupPolicies?.join(
           ', '
         )} clean-up policies`,
       },
       {
         key: 'Max Message Size',
         value: `${bytesToSize(
-          currentVersionData.maximumMessageSize ?? 0
+          (currentVersionData as Topic).maximumMessageSize ?? 0
         )} maximum size`,
       },
     ];
@@ -211,10 +211,10 @@ const TopicVersion: FC<TopicVersionProp> = ({
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabelWithStatus) => {
+    ].forEach((elem) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem);
+        uniqueTags.push(elem as TagLabelWithStatus);
       }
     });
 
@@ -290,12 +290,12 @@ const TopicVersion: FC<TopicVersionProp> = ({
                     {getInfoBadge([
                       {
                         key: 'Schema',
-                        value: currentVersionData.schemaType ?? '',
+                        value: (currentVersionData as Topic).schemaType ?? '',
                       },
                     ])}
                     <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
                       <SchemaEditor
-                        value={currentVersionData.schemaText ?? '{}'}
+                        value={(currentVersionData as Topic).schemaText ?? '{}'}
                       />
                     </div>
                   </div>

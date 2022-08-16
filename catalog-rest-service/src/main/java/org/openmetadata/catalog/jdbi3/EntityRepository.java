@@ -53,6 +53,7 @@ import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -132,8 +133,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final CollectionDAO daoCollection;
   protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
-  protected final boolean supportsTags;
-  protected final boolean supportsOwner;
+  @Getter protected final boolean supportsTags;
+  @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
   protected boolean allowEdits = false;
 
@@ -276,13 +277,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final T get(UriInfo uriInfo, String id, Fields fields) throws IOException {
+  public final T get(UriInfo uriInfo, UUID id, Fields fields) throws IOException {
     return get(uriInfo, id, fields, NON_DELETED);
   }
 
   @Transaction
-  public final T get(UriInfo uriInfo, String id, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id), include), fields));
+  public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include) throws IOException {
+    return withHref(uriInfo, setFields(dao.findEntityById(id, include), fields));
   }
 
   @Transaction
@@ -347,17 +348,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public T getVersion(String id, String version) throws IOException {
+  public T getVersion(UUID id, String version) throws IOException {
     Double requestedVersion = Double.parseDouble(version);
     String extension = EntityUtil.getVersionExtension(entityType, requestedVersion);
 
     // Get previous version from version history
-    String json = daoCollection.entityExtensionDAO().getExtension(id, extension);
+    String json = daoCollection.entityExtensionDAO().getExtension(id.toString(), extension);
     if (json != null) {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
+    T entity = setFields(dao.findEntityById(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
       return entity;
     }
@@ -464,6 +465,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepare(updated);
+    populateOwner(updated.getOwner());
     validateExtension(updated);
     restorePatchAttributes(original, updated);
 
@@ -509,7 +511,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean hardDelete)
+  public final DeleteResponse<T> delete(String updatedBy, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.getEntity());
@@ -533,7 +535,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  private DeleteResponse<T> delete(String updatedBy, String json, String id, boolean recursive, boolean hardDelete)
+  private DeleteResponse<T> delete(String updatedBy, String json, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     T original = JsonUtils.readValue(json, entityClass);
     preDelete(original);
@@ -567,12 +569,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (json == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, name));
     }
-    String id = String.valueOf(JsonUtils.readValue(json, entityClass).getId());
+    UUID id = JsonUtils.readValue(json, entityClass).getId();
     return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
   @Transaction
-  public final DeleteResponse<T> deleteInternal(String updatedBy, String id, boolean recursive, boolean hardDelete)
+  public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     // Validate entity
     String json = dao.findJsonById(id, ALL);
@@ -582,10 +584,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
-  private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
+  private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
+        daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
 
     if (records.isEmpty()) {
       return;
@@ -712,7 +714,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public void removeExtension(EntityInterface entity) throws JsonProcessingException {
+  public void removeExtension(EntityInterface entity) {
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
@@ -813,7 +815,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getFollowers(T entity) throws IOException {
     if (!supportsFollower || entity == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
@@ -1067,7 +1069,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static List<UUID> toIds(List<String> ids) {
     if (ids == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<UUID> uuids = new ArrayList<>();
     for (String id : ids) {

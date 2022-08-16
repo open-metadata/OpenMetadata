@@ -13,18 +13,14 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -42,6 +38,8 @@ import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.Permission.Access;
+import org.openmetadata.catalog.type.ResourcePermission;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
@@ -59,9 +57,9 @@ public class DefaultAuthorizer implements Authorizer {
     this.testUsers = new HashSet<>(config.getTestPrincipals());
     this.principalDomain = config.getPrincipalDomain();
 
-    SubjectCache.getInstance().initialize();
-    PolicyCache.getInstance().initialize();
-    RoleCache.getInstance().initialize();
+    SubjectCache.initialize();
+    PolicyCache.initialize();
+    RoleCache.initialize();
     LOG.debug("Admin users: {}", adminUsers);
     initializeUsers();
   }
@@ -98,19 +96,40 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(SecurityContext securityContext) {
-    SubjectContext subjectContext;
-    try {
-      subjectContext = getSubjectContext(securityContext);
-    } catch (EntityNotFoundException ex) {
-      return Collections.emptyList();
-    }
+  public List<ResourcePermission> listPermissions(SecurityContext securityContext, String user) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    subjectContext = changeSubjectContext(user, subjectContext);
 
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
       // Admins and bots have permissions to do all operations.
-      return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+      return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
     }
-    return PolicyEvaluator.getAllowedOperations(subjectContext);
+    return PolicyEvaluator.listPermission(subjectContext);
+  }
+
+  @Override
+  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resourceType) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    subjectContext = changeSubjectContext(user, subjectContext);
+
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      // Admins and bots have permissions to do all operations.
+      return PolicyEvaluator.getResourcePermission(resourceType, Access.ALLOW);
+    }
+    return PolicyEvaluator.getPermission(subjectContext, resourceType);
+  }
+
+  @Override
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    subjectContext = changeSubjectContext(user, subjectContext);
+
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      // Admins and bots have permissions to do all operations.
+      return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
+    }
+    return PolicyEvaluator.getPermission(subjectContext, resourceContext);
   }
 
   @Override
@@ -138,26 +157,12 @@ public class DefaultAuthorizer implements Authorizer {
       return;
     }
 
-    //    if (subjectContext.isOwner(resourceContext.getOwner())) {
-    //      return;
-    //    }
-
     // TODO view is currently allowed for everyone
     if (operationContext.getOperations().size() == 1
         && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
       return;
     }
-    List<MetadataOperation> metadataOperations = operationContext.getOperations();
-
-    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
-    if (metadataOperations.isEmpty()) {
-      throw new AuthorizationException(noPermission(securityContext.getUserPrincipal().getName()));
-    }
-    for (MetadataOperation operation : metadataOperations) {
-      if (!PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext)) {
-        throw new AuthorizationException(noPermission(securityContext.getUserPrincipal().getName(), operation.value()));
-      }
-    }
+    PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
 
   @Override
@@ -185,6 +190,22 @@ public class DefaultAuthorizer implements Authorizer {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
-    return SubjectCache.getInstance().getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
+    return getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
+  }
+
+  private SubjectContext getSubjectContext(String userName) {
+    return SubjectCache.getInstance().getSubjectContext(userName);
+  }
+
+  private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {
+    // Asking for some other user's permissions is admin only operation
+    if (user != null && !loggedInUser.getUser().getName().equals(user)) {
+      if (!loggedInUser.isAdmin()) {
+        throw new AuthorizationException(notAdmin(loggedInUser.getUser().getName()));
+      }
+      LOG.debug("Changing subject context from logged-in user to {}", user);
+      return getSubjectContext(user);
+    }
+    return loggedInUser;
   }
 }

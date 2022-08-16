@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -51,7 +51,7 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -68,10 +68,7 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-export type VersionData = Partial<Table> &
-  Partial<Topic> &
-  Partial<Dashboard> &
-  Partial<Pipeline>;
+export type VersionData = Table | Topic | Dashboard | Pipeline;
 
 const EntityVersionPage: FunctionComponent = () => {
   const history = useHistory();
@@ -151,52 +148,54 @@ const EntityVersionPage: FunctionComponent = () => {
           ),
           ['owner', 'tags']
         )
-          .then((res: AxiosResponse) => {
+          .then((res) => {
             const {
               id,
               owner,
-              tags,
+              tags = [],
               database,
               service,
               serviceType,
               databaseSchema,
-            } = res.data;
-            setEntityState(tags, owner, res.data, [
+            } = res;
+            const serviceName = service?.name ?? '';
+            setEntityState(tags, owner, res, [
               {
-                name: service.name,
-                url: service.name
+                name: serviceName,
+                url: serviceName
                   ? getServiceDetailsPath(
-                      service.name,
+                      serviceName,
                       ServiceCategory.DATABASE_SERVICES
                     )
                   : '',
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                  FqnPart.Database,
-                ]),
-                url: getDatabaseDetailsPath(database.fullyQualifiedName),
+                name: getPartialNameFromTableFQN(
+                  database?.fullyQualifiedName ?? '',
+                  [FqnPart.Database]
+                ),
+                url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
               },
               {
                 name: getPartialNameFromTableFQN(
-                  databaseSchema.fullyQualifiedName,
+                  databaseSchema?.fullyQualifiedName ?? '',
                   [FqnPart.Schema]
                 ),
                 url: getDatabaseSchemaDetailsPath(
-                  databaseSchema.fullyQualifiedName
+                  databaseSchema?.fullyQualifiedName ?? ''
                 ),
               },
               {
-                name: getEntityName(res.data),
+                name: getEntityName(res),
                 url: '',
                 activeTitle: true,
               },
             ]);
 
             getTableVersions(id)
-              .then((vres: AxiosResponse) => {
-                setVersionList(vres.data);
+              .then((vres) => {
+                setVersionList(vres);
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
@@ -219,31 +218,32 @@ const EntityVersionPage: FunctionComponent = () => {
             ['service', 'database'],
             FQN_SEPARATOR_CHAR
           ),
-          ['owner', 'tags']
+          [TabSpecificField.OWNER, TabSpecificField.TAGS]
         )
-          .then((res: AxiosResponse) => {
-            const { id, owner, tags, service, serviceType } = res.data;
-            setEntityState(tags, owner, res.data, [
+          .then((res) => {
+            const { id, owner, tags = [], service, serviceType } = res;
+            const serviceName = service.name ?? '';
+            setEntityState(tags, owner, res, [
               {
-                name: service.name,
-                url: service.name
+                name: serviceName,
+                url: serviceName
                   ? getServiceDetailsPath(
-                      service.name,
+                      serviceName,
                       ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: getEntityName(res.data),
+                name: getEntityName(res),
                 url: '',
                 activeTitle: true,
               },
             ]);
 
             getTopicVersions(id)
-              .then((vres: AxiosResponse) => {
-                setVersionList(vres.data);
+              .then((vres) => {
+                setVersionList(vres);
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
@@ -268,29 +268,30 @@ const EntityVersionPage: FunctionComponent = () => {
           ),
           ['owner', 'tags', 'charts']
         )
-          .then((res: AxiosResponse) => {
-            const { id, owner, tags, service, serviceType } = res.data;
-            setEntityState(tags, owner, res.data, [
+          .then((res) => {
+            const { id, owner, tags = [], service, serviceType } = res;
+            const serviceName = service.name ?? '';
+            setEntityState(tags, owner, res, [
               {
-                name: service.name,
-                url: service.name
+                name: serviceName,
+                url: serviceName
                   ? getServiceDetailsPath(
-                      service.name,
+                      serviceName,
                       ServiceCategory.DASHBOARD_SERVICES
                     )
                   : '',
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: getEntityName(res.data),
+                name: getEntityName(res),
                 url: '',
                 activeTitle: true,
               },
             ]);
 
             getDashboardVersions(id)
-              .then((vres: AxiosResponse) => {
-                setVersionList(vres.data);
+              .then((vres) => {
+                setVersionList(vres);
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
@@ -315,29 +316,30 @@ const EntityVersionPage: FunctionComponent = () => {
           ),
           ['owner', 'tags', 'tasks']
         )
-          .then((res: AxiosResponse) => {
-            const { id, owner, tags, service, serviceType } = res.data;
-            setEntityState(tags, owner, res.data, [
+          .then((res) => {
+            const { id, owner, tags = [], service, serviceType } = res;
+            const serviceName = service.name ?? '';
+            setEntityState(tags, owner, res, [
               {
-                name: service.name,
-                url: service.name
+                name: serviceName,
+                url: serviceName
                   ? getServiceDetailsPath(
-                      service.name,
+                      serviceName,
                       ServiceCategory.PIPELINE_SERVICES
                     )
                   : '',
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: getEntityName(res.data),
+                name: getEntityName(res),
                 url: '',
                 activeTitle: true,
               },
             ]);
 
             getPipelineVersions(id)
-              .then((vres: AxiosResponse) => {
-                setVersionList(vres.data);
+              .then((vres) => {
+                setVersionList(vres);
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
@@ -368,20 +370,21 @@ const EntityVersionPage: FunctionComponent = () => {
             entityFQN,
             [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
             FQN_SEPARATOR_CHAR
-          )
+          ),
+          []
         )
-          .then((res: AxiosResponse) => {
-            const { id, database, service, serviceType, databaseSchema } =
-              res.data;
+          .then((res) => {
+            const { id, database, service, serviceType, databaseSchema } = res;
             getTableVersion(id, version)
-              .then((vRes: AxiosResponse) => {
-                const { owner, tags } = vRes.data;
-                setEntityState(tags, owner, vRes.data, [
+              .then((vRes) => {
+                const { owner, tags } = vRes;
+                const serviceName = service?.name ?? '';
+                setEntityState(tags, owner, vRes, [
                   {
-                    name: service.name,
-                    url: service.name
+                    name: serviceName,
+                    url: serviceName
                       ? getServiceDetailsPath(
-                          service.name,
+                          serviceName,
                           ServiceCategory.DATABASE_SERVICES
                         )
                       : '',
@@ -391,22 +394,24 @@ const EntityVersionPage: FunctionComponent = () => {
                   },
                   {
                     name: getPartialNameFromTableFQN(
-                      database.fullyQualifiedName,
+                      database?.fullyQualifiedName ?? '',
                       [FqnPart.Database]
                     ),
-                    url: getDatabaseDetailsPath(database.fullyQualifiedName),
+                    url: getDatabaseDetailsPath(
+                      database?.fullyQualifiedName ?? ''
+                    ),
                   },
                   {
                     name: getPartialNameFromTableFQN(
-                      databaseSchema.fullyQualifiedName,
+                      databaseSchema?.fullyQualifiedName ?? '',
                       [FqnPart.Schema]
                     ),
                     url: getDatabaseSchemaDetailsPath(
-                      databaseSchema.fullyQualifiedName
+                      databaseSchema?.fullyQualifiedName ?? ''
                     ),
                   },
                   {
-                    name: getEntityName(res.data),
+                    name: getEntityName(res),
                     url: '',
                     activeTitle: true,
                   },
@@ -436,19 +441,21 @@ const EntityVersionPage: FunctionComponent = () => {
             entityFQN,
             ['service', 'database'],
             FQN_SEPARATOR_CHAR
-          )
+          ),
+          []
         )
-          .then((res: AxiosResponse) => {
-            const { id, service, serviceType } = res.data;
+          .then((res) => {
+            const { id, service, serviceType } = res;
             getTopicVersion(id, version)
-              .then((vRes: AxiosResponse) => {
-                const { owner, tags } = vRes.data;
-                setEntityState(tags, owner, vRes.data, [
+              .then((vRes) => {
+                const { owner, tags = [] } = vRes;
+                const serviceName = service?.name ?? '';
+                setEntityState(tags, owner, vRes, [
                   {
-                    name: service.name,
-                    url: service.name
+                    name: serviceName,
+                    url: serviceName
                       ? getServiceDetailsPath(
-                          service.name,
+                          serviceName,
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',
@@ -457,7 +464,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: getEntityName(res.data),
+                    name: getEntityName(res),
                     url: '',
                     activeTitle: true,
                   },
@@ -486,19 +493,21 @@ const EntityVersionPage: FunctionComponent = () => {
             entityFQN,
             ['service', 'database'],
             FQN_SEPARATOR_CHAR
-          )
+          ),
+          []
         )
-          .then((res: AxiosResponse) => {
-            const { id, service, serviceType } = res.data;
+          .then((res) => {
+            const { id, service, serviceType } = res;
             getDashboardVersion(id, version)
-              .then((vRes: AxiosResponse) => {
-                const { owner, tags } = vRes.data;
-                setEntityState(tags, owner, vRes.data, [
+              .then((vRes) => {
+                const { owner, tags = [] } = vRes;
+                const serviceName = service?.name ?? '';
+                setEntityState(tags, owner, vRes, [
                   {
-                    name: service.name,
-                    url: service.name
+                    name: serviceName,
+                    url: serviceName
                       ? getServiceDetailsPath(
-                          service.name,
+                          serviceName,
                           ServiceCategory.DASHBOARD_SERVICES
                         )
                       : '',
@@ -507,7 +516,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: getEntityName(res.data),
+                    name: getEntityName(res),
                     url: '',
                     activeTitle: true,
                   },
@@ -536,19 +545,21 @@ const EntityVersionPage: FunctionComponent = () => {
             entityFQN,
             ['service', 'database'],
             FQN_SEPARATOR_CHAR
-          )
+          ),
+          []
         )
-          .then((res: AxiosResponse) => {
-            const { id, service, serviceType } = res.data;
+          .then((res) => {
+            const { id, service, serviceType } = res;
             getPipelineVersion(id, version)
-              .then((vRes: AxiosResponse) => {
-                const { owner, tags } = vRes.data;
-                setEntityState(tags, owner, vRes.data, [
+              .then((vRes) => {
+                const { owner, tags = [] } = vRes;
+                const serviceName = service?.name ?? '';
+                setEntityState(tags, owner, vRes, [
                   {
-                    name: service.name,
-                    url: service.name
+                    name: serviceName,
+                    url: serviceName
                       ? getServiceDetailsPath(
-                          service.name,
+                          serviceName,
                           ServiceCategory.PIPELINE_SERVICES
                         )
                       : '',
@@ -557,7 +568,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: getEntityName(res.data),
+                    name: getEntityName(res),
                     url: '',
                     activeTitle: true,
                   },

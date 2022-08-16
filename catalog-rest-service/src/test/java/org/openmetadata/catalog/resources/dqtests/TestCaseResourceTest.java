@@ -291,23 +291,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   @Override
   public void validateCreatedEntity(TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEquals(request.getName(), createdEntity.getName());
-    assertEquals(request.getDescription(), createdEntity.getDescription());
+    validateCommonEntityFields(createdEntity, request, authHeaders);
     assertEquals(request.getEntity(), createdEntity.getEntity());
     assertEquals(request.getTestSuite(), createdEntity.getTestSuite());
-    assertEquals(request.getOwner(), createdEntity.getOwner());
     assertEquals(request.getTestDefinition(), createdEntity.getTestDefinition());
+    assertEquals(request.getTestSuite(), createdEntity.getTestSuite());
+    assertEquals(request.getParameterValues(), createdEntity.getParameterValues());
   }
 
   @Override
   public void compareEntities(TestCase expected, TestCase updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEquals(expected.getName(), updated.getName());
-    assertEquals(expected.getDescription(), updated.getDescription());
+    validateCommonEntityFields(expected, updated, authHeaders);
+    assertEquals(expected.getEntity(), updated.getEntity());
+    assertEquals(expected.getTestSuite(), updated.getTestSuite());
+    assertEquals(expected.getTestDefinition(), updated.getTestDefinition());
+    assertEquals(expected.getTestSuite(), updated.getTestSuite());
+    assertEquals(expected.getParameterValues(), updated.getParameterValues());
   }
 
   @Override
   public TestCase validateGetWithDifferentFields(TestCase entity, boolean byName) throws HttpResponseException {
+    // TODO fix this
     return null;
   }
 
@@ -316,5 +321,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     if (expected == actual) {
       return;
     }
+    // TODO fix this
   }
 }

@@ -24,9 +24,11 @@ import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -205,7 +207,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertResponse(
         () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        CatalogExceptionMessage.noPermission(TEST_USER_NAME));
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
   }
 
   @Test
@@ -228,7 +230,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             patchEntity(
                 team.getId(), originalJson, team, SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
         FORBIDDEN,
-        CatalogExceptionMessage.noPermission(randomUserName, "EditUsers"));
+        permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_USERS)));
 
     // Ensure user with UpdateTeam permission can add users to a team.
     User teamManagerUser = createTeamManager(test);
@@ -381,19 +383,24 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Creating a parent with invalid children type is not allowed
     // Department can't have Business unit as a child
     assertResponse(
-        () -> createWithChildren("invalidTeam", DEPARTMENT, bu11.getEntityReference()),
+        () -> createWithChildren("invalidDepartment", DEPARTMENT, bu11.getEntityReference()),
         BAD_REQUEST,
-        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, bu11));
+        CatalogExceptionMessage.invalidChild("invalidDepartment", DEPARTMENT, bu11));
     // Department can't have Division as a child
     assertResponse(
-        () -> createWithChildren("invalidTeam", DEPARTMENT, div12.getEntityReference()),
+        () -> createWithChildren("invalidDepartment", DEPARTMENT, div12.getEntityReference()),
         BAD_REQUEST,
-        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, div12));
+        CatalogExceptionMessage.invalidChild("invalidDepartment", DEPARTMENT, div12));
     // Division can't have BU as a child
     assertResponse(
-        () -> createWithChildren("invalidTeam", DIVISION, bu11.getEntityReference()),
+        () -> createWithChildren("invalidDivision", DIVISION, bu11.getEntityReference()),
         BAD_REQUEST,
-        CatalogExceptionMessage.invalidChild("invalidTeam", DIVISION, bu11));
+        CatalogExceptionMessage.invalidChild("invalidDivision", DIVISION, bu11));
+    // Group can't have other teams as children. Only users are allowed under the team
+    assertResponse(
+        () -> createWithChildren("invalidGroup", GROUP, bu11.getEntityReference()),
+        BAD_REQUEST,
+        CatalogExceptionMessage.createGroup());
   }
 
   @Test
@@ -759,5 +766,14 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             .withName(getEntityName(testInfo) + "manager")
             .withRoles(List.of(teamManager.getId())),
         ADMIN_AUTH_HEADERS);
+  }
+
+  public List<Team> getTeamOfTypes(TestInfo test, TeamType... teamTypes) throws HttpResponseException {
+    List<Team> teams = new ArrayList<>();
+    int i = 0;
+    for (TeamType type : teamTypes) {
+      teams.add(createEntity(createRequest(getEntityName(test, i++)).withTeamType(type), ADMIN_AUTH_HEADERS));
+    }
+    return teams;
   }
 }

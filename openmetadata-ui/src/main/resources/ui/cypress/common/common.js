@@ -15,6 +15,8 @@
 
 export const uuid = () => Cypress._.random(0, 1e6);
 
+const AARON_JOHNSON = 'Aaron Johnson';
+
 const isDatabaseService = (type) => type === 'database';
 
 export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
@@ -135,7 +137,9 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
-  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should('be.visible');
+  cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
+    'be.visible'
+  );
   cy.contains(`"${serviceName}_metadata"`).should('be.visible');
   cy.contains('has been created and deployed successfully').should(
     'be.visible'
@@ -158,17 +162,14 @@ export const testServiceCreationAndIngestion = (
 export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.goToHomePage();
 
-  cy.get(
-    '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-  )
-    .scrollIntoView()
+  //Click on settings page
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
+  // Services page
+  cy.get('.ant-menu-title-content')
+    .contains(typeOfService)
     .should('be.visible')
     .click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-  cy.wait(1000);
-
-  //redirecting to services page
-  cy.contains('[data-testid="tab"]', `${typeOfService} Service`).click();
 
   //click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
@@ -186,15 +187,26 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
   cy.wait(1000);
 
-  cy.get('[data-testid="Manage"]').should('exist').should('be.visible').click();
-  cy.get('[data-testid="delete-button"]')
-    .scrollIntoView()
+  cy.get('[data-testid="manage-button"]')
     .should('exist')
     .should('be.visible')
     .click();
+
+  cy.get('[data-testid="delete-button"] > .tw-font-medium')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Clicking on permanent delete radio button and checking the service name
+  cy.get('[data-testid="hard-delete-option"]')
+    .contains(service_Name)
+    .should('be.visible')
+    .click();
+
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
     .type('DELETE');
+
   cy.get('[data-testid="confirm-button"]').should('be.visible').click();
   cy.wait(2000);
   cy.get('[class="Toastify__toast-body"] >div')
@@ -202,34 +214,101 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('exist')
     .should('be.visible')
     .should('have.text', `${typeOfService} Service deleted successfully!`);
+
+  //Checking if the service got deleted successfully
+  cy.clickOnLogo();
+
+  cy.wait(1000);
+  //Click on settings page
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
+  // Services page
+  cy.get('.ant-menu-title-content')
+    .contains(typeOfService)
+    .should('be.visible')
+    .click();
+
+  cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };
 
-export const goToAddNewServicePage = () => {
+export const editOwnerforCreatedService = (service_type, service_Name) => {
+  cy.goToHomePage();
+
+  //Click on settings page
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+
+  // Services page
+  cy.get('.ant-menu-title-content')
+    .contains(service_type)
+    .should('be.visible')
+    .click();
+
+  //click on created service
+  cy.get(`[data-testid="service-name-${service_Name}"]`)
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+
+  //Click on edit owner button
+  cy.get('[data-testid="edit-Owner-icon"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(500);
+  //Clicking on users tab
+  cy.get('[data-testid="dropdown-tab"]')
+    .contains('Users')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Selecting the user
+  cy.get('[data-testid="list-item"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.wait(1000);
+
+  cy.get('[data-testid="owner-dropdown"]')
+    .invoke('text')
+    .then((text) => {
+      expect(text).equal(AARON_JOHNSON);
+    });
+};
+
+export const goToAddNewServicePage = (service_type) => {
   cy.visit('/');
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
   cy.get('[data-testid="closeWhatsNew"]').click();
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
   cy.get('[data-testid="tables"]').should('be.visible');
 
-  cy.get('[data-testid="menu-button"]').should('be.visible');
-  cy.get('[data-testid="menu-button"]').first().click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+  //Click on settings page
+  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page
-  cy.contains('Services').should('be.visible');
+  cy.get('.ant-menu-title-content')
+    .contains(service_type)
+    .should('be.visible')
+    .click();
+
   cy.wait(500);
-  cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
-    if ($databaseServiceCount.text() === '0') {
-      cy.get('[data-testid="add-service-button"]').should('be.visible').click();
-    } else {
+
+  cy.get('.ant-card').then(($serviceCount) => {
+    if ($serviceCount.length > 0) {
       cy.get('[data-testid="add-new-service-button"]')
         .should('be.visible')
         .click();
+    } else {
+      cy.get('[data-testid="add-service-button"]').should('be.visible').click();
     }
   });
 
   // Add new service page
-  cy.url().should('include', 'databaseServices/add-service');
+  cy.url().should('include', '/add-service');
   cy.get('[data-testid="header"]').should('be.visible');
   cy.contains('Add New Service').should('be.visible');
   cy.get('[data-testid="service-category"]').should('be.visible');

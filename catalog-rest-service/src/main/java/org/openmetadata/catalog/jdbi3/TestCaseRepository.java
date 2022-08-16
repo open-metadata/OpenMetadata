@@ -65,7 +65,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         Entity.getEntity(test.getTestDefinition(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
     test.setFullyQualifiedName(FullyQualifiedName.add(tableRef.getFullyQualifiedName(), test.getName()));
-    test.setOwner(Entity.getEntityReference(test.getOwner()));
   }
 
   private EntityReference getEntity(TestCase test) throws IOException {

@@ -59,7 +59,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void prepare(Metrics metrics) throws IOException {
-    populateOwner(metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
     setFullyQualifiedName(metrics);
     metrics.setTags(addDerivedTags(metrics.getTags()));

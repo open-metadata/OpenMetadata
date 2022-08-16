@@ -15,6 +15,7 @@ export interface DeleteWidgetModalProps {
   visible: boolean;
   onCancel: () => void;
   allowSoftDelete?: boolean;
+  deleteMessage?: string;
   entityName: string;
   entityType: string;
   isAdminUser?: boolean;

@@ -57,7 +57,7 @@ export interface AddIngestionProps {
 export interface ConfigureIngestionProps {
   ingestionName: string;
   description?: string;
-  databaseServiceName: string;
+  databaseServiceNames: string[];
   serviceCategory: ServiceCategory;
   databaseFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
@@ -66,7 +66,6 @@ export interface ConfigureIngestionProps {
   topicFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
   pipelineFilterPattern: FilterPattern;
-  fqnFilterPattern: FilterPattern;
   includeLineage: boolean;
   includeView: boolean;
   includeTags: boolean;
@@ -82,13 +81,12 @@ export interface ConfigureIngestionProps {
   showTopicFilter: boolean;
   showChartFilter: boolean;
   showPipelineFilter: boolean;
-  showFqnFilter: boolean;
   threadCount: number;
   queryLogDuration: number;
   stageFileLocation: string;
   resultLimit: number;
   handleIngestionName: (value: string) => void;
-  handleDatasetServiceName: (value: string) => void;
+  handleDatasetServiceName: (value: string[]) => void;
   handleDescription?: (value: string) => void;
   handleIncludeLineage: () => void;
   handleIncludeView: () => void;

@@ -50,7 +50,6 @@ import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import { NavBarProps } from './NavBar.interface';
 
 const NavBar = ({
-  settingDropdown,
   supportDropdown,
   profileDropdown,
   searchValue,
@@ -208,23 +207,46 @@ const NavBar = ({
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="90" />
             </NavLink>
-            <div className="tw-ml-5">
+            <Space className="tw-ml-5" size={16}>
               <NavLink
                 className="focus:tw-no-underline"
-                data-testid="appbar-item"
-                id="explore"
+                data-testid="appbar-item-explore"
                 style={navStyle(pathname.startsWith('/explore'))}
                 to={{
                   pathname: '/explore/tables',
                 }}>
                 Explore
               </NavLink>
-              <DropDown
-                dropDownList={settingDropdown}
-                label="Settings"
-                type="link"
-              />
-            </div>
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-settings"
+                style={navStyle(pathname.startsWith('/settings'))}
+                to={{
+                  pathname: ROUTES.SETTINGS,
+                }}>
+                Settings
+              </NavLink>
+
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-glossary"
+                style={navStyle(pathname.startsWith('/glossary'))}
+                to={{
+                  pathname: ROUTES.GLOSSARY,
+                }}>
+                Glossary
+              </NavLink>
+
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-tags"
+                style={navStyle(pathname.startsWith('/tags'))}
+                to={{
+                  pathname: ROUTES.TAGS,
+                }}>
+                Tags
+              </NavLink>
+            </Space>
           </div>
           <div
             className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"

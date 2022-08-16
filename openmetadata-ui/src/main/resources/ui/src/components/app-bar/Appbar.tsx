@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -25,7 +25,6 @@ import {
   getExplorePathWithSearch,
   getTeamAndUserDetailsPath,
   getUserPath,
-  navLinkSettings,
   ROUTES,
   TERM_ADMIN,
   TERM_USER,
@@ -257,8 +256,8 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const fetchOMVersion = () => {
     getVersion()
-      .then((res: AxiosResponse) => {
-        setVersion(res.data.version);
+      .then((res) => {
+        setVersion(res.version);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -305,7 +304,6 @@ const Appbar: React.FC = (): JSX.Element => {
           pathname={location.pathname}
           profileDropdown={profileDropdown}
           searchValue={searchValue || ''}
-          settingDropdown={navLinkSettings}
           supportDropdown={supportLinks}
           username={getUserName()}
         />

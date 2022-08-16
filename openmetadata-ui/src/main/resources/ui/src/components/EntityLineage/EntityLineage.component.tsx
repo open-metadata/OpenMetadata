@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
   isEmpty,
@@ -77,6 +77,7 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -110,6 +111,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  entityType,
 }: EntityLineageProp) => {
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -881,9 +883,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const getTableColumns = (expandNode?: EntityReference) => {
     if (expandNode) {
       getTableDetails(expandNode.id, ['columns'])
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           const tableId = expandNode.id;
-          const { columns } = res.data;
+          const { columns } = res;
           tableColumnsRef.current[tableId] = columns;
           updateColumnsToNode(columns, tableId);
         })
@@ -1161,7 +1163,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 },
                 {
                   'tw-opacity-40':
-                    !userPermissions[Operation.EditLineage] &&
+                    !hasPemission(
+                      Operation.EditLineage,
+                      entityType,
+                      userPermissions
+                    ) &&
                     !isAuthDisabled &&
                     !isAdminUser,
                 }

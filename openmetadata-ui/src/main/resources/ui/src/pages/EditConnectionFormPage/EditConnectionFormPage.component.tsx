@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { ServicesData } from 'Models';
+import { ServiceOption, ServicesData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
@@ -27,7 +27,7 @@ import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import { addServiceGuide } from '../../constants/service-guide.constant';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
 import {
@@ -41,7 +41,7 @@ function EditConnectionFormPage() {
   const { serviceFQN, serviceCategory } = useParams() as Record<string, string>;
   const [isLoading, setIsloading] = useState(true);
   const [isError, setIsError] = useState(false);
-  const [serviceDetails, setServiceDetails] = useState<ServiceDataObj>();
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -68,15 +68,16 @@ function EditConnectionFormPage() {
       connection: {
         config: updatedData,
       },
-    };
+      // TODO: fix type issue here
+    } as unknown as ServiceOption;
 
     return new Promise<void>((resolve, reject) => {
-      updateService(serviceCategory, serviceDetails?.id, configData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+      updateService(serviceCategory, serviceDetails?.id ?? '', configData)
+        .then((res) => {
+          if (res) {
             setServiceDetails({
-              ...res.data,
-              owner: res.data?.owner ?? serviceDetails?.owner,
+              ...res,
+              owner: res?.owner ?? serviceDetails?.owner,
             });
           } else {
             showErrorToast(
@@ -99,17 +100,17 @@ function EditConnectionFormPage() {
   useEffect(() => {
     setIsloading(true);
     getServiceByFQN(serviceCategory, serviceFQN, ['owner'])
-      .then((resService: AxiosResponse) => {
-        if (resService.data) {
-          setServiceDetails(resService.data);
+      .then((resService) => {
+        if (resService) {
+          setServiceDetails(resService);
           setSlashedBreadcrumb([
             {
               name: startCase(serviceCategory),
               url: getServicesWithTabPath(serviceCategory),
             },
             {
-              name: getEntityName(resService.data),
-              imgSrc: serviceTypeLogo(resService.data.serviceType),
+              name: getEntityName(resService),
+              imgSrc: serviceTypeLogo(resService.serviceType),
               url: getPathByServiceFQN(serviceCategory, serviceFQN),
             },
             {

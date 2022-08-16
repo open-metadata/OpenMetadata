@@ -22,7 +22,11 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { Status, Webhook } from '../../generated/entity/events/webhook';
+import {
+  Status,
+  Webhook,
+  WebhookType,
+} from '../../generated/entity/events/webhook';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -39,9 +43,12 @@ const WebhooksPageV1 = () => {
     setIsLoading(true);
     getWebhooks(paging)
       .then((res) => {
-        if (res.data?.data) {
-          setData(res.data.data);
-          setPaging(res.data.paging);
+        if (res.data) {
+          const genericWebhooks = res.data.filter(
+            (d) => d.webhookType === WebhookType.Generic
+          );
+          setData(genericWebhooks);
+          setPaging(res.paging);
         } else {
           setData([]);
           setPaging(pagingObject);

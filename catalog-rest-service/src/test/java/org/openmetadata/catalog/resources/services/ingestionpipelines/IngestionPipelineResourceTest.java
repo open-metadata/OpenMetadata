@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.services.ingestionpipelines;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -150,6 +151,14 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSourceConfig(), updated.getSourceConfig());
+  }
+
+  @Override
+  protected void compareChangeEventsEntities(
+      IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders) {
+    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertReference(expected.getService(), updated.getService());
+    assertNull(updated.getSourceConfig().getConfig());
   }
 
   @Override

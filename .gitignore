@@ -107,3 +107,8 @@ mlruns/
 
 # SQLAlchemy tests
 file:cachedb
+
+# Snyk report
+security-report
+.dccache
+scan-requirements.txt

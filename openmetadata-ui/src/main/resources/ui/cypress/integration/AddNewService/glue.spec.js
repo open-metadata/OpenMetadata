@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
-
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Glue';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('Glue Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root_awsConfig_awsAccessKeyId')
         .scrollIntoView()
@@ -52,7 +52,11 @@ describe('Glue Ingestion', () => {
     );
   });
 
+  it('Edit and validate owner', () => {
+    editOwnerforCreatedService(SERVICE_TYPE.Database, serviceName);
+  });
+
   it('delete created service', () => {
-    deleteCreatedService('Database', serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
   });
 });

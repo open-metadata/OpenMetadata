@@ -182,7 +182,7 @@ class LookerSource(DashboardServiceSource):
         return dashboard_sources
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: LookerDashboard
+        self, dashboard_details: LookerDashboard, db_service_name
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
@@ -212,7 +212,7 @@ class LookerSource(DashboardServiceSource):
                 from_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.source_config.dbServiceName,
+                    service_name=db_service_name,
                     database_name=source_elements["database"],
                     schema_name=source_elements["database_schema"],
                     table_name=source_elements["table"],

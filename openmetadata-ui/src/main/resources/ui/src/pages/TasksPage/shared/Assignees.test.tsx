@@ -50,6 +50,10 @@ const mockProps = {
   onChange: jest.fn(),
 };
 
+jest.mock('../../../components/common/UserTag/UserTag.component', () => ({
+  UserTag: jest.fn().mockReturnValue(<div>UserTag</div>),
+}));
+
 describe('Test assignees component', () => {
   it('Should render the component', async () => {
     render(<Assignees {...mockProps} />);

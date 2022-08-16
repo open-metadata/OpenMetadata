@@ -412,7 +412,7 @@ public class TagResource {
     authorizer.authorizeAdmin(securityContext, true);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
-    RestUtil.PutResponse response;
+    RestUtil.PutResponse<?> response;
     if (primaryTag.equals(create.getName())) { // Not changing the name
       response = dao.createOrUpdate(uriInfo, tag);
     } else {
@@ -457,7 +457,7 @@ public class TagResource {
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
-    RestUtil.PutResponse response;
+    RestUtil.PutResponse<?> response;
     // TODO clean this up
     if (secondaryTag.equals(create.getName())) { // Not changing the name
       response = dao.createOrUpdate(uriInfo, tag);
@@ -480,7 +480,7 @@ public class TagResource {
   public Response deleteCategory(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Tag category id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     TagCategory tagCategory = daoCategory.delete(uriInfo, id);
@@ -499,7 +499,7 @@ public class TagResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
-      @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Tag id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
     Tag tag = dao.delete(uriInfo, id);

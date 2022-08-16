@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
@@ -32,6 +32,7 @@ import {
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import {
+  Post,
   Thread,
   ThreadTaskStatus,
   ThreadType,
@@ -77,9 +78,9 @@ const UserPage = () => {
   const fetchUserData = () => {
     setUserData({} as User);
     getUserByName(username, 'profile,roles,teams,follows,owns')
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setUserData(res.data);
+      .then((res) => {
+        if (res) {
+          setUserData(res);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -120,8 +121,8 @@ const UserPage = () => {
         threadType,
         status
       )
-        .then((res: AxiosResponse) => {
-          const { data, paging: pagingObj } = res.data;
+        .then((res) => {
+          const { data, paging: pagingObj } = res;
           setPaging(pagingObj);
           setEntityThread((prevData) => {
             if (after) {
@@ -158,15 +159,15 @@ const UserPage = () => {
     const data = {
       message: value,
       from: currentUser,
-    };
+    } as Post;
     postFeedById(id, data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, posts } = res.data;
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === id) {
-                return { ...res.data, posts: posts.slice(-3) };
+                return { ...res, posts: posts?.slice(-3) };
               } else {
                 return thread;
               }
@@ -222,8 +223,8 @@ const UserPage = () => {
     const updatedDetails = { ...userData, ...data };
     const jsonPatch = compare(userData, updatedDetails);
     updateUserDetail(userData.id, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setUserData((prevData) => ({ ...prevData, ...data }));
         } else {
           throw jsonData['api-error-messages']['unexpected-error'];

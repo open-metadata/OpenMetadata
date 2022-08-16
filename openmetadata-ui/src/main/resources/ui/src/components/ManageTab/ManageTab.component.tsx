@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEqual, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
@@ -29,11 +29,14 @@ import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../../constants/char.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { TagsCategory } from '../../pages/tags/tagsTypes';
 import { getOwnerList } from '../../utils/ManageUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   searchFormattedUsersAndTeams,
@@ -281,7 +284,11 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return (
       isAdminUser ||
       isAuthDisabled ||
-      userPermissions[Operation.EditUsers] ||
+      hasPemission(
+        Operation.EditUsers,
+        entityType as EntityType,
+        userPermissions
+      ) ||
       !hasEditAccess
     );
   };
@@ -289,23 +296,24 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const tierData = res.data.children.map(
-            (tier: { name: string; description: string }) => ({
-              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-              title: tier.name,
-              description: tier.description.substring(
-                0,
-                tier.description.indexOf('\n\n')
-              ),
-              data: tier.description.substring(
-                tier.description.indexOf('\n\n') + 1
-              ),
-            })
-          );
+      .then((res) => {
+        if (res) {
+          const tierData: CardWithListItems[] =
+            (res as TagsCategory).children?.map(
+              (tier: { name: string; description: string }) => ({
+                id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+                title: tier.name,
+                description: tier.description.substring(
+                  0,
+                  tier.description.indexOf('\n\n')
+                ),
+                data: tier.description.substring(
+                  tier.description.indexOf('\n\n') + 1
+                ),
+              })
+            ) ?? [];
 
-          setTierData(tierData);
+          setTierData(tierData ?? []);
         } else {
           setTierData([]);
         }

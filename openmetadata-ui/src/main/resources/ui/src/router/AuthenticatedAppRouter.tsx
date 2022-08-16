@@ -302,6 +302,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddWebhookPage}
+        path={ROUTES.ADD_WEBHOOK_WITH_TYPE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddWebhookPage}
         path={ROUTES.ADD_WEBHOOK}
       />
       <AdminProtectedRoute exact component={RolesPage} path={ROUTES.ROLES} />
@@ -309,6 +314,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={CreateUserPage}
         path={ROUTES.CREATE_USER}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CreateUserPage}
+        path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <AdminProtectedRoute exact component={BotsListPage} path={ROUTES.BOTS} />
       <AdminProtectedRoute

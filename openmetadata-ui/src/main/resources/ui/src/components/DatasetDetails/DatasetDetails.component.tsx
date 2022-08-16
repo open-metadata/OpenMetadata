@@ -67,15 +67,14 @@ import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
-import ManageTab from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTable, {
   SampleColumns,
 } from '../SampleDataTable/SampleDataTable.component';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
-import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
+import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
@@ -299,18 +298,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       position: 9,
     },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: false,
-      protectedState: !owner || hasEditAccess(),
-      position: 10,
-    },
   ];
 
   const getFrequentlyJoinedWithTables = (): Array<
@@ -478,35 +465,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         : tableDetails.tags;
       const updatedTableDetails = {
         ...tableDetails,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedTableDetails);
-    } else {
-      return Promise.reject();
-    }
-  };
-
-  const onSettingsUpdate = (newOwner?: Table['owner'], newTier?: string) => {
-    if (newOwner || newTier) {
-      const tierTag: Table['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(tableDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : tableDetails.tags;
-      const updatedTableDetails = {
-        ...tableDetails,
-        owner: newOwner
-          ? {
-              ...tableDetails.owner,
-              ...newOwner,
-            }
-          : tableDetails.owner,
         tags: tierTag,
       };
 
@@ -769,20 +727,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
               )}
               {activeTab === 5 && (
-                <div>
-                  <TableProfiler
-                    columns={columns.map((col) => ({
-                      constraint: col.constraint as string,
-                      colName: col.name,
-                      colType: col.dataTypeDisplay as string,
-                      dataType: col.dataType as string,
-                      colTests: col.columnTests,
-                    }))}
-                    isTableDeleted={deleted}
-                    qualityTestFormHandler={qualityTestFormHandler}
-                    tableProfiles={tableProfile}
-                  />
-                </div>
+                <TableProfilerV1
+                  table={tableDetails}
+                  onAddTestClick={qualityTestFormHandler}
+                />
               )}
 
               {activeTab === 6 && (
@@ -817,6 +765,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
+                    entityType={EntityType.TABLE}
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
                     isOwner={hasEditAccess()}
@@ -843,24 +792,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   entityType={EntityType.TABLE}
                   handleExtentionUpdate={handleExtentionUpdate}
                 />
-              )}
-              {activeTab === 10 && (
-                <div>
-                  <ManageTab
-                    allowDelete
-                    allowSoftDelete={!deleted}
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner}
-                    entityId={tableDetails.id}
-                    entityName={tableDetails.name}
-                    entityType={EntityType.TABLE}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={deleted}
-                    hideTier={deleted}
-                    manageSectionType={EntityType.TABLE}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
               )}
               <div
                 data-testid="observer-element"

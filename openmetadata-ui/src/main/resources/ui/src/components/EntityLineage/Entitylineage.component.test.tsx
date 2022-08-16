@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../enums/entity.enum';
 import EntityLineage from './EntityLineage.component';
 
 /**
@@ -121,6 +122,7 @@ const mockEntityLineageProp = {
     state: false,
   },
   deleted: false,
+  entityType: EntityType.TABLE,
   loadNodeHandler: jest.fn(),
   addLineageHandler: jest.fn(),
   removeLineageHandler: jest.fn(),
@@ -182,9 +184,13 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({
-    userPermissions: {},
+    userPermissions: [],
     isAdminUser: false,
   }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  hasPemission: jest.fn().mockReturnValue(false),
 }));
 
 describe('Test EntityLineage Component', () => {

@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.secrets;
 
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.AWS;
@@ -23,36 +36,39 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 public class AWSSecretsManager extends SecretsManager {
 
   public static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
+  public static final String ACCESS_KEY_ID = "accessKeyId";
+  public static final String SECRET_ACCESS_KEY = "secretAccessKey";
+  public static final String REGION = "region";
+
   private static AWSSecretsManager INSTANCE = null;
 
   private SecretsManagerClient secretsClient;
 
-  private AWSSecretsManager(
-      OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider, SecretsManagerConfiguration config) {
-    super(secretsManagerProvider);
-    if (config == null) {
-      throw new SecretsManagerException("Secrets manager configuration is empty.");
+  private AWSSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
+    super(AWS, clusterPrefix);
+    // initialize the secret client depending on the SecretsManagerConfiguration passed
+    if (config != null && config.getParameters() != null) {
+      String accessKeyId = config.getParameters().getOrDefault(ACCESS_KEY_ID, "");
+      String secretAccessKey = config.getParameters().getOrDefault(SECRET_ACCESS_KEY, "");
+      String region = config.getParameters().getOrDefault(REGION, "");
+      this.secretsClient =
+          SecretsManagerClient.builder()
+              .region(Region.of(region))
+              .credentialsProvider(
+                  StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+              .build();
+    } else {
+      // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials loaded from the
+      // DefaultCredentialsProvider
+      this.secretsClient = SecretsManagerClient.create();
     }
-    String region = config.getParameters().getOrDefault("region", "");
-    String accessKeyId = config.getParameters().getOrDefault("accessKeyId", "");
-    String secretAccessKey = config.getParameters().getOrDefault("secretAccessKey", "");
-    this.secretsClient =
-        SecretsManagerClient.builder()
-            .region(Region.of(region))
-            .credentialsProvider(
-                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
-            .build();
-  }
-
-  @Override
-  public boolean isLocal() {
-    return false;
   }
 
   @Override
   public Object encryptOrDecryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
-    String secretName = buildSecretId(serviceType.value().toLowerCase(Locale.ROOT), connectionType, connectionName);
+    String secretName =
+        buildSecretId("service", serviceType.value().toLowerCase(Locale.ROOT), connectionType, connectionName);
     try {
       if (encrypt) {
         String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
@@ -160,8 +176,8 @@ public class AWSSecretsManager extends SecretsManager {
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();
   }
 
-  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config) {
-    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(AWS, config);
+  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
+    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(config, clusterPrefix);
     return INSTANCE;
   }
 
