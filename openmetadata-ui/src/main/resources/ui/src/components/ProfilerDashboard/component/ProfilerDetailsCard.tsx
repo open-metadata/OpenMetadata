@@ -26,6 +26,7 @@ import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   title,
   chartCollection,
+  tickFormatter,
 }) => {
   const { data, color } = chartCollection;
   const latestValue = useMemo(() => data[data.length - 1]?.value || 0, [data]);
@@ -35,7 +36,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
       <Col span={4}>
         <Statistic
           title={<span className="tw-text-grey-body">{title}</span>}
-          value={latestValue}
+          value={tickFormatter ? `${latestValue}${tickFormatter}` : latestValue}
           valueStyle={{ color }}
         />
       </Col>
@@ -43,8 +44,12 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         {data.length > 0 ? (
           <ResponsiveContainer minHeight={300}>
             <LineChart className="tw-w-full" data={data}>
-              <XAxis dataKey="name" padding={{ left: 32, right: 32 }} />
-              <YAxis allowDataOverflow padding={{ top: 32 }} />
+              <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
+              <YAxis
+                allowDataOverflow
+                padding={{ top: 16, bottom: 16 }}
+                tickFormatter={(props) => `${props}${tickFormatter}`}
+              />
               <Tooltip />
               <Line dataKey="value" stroke={color} type="monotone" />
             </LineChart>

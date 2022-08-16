@@ -379,6 +379,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Col key={index} span={24}>
               <ProfilerDetailsCard
                 chartCollection={value}
+                tickFormatter={key === 'nullProportion' ? '%' : ''}
                 title={startCase(key)}
               />
             </Col>

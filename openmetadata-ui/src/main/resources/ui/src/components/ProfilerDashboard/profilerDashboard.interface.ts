@@ -23,6 +23,7 @@ export interface ProfilerDashboardProps {
 export interface ProfilerDetailsCardProps {
   title: string;
   chartCollection: ChartCollection;
+  tickFormatter?: string;
 }
 
 export enum ProfilerDashboardTab {
