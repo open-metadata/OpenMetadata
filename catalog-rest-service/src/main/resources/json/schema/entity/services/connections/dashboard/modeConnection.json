@@ -21,6 +21,7 @@
       "default": "Mode"
     },
     "hostPort": {
+      "expose": true,
       "title": "Host and Port",
       "description": "URL for the mode instance.",
       "type": "string",

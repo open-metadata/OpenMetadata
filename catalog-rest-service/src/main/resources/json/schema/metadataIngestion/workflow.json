@@ -11,12 +11,16 @@
       "type": "object",
       "properties": {
         "config": {
+          "mask": true,
           "oneOf": [
             {
               "$ref": "databaseServiceMetadataPipeline.json"
             },
             {
               "$ref": "databaseServiceQueryUsagePipeline.json"
+            },
+            {
+              "$ref": "databaseServiceQueryLineagePipeline.json"
             },
             {
               "$ref": "dashboardServiceMetadataPipeline.json"

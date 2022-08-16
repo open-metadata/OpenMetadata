@@ -22,6 +22,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -152,7 +153,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private List<EntityReference> getCharts(Dashboard dashboard) throws IOException {
     if (dashboard == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityRelationshipRecord> chartIds =
         findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
@@ -166,7 +167,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
    */
   private List<EntityReference> getCharts(List<EntityReference> charts) throws IOException {
     if (charts == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<EntityReference> chartRefs = new ArrayList<>();
     for (EntityReference chart : charts) {

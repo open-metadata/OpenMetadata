@@ -167,7 +167,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>2.13.3</version>
+        <version>${jackson.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -421,7 +421,6 @@
         <artifactId>slf4j-simple</artifactId>
         <version>${slf4j.version}</version>
       </dependency>
-
       <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>

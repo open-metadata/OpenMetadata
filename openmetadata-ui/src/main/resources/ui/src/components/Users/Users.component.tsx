@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Switch } from 'antd';
+import { Card, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -229,7 +229,7 @@ const Users = ({
       return (
         <div className="tw-mt-4 tw-w-full tw-px-3">
           {isDisplayNameEdit ? (
-            <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
+            <Space className="tw-w-full" direction="vertical">
               <input
                 className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
                 data-testid="displayName"
@@ -260,7 +260,7 @@ const Users = ({
                   <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
                 </Button>
               </div>
-            </div>
+            </Space>
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
@@ -384,7 +384,7 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isTeamsEdit ? (
-              <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
+              <Space className="tw-w-full" direction="vertical">
                 <Select
                   isClearable
                   isMulti
@@ -426,7 +426,7 @@ const Users = ({
                     />
                   </Button>
                 </div>
-              </div>
+              </Space>
             ) : (
               teamsElement
             )}
@@ -518,7 +518,7 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isRolesEdit ? (
-              <div className="tw-flex tw-items-center tw-justify-between tw-gap-2">
+              <Space className="tw-w-full" direction="vertical">
                 <Select
                   isClearable
                   isMulti
@@ -558,7 +558,7 @@ const Users = ({
                     />
                   </Button>
                 </div>
-              </div>
+              </Space>
             ) : (
               rolesElement
             )}

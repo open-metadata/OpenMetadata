@@ -220,6 +220,12 @@ const AddIngestion = ({
       ConfigType.DatabaseUsage
     );
   }, [data]);
+  const lineageIngestionType = useMemo(() => {
+    return (
+      (data?.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.DatabaseLineage
+    );
+  }, [data]);
   const profilerIngestionType = useMemo(() => {
     return (
       (data?.sourceConfig.config as ConfigClass)?.type ?? ConfigType.Profiler
@@ -448,6 +454,13 @@ const AddIngestion = ({
           type: usageIngestionType,
         };
       }
+      case PipelineType.Lineage: {
+        return {
+          queryLogDuration,
+          resultLimit,
+          type: lineageIngestionType,
+        };
+      }
       case PipelineType.Profiler: {
         return {
           databaseFilterPattern: getFilterPatternData(
@@ -599,9 +612,7 @@ const AddIngestion = ({
 
       <IngestionStepper
         activeStep={activeIngestionStep}
-        className="tw-justify-between tw-w-10/12 tw-mx-auto"
         excludeSteps={!showDBTConfig ? [2] : undefined}
-        stepperLineClassName="add-ingestion-line"
         steps={STEPS_FOR_ADD_INGESTION}
       />
 

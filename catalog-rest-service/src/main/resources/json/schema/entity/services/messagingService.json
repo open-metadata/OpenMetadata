@@ -41,6 +41,7 @@
       ],
       "properties": {
         "config": {
+          "mask": true,
           "oneOf": [
             {
               "$ref": "./connections/messaging/kafkaConnection.json"

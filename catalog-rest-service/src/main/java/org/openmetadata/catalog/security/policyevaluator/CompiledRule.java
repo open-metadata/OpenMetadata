@@ -5,11 +5,16 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permiss
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.Permission;
+import org.openmetadata.catalog.type.Permission.Access;
+import org.openmetadata.catalog.type.ResourcePermission;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -30,12 +35,39 @@ public class CompiledRule extends Rule {
         .withResources(rule.getResources());
   }
 
+  public static Expression parseExpression(String condition) {
+    if (condition == null) {
+      return null;
+    }
+    try {
+      return EXPRESSION_PARSER.parseExpression(condition);
+    } catch (Exception exception) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.failedToParse(exception.getMessage()));
+    }
+  }
+
+  /** Used only for validating the expressions when new rule is created */
+  public static <T> T validateExpression(String condition, Class<T> clz) {
+    if (condition == null) {
+      return null;
+    }
+    Expression expression = parseExpression(condition);
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, null, null);
+    try {
+      return expression.getValue(ruleEvaluator, clz);
+    } catch (Exception exception) {
+      // Remove unnecessary class details in the exception message
+      String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
+      throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
+    }
+  }
+
   public Expression getExpression() {
     if (this.getCondition() == null) {
       return null;
     }
     if (expression == null) {
-      expression = EXPRESSION_PARSER.parseExpression(this.getCondition());
+      expression = parseExpression(getCondition());
     }
     return expression;
   }
@@ -71,6 +103,13 @@ public class CompiledRule extends Rule {
     }
   }
 
+  private Access getAccess() {
+    if (getCondition() != null) {
+      return getEffect() == Effect.DENY ? Access.CONDITIONAL_DENY : Access.CONDITIONAL_ALLOW;
+    }
+    return getEffect() == Effect.DENY ? Access.DENY : Access.ALLOW;
+  }
+
   public void evaluateAllowRule(
       OperationContext operationContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
     if (getEffect() != Effect.ALLOW || !matchResource(operationContext.getResource())) {
@@ -89,8 +128,58 @@ public class CompiledRule extends Rule {
     }
   }
 
-  public boolean matchRuleForPermissions(SubjectContext subjectContext) {
-    return matchResource("all");
+  public void setPermission(Map<String, ResourcePermission> resourcePermissionMap, PolicyContext policyContext) {
+    for (ResourcePermission resourcePermission : resourcePermissionMap.values()) {
+      setPermission(resourcePermission.getResource(), resourcePermission, policyContext);
+    }
+  }
+
+  public void setPermission(String resource, ResourcePermission resourcePermission, PolicyContext policyContext) {
+    if (!matchResource(resource)) {
+      return;
+    }
+    Access access = getAccess();
+    // Walk through all the operations in the rule and set permissions
+    for (MetadataOperation ruleOperation : getOperations()) {
+      for (Permission permission : resourcePermission.getPermissions()) {
+        if (matchOperation(permission.getOperation())) {
+          if (overrideAccess(access, permission.getAccess())) {
+            permission
+                .withAccess(access)
+                .withRole(policyContext.getRoleName())
+                .withPolicy(policyContext.getPolicyName())
+                .withRule(this);
+            LOG.debug("Updated permission {}", permission);
+          }
+        }
+      }
+    }
+  }
+
+  public void setPermission(
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext,
+      ResourcePermission resourcePermission,
+      PolicyContext policyContext) {
+    if (!matchResource(resourceContext.getResource())) {
+      return;
+    }
+    // Walk through all the operations in the rule and set permissions
+    for (MetadataOperation ruleOperation : getOperations()) {
+      for (Permission permission : resourcePermission.getPermissions()) {
+        if (matchOperation(permission.getOperation()) && matchExpression(subjectContext, resourceContext)) {
+          Access access = getEffect() == Effect.DENY ? Access.DENY : Access.ALLOW;
+          if (overrideAccess(access, permission.getAccess())) {
+            permission
+                .withAccess(access)
+                .withRole(policyContext.getRoleName())
+                .withPolicy(policyContext.getPolicyName())
+                .withRule(this);
+            LOG.debug("Updated permission {}", permission);
+          }
+        }
+      }
+    }
   }
 
   protected boolean matchResource(String resource) {
@@ -121,5 +210,10 @@ public class CompiledRule extends Rule {
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     return Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+  }
+
+  static boolean overrideAccess(Access newAccess, Access currentAccess) {
+    // Lower the ordinal number of access overrides higher ordinal number
+    return currentAccess.ordinal() > newAccess.ordinal();
   }
 }

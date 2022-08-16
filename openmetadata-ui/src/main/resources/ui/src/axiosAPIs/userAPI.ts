@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
-import { UserProfile } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateUser } from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/entity/teams/authN/jwtAuth';
@@ -122,10 +121,13 @@ export const updateUserTeam: Function = (
   return APIClient.post(`/users/${id}/teams`, options);
 };
 
-export const createUser = (
-  userDetails: Record<string, string | Array<string> | UserProfile> | CreateUser
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/users`, userDetails);
+export const createUser = async (userDetails: CreateUser) => {
+  const response = await APIClient.post<CreateUser, AxiosResponse<User>>(
+    `/users`,
+    userDetails
+  );
+
+  return response.data;
 };
 
 export const updateUser = (

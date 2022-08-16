@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import { UpdatePolicyState } from '../pages/RolesPage/role.interface';
-
-export const DEFAULT_UPDATE_POLICY_STATE: UpdatePolicyState = {
-  rule: undefined,
-  state: false,
-  policy: undefined,
-};
+export interface BotListV1Props {
+  showDeleted: boolean;
+}

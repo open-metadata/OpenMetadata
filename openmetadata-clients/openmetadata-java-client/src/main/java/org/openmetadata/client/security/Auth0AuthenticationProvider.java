@@ -14,23 +14,20 @@
 package org.openmetadata.client.security;
 
 import feign.RequestTemplate;
-import io.swagger.client.ApiClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.interceptors.Auth0AccessTokenRequestInterceptor;
 import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.Auth0AccessTokenApi;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class Auth0AuthenticationProvider implements AuthenticationProvider {
-
-  private static final Logger LOG = LoggerFactory.getLogger(Auth0AuthenticationProvider.class);
-
   private OpenMetadataServerConnection serverConfig;
 
   private final Auth0SSOClientConfig securityConfig;

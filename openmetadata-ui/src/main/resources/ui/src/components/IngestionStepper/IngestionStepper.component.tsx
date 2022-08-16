@@ -11,55 +11,43 @@
  *  limitations under the License.
  */
 
+import { Steps } from 'antd';
 import classNames from 'classnames';
-import React, { Fragment } from 'react';
-import './IngestionStepper.css';
+import React from 'react';
+
+const { Step } = Steps;
 type Props = {
   steps: Array<{ name: string; step: number }>;
   activeStep: number;
-  stepperLineClassName?: string;
-  className?: string;
   excludeSteps?: Array<number>;
 };
-const IngestionStepper = ({
-  steps,
-  activeStep,
-  excludeSteps = [],
-  stepperLineClassName = '',
-  className = '',
-}: Props) => {
+const IngestionStepper = ({ steps, activeStep, excludeSteps = [] }: Props) => {
   return (
-    <div className={classNames('ingestion-content tw-relative', className)}>
-      {steps.map((step, index) =>
-        excludeSteps.includes(step.step) ? null : (
-          <Fragment key={index}>
-            {index > 0 && index < steps.length && (
-              <span
-                className={classNames('ingestion-line', stepperLineClassName)}
+    <div className="tw-px-24" data-testid="stepper-container">
+      <Steps current={activeStep} labelPlacement="vertical" size="small">
+        {steps
+          .filter((step) => !excludeSteps.includes(step.step))
+          .map((step) => {
+            return (
+              <Step
+                icon={
+                  <span
+                    className={classNames(
+                      'ingestion-rounder tw-self-center',
+                      {
+                        active: step.step === activeStep,
+                      },
+                      { completed: step.step < activeStep }
+                    )}
+                    data-testid={`step-icon-${step.step}`}
+                  />
+                }
+                key={`${step.name}`}
+                title={step.name}
               />
-            )}
-            <div className="ingestion-wrapper" key={index}>
-              <span className="tw-flex tw-flex-col">
-                <span
-                  className={classNames(
-                    'ingestion-rounder tw-self-center',
-                    {
-                      active: step.step === activeStep,
-                    },
-                    { completed: step.step < activeStep }
-                  )}
-                />
-                <span
-                  className={classNames('tw-mt-2 tw-text-xs', {
-                    'tw-text-primary': step.step <= activeStep,
-                  })}>
-                  {step.name}
-                </span>
-              </span>
-            </div>
-          </Fragment>
-        )
-      )}
+            );
+          })}
+      </Steps>
     </div>
   );
 };

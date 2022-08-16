@@ -230,7 +230,6 @@ const AddService = ({
         </h6>
         <IngestionStepper
           activeStep={activeServiceStep}
-          stepperLineClassName="add-service-line"
           steps={STEPS_FOR_ADD_SERVICE}
         />
         <div className="tw-pt-5">

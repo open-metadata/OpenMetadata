@@ -35,7 +35,7 @@ import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.catalog.services.connections.pipeline.AirbyteConnection;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PipelineConnection;
 
@@ -53,11 +53,12 @@ public class PipelineServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(PipelineService.class);
+    serviceConnectionConfig = new AirbyteConnection();
     PipelineConnection serviceConnection = mock(PipelineConnection.class);
-    lenient().when(serviceConnection.getConfig()).thenReturn(mock(AirflowConnection.class));
+    lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.PipelineServiceDAO entityDAO = mock(CollectionDAO.PipelineServiceDAO.class);
     when(collectionDAO.pipelineServiceDAO()).thenReturn(entityDAO);
-    lenient().when(service.getServiceType()).thenReturn(CreatePipelineService.PipelineServiceType.Airflow);
+    lenient().when(service.getServiceType()).thenReturn(CreatePipelineService.PipelineServiceType.Airbyte);
     lenient().when(service.getConnection()).thenReturn(serviceConnection);
     lenient().when(service.withConnection(isNull())).thenReturn(service);
     when(entityDAO.findEntityById(any(), any())).thenReturn(service);
@@ -66,7 +67,7 @@ public class PipelineServiceResourceUnitTest
 
   @Override
   protected String serviceConnectionType() {
-    return CreatePipelineService.PipelineServiceType.Airflow.value();
+    return CreatePipelineService.PipelineServiceType.Airbyte.value();
   }
 
   @Override
@@ -76,7 +77,8 @@ public class PipelineServiceResourceUnitTest
 
   @Override
   protected void verifyServiceWithConnectionCall(boolean shouldBeNull, PipelineService service) {
-    verify(service, times(shouldBeNull ? 1 : 0)).withConnection(isNull());
+    verify(service.getConnection(), times(shouldBeNull ? 1 : 0))
+        .setConfig(!shouldBeNull ? isNull() : any(AirbyteConnection.class));
   }
 
   @Override

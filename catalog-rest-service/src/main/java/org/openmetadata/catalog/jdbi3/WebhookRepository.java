@@ -29,6 +29,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.events.EventPubSub.ChangeEventHolder;
 import org.openmetadata.catalog.events.WebhookPublisher;
+import org.openmetadata.catalog.kafka.KafkaWebhookEventPublisher;
 import org.openmetadata.catalog.resources.events.WebhookResource;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.type.EventFilter;
@@ -88,6 +89,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     WebhookPublisher publisher;
     if (webhook.getWebhookType() == Webhook.WebhookType.slack) {
       publisher = new SlackWebhookEventPublisher(webhook, daoCollection);
+    } else if (webhook.getWebhookType() == Webhook.WebhookType.kafka) {
+      publisher = new KafkaWebhookEventPublisher(webhook, daoCollection);
     } else {
       publisher = new WebhookPublisher(webhook, daoCollection);
     }

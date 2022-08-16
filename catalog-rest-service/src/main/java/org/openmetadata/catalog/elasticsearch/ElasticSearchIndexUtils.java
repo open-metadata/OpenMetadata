@@ -8,6 +8,9 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 
 public final class ElasticSearchIndexUtils {
+
+  private ElasticSearchIndexUtils() {}
+
   public static List<String> parseFollowers(List<EntityReference> followersRef) {
     if (followersRef == null) {
       return Collections.emptyList();
