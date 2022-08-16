@@ -11,6 +11,7 @@ However, there are some additional configurations which needs to be done as prer
 <Note>
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
+This guide presumes you have AWS EKS Cluster already available.
 
 </Note>
 
