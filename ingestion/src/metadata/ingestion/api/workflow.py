@@ -19,6 +19,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseMetadataConfigType,
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -80,6 +84,8 @@ class Workflow:
         )
 
         self._retrieve_service_connection_if_needed(metadata_config, service_type)
+
+        self._retrieve_dbt_config_source_if_needed(metadata_config, service_type)
 
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
@@ -248,16 +254,13 @@ class Workflow:
     ) -> None:
         """
         We override the current `serviceConnection` source config object if source workflow service already exists
-        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
-        from the service object itself through the default `SecretsManager`.
+        in OM. When secrets' manager is configured, we retrieve the service connection from the secrets' manager.
+        Otherwise, we get the service connection from the service object itself through the default `SecretsManager`.
 
         :param metadata_config: OpenMetadata connection config
         :param service_type: source workflow service type
         :return:
         """
-        # We override the current serviceConnection source object if source workflow service already exists in OM.
-        # We retrieve the service connection from the secrets' manager when it is configured. Otherwise, we get it
-        # from the service object itself.
         if service_type is not ServiceType.Metadata and not self._is_sample_source(
             self.config.source.type
         ):
@@ -273,6 +276,36 @@ class Workflow:
                     )
                 )
 
+    def _retrieve_dbt_config_source_if_needed(
+        self, metadata_config: OpenMetadataConnection, service_type: ServiceType
+    ) -> None:
+        """
+        We override the current `config` source config object if it is a metadata ingestion type. When secrets' manager
+        is configured, we retrieve the config from the secrets' manager. Otherwise, we get the config from the source
+        config object itself through the default `SecretsManager`.
+
+        :return:
+        """
+        config = self.config.source.sourceConfig.config
+        if (
+            service_type is ServiceType.Database
+            and config
+            and config.type == DatabaseMetadataConfigType.DatabaseMetadata
+        ):
+            metadata = OpenMetadata(config=metadata_config)
+            dbt_config_source: object = (
+                metadata.secrets_manager_client.retrieve_dbt_source_config(
+                    self.config.source.sourceConfig,
+                    f"{self.config.source.serviceName}_metadata",
+                )
+            )
+            if dbt_config_source and self.config.source.sourceConfig.config:
+                config_dict = self.config.source.sourceConfig.config.dict()
+                config_dict["dbtConfigSource"] = dbt_config_source
+                self.config.source.sourceConfig.config = (
+                    DatabaseServiceMetadataPipeline.parse_obj(config_dict)
+                )
+
     @staticmethod
-    def _is_sample_source(service_type):
+    def _is_sample_source(service_type: str) -> bool:
         return service_type in SAMPLE_SOURCE

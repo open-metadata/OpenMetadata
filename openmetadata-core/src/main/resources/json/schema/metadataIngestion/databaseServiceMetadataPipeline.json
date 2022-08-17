@@ -154,6 +154,7 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "dbtConfigSource": {
+      "mask": true,
       "title": "DBT Configuration Source",
       "description": "Available sources to fetch DBT catalog and manifest files.",
       "oneOf": [

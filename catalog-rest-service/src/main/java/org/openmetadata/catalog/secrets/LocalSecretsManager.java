@@ -57,6 +57,11 @@ public class LocalSecretsManager extends SecretsManager {
   }
 
   @Override
+  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String ingestionPipelineName, boolean encrypt) {
+    return dbtConfigSource;
+  }
+
+  @Override
   public AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration) {
     return airflowConfiguration;
   }

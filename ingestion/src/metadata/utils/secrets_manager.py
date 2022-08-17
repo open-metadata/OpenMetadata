@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.client import (
     auth0SSOClientConfig,
     azureSSOClientConfig,
@@ -96,7 +97,7 @@ class SecretsManager(metaclass=Singleton):
         service_type: str,
     ) -> ServiceConnection:
         """
-        Retrieve the service connection from the secret manager to a given service connection object.
+        Retrieve the service connection from the secret manager from a given service connection object.
         :param service: Service connection object e.g. DatabaseConnection
         :param service_type: Service type e.g. databaseService
         """
@@ -109,6 +110,17 @@ class SecretsManager(metaclass=Singleton):
         :param config: OpenMetadataConnection object
         """
         pass
+
+    @abstractmethod
+    def retrieve_dbt_source_config(
+        self, source_config: SourceConfig, pipeline_name: str
+    ) -> object:
+        """
+        Retrieve the DBT source config from the secret manager from a source config object.
+        :param source_config: SourceConfig object
+        :param pipeline_name: the pipeline's name
+        :return:
+        """
 
     @property
     def secret_id_separator(self) -> str:
@@ -179,6 +191,9 @@ class LocalSecretsManager(SecretsManager):
         """
         The LocalSecretsManager does not modify the OpenMetadataConnection object
         """
+        logger.debug(
+            f"Adding auth provider security config using {SecretsManagerProvider.local.name} secrets' manager"
+        )
         pass
 
     def retrieve_service_connection(
@@ -189,7 +204,24 @@ class LocalSecretsManager(SecretsManager):
         """
         The LocalSecretsManager does not modify the ServiceConnection object
         """
+        logger.debug(
+            f"Retrieving service connection from {SecretsManagerProvider.local.name} secrets' manager for {service_type} - {service.name}"
+        )
         return ServiceConnection(__root__=service.connection)
+
+    def retrieve_dbt_source_config(
+        self, source_config: SourceConfig, pipeline_name: str
+    ) -> object:
+        logger.debug(
+            f"Retrieving source_config from {SecretsManagerProvider.local.name} secrets' manager for {pipeline_name}"
+        )
+        return (
+            source_config.config.dbtConfigSource.dict()
+            if source_config
+            and source_config.config
+            and source_config.config.dbtConfigSource
+            else None
+        )
 
 
 class AWSSecretsManager(SecretsManager):
@@ -212,6 +244,9 @@ class AWSSecretsManager(SecretsManager):
         service: ServiceWithConnectionType,
         service_type: str,
     ) -> ServiceConnection:
+        logger.debug(
+            f"Retrieving service connection from {SecretsManagerProvider.aws.name} secrets' manager for {service_type} - {service.name}"
+        )
         service_connection_type = service.serviceType.value
         service_name = service.name.__root__
         secret_id = self.build_secret_id(
@@ -229,6 +264,9 @@ class AWSSecretsManager(SecretsManager):
         return ServiceConnection(__root__=service_connection)
 
     def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
+        logger.debug(
+            f"Adding auth provider security config using {SecretsManagerProvider.aws.name} secrets' manager"
+        )
         if config.authProvider == AuthProvider.no_auth:
             return config
         secret_id = self.build_secret_id(
@@ -243,6 +281,16 @@ class AWSSecretsManager(SecretsManager):
             raise NotImplementedError(
                 f"No client implemented for auth provider: [{config.authProvider}]"
             )
+
+    def retrieve_dbt_source_config(
+        self, source_config: SourceConfig, pipeline_name: str
+    ) -> object:
+        logger.debug(
+            f"Retrieving source_config from {SecretsManagerProvider.local.name} secrets' manager for {pipeline_name}"
+        )
+        secret_id = self.build_secret_id("database-metadata-pipeline", pipeline_name)
+        source_config_json = self._get_string_value(secret_id)
+        return json.loads(source_config_json) if source_config_json else None
 
     def _get_string_value(self, name: str) -> str:
         """
@@ -263,7 +311,11 @@ class AWSSecretsManager(SecretsManager):
             raise
         else:
             if "SecretString" in response:
-                return response["SecretString"]
+                return (
+                    response["SecretString"]
+                    if response["SecretString"] != "null"
+                    else None
+                )
             else:
                 raise ValueError("[SecretString] not present in the response.")
 

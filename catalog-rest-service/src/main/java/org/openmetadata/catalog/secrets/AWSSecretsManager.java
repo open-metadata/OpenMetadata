@@ -18,6 +18,7 @@ import static org.openmetadata.catalog.services.connections.metadata.OpenMetadat
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
+import java.util.Objects;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.entity.services.ServiceType;
@@ -39,6 +40,8 @@ public class AWSSecretsManager extends SecretsManager {
   public static final String ACCESS_KEY_ID = "accessKeyId";
   public static final String SECRET_ACCESS_KEY = "secretAccessKey";
   public static final String REGION = "region";
+  public static final String DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX = "database-metadata-pipeline";
+  public static final String NULL_SECRET_STRING = "null";
 
   private static AWSSecretsManager INSTANCE = null;
 
@@ -72,17 +75,37 @@ public class AWSSecretsManager extends SecretsManager {
     try {
       if (encrypt) {
         String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
-        if (connectionConfigJson != null) {
-          upsertSecret(secretName, connectionConfigJson);
-        }
+        upsertSecret(secretName, connectionConfigJson);
         return null;
       } else {
         Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
-        return JsonUtils.readValue(getSecret(secretName), clazz);
+        String connectionConfigJson = getSecret(secretName);
+        return NULL_SECRET_STRING.equals(connectionConfigJson)
+            ? null
+            : JsonUtils.readValue(getSecret(secretName), clazz);
       }
     } catch (ClassNotFoundException ex) {
       throw InvalidServiceConnectionException.byMessage(
           connectionType, String.format("Failed to construct connection instance of %s", connectionType));
+    } catch (Exception e) {
+      throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
+    }
+  }
+
+  @Override
+  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String ingestionPipelineName, boolean encrypt) {
+    String secretName = buildSecretId(DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX, ingestionPipelineName);
+    try {
+      if (encrypt) {
+        String dbtConfigSourceJson = JsonUtils.pojoToJson(dbtConfigSource);
+        upsertSecret(secretName, dbtConfigSourceJson);
+        return null;
+      } else {
+        String dbtConfigSourceJson = getSecret(secretName);
+        return NULL_SECRET_STRING.equals(dbtConfigSourceJson)
+            ? null
+            : JsonUtils.readValue(dbtConfigSourceJson, Object.class);
+      }
     } catch (Exception e) {
       throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
     }
@@ -148,7 +171,7 @@ public class AWSSecretsManager extends SecretsManager {
         CreateSecretRequest.builder()
             .name(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(secretValue)
+            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
             .build();
     this.secretsClient.createSecret(createSecretRequest);
   }
@@ -158,7 +181,7 @@ public class AWSSecretsManager extends SecretsManager {
         UpdateSecretRequest.builder()
             .secretId(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(secretValue)
+            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
             .build();
     this.secretsClient.updateSecret(updateSecretRequest);
   }
