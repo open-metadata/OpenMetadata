@@ -20,9 +20,18 @@ export interface ProfilerDashboardProps {
   fetchProfilerData: (tableId: string, days?: number) => void;
 }
 
+export type MetricChartType = {
+  information: {
+    title: string;
+    dataKey: string;
+    color: string;
+    latestValue?: string | number;
+  }[];
+  data: Record<string, string | number>[];
+};
+
 export interface ProfilerDetailsCardProps {
-  title: string;
-  chartCollection: ChartCollection;
+  chartCollection: MetricChartType;
   tickFormatter?: string;
 }
 
@@ -47,8 +56,7 @@ export type ChartCollection = {
 export type ChartDataCollection = Record<string, ChartCollection>;
 
 export interface ProfilerTabProps {
-  chartData: ChartDataCollection;
-  tableProfiler: TableProfile;
+  profilerData: TableProfile[];
   activeColumnDetails: Column;
 }
 

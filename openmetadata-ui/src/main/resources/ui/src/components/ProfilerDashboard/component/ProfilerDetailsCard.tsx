@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Statistic } from 'antd';
-import React, { useMemo } from 'react';
+import { Card, Col, Empty, Row, Space, Statistic } from 'antd';
+import React from 'react';
 import {
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -24,37 +25,53 @@ import {
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
-  title,
   chartCollection,
   tickFormatter,
 }) => {
-  const { data, color } = chartCollection;
-  const latestValue = useMemo(() => data[data.length - 1]?.value || 0, [data]);
+  const { data, information } = chartCollection;
 
   return (
     <Card className="tw-rounded-md tw-border">
       <Row gutter={[16, 16]}>
         <Col span={4}>
-          <Statistic
-            title={<span className="tw-text-grey-body">{title}</span>}
-            value={
-              tickFormatter ? `${latestValue}${tickFormatter}` : latestValue
-            }
-            valueStyle={{ color }}
-          />
+          <Space direction="vertical" size={16}>
+            {information.map((info) => (
+              <Statistic
+                key={info.title}
+                title={<span className="tw-text-grey-body">{info.title}</span>}
+                value={
+                  tickFormatter
+                    ? `${info.latestValue}${tickFormatter}`
+                    : info.latestValue
+                }
+                valueStyle={{ color: info.color }}
+              />
+            ))}
+          </Space>
         </Col>
         <Col span={20}>
           {data.length > 0 ? (
             <ResponsiveContainer minHeight={300}>
               <LineChart className="tw-w-full" data={data}>
                 <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
+
                 <YAxis
                   allowDataOverflow
                   padding={{ top: 16, bottom: 16 }}
-                  tickFormatter={(props) => `${props}${tickFormatter}`}
+                  tickFormatter={(props) =>
+                    tickFormatter ? `${props}${tickFormatter}` : props
+                  }
                 />
                 <Tooltip />
-                <Line dataKey="value" stroke={color} type="monotone" />
+                {information.map((info) => (
+                  <Line
+                    dataKey={info.dataKey}
+                    key={info.dataKey}
+                    stroke={info.color}
+                    type="monotone"
+                  />
+                ))}
+                <Legend />
               </LineChart>
             </ResponsiveContainer>
           ) : (

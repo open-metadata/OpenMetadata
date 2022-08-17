@@ -12,34 +12,58 @@
  */
 
 import { Card, Col, Row, Statistic } from 'antd';
-import { startCase } from 'lodash';
-import React, { useMemo } from 'react';
+import moment from 'moment';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  INITIAL_COUNT_METRIC_VALUE,
+  INITIAL_MATH_METRIC_VALUE,
+  INITIAL_PROPORTION_METRIC_VALUE,
+  INITIAL_SUM_METRIC_VALUE,
+} from '../../../constants/entity.constants';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
-import { ProfilerTabProps } from '../profilerDashboard.interface';
+import {
+  MetricChartType,
+  ProfilerTabProps,
+} from '../profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 import ProfilerSummaryCard from './ProfilerSummaryCard';
 
 const ProfilerTab: React.FC<ProfilerTabProps> = ({
   activeColumnDetails,
-  chartData,
-  tableProfiler,
+  profilerData,
 }) => {
+  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const [countMetrics, setCountMetrics] = useState<MetricChartType>(
+    INITIAL_COUNT_METRIC_VALUE
+  );
+  const [proportionMetrics, setProportionMetrics] = useState<MetricChartType>(
+    INITIAL_PROPORTION_METRIC_VALUE
+  );
+  const [mathMetrics, setMathMetrics] = useState<MetricChartType>(
+    INITIAL_MATH_METRIC_VALUE
+  );
+  const [sumMetrics, setSumMetrics] = useState<MetricChartType>(
+    INITIAL_SUM_METRIC_VALUE
+  );
+
   const tableState = useMemo(
     () => [
       {
         title: 'Row Count',
-        value: tableProfiler?.rowCount || 0,
+        value: profilerData[0]?.rowCount || 0,
       },
       {
         title: 'Column Count',
-        value: tableProfiler?.columnCount || 0,
+        value: profilerData[0]?.columnCount || 0,
       },
       {
         title: 'Table Sample %',
-        value: `${tableProfiler?.profileSample || 100}%`,
+        value: `${profilerData[0]?.profileSample || 100}%`,
       },
     ],
-    [tableProfiler]
+    [profilerData]
   );
   const testSummary = useMemo(
     () => [
@@ -58,6 +82,92 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     ],
     []
   );
+
+  const createMetricsChartData = () => {
+    const columnName = getNameFromFQN(entityTypeFQN);
+    const countMetricData: MetricChartType['data'] = [];
+    const proportionMetricData: MetricChartType['data'] = [];
+    const mathMetricData: MetricChartType['data'] = [];
+    const sumMetricData: MetricChartType['data'] = [];
+    profilerData.forEach((item) => {
+      const x = moment.unix(item.timestamp || 0).format('DD/MMM HH:mm');
+      const col = item.columnProfile?.find((col) => col.name === columnName);
+
+      countMetricData.push({
+        name: x,
+        timestamp: item.timestamp || 0,
+        distinctCount: col?.distinctCount || 0,
+        nullCount: col?.nullCount || 0,
+        uniqueCount: col?.uniqueCount || 0,
+        valuesCount: col?.valuesCount || 0,
+      });
+
+      sumMetricData.push({
+        name: x,
+        timestamp: item.timestamp || 0,
+        sum: col?.sum || 0,
+      });
+
+      mathMetricData.push({
+        name: x,
+        timestamp: item.timestamp || 0,
+        max: (col?.max as number) || 0,
+        min: (col?.min as number) || 0,
+        mean: col?.mean || 0,
+        median: col?.median || 0,
+      });
+
+      proportionMetricData.push({
+        name: x,
+        timestamp: item.timestamp || 0,
+        distinctProportion: col?.distinctProportion || 0,
+        nullProportion: col?.nullProportion || 0,
+        uniqueProportion: col?.uniqueProportion || 0,
+      });
+    });
+
+    const countMetricInfo = countMetrics.information.map((item) => ({
+      ...item,
+      latestValue: countMetricData[0][item.dataKey],
+    }));
+    const proportionMetricInfo = proportionMetrics.information.map((item) => ({
+      ...item,
+      latestValue: proportionMetricData[0][item.dataKey],
+    }));
+    const mathMetricInfo = mathMetrics.information.map((item) => ({
+      ...item,
+      latestValue: mathMetricData[0][item.dataKey],
+    }));
+    const sumMetricInfo = sumMetrics.information.map((item) => ({
+      ...item,
+      latestValue: sumMetricData[0][item.dataKey],
+    }));
+
+    setCountMetrics((pre) => ({
+      ...pre,
+      information: countMetricInfo,
+      data: countMetricData,
+    }));
+    setProportionMetrics((pre) => ({
+      ...pre,
+      information: proportionMetricInfo,
+      data: proportionMetricData,
+    }));
+    setMathMetrics((pre) => ({
+      ...pre,
+      information: mathMetricInfo,
+      data: mathMetricData,
+    }));
+    setSumMetrics((pre) => ({
+      ...pre,
+      information: sumMetricInfo,
+      data: sumMetricData,
+    }));
+  };
+
+  useEffect(() => {
+    createMetricsChartData();
+  }, [profilerData]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -94,16 +204,21 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
           title="Quality Tests Summary"
         />
       </Col>
-
-      {Object.entries(chartData).map(([key, value], index) => (
-        <Col key={index} span={24}>
-          <ProfilerDetailsCard
-            chartCollection={value}
-            tickFormatter={key === 'nullProportion' ? '%' : ''}
-            title={startCase(key)}
-          />
-        </Col>
-      ))}
+      <Col span={24}>
+        <ProfilerDetailsCard chartCollection={countMetrics} />
+      </Col>
+      <Col span={24}>
+        <ProfilerDetailsCard
+          chartCollection={proportionMetrics}
+          tickFormatter="%"
+        />
+      </Col>
+      <Col span={24}>
+        <ProfilerDetailsCard chartCollection={mathMetrics} />
+      </Col>
+      <Col span={24}>
+        <ProfilerDetailsCard chartCollection={sumMetrics} />
+      </Col>
     </Row>
   );
 };

@@ -14,9 +14,7 @@
 import { Button, Col, Radio, Row, Select, Space } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
-import { cloneDeep, sortBy } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
-import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from '../../axiosAPIs/tableAPI';
@@ -28,10 +26,7 @@ import {
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
-import {
-  DEFAULT_CHART_COLLECTION_VALUE,
-  PROFILER_FILTER_RANGE,
-} from '../../constants/entity.constants';
+import { PROFILER_FILTER_RANGE } from '../../constants/entity.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -58,7 +53,6 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import PageLayout from '../containers/PageLayout';
 import ProfilerTab from './component/ProfilerTab';
 import {
-  ChartDataCollection,
   ProfilerDashboardProps,
   ProfilerDashboardTab,
 } from './profilerDashboard.interface';
@@ -79,7 +73,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   );
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
-  const [chartData, setChartData] = useState<ChartDataCollection>({});
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
   );
@@ -271,7 +264,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
     if (value !== selectedTimeRange) {
       setSelectedTimeRange(value);
-      setChartData({});
       fetchProfilerData(table.id, PROFILER_FILTER_RANGE[value].days);
     }
   };
@@ -289,50 +281,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       );
     }
   }, [table]);
-
-  useEffect(() => {
-    const sortedProfilerData = sortBy(profilerData, 'timestamp');
-    const chartDataCollection: ChartDataCollection = cloneDeep(
-      DEFAULT_CHART_COLLECTION_VALUE
-    );
-    const columnName = getNameFromFQN(entityTypeFQN);
-
-    sortedProfilerData.forEach((dataPoint) => {
-      const x = moment.unix(dataPoint.timestamp || 0).format('MM.DD');
-      const col = dataPoint.columnProfile?.find(
-        (col) => col.name === columnName
-      );
-
-      chartDataCollection['distinctCount'].data.push({
-        name: x,
-        value: col?.distinctCount || 0,
-        proportion: col?.distinctProportion || 0,
-        timestamp: dataPoint.timestamp || 0,
-      });
-
-      chartDataCollection['uniqueCount'].data.push({
-        name: x,
-        proportion: col?.uniqueProportion || 0,
-        value: col?.uniqueCount || 0,
-        timestamp: dataPoint.timestamp || 0,
-      });
-
-      chartDataCollection['nullCount'].data.push({
-        name: x,
-        proportion: col?.nullProportion || 0,
-        value: col?.nullCount || 0,
-        timestamp: dataPoint.timestamp || 0,
-      });
-
-      chartDataCollection['nullProportion'].data.push({
-        name: x,
-        value: (col?.nullProportion || 0) * 100,
-        timestamp: dataPoint.timestamp || 0,
-      });
-    });
-
-    setChartData(chartDataCollection);
-  }, [profilerData]);
 
   return (
     <PageLayout>
@@ -389,8 +337,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           <Col span={24}>
             <ProfilerTab
               activeColumnDetails={activeColumnDetails}
-              chartData={chartData}
-              tableProfiler={profilerData[0]}
+              profilerData={profilerData}
             />
           </Col>
         )}

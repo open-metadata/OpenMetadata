@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { MetricChartType } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { ColumnProfilerConfig } from '../generated/entity/data/table';
 import { JSON_TAB_SIZE } from './constants';
@@ -60,6 +61,90 @@ export const DEFAULT_CHART_COLLECTION_VALUE = {
   uniqueCount: { data: [], color: '#008376' },
   nullCount: { data: [], color: '#7147E8' },
   nullProportion: { data: [], color: '#B02AAC' },
+};
+
+export const INITIAL_COUNT_METRIC_VALUE: MetricChartType = {
+  information: [
+    {
+      title: 'Distinct Count',
+      dataKey: 'distinctCount',
+      color: '#1890FF',
+    },
+    {
+      title: 'Null Count',
+      dataKey: 'nullCount',
+      color: '#7147E8',
+    },
+    {
+      title: 'Unique Count',
+      dataKey: 'uniqueCount',
+      color: '#008376',
+    },
+    {
+      title: 'Values Count',
+      dataKey: 'valuesCount',
+      color: '#B02AAC',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_PROPORTION_METRIC_VALUE: MetricChartType = {
+  information: [
+    {
+      title: 'Distinct Proportion',
+      dataKey: 'distinctProportion',
+      color: '#1890FF',
+    },
+    {
+      title: 'Null Proportion',
+      dataKey: 'nullProportion',
+      color: '#7147E8',
+    },
+    {
+      title: 'Unique Proportion',
+      dataKey: 'uniqueProportion',
+      color: '#008376',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_MATH_METRIC_VALUE: MetricChartType = {
+  information: [
+    {
+      title: 'Median',
+      dataKey: 'median',
+      color: '#1890FF',
+    },
+    {
+      title: 'Max',
+      dataKey: 'max',
+      color: '#7147E8',
+    },
+    {
+      title: 'Mean',
+      dataKey: 'mean',
+      color: '#008376',
+    },
+    {
+      title: 'Min',
+      dataKey: 'min',
+      color: '#B02AAC',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_SUM_METRIC_VALUE: MetricChartType = {
+  information: [
+    {
+      title: 'Sum',
+      dataKey: 'sum',
+      color: '#1890FF',
+    },
+  ],
+  data: [],
 };
 
 export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
