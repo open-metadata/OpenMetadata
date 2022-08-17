@@ -46,7 +46,16 @@
     "securityProtocol": {
       "description": "Kafka security protocol config",
       "default": "PLAINTEXT",
-      "type": "string"
+      "type": "string",
+      "enum": ["PLAINTEXT", "SSL"],
+      "javaEnums": [
+        {
+          "name": "PLAINTEXT"
+        },
+        {
+          "name": "SSL"
+        }
+      ]
     },
     "SSLProtocol": {
       "description": "Kafka SSL protocol config",
@@ -74,6 +83,6 @@
       "type": "string"
     }
   },
-  "required": ["topics", "securityProtocol"],
+  "required": ["topics"],
   "additionalProperties": false
 }
