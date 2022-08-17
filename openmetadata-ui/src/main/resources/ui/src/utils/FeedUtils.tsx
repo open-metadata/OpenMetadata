@@ -349,6 +349,9 @@ export const deletePost = async (
   isThread: boolean,
   callback?: (value: React.SetStateAction<Thread[]>) => void
 ) => {
+  /**
+   * Delete the thread if isThread is true
+   */
   if (isThread) {
     try {
       const data = await deleteThread(threadId);
