@@ -14,7 +14,6 @@
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React from 'react';
-import SVGIcons from './SvgUtils';
 
 export const getGlobalSettingMenus = (
   label: string,
@@ -24,7 +23,7 @@ export const getGlobalSettingMenus = (
   children?: {
     label: string;
     isProtected: boolean;
-    icon: string;
+    icon: React.ReactNode;
   }[],
   type?: string,
   hasAccess?: boolean
@@ -42,12 +41,7 @@ export const getGlobalSettingMenus = (
       ? children
           .filter((menu) => (hasAccess ? menu : !menu.isProtected))
           .map(({ label, icon }) => {
-            return getGlobalSettingMenus(
-              label,
-              camelCase(label),
-              key,
-              <SVGIcons alt={label} className="tw-w-4" icon={icon} />
-            );
+            return getGlobalSettingMenus(label, camelCase(label), key, icon);
           })
       : undefined,
     label,
