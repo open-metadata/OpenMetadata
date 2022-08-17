@@ -21,10 +21,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from croniter import croniter
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import DeclarativeMeta
 
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import (
@@ -50,16 +48,12 @@ from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiler.core import Profiler
-from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
 from metadata.orm_profiler.profiler.handle_partition import (
     get_partition_cols,
     is_partitioned,
 )
 from metadata.orm_profiler.validations.models import TestCase as CLIConfigTestCase
-from metadata.orm_profiler.validations.models import TestDef
+from metadata.orm_profiler.validations.models import TestCase as TestCaseConfig
 from metadata.utils.helpers import get_start_and_end
 
 logger = logging.getLogger("ORM Profiler Workflow")
@@ -183,24 +177,25 @@ class OrmProfilerProcessor(Processor[Table]):
                 my_record_profile = (
                     self.get_record_test_def(table)
                     if self.config.testSuites and self.get_record_test_def(table)
-                    else TestDef(table=table.fullyQualifiedName.__root__)
+                    else None
                 )
 
-                if my_record_profile.profile_sample_query:
-                    return None
+                if my_record_profile:
+                    if my_record_profile.profile_sample_query:
+                        return None
 
-                start, end = get_start_and_end(
-                    my_record_profile.partition_query_duration
-                )
-                partition_details = {
-                    "partition_field": my_record_profile.partition_field
-                    or get_partition_cols(self.processor_interface.session, orm),
-                    "partition_start": start,
-                    "partition_end": end,
-                    "partition_values": my_record_profile.partition_values,
-                }
+                    start, end = get_start_and_end(
+                        my_record_profile.partition_query_duration
+                    )
+                    partition_details = {
+                        "partition_field": my_record_profile.partition_field
+                        or get_partition_cols(self.processor_interface.session, orm),
+                        "partition_start": start,
+                        "partition_end": end,
+                        "partition_values": my_record_profile.partition_values,
+                    }
 
-                return partition_details
+                    return partition_details
 
         return None
 
@@ -233,74 +228,6 @@ class OrmProfilerProcessor(Processor[Table]):
         if not table.tableProfilerConfig:
             return None
         return table.tableProfilerConfig.profileQuery
-
-    def build_profiler(
-        self,
-        orm: DeclarativeMeta,
-        table: Table,
-    ) -> Profiler:
-        """
-        Given a column from the entity, build the profiler.
-
-        :param orm: Declarative Meta
-        :param table: Table record being processed
-        :return: Initialised Profiler
-        """
-
-        profile_sample = None
-
-        if not self.config.profiler:
-            return DefaultProfiler(
-                profiler_interface=self.processor_interface,
-                table=orm,
-                profile_sample=profile_sample,
-                partition_details=self.get_partition_details(orm, table),
-                profile_sample_query=None,
-                table_entity=table,
-            )
-
-        # Here we will need to add the logic to pass kwargs to the metrics
-        metrics = (
-            [Metrics.get(name) for name in self.config.profiler.metrics]
-            if self.config.profiler.metrics
-            else get_default_metrics(orm)
-        )
-
-        return Profiler(
-            *metrics,
-            profiler_interface=self.processor_interface,
-            table=orm,
-            profile_date=self.execution_date,
-            profile_sample=profile_sample,
-            timeout_seconds=self.config.profiler.timeout_seconds,
-            partition_details=self.get_partition_details(orm, table),
-            profile_sample_query=self.get_profile_sample_query(table),
-            table_entity=table,
-        )
-
-    def profile_entity(
-        self,
-        orm: DeclarativeMeta,
-        table: Table,
-    ) -> TableProfile:
-        """
-        Given a table, we will prepare the profiler for
-        all its columns and return all the run profilers
-        in a Dict in the shape {col_name: Profiler}
-
-        Type of entity is DeclarativeMeta
-        """
-        if not isinstance(orm, DeclarativeMeta):
-            raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
-
-        # Prepare the profilers for all table columns
-        profiler = self.build_profiler(orm, table=table)
-
-        logger.info(f"Executing profilers for {table.fullyQualifiedName.__root__}...")
-        profiler.execute()
-
-        self.status.processed(table.fullyQualifiedName.__root__)
-        return profiler.get_profile()
 
     def log_test_result(self, name: str, result: TestCaseResult) -> None:
         """
@@ -475,7 +402,6 @@ class OrmProfilerProcessor(Processor[Table]):
     def run_test_case(
         self,
         table: Table,
-        orm_table: DeclarativeMeta,
         test_case: CLIConfigTestCase,
         test_suite: TestSuite,
         profiler_results: TableProfile,
@@ -513,7 +439,6 @@ class OrmProfilerProcessor(Processor[Table]):
             test_case=case,
             test_definition=definition,
             table_profile=profiler_results,
-            orm_table=orm_table,
             profile_sample=None,
         )
 
@@ -578,16 +503,15 @@ class OrmProfilerProcessor(Processor[Table]):
         return test_case_result
 
     def validate_config_tests(
-        self, orm: DeclarativeMeta, table: Table, profiler_results: TableProfile
-    ) -> Optional[TestDef]:
+        self, table: Table, profiler_results: TableProfile
+    ) -> Optional[List[TestCaseResult]]:
         """
         Here we take care of new incoming tests in the workflow
-        definition. Run them and prepare the new TestDef
+        definition. Run them and prepare the new TestCaseResult
         of the record, that will be sent to the sink to
         update the Table Entity.
 
         :param table: OpenMetadata Table Entity being processed
-        :param orm: Declarative Meta
         :param profiler_results: TableProfile with computed metrics
         """
 
@@ -606,7 +530,6 @@ class OrmProfilerProcessor(Processor[Table]):
             for test_case in test_cases:
                 result = self.run_test_case(
                     table=table,
-                    orm_table=orm,
                     test_case=test_case,
                     test_suite=test_suite,
                     profiler_results=profiler_results,
@@ -616,7 +539,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return test_results
 
-    def get_record_test_def(self, table: Table) -> Optional[TestDef]:
+    def get_record_test_def(self, table: Table) -> List[Optional[TestCaseConfig]]:
         """
         Fetch a record from the Workflow JSON config
         if the processed table is informed there.
@@ -624,122 +547,118 @@ class OrmProfilerProcessor(Processor[Table]):
         :param table: Processed table
         :return: Test definition
         """
-        my_record_tests = next(
-            (
-                test
-                for test in self.config.testSuites.tests
-                if test.table == table.fullyQualifiedName.__root__
-            ),
-            None,
-        )
+        my_record_tests = [
+            test_case
+            for test_suite in self.config.testSuites
+            for test_case in test_suite.testCases
+            if test_case.fullyQualifiedName == table.fullyQualifiedName.__root__
+        ]
         return my_record_tests
 
-    def validate_entity_tests(
-        self,
-        table: Table,
-        orm_table: DeclarativeMeta,
-        profiler_results: TableProfile,
-        config_tests: Optional[TestDef],
-    ) -> Optional[TestDef]:
-        """
-        This method checks the tests that are
-        configured at entity level, i.e., have been
-        stored via the API at some other point in time.
+    # Need to re-implement the logic with https://github.com/open-metadata/OpenMetadata/issues/5831
+    # as we won't be processing entity tests but testSuite testCases
+    # def validate_entity_tests(
+    #     self,
+    #     table: Table,
+    #     orm_table: DeclarativeMeta,
+    #     profiler_results: TableProfile,
+    #     config_tests: Optional[SQATestDef],
+    # ) -> Optional[TestCaseResult]:
+    #     """
+    #     This method checks the tests that are
+    #     configured at entity level, i.e., have been
+    #     stored via the API at some other point in time.
 
-        If we find a test that has already been run
-        from the workflow config, we will skip it
-        and trust the workflow input.
+    #     If we find a test that has already been run
+    #     from the workflow config, we will skip it
+    #     and trust the workflow input.
 
-        :param table: OpenMetadata Table Entity being processed
-        :param orm_table: Declarative Meta
-        :param profiler_results: TableProfile with computed metrics
-        :param config_tests: Results of running the configuration tests
-        """
+    #     :param table: OpenMetadata Table Entity being processed
+    #     :param orm_table: Declarative Meta
+    #     :param profiler_results: TableProfile with computed metrics
+    #     :param config_tests: Results of running the configuration tests
+    #     """
 
-        # We need to keep track of all ran tests, so let's initialize
-        # a TestDef class with either what we have from the incoming
-        # config, or leaving it empty.
-        # During the Entity processing, we will add here
-        # any tests we discover from the Entity side.
-        record_tests = (
-            TestDef(
-                table=config_tests.table,
-                profile_sample=config_tests.profile_sample,
-                table_tests=config_tests.table_tests
-                if config_tests.table_tests
-                else [],
-                column_tests=config_tests.column_tests
-                if config_tests.column_tests
-                else [],
-            )
-            if config_tests
-            else TestDef(
-                table=table.fullyQualifiedName.__root__, table_tests=[], column_tests=[]
-            )
-        )
+    #     # We need to keep track of all ran tests, so let's initialize
+    #     # a SQATestDef class with either what we have from the incoming
+    #     # config, or leaving it empty.
+    #     # During the Entity processing, we will add here
+    #     # any tests we discover from the Entity side.
+    #     record_tests = (
+    #         SQATestDef(
+    #             table=config_tests.table,
+    #             profile_sample=config_tests.profile_sample,
+    #             table_tests=config_tests.table_tests
+    #             if config_tests.table_tests
+    #             else [],
+    #             column_tests=config_tests.column_tests
+    #             if config_tests.column_tests
+    #             else [],
+    #         )
+    #         if config_tests
+    #         else SQATestDef(
+    #             table=table.fullyQualifiedName.__root__, table_tests=[], column_tests=[]
+    #         )
+    #     )
 
-        # Note that the tests configured in the Entity as `TableTest` and
-        # `ColumnTest`. However, to PUT the results we need the API form:
-        # `CreateTableTestRequest` and `CreateColumnTestRequest`.
-        # We will convert the found tests before running them.
+    #     # Note that the tests configured in the Entity as `TableTest` and
+    #     # `ColumnTest`. However, to PUT the results we need the API form:
+    #     # `CreateTableTestRequest` and `CreateColumnTestRequest`.
+    #     # We will convert the found tests before running them.
 
-        # Fetch all table tests, if any
-        table_tests = (
-            table_test for table_test in (table.tableTests or [])
-        )  # tableTests are optional, so it might be a list or None
-        for table_test in table_tests:
-            test_case_result = self.run_table_test(
-                table=table,
-                orm_table=orm_table,
-                test_case=table_test.testCase,
-                profiler_results=profiler_results,
-            )
-            if test_case_result:
-                create_table_test = CreateTableTestRequest(
-                    description=table_test.description,
-                    testCase=table_test.testCase,
-                    executionFrequency=table_test.executionFrequency,
-                    owner=table_test.owner,
-                    result=test_case_result,
-                )
-                record_tests.table_tests.append(create_table_test)
+    #     # Fetch all table tests, if any
+    #     table_tests = (
+    #         table_test for table_test in (table.tableTests or [])
+    #     )  # tableTests are optional, so it might be a list or None
+    #     for table_test in table_tests:
+    #         test_case_result = self.run_table_test(
+    #             table=table,
+    #             orm_table=orm_table,
+    #             test_case=table_test.testCase,
+    #             profiler_results=profiler_results,
+    #         )
+    #         if test_case_result:
+    #             create_table_test = CreateTableTestRequest(
+    #                 description=table_test.description,
+    #                 testCase=table_test.testCase,
+    #                 executionFrequency=table_test.executionFrequency,
+    #                 owner=table_test.owner,
+    #                 result=test_case_result,
+    #             )
+    #             record_tests.table_tests.append(create_table_test)
 
-        # For all columns, check if any of them has tests and fetch them
-        col_tests = (
-            col_test
-            for col in table.columns
-            for col_test in (
-                col.columnTests or []
-            )  # columnTests is optional, so it might be a list or None
-            if col.columnTests
-        )
-        for column_test in col_tests:
-            if column_test:
-                test_case_result = self.run_column_test(
-                    table=table,
-                    orm_table=orm_table,
-                    column=column_test.columnName,
-                    test_case=column_test.testCase,
-                    profiler_results=profiler_results,
-                )
-                if test_case_result:
-                    create_column_test = CreateColumnTestRequest(
-                        columnName=column_test.columnName,
-                        description=column_test.description,
-                        testCase=column_test.testCase,
-                        executionFrequency=column_test.executionFrequency,
-                        owner=column_test.owner,
-                        result=test_case_result,
-                    )
-                    record_tests.column_tests.append(create_column_test)
+    #     # For all columns, check if any of them has tests and fetch them
+    #     col_tests = (
+    #         col_test
+    #         for col in table.columns
+    #         for col_test in (
+    #             col.columnTests or []
+    #         )  # columnTests is optional, so it might be a list or None
+    #         if col.columnTests
+    #     )
+    #     for column_test in col_tests:
+    #         if column_test:
+    #             test_case_result = self.run_column_test(
+    #                 table=table,
+    #                 orm_table=orm_table,
+    #                 column=column_test.columnName,
+    #                 test_case=column_test.testCase,
+    #                 profiler_results=profiler_results,
+    #             )
+    #             if test_case_result:
+    #                 create_column_test = CreateColumnTestRequest(
+    #                     columnName=column_test.columnName,
+    #                     description=column_test.description,
+    #                     testCase=column_test.testCase,
+    #                     executionFrequency=column_test.executionFrequency,
+    #                     owner=column_test.owner,
+    #                     result=test_case_result,
+    #                 )
+    #                 record_tests.column_tests.append(create_column_test)
 
-        return record_tests
+    #     return record_tests
 
-    def fetch_sample_data(
-        self,
-        orm: DeclarativeMeta,
-        table: Table,
-    ) -> TableData:
+    def fetch_sample_data(self) -> TableData:
         """
         Fetch the table data from a real sample
         :param orm: SQA ORM table
@@ -749,50 +668,32 @@ class OrmProfilerProcessor(Processor[Table]):
             return self.processor_interface.fetch_sample_data()
         except Exception as err:
             logger.error(
-                f"Could not obtain sample data from {orm.__tablename__} - {err}"
+                f"Could not obtain sample data from {self.processor_interface.table.__tablename__} - {err}"
             )
 
     def process(
         self,
         record: Table,
         generate_sample_data: bool = True,
+        entity_profile: Optional[dict] = None,
     ) -> ProfilerResponse:
         """
         Run the profiling and tests
         """
-        # Convert entity to ORM. Fetch the db by ID to make sure we use the proper db name
-
-        orm_table = ometa_to_orm(table=record, metadata=self.metadata)
-        self.processor_interface.create_sampler(
-            table=orm_table,
-            profile_sample=None,
-            partition_details=self.get_partition_details(orm_table, record),
-            profile_sample_query=None,
-        )
-        self.processor_interface.create_runner(
-            table=orm_table,
-            partition_details=self.get_partition_details(orm_table, record),
-            profile_sample_query=None,
-        )
-
-        entity_profile = self.profile_entity(orm=orm_table, table=record)
-
         # First, check if we have any tests directly configured in the workflow
         test_results = None
         if self.config.testSuites:
             test_results = self.validate_config_tests(
-                orm=orm_table, table=record, profiler_results=entity_profile
+                table=record, profiler_results=entity_profile
             )
+
+        # Need to re-implement the logic with https://github.com/open-metadata/OpenMetadata/issues/5831
         # # Then, Check if the entity has any tests
         # record_tests = self.validate_entity_tests(
         #     record, orm_table, entity_profile, config_tests
         # )
 
-        sample_data = (
-            self.fetch_sample_data(orm=orm_table, table=record)
-            if generate_sample_data
-            else None
-        )
+        sample_data = self.fetch_sample_data() if generate_sample_data else None
 
         res = ProfilerResponse(
             table=record,
