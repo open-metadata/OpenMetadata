@@ -40,6 +40,10 @@ export interface MyDataProps {
   ) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
   postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
+  deletePostHandler?: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
 }

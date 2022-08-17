@@ -74,7 +74,13 @@ const PopoverContent: FC<Props> = ({
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    onConfirmation && onConfirmation({ state: true, postId: postId, threadId });
+    onConfirmation &&
+      onConfirmation({
+        state: true,
+        postId: postId,
+        threadId,
+        isThread: Boolean(isThread),
+      });
     onPopoverHide();
   };
 
