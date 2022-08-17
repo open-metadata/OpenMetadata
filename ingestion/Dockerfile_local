@@ -17,14 +17,15 @@ ENV AIRFLOW_VERSION=2.3.3
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 # Add docker provider for the DockerOperator
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
+RUN pip install "openmetadata-ingestion[all]"
+RUN pip uninstall openmetadata-ingestion -y
 
 
 FROM airflow as apis
 WORKDIR /openmetadata-airflow-apis
 COPY openmetadata-airflow-apis /openmetadata-airflow-apis
 
-RUN pip install "." "openmetadata-ingestion[all]"
-RUN pip uninstall openmetadata-ingestion -y
+RUN pip install "."
 
 FROM apis as ingestion
 WORKDIR /ingestion
