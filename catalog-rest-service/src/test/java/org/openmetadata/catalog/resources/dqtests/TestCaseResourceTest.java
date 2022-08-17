@@ -29,6 +29,7 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.tests.CreateTestCase;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
@@ -105,6 +106,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     create.withEntityLink(INVALID_LINK2).withTestSuite(TEST_TABLE1.getEntityReference());
     assertResponseContains(
         () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS), NOT_FOUND, "table instance for non-existent not found");
+        NOT_FOUND,
+        "table instance for non-existent not found");
 
     CreateTestCase create1 = createRequest(test);
     create1.withTestSuite(TEST_DEFINITION1_REFERENCE);
@@ -308,6 +311,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseList = getTestCases(10, "*", TABLE_COLUMN_LINK, false, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedColTestCaseList, 1);
 
+
     for (int i = 1; i < 10; i++) {
       CreateTestCase create4 = createRequest(test);
       create4
@@ -379,6 +383,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private void verifyTestCases(
       ResultList<TestCase> actualTestCases, List<CreateTestCase> expectedTestCases, int expectedCount)
+      List<CreateTestCase> expectedTestCases,
       throws HttpResponseException {
     assertEquals(expectedCount, actualTestCases.getPaging().getTotal());
     assertEquals(expectedTestCases.size(), actualTestCases.getData().size());
@@ -391,6 +396,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       validateCreatedEntity(storedTestCase, result, ADMIN_AUTH_HEADERS);
     }
   }
+
 
   private void verifyTestCaseResult(TestCaseResult expected, TestCaseResult actual) {
     assertEquals(expected, actual);
