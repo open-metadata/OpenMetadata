@@ -56,7 +56,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import PageLayout from '../containers/PageLayout';
-import ProfilerLatestDetails from './component/ProfilerLatestDetails';
 import ProfilerTab from './component/ProfilerTab';
 import {
   ChartDataCollection,
@@ -79,7 +78,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     ProfilerDashboardTab.PROFILER
   );
   const [selectedTimeRange, setSelectedTimeRange] =
-    useState<keyof typeof PROFILER_FILTER_RANGE>('last7days');
+    useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const [chartData, setChartData] = useState<ChartDataCollection>({});
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
@@ -388,15 +387,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         </Col>
         {activeTab === ProfilerDashboardTab.PROFILER && (
           <Col span={24}>
-            {selectedTimeRange === 'latest' ? (
-              <ProfilerLatestDetails chartData={chartData} />
-            ) : (
-              <ProfilerTab
-                activeColumnDetails={activeColumnDetails}
-                chartData={chartData}
-                tableProfiler={profilerData[0]}
-              />
-            )}
+            <ProfilerTab
+              activeColumnDetails={activeColumnDetails}
+              chartData={chartData}
+              tableProfiler={profilerData[0]}
+            />
           </Col>
         )}
 

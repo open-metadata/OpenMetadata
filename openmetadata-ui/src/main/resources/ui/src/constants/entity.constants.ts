@@ -48,7 +48,7 @@ export const PROFILER_METRIC = [
 ];
 
 export const PROFILER_FILTER_RANGE = {
-  latest: { days: 7, title: 'Latest' },
+  last3days: { days: 3, title: 'Last 3 days' },
   last7days: { days: 7, title: 'Last 7 days' },
   last14days: { days: 14, title: 'Last 14 days' },
   last30days: { days: 30, title: 'Last 30 days' },

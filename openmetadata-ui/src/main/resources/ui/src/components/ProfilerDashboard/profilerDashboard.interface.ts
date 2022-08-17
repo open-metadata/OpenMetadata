@@ -60,7 +60,3 @@ export interface ProfilerSummaryCardProps {
   }[];
   showIndicator?: boolean;
 }
-
-export interface ProfilerLatestDetailsProps {
-  chartData: ChartDataCollection;
-}

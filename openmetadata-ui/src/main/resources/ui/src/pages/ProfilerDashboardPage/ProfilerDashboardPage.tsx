@@ -41,7 +41,7 @@ const ProfilerDashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const fetchProfilerData = async (tableId: string, days = 7) => {
+  const fetchProfilerData = async (tableId: string, days = 3) => {
     try {
       const startTs = moment().subtract(days, 'days').unix();
 
