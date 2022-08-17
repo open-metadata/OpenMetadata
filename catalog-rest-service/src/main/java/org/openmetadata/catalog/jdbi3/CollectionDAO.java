@@ -2528,6 +2528,7 @@ public interface CollectionDAO {
       return "fullyQualifiedName";
     }
 
+
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String entityFQN = filter.getQueryParam("entityFQN");
