@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/databaseServiceProfilerPipeline.json",
+  "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceProfilerPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceProfilerPipeline",
   "description": "DatabaseService Profiler Pipeline Configuration.",
