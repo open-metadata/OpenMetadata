@@ -29,8 +29,10 @@ public class KafkaWebhookEventPublisher extends WebhookPublisher {
       // configuration for SSL Encryption
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, webhook.getKafkaProperties().getSecurityProtocol());
       properties.put(SslConfigs.SSL_PROTOCOL_CONFIG, webhook.getKafkaProperties().getSslProtocol());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, webhook.getKafkaProperties().getSSLTrustStoreLocation());
-      properties.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, webhook.getKafkaProperties().getSSLTrustStorePassword());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, webhook.getKafkaProperties().getSSLTrustStoreLocation());
+      properties.put(
+          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, webhook.getKafkaProperties().getSSLTrustStorePassword());
       // configuration for SSL Authentication
       properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, webhook.getKafkaProperties().getSSLKeystoreLocation());
       properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, webhook.getKafkaProperties().getSSLKeystorePassword());
