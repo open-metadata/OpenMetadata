@@ -296,9 +296,9 @@ class Workflow:
                     f"{self.config.source.serviceName}_metadata",
                 )
             )
-            config = self.config.source.sourceConfig.config.dict()
-            config["dbtConfigSource"] = dbt_config_source
-            if dbt_config_source:
+            if dbt_config_source and self.config.source.sourceConfig.config:
+                config = self.config.source.sourceConfig.config.dict()
+                config["dbtConfigSource"] = dbt_config_source
                 self.config.source.sourceConfig.config = (
                     DatabaseServiceMetadataPipeline.parse_obj(config)
                 )

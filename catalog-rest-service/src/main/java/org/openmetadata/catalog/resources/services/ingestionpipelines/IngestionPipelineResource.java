@@ -175,6 +175,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
       addStatus(ingestionPipelines.getData());
     }
+    listOrEmpty(ingestionPipelines.getData())
+        .forEach(ingestionPipeline -> decryptOrNullify(securityContext, ingestionPipeline));
     return ingestionPipelines;
   }
 
@@ -351,7 +353,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -394,9 +398,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipeline deployIngestion(
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
-    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
-    pipelineServiceClient.deployPipeline(pipeline);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
+    pipelineServiceClient.deployPipeline(ingestionPipeline);
+    decryptOrNullify(securityContext, ingestionPipeline);
+    return addHref(uriInfo, ingestionPipeline);
   }
 
   @POST
@@ -417,9 +422,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipeline triggerIngestion(
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
-    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
-    pipelineServiceClient.runPipeline(pipeline.getName());
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
+    pipelineServiceClient.runPipeline(ingestionPipeline.getName());
+    decryptOrNullify(securityContext, ingestionPipeline);
+    return addHref(uriInfo, ingestionPipeline);
   }
 
   @POST
@@ -464,6 +470,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response killIngestion(
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+    decryptOrNullify(securityContext, ingestionPipeline);
     HttpResponse<String> response = pipelineServiceClient.killIngestion(ingestionPipeline);
     return Response.status(200, response.body()).build();
   }

@@ -94,7 +94,7 @@ public class IngestionPipelineResourceUnitTest {
   }
 
   @Test
-  public void testLastIngestionLogsAreRetrieved() throws IOException {
+  void testLastIngestionLogsAreRetrieved() throws IOException {
     IngestionPipeline ingestionPipeline = mock(IngestionPipeline.class);
     when(ingestionPipeline.getId()).thenReturn(DAG_ID);
     when(entityDAO.findEntityById(any(), any())).thenReturn(ingestionPipeline);
@@ -113,7 +113,7 @@ public class IngestionPipelineResourceUnitTest {
   @ParameterizedTest
   @MethodSource(
       "org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
-  public void testGetIsEncryptedWhenSecretManagerIsConfigured(
+  void testGetIsEncryptedWhenSecretManagerIsConfigured(
       Object config,
       EntityReference service,
       Class<? extends EntityInterface> serviceClass,
@@ -149,7 +149,7 @@ public class IngestionPipelineResourceUnitTest {
   @ParameterizedTest
   @MethodSource(
       "org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
-  public void testGetByNameIsEncryptedWhenSecretManagerIsConfigured(
+  void testGetByNameIsEncryptedWhenSecretManagerIsConfigured(
       Object config,
       EntityReference service,
       Class<? extends EntityInterface> serviceClass,
@@ -197,7 +197,7 @@ public class IngestionPipelineResourceUnitTest {
 
   private void verifySecretManagerIsCalled(boolean mustBeEncrypted, IngestionPipeline ingestionPipeline) {
     if (mustBeEncrypted) {
-      verify(secretsManager).encryptOrDecryptDbtConfigSource(eq(ingestionPipeline), eq(false));
+      verify(secretsManager).encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
     } else {
       verify(secretsManager, never()).encryptOrDecryptDbtConfigSource(any(), any(), anyBoolean());
     }

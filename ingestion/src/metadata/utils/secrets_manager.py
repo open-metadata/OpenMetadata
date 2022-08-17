@@ -215,7 +215,13 @@ class LocalSecretsManager(SecretsManager):
         logger.debug(
             f"Retrieving source_config from {SecretsManagerProvider.local.name} secrets' manager for {pipeline_name}"
         )
-        return source_config.config.dbtConfigSource.dict()
+        return (
+            source_config.config.dbtConfigSource.dict()
+            if source_config
+            and source_config.config
+            and source_config.config.dbtConfigSource
+            else None
+        )
 
 
 class AWSSecretsManager(SecretsManager):
