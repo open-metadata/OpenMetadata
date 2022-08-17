@@ -38,9 +38,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
     """
     Postgres base for Usage and Lineage
     """
-
-    filters: str
-
+    
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
