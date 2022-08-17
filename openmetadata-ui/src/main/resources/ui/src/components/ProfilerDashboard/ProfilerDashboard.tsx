@@ -389,17 +389,23 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             </Space>
           </Row>
         </Col>
-        <Col span={24}>
-          {selectedTimeRange === 'latest' ? (
-            <ProfilerLatestDetails chartData={chartData} />
-          ) : (
-            <ProfilerTab
-              activeColumnDetails={activeColumnDetails}
-              chartData={chartData}
-              tableProfiler={profilerData[0]}
-            />
-          )}
-        </Col>
+        {activeTab === ProfilerDashboardTab.PROFILER && (
+          <Col span={24}>
+            {selectedTimeRange === 'latest' ? (
+              <ProfilerLatestDetails chartData={chartData} />
+            ) : (
+              <ProfilerTab
+                activeColumnDetails={activeColumnDetails}
+                chartData={chartData}
+                tableProfiler={profilerData[0]}
+              />
+            )}
+          </Col>
+        )}
+
+        {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
+          <Col span={24}>Data Quality</Col>
+        )}
       </Row>
     </PageLayout>
   );
