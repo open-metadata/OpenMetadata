@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.catalog.secrets;
 
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.AWS_SSM;
@@ -64,15 +63,15 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
     this.ssmClient.putParameter(putParameterRequest);
   }
 
-  public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new AWSSSMSecretsManager(config, clusterPrefix);
-    return INSTANCE;
-  }
-
   @Override
   public String getSecret(String secretName) {
     GetParameterRequest parameterRequest = GetParameterRequest.builder().name(secretName).build();
     return ssmClient.getParameter(parameterRequest).parameter().value();
+  }
+
+  public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
+    if (INSTANCE == null) INSTANCE = new AWSSSMSecretsManager(config, clusterPrefix);
+    return INSTANCE;
   }
 
   @VisibleForTesting
