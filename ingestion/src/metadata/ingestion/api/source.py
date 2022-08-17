@@ -9,9 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import time
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
 from typing import Any, Generic, Iterable, List
+
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -28,14 +30,14 @@ class InvalidSourceException(Exception):
     """
 
 
-@dataclass
-class SourceStatus(Status):
+class SourceStatus(BaseModel, Status):
     records = 0
+    source_start_time = time.time()
 
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
+    filtered: List[str] = list()
 
     def scanned(self, record: Any) -> None:
         self.records += 1
@@ -48,6 +50,13 @@ class SourceStatus(Status):
 
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append({key: reason})
+
+    def calculate_success(self) -> float:
+        source_sucess = max(
+            len(self.success), 1
+        )  # To avoid ZeroDivisionError using minimum value as 1
+        source_failed = len(self.failures)
+        return round(source_sucess * 100 / (source_sucess + source_failed), 2)
 
 
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):

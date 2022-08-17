@@ -8,17 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+MSSQL lineage module
+"""
+from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.mssql_query_parser import MssqlQueryParserSource
+from metadata.utils.sql_queries import MSSQL_SQL_STATEMENT
 
-import json
-import pprint
 
+class MssqlLineageSource(MssqlQueryParserSource, LineageSource):
 
-class Status:
-    def as_obj(self) -> dict:
-        return self.__dict__
+    sql_stmt = MSSQL_SQL_STATEMENT
 
-    def as_string(self) -> str:
-        return pprint.pformat(self.as_obj(), width=150)
-
-    def as_json(self) -> str:
-        return json.dumps(self.as_obj())
+    filters = ""  # No filtering in the queries

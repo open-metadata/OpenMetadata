@@ -11,6 +11,7 @@
 
 import re
 from datetime import datetime, timedelta
+from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -62,6 +63,44 @@ om_chart_type_dict = {
     "text": ChartType.Text,
     "scatter": ChartType.Scatter,
 }
+
+
+def calculate_execution_time(func):
+    def calculate_debug_time(*args, **kwargs):
+        start = perf_counter()
+        func(*args, **kwargs)
+        end = perf_counter()
+        logger.debug(
+            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
+        )
+
+    return calculate_debug_time
+
+
+def calculate_execution_time_generator(func):
+    def calculate_debug_time(*args, **kwargs):
+        start = perf_counter()
+        yield from func(*args, **kwargs)
+        end = perf_counter()
+        logger.debug(
+            f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
+        )
+
+    return calculate_debug_time
+
+
+def pretty_print_time_duration(duration: int) -> str:
+    days = divmod(duration, 86400)[0]
+    hours = divmod(duration, 3600)[0]
+    minutes = divmod(duration, 60)[0]
+    seconds = round(divmod(duration, 60)[1], 2)
+    if days:
+        return f"{days}day(s) {hours}h {minutes}m {seconds}s"
+    if hours:
+        return f"{hours}h {minutes}m {seconds}s"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
 
 
 def get_start_and_end(duration):

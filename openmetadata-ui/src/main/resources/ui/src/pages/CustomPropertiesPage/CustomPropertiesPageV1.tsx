@@ -28,6 +28,7 @@ import { customAttributesPath } from '../../constants/globalSettings.constants';
 import { Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { tab } = useParams<{ [key: string]: string }>();
@@ -120,7 +121,13 @@ const CustomEntityDetailV1 = () => {
 
   return (
     <div data-testid="custom-entity-container">
-      <TabsPane activeTab={activeTab} setActiveTab={onTabChange} tabs={tabs} />
+      <div className="global-settings-tabs">
+        <TabsPane
+          activeTab={activeTab}
+          setActiveTab={onTabChange}
+          tabs={tabs}
+        />
+      </div>
       <div className="tw-mt-4">
         {activeTab === 2 && (
           <div data-testid="entity-schema">

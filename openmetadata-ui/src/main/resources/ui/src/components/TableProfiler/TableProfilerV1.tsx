@@ -82,7 +82,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
           className="tw-ml-1"
           target="_blank"
           to={{
-            pathname: 'https://docs.open-metadata.org/connectors',
+            pathname:
+              'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
           }}>
           here.
         </Link>

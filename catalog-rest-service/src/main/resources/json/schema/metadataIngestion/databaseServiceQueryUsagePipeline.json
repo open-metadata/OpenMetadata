@@ -30,7 +30,7 @@
     "resultLimit": {
       "description": "Configuration to set the limit for query logs",
       "type": "integer",
-      "default": "100"
+      "default": "1000"
     },
     "queryLogFilePath": {
       "description": "Configuration to set the file path for query logs",
