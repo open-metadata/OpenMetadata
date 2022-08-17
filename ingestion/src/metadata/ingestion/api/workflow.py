@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import importlib
-import re
 from typing import Type, TypeVar
 
 import click
@@ -21,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseMetadataConfigType,
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -286,8 +286,11 @@ class Workflow:
 
         :return:
         """
-        if service_type is ServiceType.Database and self.is_metadata_source_type(
-            self.config.source.type
+        config = self.config.source.sourceConfig.config
+        if (
+            service_type is ServiceType.Database
+            and config
+            and config.type == DatabaseMetadataConfigType.DatabaseMetadata
         ):
             metadata = OpenMetadata(config=metadata_config)
             dbt_config_source: object = (
@@ -297,19 +300,12 @@ class Workflow:
                 )
             )
             if dbt_config_source and self.config.source.sourceConfig.config:
-                config = self.config.source.sourceConfig.config.dict()
-                config["dbtConfigSource"] = dbt_config_source
+                config_dict = self.config.source.sourceConfig.config.dict()
+                config_dict["dbtConfigSource"] = dbt_config_source
                 self.config.source.sourceConfig.config = (
-                    DatabaseServiceMetadataPipeline.parse_obj(config)
+                    DatabaseServiceMetadataPipeline.parse_obj(config_dict)
                 )
 
     @staticmethod
     def _is_sample_source(service_type: str) -> bool:
         return service_type in SAMPLE_SOURCE
-
-    @staticmethod
-    def is_metadata_source_type(source_type: str) -> bool:
-        return (
-            re.match(r"_usage$", source_type) is None
-            or re.match(r"_lineage$", source_type) is None
-        )

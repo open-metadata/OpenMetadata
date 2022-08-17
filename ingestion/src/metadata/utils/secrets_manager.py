@@ -116,7 +116,7 @@ class SecretsManager(metaclass=Singleton):
         self, source_config: SourceConfig, pipeline_name: str
     ) -> object:
         """
-         Retrieve the DBT source config from the secret manager from a source config object.
+        Retrieve the DBT source config from the secret manager from a source config object.
         :param source_config: SourceConfig object
         :param pipeline_name: the pipeline's name
         :return:
