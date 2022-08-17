@@ -61,6 +61,7 @@ const Teams: FC<TeamsProps> = ({
           <span>
             <Switch
               checked={showDeletedTeam}
+              size="small"
               onClick={onShowDeletedTeamChange}
             />
             <span className="tw-ml-2">Deleted Teams</span>

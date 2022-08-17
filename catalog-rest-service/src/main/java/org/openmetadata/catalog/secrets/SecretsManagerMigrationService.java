@@ -26,16 +26,19 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.ServiceConnectionEntityInterface;
 import org.openmetadata.catalog.ServiceEntityInterface;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.exception.SecretsManagerMigrationException;
 import org.openmetadata.catalog.jdbi3.ChangeEventRepository;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.ServiceEntityRepository;
+import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.events.EventResource;
 import org.openmetadata.catalog.resources.services.ServiceEntityResource;
 import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 
 /**
  * Migration service from LocalSecretManager to configured one.
@@ -129,15 +132,17 @@ public class SecretsManagerMigrationService {
                   service.getName(),
                   repository.getServiceType(),
                   false));
-      newSecretManager.encryptOrDecryptServiceConnectionConfig(
-          service.getConnection().getConfig(),
-          service.getServiceType().value(),
-          service.getName(),
-          repository.getServiceType(),
-          true);
+      service
+          .getConnection()
+          .setConfig(
+              newSecretManager.encryptOrDecryptServiceConnectionConfig(
+                  service.getConnection().getConfig(),
+                  service.getServiceType().value(),
+                  service.getName(),
+                  repository.getServiceType(),
+                  true));
       // avoid reaching secrets manager quotas
       Thread.sleep(100);
-      service.getConnection().setConfig(null);
       repository.dao.update(service);
     } catch (IOException | InterruptedException e) {
       throw new SecretsManagerMigrationException(e.getMessage(), e.getCause());
@@ -174,7 +179,14 @@ public class SecretsManagerMigrationService {
   private void migrateIngestionPipelines(IngestionPipeline ingestionPipeline) {
     try {
       IngestionPipeline ingestion = ingestionPipelineRepository.dao.findEntityById(ingestionPipeline.getId());
-      ingestion.getOpenMetadataServerConnection().setSecurityConfig(null);
+      if (hasSecurityConfig(ingestionPipeline)) {
+        ingestion.getOpenMetadataServerConnection().setSecurityConfig(null);
+      }
+      if (hasDbtConfig(ingestionPipeline)) {
+        // we have to decrypt using the old secrets manager and encrypt again with the new one
+        oldSecretManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
+        newSecretManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, true);
+      }
       ingestionPipelineRepository.dao.update(ingestion);
     } catch (IOException e) {
       throw new SecretsManagerMigrationException(e.getMessage(), e.getCause());
@@ -191,14 +203,26 @@ public class SecretsManagerMigrationService {
               ingestionPipelineRepository.dao.listCount(new ListFilter()),
               null)
           .getData().stream()
-          .filter(
-              ingestionPipeline ->
-                  !Objects.isNull(ingestionPipeline.getOpenMetadataServerConnection())
-                      && !Objects.isNull(ingestionPipeline.getOpenMetadataServerConnection().getSecurityConfig()))
+          .filter(this::hasSecurityConfig)
+          .filter(this::hasDbtConfig)
           .collect(Collectors.toList());
     } catch (IOException e) {
       throw new SecretsManagerMigrationException(e.getMessage(), e.getCause());
     }
+  }
+
+  private boolean hasSecurityConfig(IngestionPipeline ingestionPipeline) {
+    return !Objects.isNull(ingestionPipeline.getOpenMetadataServerConnection())
+        && !Objects.isNull(ingestionPipeline.getOpenMetadataServerConnection().getSecurityConfig());
+  }
+
+  private boolean hasDbtConfig(IngestionPipeline ingestionPipeline) {
+    return ingestionPipeline.getService().getType().equals(Entity.DATABASE_SERVICE)
+        && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA)
+        && JsonUtils.convertValue(
+                    ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class)
+                .getDbtConfigSource()
+            != null;
   }
 
   /** This method delete all the change events which could contain connection config parameters for services */

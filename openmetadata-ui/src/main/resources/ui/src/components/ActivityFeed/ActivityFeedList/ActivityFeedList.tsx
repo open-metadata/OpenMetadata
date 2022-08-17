@@ -84,7 +84,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const onPostDelete = () => {
     if (confirmationState.postId && confirmationState.threadId) {
-      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+      deletePostHandler?.(
+        confirmationState.threadId,
+        confirmationState.postId,
+        confirmationState.isThread
+      );
     }
     onDiscard();
   };

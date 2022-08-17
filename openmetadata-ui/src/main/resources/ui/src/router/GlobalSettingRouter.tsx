@@ -20,6 +20,7 @@ import {
 } from '../constants/globalSettings.constants';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
+import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const WebhooksPageV1 = withSuspenseFallback(
@@ -98,7 +99,7 @@ const GlobalSettingRouter = () => {
       {/* Roles route start
        * Do not change the order of these route
        */}
-      <Route
+      <AdminProtectedRoute
         exact
         component={RolesListPage}
         path={getSettingPath(
@@ -106,8 +107,12 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.ROLES
         )}
       />
-      <Route exact component={AddRolePage} path={ROUTES.ADD_ROLE} />
-      <Route
+      <AdminProtectedRoute
+        exact
+        component={AddRolePage}
+        path={ROUTES.ADD_ROLE}
+      />
+      <AdminProtectedRoute
         exact
         component={RolesDetailPage}
         path={getSettingPath(
@@ -120,7 +125,7 @@ const GlobalSettingRouter = () => {
        * Do not change the order of these route
        */}
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={PoliciesListPage}
         path={getSettingPath(
@@ -128,7 +133,7 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.POLICIES
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={PoliciesDetailPage}
         path={getSettingPath(
@@ -137,13 +142,13 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={UserListPageV1}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.ACCESS)}
       />
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={WebhooksPageV1}
         path={getSettingPath(
@@ -151,7 +156,7 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.WEBHOOK
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={BotsPageV1}
         path={getSettingPath(
@@ -160,7 +165,7 @@ const GlobalSettingRouter = () => {
         )}
       />
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={SlackSettingsPage}
         path={getSettingPath(
@@ -175,7 +180,7 @@ const GlobalSettingRouter = () => {
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
       />
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
         path={getSettingCategoryPath(

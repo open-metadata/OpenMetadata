@@ -83,6 +83,9 @@ logger = ingestion_logger()
 
 T = TypeVar("T", bound=BaseModel)
 
+# Sources which contain inner connections to validate
+HAS_INNER_CONNECTION = {"Airflow"}
+
 
 def get_service_type(
     source_type: str,
@@ -91,6 +94,8 @@ def get_service_type(
     Type[DatabaseConnection],
     Type[MessagingConnection],
     Type[MetadataConnection],
+    Type[PipelineConnection],
+    Type[MlModelConnection],
 ]:
     """
     Return the service type for a source string
@@ -116,13 +121,13 @@ def get_service_type(
 def get_source_config_class(
     source_config_type: str,
 ) -> Union[
-    Type[DatabaseMetadataConfigType],
-    Type[ProfilerConfigType],
-    Type[DatabaseUsageConfigType],
-    Type[DashboardMetadataConfigType],
-    Type[MessagingMetadataConfigType],
-    Type[MlModelMetadataConfigType],
-    Type[PipelineMetadataConfigType],
+    Type[DashboardServiceMetadataPipeline],
+    Type[DatabaseServiceProfilerPipeline],
+    Type[DatabaseServiceQueryUsagePipeline],
+    Type[MessagingServiceMetadataPipeline],
+    Type[PipelineServiceMetadataPipeline],
+    Type[MlModelServiceMetadataPipeline],
+    Type[DatabaseServiceMetadataPipeline],
 ]:
     """
     Return the source config type for a source string
@@ -180,6 +185,81 @@ def get_connection_class(
     return connection_class
 
 
+def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
+    """
+    Given a config dictionary and the class it should match,
+    try to parse it or log the given message
+    """
+
+    # Parse the service connection dictionary with the scoped class
+    try:
+        cls.parse_obj(config)
+    except ValidationError as err:
+        logger.error(message)
+        logger.error(
+            f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
+        )
+        raise err
+
+
+def parse_service_connection(config_dict: dict) -> None:
+    """
+    Parse the service connection and raise any scoped
+    errors during the validation process
+
+    :param config_dict: JSON configuration
+    """
+    # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
+    source_type = config_dict["source"]["serviceConnection"]["config"]["type"]
+
+    logger.error(
+        f"Error parsing the Workflow Configuration for {source_type} ingestion"
+    )
+
+    service_type = get_service_type(source_type)
+    connection_class = get_connection_class(source_type, service_type)
+
+    if source_type in HAS_INNER_CONNECTION:
+        # We will first parse the inner `connection` configuration
+        inner_source_type = config_dict["source"]["serviceConnection"]["config"][
+            "connection"
+        ]["type"]
+        inner_service_type = get_service_type(inner_source_type)
+        inner_connection_class = get_connection_class(
+            inner_source_type, inner_service_type
+        )
+        _unsafe_parse_config(
+            config=config_dict["source"]["serviceConnection"]["config"]["connection"],
+            cls=inner_connection_class,
+            message=f"Error parsing the inner service connection for {source_type}",
+        )
+
+    # Parse the service connection dictionary with the scoped class
+    _unsafe_parse_config(
+        config=config_dict["source"]["serviceConnection"]["config"],
+        cls=connection_class,
+        message="Error parsing the service connection",
+    )
+
+
+def parse_source_config(config_dict: dict) -> None:
+    """
+    Parse the sourceConfig to help catch any config
+    misconfigurations
+
+    :param config_dict: JSON configuration
+    """
+    # Parse the source config
+    source_config_type = config_dict["source"]["sourceConfig"]["config"]["type"]
+    source_config_class = get_source_config_class(source_config_type)
+
+    _unsafe_parse_config(
+        config=config_dict["source"]["sourceConfig"]["config"],
+        cls=source_config_class,
+        message="Error parsing the source config",
+    )
+
+
 def parse_workflow_source(config_dict: dict) -> None:
     """
     Validate the parsing of the source in the config dict.
@@ -188,22 +268,8 @@ def parse_workflow_source(config_dict: dict) -> None:
 
     :param config_dict: JSON configuration
     """
-    # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-    source_type = config_dict["source"]["serviceConnection"]["config"]["type"]
-    logger.error(
-        f"Error parsing the Workflow Configuration for {source_type} ingestion"
-    )
-
-    service_type = get_service_type(source_type)
-    connection_class = get_connection_class(source_type, service_type)
-
-    # Parse the dictionary with the scoped class
-    connection_class.parse_obj(config_dict["source"]["serviceConnection"]["config"])
-
-    # Parse the source config
-    source_config_type = config_dict["source"]["sourceConfig"]["config"]["type"]
-    source_config_class = get_source_config_class(source_config_type)
-    source_config_class.parse_obj(config_dict["source"]["sourceConfig"]["config"])
+    parse_service_connection(config_dict)
+    parse_source_config(config_dict)
 
 
 def parse_server_config(config_dict: dict) -> None:
@@ -224,13 +290,16 @@ def parse_server_config(config_dict: dict) -> None:
 
     # If the error comes from the security config:
     auth_class = PROVIDER_CLASS_MAP.get(auth_provider)
-    security_config = (
-        config_dict.get("workflowConfig")
-        .get("openMetadataServerConfig")
-        .get("securityConfig")
+    # throw an error if the keys are not present
+    security_config = config_dict["workflowConfig"]["openMetadataServerConfig"][
+        "securityConfig"
+    ]
+
+    _unsafe_parse_config(
+        config=security_config,
+        cls=auth_class,
+        message="Error parsing the workflow security config",
     )
-    if auth_class and security_config:
-        auth_class.parse_obj(security_config)
 
     # If the security config is properly configured, let's raise the ValidationError of the whole WorkflowConfig
     WorkflowConfig.parse_obj(config_dict["workflowConfig"])
@@ -284,4 +353,8 @@ def parse_test_connection_request_gracefully(
         connection_class = get_connection_class(source_type, service_type)
 
         # Parse the dictionary with the scoped class
-        connection_class.parse_obj(config_dict["connection"]["config"])
+        _unsafe_parse_config(
+            config=config_dict["connection"]["config"],
+            cls=connection_class,
+            message="Error parsing the connection config",
+        )

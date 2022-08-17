@@ -32,7 +32,6 @@ import {
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
-  SUPPORTED_DOMAIN_TYPES,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import {
@@ -738,10 +737,6 @@ export const getFeedCounts = (
  */
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
-
-export const isAllowedHost = () => {
-  return SUPPORTED_DOMAIN_TYPES.includes(window.location.host);
-};
 
 /**
  * Utility function to show pagination

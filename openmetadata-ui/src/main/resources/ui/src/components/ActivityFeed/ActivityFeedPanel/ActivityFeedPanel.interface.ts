@@ -22,7 +22,11 @@ export interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
   open?: boolean;
   onCancel: () => void;
   postFeed: (value: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
+  deletePostHandler?: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
 }
 

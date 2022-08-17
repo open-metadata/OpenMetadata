@@ -15,7 +15,6 @@ import os
 import sys
 import traceback
 from collections import namedtuple
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List, Union
 
@@ -147,11 +146,10 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-@dataclass
 class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
 
     def scanned(self, entity_type: str, entity_name: str) -> None:
         self.success.append(entity_name)
