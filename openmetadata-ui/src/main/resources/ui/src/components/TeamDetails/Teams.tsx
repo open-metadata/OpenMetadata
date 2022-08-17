@@ -58,14 +58,14 @@ const Teams: FC<TeamsProps> = ({
     <Row className="team-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <span>
+          <Space align="end" size={5}>
             <Switch
               checked={showDeletedTeam}
               size="small"
               onClick={onShowDeletedTeamChange}
             />
-            <span className="tw-ml-2">Deleted Teams</span>
-          </span>
+            <span>Deleted Teams</span>
+          </Space>
           <Button type="primary" onClick={() => onAddTeamClick(true)}>
             Add Team
           </Button>

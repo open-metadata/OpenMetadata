@@ -18,7 +18,7 @@ import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../../src/assets/svg/pipeline-grey.svg';
 import { ReactComponent as PoliciesIcon } from '../../src/assets/svg/policies.svg';
-import { ReactComponent as SlackIcon } from '../../src/assets/svg/slack-grey.svg';
+import { ReactComponent as SlackIcon } from '../../src/assets/svg/slack.svg';
 import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg';
 import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
 import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
@@ -27,7 +27,7 @@ import { ReactComponent as WebhookIcon } from '../../src/assets/svg/webhook-grey
 
 export const GLOBAL_SETTINGS_MENU = [
   {
-    category: 'Access',
+    category: 'Members',
     isProtected: false,
     items: [
       {
@@ -45,6 +45,12 @@ export const GLOBAL_SETTINGS_MENU = [
         isProtected: true,
         icon: <UsersIcon className="side-panel-icons" />,
       },
+    ],
+  },
+  {
+    category: 'Access',
+    isProtected: false,
+    items: [
       {
         label: 'Roles',
         isProtected: true,
@@ -151,6 +157,7 @@ export const customAttributesPath = {
 };
 
 export enum GlobalSettingsMenuCategory {
+  MEMBERS = 'members',
   ACCESS = 'access',
   SERVICES = 'services',
   CUSTOM_ATTRIBUTES = 'customAttributes',
