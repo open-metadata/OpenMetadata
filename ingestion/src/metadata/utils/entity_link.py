@@ -24,17 +24,7 @@ from pydantic import BaseModel
 from metadata.antlr.split_listener import SplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
 from metadata.generated.antlr.EntityLinkParser import EntityLinkParser
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
-from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
-from metadata.generated.schema.entity.tags.tagCategory import Tag
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
-from metadata.utils.elasticsearch import get_entity_from_es_result
 
 T = TypeVar("T", bound=BaseModel)
 
