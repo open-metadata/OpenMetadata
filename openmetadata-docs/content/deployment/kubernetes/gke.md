@@ -233,7 +233,9 @@ spec:
 ```
 
 <Note>
+
 Airflow runs the pods with linux user name as airflow and linux user id as 50000.
+
 </Note>
 
 Run the below command to create the pod and fix the permissions

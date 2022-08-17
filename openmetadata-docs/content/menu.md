@@ -40,11 +40,12 @@ site_menu:
 
   - category: Deployment / Kubernetes Deployment
     url: /deployment/kubernetes
-  - category: Deployment / Kubernetes Deployment / Kubernetes Helm Values
-    url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / GKE Deployment
+  - category: Deployment / Kubernetes Deployment / EKS
+    url: /deployment/kubernetes/eks
+  - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
-  - category: Deployment / Kubernetes Deployment / Kubernetes On Premises Deployment
+  
+  - category: Deployment / Kubernetes Deployment / On Premises
     url: /deployment/kubernetes/onprem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
