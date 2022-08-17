@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
+@primary-color: #7147e8;
+@background-color: #ffffff;
+@left-panel-border-color: rgb(229, 231, 235);
+@box-shadow-color: rgba(0, 0, 0, 0.06);
+@icon-color: #515151;
+
 .global-setting-left-panel.ant-menu-root.ant-menu-inline {
-  background: #ffffff;
-  border: 1px solid rgba(229, 231, 235, var(--tw-border-opacity));
+  background: @background-color;
+  border: 1px solid @left-panel-border-color;
   border-radius: 4px;
-  box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 1px 1px 8px @box-shadow-color;
   width: 248px;
   overflow: hidden;
   margin: 0px 4px;
@@ -26,7 +32,7 @@
   }
 
   .ant-menu-item-group:not(:first-child) {
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    border-top: 1px solid @box-shadow-color;
   }
 
   .ant-menu-item-group-title {
@@ -48,7 +54,7 @@
   .ant-menu-item:hover,
   .ant-menu-item-selected {
     .side-panel-icons {
-      color: #7147e8;
+      color: @primary-color;
     }
   }
 
@@ -63,10 +69,10 @@
   }
 
   .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
-    border-right: 1px solid rgba(229, 231, 235, var(--tw-border-opacity));
+    border-right: 1px solid @left-panel-border-color;
   }
 }
 
 .side-panel-icons {
-  color: #515151;
+  color: @icon-color;
 }
