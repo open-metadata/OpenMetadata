@@ -62,6 +62,7 @@
         "DECIMAL",
         "NUMERIC",
         "TIMESTAMP",
+        "TIMESTAMPZ",
         "TIME",
         "DATE",
         "DATETIME",
