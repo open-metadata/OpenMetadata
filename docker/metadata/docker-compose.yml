@@ -123,7 +123,7 @@ services:
       - "localhost:172.16.240.13"
     volumes:
       - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
-      - ingestion-volume-dags:/airflow/dags
+      - ingestion-volume-dags:/ingestion/examples/airflow/dags
       - ingestion-volume-tmp:/tmp
 
 networks:
