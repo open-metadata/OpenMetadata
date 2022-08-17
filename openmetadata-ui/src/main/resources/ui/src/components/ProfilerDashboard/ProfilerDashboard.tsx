@@ -79,7 +79,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     ProfilerDashboardTab.PROFILER
   );
   const [selectedTimeRange, setSelectedTimeRange] =
-    useState<keyof typeof PROFILER_FILTER_RANGE>('last7days');
+    useState<keyof typeof PROFILER_FILTER_RANGE>('latest');
   const [chartData, setChartData] = useState<ChartDataCollection>({});
   const [isLoading, setIsLoading] = useState(false);
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
