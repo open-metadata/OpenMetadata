@@ -30,7 +30,7 @@ mock_atlas_config = {
                 "messagingService": "Mysql",
                 "serviceType": "Hive",
                 "hostPort": "http://localhost:10000",
-                "entityTypes": "examples/workflows/atlas_mapping.yaml",
+                "entityTypes": "ingestion/examples/workflows/atlas_mapping.yaml",
             }
         },
         "sourceConfig": {
