@@ -28,6 +28,7 @@ import { customAttributesPath } from '../../constants/globalSettings.constants';
 import { Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { tab } = useParams<{ [key: string]: string }>();
@@ -38,6 +39,9 @@ const CustomEntityDetailV1 = () => {
   const [isError, setIsError] = useState<boolean>(false);
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
+
+  const tabAttributePath =
+    customAttributesPath[tab as keyof typeof customAttributesPath];
 
   const fetchTypeDetail = async (typeFQN: string) => {
     setIsLoading(true);
@@ -56,7 +60,7 @@ const CustomEntityDetailV1 = () => {
   };
 
   const handleAddProperty = () => {
-    const path = getAddCustomPropertyPath(tab);
+    const path = getAddCustomPropertyPath(tabAttributePath);
     history.push(path);
   };
 
@@ -99,9 +103,7 @@ const CustomEntityDetailV1 = () => {
     if (!isUndefined(tab)) {
       setActiveTab(1);
       setIsError(false);
-      fetchTypeDetail(
-        customAttributesPath[tab as keyof typeof customAttributesPath]
-      );
+      fetchTypeDetail(tabAttributePath);
     }
   }, [tab]);
 
@@ -119,7 +121,13 @@ const CustomEntityDetailV1 = () => {
 
   return (
     <div data-testid="custom-entity-container">
-      <TabsPane activeTab={activeTab} setActiveTab={onTabChange} tabs={tabs} />
+      <div className="global-settings-tabs">
+        <TabsPane
+          activeTab={activeTab}
+          setActiveTab={onTabChange}
+          tabs={tabs}
+        />
+      </div>
       <div className="tw-mt-4">
         {activeTab === 2 && (
           <div data-testid="entity-schema">

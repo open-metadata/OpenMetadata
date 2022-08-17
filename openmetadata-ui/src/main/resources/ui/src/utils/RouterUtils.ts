@@ -263,6 +263,37 @@ export const getPolicyWithFqnPath = (fqn: string) => {
   return path;
 };
 
+export const getPath = (pathName: string) => {
+  switch (pathName) {
+    case GlobalSettingOptions.TEAMS:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.TEAMS
+      );
+
+    case GlobalSettingOptions.USERS:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.USERS
+      );
+
+    case GlobalSettingOptions.ROLES:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.ROLES
+      );
+
+    case GlobalSettingOptions.POLICIES:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.POLICIES
+      );
+
+    default:
+      return getSettingPath();
+  }
+};
+
 export const getProfilerDashboardWithFqnPath = (entityTypeFQN: string) => {
   let path = ROUTES.PROFILER_DASHBOARD;
 

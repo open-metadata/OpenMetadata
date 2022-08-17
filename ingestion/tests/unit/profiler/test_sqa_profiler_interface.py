@@ -35,8 +35,6 @@ from metadata.orm_profiler.metrics.core import (
 )
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.profiler.default import get_default_metrics
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.profiler.sampler import Sampler
 
 
 class User(declarative_base()):
@@ -54,33 +52,15 @@ class SQAProfilerInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        self.sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+        self.sqa_profiler_interface = SQAProfilerInterface(sqlite_conn, table=User)
         self.table = User
 
     def test_init_interface(self):
         """Test we can instantiate our interface object correctly"""
 
-        assert self.sqa_profiler_interface._sampler == None
-        assert self.sqa_profiler_interface._runner == None
+        assert self.sqa_profiler_interface._sampler != None
+        assert self.sqa_profiler_interface._runner != None
         assert isinstance(self.sqa_profiler_interface.session, Session)
-
-    def test_create_sampler(self):
-        """Test we can create our sampler correctly"""
-        self.sqa_profiler_interface.create_sampler(
-            self.table,
-        )
-
-        assert isinstance(self.sqa_profiler_interface.sampler, Sampler)
-
-    def test_create_runner(self):
-        """Test we can create our sampler correctly"""
-
-        with raises(RuntimeError):
-            self.sqa_profiler_interface.create_runner(self.table)
-
-        self.sqa_profiler_interface.create_sampler(self.table)
-        self.sqa_profiler_interface.create_runner(self.table)
-        assert isinstance(self.sqa_profiler_interface.runner, QueryRunner)
 
     def test_private_attributes(self):
         with raises(AttributeError):
@@ -99,7 +79,7 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn, table=User)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -136,8 +116,8 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
     def test_init_interface(self):
         """Test we can instantiate our interface object correctly"""
 
-        assert self.sqa_profiler_interface._sampler == None
-        assert self.sqa_profiler_interface._runner == None
+        assert self.sqa_profiler_interface._sampler != None
+        assert self.sqa_profiler_interface._runner != None
         assert isinstance(self.sqa_profiler_interface.session, Session)
 
     def test_get_all_metrics(self):
@@ -147,9 +127,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                 MetricTypes.Table,
                 None,
                 self.table,
-                None,
-                None,
-                None,
             )
         ]
         column_metrics = []
@@ -166,9 +143,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                     MetricTypes.Static,
                     col,
                     self.table,
-                    None,
-                    None,
-                    None,
                 )
             )
             for query_metric in self.query_metrics:
@@ -178,9 +152,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                         MetricTypes.Query,
                         col,
                         self.table,
-                        None,
-                        None,
-                        None,
                     )
                 )
             for window_metric in self.window_metrics:
@@ -190,9 +161,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                         MetricTypes.Window,
                         col,
                         self.table,
-                        None,
-                        None,
-                        None,
                     )
                 )
 

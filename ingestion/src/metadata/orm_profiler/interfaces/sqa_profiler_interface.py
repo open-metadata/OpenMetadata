@@ -20,18 +20,22 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
-from sqlalchemy import Column
+from sqlalchemy import Column, inspect
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta, Session
 
-from metadata.generated.schema.entity.data.table import TableProfile
+from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.generated.schema.tests.columnTest import ColumnTestCase
-from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.validations.core import validation_enum_registry
@@ -56,14 +60,35 @@ class SQAProfilerInterface(InterfaceProtocol):
     sqlalchemy.
     """
 
-    def __init__(self, service_connection_config, thread_count: int = 5):
+    def __init__(
+        self,
+        service_connection_config,
+        metadata_config: Optional[OpenMetadataConnection] = None,
+        profiler_config: Optional[ProfilerProcessorConfig] = None,
+        workflow_profile_sample: Optional[float] = None,
+        thread_count: Optional[int] = 5,
+        table_entity: Optional[Table] = None,
+        table: Optional[DeclarativeMeta] = None,
+    ):
         """Instantiate SQA Interface object"""
-        self._sampler = None
-        self._runner = None
         self._thread_count = thread_count
-        self.service_connection_config = service_connection_config
-        self.session_factory = self._session_factory()
+        self.profiler_config = profiler_config
+        self.table_entity = table_entity
+        self._create_ometa_obj(metadata_config)
+        self.table = (
+            table or self._convert_table_to_orm_object()
+        )  # Allows SQA Interface to be used without OM server config
+        self.workflow_profile_sample = workflow_profile_sample
+        self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()
+
+        self._sampler = self.create_sampler()
+        self._runner = self.create_runner()
+
+        # Need to re-implement the logic with https://github.com/open-metadata/OpenMetadata/issues/5831
+        self._profile_sample = None
+        self._profile_sample_query = None
+        self.partition_details = None
 
     @property
     def sample(self):
@@ -85,18 +110,34 @@ class SQAProfilerInterface(InterfaceProtocol):
         """Getter methid for sampler attribute"""
         return self._sampler
 
-    def _session_factory(self):
+    @staticmethod
+    def _session_factory(service_connection_config):
         """Create thread safe session that will be automatically
         garbage collected once the application thread ends
         """
-        engine = get_connection(self.service_connection_config)
+        engine = get_connection(service_connection_config)
         return create_and_bind_thread_safe_session(engine)
 
+    def _create_ometa_obj(self, metadata_config):
+        try:
+            self._metadata = OpenMetadata(metadata_config)
+            self._metadata.health_check()
+        except Exception:
+            logger.warning(
+                "No OpenMetadata server configuration found. Running profiler interface without OM server connection"
+            )
+            self._metadata = None
+
     def _create_thread_safe_sampler(
-        self, session, table, profile_sample, partition_details, profile_sample_query
+        self,
+        session,
+        table,
+        profile_sample=None,
+        partition_details=None,
+        profile_sample_query=None,
     ):
         """Create thread safe runner"""
-        if not hasattr(thread_local, "runner"):
+        if not hasattr(thread_local, "sampler"):
             thread_local.sampler = Sampler(
                 session=session,
                 table=table,
@@ -107,7 +148,12 @@ class SQAProfilerInterface(InterfaceProtocol):
         return thread_local.sampler
 
     def _create_thread_safe_runner(
-        self, session, table, sample, partition_details, profile_sample_query
+        self,
+        session,
+        table,
+        sample=None,
+        partition_details=None,
+        profile_sample_query=None,
     ):
         """Create thread safe runner"""
         if not hasattr(thread_local, "runner"):
@@ -120,6 +166,14 @@ class SQAProfilerInterface(InterfaceProtocol):
             )
         return thread_local.runner
 
+    def _convert_table_to_orm_object(self) -> DeclarativeMeta:
+        """Given a table entity return a SQA ORM object"""
+        return ometa_to_orm(self.table_entity, self._metadata)
+
+    def get_columns(self) -> Column:
+        """get columns from an orm object"""
+        return inspect(self.table).c
+
     def compute_metrics_in_thread(
         self,
         metric_funcs,
@@ -130,9 +184,6 @@ class SQAProfilerInterface(InterfaceProtocol):
             metric_type,
             column,
             table,
-            profile_sample,
-            partition_details,
-            profile_sample_query,
         ) = metric_funcs
         logger.debug(
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
@@ -140,11 +191,14 @@ class SQAProfilerInterface(InterfaceProtocol):
         Session = self.session_factory
         session = Session()
         sampler = self._create_thread_safe_sampler(
-            session, table, profile_sample, partition_details, profile_sample_query
+            session,
+            table,
         )
         sample = sampler.random_sample()
         runner = self._create_thread_safe_runner(
-            session, table, sample, partition_details, profile_sample_query
+            session,
+            table,
+            sample,
         )
 
         row = compute_metrics_registry.registry[metric_type.value](
@@ -210,135 +264,28 @@ class SQAProfilerInterface(InterfaceProtocol):
             )
         return self.sampler.fetch_sample_data()
 
-    def create_sampler(
-        self,
-        table: DeclarativeMeta,
-        profile_sample: Optional[float] = None,
-        partition_details: Optional[dict] = None,
-        profile_sample_query: Optional[str] = None,
-    ) -> None:
-        """Create sampler instance
-
-        Args:
-            table: sqlalchemy declarative table of the database table,
-            profile_sample: percentage to use for the table sample (between 0-100)
-            partition_details: details about the table partition
-            profile_sample_query: custom query used for table sampling
-        """
-        self._sampler = Sampler(
+    def create_sampler(self) -> Sampler:
+        """Create sampler instance"""
+        return Sampler(
             session=self.session,
-            table=table,
-            profile_sample=profile_sample,
-            partition_details=partition_details,
-            profile_sample_query=profile_sample_query,
+            table=self.table,
+            profile_sample=self.workflow_profile_sample,
+            partition_details=None,
+            profile_sample_query=None,
         )
 
-    def create_runner(
-        self,
-        table: DeclarativeMeta,
-        partition_details: Optional[dict] = None,
-        profile_sample_query: Optional[str] = None,
-    ) -> None:
-        """Create a QueryRunner Instance
+    def create_runner(self) -> None:
+        """Create a QueryRunner Instance"""
 
-        Args:
-            table: sqlalchemy declarative table of the database table,
-            profile_sample: percentage to use for the table sample (between 0-100)
-            partition_details: details about the table partition
-            profile_sample_query: custom query used for table sampling
-        """
-
-        self._runner = cls_timeout(TEN_MIN)(
+        return cls_timeout(TEN_MIN)(
             QueryRunner(
                 session=self.session,
-                table=table,
+                table=self.table(),
                 sample=self.sample,
-                partition_details=partition_details,
-                profile_sample_query=profile_sample_query,
+                partition_details=None,
+                profile_sample_query=None,
             )
         )
-
-    def get_table_metrics(
-        self,
-        metrics: List[Metrics],
-    ) -> Dict[str, Union[str, int]]:
-        """Given a list of metrics, compute the given results
-        and returns the values
-
-        Args:
-            metrics: list of metrics to compute
-        Returns:
-            dictionnary of results
-        """
-        try:
-            row = self.runner.select_first_from_table(
-                *[metric().fn() for metric in metrics]
-            )
-
-            if row:
-                return dict(row)
-
-        except Exception as err:
-            logger.error(err)
-            self.session.rollback()
-
-    def get_static_metrics(
-        self,
-        column: Column,
-        metrics: List[Metrics],
-    ) -> Dict[str, Union[str, int]]:
-        """Given a list of metrics, compute the given results
-        and returns the values
-
-        Args:
-            column: the column to compute the metrics against
-            metrics: list of metrics to compute
-        Returns:
-            dictionnary of results
-        """
-        try:
-            row = self.runner.select_first_from_sample(
-                *[
-                    metric(column).fn()
-                    for metric in metrics
-                    if not metric.is_window_metric()
-                ]
-            )
-            return dict(row)
-        except Exception as err:
-            logger.error(err)
-            self.session.rollback()
-
-    def get_query_metrics(
-        self,
-        column: Column,
-        metric: Metrics,
-    ) -> Optional[Dict[str, Union[str, int]]]:
-        """Given a list of metrics, compute the given results
-        and returns the values
-
-        Args:
-            column: the column to compute the metrics against
-            metrics: list of metrics to compute
-        Returns:
-            dictionnary of results
-        """
-        try:
-            col_metric = metric(column)
-            metric_query = col_metric.query(sample=self.sample, session=self.session)
-            if not metric_query:
-                return None
-            if col_metric.metric_type == dict:
-                results = self.runner.select_all_from_query(metric_query)
-                data = {k: [result[k] for result in results] for k in dict(results[0])}
-                return {metric.name(): data}
-
-            else:
-                row = self.runner.select_first_from_query(metric_query)
-                return dict(row)
-        except Exception as err:
-            logger.error(err)
-            self.session.rollback()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -358,35 +305,11 @@ class SQAProfilerInterface(InterfaceProtocol):
             logger.error(err)
             self.session.rollback()
 
-    def get_window_metrics(
-        self,
-        column: Column,
-        metric: Metrics,
-    ) -> Dict[str, Union[str, int]]:
-        """Given a list of metrics, compute the given results
-        and returns the values
-
-        Args:
-            column: the column to compute the metrics against
-            metrics: list of metrics to compute
-        Returns:
-            dictionnary of results
-        """
-        try:
-            row = self.runner.select_first_from_sample(metric(column).fn())
-            if not isinstance(row, Row):
-                return {metric.name(): row}
-            return dict(row)
-        except Exception as err:
-            logger.error(err)
-            self.session.rollback()
-
     def run_test_case(
         self,
         test_case: TestCase,
         test_definition: TestDefinition,
         table_profile: TableProfile,
-        orm_table: DeclarativeMeta,
         profile_sample: float,
     ) -> Optional[TestCaseResult]:
         """Run table tests where platformsTest=OpenMetadata
@@ -404,54 +327,8 @@ class SQAProfilerInterface(InterfaceProtocol):
             table_profile=table_profile,
             execution_date=datetime.now(),
             session=self.session,
-            table=orm_table,
+            table=self.table,
             profile_sample=profile_sample,
-        )
-
-    def run_table_test(
-        self,
-        test_case: TableTestCase,
-        table_profile: TableProfile,
-        orm_table: DeclarativeMeta,
-        profile_sample: float,
-    ) -> Optional[TestCaseResult]:
-        """Run table tests
-
-        Args:
-            table_test_type: test type to be ran
-            table_profile: table profile
-            table: SQA table,
-            profile_sample: sample for the profile
-        """
-        return validation_enum_registry.registry[test_case.tableTestType.value](
-            test_case.config,
-            table_profile=table_profile,
-            execution_date=datetime.now(),
-            session=self.session,
-            table=orm_table,
-            profile_sample=profile_sample,
-        )
-
-    def run_column_test(
-        self,
-        test_case: ColumnTestCase,
-        col_profile: TableProfile,
-        orm_table: DeclarativeMeta,
-    ) -> Optional[TestCaseResult]:
-        """Run table tests
-
-        Args:
-            table_test_type: test type to be ran
-            table_profile: table profile
-            table: SQA table,
-            profile_sample: sample for the profile
-        """
-        return validation_enum_registry.registry[test_case.columnTestType.value](
-            test_case.config,
-            col_profile=col_profile,
-            execution_date=datetime.now(),
-            table=orm_table,
-            runner=self.runner,
         )
 
 

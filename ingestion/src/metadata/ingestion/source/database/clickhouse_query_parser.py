@@ -62,4 +62,5 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             filters=self.filters,
+            result_limit=self.source_config.resultLimit,
         )

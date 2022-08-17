@@ -26,6 +26,7 @@ export interface ConfirmState {
   state: boolean;
   threadId: string | undefined;
   postId: string | undefined;
+  isThread: boolean;
 }
 export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   feed: Post;

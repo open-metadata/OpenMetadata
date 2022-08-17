@@ -29,6 +29,7 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
+          LIMIT {result_limit}
           
   ),
   full_queries AS (
@@ -352,7 +353,7 @@ VERTICA_VIEW_DEFINITION = textwrap.dedent(
 
 MSSQL_SQL_STATEMENT = textwrap.dedent(
     """
-      SELECT
+      SELECT TOP {result_limit}
         db.NAME database_name,
         t.text query_text,
         s.last_execution_time start_time,
@@ -396,6 +397,7 @@ CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
         and query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
         {filters}
         and (`type`='QueryFinish' or `type`='QueryStart')
+        LIMIT {result_limit}
 """
 )
 
@@ -445,6 +447,7 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
   AND query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
   AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  LIMIT {result_limit}
 """
 )
 

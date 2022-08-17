@@ -15,10 +15,15 @@ package org.openmetadata.catalog.secrets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.AUTH_0;
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.AZURE;
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC;
@@ -35,18 +40,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
 import org.openmetadata.catalog.entity.services.ServiceType;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.fixtures.ConfigurationFixtures;
+import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.services.connections.mlModel.SklearnConnection;
+import org.openmetadata.catalog.type.EntityReference;
 
 @ExtendWith(MockitoExtension.class)
 public class LocalSecretsManagerTest {
@@ -123,6 +134,42 @@ public class LocalSecretsManagerTest {
   @Test
   void testReturnsExpectedSecretManagerProvider() {
     assertEquals(OpenMetadataServerConnection.SecretsManagerProvider.LOCAL, secretsManager.getSecretsManagerProvider());
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
+  public void testEncryptAndDecryptDbtConfigSource(
+      Object config,
+      EntityReference service,
+      Class<? extends EntityInterface> serviceClass,
+      PipelineType pipelineType,
+      boolean mustBeEncrypted) {
+    SourceConfig sourceConfigMock = mock(SourceConfig.class);
+    IngestionPipeline mockedIngestionPipeline = mock(IngestionPipeline.class);
+
+    when(mockedIngestionPipeline.getService()).thenReturn(service);
+    lenient().when(mockedIngestionPipeline.getPipelineType()).thenReturn(pipelineType);
+
+    if (mustBeEncrypted) {
+      when(mockedIngestionPipeline.getSourceConfig()).thenReturn(sourceConfigMock);
+      when(sourceConfigMock.getConfig()).thenReturn(config);
+    }
+
+    secretsManager.encryptOrDecryptDbtConfigSource(mockedIngestionPipeline, true);
+
+    secretsManager.encryptOrDecryptDbtConfigSource(mockedIngestionPipeline, false);
+
+    if (!mustBeEncrypted) {
+      verify(mockedIngestionPipeline, never()).setSourceConfig(any());
+      verify(sourceConfigMock, never()).setConfig(any());
+    } else {
+      ArgumentCaptor<Object> configCaptor = ArgumentCaptor.forClass(Object.class);
+      verify(mockedIngestionPipeline, times(4)).getSourceConfig();
+      verify(sourceConfigMock, times(2)).setConfig(configCaptor.capture());
+      assertEquals(configCaptor.getAllValues().get(0), config);
+      assertEquals(configCaptor.getAllValues().get(1), config);
+    }
   }
 
   @ParameterizedTest

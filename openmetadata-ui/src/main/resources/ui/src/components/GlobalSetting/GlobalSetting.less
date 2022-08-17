@@ -11,30 +11,68 @@
  *  limitations under the License.
  */
 
-.global-setting-left-panel.ant-menu-inline {
-  box-shadow: 0px 2px 8px 0px rgba(0, 0, 0, 0.15);
-  width: 290px;
-  padding: 16px 0;
+@primary-color: #7147e8;
+@background-color: #ffffff;
+@left-panel-border-color: rgb(229, 231, 235);
+@box-shadow-color: rgba(0, 0, 0, 0.06);
+@icon-color: #515151;
+
+.global-setting-left-panel.ant-menu-root.ant-menu-inline {
+  background: @background-color;
+  border: 1px solid @left-panel-border-color;
+  border-radius: 4px;
+  box-shadow: 1px 1px 8px @box-shadow-color;
+  width: 248px;
+  overflow: hidden;
+  margin: 0px 4px;
+
   .ant-menu-item::after {
     left: 0;
     right: unset;
   }
+
   .ant-menu-item-group:not(:first-child) {
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    border-top: 1px solid @box-shadow-color;
   }
+
   .ant-menu-item-group-title {
     font-size: 12px;
+    padding: 12px 16px;
   }
+
   .ant-menu-item-icon + span {
     margin-left: 16px;
   }
+
   .ant-menu-item {
     height: 30px;
     line-height: 30px;
     margin-top: 2px;
     padding: 0 16px !important;
   }
+
+  .ant-menu-item:hover,
+  .ant-menu-item-selected {
+    .side-panel-icons {
+      color: @primary-color;
+    }
+  }
+
+  .ant-menu-item-selected {
+    .ant-menu-title-content {
+      font-weight: 600;
+    }
+  }
+
   .ant-menu-item:not(:last-child) {
     margin-bottom: 0px;
   }
+
+  .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
+    border-right: 1px solid @left-panel-border-color;
+  }
+}
+
+.side-panel-icons {
+  color: @icon-color;
 }

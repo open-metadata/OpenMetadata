@@ -421,6 +421,24 @@ const ConfigureIngestion = ({
   const getMetadataFields = () => {
     return (
       <>
+        <Field>
+          <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+            Name
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Name that identifies this pipeline instance uniquely.
+          </p>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="name"
+            id="name"
+            name="name"
+            type="text"
+            value={ingestionName}
+            onChange={(e) => handleIngestionName(e.target.value)}
+          />
+          {getSeparator('')}
+        </Field>
         <div>{getMetadataFilterPatternField()}</div>
       </>
     );

@@ -116,13 +116,13 @@ const ManageButton: FC<Props> = ({
         visible={showActions}
         onVisibleChange={setShowActions}>
         <Button
-          className="tw-rounded tw-flex tw-border tw-border-primary"
+          className="tw-rounded tw-flex tw-justify-center tw-w-6 manage-dropdown-button"
           data-testid="manage-button"
           size="small"
           type="default"
           onClick={() => setShowActions(true)}>
           <FontAwesomeIcon
-            className="tw-text-primary tw-self-center"
+            className="tw-text-primary tw-self-center manage-dropdown-icon"
             icon="ellipsis-vertical"
           />
         </Button>

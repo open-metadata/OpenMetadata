@@ -42,6 +42,45 @@
       "description": "Serializer class for value",
       "default": "org.apache.kafka.common.serialization.StringSerializer",
       "type": "string"
+    },
+    "securityProtocol": {
+      "description": "Kafka security protocol config",
+      "default": "PLAINTEXT",
+      "type": "string",
+      "enum": ["PLAINTEXT", "SSL"],
+      "javaEnums": [
+        {
+          "name": "PLAINTEXT"
+        },
+        {
+          "name": "SSL"
+        }
+      ]
+    },
+    "SSLProtocol": {
+      "description": "Kafka SSL protocol config",
+      "default": "TLSv1.2",
+      "type": "string"
+    },
+    "SSLTrustStoreLocation": {
+      "description": "Kafka SSL truststore location",
+      "type": "string"
+    },
+    "SSLTrustStorePassword": {
+      "description": "Kafka SSL truststore password",
+      "type": "string"
+    },
+    "SSLKeystoreLocation": {
+      "description": "Kafka SSL keystore location",
+      "type": "string"
+    },
+    "SSLKeystorePassword": {
+      "description": "Kafka SSL keystore password",
+      "type": "string"
+    },
+    "SSLKeyPassword": {
+      "description": "Kafka SSL key password",
+      "type": "string"
     }
   },
   "required": ["topics"],

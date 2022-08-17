@@ -12,11 +12,13 @@
 Airflow source to extract metadata from OM UI
 """
 import traceback
+from datetime import datetime
 from typing import Any, Iterable, List, Optional, cast
 
-from airflow.models import BaseOperator, DagRun
+from airflow.models import BaseOperator, DagRun, TaskInstance
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -54,6 +56,35 @@ STATUS_MAP = {
     "queued": StatusType.Pending.value,
 }
 
+IGNORE_DAG_RUN_COL = {"log_template_id"}
+
+
+class OMSerializedDagDetails(BaseModel):
+    """
+    Custom model we get from the Airflow db
+    as a scoped SELECT from SerializedDagModel
+    """
+
+    dag_id: str
+    data: Any
+    fileloc: str
+
+    # We don't have a validator for SerializedDag
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class OMTaskInstance(BaseModel):
+    """
+    Custom model we get from the Airflow db
+    as a scoped SELECT from TaskInstance
+    """
+
+    task_id: str
+    state: str
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+
 
 class AirflowSource(PipelineServiceSource):
     """
@@ -87,29 +118,81 @@ class AirflowSource(PipelineServiceSource):
         Return the SQLAlchemy session from the engine
         """
         if not self._session:
-            self._session = create_and_bind_session(self.engine)
+            self._session = create_and_bind_session(self.connection)
 
         return self._session
 
-    def get_pipeline_status(self, dag_id: str) -> DagRun:
-        dag_run_list: DagRun = (
-            self.session.query(DagRun)
+    def get_pipeline_status(self, dag_id: str) -> List[DagRun]:
+
+        dag_run_list = (
+            self.session.query(
+                *[c for c in DagRun.__table__.c if c.name not in IGNORE_DAG_RUN_COL]
+            )
             .filter(DagRun.dag_id == dag_id)
             .order_by(DagRun.execution_date.desc())
             .limit(self.config.serviceConnection.__root__.config.numberOfStatus)
+            .all()
         )
-        return dag_run_list
+
+        dag_run_dict = [dict(elem) for elem in dag_run_list]
+
+        # Build DagRun manually to not fall into new/old columns from
+        # different Airflow versions
+        return [
+            DagRun(
+                dag_id=elem.get("dag_id"),
+                run_id=elem.get("run_id"),
+                queued_at=elem.get("queued_at"),
+                execution_date=elem.get("execution_date"),
+                start_date=elem.get("start_date"),
+                state=elem.get("state"),
+            )
+            for elem in dag_run_dict
+        ]
+
+    def get_task_instances(self, dag_id: str, run_id: str) -> List[OMTaskInstance]:
+        """
+        We are building our own scoped TaskInstance
+        class to only focus on core properties required
+        by the metadata ingestion.
+
+        This makes the versioning more flexible on which Airflow
+        sources we support.
+        """
+        task_instance_list = (
+            self.session.query(
+                TaskInstance.task_id,
+                TaskInstance.state,
+                TaskInstance.start_date,
+                TaskInstance.end_date,
+                TaskInstance.run_id,
+            )
+            .filter(TaskInstance.dag_id == dag_id, TaskInstance.run_id == run_id)
+            .all()
+        )
+
+        task_instance_dict = [dict(elem) for elem in task_instance_list]
+
+        return [
+            OMTaskInstance(
+                task_id=elem.get("task_id"),
+                state=elem.get("state"),
+                start_date=elem.get("start_date"),
+                end_date=elem.get("end_date"),
+            )
+            for elem in task_instance_dict
+        ]
 
     def yield_pipeline_status(
         self, pipeline_details: SerializedDAG
     ) -> OMetaPipelineStatus:
         dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
 
-        for dag in dag_run_list:
-            if isinstance(dag.task_instances, Iterable):
-                tasks = dag.task_instances
-            else:
-                tasks = [dag.task_instances]
+        for dag_run in dag_run_list:
+            tasks = self.get_task_instances(
+                dag_id=dag_run.dag_id,
+                run_id=dag_run.run_id,
+            )
 
             task_statuses = [
                 TaskStatus(
@@ -121,30 +204,38 @@ class AirflowSource(PipelineServiceSource):
                     endTime=datetime_to_ts(
                         task.end_date
                     ),  # Might be None for running tasks
-                    logLink=task.log_url,
-                )
+                )  # Log link might not be present in all Airflow versions
                 for task in tasks
             ]
 
             pipeline_status = PipelineStatus(
                 taskStatus=task_statuses,
-                executionStatus=STATUS_MAP.get(dag._state, StatusType.Pending.value),
-                timestamp=dag.execution_date.timestamp(),
+                executionStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
+                timestamp=dag_run.execution_date.timestamp(),
             )
             yield OMetaPipelineStatus(
                 pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
                 pipeline_status=pipeline_status,
             )
 
-    def get_pipelines_list(self) -> Iterable[SerializedDagModel]:
+    def get_pipelines_list(self) -> Iterable[OMSerializedDagDetails]:
         """
         List all DAGs from the metadata db.
 
         We are using the SerializedDagModel as it helps
         us retrieve all the task and inlets/outlets information
         """
-        for serialized_dag in self.session.query(SerializedDagModel).all():
-            yield serialized_dag
+        for serialized_dag in self.session.query(
+            SerializedDagModel.dag_id,
+            SerializedDagModel._data,
+            SerializedDagModel.fileloc,
+        ).all():
+
+            yield OMSerializedDagDetails(
+                dag_id=serialized_dag[0],
+                data=serialized_dag[1],
+                fileloc=serialized_dag[2],
+            )
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
         """
@@ -173,15 +264,29 @@ class AirflowSource(PipelineServiceSource):
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
 
+    @staticmethod
+    def _build_dag(data: Any) -> SerializedDAG:
+        """
+        Use the queried data to fetch the DAG
+        :param data: from SQA query
+        :return: SerializedDAG
+        """
+
+        if isinstance(data, dict):
+            return SerializedDAG.from_dict(data)
+
+        return SerializedDAG.from_json(data)
+
     def yield_pipeline(
-        self, pipeline_details: SerializedDagModel
+        self, pipeline_details: OMSerializedDagDetails
     ) -> Iterable[CreatePipelineRequest]:
         """
         Convert a DAG into a Pipeline Entity
-        :param serialized_dag: SerializedDAG from airflow metadata DB
+        :param pipeline_details: SerializedDAG from airflow metadata DB
         :return: Create Pipeline request with tasks
         """
-        dag: SerializedDAG = pipeline_details.dag
+
+        dag: SerializedDAG = self._build_dag(pipeline_details.data)
         yield CreatePipelineRequest(
             name=pipeline_details.dag_id,
             description=dag.description,
@@ -242,14 +347,14 @@ class AirflowSource(PipelineServiceSource):
             return None
 
     def yield_pipeline_lineage_details(
-        self, pipeline_details: SerializedDagModel
+        self, pipeline_details: OMSerializedDagDetails
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Parse xlets and add lineage between Pipelines and Tables
         :param pipeline_details: SerializedDAG from airflow metadata DB
         :return: Lineage from inlets and outlets
         """
-        dag: SerializedDAG = pipeline_details.dag
+        dag: SerializedDAG = self._build_dag(pipeline_details.data)
 
         for task in dag.tasks:
             for table_fqn in self.get_inlets(task) or []:
@@ -294,6 +399,3 @@ class AirflowSource(PipelineServiceSource):
 
     def close(self):
         self.session.close()
-
-    def test_connection(self) -> None:
-        test_connection(self.engine)

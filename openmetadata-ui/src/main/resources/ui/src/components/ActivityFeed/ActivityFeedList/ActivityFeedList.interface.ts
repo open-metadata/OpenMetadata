@@ -29,7 +29,11 @@ export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   refreshFeedCount?: number;
   onRefreshFeeds?: () => void;
   postFeedHandler?: (value: string, id: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
+  deletePostHandler?: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   onFeedFiltersUpdate?: (feedType: FeedFilter, threadType?: ThreadType) => void;
 }

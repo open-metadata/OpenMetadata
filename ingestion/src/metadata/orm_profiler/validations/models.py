@@ -20,6 +20,17 @@ from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 
 
+class TableConfig(ConfigModel):
+    """table profile config"""
+
+    sample: Optional[float] = None
+    partition_field: Optional[str] = None
+    partition_query_duration: Optional[int] = 1
+    partition_values: Optional[List] = None
+    sample_query: Optional[str] = None
+    clear_sample_query_from_entity: bool = False
+
+
 class TestCase(ConfigModel):
     """
     cli testcases
@@ -30,30 +41,7 @@ class TestCase(ConfigModel):
     testDefinitionName: str
     fullyQualifiedName: FullyQualifiedEntityName
     parameterValues: List[TestCaseParameterValue]
-
-
-class TestDef(ConfigModel):
-    """
-    Table test definition
-
-    We expect:
-    - table name
-    - Profile sample
-    - List of table tests
-    - List of column tests
-
-    We will run a PUT using the info given in the JSON
-    workflow to update the Table definition based
-    on the incoming properties.
-    """
-
-    testCase: Optional[List[TestCase]] = None
-    profile_sample: Optional[float] = None
-    partition_field: Optional[str] = None
-    partition_query_duration: Optional[int] = 1
-    partition_values: Optional[List] = None
-    profile_sample_query: Optional[str] = None
-    clear_sample_query_from_entity: bool = False
+    tableProfileConfig: Optional[TableConfig] = None
 
 
 class TestSuite(ConfigModel):

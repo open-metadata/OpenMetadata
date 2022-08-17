@@ -18,21 +18,17 @@ import { useHistory } from 'react-router-dom';
 import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
 import { Policy } from '../../../generated/entity/policies/policy';
-import { getRoleWithFqnPath, getSettingPath } from '../../../utils/RouterUtils';
+import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
+const rolesPath = getPath(GlobalSettingOptions.ROLES);
+
 const breadcrumb = [
   {
     name: 'Roles',
-    url: getSettingPath(
-      GlobalSettingsMenuCategory.ACCESS,
-      GlobalSettingOptions.ROLES
-    ),
+    url: rolesPath,
   },
   {
     name: 'Add New Role',
@@ -58,12 +54,7 @@ const AddRolePage = () => {
   };
 
   const handleCancel = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.ACCESS,
-        GlobalSettingOptions.ROLES
-      )
-    );
+    history.push(rolesPath);
   };
 
   const handleSumbit = async () => {
