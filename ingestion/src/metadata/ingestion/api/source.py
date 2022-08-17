@@ -52,7 +52,9 @@ class SourceStatus(BaseModel, Status):
         self.filtered.append({key: reason})
 
     def calculate_success(self) -> float:
-        source_sucess = len(self.success)
+        source_sucess = max(
+            len(self.success), 1
+        )  # To avoid ZeroDivisionError using minimum value as 1
         source_failed = len(self.failures)
         return round(source_sucess * 100 / (source_sucess + source_failed), 2)
 
