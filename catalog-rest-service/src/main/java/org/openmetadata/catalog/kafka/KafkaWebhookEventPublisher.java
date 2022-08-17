@@ -3,9 +3,11 @@ package org.openmetadata.catalog.kafka;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.Properties;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.config.SslConfigs;
 import org.openmetadata.catalog.events.WebhookPublisher;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.events.EventResource;
@@ -23,6 +25,29 @@ public class KafkaWebhookEventPublisher extends WebhookPublisher {
   public KafkaWebhookEventPublisher(Webhook webhook, CollectionDAO dao) {
     super(webhook, dao);
     this.webhook = webhook;
+    if (webhook.getKafkaProperties().getSecurityProtocol().equals(KafkaEventConfiguration.SecurityProtocol.SSL)) {
+      // configuration for SSL Encryption
+      if (webhook.getKafkaProperties().getSSLProtocol() != null
+          && webhook.getKafkaProperties().getSSLTrustStoreLocation() != null
+          && webhook.getKafkaProperties().getSSLTrustStorePassword() != null
+          && webhook.getKafkaProperties().getSSLKeystoreLocation() != null
+          && webhook.getKafkaProperties().getSSLKeystorePassword() != null
+          && webhook.getKafkaProperties().getSSLKeyPassword() != null) {
+        properties.put(
+            CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, webhook.getKafkaProperties().getSecurityProtocol());
+        properties.put(SslConfigs.SSL_PROTOCOL_CONFIG, webhook.getKafkaProperties().getSSLProtocol());
+        properties.put(
+            SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, webhook.getKafkaProperties().getSSLTrustStoreLocation());
+        properties.put(
+            SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, webhook.getKafkaProperties().getSSLTrustStorePassword());
+        // configuration for SSL Authentication
+        properties.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, webhook.getKafkaProperties().getSSLKeystoreLocation());
+        properties.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, webhook.getKafkaProperties().getSSLKeystorePassword());
+        properties.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, webhook.getKafkaProperties().getSSLKeyPassword());
+      } else {
+        LOG.info("The SSL could not be configured as the required properties are not defined!");
+      }
+    }
     properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, webhook.getEndpoint().toString());
     properties.put(ProducerConfig.ACKS_CONFIG, webhook.getKafkaProperties().getAcks());
     properties.put(ProducerConfig.RETRIES_CONFIG, webhook.getKafkaProperties().getRetries());
