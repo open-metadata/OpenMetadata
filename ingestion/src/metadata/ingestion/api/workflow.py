@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import importlib
+import time
 from typing import Type, TypeVar
 
 import click
@@ -37,6 +38,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 
 logger = ingestion_logger()
@@ -234,6 +236,19 @@ class Workflow:
             click.secho("Bulk Sink Status:", bold=True)
             click.echo(self.bulk_sink.get_status().as_string())
             click.echo()
+
+        if self.source.get_status().source_start_time:
+            click.secho(
+                f"Workflow finished in time {pretty_print_time_duration(time.time()-self.source.get_status().source_start_time)} ",
+                fg="bright_cyan",
+                bold=True,
+            )
+
+            click.secho(
+                f"Success % : {self.source.get_status().calculate_success()}",
+                fg="bright_cyan",
+                bold=True,
+            )
 
         if self.source.get_status().failures or (
             hasattr(self, "sink") and self.sink.get_status().failures
