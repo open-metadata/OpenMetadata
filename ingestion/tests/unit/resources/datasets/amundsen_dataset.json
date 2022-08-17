@@ -1,0 +1,190 @@
+[
+    {
+        "database": "delta",
+        "cluster": "gold",
+        "schema": "test_schema",
+        "schema_description": null,
+        "name": "delta_test_table",
+        "key": "delta://gold.test_schema/delta_test_table",
+        "description": "test table for delta",
+        "last_updated_timestamp": null,
+        "column_names": [
+            "col2",
+            "col1"
+        ],
+        "column_descriptions": [
+            "col2 nested delta column",
+            "col1 description"
+        ],
+        "column_types": [
+            "struct<col3:string,col4:bigint>",
+            "bigint"
+        ],
+        "total_usage": 0,
+        "unique_usage": 0,
+        "tags": [
+            "delta"
+        ],
+        "badges": [],
+        "programmatic_descriptions": []
+    },
+    {
+        "database": "hive",
+        "cluster": "gold",
+        "schema": "test_schema",
+        "schema_description": "test schema description",
+        "name": "test's_table4",
+        "key": "hive://gold.test_schema/test's_table4",
+        "description": "4th test",
+        "last_updated_timestamp": null,
+        "column_names": [],
+        "column_descriptions": [],
+        "column_types": [],
+        "total_usage": 0,
+        "unique_usage": 0,
+        "tags": [
+            "needs_documentation"
+        ],
+        "badges": [],
+        "programmatic_descriptions": []
+    },
+    {
+        "database": "hive",
+        "cluster": "gold",
+        "schema": "test_schema",
+        "schema_description": "test schema description",
+        "name": "test_table1",
+        "key": "hive://gold.test_schema/test_table1",
+        "description": "1st test table",
+        "last_updated_timestamp": 1570230473,
+        "column_names": [
+            "col1",
+            "col2",
+            "col3",
+            "col4",
+            "col5"
+        ],
+        "column_descriptions": [
+            "col1 description",
+            "col2 description",
+            "col3 description",
+            "col4 description",
+            "col5 description"
+        ],
+        "column_types": [
+            "string",
+            "string",
+            "string",
+            "string",
+            "float"
+        ],
+        "total_usage": 1330,
+        "unique_usage": 12,
+        "tags": [
+            "tag2",
+            "tag1",
+            "expensive",
+            "low_quality"
+        ],
+        "badges": [
+            "beta"
+        ],
+        "programmatic_descriptions": [
+            "**Size**: 50T\n\n**Monthly Cost**: $5000",
+            "### Quality Report:\n--- \nIpsus enom. Ipsus enom ipsus lorenum.\n---\n[![Build Status](https://api.travis-ci.com/amundsen-io/amundsendatabuilder.svg?branch=master)](https://travis-ci.com/amundsen-io/amundsendatabuilder)"
+        ]
+    },
+    {
+        "database": "dynamo",
+        "cluster": "gold",
+        "schema": "test_schema",
+        "schema_description": null,
+        "name": "test_table2",
+        "key": "dynamo://gold.test_schema/test_table2",
+        "description": "2nd test table",
+        "last_updated_timestamp": 1070230473,
+        "column_names": [
+            "col4",
+            "col3",
+            "col2",
+            "col1"
+        ],
+        "column_descriptions": [
+            "col4 description",
+            "col3 description",
+            "col2 description",
+            "col1 description"
+        ],
+        "column_types": [
+            "int",
+            "string",
+            "string",
+            "string"
+        ],
+        "total_usage": 520,
+        "unique_usage": 3,
+        "tags": [
+            "cheap",
+            "recommended"
+        ],
+        "badges": [
+            "npi",
+            "json"
+        ],
+        "programmatic_descriptions": [
+            "**Size**: 1T\n\n**Monthly Cost**: $50"
+        ]
+    },
+    {
+        "database": "hive",
+        "cluster": "gold",
+        "schema": "test_schema",
+        "schema_description": "test schema description",
+        "name": "test_table3",
+        "key": "hive://gold.test_schema/test_table3",
+        "description": "3rd test",
+        "last_updated_timestamp": null,
+        "column_names": [
+            "col1"
+        ],
+        "column_descriptions": [
+            "col1 description"
+        ],
+        "column_types": [
+            "int"
+        ],
+        "total_usage": 0,
+        "unique_usage": 0,
+        "tags": [
+            "needs_documentation"
+        ],
+        "badges": [],
+        "programmatic_descriptions": []
+    },
+    {
+        "database": "hive",
+        "cluster": "gold",
+        "schema": "test_schema",
+        "schema_description": "test schema description",
+        "name": "test_view1",
+        "key": "hive://gold.test_schema/test_view1",
+        "description": "1st test view",
+        "last_updated_timestamp": null,
+        "column_names": [
+            "col1"
+        ],
+        "column_descriptions": [
+            "view col description"
+        ],
+        "column_types": [
+            "int"
+        ],
+        "total_usage": 0,
+        "unique_usage": 0,
+        "tags": [
+            "tag1"
+        ],
+        "badges": [],
+        "programmatic_descriptions": []
+    }
+]
