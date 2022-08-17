@@ -15,47 +15,37 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
 services:
-  mysql:
-    build:
-      context: ../../.
-      dockerfile: docker/local-metadata/Dockerfile_mysql
-    container_name: openmetadata_mysql
+  postgressql:
+    container_name: openmetadata_postgressql
+    image: openmetadata/postgressql:0.11.4
     restart: always
-    depends_on:
-      - elasticsearch
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
     expose:
-      - 3306
-    ports:
-      - 3306:3306
+      - 5432
     networks:
-      local_app_net:
-        ipv4_address: 172.16.239.10
+      app_net:
+        ipv4_address: 172.16.240.10
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
     container_name: openmetadata_elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
 
     networks:
-      local_app_net:
-        ipv4_address: 172.16.239.11
-    expose:
-      - 9200
-      - 9300
+      app_net:
+        ipv4_address: 172.16.240.11
     ports:
       - 9200:9200
       - 9300:9300
 
-
   openmetadata-server:
-    build:
-      context: ../../.
-      dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
+    restart: always
+    image: openmetadata/server:0.11.4
     environment:
       ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
@@ -99,55 +89,63 @@ services:
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+      #Database configuration for Postgressql
+      DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
+      DB_SCHEME: ${DB_SCHEME:-postgresql}
+      DB_USE_SSL: ${DB_USE_SSL:-false}
+      DB_USER: ${DB_USER:-openmetadata_user}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      OM_DATABASE: ${OM_DATABASE:-openmetadata_db} 
     expose:
       - 8585
       - 8586
       - 9200
       - 9300
-      - 3306
+      - 5432
     ports:
       - 8585:8585
       - 8586:8586
     depends_on:
-      - elasticsearch
-      - mysql
-      - ingestion
+      - postgressql
     networks:
-      local_app_net:
-        ipv4_address: 172.16.239.13
+      app_net:
+        ipv4_address: 172.16.240.13
     extra_hosts:
-      - "localhost:172.16.239.10"
-      - "elasticsearch:172.16.239.11"
+      - "postgres:172.16.240.10"
+      - "elasticsearch:172.16.240.11"
 
   ingestion:
-    build:
-      context: ../../.
-      dockerfile: ingestion/Dockerfile_local
-      args:
-        INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
+    image: openmetadata/ingestion:0.11.4
     depends_on:
-      - mysql
-      - elasticsearch
+      - potgressql
+    environment:
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
+      DB_USER: ${DB_USER:-airflow_user}
+      DB_SCHEME: ${DB_SCHEME:-postgresql+psycopg2}
+      DB_PASSWORD: ${DB_PASSWORD:-airflow_pass}
     expose:
       - 8080
     ports:
       - 8080:8080
     networks:
-      - local_app_net
+      - app_net
     extra_hosts:
-      - "localhost:172.16.239.10"
-      - "localhost:172.16.239.11"
-      - "localhost:172.16.239.13"
+      - "postgres:172.16.240.10"
+      - "localhost:172.16.240.11"
+      - "localhost:172.16.240.13"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
       - ingestion-volume-dags:/ingestion/examples/airflow/dags
       - ingestion-volume-tmp:/tmp
+
 networks:
-  local_app_net:
-    name: ometa_network
+  app_net:
     ipam:
       driver: default
       config:
-        - subnet: "172.16.239.0/24"
+        - subnet: "172.16.240.0/24"
