@@ -27,6 +27,8 @@ public class SecretsManagerFactory {
         return LocalSecretsManager.getInstance(clusterName);
       case AWS:
         return AWSSecretsManager.getInstance(config, clusterName);
+      case AWS_SSM:
+        return AWSSSMSecretsManager.getInstance(config, clusterName);
       default:
         throw new IllegalArgumentException("Not implemented secret manager store: " + secretManager);
     }
