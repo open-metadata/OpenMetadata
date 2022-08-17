@@ -119,6 +119,7 @@ const EditWebhookPage: FunctionComponent = () => {
             header="Edit Webhook"
             mode={FormSubmitType.EDIT}
             saveState={status}
+            webhookType={webhookData?.webhookType}
             onCancel={handleCancel}
             onDelete={handleDelete}
             onSave={handleSave}

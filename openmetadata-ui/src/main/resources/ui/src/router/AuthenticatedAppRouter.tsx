@@ -34,9 +34,6 @@ const PipelineDetailsPage = withSuspenseFallback(
   )
 );
 
-const RolesPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/RolesPage/RolesPage.component'))
-);
 const ServicePage = withSuspenseFallback(
   React.lazy(() => import('../pages/service'))
 );
@@ -309,11 +306,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddWebhookPage}
         path={ROUTES.ADD_WEBHOOK}
       />
-      <AdminProtectedRoute exact component={RolesPage} path={ROUTES.ROLES} />
+
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
         path={ROUTES.CREATE_USER}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CreateUserPage}
+        path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <AdminProtectedRoute exact component={BotsListPage} path={ROUTES.BOTS} />
       <AdminProtectedRoute

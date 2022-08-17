@@ -555,7 +555,15 @@
           <targetPackage>org.openmetadata.catalog</targetPackage>
           <includeJsr303Annotations>true</includeJsr303Annotations>
           <generateBuilders>true</generateBuilders>
+          <customAnnotator>org.openmetadata.annotations.OpenMetadataAnnotator</customAnnotator>
         </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.open-metadata</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <goals>

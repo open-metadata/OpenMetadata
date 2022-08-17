@@ -140,7 +140,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
     'be.visible'
   );
-  cy.contains(`"${serviceName}_metadata"`).should('be.visible');
+  cy.contains(`${serviceName}_metadata`).should('be.visible');
   cy.contains('has been created and deployed successfully').should(
     'be.visible'
   );

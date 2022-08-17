@@ -2,6 +2,7 @@ package org.openmetadata.catalog.security.policyevaluator;
 
 import java.io.IOException;
 import java.util.List;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
@@ -12,6 +13,11 @@ public class PostResourceContext implements ResourceContextInterface {
 
   public PostResourceContext(EntityReference owner) {
     this.owner = owner;
+  }
+
+  @Override
+  public String getResource() {
+    return Entity.THREAD;
   }
 
   @Override

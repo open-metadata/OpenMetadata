@@ -52,8 +52,9 @@ public class MlModelServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(MlModelService.class);
+    serviceConnectionConfig = new MlflowConnection();
     MlModelConnection serviceConnection = mock(MlModelConnection.class);
-    lenient().when(serviceConnection.getConfig()).thenReturn(mock(MlflowConnection.class));
+    lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.MlModelServiceDAO entityDAO = mock(CollectionDAO.MlModelServiceDAO.class);
     when(collectionDAO.mlModelServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateMlModelService.MlModelServiceType.Mlflow);

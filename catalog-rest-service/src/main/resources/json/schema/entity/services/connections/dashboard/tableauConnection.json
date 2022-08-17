@@ -21,6 +21,7 @@
       "default": "Tableau"
     },
     "hostPort": {
+      "expose": true,
       "title": "Host and Port",
       "description": "Tableau Server.",
       "type": "string",

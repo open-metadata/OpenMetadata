@@ -38,13 +38,14 @@ const CreateUser = ({
   saveState = 'initial',
   onCancel,
   onSave,
+  forceBot,
 }: CreateUserProps) => {
   const markdownRef = useRef<EditorContentRef>();
   const [description] = useState<string>('');
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isBot, setIsBot] = useState(false);
+  const [isBot, setIsBot] = useState(forceBot);
   const [selectedRoles, setSelectedRoles] = useState<Array<string | undefined>>(
     []
   );
@@ -211,7 +212,9 @@ const CreateUser = ({
 
   return (
     <PageLayout classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-py-4">
-      <h6 className="tw-heading tw-text-base">Create User</h6>
+      <h6 className="tw-heading tw-text-base">
+        Create {forceBot ? 'Bot' : 'User'}
+      </h6>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
           {requiredField('Email')}
@@ -254,57 +257,61 @@ const CreateUser = ({
         </label>
         <RichTextEditor initialValue={description} ref={markdownRef} />
       </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-0">Teams</label>
-        <TeamsSelectable onSelectionChange={setSelectedTeams} />
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
-          Roles
-        </label>
-        <DropDown
-          className={classNames('tw-bg-white', {
-            'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
-          })}
-          dataTestId="roles-dropdown"
-          dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-          label="Roles"
-          selectedItems={selectedRoles as Array<string>}
-          type="checkbox"
-          onSelect={(_e, value) => selectedRolesHandler(value)}
-        />
-      </Field>
+      {!forceBot && (
+        <>
+          <Field>
+            <label className="tw-block tw-form-label tw-mb-0">Teams</label>
+            <TeamsSelectable onSelectionChange={setSelectedTeams} />
+          </Field>
+          <Field>
+            <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
+              Roles
+            </label>
+            <DropDown
+              className={classNames('tw-bg-white', {
+                'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
+              })}
+              dataTestId="roles-dropdown"
+              dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
+              label="Roles"
+              selectedItems={selectedRoles as Array<string>}
+              type="checkbox"
+              onSelect={(_e, value) => selectedRolesHandler(value)}
+            />
+          </Field>
 
-      <Field className="tw-flex tw-gap-5">
-        <div className="tw-flex tw-pt-1">
-          <label>Admin</label>
-          <div
-            className={classNames('toggle-switch', { open: isAdmin })}
-            data-testid="admin"
-            onClick={() => {
-              if (allowAccess) {
-                setIsAdmin((prev) => !prev);
-                setIsBot(false);
-              }
-            }}>
-            <div className="switch" />
-          </div>
-        </div>
-        <div className="tw-flex tw-pt-1">
-          <label>Bot</label>
-          <div
-            className={classNames('toggle-switch', { open: isBot })}
-            data-testid="bot"
-            onClick={() => {
-              if (allowAccess) {
-                setIsBot((prev) => !prev);
-                setIsAdmin(false);
-              }
-            }}>
-            <div className="switch" />
-          </div>
-        </div>
-      </Field>
+          <Field className="tw-flex tw-gap-5">
+            <div className="tw-flex tw-pt-1">
+              <label>Admin</label>
+              <div
+                className={classNames('toggle-switch', { open: isAdmin })}
+                data-testid="admin"
+                onClick={() => {
+                  if (allowAccess) {
+                    setIsAdmin((prev) => !prev);
+                    setIsBot(false);
+                  }
+                }}>
+                <div className="switch" />
+              </div>
+            </div>
+            <div className="tw-flex tw-pt-1">
+              <label>Bot</label>
+              <div
+                className={classNames('toggle-switch', { open: isBot })}
+                data-testid="bot"
+                onClick={() => {
+                  if (allowAccess) {
+                    setIsBot((prev) => !prev);
+                    setIsAdmin(false);
+                  }
+                }}>
+                <div className="switch" />
+              </div>
+            </div>
+          </Field>
+        </>
+      )}
       <Field className="tw-flex tw-justify-end">
         <Button
           data-testid="cancel-user"

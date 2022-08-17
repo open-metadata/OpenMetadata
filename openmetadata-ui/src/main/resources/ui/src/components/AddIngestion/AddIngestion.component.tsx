@@ -612,9 +612,7 @@ const AddIngestion = ({
 
       <IngestionStepper
         activeStep={activeIngestionStep}
-        className="tw-justify-between tw-w-10/12 tw-mx-auto"
         excludeSteps={!showDBTConfig ? [2] : undefined}
-        stepperLineClassName="add-ingestion-line"
         steps={STEPS_FOR_ADD_INGESTION}
       />
 

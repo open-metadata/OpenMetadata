@@ -145,12 +145,11 @@ const MyDataPage = () => {
     type?: ThreadType
   ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(
-      currentUser?.id,
-      filterType ?? FeedFilter.ALL,
-      after,
-      type
-    )
+    const feedFilterType = filterType ?? FeedFilter.ALL;
+    const userId =
+      feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
+
+    getFeedsWithFilter(userId, feedFilterType, after, type)
       .then((res) => {
         const { data, paging: pagingObj } = res;
         setPaging(pagingObj);

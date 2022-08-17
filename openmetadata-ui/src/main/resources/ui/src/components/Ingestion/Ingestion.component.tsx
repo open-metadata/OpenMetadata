@@ -113,7 +113,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     if (ingestionList.length > 0) {
       return pipelineType.reduce((prev, curr) => {
         if (
-          curr !== PipelineType.Profiler &&
+          // Prevent adding multiple usage pipeline
+          curr === PipelineType.Usage &&
           ingestionList.find((d) => d.pipelineType === curr)
         ) {
           return prev;
@@ -263,12 +264,21 @@ const Ingestion: React.FC<IngestionProps> = ({
   const getAddIngestionElement = () => {
     const types = getIngestionPipelineTypeOption();
     let element: JSX.Element | null = null;
+    // Check if service has atleast one metadata pipeline available or not
+    const hasMetadata = ingestionList.find(
+      (ingestion) => ingestion.pipelineType === PipelineType.Metadata
+    );
 
     if (types.length) {
-      if (types[0] === PipelineType.Metadata || types.length === 1) {
-        element = getAddIngestionButton(types[0]);
-      } else {
+      // if service has metedata then show all available option
+      if (hasMetadata) {
         element = getAddIngestionDropdown(types);
+      } else {
+        /**
+         * If service does not have any metedata pipeline then
+         * show only option for metadata ingestion
+         */
+        element = getAddIngestionButton(PipelineType.Metadata);
       }
     }
 

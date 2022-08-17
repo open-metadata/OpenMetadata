@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 
 public class ResourceRegistry {
@@ -18,5 +19,14 @@ public class ResourceRegistry {
 
   public static List<ResourceDescriptor> listResourceDescriptors() {
     return Collections.unmodifiableList(RESOURCE_DESCRIPTORS);
+  }
+
+  public static ResourceDescriptor getResourceDescriptor(String resourceType) {
+    ResourceDescriptor rd =
+        RESOURCE_DESCRIPTORS.stream().filter(r -> r.getName().equalsIgnoreCase(resourceType)).findAny().orElse(null);
+    if (rd == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.resourceTypeNotFound(resourceType));
+    }
+    return rd;
   }
 }

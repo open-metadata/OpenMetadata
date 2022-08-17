@@ -46,7 +46,14 @@ import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
-import org.openmetadata.catalog.type.*;
+import org.openmetadata.catalog.type.AnnouncementDetails;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -83,7 +90,7 @@ public class ChangeEventHandler implements EventHandler {
       if (changeEvent.getEntity() != null) {
         Object entity = changeEvent.getEntity();
         changeEvent = copyChangeEvent(changeEvent);
-        changeEvent.setEntity(JsonUtils.pojoToJson(entity));
+        changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
       }
       dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
@@ -197,7 +204,7 @@ public class ChangeEventHandler implements EventHandler {
     }
   }
 
-  public static ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
+  public ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
     // GET operations don't produce change events
     if (method.equals("GET")) {
       return null;
@@ -235,10 +242,10 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
-      EventType eventType = null;
+      EventType eventType;
       if (RestUtil.ENTITY_UPDATED.equals(changeType)) {
         eventType = ENTITY_UPDATED;
-      } else if (RestUtil.ENTITY_SOFT_DELETED.equals(changeType)) {
+      } else {
         eventType = ENTITY_SOFT_DELETED;
       }
 

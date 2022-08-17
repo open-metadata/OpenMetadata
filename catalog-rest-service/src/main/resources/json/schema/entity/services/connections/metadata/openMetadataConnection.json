@@ -44,6 +44,7 @@
       "default": "no-auth"
     },
     "securityConfig": {
+      "mask": true,
       "description": "OpenMetadata Client security configuration.",
       "oneOf": [
         {

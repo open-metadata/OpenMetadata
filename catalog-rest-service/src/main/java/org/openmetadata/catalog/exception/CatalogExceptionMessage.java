@@ -56,6 +56,10 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
+  public static String resourceTypeNotFound(String resourceType) {
+    return String.format("Resource type %s not found", resourceType);
+  }
+
   public static String entityTypeNotSupported(String entityType) {
     return String.format("Entity type %s not supported", entityType);
   }
@@ -168,5 +172,13 @@ public final class CatalogExceptionMessage {
 
   public static String announcementInvalidStartTime() {
     return "Announcement start time must be earlier than the end time";
+  }
+
+  public static String failedToParse(String message) {
+    return String.format("Failed to parse - %s", message);
+  }
+
+  public static String failedToEvaluate(String message) {
+    return String.format("Failed to evaluate - %s", message);
   }
 }

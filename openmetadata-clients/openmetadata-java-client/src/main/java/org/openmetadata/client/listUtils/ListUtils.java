@@ -1,12 +1,12 @@
 package org.openmetadata.client.listUtils;
 
-import io.swagger.client.model.Paging;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import org.openmetadata.client.model.Paging;
 
 public class ListUtils {
 

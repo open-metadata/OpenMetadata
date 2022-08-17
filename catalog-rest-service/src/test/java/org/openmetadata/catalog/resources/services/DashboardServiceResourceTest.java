@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -119,10 +120,17 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                 .withNewValue(dashboardConnection1));
     DashboardService updatedService =
         updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    validateConnection(update.getConnection(), updatedService.getConnection(), updatedService.getServiceType());
+    validateConnection(
+        update.getConnection(), updatedService.getConnection(), updatedService.getServiceType(), ADMIN_AUTH_HEADERS);
     change = getChangeDescription(updatedService.getVersion());
     updatedService = getEntity(service.getId(), TEST_AUTH_HEADERS);
-    assertNull(updatedService.getConnection());
+    assertNotNull(updatedService.getConnection());
+    assertNotNull(
+        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), SupersetConnection.class)
+            .getHostPort());
+    assertNull(
+        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), SupersetConnection.class)
+            .getUsername());
     SupersetConnection supersetConnection =
         new SupersetConnection().withHostPort(new URI("http://localhost:8080")).withUsername("user");
     DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(supersetConnection);
@@ -137,7 +145,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                 .withNewValue(dashboardConnection2));
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     updatedService = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
-    validateConnection(dashboardConnection2, updatedService.getConnection(), updatedService.getServiceType());
+    validateConnection(
+        dashboardConnection2, updatedService.getConnection(), updatedService.getServiceType(), ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -165,7 +174,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     assertEquals(createRequest.getName(), service.getName());
     DashboardConnection expectedConnection = createRequest.getConnection();
     DashboardConnection actualConnection = service.getConnection();
-    validateConnection(expectedConnection, actualConnection, service.getServiceType());
+    validateConnection(expectedConnection, actualConnection, service.getServiceType(), authHeaders);
   }
 
   @Override
@@ -208,7 +217,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   private void validateConnection(
       DashboardConnection expectedDashboardConnection,
       DashboardConnection actualDashboardConnection,
-      CreateDashboardService.DashboardServiceType dashboardServiceType) {
+      DashboardServiceType dashboardServiceType,
+      Map<String, String> authHeaders) {
     if (expectedDashboardConnection != null && actualDashboardConnection != null) {
       if (dashboardServiceType == CreateDashboardService.DashboardServiceType.Superset) {
         SupersetConnection expectedSupersetConnection = (SupersetConnection) expectedDashboardConnection.getConfig();
@@ -220,9 +230,15 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
               JsonUtils.convertValue(actualDashboardConnection.getConfig(), SupersetConnection.class);
         }
         assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
-        assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
-        assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
         assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
+        if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
+          assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
+          assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
+          assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
+        } else {
+          assertNull(actualSupersetConnection.getUsername());
+          assertNull(actualSupersetConnection.getPassword());
+        }
       }
     }
   }

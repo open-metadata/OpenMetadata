@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,26 +11,14 @@
  *  limitations under the License.
  */
 
-import { Rule } from '../../generated/entity/policies/accessControl/rule';
+package org.openmetadata.annotations;
 
-export interface Policy {
-  id: string;
-  name: string;
-  fullyQualifiedName: string;
-  displayName: string;
-  description: string;
-  href: string;
-  policyType: string;
-  enabled: boolean;
-  version: number;
-  updatedAt: number;
-  updatedBy: string;
-  rules: Rule[];
-  deleted: boolean;
-}
+import org.jsonschema2pojo.CompositeAnnotator;
 
-export interface UpdatePolicyState {
-  rule?: Rule;
-  state: boolean;
-  policy?: Policy;
+public class OpenMetadataAnnotator extends CompositeAnnotator {
+
+  public OpenMetadataAnnotator() {
+    // we can add multiple annotators
+    super(new ExposedAnnotator(), new MaskedAnnotator());
+  }
 }

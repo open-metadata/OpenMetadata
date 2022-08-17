@@ -67,6 +67,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.PostResourceContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.catalog.security.policyevaluator.ThreadResourceContext;
 import org.openmetadata.catalog.type.CreateTaskDetails;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -511,6 +512,33 @@ public class FeedResource {
   }
 
   @DELETE
+  @Path("/{threadId}")
+  @Operation(
+      operationId = "deleteThread",
+      summary = "Delete a thread",
+      tags = "feeds",
+      description = "Delete an existing thread and all its relationships.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "thread with {threadId} is not found"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteThread(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ThreadId of the thread to be deleted", schema = @Schema(type = "string"))
+          @PathParam("threadId")
+          String threadId)
+      throws IOException {
+    // validate and get the thread
+    Thread thread = dao.get(threadId);
+    // delete thread only if the admin/bot/author tries to delete it
+    OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext = new ThreadResourceContext(dao.getOwnerReference(thread.getCreatedBy()));
+    authorizer.authorize(securityContext, operationContext, resourceContext, true);
+    return dao.deleteThread(thread, securityContext.getUserPrincipal().getName()).toResponse();
+  }
+
+  @DELETE
   @Path("/{threadId}/posts/{postId}")
   @Operation(
       operationId = "deletePostFromThread",
@@ -537,7 +565,7 @@ public class FeedResource {
     // delete post only if the admin/bot/author tries to delete it
     // TODO fix this
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerOfPost(post));
+    ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerReference(post.getFrom()));
     authorizer.authorize(securityContext, operationContext, resourceContext, true);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }

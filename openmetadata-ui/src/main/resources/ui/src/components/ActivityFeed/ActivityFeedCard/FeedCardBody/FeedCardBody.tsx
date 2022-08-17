@@ -14,7 +14,7 @@
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -91,6 +91,10 @@ const FeedCardBody: FC<FeedBodyProp> = ({
       markdown={getFrontEndFormat(postMessage)}
     />
   );
+
+  useEffect(() => {
+    setPostMessage(message);
+  }, [message]);
 
   return (
     <div className={classNames('tw-group', isEditPost ? '' : className)}>

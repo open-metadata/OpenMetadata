@@ -53,6 +53,7 @@ import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -132,8 +133,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final CollectionDAO daoCollection;
   protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
-  protected final boolean supportsTags;
-  protected final boolean supportsOwner;
+  @Getter protected final boolean supportsTags;
+  @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
   protected boolean allowEdits = false;
 

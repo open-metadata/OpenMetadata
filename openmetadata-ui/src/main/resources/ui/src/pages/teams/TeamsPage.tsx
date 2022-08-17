@@ -33,7 +33,7 @@ import Form from '../../components/TeamDetails/Form';
 import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
 import Teams from '../../components/TeamDetails/Teams';
 import {
-  INITIAL_PAGIN_VALUE,
+  INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -64,7 +64,7 @@ const TeamsPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
   const [isDataLoading, setIsDataLoading] = useState(false);
-  const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGIN_VALUE);
+  const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGING_VALUE);
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
   const [isDescriptionEditable, setIsDescriptionEditable] =
@@ -405,9 +405,9 @@ const TeamsPage = () => {
 
   const handleUsersSearchAction = (text: string) => {
     setUserSearchValue(text);
-    setCurrentUserPage(INITIAL_PAGIN_VALUE);
+    setCurrentUserPage(INITIAL_PAGING_VALUE);
     if (text) {
-      searchUsers(text, INITIAL_PAGIN_VALUE);
+      searchUsers(text, INITIAL_PAGING_VALUE);
     } else {
       getCurrentTeamUsers(selectedTeam.name);
     }

@@ -199,12 +199,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected ResourceContext getResourceContextById(UUID id) {
-    String fields = supportsOwner ? FIELD_OWNER : null;
-    return ResourceContext.builder().resource(entityType).entityRepository(dao).id(id).fields(fields).build();
+    return ResourceContext.builder().resource(entityType).entityRepository(dao).id(id).build();
   }
 
   protected ResourceContext getResourceContextByName(String name) {
-    String fields = supportsOwner ? FIELD_OWNER : null;
-    return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).fields(fields).build();
+    return ResourceContext.builder().resource(entityType).entityRepository(dao).name(name).build();
   }
 }

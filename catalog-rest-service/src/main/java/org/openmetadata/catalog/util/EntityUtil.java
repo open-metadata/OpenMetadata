@@ -423,4 +423,9 @@ public final class EntityUtil {
         .withDescription(tag.getDescription())
         .withSource(TagSource.TAG);
   }
+
+  public static String addField(String fields, String newField) {
+    fields = fields == null ? "" : fields;
+    return fields.isEmpty() ? newField : fields + ", " + newField;
+  }
 }

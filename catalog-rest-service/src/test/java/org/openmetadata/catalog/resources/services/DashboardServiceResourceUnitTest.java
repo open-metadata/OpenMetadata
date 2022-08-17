@@ -50,8 +50,9 @@ public class DashboardServiceResourceUnitTest
   @Override
   protected void mockServiceResourceSpecific() throws IOException {
     service = mock(DashboardService.class);
+    serviceConnectionConfig = new TableauConnection();
     DashboardConnection serviceConnection = mock(DashboardConnection.class);
-    lenient().when(serviceConnection.getConfig()).thenReturn(mock(TableauConnection.class));
+    lenient().when(serviceConnection.getConfig()).thenReturn(serviceConnectionConfig);
     CollectionDAO.DashboardServiceDAO entityDAO = mock(CollectionDAO.DashboardServiceDAO.class);
     when(collectionDAO.dashboardServiceDAO()).thenReturn(entityDAO);
     lenient().when(service.getServiceType()).thenReturn(CreateDashboardService.DashboardServiceType.Tableau);
@@ -73,7 +74,8 @@ public class DashboardServiceResourceUnitTest
 
   @Override
   protected void verifyServiceWithConnectionCall(boolean shouldBeNull, DashboardService service) {
-    verify(service, times(shouldBeNull ? 1 : 0)).withConnection(isNull());
+    verify(service.getConnection(), times(shouldBeNull ? 1 : 0))
+        .setConfig(!shouldBeNull ? isNull() : any(TableauConnection.class));
   }
 
   @Override
