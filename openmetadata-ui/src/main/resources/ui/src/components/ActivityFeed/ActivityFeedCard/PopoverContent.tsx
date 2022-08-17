@@ -69,12 +69,17 @@ const PopoverContent: FC<Props> = ({
     setVisible(newVisible);
   };
 
-  const deleteButtonCheck =
-    threadId && postId && onConfirmation && isAuthor && !isThread;
+  const deleteButtonCheck = threadId && postId && onConfirmation && isAuthor;
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    onConfirmation && onConfirmation({ state: true, postId: postId, threadId });
+    onConfirmation &&
+      onConfirmation({
+        state: true,
+        postId: postId,
+        threadId,
+        isThread: Boolean(isThread),
+      });
     onPopoverHide();
   };
 
@@ -149,6 +154,7 @@ const PopoverContent: FC<Props> = ({
         destroyTooltipOnHide
         align={{ targetOffset: [0, -10] }}
         content={reactionList}
+        id="reaction-popover"
         overlayClassName="ant-popover-feed-reactions"
         placement="topLeft"
         trigger="click"
@@ -157,6 +163,7 @@ const PopoverContent: FC<Props> = ({
         onVisibleChange={handleVisibleChange}>
         <Button
           className="tw-p-0"
+          data-testid="add-reactions"
           size="small"
           type="text"
           onClick={(e) => e.stopPropagation()}>
@@ -172,6 +179,7 @@ const PopoverContent: FC<Props> = ({
       {(onReply || isThread) && (
         <Button
           className="tw-p-0"
+          data-testid="add-reply"
           size="small"
           type="text"
           onClick={handleReply}>
@@ -187,6 +195,7 @@ const PopoverContent: FC<Props> = ({
       {editCheck && (
         <Button
           className="tw-p-0"
+          data-testid="edit-message"
           size="small"
           type="text"
           onClick={handleEdit}>
@@ -195,7 +204,11 @@ const PopoverContent: FC<Props> = ({
       )}
 
       {deleteButtonCheck ? (
-        <Button className="tw-p-0" type="text" onClick={handleDelete}>
+        <Button
+          className="tw-p-0"
+          data-testid="delete-message"
+          type="text"
+          onClick={handleDelete}>
           <SVGIcons
             alt="delete-reply"
             icon={Icons.FEED_DELETE}
