@@ -18,8 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -45,13 +48,19 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.entity.services.ServiceType;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.fixtures.ConfigurationFixtures;
+import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.JsonUtils;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
@@ -176,6 +185,46 @@ public class AWSSecretsManagerTest {
   @Test
   void testReturnsExpectedSecretManagerProvider() {
     assertEquals(OpenMetadataServerConnection.SecretsManagerProvider.AWS, secretsManager.getSecretsManagerProvider());
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
+  public void testEncryptAndDecryptDbtConfigSource(
+      Object config,
+      EntityReference service,
+      Class<? extends EntityInterface> serviceClass,
+      PipelineType pipelineType,
+      boolean mustBeEncrypted) {
+    SourceConfig sourceConfigMock = mock(SourceConfig.class);
+    IngestionPipeline mockedIngestionPipeline = mock(IngestionPipeline.class);
+
+    when(mockedIngestionPipeline.getService()).thenReturn(service);
+    lenient().when(mockedIngestionPipeline.getPipelineType()).thenReturn(pipelineType);
+
+    if (mustBeEncrypted) {
+      when(mockedIngestionPipeline.getSourceConfig()).thenReturn(sourceConfigMock);
+      when(sourceConfigMock.getConfig()).thenReturn(config);
+      when(mockedIngestionPipeline.getName()).thenReturn("test-pipeline");
+      when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
+          .thenReturn(GetSecretValueResponse.builder().secretString("{}}").build());
+    }
+
+    secretsManager.encryptOrDecryptDbtConfigSource(mockedIngestionPipeline, true);
+
+    secretsManager.encryptOrDecryptDbtConfigSource(mockedIngestionPipeline, false);
+
+    if (!mustBeEncrypted) {
+      verify(mockedIngestionPipeline, never()).setSourceConfig(any());
+      verify(sourceConfigMock, never()).setConfig(any());
+    } else {
+      ArgumentCaptor<Object> configCaptor = ArgumentCaptor.forClass(Object.class);
+      verify(mockedIngestionPipeline, times(4)).getSourceConfig();
+      verify(sourceConfigMock, times(2)).setConfig(configCaptor.capture());
+      assertNull(((DatabaseServiceMetadataPipeline) configCaptor.getAllValues().get(0)).getDbtConfigSource());
+      assertEquals(configCaptor.getAllValues().get(1), config);
+      assertNotSame(configCaptor.getAllValues().get(1), config);
+    }
   }
 
   private void testEncryptDecryptServiceConnection(boolean decrypt) {

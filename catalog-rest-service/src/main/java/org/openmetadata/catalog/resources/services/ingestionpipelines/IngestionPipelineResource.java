@@ -65,6 +65,7 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -95,9 +96,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
+    super(IngestionPipeline.class, new IngestionPipelineRepository(dao, secretsManager), authorizer);
     this.secretsManager = secretsManager;
-    this.ingestionPipelineRepository = new IngestionPipelineRepository(dao);
+    this.ingestionPipelineRepository = new IngestionPipelineRepository(dao, secretsManager);
   }
 
   public void initialize(CatalogApplicationConfig config) {
@@ -174,6 +175,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
       addStatus(ingestionPipelines.getData());
     }
+    listOrEmpty(ingestionPipelines.getData())
+        .forEach(ingestionPipeline -> decryptOrNullify(securityContext, ingestionPipeline));
     return ingestionPipelines;
   }
 
@@ -233,7 +236,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
       ingestionPipeline = addStatus(ingestionPipeline);
     }
-    return ingestionPipeline;
+    return decryptOrNullify(securityContext, ingestionPipeline);
   }
 
   @GET
@@ -301,7 +304,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
       ingestionPipeline = addStatus(ingestionPipeline);
     }
-    return ingestionPipeline;
+    return decryptOrNullify(securityContext, ingestionPipeline);
   }
 
   @POST
@@ -322,7 +325,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, ingestionPipeline, true);
+    Response response = create(uriInfo, securityContext, ingestionPipeline, true);
+    decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
+    return response;
   }
 
   @PATCH
@@ -348,7 +353,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -369,7 +376,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, ingestionPipeline, true);
+    Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline, true);
+    decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
+    return response;
   }
 
   @POST
@@ -389,9 +398,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipeline deployIngestion(
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
-    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
-    pipelineServiceClient.deployPipeline(pipeline);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
+    pipelineServiceClient.deployPipeline(ingestionPipeline);
+    decryptOrNullify(securityContext, ingestionPipeline);
+    return addHref(uriInfo, ingestionPipeline);
   }
 
   @POST
@@ -412,9 +422,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public IngestionPipeline triggerIngestion(
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
-    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
-    pipelineServiceClient.runPipeline(pipeline.getName());
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
+    pipelineServiceClient.runPipeline(ingestionPipeline.getName());
+    decryptOrNullify(securityContext, ingestionPipeline);
+    return addHref(uriInfo, ingestionPipeline);
   }
 
   @POST
@@ -459,6 +470,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response killIngestion(
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+    decryptOrNullify(securityContext, ingestionPipeline);
     HttpResponse<String> response = pipelineServiceClient.killIngestion(ingestionPipeline);
     return Response.status(200, response.body()).build();
   }
@@ -572,6 +584,21 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     } catch (Exception e) {
       LOG.error("Failed to fetch status for {} due to {}", ingestionPipeline.getName(), e);
     }
+    return ingestionPipeline;
+  }
+
+  private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
+    try {
+      authorizer.authorize(
+          securityContext,
+          getOperationContext,
+          getResourceContextById(ingestionPipeline.getId()),
+          secretsManager.isLocal());
+    } catch (AuthorizationException | IOException e) {
+      ingestionPipeline.getSourceConfig().setConfig(null);
+      return ingestionPipeline;
+    }
+    secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
     return ingestionPipeline;
   }
 }

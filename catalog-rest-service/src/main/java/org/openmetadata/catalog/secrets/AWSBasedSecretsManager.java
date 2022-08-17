@@ -31,6 +31,8 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
   public static final String ACCESS_KEY_ID = "accessKeyId";
   public static final String SECRET_ACCESS_KEY = "secretAccessKey";
   public static final String REGION = "region";
+  public static final String DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX = "database-metadata-pipeline";
+  public static final String NULL_SECRET_STRING = "null";
 
   protected AWSBasedSecretsManager(
       OpenMetadataServerConnection.SecretsManagerProvider awsProvider,
@@ -119,6 +121,25 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
     }
     airflowConfiguration.setAuthConfig(null);
     return airflowConfiguration;
+  }
+
+  @Override
+  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String ingestionPipelineName, boolean encrypt) {
+    String secretName = buildSecretId(DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX, ingestionPipelineName);
+    try {
+      if (encrypt) {
+        String dbtConfigSourceJson = JsonUtils.pojoToJson(dbtConfigSource);
+        upsertSecret(secretName, dbtConfigSourceJson);
+        return null;
+      } else {
+        String dbtConfigSourceJson = getSecret(secretName);
+        return NULL_SECRET_STRING.equals(dbtConfigSourceJson)
+            ? null
+            : JsonUtils.readValue(dbtConfigSourceJson, Object.class);
+      }
+    } catch (Exception e) {
+      throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
+    }
   }
 
   @Override

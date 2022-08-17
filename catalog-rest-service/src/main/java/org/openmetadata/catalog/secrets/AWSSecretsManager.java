@@ -16,6 +16,7 @@ package org.openmetadata.catalog.secrets;
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.AWS;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.util.Objects;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -50,7 +51,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         CreateSecretRequest.builder()
             .name(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(secretValue)
+            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
             .build();
     this.secretsClient.createSecret(createSecretRequest);
   }
@@ -61,7 +62,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         UpdateSecretRequest.builder()
             .secretId(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(secretValue)
+            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
             .build();
     this.secretsClient.updateSecret(updateSecretRequest);
   }
