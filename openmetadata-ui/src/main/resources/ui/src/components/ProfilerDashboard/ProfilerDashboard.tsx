@@ -81,7 +81,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last7days');
   const [chartData, setChartData] = useState<ChartDataCollection>({});
-  const [isLoading, setIsLoading] = useState(false);
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
   );
@@ -258,7 +257,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   const handleTabChange = (e: RadioChangeEvent) => {
     const value = e.target.value as ProfilerDashboardTab;
-    if (ProfilerDashboardTab.SUMMERY === value) {
+    if (ProfilerDashboardTab.SUMMARY === value) {
       history.push(getTableTabPath(table.fullyQualifiedName || '', 'profiler'));
     }
     setActiveTab(value);
@@ -293,7 +292,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   }, [table]);
 
   useEffect(() => {
-    setIsLoading(true);
     const sortedProfilerData = sortBy(profilerData, 'timestamp');
     const chartDataCollection: ChartDataCollection = cloneDeep(
       DEFAULT_CHART_COLLECTION_VALUE
@@ -335,7 +333,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     });
 
     setChartData(chartDataCollection);
-    setIsLoading(false);
   }, [profilerData]);
 
   return (

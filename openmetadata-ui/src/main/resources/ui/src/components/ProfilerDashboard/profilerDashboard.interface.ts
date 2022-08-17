@@ -27,7 +27,7 @@ export interface ProfilerDetailsCardProps {
 }
 
 export enum ProfilerDashboardTab {
-  SUMMERY = 'Summery',
+  SUMMARY = 'Summary',
   PROFILER = 'Profiler',
   DATA_QUALITY = 'Data Quality',
 }
