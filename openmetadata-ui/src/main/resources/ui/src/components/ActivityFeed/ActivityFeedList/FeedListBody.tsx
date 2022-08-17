@@ -161,7 +161,9 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   feedType={feed.type || ThreadType.Conversation}
                   isEntityFeed={isEntityFeed}
                   taskDetails={feed.task}
+                  threadId={feed.id}
                   updateThreadHandler={updateThreadHandler}
+                  onConfirmation={onConfirmation}
                   onReply={() => onReplyThread(feed.id)}
                 />
                 {postLength > 0 ? (

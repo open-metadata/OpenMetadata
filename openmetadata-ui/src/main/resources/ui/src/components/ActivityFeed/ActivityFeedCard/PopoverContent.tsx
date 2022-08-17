@@ -69,8 +69,7 @@ const PopoverContent: FC<Props> = ({
     setVisible(newVisible);
   };
 
-  const deleteButtonCheck =
-    threadId && postId && onConfirmation && isAuthor && !isThread;
+  const deleteButtonCheck = threadId && postId && onConfirmation && isAuthor;
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
