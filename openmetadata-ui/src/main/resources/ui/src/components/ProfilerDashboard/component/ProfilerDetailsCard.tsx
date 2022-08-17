@@ -15,6 +15,7 @@ import { Card, Col, Empty, Row, Space, Statistic } from 'antd';
 import React from 'react';
 import {
   Legend,
+  LegendValueFormatter,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -29,6 +30,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   tickFormatter,
 }) => {
   const { data, information } = chartCollection;
+
+  const renderColorfulLegendText: LegendValueFormatter = (value, entry) => {
+    return <span style={{ color: entry?.color }}>{value}</span>;
+  };
 
   return (
     <Card className="tw-rounded-md tw-border">
@@ -67,11 +72,12 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   <Line
                     dataKey={info.dataKey}
                     key={info.dataKey}
+                    name={info.title}
                     stroke={info.color}
                     type="monotone"
                   />
                 ))}
-                <Legend />
+                <Legend formatter={renderColorfulLegendText} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
