@@ -16,8 +16,8 @@ amundsen_mock_config = {
         "serviceConnection": {
             "config": {
                 "type": "Amundsen",
-                "username": "neo4j",
-                "password": "test",
+                "username": "username",
+                "password": "password",
                 "hostPort": "bolt://localhost:7687",
             }
         },

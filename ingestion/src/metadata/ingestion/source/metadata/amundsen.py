@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import traceback
-from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
@@ -98,12 +97,11 @@ SUPERSET_DEFAULT_CONFIG = {
 }
 
 
-@dataclass
 class AmundsenStatus(SourceStatus):
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
+    filtered: List[str] = list()
 
     def scanned(self, entity_name: str) -> None:
         self.success.append(entity_name)

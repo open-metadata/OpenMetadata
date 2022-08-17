@@ -1,5 +1,5 @@
 import traceback
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
@@ -40,10 +40,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-@dataclass
 class AtlasSourceStatus(SourceStatus):
-    tables_scanned: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    tables_scanned: List[str] = list()
+    filtered: List[str] = list()
 
     def table_scanned(self, table: str) -> None:
         self.tables_scanned.append(table)
