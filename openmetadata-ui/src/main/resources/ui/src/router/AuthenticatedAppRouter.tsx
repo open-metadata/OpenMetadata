@@ -17,7 +17,6 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
-import { isAllowedHost } from '../utils/CommonUtils';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
@@ -355,21 +354,17 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
 
-      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
       <Route
         exact
         component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+        path={ROUTES.SETTINGS_WITH_TAB}
+      />
       <Route
         exact
         component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB_FQN}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+        path={ROUTES.SETTINGS_WITH_TAB_FQN}
+      />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
