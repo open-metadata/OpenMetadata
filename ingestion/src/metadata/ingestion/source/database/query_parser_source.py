@@ -95,7 +95,10 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         Override if we have specific parameters
         """
         return self.sql_stmt.format(
-            start_time=start_time, end_time=end_time, filters=self.filters
+            start_time=start_time,
+            end_time=end_time,
+            filters=self.filters,
+            result_limit=self.source_config.resultLimit,
         )
 
     def get_report(self):
