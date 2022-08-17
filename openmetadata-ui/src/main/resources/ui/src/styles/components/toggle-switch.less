@@ -11,22 +11,27 @@
  *  limitations under the License.
  */
 
+@primary-color: #7147e8;
+@switch-bg-color-primary: rgb(107 114 128 / 15%);
+@switch-bg-color-active: rgb(244, 240, 253);
+@switch-border-color: rgba(107, 114, 128, 1);
+
 .ant-switch {
   padding: 1px;
   background-image: none;
-  background-color: rgb(107 114 128 / 15%);
-  border: 2px solid rgba(107, 114, 128, 1);
+  background-color: @switch-bg-color-primary;
+  border: 2px solid @switch-border-color;
 }
 
 .ant-switch-handle::before {
-  background-color: rgba(107, 114, 128, 1);
+  background-color: @switch-border-color;
 }
 
 .ant-switch-checked {
-  background: rgb(244, 240, 253);
-  border-color: #7147e8;
+  background: @switch-bg-color-active;
+  border-color: @primary-color;
   .ant-switch-handle::before {
-    background-color: #7147e8;
+    background-color: @primary-color;
   }
 }
 
