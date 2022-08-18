@@ -66,7 +66,7 @@ const PoliciesListPage = () => {
         </Space>
       </Col>
       <Col span={24}>
-        <PoliciesList policies={policies} />
+        <PoliciesList fetchPolicies={fetchPolicies} policies={policies} />
       </Col>
     </Row>
   );
