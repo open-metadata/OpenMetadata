@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import { ColumnsType } from 'antd/lib/table';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
@@ -88,7 +89,7 @@ jest.mock('./ProfilerProgressWidget', () => {
     </span>
   ));
 });
-jest.mock('./TestIndicator', () => {
+jest.mock('../../common/TestIndicator/TestIndicator', () => {
   return jest.fn().mockImplementation(({ value, type }) => (
     <span data-testid="test-indicator">
       {value} <span>{type}</span>
@@ -109,7 +110,9 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('should render without crashing', async () => {
-    render(<ColumnProfileTable {...mockProps} />);
+    render(<ColumnProfileTable {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const container = await screen.findByTestId(
       'column-profile-table-container'
@@ -125,7 +128,10 @@ describe('Test ColumnProfileTable component', () => {
       <ColumnProfileTable
         {...mockProps}
         columns={undefined as unknown as Column[]}
-      />
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
     );
 
     const container = await screen.findByTestId(
@@ -138,7 +144,9 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('search box should work as expected', async () => {
-    render(<ColumnProfileTable {...mockProps} />);
+    render(<ColumnProfileTable {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const searchbox = await screen.findByTestId('searchbar');
 
