@@ -7,6 +7,13 @@ slug: /openmetadata/connectors/pipeline/airflow/cli
 
 <Requirements />
 
+<PythonMod connector="Airflow" module="airflow" />
+
+Note that this installs the same Airflow version that we ship in the Ingestion Container, which is
+Airflow `2.3.3` from Release `0.12`.
+
+The ingestion using Airflow version 2.3.3 as a source package has been tested against Airflow 2.3.3 and Airflow 2.2.5.
+
 <MetadataIngestionServiceDev service="pipeline" connector="Airflow" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

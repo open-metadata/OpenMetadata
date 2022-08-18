@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/singlestore/cli
 
 <Requirements />
 
+<PythonMod connector="SingleStore" module="singlestore" />
+
 <MetadataIngestionServiceDev service="database" connector="SingleStore" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

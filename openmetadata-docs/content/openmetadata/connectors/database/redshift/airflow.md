@@ -7,6 +7,14 @@ slug: /openmetadata/connectors/database/redshift/airflow
 
 <Requirements />
 
+<PythonMod connector="Redshift" module="redshift" />
+
+If you want to run the Usage Connector, you'll also need to install:
+
+```bash
+pip3 install "openmetadata-ingestion[redshift-usage]"
+```
+
 <MetadataIngestionServiceDev service="database" connector="Redshift" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

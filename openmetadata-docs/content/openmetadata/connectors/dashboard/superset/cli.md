@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/superset/cli
 
 <Requirements />
 
+<PythonMod connector="Superset" module="superset" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Superset" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/metabase/airflow
 
 <Requirements />
 
+<PythonMod connector="Metabase" module="metabase" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Metabase" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

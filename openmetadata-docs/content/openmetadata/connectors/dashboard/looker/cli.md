@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/looker/cli
 
 <Requirements />
 
+<PythonMod connector="Looker" module="looker" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Looker" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

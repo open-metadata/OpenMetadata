@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/salesforce/airflow
 
 <Requirements />
 
+<PythonMod connector="Salesforce" module="salesforce" />
+
 <MetadataIngestionServiceDev service="database" connector="Salesforce" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>
