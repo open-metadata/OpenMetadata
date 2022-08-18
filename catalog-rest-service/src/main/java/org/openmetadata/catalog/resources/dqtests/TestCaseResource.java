@@ -369,7 +369,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @PUT
-  @Path("/{id}/testCaseResult")
+  @Path("/{fqn}/testCaseResult")
   @Operation(
       operationId = "addTestCaseResult",
       summary = "Add test case result data",
@@ -384,16 +384,16 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public TestCase addTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    TestCase testCase = dao.addTestCaseResult(UUID.fromString(id), testCaseResult);
+    TestCase testCase = dao.addTestCaseResult(fqn, testCaseResult);
     return addHref(uriInfo, testCase);
   }
 
   @GET
-  @Path("/{id}/testCaseResult")
+  @Path("/{fqn}/testCaseResult")
   @Operation(
       operationId = "listTestCaseResults",
       summary = "List of testCase results",
@@ -413,7 +413,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public ResultList<TestCaseResult> listTestCaseResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the testCase", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Parameter(
               description = "Filter testCase results after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -441,7 +441,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     ListFilter filter =
         new ListFilter(Include.ALL)
-            .addQueryParam("entityId", id.toString())
+            .addQueryParam("entityFQN", fqn)
             .addQueryParam("extension", TestCaseRepository.TESTCASE_RESULT_EXTENSION);
 
     if (startTs != null) {
@@ -454,7 +454,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @DELETE
-  @Path("/{id}/testCaseResult/{timestamp}")
+  @Path("/{fqn}/testCaseResult/{timestamp}")
   @Operation(
       operationId = "DeleteTestCaseResult",
       summary = "Delete testCase result.",
@@ -469,13 +469,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public TestCase deleteTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the testCase", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    TestCase testCase = dao.deleteTestCaseResult(id, timestamp);
+    TestCase testCase = dao.deleteTestCaseResult(fqn, timestamp);
     return addHref(uriInfo, testCase);
   }
 

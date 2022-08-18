@@ -89,14 +89,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionTimeSeriesDao()
-            .getLatestExtension(pipeline.getId().toString(), PIPELINE_STATUS_EXTENSION),
+            .getLatestExtension(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
   @Transaction
-  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException {
+  public Pipeline addPipelineStatus(String fqn, PipelineStatus pipelineStatus) throws IOException {
     // Validate the request content
-    Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
+    Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
 
     // validate all the Tasks
@@ -108,14 +108,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(
-                    pipelineId.toString(), PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp()),
+                .getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp()),
             PipelineStatus.class);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .update(
-              pipelineId.toString(),
+              pipeline.getFullyQualifiedName(),
               PIPELINE_STATUS_EXTENSION,
               JsonUtils.pojoToJson(pipelineStatus),
               pipelineStatus.getTimestamp());
@@ -123,7 +122,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              pipelineId.toString(),
               pipeline.getFullyQualifiedName(),
               PIPELINE_STATUS_EXTENSION,
               "pipelineStatus",
@@ -133,20 +131,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Pipeline deletePipelineStatus(UUID pipelineId, Long timestamp) throws IOException {
+  public Pipeline deletePipelineStatus(String fqn, Long timestamp) throws IOException {
     // Validate the request content
-    Pipeline pipeline = dao.findEntityById(pipelineId);
+    Pipeline pipeline = dao.findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(pipelineId.toString(), PIPELINE_STATUS_EXTENSION, timestamp),
+                .getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp),
             PipelineStatus.class);
     if (storedPipelineStatus != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .deleteAtTimestamp(pipelineId.toString(), PIPELINE_STATUS_EXTENSION, timestamp);
+      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp);
       pipeline.setPipelineStatus(storedPipelineStatus);
       return pipeline;
     }

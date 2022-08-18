@@ -45,6 +45,8 @@ import org.openmetadata.catalog.util.TestUtils;
 public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTestCase> {
   public static String TABLE_LINK;
   public static String TABLE_COLUMN_LINK;
+  public static String TABLE_LINK_2;
+  public static String TABLE_COLUMN_LINK_2;
   public static String INVALID_LINK1;
   public static String INVALID_LINK2;
 
@@ -77,8 +79,24 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDataLength(10)))
             .withOwner(USER_OWNER1);
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("testCaseTable" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA_REFERENCE)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("c1")
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withOwner(USER_OWNER1);
+    TEST_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     TABLE_LINK = String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName());
+    TABLE_LINK_2 = String.format("<#E::table::%s>", TEST_TABLE2.getFullyQualifiedName());
     TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::c1>", TEST_TABLE1.getFullyQualifiedName());
+    TABLE_COLUMN_LINK_2 = String.format("<#E::table::%s::columns::c1>", TEST_TABLE2.getFullyQualifiedName());
     INVALID_LINK1 = String.format("<#E::dashboard::%s", "temp");
     INVALID_LINK2 = String.format("<#E::table::%s>", "non-existent");
   }
@@ -191,10 +209,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
-    TestCase putResponse = putTestCaseResult(testCase.getId(), testCaseResult, ADMIN_AUTH_HEADERS);
+    TestCase putResponse = putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     verifyTestCaseResult(putResponse.getTestCaseResult(), testCaseResult);
 
-    ResultList<TestCaseResult> testCaseResults = getTestCaseResults(testCase.getId(), null, ADMIN_AUTH_HEADERS);
+    ResultList<TestCaseResult> testCaseResults =
+        getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(testCaseResult), 1);
 
     // Add new date for TableCaseResult
@@ -203,10 +222,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Failed)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
-    putResponse = putTestCaseResult(testCase.getId(), newTestCaseResult, ADMIN_AUTH_HEADERS);
+    putResponse = putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult, ADMIN_AUTH_HEADERS);
     verifyTestCaseResult(putResponse.getTestCaseResult(), newTestCaseResult);
 
-    testCaseResults = getTestCaseResults(testCase.getId(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults = getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult, testCaseResult), 2);
 
     // Replace table profile for a date
@@ -215,13 +234,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withResult("result")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
-    putResponse = putTestCaseResult(testCase.getId(), newTestCaseResult1, ADMIN_AUTH_HEADERS);
+    putResponse = putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult1, ADMIN_AUTH_HEADERS);
     assertEquals(newTestCaseResult1.getTimestamp(), putResponse.getTestCaseResult().getTimestamp());
     verifyTestCaseResult(putResponse.getTestCaseResult(), newTestCaseResult1);
 
     testCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
-    testCaseResults = getTestCaseResults(testCase.getId(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults = getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult1, testCaseResult), 2);
 
     String dateStr = "2021-09-";
@@ -234,10 +253,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withResult("result")
               .withTestCaseStatus(TestCaseStatus.Success)
               .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
-      putTestCaseResult(testCase.getId(), testCaseResult, ADMIN_AUTH_HEADERS);
+      putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
       testCaseResultList.add(testCaseResult);
     }
-    testCaseResults = getTestCaseResults(testCase.getId(), testCaseResultList.size(), ADMIN_AUTH_HEADERS);
+    testCaseResults =
+        getTestCaseResults(testCase.getFullyQualifiedName(), testCaseResultList.size(), ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCaseResultList, 12);
 
     // create another table and add profiles
@@ -252,14 +272,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withResult("result")
               .withTestCaseStatus(TestCaseStatus.Failed)
               .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
-      putTestCaseResult(testCase1.getId(), testCaseResult, ADMIN_AUTH_HEADERS);
+      putTestCaseResult(testCase1.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
       testCase1ResultList.add(testCaseResult);
     }
-    testCaseResults = getTestCaseResults(testCase1.getId(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults = getTestCaseResults(testCase1.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 5);
-    deleteTestCaseResult(testCase1.getId(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
+    deleteTestCaseResult(
+        testCase1.getFullyQualifiedName(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
     testCase1ResultList.remove(0);
-    testCaseResults = getTestCaseResults(testCase1.getId(), null, ADMIN_AUTH_HEADERS);
+    testCaseResults = getTestCaseResults(testCase1.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
   }
 
@@ -272,7 +293,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestCase create = createRequest(test);
     create
         .withName(test.getDisplayName())
-        .withEntityLink(TABLE_LINK)
+        .withEntityLink(TABLE_LINK_2)
         .withTestSuite(TEST_SUITE1_REFERENCE)
         .withTestDefinition(TEST_DEFINITION3_REFERENCE)
         .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
@@ -281,67 +302,65 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestCase create1 = createRequest(test);
     create1
         .withName(test.getDisplayName() + UUID.randomUUID())
-        .withEntityLink(TABLE_LINK)
+        .withEntityLink(TABLE_LINK_2)
         .withTestSuite(TEST_SUITE1_REFERENCE)
         .withTestDefinition(TEST_DEFINITION3_REFERENCE)
         .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.add(create1);
-    ResultList<TestCase> testCaseList = getTestCases(10, "*", null, false, ADMIN_AUTH_HEADERS);
-    verifyTestCases(testCaseList, expectedTestCaseList, 2);
-    testCaseList = getTestCases(10, "*", TABLE_LINK, false, ADMIN_AUTH_HEADERS);
+    ResultList<TestCase> testCaseList = getTestCases(10, "*", TABLE_LINK_2, false, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedTestCaseList, 2);
 
     CreateTestCase create3 = createRequest(test);
     create3
         .withName(test.getDisplayName() + UUID.randomUUID())
-        .withEntityLink(TABLE_COLUMN_LINK)
+        .withEntityLink(TABLE_COLUMN_LINK_2)
         .withTestSuite(TEST_SUITE1_REFERENCE)
         .withTestDefinition(TEST_DEFINITION3_REFERENCE)
         .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
     createAndCheckEntity(create3, ADMIN_AUTH_HEADERS);
     expectedColTestCaseList.add(create3);
 
-    testCaseList = getTestCases(10, "*", TABLE_LINK, false, ADMIN_AUTH_HEADERS);
+    testCaseList = getTestCases(10, "*", TABLE_LINK_2, false, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedTestCaseList, 2);
 
-    testCaseList = getTestCases(10, "*", TABLE_COLUMN_LINK, false, ADMIN_AUTH_HEADERS);
+    testCaseList = getTestCases(10, "*", TABLE_COLUMN_LINK_2, false, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedColTestCaseList, 1);
 
     for (int i = 1; i < 10; i++) {
       CreateTestCase create4 = createRequest(test);
       create4
           .withName(test.getDisplayName() + UUID.randomUUID())
-          .withEntityLink(TABLE_COLUMN_LINK)
+          .withEntityLink(TABLE_COLUMN_LINK_2)
           .withTestSuite(TEST_SUITE1_REFERENCE)
           .withTestDefinition(TEST_DEFINITION3_REFERENCE)
           .withParameterValues(List.of(new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
       createAndCheckEntity(create4, ADMIN_AUTH_HEADERS);
       expectedColTestCaseList.add(create4);
     }
-    testCaseList = getTestCases(10, "*", TABLE_COLUMN_LINK, false, ADMIN_AUTH_HEADERS);
+    testCaseList = getTestCases(10, "*", TABLE_COLUMN_LINK_2, false, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedColTestCaseList, 10);
 
-    testCaseList = getTestCases(12, "*", TABLE_LINK, true, ADMIN_AUTH_HEADERS);
+    testCaseList = getTestCases(12, "*", TABLE_LINK_2, true, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.addAll(expectedColTestCaseList);
     verifyTestCases(testCaseList, expectedTestCaseList, 12);
   }
 
-  public static TestCase putTestCaseResult(UUID testCaseId, TestCaseResult data, Map<String, String> authHeaders)
+  public static TestCase putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase/" + testCaseId + "/testCaseResult");
+    WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
     return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
   }
 
-  public static TestCase deleteTestCaseResult(UUID testCaseId, Long timestamp, Map<String, String> authHeaders)
+  public static TestCase deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase/" + testCaseId + "/testCaseResult/" + timestamp);
+    WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult/" + timestamp);
     return TestUtils.delete(target, TestCase.class, authHeaders);
   }
 
   public static ResultList<TestCaseResult> getTestCaseResults(
-      UUID testCaseId, Integer limit, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase/" + testCaseId + "/testCaseResult");
+      String fqn, Integer limit, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
     target = limit != null ? target.queryParam("limit", limit) : target;
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
   }
