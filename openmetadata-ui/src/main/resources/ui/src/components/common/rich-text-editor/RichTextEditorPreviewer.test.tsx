@@ -65,9 +65,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    let strikeThroughMarkdown = markdownParser.querySelector('del');
-
-    expect(strikeThroughMarkdown).not.toBeInTheDocument();
+    expect(markdownParser.querySelector('del')).not.toBeInTheDocument();
 
     const readMoreButton = await findByTestId(container, 'read-more-button');
 
@@ -75,9 +73,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     fireEvent.click(readMoreButton);
 
-    strikeThroughMarkdown = markdownParser.querySelector('del');
-
-    expect(strikeThroughMarkdown).toBeInTheDocument();
+    expect(markdownParser.querySelector('del')).toBeInTheDocument();
 
     expect(markdownParser).toBeInTheDocument();
   });
@@ -177,9 +173,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    let codeBlock = markdownParser.querySelector('pre');
-
-    expect(codeBlock).not.toBeInTheDocument();
+    expect(markdownParser.querySelector('pre')).not.toBeInTheDocument();
 
     const readMoreButton = await findByTestId(container, 'read-more-button');
 
@@ -187,9 +181,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     fireEvent.click(readMoreButton);
 
-    codeBlock = markdownParser.querySelector('pre');
-
-    expect(codeBlock).toBeInTheDocument();
+    expect(markdownParser.querySelector('pre')).toBeInTheDocument();
 
     expect(markdownParser).toBeInTheDocument();
   });
@@ -229,9 +221,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    let image = markdownParser.querySelector('img');
-
-    expect(image).not.toBeInTheDocument();
+    expect(markdownParser.querySelector('img')).toBeNull();
 
     const readMoreButton = await findByTestId(container, 'read-more-button');
 
@@ -239,9 +229,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     fireEvent.click(readMoreButton);
 
-    image = markdownParser.querySelector('img');
-
-    expect(image).toBeInTheDocument();
+    expect(markdownParser.querySelector('img')).toBeInTheDocument();
 
     expect(markdownParser).toBeInTheDocument();
   });
@@ -253,9 +241,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    let table = markdownParser.querySelector('table');
-
-    expect(table).not.toBeInTheDocument();
+    expect(markdownParser.querySelector('table')).not.toBeInTheDocument();
 
     const readMoreButton = await findByTestId(container, 'read-more-button');
 
@@ -263,9 +249,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     fireEvent.click(readMoreButton);
 
-    table = markdownParser.querySelector('table');
-
-    expect(table).toBeInTheDocument();
+    expect(markdownParser.querySelector('table')).toBeInTheDocument();
 
     expect(markdownParser).toBeInTheDocument();
   });

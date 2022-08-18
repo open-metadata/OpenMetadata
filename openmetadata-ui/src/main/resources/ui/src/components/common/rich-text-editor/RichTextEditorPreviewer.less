@@ -5,10 +5,7 @@
 @primary-color: #7147e8;
 
 .markdown-parser {
-  width: 100%;
-  overflow: hidden;
   .toastui-editor-contents {
-    width: 100%;
     font-size: 14px;
     h1,
     h2 {
@@ -44,9 +41,12 @@
 
     p {
       margin-top: 0px;
-      margin-bottom: 0px;
+      margin-bottom: 10px;
       color: @body-text-color;
       word-break: break-word;
+      &:last-child {
+        margin-bottom: 0px;
+      }
     }
 
     img {
