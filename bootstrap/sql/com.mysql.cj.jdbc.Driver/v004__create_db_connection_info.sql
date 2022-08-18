@@ -75,7 +75,7 @@ ALTER TABLE webhook_entity
 ADD webhookType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.webhookType') NOT NULL;
 
 CREATE TABLE IF NOT EXISTS entity_extension_time_series (
-    entityFQN VARCHAR(1024) NOT NULL,           -- Entity Link, we can refer to tables and columns
+    entityFQN VARCHAR(1024) NOT NULL,           -- Entity FQN, we can refer to tables and columns
     extension VARCHAR(256) NOT NULL,            -- Extension name same as entity.fieldName
     jsonSchema VARCHAR(256) NOT NULL,           -- Schema used for generating JSON
     json JSON NOT NULL,
