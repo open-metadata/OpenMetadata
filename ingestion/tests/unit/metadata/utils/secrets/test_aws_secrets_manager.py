@@ -17,12 +17,11 @@ from abc import ABC
 from typing import Any, Dict
 from unittest.mock import Mock
 
-from unit.metadata.utils.secrets.test_aws_based_secrets_manager import (
-    AWSBasedSecretsManager,
-)
-
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
+from tests.unit.metadata.utils.secrets.test_aws_based_secrets_manager import (
+    AWSBasedSecretsManager,
+)
 
 
 class TestAWSSecretsManager(AWSBasedSecretsManager.TestCase, ABC):

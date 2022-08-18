@@ -14,8 +14,6 @@ Test Local Secrets Manager
 """
 from copy import deepcopy
 
-from unit.metadata.utils.secrets.test_secrets_manager import TestSecretsManager
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     SecretsManagerProvider,
 )
@@ -27,6 +25,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
+from tests.unit.metadata.utils.secrets.test_secrets_manager import TestSecretsManager
 
 
 class TestLocalSecretsManager(TestSecretsManager.External):

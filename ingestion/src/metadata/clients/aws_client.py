@@ -20,6 +20,9 @@ from metadata.clients.connection_clients import (
     GluePipelineClient,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 class AWSClient:
@@ -58,6 +61,7 @@ class AWSClient:
     def get_client(self, service_name: str) -> Any:
         # initialize the client depending on the AWSCredentials passed
         if self.config is not None:
+            logger.info(f"Getting AWS client for service [{service_name}]")
             session = self._get_session()
             if self.config.endPointURL is not None:
                 return session.client(
@@ -65,6 +69,7 @@ class AWSClient:
                 )
             return session.client(service_name=service_name)
         else:
+            logger.info(f"Getting AWS default client for service [{service_name}]")
             # initialized with the credentials loaded from running machine
             return boto3.client(service_name=service_name)
 

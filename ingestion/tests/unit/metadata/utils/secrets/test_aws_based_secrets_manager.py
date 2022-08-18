@@ -17,13 +17,6 @@ from copy import deepcopy
 from typing import Any, Dict
 from unittest.mock import Mock, patch
 
-from unit.metadata.utils.secrets.test_secrets_manager import (
-    AUTH_PROVIDER_CONFIG,
-    DATABASE_CONNECTION,
-    DBT_SOURCE_CONFIG,
-    TestSecretsManager,
-)
-
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
@@ -33,6 +26,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.utils.secrets.aws_based_secrets_manager import AWSBasedSecretsManager
 from metadata.utils.singleton import Singleton
+from tests.unit.metadata.utils.secrets.test_secrets_manager import (
+    AUTH_PROVIDER_CONFIG,
+    DATABASE_CONNECTION,
+    DBT_SOURCE_CONFIG,
+    TestSecretsManager,
+)
 
 
 class AWSBasedSecretsManager(object):
