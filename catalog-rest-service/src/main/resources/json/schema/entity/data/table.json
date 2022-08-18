@@ -469,6 +469,7 @@
           "default": null
         }
       },
+      "required": ["name", "timestamp"],
       "additionalProperties": false
     },
     "columnProfilerConfig": {
@@ -543,6 +544,7 @@
           "type": "number"
         }
       },
+      "required": ["timestamp"],
       "additionalProperties": false
     },
     "sqlQuery": {
