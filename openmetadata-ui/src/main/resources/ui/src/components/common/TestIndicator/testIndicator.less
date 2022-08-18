@@ -11,22 +11,23 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import React from 'react';
-import { TestIndicatorProps } from '../TableProfiler.interface';
+@succesColor: #28a745;
+@failedColor: #cb2431;
+@abortedColor: #efae2f;
 
-const TestIndicator: React.FC<TestIndicatorProps> = ({ value, type }) => {
-  return (
-    <span
-      className="tw-flex tw-gap-1.5 tw-items-center"
-      data-testid="indicator-container">
-      <span
-        className={classNames('test-indicator', type.toLowerCase())}
-        data-testid="test-status"
-      />
-      <span data-testid="test-value">{value}</span>
-    </span>
-  );
-};
+.test-indicator {
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
 
-export default TestIndicator;
+  &.success {
+    background: @succesColor;
+  }
+  &.failed {
+    background: @failedColor;
+  }
+  &.aborted {
+    background: @abortedColor;
+  }
+}
