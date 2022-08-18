@@ -47,8 +47,11 @@
     "testDefinition": {
       "$ref": "../type/entityReference.json"
     },
-    "entity": {
-      "$ref": "../type/entityReference.json"
+    "entityLink": {
+      "$ref": "../type/basic.json#/definitions/entityLink"
+    },
+    "entityFQN": {
+      "type": "string"
     },
     "testSuite": {
       "$ref": "../type/entityReference.json"
@@ -93,6 +96,6 @@
       "default": false
     }
   },
-  "required": ["name", "testCase"],
+  "required": ["name", "testDefinition", "entityLink", "testSuite"],
   "additionalProperties": false
 }
