@@ -20,7 +20,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
 from metadata.utils.singleton import Singleton
-from tests.unit.metadata.utils.secrets.test_secrets_manager import TestSecretsManager
+
+from .test_secrets_manager import TestSecretsManager
 
 
 class TestSecretsManagerFactory(TestCase):

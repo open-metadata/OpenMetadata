@@ -148,11 +148,11 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
     return null;
   }
 
-  private void upsertSecret(String secretName, String password) {
+  private void upsertSecret(String secretName, String secretValue) {
     if (existSecret(secretName)) {
-      updateSecret(secretName, password);
+      updateSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
     } else {
-      storeSecret(secretName, password);
+      storeSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
     }
   }
 

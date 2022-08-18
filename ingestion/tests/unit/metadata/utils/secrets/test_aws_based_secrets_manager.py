@@ -26,7 +26,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.utils.secrets.aws_based_secrets_manager import AWSBasedSecretsManager
 from metadata.utils.singleton import Singleton
-from tests.unit.metadata.utils.secrets.test_secrets_manager import (
+
+from .test_secrets_manager import (
     AUTH_PROVIDER_CONFIG,
     DATABASE_CONNECTION,
     DBT_SOURCE_CONFIG,

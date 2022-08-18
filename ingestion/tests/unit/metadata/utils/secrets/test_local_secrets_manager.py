@@ -25,7 +25,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
-from tests.unit.metadata.utils.secrets.test_secrets_manager import TestSecretsManager
+
+from .test_secrets_manager import TestSecretsManager
 
 
 class TestLocalSecretsManager(TestSecretsManager.External):
