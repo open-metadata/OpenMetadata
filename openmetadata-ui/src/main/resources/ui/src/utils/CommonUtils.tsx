@@ -152,14 +152,9 @@ export const getPartialNameFromTableFQN = (
 };
 
 export const getCurrentUserId = (): string => {
-  // TODO: Replace below with USERID from Logged-in data
-  const { id: userId } = !isEmpty(AppState.userDetails)
-    ? AppState.userDetails
-    : AppState.users?.length
-    ? AppState.users[0]
-    : { id: undefined };
+  const currentUser = AppState.getCurrentUserDetails();
 
-  return userId as string;
+  return currentUser?.id || '';
 };
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {

@@ -20,7 +20,7 @@ import {
   INITIAL_MATH_METRIC_VALUE,
   INITIAL_PROPORTION_METRIC_VALUE,
   INITIAL_SUM_METRIC_VALUE,
-} from '../../../constants/entity.constants';
+} from '../../../constants/profiler.constant';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import {

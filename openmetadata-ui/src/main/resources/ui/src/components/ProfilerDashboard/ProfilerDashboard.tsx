@@ -26,7 +26,7 @@ import {
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
-import { PROFILER_FILTER_RANGE } from '../../constants/entity.constants';
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -160,7 +160,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     ];
   }, [table]);
 
-  const onOwnerUpdate = (newOwner?: Table['owner']) => {
+  const handleOwnerUpdate = (newOwner?: Table['owner']) => {
     if (newOwner) {
       const updatedTableDetails = {
         ...table,
@@ -173,7 +173,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     }
   };
 
-  const onTierUpdate = (newTier?: string) => {
+  const handleTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Table['tags'] = newTier
         ? [
@@ -200,7 +200,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
    * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
    */
-  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
+  const handleTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTable = { ...table, tags: updatedTags };
@@ -303,11 +303,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             )}
             isFollowing={isFollowing}
             tags={getTagsWithoutTier(table.tags || [])}
-            tagsHandler={onTagUpdate}
+            tagsHandler={handleTagUpdate}
             tier={tier}
             titleLinks={breadcrumb}
-            updateOwner={onOwnerUpdate}
-            updateTier={onTierUpdate}
+            updateOwner={handleOwnerUpdate}
+            updateTier={handleTierUpdate}
           />
         </Col>
         <Col span={24}>

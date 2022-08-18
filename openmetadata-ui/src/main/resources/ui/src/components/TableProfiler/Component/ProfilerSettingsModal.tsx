@@ -30,7 +30,7 @@ import {
   codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,
   PROFILER_METRIC,
-} from '../../../constants/entity.constants';
+} from '../../../constants/profiler.constant';
 import {
   ColumnProfilerConfig,
   TableProfilerConfig,
