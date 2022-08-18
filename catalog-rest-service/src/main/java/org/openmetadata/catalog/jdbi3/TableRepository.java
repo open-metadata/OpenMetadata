@@ -307,7 +307,7 @@ public class TableRepository extends EntityRepository<Table> {
           table.getColumns().stream()
               .filter(c -> c.getName().equals(columnProfile.getName()))
               .findFirst()
-              .orElseGet(null);
+              .orElse(null);
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
