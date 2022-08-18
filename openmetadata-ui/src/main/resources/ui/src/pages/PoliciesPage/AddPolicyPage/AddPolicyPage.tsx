@@ -117,8 +117,8 @@ const AddPolicyPage = () => {
                 },
               ]}>
               <Select
+                defaultValue={policyType}
                 placeholder="Select PolicyType"
-                value={policyType}
                 onChange={(value) => setPolicyType(value)}>
                 <Option key={PolicyType.AccessControl}>
                   {PolicyType.AccessControl}
