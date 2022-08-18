@@ -13,6 +13,7 @@
 Test Secrets Manager Factory
 """
 from unittest import TestCase
+from unittest.mock import patch
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -42,7 +43,9 @@ class TestSecretsManagerFactory(TestCase):
                 "[any] is not implemented.", not_implemented_error.exception
             )
 
-    def test_all_providers_has_implementation(self):
+    @patch("metadata.clients.aws_client.boto3")
+    def test_all_providers_has_implementation(self, mocked_boto3):
+        mocked_boto3.client.return_value = {}
         secret_manager_providers = [
             secret_manager_provider
             for secret_manager_provider in SecretsManagerProvider
