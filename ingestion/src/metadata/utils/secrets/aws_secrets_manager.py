@@ -20,7 +20,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     SecretsManagerProvider,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.utils.secrets.aws_based_secrets_manager import AWSBasedSecretsManager
+from metadata.utils.secrets.aws_based_secrets_manager import (
+    NULL_VALUE,
+    AWSBasedSecretsManager,
+)
 from metadata.utils.secrets.secrets_manager import logger
 
 
@@ -51,7 +54,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
             if "SecretString" in response:
                 return (
                     response["SecretString"]
-                    if response["SecretString"] != "null"
+                    if response["SecretString"] != NULL_VALUE
                     else None
                 )
             else:

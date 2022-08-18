@@ -34,6 +34,8 @@ from metadata.utils.secrets.secrets_manager import (
     logger,
 )
 
+NULL_VALUE = "null"
+
 
 class AWSBasedSecretsManager(SecretsManager, ABC):
     def __init__(
@@ -101,10 +103,4 @@ class AWSBasedSecretsManager(SecretsManager, ABC):
 
     @abstractmethod
     def get_string_value(self, name: str) -> str:
-        """
-        :param name: The secret name to retrieve. Current stage is always retrieved.
-        :return: The value of the secret. When the secret is a string, the value is
-                 contained in the `SecretString` field. When the secret is bytes or not present,
-                 it throws a `ValueError` exception.
-        """
         pass
