@@ -89,6 +89,7 @@ const AddPolicyPage = () => {
           <Form
             data-testid="policy-form"
             id="policy-form"
+            initialValues={{ policyType }}
             layout="vertical"
             onFinish={handleSumbit}>
             <Form.Item
@@ -117,8 +118,8 @@ const AddPolicyPage = () => {
                 },
               ]}>
               <Select
-                defaultValue={policyType}
                 placeholder="Select PolicyType"
+                value={policyType}
                 onChange={(value) => setPolicyType(value)}>
                 <Option key={PolicyType.AccessControl}>
                   {PolicyType.AccessControl}
