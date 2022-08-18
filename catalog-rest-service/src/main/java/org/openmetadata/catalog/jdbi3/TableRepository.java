@@ -298,7 +298,6 @@ public class TableRepository extends EntityRepository<Table> {
               TABLE_PROFILE_EXTENSION,
               "tableProfile",
               JsonUtils.pojoToJson(createTableProfile.getTableProfile()));
-      setFields(table, Fields.EMPTY_FIELDS);
     }
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
@@ -332,10 +331,9 @@ public class TableRepository extends EntityRepository<Table> {
                 TABLE_COLUMN_PROFILE_EXTENSION,
                 "columnProfile",
                 JsonUtils.pojoToJson(columnProfile));
-        setFields(table, Fields.EMPTY_FIELDS);
       }
     }
-
+    setFields(table, Fields.EMPTY_FIELDS);
     return table.withProfile(createTableProfile.getTableProfile());
   }
 
