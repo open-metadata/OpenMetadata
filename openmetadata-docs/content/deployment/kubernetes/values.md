@@ -84,7 +84,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.openmetadata.host | string | `openmetadata` |
 | global.openmetadata.port | int | 8585 |
 
-
 ## Chart Values
 
 

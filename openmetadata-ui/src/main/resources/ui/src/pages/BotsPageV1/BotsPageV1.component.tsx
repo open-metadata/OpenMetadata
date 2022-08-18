@@ -33,8 +33,8 @@ export const BotsPageV1 = () => {
     <Row gutter={[16, 16]}>
       <Col flex={1} />
       <Col>
-        <Space size={24}>
-          <Space align="center">
+        <Space size={16}>
+          <Space align="end" size={5}>
             <Switch
               checked={showDeleted}
               id="switch-deleted"

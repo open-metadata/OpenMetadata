@@ -217,15 +217,6 @@ const NavBar = ({
                 }}>
                 Explore
               </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-settings"
-                style={navStyle(pathname.startsWith('/settings'))}
-                to={{
-                  pathname: ROUTES.SETTINGS,
-                }}>
-                Settings
-              </NavLink>
 
               <NavLink
                 className="focus:tw-no-underline"
@@ -246,10 +237,20 @@ const NavBar = ({
                 }}>
                 Tags
               </NavLink>
+
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-settings"
+                style={navStyle(pathname.startsWith('/settings'))}
+                to={{
+                  pathname: ROUTES.SETTINGS,
+                }}>
+                Settings
+              </NavLink>
             </Space>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
+            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16"
             data-testid="appbar-item">
             <Input
               autoComplete="off"

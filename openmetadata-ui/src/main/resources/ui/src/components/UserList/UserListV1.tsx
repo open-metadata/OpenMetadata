@@ -215,7 +215,7 @@ const UserListV1: FC<UserListV1Props> = ({
             indicator: <Loader size="small" />,
           }}
           pagination={false}
-          size="middle"
+          size="small"
         />
       </Col>
       <Col span={24}>

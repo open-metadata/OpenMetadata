@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS test_suite (
 CREATE TABLE IF NOT EXISTS test_case (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(512) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    entityFQN VARCHAR (712) GENERATED ALWAYS AS (json ->> 'entityFQN') STORED NOT NULL,
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,

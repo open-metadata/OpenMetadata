@@ -16,6 +16,7 @@ import {
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, {
@@ -112,10 +113,12 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                       className="tableHead-cell"
                       data-testid="column-name"
                       key={column.name}>
-                      {column.name}
-                      <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
-                        ({lowerCase(column.dataType)})
-                      </span>
+                      <Space direction="vertical" size={0}>
+                        <span>{column.name}</span>
+                        <span className="tw-text-grey-muted">
+                          ({lowerCase(column.dataType)})
+                        </span>
+                      </Space>
                     </th>
                   );
                 })}

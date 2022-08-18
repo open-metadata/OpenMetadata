@@ -35,9 +35,10 @@
       },
       "default": null
     },
-    "scheduleInterval": {
-      "description": "TestSuite schedule interval in cron format.",
-      "type": "string"
+    "pipeline": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
+      "$ref": "../type/entityReference.json",
+      "default": null
     },
     "owner": {
       "description": "Owner of this TestCase definition.",

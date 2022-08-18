@@ -16,6 +16,7 @@ Each test should validate the Success, Failure and Aborted statuses
 """
 
 from datetime import datetime
+from uuid import uuid4
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
@@ -32,6 +33,7 @@ from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -50,6 +52,15 @@ def test_table_row_count_to_equal():
         TestCase(
             name="my_test_case",
             parameterValues=[TestCaseParameterValue(name="value", value=100)],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile,
@@ -65,6 +76,15 @@ def test_table_row_count_to_equal():
         TestCase(
             name="my_test_case",
             parameterValues=[TestCaseParameterValue(name="value", value=50)],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile,
@@ -85,6 +105,15 @@ def test_table_row_count_to_equal():
         TestCase(
             name="my_test_case",
             parameterValues=[TestCaseParameterValue(name="value", value=50)],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile_aborted,
@@ -114,6 +143,15 @@ def test_table_row_count_to_be_between():
                 TestCaseParameterValue(name="minValue", value=20),
                 TestCaseParameterValue(name="maxValue", value=120),
             ],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile,
@@ -132,6 +170,15 @@ def test_table_row_count_to_be_between():
                 TestCaseParameterValue(name="minValue", value=120),
                 TestCaseParameterValue(name="maxValue", value=200),
             ],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile,
@@ -155,6 +202,15 @@ def test_table_row_count_to_be_between():
                 TestCaseParameterValue(name="minValue", value=120),
                 TestCaseParameterValue(name="maxValue", value=200),
             ],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile_aborted,
@@ -183,6 +239,15 @@ def test_table_column_count_to_equal():
             parameterValues=[
                 TestCaseParameterValue(name="columnCount", value=5),
             ],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile,
@@ -200,6 +265,15 @@ def test_table_column_count_to_equal():
             parameterValues=[
                 TestCaseParameterValue(name="columnCount", value=20),
             ],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile,
@@ -222,6 +296,15 @@ def test_table_column_count_to_equal():
             parameterValues=[
                 TestCaseParameterValue(name="columnCount", value=5),
             ],
+            testDefinition=EntityReference(
+                id=uuid4(),
+                type="TestDefinition",
+            ),
+            entityLink="<#E::table::entity.link>",
+            testSuite=EntityReference(
+                id=uuid4(),
+                type="TestSuite",
+            ),
         ),
         test_definition=None,
         table_profile=table_profile_aborted,
