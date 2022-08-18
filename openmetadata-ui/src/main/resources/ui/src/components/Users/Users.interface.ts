@@ -49,7 +49,11 @@ export interface Props {
     feedFilter?: FeedFilter
   ) => void;
   postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
+  deletePostHandler?: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   feedFilter: FeedFilter;
   setFeedFilter: (value: FeedFilter) => void;

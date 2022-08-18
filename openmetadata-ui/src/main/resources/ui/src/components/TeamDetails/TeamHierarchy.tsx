@@ -70,7 +70,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data }) => {
       columns={columns}
       dataSource={data}
       pagination={false}
-      size="middle"
+      size="small"
     />
   );
 };

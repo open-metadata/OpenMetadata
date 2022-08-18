@@ -215,7 +215,7 @@ class MetabaseSource(DashboardServiceSource):
                         )
                         from_entities = search_table_entities(
                             metadata=self.metadata,
-                            database=database["details"]["dbname"],
+                            database=database["details"]["db"],
                             service_name=db_service_name,
                             database_schema=database_schema_name,
                             table=table,
@@ -257,7 +257,7 @@ class MetabaseSource(DashboardServiceSource):
                             self.metadata,
                             entity_type=Table,
                             service_name=db_service_name,
-                            database_name=table["db"]["details"]["dbname"],
+                            database_name=table["db"]["details"]["db"],
                             schema_name=table.get("schema"),
                             table_name=table.get("display_name"),
                         )

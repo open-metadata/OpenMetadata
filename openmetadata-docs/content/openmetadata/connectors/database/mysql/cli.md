@@ -7,6 +7,10 @@ slug: /openmetadata/connectors/database/mysql/cli
 
 <Requirements />
 
+<PythonMod connector="MySQL" module="mysql" />
+
+Note that the user should have access to the `INFORMATION_SCHEMA` table.
+
 <MetadataIngestionServiceDev service="database" connector="MySQL" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

@@ -90,7 +90,11 @@ export interface DashboardDetailsProps {
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (threadId: string, postId: string) => void;
+  deletePostHandler: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   onExtensionUpdate: (updatedDashboard: Dashboard) => void;
 }

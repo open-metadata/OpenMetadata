@@ -111,7 +111,9 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                 feed={mainFeed}
                 feedType={thread.type || ThreadType.Conversation}
                 taskDetails={thread.task}
+                threadId={thread.id}
                 updateThreadHandler={updateThreadHandler}
+                onConfirmation={onConfirmation}
                 onReply={() => onThreadSelect(thread.id)}
               />
             </div>

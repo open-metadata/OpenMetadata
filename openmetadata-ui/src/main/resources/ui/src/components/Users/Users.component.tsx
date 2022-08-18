@@ -698,10 +698,15 @@ const Users = ({
             )}
           </div>
           {isTaskType ? (
-            <div className="tw-flex tw-justify-end">
-              <Switch onChange={onSwitchChange} />
-              <span className="tw-ml-1">Closed Tasks</span>
-            </div>
+            <Space
+              align="center"
+              className="tw-w-full tw-justify-end"
+              size={16}>
+              <Space align="end" size={5}>
+                <Switch onChange={onSwitchChange} />
+                <span className="tw-ml-1">Closed Tasks</span>
+              </Space>
+            </Space>
           ) : null}
         </div>
         <div className="tw-mt-3.5">

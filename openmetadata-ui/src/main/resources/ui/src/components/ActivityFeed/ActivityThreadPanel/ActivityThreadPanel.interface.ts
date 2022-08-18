@@ -26,7 +26,11 @@ export interface ActivityThreadPanelProp
   createThread: (data: CreateThread) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   onCancel?: () => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
+  deletePostHandler?: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => void;
 }
 
 export interface ActivityThreadPanelBodyProp

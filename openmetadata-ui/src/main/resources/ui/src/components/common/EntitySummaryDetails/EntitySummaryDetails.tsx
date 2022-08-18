@@ -55,6 +55,7 @@ const EntitySummaryDetails = ({
                 {updateOwner ? (
                   <SVGIcons
                     alt="edit"
+                    className="tw-ml-2 tw-mb-1"
                     icon={Icons.EDIT}
                     title="Edit"
                     width="15px"
@@ -80,12 +81,11 @@ const EntitySummaryDetails = ({
                   />
                 }
                 trigger={['click']}>
-                <span
-                  data-testid={`edit-${data.key}-icon`}
-                  style={{ marginLeft: '5px' }}>
+                <span data-testid={`edit-${data.key}-icon`}>
                   {updateTier ? (
                     <SVGIcons
                       alt="edit"
+                      className="tw-ml-2 tw-mb-1"
                       icon={Icons.EDIT}
                       title="Edit"
                       width="15px"
@@ -153,10 +153,10 @@ const EntitySummaryDetails = ({
               </a>
               <span
                 data-testid={`edit-${data.key}-icon`}
-                style={{ marginLeft: '5px' }}
                 onClick={() => setshow(true)}>
                 <SVGIcons
                   alt="edit"
+                  className="tw-ml-2 tw-mb-1"
                   icon={Icons.EDIT}
                   title="Edit"
                   width="15px"
@@ -183,11 +183,11 @@ const EntitySummaryDetails = ({
                     </Button>
                     <span
                       data-testid={`edit-${data.key}-icon`}
-                      style={{ marginLeft: '5px' }}
                       onClick={() => setshow(true)}>
                       {updateOwner ? (
                         <SVGIcons
                           alt="edit"
+                          className="tw-ml-2 tw-mb-1"
                           icon={Icons.EDIT}
                           title="Edit"
                           width="15px"
@@ -223,12 +223,11 @@ const EntitySummaryDetails = ({
                               />
                             }
                             trigger={['click']}>
-                            <span
-                              data-testid={`edit-${data.key}-icon`}
-                              style={{ marginLeft: '5px' }}>
+                            <span data-testid={`edit-${data.key}-icon`}>
                               {updateTier ? (
                                 <SVGIcons
                                   alt="edit"
+                                  className="tw-ml-2 tw-mb-1"
                                   icon={Icons.EDIT}
                                   title="Edit"
                                   width="15px"

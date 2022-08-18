@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/clickhouse/cli
 
 <Requirements />
 
+<PythonMod connector="ClickHouse" module="clickhouse" />
+
 <MetadataIngestionServiceDev service="database" connector="Clickhouse" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

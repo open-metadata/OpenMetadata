@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/looker/airflow
 
 <Requirements />
 
+<PythonMod connector="Looker" module="looker" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Looker" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

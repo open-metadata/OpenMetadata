@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/pipeline/glue/airflow
 
 <Requirements />
 
+<PythonMod connector="Glue" module="glue" />
+
 <MetadataIngestionServiceDev service="pipeline" connector="GluePipeline" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>
