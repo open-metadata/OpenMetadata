@@ -58,7 +58,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       throws HttpResponseException {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
-    assertEquals(request.getScheduleInterval(), createdEntity.getScheduleInterval());
   }
 
   @Override
@@ -66,7 +65,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       throws HttpResponseException {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDescription(), updated.getDescription());
-    assertEquals(expected.getScheduleInterval(), updated.getScheduleInterval());
   }
 
   @Override
