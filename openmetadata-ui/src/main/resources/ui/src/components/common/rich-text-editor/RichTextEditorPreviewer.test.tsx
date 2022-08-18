@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
@@ -65,7 +65,17 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    const strikeThroughMarkdown = markdownParser.querySelector('del');
+    let strikeThroughMarkdown = markdownParser.querySelector('del');
+
+    expect(strikeThroughMarkdown).not.toBeInTheDocument();
+
+    const readMoreButton = await findByTestId(container, 'read-more-button');
+
+    expect(readMoreButton).toBeInTheDocument();
+
+    fireEvent.click(readMoreButton);
+
+    strikeThroughMarkdown = markdownParser.querySelector('del');
 
     expect(strikeThroughMarkdown).toBeInTheDocument();
 
@@ -167,7 +177,17 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    const codeBlock = markdownParser.querySelector('pre');
+    let codeBlock = markdownParser.querySelector('pre');
+
+    expect(codeBlock).not.toBeInTheDocument();
+
+    const readMoreButton = await findByTestId(container, 'read-more-button');
+
+    expect(readMoreButton).toBeInTheDocument();
+
+    fireEvent.click(readMoreButton);
+
+    codeBlock = markdownParser.querySelector('pre');
 
     expect(codeBlock).toBeInTheDocument();
 
@@ -195,7 +215,17 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    const link = markdownParser.querySelector('a');
+    let link = markdownParser.querySelector('a');
+
+    expect(link).not.toBeInTheDocument();
+
+    const readMoreButton = await findByTestId(container, 'read-more-button');
+
+    expect(readMoreButton).toBeInTheDocument();
+
+    fireEvent.click(readMoreButton);
+
+    link = markdownParser.querySelector('a');
 
     expect(link).toBeInTheDocument();
 
@@ -209,7 +239,17 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    const image = markdownParser.querySelector('img');
+    let image = markdownParser.querySelector('img');
+
+    expect(image).not.toBeInTheDocument();
+
+    const readMoreButton = await findByTestId(container, 'read-more-button');
+
+    expect(readMoreButton).toBeInTheDocument();
+
+    fireEvent.click(readMoreButton);
+
+    image = markdownParser.querySelector('img');
 
     expect(image).toBeInTheDocument();
 
@@ -223,7 +263,17 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    const table = markdownParser.querySelector('table');
+    let table = markdownParser.querySelector('table');
+
+    expect(table).not.toBeInTheDocument();
+
+    const readMoreButton = await findByTestId(container, 'read-more-button');
+
+    expect(readMoreButton).toBeInTheDocument();
+
+    fireEvent.click(readMoreButton);
+
+    table = markdownParser.querySelector('table');
 
     expect(table).toBeInTheDocument();
 

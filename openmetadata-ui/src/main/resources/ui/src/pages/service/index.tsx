@@ -933,7 +933,6 @@ const ServicePage: FunctionComponent = () => {
               className="tw-my-2 tw-ml-2"
               data-testid="description-container">
               <Description
-                blurWithBodyBG
                 description={description || ''}
                 entityFqn={serviceFQN}
                 entityName={serviceFQN}

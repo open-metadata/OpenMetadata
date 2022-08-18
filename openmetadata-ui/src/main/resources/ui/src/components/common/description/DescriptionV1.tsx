@@ -97,10 +97,8 @@ const DescriptionV1 = ({
             id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
-                blurClasses="see-more-blur-white"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
-                maxHtClass="tw-max-h-36"
                 maxLen={800}
               />
             ) : (
