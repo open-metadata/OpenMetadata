@@ -58,6 +58,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
+import org.openmetadata.catalog.type.WebhookType;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -69,7 +70,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "webhook")
 public class WebhookResource extends EntityResource<Webhook, WebhookRepository> {
   public static final String COLLECTION_PATH = "v1/webhook/";
-  private WebhookDAO webhookDAO;
+  private final WebhookDAO webhookDAO;
 
   @Override
   public Webhook addHref(UriInfo uriInfo, Webhook entity) {
@@ -357,6 +358,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         .withSecretKey(create.getSecretKey())
         .withKafkaProperties(create.getKafkaProperties())
         .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED)
-        .withWebhookType(Webhook.WebhookType.fromValue(create.getWebhookType().value()));
+        .withWebhookType(WebhookType.fromValue(create.getWebhookType().value()));
   }
 }
