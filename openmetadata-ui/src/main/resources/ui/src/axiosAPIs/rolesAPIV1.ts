@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { CreatePolicy } from '../generated/api/policies/createPolicy';
 import { CreateRole } from '../generated/api/teams/createRole';
 import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
@@ -45,7 +46,7 @@ export const getPolicies = async (
   fields: string,
   after?: string,
   before?: string,
-  limit = 10
+  limit = 100
 ) => {
   const params = {
     limit,
@@ -79,10 +80,19 @@ export const getPolicyByName = async (name: string, fields: string) => {
 };
 
 export const addRole = async (data: CreateRole) => {
-  const dataResponse = await APIClient.post<CreateRole, AxiosResponse<Role>>(
+  const response = await APIClient.post<CreateRole, AxiosResponse<Role>>(
     '/roles',
     data
   );
 
-  return dataResponse.data;
+  return response.data;
+};
+
+export const addPolicy = async (data: CreatePolicy) => {
+  const response = await APIClient.post<CreatePolicy, AxiosResponse<Policy>>(
+    '/policies',
+    data
+  );
+
+  return response.data;
 };
