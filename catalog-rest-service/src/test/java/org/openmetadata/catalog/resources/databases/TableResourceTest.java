@@ -1261,16 +1261,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException, ParseException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     Long timestamp = TestUtils.dateToTimestamp("2021-09-10");
-    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withTimestamp(timestamp).withMax(100.0).withMin(10.0).withUniqueCount(100.0);
-    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withTimestamp(timestamp).withMax(99.0).withMin(20.0).withUniqueCount(89.0);
+    ColumnProfile c1Profile =
+        new ColumnProfile().withName("c1").withTimestamp(timestamp).withMax(100.0).withMin(10.0).withUniqueCount(100.0);
+    ColumnProfile c2Profile =
+        new ColumnProfile().withName("c2").withTimestamp(timestamp).withMax(99.0).withMin(20.0).withUniqueCount(89.0);
     ColumnProfile c3Profile =
-        new ColumnProfile().withName("invalidColumn").withTimestamp(timestamp).withMax(75.0).withMin(25.0).withUniqueCount(77.0);
+        new ColumnProfile()
+            .withName("invalidColumn")
+            .withTimestamp(timestamp)
+            .withMax(75.0)
+            .withMin(25.0)
+            .withUniqueCount(77.0);
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
-    TableProfile tableProfile =
-        new TableProfile()
-            .withRowCount(6.0)
-            .withColumnCount(3.0)
-            .withTimestamp(timestamp);
+    TableProfile tableProfile = new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp);
     CreateTableProfile createTableProfile =
         new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
     assertResponseContains(

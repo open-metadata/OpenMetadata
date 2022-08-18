@@ -304,10 +304,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
       // Validate all the columns
       Column column =
-          table.getColumns().stream()
-              .filter(c -> c.getName().equals(columnProfile.getName()))
-              .findFirst()
-              .orElse(null);
+          table.getColumns().stream().filter(c -> c.getName().equals(columnProfile.getName())).findFirst().orElse(null);
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
