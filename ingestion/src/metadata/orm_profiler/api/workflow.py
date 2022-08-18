@@ -174,6 +174,9 @@ class ProfilerWorkflow:
         if entity.tableProfilerConfig:
             return entity.tableProfilerConfig.profileSample
 
+        if self.source_config.profileSample:
+            return self.source_config.profileSample
+
         return None
 
     def get_profile_query(self, entity: Table) -> Optional[float]:
