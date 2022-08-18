@@ -36,15 +36,13 @@ class OMetaPipelineMixin:
 
     client: REST
 
-    def add_pipeline_status(
-        self, pipeline: Pipeline, status: PipelineStatus
-    ) -> Pipeline:
+    def add_pipeline_status(self, fqn: str, status: PipelineStatus) -> Pipeline:
         """
         Given a pipeline and a PipelineStatus, send it
         to the Pipeline Entity
         """
         resp = self.client.put(
-            f"{self.get_suffix(Pipeline)}/{pipeline.id.__root__}/status",
+            f"{self.get_suffix(Pipeline)}/{fqn}/status",
             data=status.json(),
         )
 
