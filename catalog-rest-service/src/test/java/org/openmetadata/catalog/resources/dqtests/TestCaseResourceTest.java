@@ -18,8 +18,11 @@ import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
@@ -37,6 +40,7 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTestCase> {
   public static String TABLE_LINK;
@@ -260,6 +264,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  @Order(1)
   void put_testCase_list_200(TestInfo test) throws IOException {
     List<CreateTestCase> expectedTestCaseList = new ArrayList<>();
     List<CreateTestCase> expectedColTestCaseList = new ArrayList<>();
