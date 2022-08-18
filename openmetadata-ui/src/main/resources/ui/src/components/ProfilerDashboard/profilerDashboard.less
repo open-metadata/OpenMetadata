@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,26 @@
  *  limitations under the License.
  */
 
-export const ENTITY_DELETE_STATE = {
-  loading: 'initial',
-  state: false,
-  softDelete: true,
-};
+.table-profiler-summary {
+  .overall-summary-card:not(:first-child) {
+    border-left: 1px solid rgb(229, 231, 235);
+    padding-left: 16px;
+  }
+}
+
+.latest-profiler-data-container {
+  table {
+    border: none;
+    box-shadow: none;
+  }
+
+  .ant-table.ant-table-small .ant-table-thead > tr > th,
+  .ant-table.ant-table-small .ant-table-tbody > tr > td {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .ant-table-tbody > tr > td {
+    border-bottom: none;
+  }
+}

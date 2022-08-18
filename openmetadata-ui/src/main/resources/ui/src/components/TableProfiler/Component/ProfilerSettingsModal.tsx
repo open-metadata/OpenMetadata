@@ -30,7 +30,7 @@ import {
   codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,
   PROFILER_METRIC,
-} from '../../../constants/entity.constants';
+} from '../../../constants/profiler.constant';
 import {
   ColumnProfilerConfig,
   TableProfilerConfig,
@@ -49,7 +49,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 }) => {
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
-  const [profileSample, setProfileSample] = useState<number>(0);
+  const [profileSample, setProfileSample] = useState<number>(100);
   const [excludeCol, setExcludeCol] = useState<string[]>([]);
   const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
     DEFAULT_INCLUDE_PROFILE
@@ -81,7 +81,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
     const { includeColumns } = tableProfilerConfig;
     setSqlQuery(tableProfilerConfig.profileQuery || '');
-    setProfileSample(tableProfilerConfig.profileSample || 0);
+    setProfileSample(tableProfilerConfig.profileSample || 100);
     setExcludeCol(tableProfilerConfig.excludeColumns || []);
     if (includeColumns && includeColumns?.length > 0) {
       const includeColValue = includeColumns.map((col) => {

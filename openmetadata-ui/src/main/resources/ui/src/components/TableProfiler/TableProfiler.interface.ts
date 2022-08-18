@@ -51,7 +51,7 @@ export interface ProfilerSettingsModalProps {
 }
 
 export interface TestIndicatorProps {
-  value: number;
+  value: number | string;
   type: TestCaseStatus;
 }
 

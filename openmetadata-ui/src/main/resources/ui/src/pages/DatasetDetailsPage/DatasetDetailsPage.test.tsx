@@ -275,6 +275,18 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockUseParams),
 }));
 
+jest.mock('../../utils/CommonUtils', () => ({
+  addToRecentViewed: jest.fn(),
+  getCurrentUserId: jest.fn().mockReturnValue('test'),
+  getEntityMissingError: jest
+    .fn()
+    .mockImplementation(() => <span>Entity missing error</span>),
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getFeedCounts: jest.fn(),
+  getFields: jest.fn().mockReturnValue('field'),
+  getPartialNameFromTableFQN: jest.fn().mockReturnValue('name'),
+}));
+
 describe('Test DatasetDetails page', () => {
   it('Component should render properly', async () => {
     const { container } = render(<DatasetDetailsPage />, {
