@@ -250,7 +250,7 @@ const NavBar = ({
             </Space>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
+            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16"
             data-testid="appbar-item">
             <Input
               autoComplete="off"

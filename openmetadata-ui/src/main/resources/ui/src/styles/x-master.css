@@ -177,7 +177,7 @@ pre {
   box-shadow: none;
 }
 .search-grey {
-  width: 600px;
+  width: calc(100vw - 800px);
   background: #f8f9fa;
 }
 .search-grey::placeholder {
