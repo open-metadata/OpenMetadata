@@ -27,7 +27,8 @@ from metadata.ingestion.ometa.auth_provider import (
     NoOpAuthenticationProvider,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.secrets_manager import AWSSecretsManager, LocalSecretsManager
+from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
+from metadata.utils.secrets.local_secrets_manager import LocalSecretsManager
 
 
 class OMetaSecretManagerTest(TestCase):
