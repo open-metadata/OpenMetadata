@@ -337,7 +337,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   private TestSuite getTestSuite(CreateTestSuite create, String user) throws IOException {
     return copy(new TestSuite(), create, user)
         .withDescription(create.getDescription())
-        .withScheduleInterval(create.getScheduleInterval())
         .withDisplayName(create.getDisplayName())
         .withName(create.getName());
   }

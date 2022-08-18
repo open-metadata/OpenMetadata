@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/databaseServiceQueryLineagePipeline.json",
+  "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceQueryLineagePipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceQueryLineagePipeline",
   "description": "DatabaseService Query Lineage Pipeline Configuration.",
