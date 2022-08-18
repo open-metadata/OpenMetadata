@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/datalake/airflow
 
 <Requirements />
 
+<PythonMod connector="DataLake" module="datalake" />
+
 ## Metadata Ingestion
 All connectors are defined as JSON Schemas. Here you can find the structure to create a connection to Datalake.
 
@@ -59,8 +61,6 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 
-
-
 This is a sample config for Datalake using GCS:
 
 ```yaml
@@ -103,13 +103,13 @@ workflowConfig:
 ```
 
 
-<h4>Source Configuration - Service Connection using GCS</h4>
+#### Source Configuration - Service Connection using GCS
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **type**: Credentials type, e.g. `service_account`.
 * **projectId**
-* **privat**eKe**y**
+* **privateKey**
 * **privateKeyId**
 * **clientEmail**
 * **clientId**
@@ -117,8 +117,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **tokenUri**: [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
 * **authProviderX509CertUrl**: [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
 * **clientX509CertUrl**
-* **bucketName :** name of the bucket in GCS
-* **Prefix** :  prefix in gcs bucket
+* **bucketName**: name of the bucket in GCS
+* **Prefix**:  prefix in gcs bucket
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 <MetadataIngestionConfig service="database" connector="Datalake" goal="Airflow" />

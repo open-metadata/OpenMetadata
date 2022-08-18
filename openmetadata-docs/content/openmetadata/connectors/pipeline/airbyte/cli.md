@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/pipeline/airbyte/cli
 
 <Requirements />
 
+<PythonMod connector="Airbyte" module="airbyte" />
+
 <MetadataIngestionServiceDev service="pipeline" connector="Airbyte" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

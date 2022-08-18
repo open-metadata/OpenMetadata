@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/hive/airflow
 
 <Requirements />
 
+<PythonMod connector="Hive" module="hive" />
+
 <MetadataIngestionServiceDev service="database" connector="Hive" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

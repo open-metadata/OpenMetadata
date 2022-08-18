@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/mariadb/airflow
 
 <Requirements />
 
+<PythonMod connector="MariaDB" module="mariadb" />
+
 <MetadataIngestionServiceDev service="database" connector="MariaDB" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

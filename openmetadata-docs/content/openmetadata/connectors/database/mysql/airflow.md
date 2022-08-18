@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/mysql/airflow
 
 <Requirements />
 
+<PythonMod connector="MySQL" module="mysql" />
+
 <MetadataIngestionServiceDev service="database" connector="MySQL" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

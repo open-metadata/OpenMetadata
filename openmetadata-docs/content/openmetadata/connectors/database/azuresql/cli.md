@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/azuresql/cli
 
 <Requirements />
 
+<PythonMod connector="AzureSQL" module="azuresql" />
+
 <MetadataIngestionServiceDev service="database" connector="AzureSQL" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

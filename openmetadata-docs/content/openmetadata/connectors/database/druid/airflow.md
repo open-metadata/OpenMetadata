@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/druid/airflow
 
 <Requirements />
 
+<PythonMod connector="Druid" module="druid" />
+
 <MetadataIngestionServiceDev service="database" connector="Druid" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

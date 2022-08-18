@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/redash/cli
 
 <Requirements />
 
+<PythonMod connector="Redash" module="redash" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Redash" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

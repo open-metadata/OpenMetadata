@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/powerbi/cli
 
 <Requirements />
 
+<PythonMod connector="PowerBI" module="powerbi" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="PowerBI" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

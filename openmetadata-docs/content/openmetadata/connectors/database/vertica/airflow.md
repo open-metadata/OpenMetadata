@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/vertica/airflow
 
 <Requirements />
 
+<PythonMod connector="Vertica" module="vertica" />
+
 <MetadataIngestionServiceDev service="database" connector="Vertica" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

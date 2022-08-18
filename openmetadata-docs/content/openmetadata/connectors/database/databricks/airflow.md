@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/databricks/airflow
 
 <Requirements />
 
+<PythonMod connector="Databricks" module="databricks" />
+
 <MetadataIngestionServiceDev service="database" connector="Databricks" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

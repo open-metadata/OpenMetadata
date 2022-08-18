@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/deltalake/airflow
 
 <Requirements />
 
+<PythonMod connector="DeltaLake" module="deltalake" />
+
 <MetadataIngestionServiceDev service="database" connector="DeltaLake" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/oracle/cli
 
 <Requirements />
 
+<PythonMod connector="Oracle" module="oracle" />
+
 <MetadataIngestionServiceDev service="database" connector="Oracle" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>
