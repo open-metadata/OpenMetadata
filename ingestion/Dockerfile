@@ -30,7 +30,7 @@ WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-RUN pip install --upgrade ".[mysql]"
+RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg
