@@ -188,4 +188,3 @@ class PowerbiSource(DashboardServiceSource):
             except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.error(err)
-                self.status.failure(chart["title"], repr(err))
