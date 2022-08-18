@@ -204,16 +204,12 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
           schema_name,
           start_time,
           end_time
-        FROM table(
-          information_schema.query_history(
-            end_time_range_start => to_timestamp_ltz('{start_time}'),
-            end_time_range_end => to_timestamp_ltz('{end_time}'),
-            RESULT_LIMIT => {result_limit}
-            )
-        )
+        from snowflake.account_usage.query_history
         WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-          {filters}
+        AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        AND start_time between to_timestamp_ltz('{start_time}') and to_timestamp_ltz('{end_time}')
+        {filters}
+        LIMIT {result_limit}
         """
 )
 
