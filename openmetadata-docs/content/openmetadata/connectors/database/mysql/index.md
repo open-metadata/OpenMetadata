@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/mysql
 
 <Requirements />
 
+Note that the user should have access to the `INFORMATION_SCHEMA` table.
+
 <MetadataIngestionService connector="MySQL"/>
 
 <h4>Connection Options</h4>
