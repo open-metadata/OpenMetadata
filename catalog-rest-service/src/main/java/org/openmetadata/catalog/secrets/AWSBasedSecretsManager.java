@@ -124,8 +124,8 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
   }
 
   @Override
-  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String ingestionPipelineName, boolean encrypt) {
-    String secretName = buildSecretId(DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX, ingestionPipelineName);
+  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt) {
+    String secretName = buildSecretId(DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX, serviceName);
     try {
       if (encrypt) {
         String dbtConfigSourceJson = JsonUtils.pojoToJson(dbtConfigSource);

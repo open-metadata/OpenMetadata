@@ -57,7 +57,7 @@ public class LocalSecretsManager extends SecretsManager {
   }
 
   @Override
-  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String ingestionPipelineName, boolean encrypt) {
+  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt) {
     return dbtConfigSource;
   }
 

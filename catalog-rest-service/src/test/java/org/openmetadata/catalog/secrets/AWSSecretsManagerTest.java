@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -41,11 +42,9 @@ public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
   void testEncryptDatabaseServiceConnectionConfig() {
     mockClientGetValue(null);
     testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<GetSecretValueRequest> getSecretCaptor = ArgumentCaptor.forClass(GetSecretValueRequest.class);
     ArgumentCaptor<CreateSecretRequest> createSecretCaptor = ArgumentCaptor.forClass(CreateSecretRequest.class);
-    verify(secretsManagerClient).getSecretValue(getSecretCaptor.capture());
     verify(secretsManagerClient).createSecret(createSecretCaptor.capture());
-    assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().secretId());
+    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
     assertEquals(EXPECTED_SECRET_ID, createSecretCaptor.getValue().name());
     assertEquals(EXPECTED_CONNECTION_JSON, createSecretCaptor.getValue().secretString());
   }
@@ -54,11 +53,9 @@ public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
   void testEncryptDatabaseServiceConnectionConfigWhenAlreadyExist() {
     mockClientGetValue(EXPECTED_CONNECTION_JSON);
     testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<GetSecretValueRequest> getSecretCaptor = ArgumentCaptor.forClass(GetSecretValueRequest.class);
     ArgumentCaptor<UpdateSecretRequest> updateSecretCaptor = ArgumentCaptor.forClass(UpdateSecretRequest.class);
-    verify(secretsManagerClient).getSecretValue(getSecretCaptor.capture());
     verify(secretsManagerClient).updateSecret(updateSecretCaptor.capture());
-    assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().secretId());
+    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
     assertEquals(EXPECTED_SECRET_ID, updateSecretCaptor.getValue().secretId());
     assertEquals(EXPECTED_CONNECTION_JSON, updateSecretCaptor.getValue().secretString());
   }
@@ -78,6 +75,15 @@ public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
     } else {
       when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
           .thenReturn(GetSecretValueResponse.builder().secretString(value).build());
+    }
+  }
+
+  @Override
+  void verifySecretIdGetCalls(String expectedSecretId, int times) {
+    ArgumentCaptor<GetSecretValueRequest> getSecretCaptor = ArgumentCaptor.forClass(GetSecretValueRequest.class);
+    verify(secretsManagerClient, times(times)).getSecretValue(getSecretCaptor.capture());
+    for (int i = 0; i < times; i++) {
+      assertEquals(expectedSecretId, getSecretCaptor.getAllValues().get(i).secretId());
     }
   }
 

@@ -311,7 +311,7 @@ class Workflow:
             dbt_config_source: object = (
                 metadata.secrets_manager_client.retrieve_dbt_source_config(
                     self.config.source.sourceConfig,
-                    f"{self.config.source.serviceName}_metadata",
+                    self.config.source.serviceName,
                 )
             )
             if dbt_config_source and self.config.source.sourceConfig.config:
