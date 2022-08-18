@@ -127,7 +127,7 @@ class MetricsTest(TestCase):
             count,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
         assert res.get(User.name.name).get(Metrics.COUNT.name) == 3
@@ -141,7 +141,7 @@ class MetricsTest(TestCase):
             min_age,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
         assert res.get(User.age.name).get(Metrics.MIN.name) == 30
@@ -155,7 +155,7 @@ class MetricsTest(TestCase):
             std_age,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
         assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
@@ -169,7 +169,7 @@ class MetricsTest(TestCase):
             earliest_time,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
         assert (
             res.get(User.dob.name).get(Metrics.MIN.name) == "1982-02-02 00:00:00.000000"
         )
@@ -185,7 +185,7 @@ class MetricsTest(TestCase):
             latest_time,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
         assert (
             res.get(User.dob.name).get(Metrics.MAX.name) == "1992-05-17 00:00:00.000000"
         )
@@ -201,7 +201,7 @@ class MetricsTest(TestCase):
             null_count,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 2
 
@@ -221,7 +221,7 @@ class MetricsTest(TestCase):
             null_ratio,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
         assert (
             str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
             == "0.67"
@@ -236,7 +236,7 @@ class MetricsTest(TestCase):
             table_count,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._table_results
+        res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 3
 
     def test_table_column_count(self):
@@ -248,7 +248,7 @@ class MetricsTest(TestCase):
             col_count,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._table_results
+        res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.COLUMN_COUNT.name) == 9
 
     def test_avg(self):
@@ -263,7 +263,7 @@ class MetricsTest(TestCase):
                 avg,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -276,7 +276,7 @@ class MetricsTest(TestCase):
                 avg,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -289,7 +289,7 @@ class MetricsTest(TestCase):
                 avg,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -309,7 +309,7 @@ class MetricsTest(TestCase):
                 dup_count,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -326,7 +326,7 @@ class MetricsTest(TestCase):
                 hist,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -348,7 +348,7 @@ class MetricsTest(TestCase):
                 like,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -360,20 +360,11 @@ class MetricsTest(TestCase):
                 like,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
         assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 2
-
-        # Running safely
-        # with pytest.raises(AttributeError):
-        #     Profiler(
-        #         Metrics.LIKE_COUNT.value,
-        #         profiler_interface=self.sqa_profiler_interface,
-        #         table=User,
-        #         use_cols=[User.age],
-        #     ).execute()
 
     def test_ilike_count(self):
         """
@@ -385,7 +376,7 @@ class MetricsTest(TestCase):
                 ilike,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -397,7 +388,7 @@ class MetricsTest(TestCase):
                 ilike,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -417,7 +408,7 @@ class MetricsTest(TestCase):
                 like_ratio,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -439,7 +430,7 @@ class MetricsTest(TestCase):
                 ilike_ratio,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -456,7 +447,7 @@ class MetricsTest(TestCase):
                 _max,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -475,7 +466,7 @@ class MetricsTest(TestCase):
                 min_length,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -487,7 +478,7 @@ class MetricsTest(TestCase):
                 min_length,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -499,7 +490,7 @@ class MetricsTest(TestCase):
                 min_length,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -517,7 +508,7 @@ class MetricsTest(TestCase):
                 max_length,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -529,7 +520,7 @@ class MetricsTest(TestCase):
                 max_length,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -541,7 +532,7 @@ class MetricsTest(TestCase):
                 max_length,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -558,7 +549,7 @@ class MetricsTest(TestCase):
                 _sum,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -569,7 +560,7 @@ class MetricsTest(TestCase):
                 _sum,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -585,7 +576,7 @@ class MetricsTest(TestCase):
                 unique_count,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -605,7 +596,7 @@ class MetricsTest(TestCase):
                 unique_ratio,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -623,7 +614,7 @@ class MetricsTest(TestCase):
                 count,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -643,7 +634,7 @@ class MetricsTest(TestCase):
                 distinct_ratio,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -663,7 +654,7 @@ class MetricsTest(TestCase):
                 set_count,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -675,7 +666,7 @@ class MetricsTest(TestCase):
                 set_count,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -707,7 +698,7 @@ class MetricsTest(TestCase):
                 hist,
                 profiler_interface=sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
@@ -737,7 +728,7 @@ class MetricsTest(TestCase):
                         not_like,
                         profiler_interface=self.sqa_profiler_interface,
                     )
-                    .execute()
+                    .compute_metrics()
                     ._column_results
                 )
 
@@ -754,7 +745,7 @@ class MetricsTest(TestCase):
                 median,
                 profiler_interface=self.sqa_profiler_interface,
             )
-            .execute()
+            .compute_metrics()
             ._column_results
         )
 
