@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/athena/cli
 
 <Requirements />
 
+<PythonMod connector="Athena" module="athena" />
+
 <MetadataIngestionServiceDev service="database" connector="BigQuery" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/mssql/cli
 
 <Requirements />
 
+<PythonMod connector="MSSQL" module="mssql" />
+
 <MetadataIngestionServiceDev service="database" connector="MSSQL" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

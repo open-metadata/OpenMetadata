@@ -14,6 +14,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
+import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.test.TestCaseParameter;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
 import org.openmetadata.catalog.tests.TestCase;
@@ -29,8 +30,8 @@ import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 public class TestCaseRepository extends EntityRepository<TestCase> {
-  private static final String UPDATE_FIELDS = "owner,entity,testSuite,testDefinition";
-  private static final String PATCH_FIELDS = "owner,entity,testSuite,testDefinition";
+  private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
+  private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {
@@ -46,7 +47,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public TestCase setFields(TestCase test, EntityUtil.Fields fields) throws IOException {
-    test.setEntity(fields.contains("entity") ? getEntity(test) : null);
     test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
     test.setTestCaseResult(fields.contains("testCaseResult") ? getTestCaseResult(test) : null);
@@ -56,19 +56,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test) throws IOException {
-    EntityReference tableRef =
-        Entity.getEntityReferenceById(Entity.TABLE, test.getEntity().getId(), Include.NON_DELETED);
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+    EntityUtil.validateEntityLink(entityLink);
     // validate test definition and test suite
     Entity.getEntityReferenceById(Entity.TEST_DEFINITION, test.getTestDefinition().getId(), Include.NON_DELETED);
     Entity.getEntityReferenceById(Entity.TEST_SUITE, test.getTestSuite().getId(), Include.NON_DELETED);
     TestDefinition testDefinition =
         Entity.getEntity(test.getTestDefinition(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
-    test.setFullyQualifiedName(FullyQualifiedName.add(tableRef.getFullyQualifiedName(), test.getName()));
-  }
-
-  private EntityReference getEntity(TestCase test) throws IOException {
-    return getFromEntityRef(test.getId(), Relationship.CONTAINS, null, true);
+    test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
+    test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
@@ -100,25 +97,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void storeEntity(TestCase test, boolean update) throws IOException {
     EntityReference owner = test.getOwner();
-    EntityReference entity = test.getEntity();
     EntityReference testSuite = test.getTestSuite();
     EntityReference testDefinition = test.getTestDefinition();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    test.withOwner(null).withHref(null).withEntity(null).withTestSuite(null).withTestDefinition(null);
+    test.withOwner(null).withHref(null).withTestSuite(null).withTestDefinition(null);
     store(test.getId(), test, update);
 
     // Restore the relationships
-    test.withOwner(owner).withEntity(entity).withTestSuite(testSuite).withTestDefinition(testDefinition);
+    test.withOwner(owner).withTestSuite(testSuite).withTestDefinition(testDefinition);
   }
 
   @Override
   public void storeRelationships(TestCase test) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+    EntityReference tableRef = EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
     addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.HAS);
     // Add relationship from entity to test
-    addRelationship(
-        test.getEntity().getId(), test.getId(), test.getEntity().getType(), TEST_CASE, Relationship.CONTAINS);
+    addRelationship(tableRef.getId(), test.getId(), tableRef.getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
     addRelationship(
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
@@ -240,11 +237,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      MessageParser.EntityLink origEntityLink = MessageParser.EntityLink.parse(original.getEntityLink());
+      EntityReference origTableRef = EntityUtil.validateEntityLink(origEntityLink);
+
+      MessageParser.EntityLink updatedEntityLink = MessageParser.EntityLink.parse(updated.getEntityLink());
+      EntityReference updatedTableRef = EntityUtil.validateEntityLink(updatedEntityLink);
+
       updateFromRelationships(
           "entity",
-          updated.getEntity().getType(),
-          new ArrayList<>(List.of(original.getEntity())),
-          new ArrayList<>(List.of(updated.getEntity())),
+          updatedTableRef.getType(),
+          new ArrayList<>(List.of(origTableRef)),
+          new ArrayList<>(List.of(updatedTableRef)),
           Relationship.CONTAINS,
           TEST_CASE,
           updated.getId());

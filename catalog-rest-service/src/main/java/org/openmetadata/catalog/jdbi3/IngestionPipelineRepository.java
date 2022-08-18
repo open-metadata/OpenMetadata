@@ -21,9 +21,10 @@ import org.json.JSONObject;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.LogLevels;
-import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -37,7 +38,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
   private static PipelineServiceClient pipelineServiceClient;
 
-  public IngestionPipelineRepository(CollectionDAO dao) {
+  private final SecretsManager secretsManager;
+
+  public IngestionPipelineRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
         IngestionPipelineResource.COLLECTION_PATH,
         Entity.INGESTION_PIPELINE,
@@ -47,6 +50,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         PATCH_FIELDS,
         UPDATE_FIELDS);
     this.allowEdits = true;
+    this.secretsManager = secretsManager;
   }
 
   @Override
@@ -78,7 +82,25 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Don't store owner. Build it on the fly based on relationships
     ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
-    store(ingestionPipeline.getId(), ingestionPipeline, update);
+    String serviceType = service.getType();
+    // encrypt config in case of local secret manager
+    if (secretsManager.isLocal()) {
+      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, serviceType, true);
+      store(ingestionPipeline.getId(), ingestionPipeline, update);
+    } else {
+      // otherwise, nullify the config since it will be kept outside OM
+      DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
+          JsonUtils.convertValue(
+              ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
+      Object dbtConfigSource = databaseServiceMetadataPipeline.getDbtConfigSource();
+      databaseServiceMetadataPipeline.setDbtConfigSource(null);
+      ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
+      store(ingestionPipeline.getId(), ingestionPipeline, update);
+      // save config in the secret manager after storing the ingestion pipeline
+      databaseServiceMetadataPipeline.setDbtConfigSource(dbtConfigSource);
+      ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
+      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, serviceType, true);
+    }
 
     // Restore the relationships
     ingestionPipeline.withOwner(owner).withService(service);
@@ -119,7 +141,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateSourceConfig(original.getSourceConfig(), updated.getSourceConfig());
+      updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
       updateOpenMetadataServerConnection(
           original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
@@ -127,13 +149,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateEnabled(original.getEnabled(), updated.getEnabled());
     }
 
-    private void updateSourceConfig(SourceConfig origSource, SourceConfig updatedSource)
-        throws JsonProcessingException {
-      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(origSource.getConfig()));
-      JSONObject updatedSourceConfig = new JSONObject(JsonUtils.pojoToJson(updatedSource.getConfig()));
+    private void updateSourceConfig() throws JsonProcessingException {
+      secretsManager.encryptOrDecryptDbtConfigSource(original, false);
+
+      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));
+      JSONObject updatedSourceConfig = new JSONObject(JsonUtils.pojoToJson(updated.getSourceConfig().getConfig()));
+
+      original.getSourceConfig().setConfig(null);
 
       if (!origSourceConfig.similar(updatedSourceConfig)) {
-        recordChange("sourceConfig", origSource, updatedSource);
+        recordChange("sourceConfig", "old-encrypted-value", "new-encrypted-value", true);
       }
     }
 

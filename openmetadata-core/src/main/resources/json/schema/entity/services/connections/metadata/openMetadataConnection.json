@@ -70,7 +70,7 @@
     "secretsManagerProvider": {
       "description": "OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager providers as the ones configured on the OpenMetadata server.",
       "type": "string",
-      "enum": ["local", "aws"],
+      "enum": ["local", "aws", "aws-ssm"],
       "default": "local"
     },
     "secretsManagerCredentials": {

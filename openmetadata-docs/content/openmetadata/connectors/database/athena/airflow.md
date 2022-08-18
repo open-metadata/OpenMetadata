@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/athena/airflow
 
 <Requirements />
 
+<PythonMod connector="Athena" module="athena" />
+
 <MetadataIngestionServiceDev service="database" connector="Athena" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

@@ -74,6 +74,8 @@ configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
 from sqllineage.runner import LineageRunner
 
+from metadata.utils.helpers import calculate_execution_time
+
 # Reverting changes after import is done
 DictConfigurator.configure = configure
 
@@ -114,6 +116,7 @@ class MetadataRestSink(Sink[Entity]):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
+    @calculate_execution_time
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)

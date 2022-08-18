@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/messaging/kafka/airflow
 
 <Requirements />
 
+<PythonMod connector="Kafka" module="kafka" />
+
 <MetadataIngestionServiceDev service="messaging" connector="Kafka" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

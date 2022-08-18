@@ -41,6 +41,7 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TestCaseRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
@@ -58,7 +59,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/testCase";
 
-  static final String FIELDS = "owner,testSuite,entity,testDefinition";
+  static final String FIELDS = "owner,testSuite,entityLink,testDefinition";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -66,7 +67,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     Entity.withHref(uriInfo, test.getOwner());
     Entity.withHref(uriInfo, test.getTestSuite());
     Entity.withHref(uriInfo, test.getTestDefinition());
-    Entity.withHref(uriInfo, test.getEntity());
     return test;
   }
 
@@ -135,15 +135,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(description = "Returns list of tests filtered by the entity id", schema = @Schema(type = "string"))
-          @QueryParam("entityId")
-          String entityId,
-      @Parameter(description = "Returns list of tests filtered by the entity FQN", schema = @Schema(type = "string"))
-          @QueryParam("entityFqn")
-          String entityFqn,
+      @Parameter(
+              description = "Return list of tests by entity link",
+              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
+          @QueryParam("entityLink")
+          String entityLink,
       @Parameter(description = "Returns list of tests filtered by the testSuite id", schema = @Schema(type = "string"))
           @QueryParam("testSuiteId")
           String testSuiteId,
+      @Parameter(description = "Include all the tests at the entity level", schema = @Schema(type = "boolean"))
+          @QueryParam("includeAllTests")
+          @DefaultValue("false")
+          Boolean includeAllTests,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -153,9 +156,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     ListFilter filter =
         new ListFilter(include)
-            .addQueryParam("entityId", entityId)
-            .addQueryParam("entityFqn", entityFqn)
-            .addQueryParam("testSuiteId", testSuiteId);
+            .addQueryParam("testSuiteId", testSuiteId)
+            .addQueryParam("includeAllTests", includeAllTests.toString());
+    if (entityLink != null) {
+      MessageParser.EntityLink entityLinkParsed = MessageParser.EntityLink.parse(entityLink);
+      filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -407,7 +413,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public ResultList<TestCaseResult> listTestCaseResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the testCase", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Filter testCase results after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -474,12 +480,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   private TestCase getTestCase(CreateTestCase create, String user) throws IOException {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(create.getEntityLink());
     return copy(new TestCase(), create, user)
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withParameterValues(create.getParameterValues())
-        .withEntity(create.getEntity())
+        .withEntityLink(create.getEntityLink())
+        .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
         .withTestSuite(create.getTestSuite())
         .withTestDefinition(create.getTestDefinition());
   }

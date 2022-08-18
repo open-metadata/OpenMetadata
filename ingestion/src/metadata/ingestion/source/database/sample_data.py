@@ -15,7 +15,6 @@ import os
 import sys
 import traceback
 from collections import namedtuple
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List, Union
 
@@ -147,11 +146,10 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-@dataclass
 class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
 
     def scanned(self, entity_type: str, entity_name: str) -> None:
         self.success.append(entity_name)
@@ -877,13 +875,7 @@ class SampleDataSource(Source[Entity]):
                             ).id.__root__,
                             type="testDefinition",
                         ),
-                        entity=EntityReference(
-                            id=self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=test_case["entityFqn"],
-                            ).id.__root__,
-                            type="table",
-                        ),
+                        entityLink=f"<#E::table::{test_case['entityFqn']}>",
                         testSuite=EntityReference(
                             id=suite.id.__root__,
                             type="testSuite",
@@ -901,6 +893,7 @@ class SampleDataSource(Source[Entity]):
             case = self.metadata.get_by_name(
                 TestCase,
                 f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
+                fields=["testSuite", "testDefinition"],
             )
             for i, result in enumerate(test_case_results["results"]):
                 yield OMetaTestCaseResultsSample(

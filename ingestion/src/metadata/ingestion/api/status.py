@@ -11,10 +11,8 @@
 
 import json
 import pprint
-from dataclasses import dataclass
 
 
-@dataclass
 class Status:
     def as_obj(self) -> dict:
         return self.__dict__

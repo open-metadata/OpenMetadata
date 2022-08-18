@@ -484,7 +484,11 @@ export const getIngestionName = (
   serviceName: string,
   type: IngestionPipelineType
 ) => {
-  if (type === IngestionPipelineType.Profiler) {
+  if (
+    [IngestionPipelineType.Profiler, IngestionPipelineType.Metadata].includes(
+      type
+    )
+  ) {
     return `${serviceName}_${type}_${cryptoRandomString({
       length: 8,
       type: 'alphanumeric',

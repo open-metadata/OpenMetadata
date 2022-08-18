@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/superset/airflow
 
 <Requirements />
 
+<PythonMod connector="Superset" module="superset" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Superset" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

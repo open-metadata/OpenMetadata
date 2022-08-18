@@ -22,11 +22,6 @@ export const TEXT_BODY_COLOR = '#37352F';
 export const SUCCESS_COLOR = '#008376';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
-export const SUPPORTED_DOMAIN_TYPES = [
-  'localhost:3000',
-  'localhost:8585',
-  'sandbox-beta.open-metadata.org',
-];
 
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGING_VALUE = 1;
@@ -222,6 +217,7 @@ export const ROUTES = {
   CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,

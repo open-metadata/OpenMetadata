@@ -26,6 +26,7 @@
       "type": "string"
     },
     "hostPort": {
+      "expose": true,
       "title": "Host And Port",
       "description": "Pipeline Service Management/UI URI.",
       "type": "string",

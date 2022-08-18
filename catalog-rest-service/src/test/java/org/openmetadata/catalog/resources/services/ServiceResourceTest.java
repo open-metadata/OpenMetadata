@@ -60,6 +60,8 @@ public abstract class ServiceResourceTest<
 
   protected R service;
 
+  protected Object serviceConnectionConfig;
+
   @Mock protected SecurityContext securityContext;
 
   @BeforeEach
@@ -71,8 +73,8 @@ public abstract class ServiceResourceTest<
     lenient()
         .when(
             secretsManager.encryptOrDecryptServiceConnectionConfig(
-                any(), anyString(), anyString(), any(ServiceType.class), anyBoolean()))
-        .thenReturn(service);
+                any(), anyString(), any(), any(ServiceType.class), anyBoolean()))
+        .thenReturn(serviceConnectionConfig);
     serviceResource = newServiceResource(collectionDAO, authorizer, secretsManager);
   }
 
@@ -111,7 +113,7 @@ public abstract class ServiceResourceTest<
     R actual = callGetFromResource(serviceResource);
 
     verify(secretsManager, times(1)).isLocal();
-    verify(secretsManager, times(shouldBeNull ? 0 : 1))
+    verify(secretsManager)
         .encryptOrDecryptServiceConnectionConfig(
             notNull(), eq(serviceConnectionType()), any(), eq(serviceType()), eq(false));
 

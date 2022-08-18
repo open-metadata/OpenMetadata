@@ -54,12 +54,7 @@ const CreateUserPage = () => {
         )
       );
     } else {
-      history.push(
-        getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.USERS
-        )
-      );
+      history.goBack();
     }
   };
 

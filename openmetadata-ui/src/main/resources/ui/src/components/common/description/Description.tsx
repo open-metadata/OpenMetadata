@@ -179,7 +179,7 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-0.5')}>
+      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-1')}>
         {checkPermission() && (
           <button
             className="tw-w-7 tw-h-8 tw-flex-none focus:tw-outline-none"

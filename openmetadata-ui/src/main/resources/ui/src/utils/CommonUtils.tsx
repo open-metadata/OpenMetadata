@@ -32,7 +32,6 @@ import {
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
-  SUPPORTED_DOMAIN_TYPES,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import {
@@ -153,14 +152,9 @@ export const getPartialNameFromTableFQN = (
 };
 
 export const getCurrentUserId = (): string => {
-  // TODO: Replace below with USERID from Logged-in data
-  const { id: userId } = !isEmpty(AppState.userDetails)
-    ? AppState.userDetails
-    : AppState.users?.length
-    ? AppState.users[0]
-    : { id: undefined };
+  const currentUser = AppState.getCurrentUserDetails();
 
-  return userId as string;
+  return currentUser?.id || '';
 };
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {
@@ -738,10 +732,6 @@ export const getFeedCounts = (
  */
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
-
-export const isAllowedHost = () => {
-  return SUPPORTED_DOMAIN_TYPES.includes(window.location.host);
-};
 
 /**
  * Utility function to show pagination

@@ -12,7 +12,6 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel
@@ -71,6 +70,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt_source import DBTMixin
 from metadata.utils import fqn
 from metadata.utils.dbt_config import get_dbt_details
+from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -186,16 +186,15 @@ class DatabaseServiceTopology(ServiceTopology):
     )
 
 
-@dataclass
 class SQLSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
     """
 
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
+    filtered: List[str] = list()
 
     def scanned(self, record: str) -> None:
         self.success.append(record)

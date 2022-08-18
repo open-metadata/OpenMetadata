@@ -12,7 +12,6 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -97,14 +96,13 @@ class PipelineServiceTopology(ServiceTopology):
     )
 
 
-@dataclass
 class PipelineSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
     """
 
-    pipelines_scanned: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    pipelines_scanned: List[str] = list()
+    filtered: List[str] = list()
 
     def pipeline_scanned(self, topic: str) -> None:
         self.pipelines_scanned.append(topic)
@@ -194,7 +192,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """
-        Method to implement any required logic after the ingesion process is completed
+        Method to implement any required logic after the ingestion process is completed
         """
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -223,5 +221,5 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         """
-        Method to implement any required logic before starting the ingesion process
+        Method to implement any required logic before starting the ingestion process
         """

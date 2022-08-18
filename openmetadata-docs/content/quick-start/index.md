@@ -19,7 +19,7 @@ We have two approaches to start exploring:
     bold="Try OpenMetadata in Docker"
     href="/quick-start/local-deployment"
   >
-    Get OpenMetadata up and running locally in under 7 minutes!
+    Get OpenMetadata up and running locally in under 5 minutes!
   </InlineCallout>
   <InlineCallout
     color="violet-70"

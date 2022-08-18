@@ -17,11 +17,16 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
-import { isAllowedHost } from '../utils/CommonUtils';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
   React.lazy(() => import('../pages/GlobalSettingPage/GlobalSettingPage'))
+);
+
+const ProfilerDashboardPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/ProfilerDashboardPage/ProfilerDashboardPage')
+  )
 );
 
 const MyDataPage = withSuspenseFallback(
@@ -34,9 +39,6 @@ const PipelineDetailsPage = withSuspenseFallback(
   )
 );
 
-const RolesPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/RolesPage/RolesPage.component'))
-);
 const ServicePage = withSuspenseFallback(
   React.lazy(() => import('../pages/service'))
 );
@@ -281,6 +283,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
       <Route
         exact
+        component={ProfilerDashboardPage}
+        path={ROUTES.PROFILER_DASHBOARD}
+      />
+      <Route
+        exact
         component={MlModelPage}
         path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
       />
@@ -309,7 +316,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddWebhookPage}
         path={ROUTES.ADD_WEBHOOK}
       />
-      <AdminProtectedRoute exact component={RolesPage} path={ROUTES.ROLES} />
+
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
@@ -358,21 +365,17 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
 
-      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
       <Route
         exact
         component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+        path={ROUTES.SETTINGS_WITH_TAB}
+      />
       <Route
         exact
         component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB_FQN}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+        path={ROUTES.SETTINGS_WITH_TAB_FQN}
+      />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

@@ -26,10 +26,6 @@ jest.mock('../../../AppState', () => ({
   isProfilePicLoading: jest.fn(),
 }));
 
-jest.mock('../../../hooks/authHooks', () => ({
-  useAuth: jest.fn().mockReturnValue({ isAdminUser: false }),
-}));
-
 jest.mock('../../../utils/FeedUtils', () => ({
   getEntityField: jest.fn(),
   getEntityFQN: jest.fn(),

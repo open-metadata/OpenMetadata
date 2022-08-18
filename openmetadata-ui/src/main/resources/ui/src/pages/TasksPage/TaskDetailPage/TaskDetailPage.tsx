@@ -363,10 +363,12 @@ const TaskDetailPage = () => {
     });
   };
 
-  const deletePostHandler = (threadId: string, postId: string) => {
-    deletePost(threadId, postId).catch((error: AxiosError) => {
-      showErrorToast(error);
-    });
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread);
   };
 
   const postFeedHandler = (value: string, id: string) => {

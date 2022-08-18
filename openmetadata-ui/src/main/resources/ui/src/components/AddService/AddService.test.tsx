@@ -50,6 +50,10 @@ jest.mock('../ServiceConfig/ConnectionConfigForm', () => () => (
   <>ConnectionConfigForm</>
 ));
 
+jest.mock('../IngestionStepper/IngestionStepper.component', () => {
+  return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
+});
+
 describe('Test AddService component', () => {
   it('AddService component should render', async () => {
     const { container } = render(

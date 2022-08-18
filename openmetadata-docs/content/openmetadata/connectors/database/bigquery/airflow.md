@@ -7,6 +7,14 @@ slug: /openmetadata/connectors/database/bigquery/airflow
 
 <Requirements />
 
+<PythonMod connector="BigQuery" module="bigquery" />
+
+If you want to run the Usage Connector, you'll also need to install:
+
+```bash
+pip3 install "openmetadata-ingestion[bigquery-usage]"
+```
+
 <h4>GCP Permissions</h4>
 
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>

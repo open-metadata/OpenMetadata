@@ -65,7 +65,7 @@ interface Props {
   deleted?: boolean;
   followers?: number;
   extraInfo: Array<ExtraInfo>;
-  tier: TagLabel;
+  tier: TagLabel | undefined;
   tags: Array<EntityTags>;
   isTagEditable?: boolean;
   owner?: EntityReference;

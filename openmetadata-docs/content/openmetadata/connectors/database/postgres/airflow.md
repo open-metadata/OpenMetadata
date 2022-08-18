@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/postgres/airflow
 
 <Requirements />
 
+<PythonMod connector="Postgres" module="postgres" />
+
 <MetadataIngestionServiceDev service="database" connector="Postgres" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

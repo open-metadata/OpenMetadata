@@ -194,6 +194,7 @@ const UserListV1: FC<UserListV1Props> = ({
           <span>
             <Switch
               checked={showDeletedUser}
+              size="small"
               onClick={onShowDeletedUserChange}
             />
             <span className="tw-ml-2">Deleted Users</span>
@@ -214,7 +215,7 @@ const UserListV1: FC<UserListV1Props> = ({
             indicator: <Loader size="small" />,
           }}
           pagination={false}
-          size="middle"
+          size="small"
         />
       </Col>
       <Col span={24}>

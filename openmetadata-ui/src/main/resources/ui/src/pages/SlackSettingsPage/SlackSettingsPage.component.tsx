@@ -114,7 +114,7 @@ export const SlackSettingsPage = () => {
   }, []);
 
   return (
-    <PageContainerV1 className="tw-pt-4">
+    <PageContainerV1>
       {!isLoading ? (
         <WebhooksV1
           currentPage={currentPage}

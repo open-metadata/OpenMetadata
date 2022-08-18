@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
 <rect width="36" height="36" rx="4" fill="#E4ADA8"/>
 <path d="M20.246 20.904H16.91L16.358 22.5H14.594L17.606 14.112H19.562L22.574 22.5H20.798L20.246 20.904ZM19.79 19.56L18.578 16.056L17.366 19.56H19.79Z" fill="#37352F"/>
-<mask id="mask0_7931_3238" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="36" height="36">
+<mask id="mask0_7931_3238" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" >
 <rect width="36" height="36" rx="4" fill="#1B2853"/>
 </mask>
 <g mask="url(#mask0_7931_3238)">

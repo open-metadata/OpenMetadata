@@ -733,7 +733,7 @@ const EntityTable = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="tw-flex tw--mt-1.5">
+                              <div className="tw-flex tw--mt-2">
                                 {!isReadOnly ? (
                                   <Fragment>
                                     {checkPermission() && (

@@ -23,9 +23,10 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
-from metadata.orm_profiler.validations.models import TestDef, TestSuite
+from metadata.orm_profiler.validations.models import TestCase, TestSuite
 from metadata.utils.connections import create_and_bind_session
 
 
@@ -46,8 +47,23 @@ def base_profiler_processor_config():
     return ProfilerProcessorConfig(
         test_suite=TestSuite(
             name="test suite",
-            tests=[
-                TestDef(table="my.awesome.table"),
+            testCases=[
+                TestCase(
+                    name="my_test_case",
+                    testDefinitionName="TableColumnCountToBeBetween",
+                    fullyQualifiedName="fqn.table",
+                    paramterValues=[
+                        TestCaseParameterValue(
+                            name="minColValue",
+                            value=5,
+                        ),
+                        TestCaseParameterValue(
+                            name="maxColValue",
+                            value=10,
+                        ),
+                    ],
+                    table="my.awesome.table",
+                ),
             ],
         )
     )

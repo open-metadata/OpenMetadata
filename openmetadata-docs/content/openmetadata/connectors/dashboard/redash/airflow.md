@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/redash/airflow
 
 <Requirements />
 
+<PythonMod connector="Redash" module="redash" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Redash" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

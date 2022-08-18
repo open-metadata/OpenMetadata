@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import { CSMode } from '../enums/codemirror.enum';
+import { ColumnProfilerConfig } from '../generated/entity/data/table';
+import { JSON_TAB_SIZE } from './constants';
+
 export const excludedMetrics = [
   'profilDate',
   'name',
@@ -24,3 +28,151 @@ export const excludedMetrics = [
   'missingPercentage',
   'distinctProportion',
 ];
+
+export const PROFILER_METRIC = [
+  'valuesCount',
+  'valuesPercentage',
+  'validCount',
+  'duplicateCount',
+  'nullCount',
+  'nullProportion',
+  'missingPercentage',
+  'missingCount',
+  'uniqueCount',
+  'uniqueProportion',
+  'distinctCount',
+  'distinctProportion',
+  'min',
+  'max',
+  'minLength',
+  'maxLength',
+  'mean',
+  'sum',
+  'stddev',
+  'variance',
+  'median',
+  'histogram',
+  'customMetricsProfile',
+];
+
+export const PROFILER_FILTER_RANGE = {
+  last3days: { days: 3, title: 'Last 3 days' },
+  last7days: { days: 7, title: 'Last 7 days' },
+  last14days: { days: 14, title: 'Last 14 days' },
+  last30days: { days: 30, title: 'Last 30 days' },
+  last60days: { days: 60, title: 'Last 60 days' },
+};
+
+export const DEFAULT_CHART_COLLECTION_VALUE = {
+  distinctCount: { data: [], color: '#1890FF' },
+  uniqueCount: { data: [], color: '#008376' },
+  nullCount: { data: [], color: '#7147E8' },
+  nullProportion: { data: [], color: '#B02AAC' },
+};
+
+export const INITIAL_COUNT_METRIC_VALUE = {
+  information: [
+    {
+      title: 'Distinct Count',
+      dataKey: 'distinctCount',
+      color: '#1890FF',
+    },
+    {
+      title: 'Null Count',
+      dataKey: 'nullCount',
+      color: '#7147E8',
+    },
+    {
+      title: 'Unique Count',
+      dataKey: 'uniqueCount',
+      color: '#008376',
+    },
+    {
+      title: 'Values Count',
+      dataKey: 'valuesCount',
+      color: '#B02AAC',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_PROPORTION_METRIC_VALUE = {
+  information: [
+    {
+      title: 'Distinct Proportion',
+      dataKey: 'distinctProportion',
+      color: '#1890FF',
+    },
+    {
+      title: 'Null Proportion',
+      dataKey: 'nullProportion',
+      color: '#7147E8',
+    },
+    {
+      title: 'Unique Proportion',
+      dataKey: 'uniqueProportion',
+      color: '#008376',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_MATH_METRIC_VALUE = {
+  information: [
+    {
+      title: 'Median',
+      dataKey: 'median',
+      color: '#1890FF',
+    },
+    {
+      title: 'Max',
+      dataKey: 'max',
+      color: '#7147E8',
+    },
+    {
+      title: 'Mean',
+      dataKey: 'mean',
+      color: '#008376',
+    },
+    {
+      title: 'Min',
+      dataKey: 'min',
+      color: '#B02AAC',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_SUM_METRIC_VALUE = {
+  information: [
+    {
+      title: 'Sum',
+      dataKey: 'sum',
+      color: '#1890FF',
+    },
+  ],
+  data: [],
+};
+
+export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
+  {
+    columnName: undefined,
+    metrics: ['all'],
+  },
+];
+
+export const codeMirrorOption = {
+  tabSize: JSON_TAB_SIZE,
+  indentUnit: JSON_TAB_SIZE,
+  indentWithTabs: true,
+  lineNumbers: true,
+  lineWrapping: true,
+  styleActiveLine: true,
+  matchBrackets: true,
+  autoCloseBrackets: true,
+  foldGutter: true,
+  gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+  mode: {
+    name: CSMode.SQL,
+  },
+};

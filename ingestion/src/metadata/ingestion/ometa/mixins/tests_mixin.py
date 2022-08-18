@@ -46,4 +46,4 @@ class OMetaTestsMixin:
             test_results.json(),
         )
 
-        return TestCase(**resp)
+        return resp

@@ -19,6 +19,6 @@ public class OpenMetadataAnnotator extends CompositeAnnotator {
 
   public OpenMetadataAnnotator() {
     // we can add multiple annotators
-    super(new MaskedAnnotator());
+    super(new ExposedAnnotator(), new MaskedAnnotator());
   }
 }
