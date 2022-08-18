@@ -213,7 +213,6 @@ const Description: FC<DescriptionProps> = ({
                 className="tw-pl-2"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
-                maxLen={800}
               />
             ) : (
               <span className="tw-no-description tw-p-2">No description </span>

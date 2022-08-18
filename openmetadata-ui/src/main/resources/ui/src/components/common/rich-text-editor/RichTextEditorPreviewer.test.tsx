@@ -215,17 +215,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const markdownParser = await findByTestId(container, 'markdown-parser');
 
-    let link = markdownParser.querySelector('a');
-
-    expect(link).not.toBeInTheDocument();
-
-    const readMoreButton = await findByTestId(container, 'read-more-button');
-
-    expect(readMoreButton).toBeInTheDocument();
-
-    fireEvent.click(readMoreButton);
-
-    link = markdownParser.querySelector('a');
+    const link = markdownParser.querySelector('a');
 
     expect(link).toBeInTheDocument();
 

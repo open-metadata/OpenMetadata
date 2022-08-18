@@ -99,7 +99,6 @@ const DescriptionV1 = ({
               <RichTextEditorPreviewer
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
-                maxLen={800}
               />
             ) : (
               <span className="tw-no-description tw-p-2">No description </span>
