@@ -22,8 +22,8 @@
     "testDefinition": {
       "$ref": "../../type/entityReference.json"
     },
-    "entity": {
-      "$ref": "../../type/entityReference.json"
+    "entityLink": {
+      "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "testSuite": {
       "$ref": "../../type/entityReference.json"
@@ -39,6 +39,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "testDefinition", "entity", "testSuite"],
+  "required": ["name", "testDefinition", "entityLink", "testSuite"],
   "additionalProperties": false
 }

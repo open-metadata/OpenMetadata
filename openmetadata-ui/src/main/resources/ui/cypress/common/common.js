@@ -395,3 +395,161 @@ export const addNewTagToEntity = (entity, term) => {
     .contains(term)
     .should('exist');
 };
+
+export const addUser = (username, email) => {
+  cy.get('[data-testid="email"]')
+    .scrollIntoView()
+    .should('exist')
+    .should('be.visible')
+    .type(email);
+  cy.get('[data-testid="displayName"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .should('exist')
+    .should('be.visible')
+    .type('Adding user');
+  cy.get('[data-testid="save-user"]').scrollIntoView().click();
+};
+
+export const softDeleteUser = (username) => {
+  //Search the created user
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+
+  cy.wait(1000);
+
+  //Click on delete button
+  cy.get('.ant-table-row .ant-table-cell button')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Soft deleting the user
+  cy.get('[data-testid="soft-delete"]').click();
+  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  cy.get('[data-testid="confirm-button"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+
+  cy.get('.Toastify__toast-body > :nth-child(2)').should(
+    'have.text',
+    'User deleted successfully!'
+  );
+
+  //Closing the toast message
+  cy.get('.Toastify__close-button > svg')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Verifying the deleted user
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .clear()
+    .type(username);
+
+  cy.wait(1000);
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    username
+  );
+};
+
+export const restoreUser = (username) => {
+  //Click on deleted user toggle
+  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
+  cy.wait(1000);
+
+  cy.get('button [alt="Restore"]').should('exist').should('be.visible').click();
+  cy.get('.ant-modal-body > p').should(
+    'contain',
+    `Are you sure you want to restore ${username}?`
+  );
+  cy.get('.ant-modal-footer > .ant-btn-primary')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.wait(1000);
+  cy.get('.Toastify__toast-body > :nth-child(2)').should(
+    'contain',
+    'User restored successfully!'
+  );
+
+  //Closing toast message
+  cy.get('.Toastify__close-button > svg')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  //Verifying the restored user
+  cy.get('.ant-switch').should('exist').should('be.visible').click();
+
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+
+  cy.wait(1000);
+  cy.get('.ant-table-row > :nth-child(1)').should('contain', username);
+};
+
+export const deleteSoftDeletedUser = (username) => {
+  cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
+
+  cy.wait(1000);
+
+  cy.get('button [alt="Delete"]').should('exist').should('be.visible').click();
+  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  cy.get('[data-testid="confirm-button"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+
+  cy.get('.Toastify__toast-body > :nth-child(2)').should(
+    'have.text',
+    'User deleted successfully!'
+  );
+
+  //Closing toast message
+  cy.get('.Toastify__close-button > svg')
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    username
+  );
+
+  cy.get('.ant-table-placeholder > .ant-table-cell')
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="searchbar"]')
+    .should('exist')
+    .should('be.visible')
+    .type(username);
+
+  cy.wait(1000);
+
+  cy.get('.ant-table-placeholder > .ant-table-cell').should(
+    'not.contain',
+    username
+  );
+};
+
+export const toastNotification = (msg) => {
+  cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
+  cy.wait(1000);
+  cy.get('.Toastify__close-button').should('be.visible').click();
+};

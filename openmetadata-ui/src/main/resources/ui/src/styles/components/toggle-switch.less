@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,22 +12,30 @@
  */
 
 @primary-color: #7147e8;
+@switch-bg-color-primary: rgb(107 114 128 / 15%);
+@switch-bg-color-active: rgb(244, 240, 253);
+@switch-border-color: rgba(107, 114, 128, 1);
 
-.webhook-right-panel {
-  max-width: 290px;
-  width: 290px;
+.ant-switch {
+  padding: 1px;
+  background-image: none;
+  background-color: @switch-bg-color-primary;
+  border: 2px solid @switch-border-color;
 }
 
-.webhook-filter-select {
-  .anticon-close {
-    color: @primary-color;
+.ant-switch-handle::before {
+  background-color: @switch-border-color;
+}
+
+.ant-switch-checked {
+  background: @switch-bg-color-active;
+  border-color: @primary-color;
+  .ant-switch-handle::before {
+    background-color: @primary-color;
   }
 }
 
-.webhook-page-container {
-  justify-content: space-between;
-
-  .ant-space-item:first-child {
-    width: 100%;
-  }
+.ant-switch-small {
+  height: 20px;
+  width: 36px;
 }

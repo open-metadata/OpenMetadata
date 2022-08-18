@@ -177,33 +177,11 @@ pre {
   box-shadow: none;
 }
 .search-grey {
-  width: 600px;
+  width: calc(100vw - 800px);
   background: #f8f9fa;
 }
 .search-grey::placeholder {
   color: #6b7280;
-}
-
-.search-grey.has-search {
-  padding: 18px 20px;
-  padding-left: 12px;
-}
-.search-grey.has-search .form-control.search {
-  padding-left: 2.375rem;
-  background: #f3f3f3;
-  border-radius: 20px;
-  border: none;
-}
-.search-grey.has-search .search-icon {
-  position: absolute;
-  z-index: 2;
-  display: block;
-  width: 2.375rem;
-  height: 1.95rem;
-  line-height: 1.95rem;
-  text-align: center;
-  pointer-events: none;
-  color: #aaa;
 }
 
 /* Breadcrumb */
@@ -1348,3 +1326,7 @@ div.ant-typography-ellipsis-custom {
   white-space: pre-wrap; /* Since CSS 2.1 */
 }
 /* Feed text pre tag CSS */
+
+.ant-switch-checked {
+  background: rgb(244, 240, 253);
+}

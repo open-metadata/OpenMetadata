@@ -175,3 +175,9 @@ export const getActiveAnnouncement = async (entityLink: string) => {
 
   return response.data;
 };
+
+export const deleteThread = async (threadId: string) => {
+  const response = await APIClient.delete<Thread>(`/feed/${threadId}`);
+
+  return response.data;
+};

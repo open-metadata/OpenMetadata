@@ -48,6 +48,7 @@ from metadata.generated.schema.tests.column.columnValuesToNotMatchRegex import (
     ColumnValuesToNotMatchRegex,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.validations.core import validation_enum_registry
 
@@ -336,7 +337,6 @@ class SessionValidation(UnitestTestCase):
         Check that the metric runs and the results are correctly validated
         """
         table_profile = TableProfile(timestamp=EXECUTION_DATE.timestamp())
-        print(validation_enum_registry.registry["TableCustomSQLQuery"])
         res_ok = (
             validation_enum_registry.registry["TableCustomSQLQuery"](
                 TestCase(
@@ -345,8 +345,17 @@ class SessionValidation(UnitestTestCase):
                         TestCaseParameterValue(
                             name="sqlExpression",
                             value="SELECT * FROM users WHERE age < 10",
-                        )
+                        ),
                     ],
+                    testDefinition=EntityReference(
+                        id=uuid4(),
+                        type="TestDefinition",
+                    ),
+                    entityLink="<#E::table::entity.link>",
+                    testSuite=EntityReference(
+                        id=uuid4(),
+                        type="TestSuite",
+                    ),
                 ),
                 test_definition=None,
                 table_profile=table_profile,
@@ -373,6 +382,15 @@ class SessionValidation(UnitestTestCase):
                             value="SELECT * FROM users WHERE LOWER(name) LIKE '%john%'",
                         )
                     ],
+                    testDefinition=EntityReference(
+                        id=uuid4(),
+                        type="TestDefinition",
+                    ),
+                    entityLink="<#E::table::entity.link>",
+                    testSuite=EntityReference(
+                        id=uuid4(),
+                        type="TestSuite",
+                    ),
                 ),
                 test_definition=None,
                 table_profile=table_profile,

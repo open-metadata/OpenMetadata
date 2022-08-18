@@ -2530,22 +2530,20 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
-      String entityId = filter.getQueryParam("entityId");
-      String entityFqn = filter.getQueryParam("entityFqn");
+      String entityFQN = filter.getQueryParam("entityFQN");
       String testSuiteId = filter.getQueryParam("testSuiteId");
+      boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
       String condition = filter.getCondition();
 
-      if (entityFqn == null && entityId == null && testSuiteId == null) {
+      if (entityFQN == null && testSuiteId == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
-      if (entityId != null || entityFqn != null) {
-        if (entityId != null) {
+      if (entityFQN != null) {
+        if (includeAllTests) {
           condition =
-              String.format(
-                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
+              String.format("%s AND entityFQN LIKE %s OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
         } else {
-          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+          condition = String.format("%s AND entityFQN = '%s') ", condition, entityFQN);
         }
       }
       if (testSuiteId != null) {
@@ -2560,21 +2558,19 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
-      String entityId = filter.getQueryParam("entityId");
-      String entityFqn = filter.getQueryParam("entityFqn");
+      String entityFQN = filter.getQueryParam("entityFQN");
       String testSuiteId = filter.getQueryParam("testSuiteId");
+      boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
       String condition = filter.getCondition();
-      if (entityFqn == null && entityId == null && testSuiteId == null) {
+      if (entityFQN == null && testSuiteId == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
-      if (entityId != null || entityFqn != null) {
-        if (entityId != null) {
+      if (entityFQN != null) {
+        if (includeAllTests) {
           condition =
-              String.format(
-                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
+              String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
         } else {
-          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+          condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
         }
       }
       if (testSuiteId != null) {
@@ -2589,21 +2585,19 @@ public interface CollectionDAO {
 
     @Override
     default int listCount(ListFilter filter) {
-      String entityId = filter.getQueryParam("entityId");
-      String entityFqn = filter.getQueryParam("entityFqn");
+      String entityFQN = filter.getQueryParam("entityFQN");
       String testSuiteId = filter.getQueryParam("testSuiteId");
+      boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
       String condition = filter.getCondition();
-      if (entityFqn == null && entityId == null && testSuiteId == null) {
+      if (entityFQN == null && testSuiteId == null) {
         return EntityDAO.super.listCount(filter);
       }
-      if (entityId != null || entityFqn != null) {
-        if (entityId != null) {
+      if (entityFQN != null) {
+        if (includeAllTests) {
           condition =
-              String.format(
-                  "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d)",
-                  condition, entityId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
+              String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
         } else {
-          condition = String.format("%s AND fullyQualifiedName LIKE '%s.%%' ", condition, entityFqn);
+          condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
         }
       }
       if (testSuiteId != null) {

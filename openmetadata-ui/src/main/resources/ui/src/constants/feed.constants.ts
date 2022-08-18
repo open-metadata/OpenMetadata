@@ -33,6 +33,7 @@ export const confirmStateInitialValue = {
   state: false,
   threadId: undefined,
   postId: undefined,
+  isThread: false,
 };
 
 export const confirmationBodyText =

@@ -74,7 +74,7 @@ const GlobalSettingRouter = () => {
       <Route exact path={getSettingPath()}>
         <Redirect
           to={getSettingPath(
-            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingsMenuCategory.MEMBERS,
             GlobalSettingOptions.TEAMS
           )}
         />
@@ -83,7 +83,7 @@ const GlobalSettingRouter = () => {
         exact
         component={TeamsPage}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS
         )}
       />
@@ -91,7 +91,7 @@ const GlobalSettingRouter = () => {
         exact
         component={TeamsPage}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true
         )}
@@ -145,7 +145,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={UserListPageV1}
-        path={getSettingCategoryPath(GlobalSettingsMenuCategory.ACCESS)}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
       />
 
       <AdminProtectedRoute

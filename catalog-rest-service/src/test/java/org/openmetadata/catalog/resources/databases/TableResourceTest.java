@@ -1517,18 +1517,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Total 5 user tags  - 1 table tag + 2 column tags includes global test entities
-    assertEquals(5, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
+    assertEquals(3, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(2, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
+    assertEquals(1, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary2 tags  - 1 table
     assertEquals(1, getGlossaryUsageCount("g2", ADMIN_AUTH_HEADERS));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
-    assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 column level
-    assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Total 1 GLOSSARY1_TERM1 - 1 table level
     assertEquals(1, getGlossaryTermUsageCount(GLOSSARY2_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
@@ -1541,11 +1541,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
     // Additional 2 user tags - 2 column tags
-    assertEquals(7, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
+    assertEquals(5, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
     // Additional 2 USER_ADDRESS tags - 2 column tags
-    assertEquals(7, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Additional 1 glossary tag - 1 column tags
-    assertEquals(3, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     ResultList<Table> tableList = listEntities(null, ADMIN_AUTH_HEADERS); // List tables
     assertEquals(3, tableList.getData().size());
