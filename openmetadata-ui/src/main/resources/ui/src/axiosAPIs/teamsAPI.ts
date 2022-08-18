@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { isString } from 'lodash';
 import { Team } from '../generated/entity/teams/team';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
@@ -20,13 +21,26 @@ import APIClient from './index';
 
 export const getTeams = async (
   arrQueryFields?: string | string[],
-  limit = 100000
+  params?: {
+    limit?: number;
+    before?: string;
+    after?: string;
+    parentTeam?: string;
+    include?: string;
+  }
 ) => {
+  const updatedParams = {
+    fields: isString(arrQueryFields)
+      ? arrQueryFields
+      : arrQueryFields?.join(','),
+    limit: 100000,
+    ...params,
+  };
   const url = getURLWithQueryFields('/teams', arrQueryFields);
 
-  const response = await APIClient.get<{ data: Team[]; paging: Paging }>(
-    `${url}${arrQueryFields ? '&' : '?'}limit=${limit}`
-  );
+  const response = await APIClient.get<{ data: Team[]; paging: Paging }>(url, {
+    params: updatedParams,
+  });
 
   return response.data;
 };

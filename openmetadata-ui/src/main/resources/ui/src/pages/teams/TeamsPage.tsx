@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined, toLower } from 'lodash';
+import { cloneDeep, isUndefined, toLower } from 'lodash';
 import { FormErrorData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -86,21 +86,50 @@ const TeamsPage = () => {
     setIsAddingUsers(value);
   };
 
-  const fetchAllTeams = async (isPageLoading = true) => {
+  const updateTeamsHierarchy = (
+    teams: Team[],
+    parentTeam: string,
+    data: Team[]
+  ) => {
+    for (const team of teams) {
+      if (team.fullyQualifiedName === parentTeam) {
+        team.children = data as EntityReference[];
+
+        break;
+      } else if (team.children && team.children.length > 0) {
+        updateTeamsHierarchy(team.children as Team[], parentTeam, data);
+
+        break;
+      }
+    }
+  };
+
+  const fetchAllTeams = async (
+    isPageLoading = true,
+    parentTeam?: string,
+    updateChildNode = false
+  ) => {
     isPageLoading && setIsPageLoading(true);
     try {
-      const { data } = await getTeams([
-        // 'users',
-        'owns',
-        'defaultRoles',
-        'owner',
-        'children',
-      ]);
+      const { data } = await getTeams(
+        ['defaultRoles', 'userCount', 'childrenCount'],
+        {
+          parentTeam: parentTeam ?? 'organization',
+        }
+      );
 
-      if (data) {
-        setAllTeam(data);
+      const modifiedTeams: Team[] = data.map((team) => ({
+        ...team,
+        key: team.fullyQualifiedName,
+        children: team.childrenCount && team.childrenCount > 0 ? [] : undefined,
+      }));
+
+      if (updateChildNode) {
+        const allTeamsData = cloneDeep(allTeam);
+        updateTeamsHierarchy(allTeamsData, parentTeam || '', modifiedTeams);
+        setAllTeam(allTeamsData);
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        setAllTeam(modifiedTeams);
       }
     } catch (error) {
       showErrorToast(
@@ -461,9 +490,8 @@ const TeamsPage = () => {
   useEffect(() => {
     if (fqn) {
       fetchTeamByFqn(fqn);
-    } else {
-      fetchAllTeams();
     }
+    fetchAllTeams(false, fqn);
   }, [fqn]);
 
   if (isPageLoading) {
@@ -478,10 +506,12 @@ const TeamsPage = () => {
           showDeletedTeam={showDeletedTeam}
           onAddTeamClick={handleAddTeam}
           onShowDeletedTeamChange={handleShowDeletedTeam}
+          onTeamExpand={fetchAllTeams}
         />
       ) : (
         <TeamDetailsV1
           afterDeleteAction={afterDeleteAction}
+          childTeams={allTeam}
           currentTeam={selectedTeam}
           currentTeamUserPage={currentUserPage}
           currentTeamUsers={users}
@@ -500,6 +530,7 @@ const TeamsPage = () => {
           teamUsersSearchText={userSearchValue}
           updateTeamHandler={updateTeamHandler}
           onDescriptionUpdate={onDescriptionUpdate}
+          onTeamExpand={fetchAllTeams}
         />
       )}
 
