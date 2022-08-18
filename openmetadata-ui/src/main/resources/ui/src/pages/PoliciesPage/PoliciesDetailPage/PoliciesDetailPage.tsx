@@ -126,7 +126,24 @@ const PoliciesDetailPage = () => {
           <div className="tw--ml-5">
             <Description description={policy.description || ''} />
           </div>
-          <Tabs defaultActiveKey="roles">
+          <Tabs defaultActiveKey="rules">
+            <TabPane key="rules" tab="Rules">
+              {isEmpty(policy.rules) ? (
+                <Empty description="No rules found" />
+              ) : (
+                <Row gutter={[16, 16]}>
+                  {policy.rules.map((rule) => (
+                    <Col key={uniqueId()} span={8}>
+                      <Card title={rule.name}>
+                        <RichTextEditorPreviewer
+                          markdown={rule.description || ''}
+                        />
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              )}
+            </TabPane>
             <TabPane key="roles" tab="Roles">
               <RolesList roles={policy.roles ?? []} />
             </TabPane>
@@ -140,23 +157,6 @@ const PoliciesDetailPage = () => {
                       <Card title={getEntityName(team)}>
                         <RichTextEditorPreviewer
                           markdown={team.description || ''}
-                        />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              )}
-            </TabPane>
-            <TabPane key="rules" tab="Rules">
-              {isEmpty(policy.rules) ? (
-                <Empty description="No rules found" />
-              ) : (
-                <Row gutter={[16, 16]}>
-                  {policy.rules.map((rule) => (
-                    <Col key={uniqueId()} span={8}>
-                      <Card title={rule.name}>
-                        <RichTextEditorPreviewer
-                          markdown={rule.description || ''}
                         />
                       </Card>
                     </Col>
