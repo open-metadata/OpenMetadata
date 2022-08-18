@@ -75,7 +75,8 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       <span className="tw-mx-1">created a task</span>
       <Link
         data-testid="tasklink"
-        to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
+        to={getTaskDetailPath(toString(taskDetails?.id)).pathname}
+        onClick={(e) => e.stopPropagation()}>
         <span>
           {`#${taskDetails?.id} `}
           {taskDetails?.type}
@@ -93,7 +94,8 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
             <Link
               className="tw-break-all"
               data-testid="entitylink"
-              to={prepareFeedLink(entityType, entityFQN)}>
+              to={prepareFeedLink(entityType, entityFQN)}
+              onClick={(e) => e.stopPropagation()}>
               {entityDisplayName(entityType, entityFQN)}
             </Link>
           </EntityPopOverCard>

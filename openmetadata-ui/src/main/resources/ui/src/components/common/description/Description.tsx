@@ -43,7 +43,6 @@ const Description: FC<DescriptionProps> = ({
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
-  blurWithBodyBG = false,
   removeBlur = false,
   entityName,
   entityFieldThreads,
@@ -211,14 +210,9 @@ const Description: FC<DescriptionProps> = ({
             id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
-                blurClasses={
-                  blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
-                }
                 className="tw-pl-2"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
-                maxHtClass="tw-max-h-36"
-                maxLen={800}
               />
             ) : (
               <span className="tw-no-description tw-p-2">No description </span>

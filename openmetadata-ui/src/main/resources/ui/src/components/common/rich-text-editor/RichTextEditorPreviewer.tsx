@@ -12,29 +12,28 @@
  */
 
 import { Viewer } from '@toast-ui/react-editor';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { BlurLayout } from './BlurLayout';
 import { PreviewerProp } from './RichTextEditor.interface';
 import './RichTextEditorPreviewer.less';
 
-export const MAX_LENGTH = 300;
+export const MAX_LENGTH = 350;
 
 const RichTextEditorPreviewer = ({
   markdown = '',
   className = '',
-  blurClasses = 'see-more-blur',
-  maxHtClass = 'tw-h-24',
-  maxLen = MAX_LENGTH,
   enableSeeMoreVariant = true,
   textVariant = 'black',
 }: PreviewerProp) => {
   const [content, setContent] = useState<string>('');
-  const [displayMoreText, setDisplayMoreText] = useState<boolean>(false);
+  const [hideReadMoreText, setHideReadMoreText] = useState<boolean>(
+    markdown.length <= MAX_LENGTH
+  );
 
   const displayMoreHandler = () => {
-    setDisplayMoreText((pre) => !pre);
+    setHideReadMoreText((pre) => !pre);
   };
 
   useEffect(() => {
@@ -43,30 +42,30 @@ const RichTextEditorPreviewer = ({
 
   return (
     <div
-      className={classNames(
-        'content-container tw-relative',
-        className,
-        enableSeeMoreVariant && markdown.length > maxLen && !displayMoreText
-          ? `${maxHtClass} tw-overflow-hidden`
-          : null,
-        {
-          'tw-mb-5': displayMoreText,
-        }
-      )}
+      className={classNames('rich-text-editor-container', className)}
       data-testid="viewer-container">
       <div
         className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser">
-        <Viewer extendedAutolinks initialValue={content} key={uniqueId()} />
+        <Viewer
+          extendedAutolinks
+          initialValue={
+            hideReadMoreText || !enableSeeMoreVariant
+              ? content
+              : `${content.slice(0, MAX_LENGTH)}...`
+          }
+          key={uniqueId()}
+        />
       </div>
-
-      <BlurLayout
-        blurClasses={blurClasses}
-        displayMoreHandler={displayMoreHandler}
-        displayMoreText={displayMoreText}
-        enableSeeMoreVariant={enableSeeMoreVariant}
-        markdown={content}
-      />
+      {enableSeeMoreVariant && markdown.length > MAX_LENGTH && (
+        <Button
+          className="leading-0"
+          data-testid="read-more-button"
+          type="link"
+          onClick={displayMoreHandler}>
+          {hideReadMoreText ? 'read less' : 'read more'}
+        </Button>
+      )}
     </div>
   );
 };
