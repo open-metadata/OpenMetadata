@@ -41,7 +41,7 @@
         <dependency>
             <groupId>org.mozilla</groupId>
             <artifactId>rhino</artifactId>
-            <version>1.7.12</version>
+            <version>1.7.14</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -61,7 +61,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20180130</version>
+            <version>20220320</version>
         </dependency>
         <!-- FEIGN DEPENDENCY-->
         <dependency>
@@ -87,12 +87,12 @@
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.3.0</version>
+            <version>1.10.0</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.12.0</version>
+            <version>1.13.0</version>
         </dependency>
         <dependency>
             <groupId>io.github.openfeign</groupId>
