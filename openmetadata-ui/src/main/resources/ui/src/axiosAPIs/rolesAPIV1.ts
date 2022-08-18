@@ -12,12 +12,17 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { CreatePolicy } from '../generated/api/policies/createPolicy';
 import { CreateRole } from '../generated/api/teams/createRole';
 import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
+
+const patchConfig = {
+  headers: { 'Content-type': 'application/json-patch+json' },
+};
 
 export const getRoles = async (
   fields: string,
@@ -92,6 +97,26 @@ export const addPolicy = async (data: CreatePolicy) => {
   const response = await APIClient.post<CreatePolicy, AxiosResponse<Policy>>(
     '/policies',
     data
+  );
+
+  return response.data;
+};
+
+export const patchRole = async (data: Operation[], id: string) => {
+  const response = await APIClient.patch<Operation[], AxiosResponse<Role>>(
+    `/roles/${id}`,
+    data,
+    patchConfig
+  );
+
+  return response.data;
+};
+
+export const patchPolicy = async (data: Operation[], id: string) => {
+  const response = await APIClient.patch<Operation[], AxiosResponse<Policy>>(
+    `/policies/${id}`,
+    data,
+    patchConfig
   );
 
   return response.data;

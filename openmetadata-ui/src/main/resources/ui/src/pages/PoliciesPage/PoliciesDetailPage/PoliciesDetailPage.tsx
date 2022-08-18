@@ -14,10 +14,11 @@
 import { Button, Card, Col, Empty, Row, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getPolicyByName } from '../../../axiosAPIs/rolesAPIV1';
+import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -26,6 +27,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -79,6 +81,7 @@ const PoliciesDetailPage = () => {
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
+  const [editDescription, setEditDescription] = useState<boolean>(false);
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -111,6 +114,18 @@ const PoliciesDetailPage = () => {
     }
   };
 
+  const handleDescriptionUpdate = async (description: string) => {
+    const patch = compare(policy, { ...policy, description });
+    try {
+      const data = await patchPolicy(patch, policy.id);
+      setPolicy({ ...policy, description: data.description });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setEditDescription(false);
+    }
+  };
+
   useEffect(() => {
     fetchPolicy();
   }, [fqn]);
@@ -134,7 +149,16 @@ const PoliciesDetailPage = () => {
       ) : (
         <div className="policies-detail" data-testid="policy-details">
           <div className="tw--ml-5">
-            <Description description={policy.description || ''} />
+            <Description
+              description={policy.description || ''}
+              entityFqn={policy.fullyQualifiedName}
+              entityName={getEntityName(policy)}
+              entityType={EntityType.POLICY}
+              isEdit={editDescription}
+              onCancel={() => setEditDescription(false)}
+              onDescriptionEdit={() => setEditDescription(true)}
+              onDescriptionUpdate={handleDescriptionUpdate}
+            />
           </div>
           <Tabs defaultActiveKey="rules">
             <TabPane key="rules" tab="Rules">
