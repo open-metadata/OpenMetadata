@@ -14,6 +14,7 @@
 import { Button, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   PRIMERY_COLOR,
   SECONDARY_COLOR,
@@ -23,11 +24,12 @@ import { ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCaseStatus } from '../../../generated/tests/tableTest';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
+import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
+import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
-import TestIndicator from './TestIndicator';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnProfile,
@@ -57,6 +59,18 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
+        render: (name: string) => {
+          const data = columns.find((col) => col.name === name);
+
+          return (
+            <Link
+              to={getProfilerDashboardWithFqnPath(
+                data?.fullyQualifiedName || ''
+              )}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: 'Data Type',

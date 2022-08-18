@@ -9,6 +9,10 @@ slug: /openmetadata/connectors/dashboard/metabase/cli
 
 <PythonMod connector="Metabase" module="metabase" />
 
+<br/>
+
+We have tested Metabase with version -- 0.42.4 and version -- 0.43.4
+
 <MetadataIngestionServiceDev service="dashboard" connector="Metabase" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>
