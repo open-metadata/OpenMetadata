@@ -39,6 +39,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
@@ -468,7 +469,18 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   return (
     <div className="add-webhook-container">
       <PageLayout
-        classes="tw-max-w-full-hd tw-bg-white tw-pt-4"
+        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+        header={
+          <TitleBreadcrumb
+            titleLinks={[
+              {
+                name: header,
+                url: '',
+                activeTitle: true,
+              },
+            ]}
+          />
+        }
         layout={PageLayoutType['2ColRTL']}
         rightPanel={fetchRightPanel()}>
         <div className="tw-form-container tw-p">

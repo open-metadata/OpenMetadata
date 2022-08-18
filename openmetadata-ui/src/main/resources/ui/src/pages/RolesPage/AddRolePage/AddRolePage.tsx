@@ -20,12 +20,20 @@ import RichTextEditor from '../../../components/common/rich-text-editor/RichText
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
 import { Policy } from '../../../generated/entity/policies/policy';
-import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
+import {
+  getPath,
+  getRoleWithFqnPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const breadcrumb = [
+  {
+    name: 'Settings',
+    url: getSettingPath(),
+  },
   {
     name: 'Roles',
     url: rolesPath,
@@ -83,10 +91,8 @@ const AddRolePage = () => {
 
   return (
     <Row gutter={[16, 16]}>
-      <Col span={24}>
+      <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
-      <Col span={18}>
         <Card title="Add New Role">
           <Form
             data-testid="role-form"

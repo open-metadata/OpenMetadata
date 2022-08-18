@@ -14,8 +14,10 @@
 import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import Loader from '../../../components/Loader/Loader';
+import { ROUTES } from '../../../constants/constants';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -23,6 +25,7 @@ import PoliciesList from './PoliciesList';
 import './PoliciesList.less';
 
 const PoliciesListPage = () => {
+  const history = useHistory();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -43,6 +46,10 @@ const PoliciesListPage = () => {
     }
   };
 
+  const handleAddPolicy = () => {
+    history.push(ROUTES.ADD_POLICY);
+  };
+
   useEffect(() => {
     fetchPolicies();
   }, []);
@@ -53,11 +60,13 @@ const PoliciesListPage = () => {
     <Row className="policies-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <Button type="primary">Add Policy</Button>
+          <Button type="primary" onClick={handleAddPolicy}>
+            Add Policy
+          </Button>
         </Space>
       </Col>
       <Col span={24}>
-        <PoliciesList policies={policies} />
+        <PoliciesList fetchPolicies={fetchPolicies} policies={policies} />
       </Col>
     </Row>
   );

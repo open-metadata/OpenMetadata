@@ -19,7 +19,6 @@ export interface DescriptionProps {
   entityName?: string;
   owner?: Table['owner'];
   hasEditAccess?: boolean;
-  blurWithBodyBG?: boolean;
   removeBlur?: boolean;
   description?: string;
   isEdit?: boolean;

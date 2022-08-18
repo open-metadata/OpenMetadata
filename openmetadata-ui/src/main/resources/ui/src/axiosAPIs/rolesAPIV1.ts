@@ -12,11 +12,17 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
+import { CreatePolicy } from '../generated/api/policies/createPolicy';
 import { CreateRole } from '../generated/api/teams/createRole';
 import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
+
+const patchConfig = {
+  headers: { 'Content-type': 'application/json-patch+json' },
+};
 
 export const getRoles = async (
   fields: string,
@@ -45,7 +51,7 @@ export const getPolicies = async (
   fields: string,
   after?: string,
   before?: string,
-  limit = 10
+  limit = 100
 ) => {
   const params = {
     limit,
@@ -79,10 +85,39 @@ export const getPolicyByName = async (name: string, fields: string) => {
 };
 
 export const addRole = async (data: CreateRole) => {
-  const dataResponse = await APIClient.post<CreateRole, AxiosResponse<Role>>(
+  const response = await APIClient.post<CreateRole, AxiosResponse<Role>>(
     '/roles',
     data
   );
 
-  return dataResponse.data;
+  return response.data;
+};
+
+export const addPolicy = async (data: CreatePolicy) => {
+  const response = await APIClient.post<CreatePolicy, AxiosResponse<Policy>>(
+    '/policies',
+    data
+  );
+
+  return response.data;
+};
+
+export const patchRole = async (data: Operation[], id: string) => {
+  const response = await APIClient.patch<Operation[], AxiosResponse<Role>>(
+    `/roles/${id}`,
+    data,
+    patchConfig
+  );
+
+  return response.data;
+};
+
+export const patchPolicy = async (data: Operation[], id: string) => {
+  const response = await APIClient.patch<Operation[], AxiosResponse<Policy>>(
+    `/policies/${id}`,
+    data,
+    patchConfig
+  );
+
+  return response.data;
 };

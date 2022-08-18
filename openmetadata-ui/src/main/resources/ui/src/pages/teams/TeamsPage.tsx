@@ -470,7 +470,7 @@ const TeamsPage = () => {
   const afterDeleteAction = () => {
     history.push(
       getSettingPath(
-        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS
       )
     );

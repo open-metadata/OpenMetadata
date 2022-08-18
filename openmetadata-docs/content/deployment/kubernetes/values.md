@@ -9,7 +9,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 
 ## Global Chart Values
 
-<Table>
 
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
@@ -75,7 +74,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.elasticsearch.trustStore.path | string | `Empty String` |
 | global.elasticsearch.trustStore.password.secretRef | string | `elasticsearch-truststore-secrets` |
 | global.elasticsearch.trustStore.password.secretKey | string | `openmetadata-elasticsearch-truststore-password` |
-| global.fernetKey | string | `jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=` |
 | global.jwtTokenConfiguration.enabled | bool | `false` |
 | global.jwtTokenConfiguration.rsapublicKeyFilePath | string | `Empty String` |
 | global.jwtTokenConfiguration.rsaprivateKeyFilePath | string | `Empty String` |
@@ -86,11 +84,9 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.openmetadata.host | string | `openmetadata` |
 | global.openmetadata.port | int | 8585 |
 
-</Table>
 
 ## Chart Values
 
-<Table>
 
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
@@ -129,5 +125,3 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | serviceAccount.name | string | `nil` |
 | sidecars | list | `[]` |
 | tolerations | list | `[]` |
-
-</Table>

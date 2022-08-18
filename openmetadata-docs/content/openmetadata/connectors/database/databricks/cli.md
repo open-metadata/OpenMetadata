@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/databricks/cli
 
 <Requirements />
 
+<PythonMod connector="Databricks" module="databricks" />
+
 <MetadataIngestionServiceDev service="database" connector="Databricks" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

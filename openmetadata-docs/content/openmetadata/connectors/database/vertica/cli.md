@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/vertica/cli
 
 <Requirements />
 
+<PythonMod connector="Vertica" module="vertica" />
+
 <MetadataIngestionServiceDev service="database" connector="Vertica" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

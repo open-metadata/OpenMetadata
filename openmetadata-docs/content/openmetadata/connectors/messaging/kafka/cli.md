@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/messaging/kafka/cli
 
 <Requirements />
 
+<PythonMod connector="Kafka" module="kafka" />
+
 <MetadataIngestionServiceDev service="messaging" connector="Kafka" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

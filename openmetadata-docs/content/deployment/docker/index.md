@@ -15,9 +15,26 @@ for data persistence. Learn how to do so [here](/deployment/docker/volumes).
 To test out your security integration, check out how to 
 [Enable Security](/deployment/docker/security).
 
+## Changing ports
+
+This docker deployment is powered by `docker compose`, and uses the `docker-compose.yml` files shipped during 
+each release [example](https://github.com/open-metadata/OpenMetadata/releases/tag/0.11.4-release).
+
+As with the [Named Volumes](/deployment/docker/volumes), you might want to tune a bit the compose file to modify
+the default ports.
+
+We are shipping the OpenMetadata server and UI at `8585`, and the ingestion container (Airflow) at `8080`. You can
+take a look at the official Docker [docs](https://docs.docker.com/compose/compose-file/#ports). As an example, You could
+update the ports to serve Airflow at `1234` with:
+
+```yaml
+ports:
+  - "1234:8080"
+```
+
 # Production Deployment
 
-If instead, you are planning on going to PROD, we recommend the following
+If you are planning on going to PROD, we also recommend taking a look at the following
 deployment strategies:
 
 <InlineCalloutContainer>

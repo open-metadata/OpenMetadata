@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/salesforce/cli
 
 <Requirements />
 
+<PythonMod connector="Salesforce" module="salesforce" />
+
 <MetadataIngestionServiceDev service="database" connector="Salesforce" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

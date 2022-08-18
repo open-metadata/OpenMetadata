@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/pipeline/glue/cli
 
 <Requirements />
 
+<PythonMod connector="Glue" module="glue" />
+
 <MetadataIngestionServiceDev service="pipeline" connector="GluePipeline" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

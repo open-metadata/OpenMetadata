@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/deltalake/cli
 
 <Requirements />
 
+<PythonMod connector="DeltaLake" module="deltalake" />
+
 <MetadataIngestionServiceDev service="database" connector="DeltaLake" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

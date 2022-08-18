@@ -404,7 +404,7 @@ const TeamDetailsV1 = ({
         {
           name: 'Team',
           url: getSettingPath(
-            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingsMenuCategory.MEMBERS,
             GlobalSettingOptions.TEAMS
           ),
         },
@@ -769,7 +769,6 @@ const TeamDetailsV1 = ({
             className="tw-mb-3 tw--ml-5 tw-mt-2"
             data-testid="description-container">
             <Description
-              blurWithBodyBG
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
               hasEditAccess={isOwner()}

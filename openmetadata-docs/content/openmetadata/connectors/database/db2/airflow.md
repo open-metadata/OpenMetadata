@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/db2/airflow
 
 <Requirements />
 
+<PythonMod connector="DB2" module="db2" />
+
 <MetadataIngestionServiceDev service="database" connector="DB2" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>
