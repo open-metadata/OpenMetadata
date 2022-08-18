@@ -581,11 +581,8 @@ class MetadataRestSink(Sink[Entity]):
         data to a Pipeline Entity
         """
         try:
-            pipeline = self.metadata.get_by_name(
-                entity=Pipeline, fqn=record.pipeline_fqn
-            )
             self.metadata.add_pipeline_status(
-                pipeline=pipeline, status=record.pipeline_status
+                fqn=record.pipeline_fqn, status=record.pipeline_status
             )
             self.status.records_written(f"Pipeline Status: {record.pipeline_fqn}")
 
