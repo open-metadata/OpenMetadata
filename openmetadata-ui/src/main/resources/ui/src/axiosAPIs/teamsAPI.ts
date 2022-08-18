@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isString } from 'lodash';
+import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
@@ -56,8 +57,8 @@ export const getTeamByName = async (
   return response.data;
 };
 
-export const createTeam = async (data: Team) => {
-  const response = await APIClient.post<Team>('/teams', data);
+export const createTeam = async (data: CreateTeam) => {
+  const response = await APIClient.post<CreateTeam>('/teams', data);
 
   return response.data;
 };

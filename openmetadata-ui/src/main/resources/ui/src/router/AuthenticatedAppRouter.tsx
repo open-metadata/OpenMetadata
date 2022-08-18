@@ -54,11 +54,6 @@ const SwaggerPage = withSuspenseFallback(
 const TagsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/tags'))
 );
-const TeamsAndUsersPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../pages/TeamsAndUsersPage/TeamsAndUsersPage.component')
-  )
-);
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/TopicDetails/TopicDetailsPage.component'))
 );
@@ -196,16 +191,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
-      <Route
-        exact
-        component={TeamsAndUsersPage}
-        path={ROUTES.TEAMS_AND_USERS}
-      />
-      <Route
-        exact
-        component={TeamsAndUsersPage}
-        path={ROUTES.TEAMS_AND_USERS_DETAILS}
-      />
       <Route
         exact
         component={EditConnectionFormPage}

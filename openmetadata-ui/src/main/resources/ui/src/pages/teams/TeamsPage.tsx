@@ -13,8 +13,8 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { cloneDeep, isUndefined, toLower } from 'lodash';
-import { FormErrorData, SearchResponse } from 'Models';
+import { cloneDeep, isUndefined } from 'lodash';
+import { SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -40,6 +40,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
@@ -47,7 +48,7 @@ import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
-import { getEntityName, isUrlFriendlyName } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
@@ -69,7 +70,6 @@ const TeamsPage = () => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [userSearchValue, setUserSearchValue] = useState<string>('');
-  const [errorNewTeamData, setErrorNewTeamData] = useState<FormErrorData>();
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
 
@@ -140,67 +140,29 @@ const TeamsPage = () => {
   };
 
   /**
-   * Handle new data change
-   * @param data - team data
-   * @param forceSet - boolean value
-   * @returns - errorData
-   */
-  const onNewTeamDataChange = (data: Team, forceSet = false) => {
-    if (errorNewTeamData || forceSet) {
-      const errData: { [key: string]: string } = {};
-      if (!data.name.trim()) {
-        errData['name'] = 'Name is required';
-      } else if (
-        !isUndefined(
-          allTeam.find((item) => toLower(item.name) === toLower(data.name))
-        )
-      ) {
-        errData['name'] = 'Name already exists';
-      } else if (data.name.length < 1 || data.name.length > 128) {
-        errData['name'] = 'Name size must be between 1 and 128';
-      } else if (!isUrlFriendlyName(data.name.trim())) {
-        errData['name'] = 'Special characters are not allowed';
-      }
-      if (!data.displayName?.trim()) {
-        errData['displayName'] = 'Display name is required';
-      } else if (data.displayName.length < 1 || data.displayName.length > 128) {
-        errData['displayName'] = 'Display name size must be between 1 and 128';
-      }
-      setErrorNewTeamData(errData);
-
-      return errData;
-    }
-
-    return {};
-  };
-
-  /**
    * Take Team data as input and create the team
    * @param data - Team Data
    */
-  const createNewTeam = (data: Team) => {
-    const errData = onNewTeamDataChange(data, true);
-    if (!Object.values(errData).length) {
-      const teamData = {
+  const createNewTeam = async (data: Team) => {
+    try {
+      const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
         description: data.description,
-      } as Team;
-      createTeam(teamData)
-        .then((res) => {
-          if (res) {
-            handleAddTeam(false);
-            fetchAllTeams();
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['create-team-error']
-          );
-        });
+        teamType: data.teamType as TeamType,
+        parents: fqn ? [selectedTeam.id] : undefined,
+      };
+      const res = await createTeam(teamData);
+      if (res) {
+        const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
+        handleAddTeam(false);
+        fetchAllTeams(true, parent);
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['create-team-error']
+      );
     }
   };
 
@@ -481,12 +443,6 @@ const TeamsPage = () => {
   };
 
   useEffect(() => {
-    if (isAddingTeam) {
-      fetchAllTeams(false);
-    }
-  }, [isAddingTeam]);
-
-  useEffect(() => {
     if (fqn) {
       fetchTeamByFqn(fqn);
     }
@@ -541,25 +497,11 @@ const TeamsPage = () => {
           onSave={(data) => addUsersToTeam(data)}
         />
       )}
-      {/* {isAddingTeam && (
-        <FormModal
-          errorData={errorNewTeamData}
-          form={Form}
-          header="Adding new team"
-          initialData={{
-            name: '',
-            description: '',
-            displayName: '',
-          }}
-          onCancel={() => setIsAddingTeam(false)}
-          onChange={(data) => onNewTeamDataChange(data as Team)}
-          onSave={(data) => createNewTeam(data as Team)}
-        />
-      )} */}
 
       <AddTeamForm
         visible={isAddingTeam}
         onCancel={() => setIsAddingTeam(false)}
+        onSave={(data) => createNewTeam(data as Team)}
       />
     </>
   );
