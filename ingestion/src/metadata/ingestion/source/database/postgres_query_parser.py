@@ -57,10 +57,10 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         """
         try:
             if self.config.sourceConfig.config.queryLogFilePath:
-                query_list = []
-                with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
+                table_query_list = []
+                with open(self.config.sourceConfig.config.queryLogFilePath, "r") as query_log_file:
 
-                    for i in csv.DictReader(fin):
+                    for i in csv.DictReader(query_log_file):
                         query_dict = dict(i)
 
                         analysis_date = (
@@ -72,14 +72,11 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                             )
                         )
 
-                        query_dict["aborted"] = (
-                            True if query_dict["sql_state_code"] == "00000" else False
-                        )
-
+                        query_dict["aborted"] = query_dict["sql_state_code"] == "00000"
                         if "statement" in query_dict["message"]:
                             query_dict["message"] = query_dict["message"].split(":")[1]
 
-                        query_list.append(
+                        table_query_list.append(
                             TableQuery(
                                 query=query_dict["message"],
                                 userName=query_dict.get("user_name", ""),
@@ -92,7 +89,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                                 databaseSchema=self.get_schema_name(query_dict),
                             )
                         )
-                yield TableQueries(queries=query_list)
+                yield TableQueries(queries=table_query_list)
         except Exception as err:
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())

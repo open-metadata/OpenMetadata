@@ -7,7 +7,7 @@ source:
       username: openmetadata_user
       password: openmetadata_password
       hostPort: localhost:5432
-      database: pagila
+      database: <database username>
   sourceConfig:
     config:
       queryLogDuration: "<query log duration integer>"
@@ -15,8 +15,7 @@ source:
       resultLimit: "<query log limit integer>"
 processor:
   type: query-parser
-  config:
-    filter: ''
+  config: {}
 stage:
   type: table-usage
   config:
