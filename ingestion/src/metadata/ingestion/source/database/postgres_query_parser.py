@@ -58,7 +58,9 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         try:
             if self.config.sourceConfig.config.queryLogFilePath:
                 table_query_list = []
-                with open(self.config.sourceConfig.config.queryLogFilePath, "r") as query_log_file:
+                with open(
+                    self.config.sourceConfig.config.queryLogFilePath, "r"
+                ) as query_log_file:
 
                     for i in csv.DictReader(query_log_file):
                         query_dict = dict(i)
