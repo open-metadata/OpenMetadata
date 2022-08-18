@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/mssql/airflow
 
 <Requirements />
 
+<PythonMod connector="MSSQL" module="mssql" />
+
 <MetadataIngestionServiceDev service="database" connector="MSSQL" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

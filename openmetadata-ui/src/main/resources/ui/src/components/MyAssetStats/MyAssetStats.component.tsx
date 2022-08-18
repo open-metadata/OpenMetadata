@@ -87,7 +87,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         data: 'Users',
         count: entityCounts.userCount,
         link: getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.USERS
         ),
         dataTestId: 'user',
@@ -98,7 +98,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         data: 'Teams',
         count: entityCounts.teamCount,
         link: getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS
         ),
         dataTestId: 'terms',

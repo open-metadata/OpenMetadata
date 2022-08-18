@@ -10,7 +10,6 @@
 #  limitations under the License.
 """Metadata source module"""
 
-from dataclasses import dataclass, field
 from typing import Iterable, List
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -41,12 +40,11 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-@dataclass
 class MetadataSourceStatus(SourceStatus):
 
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
 
     def scanned_entity(self, entity_class_name: str, entity_name: str) -> None:
         self.success.append(entity_name)

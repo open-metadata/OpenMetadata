@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/powerbi/airflow
 
 <Requirements />
 
+<PythonMod connector="PowerBI" module="powerbi" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="PowerBI" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

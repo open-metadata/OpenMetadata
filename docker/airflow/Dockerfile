@@ -3,7 +3,7 @@ USER root
 RUN apt-get update \
     && apt-get install -y \
         gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        librdkafka-dev unixodbc-dev libevent-dev --no-install-recommends \
+        librdkafka-dev unixodbc-dev libxml2 libevent-dev --no-install-recommends  \
     && rm -rf /var/lib/apt/lists/*
 USER airflow
 # Download openmetadata airflow plugins

@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/dynamodb/cli
 
 <Requirements />
 
+<PythonMod connector="Druid" module="druid" />
+
 <MetadataIngestionServiceDev service="database" connector="BigQuery" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

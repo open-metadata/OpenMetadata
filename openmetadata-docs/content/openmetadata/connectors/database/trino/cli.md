@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/trino/cli
 
 <Requirements />
 
+<PythonMod connector="Trino" module="trino" />
+
 <MetadataIngestionServiceDev service="database" connector="Trino" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

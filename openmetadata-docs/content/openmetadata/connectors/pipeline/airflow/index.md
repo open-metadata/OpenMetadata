@@ -3,7 +3,36 @@ title: Airflow
 slug: /openmetadata/connectors/pipeline/airflow
 ---
 
-<ConnectorIntro service="pipeline" connector="Airflow"/>
+# Airflow
+
+In this section, we provide guides and references to use the Airflow connector.
+
+Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
+
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to
+extract metadata directly from your Airflow instance or via the CLI:
+
+<TileContainer>
+<Tile
+  icon="air"
+  title="Ingest directly from your Airflow"
+  text="Configure the ingestion with a DAG on your own Airflow instance"
+  link={
+    "/openmetadata/connectors/pipeline/airflow/gcs"
+  }
+  size="half"
+/>
+<Tile
+  icon="account_tree"
+  title="Ingest with the CLI"
+  text="Run a one-time ingestion using the metadata CLI"
+  link={
+    "/openmetadata/connectors/pipeline/airflow/cli"
+  }
+  size="half"
+/>
+</TileContainer>
+
 
 <Requirements />
 

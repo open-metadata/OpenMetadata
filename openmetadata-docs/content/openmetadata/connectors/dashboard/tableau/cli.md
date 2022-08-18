@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/tableau/cli
 
 <Requirements />
 
+<PythonMod connector="Tableau" module="tableau" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Tableau" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>
