@@ -11,6 +11,7 @@
 
 from typing import Any
 
+import boto3
 from boto3 import Session
 
 from metadata.clients.connection_clients import (
@@ -55,12 +56,17 @@ class AWSClient:
         return Session()
 
     def get_client(self, service_name: str) -> Any:
-        session = self._get_session()
-        if self.config.endPointURL is not None:
-            return session.client(
-                service_name=service_name, endpoint_url=self.config.endPointURL
-            )
-        return session.client(service_name=service_name)
+        # initialize the client depending on the AWSCredentials passed
+        if self.config is not None:
+            session = self._get_session()
+            if self.config.endPointURL is not None:
+                return session.client(
+                    service_name=service_name, endpoint_url=self.config.endPointURL
+                )
+            return session.client(service_name=service_name)
+        else:
+            # initialized with the credentials loaded from running machine
+            return boto3.client(service_name=service_name)
 
     def get_resource(self, service_name: str) -> Any:
         session = self._get_session()

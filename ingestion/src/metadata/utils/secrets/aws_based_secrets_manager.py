@@ -44,9 +44,7 @@ class AWSBasedSecretsManager(SecretsManager, ABC):
         cluster_prefix: str,
     ):
         super().__init__(cluster_prefix)
-        self.client = AWSClient(
-            credentials if credentials is not None else AWSCredentials(awsRegion="")
-        ).get_client(client)
+        self.client = AWSClient(credentials).get_client(client)
         self.provider = provider.name
 
     def retrieve_service_connection(
