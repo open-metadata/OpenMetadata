@@ -228,6 +228,7 @@ export const ROUTES = {
 
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
   ADD_ROLE: '/settings/access/roles/add-role',
+  ADD_POLICY: '/settings/access/policies/add-policy',
 };
 
 export const SOCKET_EVENTS = {

@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Button, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { uniqueId } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { isUndefined, uniqueId } from 'lodash';
+import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
   getPolicyWithFqnPath,
@@ -27,9 +30,11 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface PolicyListProps {
   policies: Policy[];
+  fetchPolicies: (paging?: Paging) => void;
 }
 
-const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
+const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
+  const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const columns: ColumnsType<Policy> = useMemo(() => {
     return [
       {
@@ -79,21 +84,41 @@ const PoliciesList: FC<PolicyListProps> = ({ policies }) => {
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',
-        render: () => {
-          return <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />;
+        render: (_, record) => {
+          return (
+            <Button type="text" onClick={() => setSelectedPolicy(record)}>
+              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+            </Button>
+          );
         },
       },
     ];
   }, []);
 
   return (
-    <Table
-      className="policies-list-table"
-      columns={columns}
-      dataSource={policies}
-      pagination={false}
-      size="middle"
-    />
+    <>
+      <Table
+        className="policies-list-table"
+        columns={columns}
+        dataSource={policies}
+        pagination={false}
+        size="middle"
+      />
+      {selectedPolicy && (
+        <DeleteWidgetModal
+          afterDeleteAction={fetchPolicies}
+          allowSoftDelete={false}
+          deleteMessage={`Are you sure you want to delete ${getEntityName(
+            selectedPolicy
+          )}`}
+          entityId={selectedPolicy.id}
+          entityName={getEntityName(selectedPolicy)}
+          entityType={EntityType.POLICY}
+          visible={!isUndefined(selectedPolicy)}
+          onCancel={() => setSelectedPolicy(undefined)}
+        />
+      )}
+    </>
   );
 };
 

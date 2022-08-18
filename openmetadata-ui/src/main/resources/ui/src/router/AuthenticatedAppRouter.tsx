@@ -181,6 +181,13 @@ const TaskDetailPage = withSuspenseFallback(
   React.lazy(() => import('../pages/TasksPage/TaskDetailPage/TaskDetailPage'))
 );
 
+const AddRolePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/RolesPage/AddRolePage/AddRolePage'))
+);
+const AddPolicyPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/PoliciesPage/AddPolicyPage/AddPolicyPage'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
@@ -364,6 +371,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
+
+      {/* keep these route above the setting route always */}
+      <AdminProtectedRoute
+        exact
+        component={AddRolePage}
+        path={ROUTES.ADD_ROLE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddPolicyPage}
+        path={ROUTES.ADD_POLICY}
+      />
 
       <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
       <Route

@@ -13,21 +13,26 @@
 
 import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
+import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
-import { Policy } from '../../../generated/entity/policies/policy';
+import {
+  CreatePolicy,
+  PolicyType,
+} from '../../../generated/api/policies/createPolicy';
 import {
   getPath,
-  getRoleWithFqnPath,
+  getPolicyWithFqnPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+
 const { Option } = Select;
-const rolesPath = getPath(GlobalSettingOptions.ROLES);
+
+const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const breadcrumb = [
   {
@@ -35,68 +40,56 @@ const breadcrumb = [
     url: getSettingPath(),
   },
   {
-    name: 'Roles',
-    url: rolesPath,
+    name: 'Policies',
+    url: policiesPath,
   },
   {
-    name: 'Add New Role',
+    name: 'Add New Policy',
     url: '',
   },
 ];
 
-const AddRolePage = () => {
+const AddPolicyPage = () => {
   const history = useHistory();
-  const [policies, setPolicies] = useState<Policy[]>([]);
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
-
-  const fetchPolicies = async () => {
-    try {
-      const data = await getPolicies('owner,location,roles,teams');
-
-      setPolicies(data.data || []);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const [policyType, setPolicyType] = useState<PolicyType>(
+    PolicyType.AccessControl
+  );
 
   const handleCancel = () => {
-    history.push(rolesPath);
+    history.push(policiesPath);
   };
 
   const handleSumbit = async () => {
-    const data = {
+    const data: CreatePolicy = {
       name,
       description,
-      policies: selectedPolicies.map((policy) => ({
-        id: policy,
-        type: 'policy',
-      })),
+      policyType,
+      rules: [],
     };
 
     try {
-      const dataResponse = await addRole(data);
+      const dataResponse = await addPolicy(data);
       if (dataResponse) {
-        history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
+        history.push(
+          getPolicyWithFqnPath(dataResponse.fullyQualifiedName || '')
+        );
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  useEffect(() => {
-    fetchPolicies();
-  }, []);
-
   return (
     <Row gutter={[16, 16]}>
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-        <Card title="Add New Role">
+        <Card title="Add New Policy">
           <Form
-            data-testid="role-form"
-            id="role-form"
+            data-testid="policy-form"
+            id="policy-form"
+            initialValues={{ policyType }}
             layout="vertical"
             onFinish={handleSumbit}>
             <Form.Item
@@ -110,11 +103,31 @@ const AddRolePage = () => {
                 },
               ]}>
               <Input
-                placeholder="Role name"
+                placeholder="Policy name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
+            </Form.Item>
+            <Form.Item
+              label="Policy type:"
+              name="policyType"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}>
+              <Select
+                placeholder="Select PolicyType"
+                value={policyType}
+                onChange={(value) => setPolicyType(value)}>
+                <Option key={PolicyType.AccessControl}>
+                  {PolicyType.AccessControl}
+                </Option>
+                <Option key={PolicyType.Lifecycle}>
+                  {PolicyType.Lifecycle}
+                </Option>
+              </Select>
             </Form.Item>
             <Form.Item label="Description:" name="description">
               <RichTextEditor
@@ -125,32 +138,12 @@ const AddRolePage = () => {
                 onTextChange={(value) => setDescription(value)}
               />
             </Form.Item>
-            <Form.Item
-              label="Select a policy:"
-              name="policies"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <Select
-                mode="multiple"
-                placeholder="Select Policy"
-                value={selectedPolicies}
-                onChange={(values) => setSelectedPolicies(values)}>
-                {policies.map((policy) => (
-                  <Option key={policy.id}>
-                    {policy.displayName || policy.name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
 
             <Space align="center" className="tw-w-full tw-justify-end">
               <Button type="link" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button form="role-form" htmlType="submit" type="primary">
+              <Button form="policy-form" htmlType="submit" type="primary">
                 Submit
               </Button>
             </Space>
@@ -161,4 +154,4 @@ const AddRolePage = () => {
   );
 };
 
-export default AddRolePage;
+export default AddPolicyPage;
