@@ -46,7 +46,8 @@ def delete_dag() -> Response:
 
     except Exception as exc:
         logging.info(f"Failed to delete dag {dag_id} [secured: {secure_dag_id}]")
+        logging.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to delete {dag_id} [secured: {secure_dag_id}] due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to delete {dag_id} [secured: {secure_dag_id}] due to {exc}",
         )

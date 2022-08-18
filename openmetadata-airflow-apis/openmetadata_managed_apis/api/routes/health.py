@@ -11,6 +11,7 @@
 """
 Health endpoint. Globally accessible
 """
+import logging
 import traceback
 
 from airflow.www.app import csrf
@@ -28,7 +29,8 @@ def health():
     try:
         return ApiResponse.success({"status": "healthy"})
     except Exception as err:
+        logging.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Internal error obtaining REST status - {err} - {traceback.format_exc()}",
+            error=f"Internal error obtaining REST status - {err}",
         )

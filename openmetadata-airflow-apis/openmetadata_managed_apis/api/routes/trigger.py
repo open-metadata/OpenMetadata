@@ -41,7 +41,8 @@ def trigger_dag() -> Response:
 
     except Exception as exc:
         logging.info(f"Failed to trigger dag {dag_id}")
+        logging.info(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Workflow {dag_id} has filed to trigger due to {exc} - {traceback.format_exc()}",
+            error=f"Workflow {dag_id} has filed to trigger due to {exc}",
         )

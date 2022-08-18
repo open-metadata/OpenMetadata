@@ -39,7 +39,8 @@ def kill() -> Response:
 
     except Exception as exc:
         logging.info(f"Failed to get kill runs for '{dag_id}'")
+        logging.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to kill runs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to kill runs for '{dag_id}' due to {exc}",
         )

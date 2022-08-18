@@ -38,7 +38,8 @@ def dag_status() -> Response:
 
     except Exception as exc:
         logging.info(f"Failed to get dag {dag_id} status")
+        logging.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to get status for {dag_id} due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to get status for {dag_id} due to {exc}",
         )
