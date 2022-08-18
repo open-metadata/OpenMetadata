@@ -49,6 +49,8 @@ site_menu:
     url: /deployment/kubernetes/onprem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
+  - category: Deployment / Kubernetes Deployment / Helm Values
+    url: /deployment/kubernetes/helm-values
 
   - category: Deployment / Enable Security
     url: /deployment/security

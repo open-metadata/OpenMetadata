@@ -9,7 +9,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 
 ## Global Chart Values
 
-<table>
+
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
 | global.authentication.provider | string | `no-auth` |
@@ -83,11 +83,11 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.openmetadata.adminPort | int | 8586 |
 | global.openmetadata.host | string | `openmetadata` |
 | global.openmetadata.port | int | 8585 |
-</table>
+
 
 ## Chart Values
 
-<table>
+
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
 | affinity | object | `{}` |
@@ -125,4 +125,3 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | serviceAccount.name | string | `nil` |
 | sidecars | list | `[]` |
 | tolerations | list | `[]` |
-</table>
