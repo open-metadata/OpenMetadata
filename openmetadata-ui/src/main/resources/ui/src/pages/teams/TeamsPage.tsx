@@ -28,8 +28,6 @@ import {
 } from '../../axiosAPIs/teamsAPI';
 import { getUsers, updateUserDetail } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
-import FormModal from '../../components/Modals/FormModal';
-import Form from '../../components/TeamDetails/Form';
 import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
 import Teams from '../../components/TeamDetails/Teams';
 import {
@@ -52,6 +50,7 @@ import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName, isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import AddTeamForm from './AddTeamForm';
 import AddUsersModalV1 from './AddUsersModalV1';
 
 const TeamsPage = () => {
@@ -542,7 +541,7 @@ const TeamsPage = () => {
           onSave={(data) => addUsersToTeam(data)}
         />
       )}
-      {isAddingTeam && (
+      {/* {isAddingTeam && (
         <FormModal
           errorData={errorNewTeamData}
           form={Form}
@@ -556,7 +555,12 @@ const TeamsPage = () => {
           onChange={(data) => onNewTeamDataChange(data as Team)}
           onSave={(data) => createNewTeam(data as Team)}
         />
-      )}
+      )} */}
+
+      <AddTeamForm
+        visible={isAddingTeam}
+        onCancel={() => setIsAddingTeam(false)}
+      />
     </>
   );
 };
