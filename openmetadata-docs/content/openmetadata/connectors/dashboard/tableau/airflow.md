@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/tableau/airflow
 
 <Requirements />
 
+<PythonMod connector="Tableau" module="tableau" />
+
 <MetadataIngestionServiceDev service="dashboard" connector="Tableau" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

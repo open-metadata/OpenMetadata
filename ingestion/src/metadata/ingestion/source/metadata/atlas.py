@@ -1,12 +1,16 @@
 import traceback
-import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 import yaml
 
 from metadata.clients.atlas_client import AtlasClient
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -36,10 +40,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-@dataclass
 class AtlasSourceStatus(SourceStatus):
-    tables_scanned: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    tables_scanned: List[str] = list()
+    filtered: List[str] = list()
 
     def table_scanned(self, table: str) -> None:
         self.tables_scanned.append(table)
@@ -160,41 +163,55 @@ class AtlasSource(Source):
                     db_entity = tbl_entity["relationshipAttributes"][
                         self.service_connection.entityTypes["Table"][name]["db"]
                     ]
-                    db = self.get_database_entity(db_entity["displayText"])
+                    database_request = self.get_database_entity(
+                        db_entity["displayText"]
+                    )
                     table_name = tbl_attrs["name"]
                     tbl_description = tbl_attrs["description"]
+                    yield database_request
+
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.service_connection.dbService,
+                        database_name=database_request.name.__root__,
+                    )
+
+                    database_object = self.metadata.get_by_name(
+                        entity=Database, fqn=database_fqn
+                    )
 
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"]["db"]
-                    fqn_obj = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.config.serviceName,
-                        database_name=db.name.__root__,
-                        schema_name=db_entity["displayText"],
-                        table_name=table_name,
-                    )
-                    om_table_entity = Table(
-                        id=uuid.uuid4(),
-                        name=table_name,
-                        description=tbl_description,
-                        fullyQualifiedName=fqn_obj,
-                        columns=tbl_columns,
-                    )
-                    database_schema = DatabaseSchema(
+
+                    database_schema_request = CreateDatabaseSchemaRequest(
                         name=db_entity["displayText"],
-                        service=EntityReference(
-                            id=self.service.id, type=self.service_connection.serviceType
+                        database=EntityReference(
+                            id=database_object.id, type="database"
                         ),
-                        database=EntityReference(id=db.id.__root__, type="database"),
+                    )
+                    yield database_schema_request
+
+                    database_schema_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.config.serviceConnection.__root__.config.dbService,
+                        database_name=database_request.name.__root__,
+                        schema_name=database_schema_request.name.__root__,
+                    )
+                    database_schema_object = self.metadata.get_by_name(
+                        entity=DatabaseSchema, fqn=database_schema_fqn
                     )
 
-                    table_and_db = OMetaDatabaseAndTable(
-                        table=om_table_entity,
-                        database=db,
-                        database_schema=database_schema,
+                    table_request = CreateTableRequest(
+                        name=table_name,
+                        databaseSchema=EntityReference(
+                            id=database_schema_object.id, type="databaseSchema"
+                        ),
+                        description=tbl_description,
+                        columns=tbl_columns,
                     )
-                    yield table_and_db
+                    yield table_request
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
 
@@ -233,12 +250,9 @@ class AtlasSource(Source):
         return om_cols
 
     def get_database_entity(self, database_name: str) -> Database:
-        return Database(
-            id=uuid.uuid4(),
+        return CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.serviceType
-            ),
+            service=EntityReference(id=self.service.id, type="databaseService"),
         )
 
     def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:

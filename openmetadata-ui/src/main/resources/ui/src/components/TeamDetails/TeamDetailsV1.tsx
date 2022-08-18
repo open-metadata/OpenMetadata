@@ -402,7 +402,7 @@ const TeamDetailsV1 = ({
         {
           name: 'Team',
           url: getSettingPath(
-            GlobalSettingsMenuCategory.ACCESS,
+            GlobalSettingsMenuCategory.MEMBERS,
             GlobalSettingOptions.TEAMS
           ),
         },

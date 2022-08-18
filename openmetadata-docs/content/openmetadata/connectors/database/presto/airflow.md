@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/presto/airflow
 
 <Requirements />
 
+<PythonMod connector="Presto" module="presto" />
+
 <MetadataIngestionServiceDev service="database" connector="Presto" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

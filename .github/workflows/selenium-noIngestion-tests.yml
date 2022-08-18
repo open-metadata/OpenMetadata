@@ -44,7 +44,7 @@ jobs:
 
     - name: Generating Data Models
       run: |
-        sudo apt-get install -y antlr4
+        sudo make install_antlr_cli
         make install_dev generate
 
     - name: Maven Package

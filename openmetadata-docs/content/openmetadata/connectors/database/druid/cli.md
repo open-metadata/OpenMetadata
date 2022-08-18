@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/druid/cli
 
 <Requirements />
 
+<PythonMod connector="Druid" module="druid" />
+
 <MetadataIngestionServiceDev service="database" connector="Druid" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/postgres/cli
 
 <Requirements />
 
+<PythonMod connector="Postgres" module="postgres" />
+
 <MetadataIngestionServiceDev service="database" connector="Postgres" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

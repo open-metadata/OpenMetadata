@@ -14,7 +14,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { TestCaseStatus } from '../../../generated/tests/tableTest';
-import { TestIndicatorProps } from '../TableProfiler.interface';
+import { TestIndicatorProps } from '../../TableProfiler/TableProfiler.interface';
 import TestIndicator from './TestIndicator';
 
 const mockProps: TestIndicatorProps = {

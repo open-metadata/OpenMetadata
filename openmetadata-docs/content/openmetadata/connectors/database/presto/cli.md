@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/presto/cli
 
 <Requirements />
 
+<PythonMod connector="Presto" module="presto" />
+
 <MetadataIngestionServiceDev service="database" connector="Presto" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

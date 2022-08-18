@@ -7,6 +7,7 @@ slug: /openmetadata/connectors/database/datalake/cli
 
 <Requirements />
 
+<PythonMod connector="DataLake" module="datalake" />
 
 ## Metadata Ingestion
 All connectors are defined as JSON Schemas. Here you can find the structure to create a connection to Datalake.
@@ -45,10 +46,8 @@ workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
-  
 
 ```
-
 
 #### Source Configuration - Source Config using AWS S3
 
@@ -58,9 +57,6 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
 * **awsRegion**: Specify the region in which your DynamoDB is located. This setting is required even if you have configured a local AWS profile.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
-
-
-
 
 This is a sample config for Datalake using GCS:
 
@@ -104,13 +100,13 @@ workflowConfig:
 ```
 
 
-<h4>Source Configuration - Service Connection using GCS</h4>
+#### Source Configuration - Service Connection using GCS
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **type**: Credentials type, e.g. `service_account`.
 * **projectId**
-* **privat**eKe**y**
+* **privateKey**
 * **privateKeyId**
 * **clientEmail**
 * **clientId**
@@ -118,8 +114,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **tokenUri**: [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
 * **authProviderX509CertUrl**: [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
 * **clientX509CertUrl**
-* **bucketName :** name of the bucket in GCS
-* **Prefix** :  prefix in gcs bucket
+* **bucketName**: name of the bucket in GCS
+* **Prefix**: prefix in gcs bucket
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 <MetadataIngestionConfig service="database" connector="Datalake" goal="CLI" />

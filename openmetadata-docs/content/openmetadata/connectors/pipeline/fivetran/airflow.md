@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/pipeline/fivetran/airflow
 
 <Requirements />
 
+<PythonMod connector="Fivetran" module="fivetran" />
+
 <MetadataIngestionServiceDev service="pipeline" connector="Fivetran" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>

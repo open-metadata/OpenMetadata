@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/database/dynamodb/airflow
 
 <Requirements />
 
+<PythonMod connector="DynamoDB" module="dynamodb" />
+
 <MetadataIngestionServiceDev service="database" connector="DynamoDB" goal="Airflow"/>
 
 <h4>Source Configuration - Service Connection</h4>
