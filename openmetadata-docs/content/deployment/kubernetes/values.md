@@ -69,6 +69,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.elasticsearch.auth.username | string | `elasticsearch` |
 | global.elasticsearch.auth.password.secretRef | string | `elasticsearch-secrets` |
 | global.elasticsearch.auth.password.secretKey | string | `openmetadata-elasticsearch-password` |
+| global.fernetKey | string | `jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=` |
 | global.elasticsearch.host | string | `elasticsearch` |
 | global.elasticsearch.port | int | 9200 |
 | global.elasticsearch.scheme | string | `http` |
