@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Table, Tabs } from 'antd';
+import { Button, Card, Col, Empty, Row, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { getPolicyByName } from '../../../axiosAPIs/rolesAPIV1';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -74,19 +74,22 @@ const RolesList = ({ roles }: { roles: EntityReference[] }) => {
 };
 
 const PoliciesDetailPage = () => {
+  const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
 
+  const policiesPath = getSettingPath(
+    GlobalSettingsMenuCategory.ACCESS,
+    GlobalSettingOptions.POLICIES
+  );
+
   const breadcrumb = useMemo(
     () => [
       {
         name: 'Policies',
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.POLICIES
-        ),
+        url: policiesPath,
       },
       {
         name: fqn,
@@ -120,7 +123,14 @@ const PoliciesDetailPage = () => {
     <div data-testid="policy-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       {isEmpty(policy) ? (
-        <Empty description={`No policy found for ${fqn}`} />
+        <Empty description={`No policy found for ${fqn}`}>
+          <Button
+            size="small"
+            type="primary"
+            onClick={() => history.push(policiesPath)}>
+            Go Back
+          </Button>
+        </Empty>
       ) : (
         <div className="policies-detail" data-testid="policy-details">
           <div className="tw--ml-5">

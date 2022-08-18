@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Table, Tabs } from 'antd';
+import { Button, Card, Col, Empty, Row, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { getRoleByName } from '../../../axiosAPIs/rolesAPIV1';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -77,19 +77,22 @@ const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
 };
 
 const RolesDetailPage = () => {
+  const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
 
+  const rolesPath = getSettingPath(
+    GlobalSettingsMenuCategory.ACCESS,
+    GlobalSettingOptions.ROLES
+  );
+
   const breadcrumb = useMemo(
     () => [
       {
         name: 'Roles',
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.ROLES
-        ),
+        url: rolesPath,
       },
       {
         name: fqn,
@@ -123,7 +126,14 @@ const RolesDetailPage = () => {
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       {isEmpty(role) ? (
-        <Empty description={`No roles found for ${fqn}`} />
+        <Empty description={`No roles found for ${fqn}`}>
+          <Button
+            size="small"
+            type="primary"
+            onClick={() => history.push(rolesPath)}>
+            Go Back
+          </Button>
+        </Empty>
       ) : (
         <div className="roles-detail" data-testid="role-details">
           <div className="tw--ml-5">
