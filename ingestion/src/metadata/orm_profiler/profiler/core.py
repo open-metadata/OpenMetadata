@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     TableProfile,
 )
-from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
@@ -87,7 +86,6 @@ class Profiler(Generic[TMetric]):
         self.exclude_columns = exclude_columns
         self._metrics = metrics
         self._profile_date = profile_date
-        self.status = ProcessorStatus()
 
         self.validate_composed_metric()
 
@@ -379,9 +377,7 @@ class Profiler(Generic[TMetric]):
             sample_data = self.profiler_interface.fetch_sample_data()
         else:
             sample_data = None
-        self.status.processed(
-            self.profiler_interface.table_entity.fullyQualifiedName.__root__
-        )
+
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,
             profile=self.get_profile(),
@@ -442,6 +438,3 @@ class Profiler(Generic[TMetric]):
     @property
     def column_results(self):
         return self._column_results
-
-    def get_status(self) -> ProcessorStatus:
-        return self.status
