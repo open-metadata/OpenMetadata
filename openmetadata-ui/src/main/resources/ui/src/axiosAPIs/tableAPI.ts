@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import {
@@ -226,16 +225,12 @@ export const getTableProfilesList = async (
     after?: string;
   }
 ) => {
-  let url = `/tables/${tableId}/tableProfile`;
-  if (!isEmpty(params)) {
-    const urlParams = new URLSearchParams(params as Record<string, string>);
-    url = `${url}?${urlParams.toString()}`;
-  }
+  const url = `/tables/${tableId}/tableProfile`;
 
   const response = await APIClient.get<{
     data: TableProfile[];
     paging: Paging;
-  }>(url);
+  }>(url, { params });
 
   return response.data;
 };

@@ -132,7 +132,9 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     }));
     const proportionMetricInfo = proportionMetrics.information.map((item) => ({
       ...item,
-      latestValue: proportionMetricData[0][item.dataKey],
+      latestValue: parseFloat(
+        `${proportionMetricData[0][item.dataKey]}`
+      ).toFixed(2),
     }));
     const mathMetricInfo = mathMetrics.information.map((item) => ({
       ...item,
