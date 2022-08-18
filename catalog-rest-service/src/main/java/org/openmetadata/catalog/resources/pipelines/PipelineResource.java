@@ -342,7 +342,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @PUT
-  @Path("/{id}/status")
+  @Path("/{fqn}/status")
   @Operation(
       operationId = "addStatusData",
       summary = "Add status data",
@@ -358,16 +358,16 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Pipeline pipeline = dao.addPipelineStatus(id, pipelineStatus);
+    Pipeline pipeline = dao.addPipelineStatus(fqn, pipelineStatus);
     return addHref(uriInfo, pipeline);
   }
 
   @GET
-  @Path("/{id}/status")
+  @Path("/{fqn}/status")
   @Operation(
       operationId = "listPipelineStatuses",
       summary = "List pipeline status",
@@ -388,7 +388,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public ResultList<PipelineStatus> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "FQN of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Parameter(
               description = "Filter pipeline statues after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -416,7 +416,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     ListFilter filter =
         new ListFilter(Include.ALL)
-            .addQueryParam("entityId", id)
+            .addQueryParam("entityFQN", fqn)
             .addQueryParam("extension", PipelineRepository.PIPELINE_STATUS_EXTENSION);
 
     if (startTs != null) {
@@ -429,7 +429,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @DELETE
-  @Path("/{id}/status/{timestamp}")
+  @Path("/{fqn}/status/{timestamp}")
   @Operation(
       operationId = "DeletePipelineStatus",
       summary = "Delete pipeline status.",
@@ -444,13 +444,13 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline deletePipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Pipeline pipeline = dao.deletePipelineStatus(id, timestamp);
+    Pipeline pipeline = dao.deletePipelineStatus(fqn, timestamp);
     return addHref(uriInfo, pipeline);
   }
 
