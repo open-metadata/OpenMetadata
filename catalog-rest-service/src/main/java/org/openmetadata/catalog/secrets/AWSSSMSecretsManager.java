@@ -19,6 +19,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
+import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
@@ -59,13 +60,14 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
             .description("This secret parameter was created by OpenMetadata")
             .value(parameterValue)
             .overwrite(overwrite)
+            .type(ParameterType.SECURE_STRING)
             .build();
     this.ssmClient.putParameter(putParameterRequest);
   }
 
   @Override
   public String getSecret(String secretName) {
-    GetParameterRequest parameterRequest = GetParameterRequest.builder().name(secretName).build();
+    GetParameterRequest parameterRequest = GetParameterRequest.builder().name(secretName).withDecryption(true).build();
     return ssmClient.getParameter(parameterRequest).parameter().value();
   }
 

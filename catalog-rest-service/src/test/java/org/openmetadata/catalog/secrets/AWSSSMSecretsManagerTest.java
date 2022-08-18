@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterResponse;
 import software.amazon.awssdk.services.ssm.model.Parameter;
+import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 
 public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
@@ -48,8 +49,10 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
     verify(ssmClient).getParameter(getSecretCaptor.capture());
     verify(ssmClient).putParameter(createSecretCaptor.capture());
     assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().name());
+    assertTrue(getSecretCaptor.getValue().withDecryption());
     assertEquals(EXPECTED_SECRET_ID, createSecretCaptor.getValue().name());
     assertFalse(createSecretCaptor.getValue().overwrite());
+    assertEquals(ParameterType.SECURE_STRING, createSecretCaptor.getValue().type());
     assertEquals(EXPECTED_CONNECTION_JSON, createSecretCaptor.getValue().value());
   }
 
@@ -62,8 +65,10 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
     verify(ssmClient).getParameter(getSecretCaptor.capture());
     verify(ssmClient).putParameter(updateSecretCaptor.capture());
     assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().name());
+    assertTrue(getSecretCaptor.getValue().withDecryption());
     assertEquals(EXPECTED_SECRET_ID, updateSecretCaptor.getValue().name());
     assertTrue(updateSecretCaptor.getValue().overwrite());
+    assertEquals(ParameterType.SECURE_STRING, updateSecretCaptor.getValue().type());
     assertEquals(EXPECTED_CONNECTION_JSON, updateSecretCaptor.getValue().value());
   }
 
