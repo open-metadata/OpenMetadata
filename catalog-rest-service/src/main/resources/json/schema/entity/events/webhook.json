@@ -6,6 +6,26 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.Webhook",
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+  "definitions": {
+    "webhookType": {
+      "description": "Type of webhook slack, generic, kafka, etc.",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.WebhookType",
+      "default": "generic",
+      "enum": ["slack", "generic", "kafka"],
+      "javaEnums": [
+        {
+          "name": "slack"
+        },
+        {
+          "name": "generic"
+        },
+        {
+          "name": "kafka"
+        }
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique ID associated with a webhook subscription.",
@@ -24,8 +44,8 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack,generic,kafka etc",
-      "$ref": "../../api/events/createWebhook.json#/properties/webhookType"
+      "description": "Type of webhook slack, generic, kafka, etc.",
+      "$ref": "#/definitions/webhookType"
     },
     "description": {
       "description": "Description of the application.",
