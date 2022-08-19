@@ -24,7 +24,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTableProfile import CreateTableProfileRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -98,9 +100,9 @@ class MetadataRestSink(Sink[Entity]):
     # pylint: disable=broad-except
 
     def __init__(
-            self,
-            config: MetadataRestSinkConfig,
-            metadata_config: OpenMetadataConnection,
+        self,
+        config: MetadataRestSinkConfig,
+        metadata_config: OpenMetadataConnection,
     ):
 
         self.config = config
@@ -306,7 +308,9 @@ class MetadataRestSink(Sink[Entity]):
             if db_schema_and_table.table.profile is not None:
                 self.metadata.ingest_profile_data(
                     table=db_schema_and_table.table,
-                    profile_request=CreateTableProfileRequest(tableProfile=db_schema_and_table.table.profile),
+                    profile_request=CreateTableProfileRequest(
+                        tableProfile=db_schema_and_table.table.profile
+                    ),
                 )
 
             if db_schema_and_table.table.dataModel is not None:
@@ -321,8 +325,8 @@ class MetadataRestSink(Sink[Entity]):
                 )
 
             if (
-                    db_schema_and_table.table.viewDefinition is not None
-                    and db_schema_and_table.table.viewDefinition.__root__
+                db_schema_and_table.table.viewDefinition is not None
+                and db_schema_and_table.table.viewDefinition.__root__
             ):
                 lineage_status = get_lineage_by_query(
                     self.metadata,

@@ -24,7 +24,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTableProfile import CreateTableProfileRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -247,7 +249,7 @@ class OMetaTableTest(TestCase):
             entity=Table, limit=2  # paginate in batches of pairs
         )
         assert (
-                len(list(all_entities)) >= 10
+            len(list(all_entities)) >= 10
         )  # In case the default testing entity is not present
 
     def test_delete(self):
@@ -322,10 +324,12 @@ class OMetaTableTest(TestCase):
                 mean=1.5,
                 sum=2,
                 stddev=None,
-                timestamp=datetime.now(tz=timezone.utc).timestamp()
+                timestamp=datetime.now(tz=timezone.utc).timestamp(),
             )
         ]
-        profile = CreateTableProfileRequest(tableProfile=table_profile, columnProfile=column_profile)
+        profile = CreateTableProfileRequest(
+            tableProfile=table_profile, columnProfile=column_profile
+        )
         res_profile = self.metadata.ingest_profile_data(res, profile)
         assert profile == res_profile
 
@@ -489,8 +493,8 @@ class OMetaTableTest(TestCase):
 
         assert len(table_with_test_and_res.tableTests[0].results) == 1
         assert (
-                table_with_test_and_res.tableTests[0].results[0].testCaseStatus
-                == TestCaseStatus.Success
+            table_with_test_and_res.tableTests[0].results[0].testCaseStatus
+            == TestCaseStatus.Success
         )
 
     def test_add_column_tests(self):
@@ -562,8 +566,8 @@ class OMetaTableTest(TestCase):
 
         assert len(id_test_res.columnTests[0].results) == 1
         assert (
-                id_test_res.columnTests[0].results[0].testCaseStatus
-                == TestCaseStatus.Success
+            id_test_res.columnTests[0].results[0].testCaseStatus
+            == TestCaseStatus.Success
         )
 
     def test_update_profile_sample(self):

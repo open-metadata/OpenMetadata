@@ -43,9 +43,9 @@ class MetadataRestSink(Sink[Entity]):
     status: SinkStatus
 
     def __init__(
-            self,
-            config: MetadataRestSinkConfig,
-            metadata_config: OpenMetadataConnection,
+        self,
+        config: MetadataRestSinkConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config

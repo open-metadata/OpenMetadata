@@ -18,7 +18,9 @@ import traceback
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTableProfile import CreateTableProfileRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.location import Location
@@ -64,7 +66,7 @@ class OMetaTableMixin:
         )
 
     def ingest_table_sample_data(
-            self, table: Table, sample_data: TableData
+        self, table: Table, sample_data: TableData
     ) -> TableData:
         """
         PUT sample data for a table
@@ -98,7 +100,7 @@ class OMetaTableMixin:
                 )
 
     def ingest_profile_data(
-            self, table: Table, profile_request: CreateTableProfileRequest
+        self, table: Table, profile_request: CreateTableProfileRequest
     ) -> Table:
         """
         PUT profile data for a table
@@ -126,7 +128,7 @@ class OMetaTableMixin:
         return Table(**resp)
 
     def ingest_table_queries_data(
-            self, table: Table, table_queries: List[SqlQuery]
+        self, table: Table, table_queries: List[SqlQuery]
     ) -> None:
         """
         PUT table queries for a table
@@ -144,7 +146,7 @@ class OMetaTableMixin:
                 seen_queries.put(query.query, None)
 
     def publish_table_usage(
-            self, table: Table, table_usage_request: UsageRequest
+        self, table: Table, table_usage_request: UsageRequest
     ) -> None:
         """
         POST usage details for a Table
@@ -158,7 +160,7 @@ class OMetaTableMixin:
         logger.debug("published table usage %s", resp)
 
     def publish_frequently_joined_with(
-            self, table: Table, table_join_request: TableJoins
+        self, table: Table, table_join_request: TableJoins
     ) -> None:
         """
         POST frequently joined with for a table
@@ -175,9 +177,9 @@ class OMetaTableMixin:
         logger.debug("published frequently joined with %s", resp)
 
     def _create_or_update_table_profiler_config(
-            self,
-            table: Table,
-            table_profiler_config: TableProfilerConfig,
+        self,
+        table: Table,
+        table_profiler_config: TableProfilerConfig,
     ):
         """create or update profler config
 
@@ -196,10 +198,10 @@ class OMetaTableMixin:
         return Table(**resp)
 
     def _add_tests(
-            self,
-            table: Table,
-            test: Union[CreateTableTestRequest, CreateColumnTestRequest],
-            path: str,
+        self,
+        table: Table,
+        test: Union[CreateTableTestRequest, CreateColumnTestRequest],
+        path: str,
     ) -> Table:
         """
         Internal function to add test data
@@ -237,7 +239,7 @@ class OMetaTableMixin:
         return self._add_tests(table=table, test=col_test, path="columnTest")
 
     def create_or_update_table_profiler_config(
-            self, fqn: str, table_profiler_config: TableProfilerConfig
+        self, fqn: str, table_profiler_config: TableProfilerConfig
     ) -> Optional[Table]:
         """
         Update the profileSample property of a Table, given

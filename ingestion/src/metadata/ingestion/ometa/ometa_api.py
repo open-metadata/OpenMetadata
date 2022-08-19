@@ -210,55 +210,55 @@ class OpenMetadata(
 
         # Entity Schemas
         if issubclass(
-                entity, get_args(Union[MlModel, self.get_create_entity_type(MlModel)])
+            entity, get_args(Union[MlModel, self.get_create_entity_type(MlModel)])
         ):
             return "/mlmodels"
 
         if issubclass(
-                entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])
+            entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])
         ):
             return "/charts"
 
         if issubclass(
-                entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
+            entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
         ):
             return "/dashboards"
 
         if issubclass(
-                entity, get_args(Union[Database, self.get_create_entity_type(Database)])
+            entity, get_args(Union[Database, self.get_create_entity_type(Database)])
         ):
             return "/databases"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)]
-                ),
+            entity,
+            get_args(
+                Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)]
+            ),
         ):
             return "/databaseSchemas"
 
         if issubclass(
-                entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
+            entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
         ):
             return "/pipelines"
 
         if issubclass(
-                entity, get_args(Union[Location, self.get_create_entity_type(Location)])
+            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
         ):
             return "/locations"
 
         if issubclass(
-                entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
+            entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
         ):
             return "/policies"
 
         if issubclass(
-                entity, get_args(Union[Table, self.get_create_entity_type(Table)])
+            entity, get_args(Union[Table, self.get_create_entity_type(Table)])
         ):
             return "/tables"
 
         if issubclass(
-                entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
+            entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
         ):
             return "/topics"
 
@@ -272,26 +272,26 @@ class OpenMetadata(
             return "/reports"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[
-                        Tag,
-                        self.get_create_entity_type(Tag),
-                        TagCategory,
-                        self.get_create_entity_type(TagCategory),
-                    ]
-                ),
+            entity,
+            get_args(
+                Union[
+                    Tag,
+                    self.get_create_entity_type(Tag),
+                    TagCategory,
+                    self.get_create_entity_type(TagCategory),
+                ]
+            ),
         ):
             return "/tags"
 
         if issubclass(
-                entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
+            entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
         ):
             return "/glossaries"
 
         if issubclass(
-                entity,
-                get_args(Union[GlossaryTerm, self.get_create_entity_type(GlossaryTerm)]),
+            entity,
+            get_args(Union[GlossaryTerm, self.get_create_entity_type(GlossaryTerm)]),
         ):
             return "/glossaryTerms"
 
@@ -306,70 +306,70 @@ class OpenMetadata(
 
         # Services Schemas
         if issubclass(
-                entity,
-                get_args(
-                    Union[DatabaseService, self.get_create_entity_type(DatabaseService)]
-                ),
+            entity,
+            get_args(
+                Union[DatabaseService, self.get_create_entity_type(DatabaseService)]
+            ),
         ):
             return "/services/databaseServices"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[DashboardService, self.get_create_entity_type(DashboardService)]
-                ),
+            entity,
+            get_args(
+                Union[DashboardService, self.get_create_entity_type(DashboardService)]
+            ),
         ):
             return "/services/dashboardServices"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[MessagingService, self.get_create_entity_type(MessagingService)]
-                ),
+            entity,
+            get_args(
+                Union[MessagingService, self.get_create_entity_type(MessagingService)]
+            ),
         ):
             return "/services/messagingServices"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[PipelineService, self.get_create_entity_type(PipelineService)]
-                ),
+            entity,
+            get_args(
+                Union[PipelineService, self.get_create_entity_type(PipelineService)]
+            ),
         ):
             return "/services/pipelineServices"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[StorageService, self.get_create_entity_type(StorageService)]
-                ),
+            entity,
+            get_args(
+                Union[StorageService, self.get_create_entity_type(StorageService)]
+            ),
         ):
             return "/services/storageServices"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[MlModelService, self.get_create_entity_type(MlModelService)]
-                ),
+            entity,
+            get_args(
+                Union[MlModelService, self.get_create_entity_type(MlModelService)]
+            ),
         ):
             return "/services/mlmodelServices"
 
         if issubclass(
-                entity,
-                get_args(
-                    Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
-                ),
+            entity,
+            get_args(
+                Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
+            ),
         ):
             return "/testDefinition"
 
         if issubclass(
-                entity,
-                get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
+            entity,
+            get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
         ):
             return "/testSuite"
 
         if issubclass(
-                entity,
-                get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
+            entity,
+            get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
             return "/testCase"
 
@@ -396,9 +396,9 @@ class OpenMetadata(
             return self.tests_path
 
         if (
-                "user" in entity.__name__.lower()
-                or "role" in entity.__name__.lower()
-                or "team" in entity.__name__.lower()
+            "user" in entity.__name__.lower()
+            or "role" in entity.__name__.lower()
+            or "team" in entity.__name__.lower()
         ):
             return self.teams_path
 
@@ -444,10 +444,10 @@ class OpenMetadata(
         class_name = create.__name__.replace("Create", "").replace("Request", "")
         file_name = (
             class_name.lower()
-                .replace("glossaryterm", "glossaryTerm")
-                .replace("tagcategory", "tagCategory")
-                .replace("testsuite", "testSuite")
-                .replace("testcase", "testCase")
+            .replace("glossaryterm", "glossaryTerm")
+            .replace("tagcategory", "tagCategory")
+            .replace("testsuite", "testSuite")
+            .replace("testcase", "testCase")
         )
 
         class_path = ".".join(
@@ -495,10 +495,10 @@ class OpenMetadata(
         return entity_class(**resp)
 
     def get_by_name(
-            self,
-            entity: Type[T],
-            fqn: Union[str, FullyQualifiedEntityName],
-            fields: Optional[List[str]] = None,
+        self,
+        entity: Type[T],
+        fqn: Union[str, FullyQualifiedEntityName],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
@@ -511,10 +511,10 @@ class OpenMetadata(
         )
 
     def get_by_id(
-            self,
-            entity: Type[T],
-            entity_id: Union[str, basic.Uuid],
-            fields: Optional[List[str]] = None,
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by ID or None
@@ -523,7 +523,7 @@ class OpenMetadata(
         return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(
-            self, entity: Type[T], path: str, fields: Optional[List[str]] = None
+        self, entity: Type[T], path: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
         """
         Generic GET operation for an entity
@@ -561,7 +561,7 @@ class OpenMetadata(
             return None
 
     def get_entity_reference(
-            self, entity: Type[T], fqn: str
+        self, entity: Type[T], fqn: str
     ) -> Optional[EntityReference]:
         """
         Helper method to obtain an EntityReference from
@@ -585,12 +585,12 @@ class OpenMetadata(
 
     # pylint: disable=too-many-arguments,dangerous-default-value
     def list_entities(
-            self,
-            entity: Type[T],
-            fields: Optional[List[str]] = None,
-            after: str = None,
-            limit: int = 100,
-            params: Optional[Dict[str, str]] = None,
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        after: str = None,
+        limit: int = 100,
+        params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -613,11 +613,11 @@ class OpenMetadata(
         return EntityList(entities=entities, total=total, after=after)
 
     def list_all_entities(
-            self,
-            entity: Type[T],
-            fields: Optional[List[str]] = None,
-            limit: int = 1000,
-            params: Optional[Dict[str, str]] = None,
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        limit: int = 1000,
+        params: Optional[Dict[str, str]] = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -646,7 +646,7 @@ class OpenMetadata(
             after = entity_list.after
 
     def list_versions(
-            self, entity_id: Union[str, basic.Uuid], entity: Type[T]
+        self, entity_id: Union[str, basic.Uuid], entity: Type[T]
     ) -> EntityVersionHistory:
         """
         Version history of an entity
@@ -672,11 +672,11 @@ class OpenMetadata(
         return [entity(**p) for p in resp["data"]]
 
     def delete(
-            self,
-            entity: Type[T],
-            entity_id: Union[str, basic.Uuid],
-            recursive: bool = False,
-            hard_delete: bool = False,
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        recursive: bool = False,
+        hard_delete: bool = False,
     ) -> None:
         """
         API call to delete an entity from entity ID
