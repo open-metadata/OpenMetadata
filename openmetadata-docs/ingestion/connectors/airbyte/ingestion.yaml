@@ -8,6 +8,14 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
+      # includeLineage: true
+      # pipelineFilterPattern:
+      #   includes:
+      #     - pipeline1
+      #     - pipeline2
+      #   excludes:
+      #     - pipeline3
+      #     - pipeline4
 sink:
   type: metadata-rest
   config: { }

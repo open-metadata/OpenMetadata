@@ -1,6 +1,6 @@
 source:
   type: glue
-  serviceName: local_glue5
+  serviceName: local_glue
   serviceConnection:
     config:
       type: Glue
@@ -8,10 +8,19 @@ source:
         awsAccessKeyId: KEY
         awsSecretAccessKey: SECRET
         awsRegion: us-east-2
-        endPointURL: https://glue.us-east-2.amazonaws.com/
+        # endPointURL: https://glue.us-east-2.amazonaws.com/
+        # awsSessionToken: TOKEN
   sourceConfig:
     config:
       type: PipelineMetadata
+      # includeLineage: true
+      # pipelineFilterPattern:
+      #   includes:
+      #     - pipeline1
+      #     - pipeline2
+      #   excludes:
+      #     - pipeline3
+      #     - pipeline4
 sink:
   type: metadata-rest
   config: {}
