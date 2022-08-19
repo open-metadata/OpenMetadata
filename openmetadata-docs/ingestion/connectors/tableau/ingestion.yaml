@@ -11,9 +11,33 @@ source:
       siteName: site_name
       siteUrl: site_url
       apiVersion: api_version
-      personalAccessTokenName: personal_access_token_name
-      personalAccessTokenSecret: personal_access_token_secret
+      # If not setting user and password
+      # personalAccessTokenName: personal_access_token_name
+      # personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
