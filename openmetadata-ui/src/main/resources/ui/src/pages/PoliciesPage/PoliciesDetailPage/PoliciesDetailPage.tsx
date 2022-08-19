@@ -11,7 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Empty, Row, Table, Tabs } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Empty,
+  Row,
+  Space,
+  Switch,
+  Table,
+  Tabs,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -28,7 +39,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Policy } from '../../../generated/entity/policies/policy';
+import { Effect, Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
@@ -192,11 +203,51 @@ const PoliciesDetailPage = () => {
               ) : (
                 <Row gutter={[16, 16]}>
                   {policy.rules.map((rule) => (
-                    <Col key={uniqueId()} span={8}>
-                      <Card title={rule.name}>
-                        <RichTextEditorPreviewer
-                          markdown={rule.description || ''}
-                        />
+                    <Col key={uniqueId()} span={24}>
+                      <Card>
+                        <Space
+                          align="baseline"
+                          className="tw-w-full tw-justify-between"
+                          size={4}>
+                          <Typography.Paragraph className="tw-font-medium tw-text-base">
+                            {rule.name}
+                          </Typography.Paragraph>
+                          <div>
+                            <Switch
+                              checked={rule.effect === Effect.Allow}
+                              size="small"
+                            />
+                            <span className="tw-ml-1">Active</span>
+                          </div>
+                        </Space>
+
+                        <div className="tw-mb-3" data-testid="description">
+                          <Typography.Text className="tw-text-grey-muted">
+                            Description:
+                          </Typography.Text>
+                          <RichTextEditorPreviewer
+                            markdown={rule.description || ''}
+                          />
+                        </div>
+                        <Space direction="vertical">
+                          <Space data-testid="resources" direction="vertical">
+                            <Typography.Text className="tw-text-grey-muted tw-mb-0">
+                              Resources:
+                            </Typography.Text>
+                            <Typography.Text>
+                              {rule.resources?.join(', ')}
+                            </Typography.Text>
+                          </Space>
+
+                          <Space data-testid="operations" direction="vertical">
+                            <Typography.Text className="tw-text-grey-muted">
+                              Operations:
+                            </Typography.Text>
+                            <Typography.Text>
+                              {rule.operations?.join(', ')}
+                            </Typography.Text>
+                          </Space>
+                        </Space>
                       </Card>
                     </Col>
                   ))}
