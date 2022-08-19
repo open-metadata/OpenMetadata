@@ -8,7 +8,8 @@ source:
         awsAccessKeyId: KEY
         awsSecretAccessKey: SECRET
         awsRegion: us-east-2
-        endPointURL: https://glue.us-east-2.amazonaws.com/
+        # endPointURL: https://glue.us-east-2.amazonaws.com/
+        # awsSessionToken: TOKEN
       storageServiceName: storage_name
   sourceConfig:
     config:

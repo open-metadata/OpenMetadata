@@ -5,10 +5,11 @@ source:
     config:
       type: DynamoDB
       awsConfig:
-        awsAccessKeyId: aws_access_key_id
-        awsSecretAccessKey: aws_secret_access_key
-        awsRegion: aws region
-        endPointURL: https://dynamodb.<region_name>.amazonaws.com
+        awsAccessKeyId: KEY
+        awsSecretAccessKey: SECRET
+        awsRegion: us-east-2
+        # endPointURL: https://dynamodb.us-east-2.amazonaws.com/
+        # awsSessionToken: TOKEN
   sourceConfig:
     config:
       enableDataProfiler: false
