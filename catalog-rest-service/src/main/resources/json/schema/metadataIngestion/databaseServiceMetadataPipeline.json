@@ -126,6 +126,11 @@
       "type": "boolean",
       "default": true
     },
+    "isPartialWorkflow": {
+      "description": "Optional configuration to check tables within only the ingested schema during the workflow to mark as deleted tables if applicable",
+      "type": "boolean",
+      "default": false
+    },
     "includeTables": {
       "description": "Optional configuration to turn off fetching metadata for tables.",
       "type": "boolean",
