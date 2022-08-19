@@ -154,7 +154,6 @@ public abstract class ExternalSecretsManagerTest {
     if (mustBeEncrypted) {
       when(mockedIngestionPipeline.getSourceConfig()).thenReturn(sourceConfigMock);
       when(sourceConfigMock.getConfig()).thenReturn(config);
-      when(mockedIngestionPipeline.getName()).thenReturn("test-pipeline");
       mockClientGetValue("{}");
     }
 
@@ -169,6 +168,7 @@ public abstract class ExternalSecretsManagerTest {
       ArgumentCaptor<Object> configCaptor = ArgumentCaptor.forClass(Object.class);
       verify(mockedIngestionPipeline, times(4)).getSourceConfig();
       verify(sourceConfigMock, times(2)).setConfig(configCaptor.capture());
+      verifySecretIdGetCalls("/openmetadata/database-metadata-pipeline/database-service", 2);
       assertNull(((DatabaseServiceMetadataPipeline) configCaptor.getAllValues().get(0)).getDbtConfigSource());
       assertEquals(configCaptor.getAllValues().get(1), config);
       assertNotSame(configCaptor.getAllValues().get(1), config);
@@ -178,6 +178,8 @@ public abstract class ExternalSecretsManagerTest {
   abstract void setUpSpecific(SecretsManagerConfiguration config);
 
   abstract void mockClientGetValue(String value);
+
+  abstract void verifySecretIdGetCalls(String expectedSecretId, int times);
 
   abstract void verifyClientCalls(Object expectedAuthProviderConfig, String expectedSecretId)
       throws JsonProcessingException;

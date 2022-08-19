@@ -27,6 +27,7 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.exception.SecretsManagerException;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public abstract class SecretsManager {
@@ -48,24 +49,23 @@ public abstract class SecretsManager {
   public abstract Object encryptOrDecryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt);
 
-  abstract Object encryptOrDecryptDbtConfigSource(
-      Object dbtConfigSource, String ingestionPipelineName, boolean encrypt);
+  abstract Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt);
 
   public void encryptOrDecryptDbtConfigSource(IngestionPipeline ingestionPipeline, boolean encrypt) {
-    encryptOrDecryptDbtConfigSource(ingestionPipeline, ingestionPipeline.getService().getType(), encrypt);
+    encryptOrDecryptDbtConfigSource(ingestionPipeline, ingestionPipeline.getService(), encrypt);
   }
 
   public void encryptOrDecryptDbtConfigSource(
-      IngestionPipeline ingestionPipeline, String serviceType, boolean encrypt) {
+      IngestionPipeline ingestionPipeline, EntityReference service, boolean encrypt) {
     // DatabaseServiceMetadataPipeline contains dbtConfigSource and must be encrypted
-    if (serviceType.equals(Entity.DATABASE_SERVICE)
+    if (service.getType().equals(Entity.DATABASE_SERVICE)
         && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA)) {
       DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
           JsonUtils.convertValue(
               ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
       databaseServiceMetadataPipeline.setDbtConfigSource(
           encryptOrDecryptDbtConfigSource(
-              databaseServiceMetadataPipeline.getDbtConfigSource(), ingestionPipeline.getName(), encrypt));
+              databaseServiceMetadataPipeline.getDbtConfigSource(), service.getName(), encrypt));
       ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
     }
   }

@@ -19,7 +19,7 @@ from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
-from metadata.utils.secrets_manager import get_secrets_manager
+from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
 
 try:
     from typing import get_args

@@ -82,10 +82,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Don't store owner. Build it on the fly based on relationships
     ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
-    String serviceType = service.getType();
     // encrypt config in case of local secret manager
     if (secretsManager.isLocal()) {
-      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, serviceType, true);
+      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, service, true);
       store(ingestionPipeline.getId(), ingestionPipeline, update);
     } else {
       // otherwise, nullify the config since it will be kept outside OM
@@ -99,7 +98,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       // save config in the secret manager after storing the ingestion pipeline
       databaseServiceMetadataPipeline.setDbtConfigSource(dbtConfigSource);
       ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
-      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, serviceType, true);
+      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, service, true);
     }
 
     // Restore the relationships

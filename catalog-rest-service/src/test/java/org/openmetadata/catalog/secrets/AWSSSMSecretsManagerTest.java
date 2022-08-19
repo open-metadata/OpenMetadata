@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -44,12 +45,9 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   void testEncryptDatabaseServiceConnectionConfig() {
     mockClientGetValue(null);
     testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<GetParameterRequest> getSecretCaptor = ArgumentCaptor.forClass(GetParameterRequest.class);
     ArgumentCaptor<PutParameterRequest> createSecretCaptor = ArgumentCaptor.forClass(PutParameterRequest.class);
-    verify(ssmClient).getParameter(getSecretCaptor.capture());
     verify(ssmClient).putParameter(createSecretCaptor.capture());
-    assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().name());
-    assertTrue(getSecretCaptor.getValue().withDecryption());
+    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
     assertEquals(EXPECTED_SECRET_ID, createSecretCaptor.getValue().name());
     assertFalse(createSecretCaptor.getValue().overwrite());
     assertEquals(ParameterType.SECURE_STRING, createSecretCaptor.getValue().type());
@@ -60,12 +58,9 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   void testEncryptDatabaseServiceConnectionConfigWhenAlreadyExist() {
     mockClientGetValue(EXPECTED_CONNECTION_JSON);
     testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<GetParameterRequest> getSecretCaptor = ArgumentCaptor.forClass(GetParameterRequest.class);
     ArgumentCaptor<PutParameterRequest> updateSecretCaptor = ArgumentCaptor.forClass(PutParameterRequest.class);
-    verify(ssmClient).getParameter(getSecretCaptor.capture());
     verify(ssmClient).putParameter(updateSecretCaptor.capture());
-    assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().name());
-    assertTrue(getSecretCaptor.getValue().withDecryption());
+    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
     assertEquals(EXPECTED_SECRET_ID, updateSecretCaptor.getValue().name());
     assertTrue(updateSecretCaptor.getValue().overwrite());
     assertEquals(ParameterType.SECURE_STRING, updateSecretCaptor.getValue().type());
@@ -86,6 +81,15 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
     } else {
       when(ssmClient.getParameter(any(GetParameterRequest.class)))
           .thenReturn(GetParameterResponse.builder().parameter(Parameter.builder().value(value).build()).build());
+    }
+  }
+
+  @Override
+  void verifySecretIdGetCalls(String expectedSecretId, int times) {
+    ArgumentCaptor<GetParameterRequest> getSecretCaptor = ArgumentCaptor.forClass(GetParameterRequest.class);
+    verify(ssmClient, times(times)).getParameter(getSecretCaptor.capture());
+    for (int i = 0; i < times; i++) {
+      assertEquals(expectedSecretId, getSecretCaptor.getAllValues().get(i).name());
     }
   }
 

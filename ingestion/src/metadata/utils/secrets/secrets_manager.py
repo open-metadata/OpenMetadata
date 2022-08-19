@@ -9,19 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Secrets manager interface
+"""
 import inspect
-import json
 from abc import abstractmethod
 from pydoc import locate
-from typing import Dict, NewType, Optional, Union
-
-import boto3
-from botocore.exceptions import ClientError
+from typing import Dict, NewType, Union
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
-    SecretsManagerProvider,
 )
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
@@ -41,7 +39,6 @@ from metadata.generated.schema.security.client import (
     oktaSSOClientConfig,
     openMetadataJWTClientConfig,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.singleton import Singleton
 
@@ -75,6 +72,10 @@ AUTH_PROVIDER_MAPPING: Dict[AuthProvider, AuthProviderClientType] = {
     AuthProvider.custom_oidc: customOidcSSOClientConfig.CustomOIDCSSOClientConfig,
     AuthProvider.openmetadata: openMetadataJWTClientConfig.OpenMetadataJWTClientConfig,
 }
+
+DBT_SOURCE_CONFIG_SECRET_PREFIX: str = "database-metadata-pipeline"
+
+AUTH_PROVIDER_SECRET_PREFIX: str = "auth-provider"
 
 
 class SecretsManager(metaclass=Singleton):
@@ -121,13 +122,21 @@ class SecretsManager(metaclass=Singleton):
         :param pipeline_name: the pipeline's name
         :return:
         """
+        pass
 
     @property
     def secret_id_separator(self) -> str:
+        """
+        The separator used to build the secret id e.g. /openmetadata/path/to/secret
+        :return: the separator character
+        """
         return "/"
 
     @property
     def starts_with_separator(self) -> bool:
+        """
+        :return: returns True if we want to start the secret id with a seperator character
+        """
         return True
 
     def build_secret_id(self, *args: str) -> str:
@@ -177,158 +186,4 @@ class SecretsManager(metaclass=Singleton):
         )
         return locate(
             f"metadata.generated.schema.entity.services.connections.{service_type}.{connection_py_file}Connection.{service_connection_type}Connection"
-        )
-
-
-class LocalSecretsManager(SecretsManager):
-    """
-    LocalSecretsManager is used when there is not a secrets' manager configured.
-    """
-
-    def add_auth_provider_security_config(
-        self, open_metadata_connection: OpenMetadataConnection
-    ) -> None:
-        """
-        The LocalSecretsManager does not modify the OpenMetadataConnection object
-        """
-        logger.debug(
-            f"Adding auth provider security config using {SecretsManagerProvider.local.name} secrets' manager"
-        )
-        pass
-
-    def retrieve_service_connection(
-        self,
-        service: ServiceWithConnectionType,
-        service_type: str,
-    ) -> ServiceConnection:
-        """
-        The LocalSecretsManager does not modify the ServiceConnection object
-        """
-        logger.debug(
-            f"Retrieving service connection from {SecretsManagerProvider.local.name} secrets' manager for {service_type} - {service.name}"
-        )
-        return ServiceConnection(__root__=service.connection)
-
-    def retrieve_dbt_source_config(
-        self, source_config: SourceConfig, pipeline_name: str
-    ) -> object:
-        logger.debug(
-            f"Retrieving source_config from {SecretsManagerProvider.local.name} secrets' manager for {pipeline_name}"
-        )
-        return (
-            source_config.config.dbtConfigSource.dict()
-            if source_config
-            and source_config.config
-            and source_config.config.dbtConfigSource
-            else None
-        )
-
-
-class AWSSecretsManager(SecretsManager):
-    def __init__(self, credentials: AWSCredentials, cluster_prefix: str):
-        super().__init__(cluster_prefix)
-        # initialize the secret client depending on the SecretsManagerConfiguration passed
-        if credentials:
-            session = boto3.Session(
-                aws_access_key_id=credentials.awsAccessKeyId,
-                aws_secret_access_key=credentials.awsSecretAccessKey.get_secret_value(),
-                region_name=credentials.awsRegion,
-            )
-            self.secretsmanager_client = session.client("secretsmanager")
-        else:
-            # initialized with the credentials loaded from running machine
-            self.secretsmanager_client = boto3.client("secretsmanager")
-
-    def retrieve_service_connection(
-        self,
-        service: ServiceWithConnectionType,
-        service_type: str,
-    ) -> ServiceConnection:
-        logger.debug(
-            f"Retrieving service connection from {SecretsManagerProvider.aws.name} secrets' manager for {service_type} - {service.name}"
-        )
-        service_connection_type = service.serviceType.value
-        service_name = service.name.__root__
-        secret_id = self.build_secret_id(
-            "service", service_type, service_connection_type, service_name
-        )
-        connection_class = self.get_connection_class(
-            service_type, service_connection_type
-        )
-        service_conn_class = self.get_service_connection_class(service_type)
-        service_connection = service_conn_class(
-            config=connection_class.parse_obj(
-                json.loads(self._get_string_value(secret_id))
-            )
-        )
-        return ServiceConnection(__root__=service_connection)
-
-    def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
-        logger.debug(
-            f"Adding auth provider security config using {SecretsManagerProvider.aws.name} secrets' manager"
-        )
-        if config.authProvider == AuthProvider.no_auth:
-            return config
-        secret_id = self.build_secret_id(
-            "auth-provider", config.authProvider.value.lower()
-        )
-        auth_config_json = self._get_string_value(secret_id)
-        try:
-            config.securityConfig = AUTH_PROVIDER_MAPPING.get(
-                config.authProvider
-            ).parse_obj(json.loads(auth_config_json))
-        except KeyError:
-            raise NotImplementedError(
-                f"No client implemented for auth provider: [{config.authProvider}]"
-            )
-
-    def retrieve_dbt_source_config(
-        self, source_config: SourceConfig, pipeline_name: str
-    ) -> object:
-        logger.debug(
-            f"Retrieving source_config from {SecretsManagerProvider.local.name} secrets' manager for {pipeline_name}"
-        )
-        secret_id = self.build_secret_id("database-metadata-pipeline", pipeline_name)
-        source_config_json = self._get_string_value(secret_id)
-        return json.loads(source_config_json) if source_config_json else None
-
-    def _get_string_value(self, name: str) -> str:
-        """
-        :param name: The secret name to retrieve. Current stage is always retrieved.
-        :return: The value of the secret. When the secret is a string, the value is
-                 contained in the `SecretString` field. When the secret is bytes or not present,
-                 it throws a `ValueError` exception.
-        """
-        if name is None:
-            raise ValueError
-
-        try:
-            kwargs = {"SecretId": name}
-            response = self.secretsmanager_client.get_secret_value(**kwargs)
-            logger.debug("Got value for secret %s.", name)
-        except ClientError:
-            logger.exception("Couldn't get value for secret %s.", name)
-            raise
-        else:
-            if "SecretString" in response:
-                return (
-                    response["SecretString"]
-                    if response["SecretString"] != "null"
-                    else None
-                )
-            else:
-                raise ValueError("[SecretString] not present in the response.")
-
-
-def get_secrets_manager(
-    open_metadata_config: OpenMetadataConnection,
-    credentials: Optional[Union[AWSCredentials]] = None,
-) -> SecretsManager:
-    if open_metadata_config.secretsManagerProvider == SecretsManagerProvider.local:
-        return LocalSecretsManager(open_metadata_config.clusterName)
-    elif open_metadata_config.secretsManagerProvider == SecretsManagerProvider.aws:
-        return AWSSecretsManager(credentials, open_metadata_config.clusterName)
-    else:
-        raise NotImplementedError(
-            f"[{open_metadata_config.secretsManagerProvider}] is not implemented."
         )
