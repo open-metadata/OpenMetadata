@@ -202,6 +202,25 @@ def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
         raise err
 
 
+def _parse_inner_connection(config_dict: dict, source_type: str) -> None:
+    """
+    Parse the inner connection of the flagged connectors
+
+    :param config_dict: JSON configuration
+    :param source_type: source type name, e.g., Airflow.
+    """
+    inner_source_type = config_dict["source"]["serviceConnection"]["config"][
+        "connection"
+    ]["type"]
+    inner_service_type = get_service_type(inner_source_type)
+    inner_connection_class = get_connection_class(inner_source_type, inner_service_type)
+    _unsafe_parse_config(
+        config=config_dict["source"]["serviceConnection"]["config"]["connection"],
+        cls=inner_connection_class,
+        message=f"Error parsing the inner service connection for {source_type}",
+    )
+
+
 def parse_service_connection(config_dict: dict) -> None:
     """
     Parse the service connection and raise any scoped
@@ -221,18 +240,7 @@ def parse_service_connection(config_dict: dict) -> None:
 
     if source_type in HAS_INNER_CONNECTION:
         # We will first parse the inner `connection` configuration
-        inner_source_type = config_dict["source"]["serviceConnection"]["config"][
-            "connection"
-        ]["type"]
-        inner_service_type = get_service_type(inner_source_type)
-        inner_connection_class = get_connection_class(
-            inner_source_type, inner_service_type
-        )
-        _unsafe_parse_config(
-            config=config_dict["source"]["serviceConnection"]["config"]["connection"],
-            cls=inner_connection_class,
-            message=f"Error parsing the inner service connection for {source_type}",
-        )
+        _parse_inner_connection(config_dict, source_type)
 
     # Parse the service connection dictionary with the scoped class
     _unsafe_parse_config(
