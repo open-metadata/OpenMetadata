@@ -55,13 +55,15 @@ const GlobalSettingLeftPanel = () => {
   };
 
   return (
-    <Menu
-      className="global-setting-left-panel"
-      items={items}
-      mode="inline"
-      selectedKeys={[`${settingCategory}.${tab}`]}
-      onClick={onClick}
-    />
+    <div className="tw-mx-1">
+      <Menu
+        className="global-setting-left-panel"
+        items={items}
+        mode="inline"
+        selectedKeys={[`${settingCategory}.${tab}`]}
+        onClick={onClick}
+      />
+    </div>
   );
 };
 

@@ -17,6 +17,7 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useRef, useState } from 'react';
 import { validEmailRegEx } from '../../constants/regex.constants';
+import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
@@ -24,6 +25,7 @@ import jsonData from '../../jsons/en';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
@@ -211,118 +213,137 @@ const CreateUser = ({
   };
 
   return (
-    <PageLayout classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-py-4">
-      <h6 className="tw-heading tw-text-base">
-        Create {forceBot ? 'Bot' : 'User'}
-      </h6>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
-          {requiredField('Email')}
-        </label>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="email"
-          id="email"
-          name="email"
-          placeholder="email"
-          type="text"
-          value={email}
-          onChange={handleValidation}
+    <PageLayout
+      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+      header={
+        <TitleBreadcrumb
+          titleLinks={[
+            {
+              name: `Create ${forceBot ? 'Bot' : 'User'}`,
+              url: '',
+              activeTitle: true,
+            },
+          ]}
         />
+      }
+      layout={PageLayoutType['2ColRTL']}>
+      <div className="tw-form-container">
+        <h6 className="tw-heading tw-text-base">
+          Create {forceBot ? 'Bot' : 'User'}
+        </h6>
+        <Field>
+          <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
+            {requiredField('Email')}
+          </label>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="email"
+            id="email"
+            name="email"
+            placeholder="email"
+            type="text"
+            value={email}
+            onChange={handleValidation}
+          />
 
-        {showErrorMsg.email
-          ? errorMsg(jsonData['form-error-messages']['empty-email'])
-          : showErrorMsg.validEmail
-          ? errorMsg(jsonData['form-error-messages']['invalid-email'])
-          : null}
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-0" htmlFor="displayName">
-          Display Name
-        </label>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="displayName"
-          id="displayName"
-          name="displayName"
-          placeholder="displayName"
-          type="text"
-          value={displayName}
-          onChange={handleValidation}
-        />
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-0" htmlFor="description">
-          Description
-        </label>
-        <RichTextEditor initialValue={description} ref={markdownRef} />
-      </Field>
-      {!forceBot && (
-        <>
-          <Field>
-            <label className="tw-block tw-form-label tw-mb-0">Teams</label>
-            <TeamsSelectable onSelectionChange={setSelectedTeams} />
-          </Field>
-          <Field>
-            <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
-              Roles
-            </label>
-            <DropDown
-              className={classNames('tw-bg-white', {
-                'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
-              })}
-              dataTestId="roles-dropdown"
-              dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-              label="Roles"
-              selectedItems={selectedRoles as Array<string>}
-              type="checkbox"
-              onSelect={(_e, value) => selectedRolesHandler(value)}
-            />
-          </Field>
+          {showErrorMsg.email
+            ? errorMsg(jsonData['form-error-messages']['empty-email'])
+            : showErrorMsg.validEmail
+            ? errorMsg(jsonData['form-error-messages']['invalid-email'])
+            : null}
+        </Field>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-0"
+            htmlFor="displayName">
+            Display Name
+          </label>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="displayName"
+            id="displayName"
+            name="displayName"
+            placeholder="displayName"
+            type="text"
+            value={displayName}
+            onChange={handleValidation}
+          />
+        </Field>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-0"
+            htmlFor="description">
+            Description
+          </label>
+          <RichTextEditor initialValue={description} ref={markdownRef} />
+        </Field>
+        {!forceBot && (
+          <>
+            <Field>
+              <label className="tw-block tw-form-label tw-mb-0">Teams</label>
+              <TeamsSelectable onSelectionChange={setSelectedTeams} />
+            </Field>
+            <Field>
+              <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
+                Roles
+              </label>
+              <DropDown
+                className={classNames('tw-bg-white', {
+                  'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
+                })}
+                dataTestId="roles-dropdown"
+                dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
+                label="Roles"
+                selectedItems={selectedRoles as Array<string>}
+                type="checkbox"
+                onSelect={(_e, value) => selectedRolesHandler(value)}
+              />
+            </Field>
 
-          <Field className="tw-flex tw-gap-5">
-            <div className="tw-flex tw-pt-1">
-              <label>Admin</label>
-              <div
-                className={classNames('toggle-switch', { open: isAdmin })}
-                data-testid="admin"
-                onClick={() => {
-                  if (allowAccess) {
-                    setIsAdmin((prev) => !prev);
-                    setIsBot(false);
-                  }
-                }}>
-                <div className="switch" />
+            <Field className="tw-flex tw-gap-5">
+              <div className="tw-flex tw-pt-1">
+                <label>Admin</label>
+                <div
+                  className={classNames('toggle-switch', { open: isAdmin })}
+                  data-testid="admin"
+                  onClick={() => {
+                    if (allowAccess) {
+                      setIsAdmin((prev) => !prev);
+                      setIsBot(false);
+                    }
+                  }}>
+                  <div className="switch" />
+                </div>
               </div>
-            </div>
-            <div className="tw-flex tw-pt-1">
-              <label>Bot</label>
-              <div
-                className={classNames('toggle-switch', { open: isBot })}
-                data-testid="bot"
-                onClick={() => {
-                  if (allowAccess) {
-                    setIsBot((prev) => !prev);
-                    setIsAdmin(false);
-                  }
-                }}>
-                <div className="switch" />
+              <div className="tw-flex tw-pt-1">
+                <label>Bot</label>
+                <div
+                  className={classNames('toggle-switch', { open: isBot })}
+                  data-testid="bot"
+                  onClick={() => {
+                    if (allowAccess) {
+                      setIsBot((prev) => !prev);
+                      setIsAdmin(false);
+                    }
+                  }}>
+                  <div className="switch" />
+                </div>
               </div>
-            </div>
-          </Field>
-        </>
-      )}
-      <Field className="tw-flex tw-justify-end">
-        <Button
-          data-testid="cancel-user"
-          size="regular"
-          theme="primary"
-          variant="text"
-          onClick={onCancel}>
-          Cancel
-        </Button>
-        {getSaveButton()}
-      </Field>
+            </Field>
+          </>
+        )}
+        <Field className="tw-flex tw-justify-end">
+          <Button
+            data-testid="cancel-user"
+            size="regular"
+            theme="primary"
+            variant="text"
+            onClick={onCancel}>
+            Cancel
+          </Button>
+          {getSaveButton()}
+        </Field>
+      </div>
     </PageLayout>
   );
 };

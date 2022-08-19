@@ -57,20 +57,7 @@
     },
     "webhookType": {
       "description": "Type of webhook slack,generic,kafka etc",
-      "type": "string",
-      "default": "generic",
-      "enum": ["slack", "generic", "kafka"],
-      "javaEnums": [
-        {
-          "name": "slack"
-        },
-        {
-          "name": "generic"
-        },
-        {
-          "name": "kafka"
-        }
-      ]
+      "$ref": "../../entity/events/webhook.json#/definitions/webhookType"
     }
   },
   "required": ["name", "endpoint", "eventFilters"],

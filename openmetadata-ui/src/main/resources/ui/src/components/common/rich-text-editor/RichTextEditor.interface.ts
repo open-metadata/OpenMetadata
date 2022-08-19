@@ -32,9 +32,6 @@ export type EditorProp = {
 export interface PreviewerProp {
   markdown: string;
   className?: string;
-  blurClasses?: string;
-  maxHtClass?: string;
-  maxLen?: number;
   enableSeeMoreVariant?: boolean;
   textVariant?: TextVariant;
 }

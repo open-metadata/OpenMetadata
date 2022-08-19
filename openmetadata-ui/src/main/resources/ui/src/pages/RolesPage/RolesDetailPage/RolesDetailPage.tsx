@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Table, Tabs } from 'antd';
+import { Button, Card, Col, Empty, Row, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { getRoleByName } from '../../../axiosAPIs/rolesAPIV1';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -27,6 +28,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
@@ -77,19 +79,23 @@ const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
 };
 
 const RolesDetailPage = () => {
+  const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
+  const [editDescription, setEditDescription] = useState<boolean>(false);
+
+  const rolesPath = getSettingPath(
+    GlobalSettingsMenuCategory.ACCESS,
+    GlobalSettingOptions.ROLES
+  );
 
   const breadcrumb = useMemo(
     () => [
       {
         name: 'Roles',
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.ACCESS,
-          GlobalSettingOptions.ROLES
-        ),
+        url: rolesPath,
       },
       {
         name: fqn,
@@ -111,6 +117,18 @@ const RolesDetailPage = () => {
     }
   };
 
+  const handleDescriptionUpdate = async (description: string) => {
+    const patch = compare(role, { ...role, description });
+    try {
+      const data = await patchRole(patch, role.id);
+      setRole({ ...role, description: data.description });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setEditDescription(false);
+    }
+  };
+
   useEffect(() => {
     fetchRole();
   }, [fqn]);
@@ -123,11 +141,27 @@ const RolesDetailPage = () => {
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       {isEmpty(role) ? (
-        <Empty description={`No roles found for ${fqn}`} />
+        <Empty description={`No roles found for ${fqn}`}>
+          <Button
+            size="small"
+            type="primary"
+            onClick={() => history.push(rolesPath)}>
+            Go Back
+          </Button>
+        </Empty>
       ) : (
         <div className="roles-detail" data-testid="role-details">
           <div className="tw--ml-5">
-            <Description description={role.description || ''} />
+            <Description
+              description={role.description || ''}
+              entityFqn={role.fullyQualifiedName}
+              entityName={getEntityName(role)}
+              entityType={EntityType.ROLE}
+              isEdit={editDescription}
+              onCancel={() => setEditDescription(false)}
+              onDescriptionEdit={() => setEditDescription(true)}
+              onDescriptionUpdate={handleDescriptionUpdate}
+            />
           </div>
           <Tabs defaultActiveKey="policies">
             <TabPane key="policies" tab="Policies">

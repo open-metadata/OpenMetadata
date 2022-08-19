@@ -272,6 +272,7 @@ const Users = ({
                 onClick={() => setIsDisplayNameEdit(true)}>
                 <SVGIcons
                   alt="edit"
+                  className="tw-mb-2"
                   icon="icon-edit"
                   title="Edit"
                   width="16px"
@@ -374,6 +375,7 @@ const Users = ({
                   onClick={() => setIsTeamsEdit(true)}>
                   <SVGIcons
                     alt="edit"
+                    className=" tw-mb-1"
                     icon="icon-edit"
                     title="Edit"
                     width="16px"
@@ -508,6 +510,7 @@ const Users = ({
                   onClick={() => setIsRolesEdit(true)}>
                   <SVGIcons
                     alt="edit"
+                    className="tw-mb-1"
                     icon="icon-edit"
                     title="Edit"
                     width="16px"
@@ -698,14 +701,9 @@ const Users = ({
             )}
           </div>
           {isTaskType ? (
-            <Space
-              align="center"
-              className="tw-w-full tw-justify-end"
-              size={16}>
-              <Space align="end" size={5}>
-                <Switch onChange={onSwitchChange} />
-                <span className="tw-ml-1">Closed Tasks</span>
-              </Space>
+            <Space align="end" size={5}>
+              <Switch size="small" onChange={onSwitchChange} />
+              <span className="tw-ml-1">Closed Tasks</span>
             </Space>
           ) : null}
         </div>

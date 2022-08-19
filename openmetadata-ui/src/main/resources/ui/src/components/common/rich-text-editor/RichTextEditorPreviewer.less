@@ -2,6 +2,7 @@
 @badge-color: #d5d8dc;
 @while-color: #ffffff;
 @border-radius: 6px;
+@primary-color: #7147e8;
 
 .markdown-parser {
   .toastui-editor-contents {
@@ -43,6 +44,9 @@
       margin-bottom: 10px;
       color: @body-text-color;
       word-break: break-word;
+      &:last-child {
+        margin-bottom: 0px;
+      }
     }
 
     img {
@@ -59,5 +63,19 @@
     ul li::before {
       background-color: @while-color;
     }
+  }
+}
+
+.rich-text-editor-container {
+  .ant-btn {
+    padding: 0px;
+    margin: 0px;
+    line-height: 0px;
+    height: auto;
+  }
+
+  .ant-btn:focus,
+  .ant-btn:hover {
+    color: @primary-color;
   }
 }

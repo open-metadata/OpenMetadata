@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Button, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { uniqueId } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { isUndefined, uniqueId } from 'lodash';
+import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
+import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
   getPolicyWithFqnPath,
@@ -27,9 +30,12 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface RolesListProps {
   roles: Role[];
+  fetchRoles: (paging?: Paging) => void;
 }
 
-const RolesList: FC<RolesListProps> = ({ roles }) => {
+const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
+  const [selectedRole, setSelectedRole] = useState<Role>();
+
   const columns: ColumnsType<Role> = useMemo(() => {
     return [
       {
@@ -79,21 +85,41 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',
-        render: () => {
-          return <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />;
+        render: (_, record) => {
+          return (
+            <Button type="text" onClick={() => setSelectedRole(record)}>
+              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+            </Button>
+          );
         },
       },
     ];
   }, []);
 
   return (
-    <Table
-      className="roles-list-table"
-      columns={columns}
-      dataSource={roles}
-      pagination={false}
-      size="middle"
-    />
+    <>
+      <Table
+        className="roles-list-table"
+        columns={columns}
+        dataSource={roles}
+        pagination={false}
+        size="middle"
+      />
+      {selectedRole && (
+        <DeleteWidgetModal
+          afterDeleteAction={fetchRoles}
+          allowSoftDelete={false}
+          deleteMessage={`Are you sure you want to delete ${getEntityName(
+            selectedRole
+          )}`}
+          entityId={selectedRole.id}
+          entityName={getEntityName(selectedRole)}
+          entityType={EntityType.ROLE}
+          visible={!isUndefined(selectedRole)}
+          onCancel={() => setSelectedRole(undefined)}
+        />
+      )}
+    </>
   );
 };
 
