@@ -13,6 +13,9 @@ REST Auth & Client for Apache Superset
 """
 import json
 
+from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
+    SupersetConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -28,7 +31,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     Handle SuperSet Auth
     """
 
-    def __init__(self, config: WorkflowSource):
+    def __init__(self, config: SupersetConnection):
         self.config = config
         self.service_connection = self.config
         client_config = ClientConfig(
@@ -44,10 +47,10 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
         super().__init__()
 
     @classmethod
-    def create(cls, config: WorkflowSource):
+    def create(cls, config: SupersetConnection):
         return cls(config)
 
-    def auth_token(self) -> str:
+    def auth_token(self) -> None:
         login_request = self._login_request()
         login_response = self.client.post("/security/login", login_request)
         self.generated_auth_token = login_response["access_token"]
@@ -64,7 +67,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
 
     def get_access_token(self):
         self.auth_token()
-        return (self.generated_auth_token, self.expiry)
+        return self.generated_auth_token, self.expiry
 
 
 class SupersetAPIClient:
@@ -75,7 +78,7 @@ class SupersetAPIClient:
     client: REST
     _auth_provider: AuthenticationProvider
 
-    def __init__(self, config: WorkflowSource):
+    def __init__(self, config: SupersetConnection):
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
         client_config = ClientConfig(
@@ -89,7 +92,7 @@ class SupersetAPIClient:
 
     def fetch_total_dashboards(self) -> int:
         """
-        Fetch total dahsboard
+        Fetch total dashboard
 
         Returns:
             int
