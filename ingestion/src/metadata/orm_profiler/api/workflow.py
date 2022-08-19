@@ -120,7 +120,7 @@ class ProfilerWorkflow:
             logger.error("Error trying to parse the Profiler Workflow configuration")
             raise err
 
-    def get_config_for_entity(self, entity: Table) -> TableConfig:
+    def get_config_for_entity(self, entity: Table) -> Optional[TableConfig]:
         """Get config for a specific entity
 
         Args:

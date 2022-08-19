@@ -164,7 +164,7 @@ class Profiler(Generic[TMetric]):
 
         return self._columns
 
-    def _get_excluded_columns(self) -> Set[str]:
+    def _get_excluded_columns(self) -> Optional[Set[str]]:
         """Get excluded  columns for table being profiled"""
         if self.exclude_columns:
             return set(self.exclude_columns)
