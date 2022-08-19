@@ -100,7 +100,7 @@ const AddRolePage = () => {
   }, []);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className="tw-bg-body-main tw-h-full" gutter={[16, 16]}>
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
