@@ -5,16 +5,38 @@ source:
     config:
       type: Presto
       scheme: presto
-      username: admin
+      username: user
       password: password
       hostPort: localhost:8080
-      catalog: tpcds
+      catalog: catalog
+      # databaseSchema: schema
   sourceConfig:
     config:
       type: Profiler
-      databaseFilterPattern: <table FQN filtering regex>
-      schemaFilterPattern: <table FQN filtering regex>
-      tableFilterPattern: <table FQN filtering regex>
+      # generateSampleData: true
+      # profileSample: 85
+      # threadCount: 5 (default)
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - table1
+      #     - table2
+      #   excludes:
+      #     - table3
+      #     - table4
 processor:
   type: orm-profiler
   config: {}
