@@ -29,6 +29,12 @@ def get_secrets_manager(
     open_metadata_config: OpenMetadataConnection,
     credentials: Optional[Union[AWSCredentials]] = None,
 ) -> SecretsManager:
+    """
+    Method to get the secrets manager based on the configuration passed in OpenMetadataConnection
+    :param open_metadata_config: the OpenMetadata connection configuration object
+    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations
+    :return: a secrets manager
+    """
     if open_metadata_config.secretsManagerProvider == SecretsManagerProvider.local:
         return LocalSecretsManager(open_metadata_config.clusterName)
     elif open_metadata_config.secretsManagerProvider == SecretsManagerProvider.aws:

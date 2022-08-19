@@ -29,6 +29,8 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
+    AUTH_PROVIDER_SECRET_PREFIX,
+    DBT_SOURCE_CONFIG_SECRET_PREFIX,
     SecretsManager,
     ServiceWithConnectionType,
     logger,
@@ -54,6 +56,11 @@ class AWSBasedSecretsManager(SecretsManager, ABC):
         service: ServiceWithConnectionType,
         service_type: str,
     ) -> ServiceConnection:
+        """
+        Retrieve the service connection from the AWS client store from a given service connection object.
+        :param service: Service connection object e.g. DatabaseConnection
+        :param service_type: Service type e.g. databaseService
+        """
         logger.debug(
             f"Retrieving service connection from {self.provider} secrets' manager for {service_type} - {service.name}"
         )
@@ -74,12 +81,16 @@ class AWSBasedSecretsManager(SecretsManager, ABC):
         return ServiceConnection(__root__=service_connection)
 
     def add_auth_provider_security_config(self, config: OpenMetadataConnection) -> None:
+        """
+        Add the auth provider security config from the AWS client store to a given OpenMetadata connection object.
+        :param config: OpenMetadataConnection object
+        """
         logger.debug(
             f"Adding auth provider security config using {self.provider} secrets' manager"
         )
         if config.authProvider != AuthProvider.no_auth:
             secret_id = self.build_secret_id(
-                "auth-provider", config.authProvider.value.lower()
+                AUTH_PROVIDER_SECRET_PREFIX, config.authProvider.value.lower()
             )
             auth_config_json = self.get_string_value(secret_id)
             try:
@@ -94,13 +105,23 @@ class AWSBasedSecretsManager(SecretsManager, ABC):
     def retrieve_dbt_source_config(
         self, source_config: SourceConfig, pipeline_name: str
     ) -> object:
+        """
+        Retrieve the DBT source config from the AWS client store from a source config object.
+        :param source_config: SourceConfig object
+        :param pipeline_name: the pipeline's name
+        :return:
+        """
         logger.debug(
             f"Retrieving source_config from {self.provider} secrets' manager for {pipeline_name}"
         )
-        secret_id = self.build_secret_id("database-metadata-pipeline", pipeline_name)
+        secret_id = self.build_secret_id(DBT_SOURCE_CONFIG_SECRET_PREFIX, pipeline_name)
         source_config_json = self.get_string_value(secret_id)
         return json.loads(source_config_json) if source_config_json else None
 
     @abstractmethod
     def get_string_value(self, name: str) -> str:
+        """
+        :param name: The secret name to retrieve
+        :return: The value of the secret
+        """
         pass

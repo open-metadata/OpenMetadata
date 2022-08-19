@@ -61,6 +61,12 @@ class LocalSecretsManager(SecretsManager):
     def retrieve_dbt_source_config(
         self, source_config: SourceConfig, pipeline_name: str
     ) -> object:
+        """
+        Retrieve the DBT source config from the secret manager from a source config object.
+        :param source_config: SourceConfig object
+        :param pipeline_name: the pipeline's name
+        :return:
+        """
         logger.debug(
             f"Retrieving source_config from {self.provider} secrets' manager for {pipeline_name}"
         )

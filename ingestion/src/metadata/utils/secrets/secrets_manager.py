@@ -73,6 +73,10 @@ AUTH_PROVIDER_MAPPING: Dict[AuthProvider, AuthProviderClientType] = {
     AuthProvider.openmetadata: openMetadataJWTClientConfig.OpenMetadataJWTClientConfig,
 }
 
+DBT_SOURCE_CONFIG_SECRET_PREFIX: str = "database-metadata-pipeline"
+
+AUTH_PROVIDER_SECRET_PREFIX: str = "auth-provider"
+
 
 class SecretsManager(metaclass=Singleton):
     """
@@ -118,13 +122,21 @@ class SecretsManager(metaclass=Singleton):
         :param pipeline_name: the pipeline's name
         :return:
         """
+        pass
 
     @property
     def secret_id_separator(self) -> str:
+        """
+        The separator used to build the secret id e.g. /openmetadata/path/to/secret
+        :return: the separator character
+        """
         return "/"
 
     @property
     def starts_with_separator(self) -> bool:
+        """
+        :return: returns True if we want to start the secret id with a seperator character
+        """
         return True
 
     def build_secret_id(self, *args: str) -> str:
