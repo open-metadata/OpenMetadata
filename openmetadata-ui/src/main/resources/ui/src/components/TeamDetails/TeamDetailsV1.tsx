@@ -88,6 +88,8 @@ const TeamDetailsV1 = ({
   teamUsersSearchText,
   isDescriptionEditable,
   isTeamMemberLoading,
+  childTeams,
+  onTeamExpand,
   handleAddTeam,
   updateTeamHandler,
   onDescriptionUpdate,
@@ -122,7 +124,7 @@ const TeamDetailsV1 = ({
   const [showAction, setShowAction] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [table, setTable] = useState<EntityReference[]>([]);
+  const [table, setTable] = useState<Team[]>([]);
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -376,14 +378,14 @@ const TeamDetailsV1 = ({
     setSearchTerm(value);
     if (value) {
       setTable(
-        currentTeam.children?.filter(
+        childTeams?.filter(
           (team) =>
             team?.name?.toLowerCase().includes(value.toLowerCase()) ||
             team?.displayName?.toLowerCase().includes(value.toLowerCase())
         ) || []
       );
     } else {
-      setTable(currentTeam.children ?? []);
+      setTable(childTeams ?? []);
     }
   };
 
@@ -413,10 +415,13 @@ const TeamDetailsV1 = ({
         },
       ];
       setSlashedDatabaseName(breadcrumb);
-      setHeading(currentTeam.displayName);
-      setTable(currentTeam.children ?? []);
+      setHeading(currentTeam.displayName || currentTeam.name);
     }
   }, [currentTeam]);
+
+  useEffect(() => {
+    setTable(childTeams ?? []);
+  }, [childTeams]);
 
   useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
@@ -806,7 +811,10 @@ const TeamDetailsV1 = ({
                     </Space>
                   </Col>
                   <Col span={24}>
-                    <TeamHierarchy data={table as Team[]} />
+                    <TeamHierarchy
+                      data={table as Team[]}
+                      onTeamExpand={onTeamExpand}
+                    />
                   </Col>
                 </Row>
               )}

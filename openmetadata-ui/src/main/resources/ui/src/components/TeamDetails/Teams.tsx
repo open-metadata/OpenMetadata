@@ -13,7 +13,7 @@
 
 import { Button, Col, Row, Space, Switch } from 'antd';
 import React, { FC } from 'react';
-import { Team, TeamType } from '../../generated/entity/teams/team';
+import { Team } from '../../generated/entity/teams/team';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -22,6 +22,11 @@ interface TeamsProps {
   onShowDeletedTeamChange: (checked: boolean) => void;
   data: Team[];
   onAddTeamClick: (value: boolean) => void;
+  onTeamExpand: (
+    isPageLoading?: boolean,
+    parentTeam?: string,
+    updateChildNode?: boolean
+  ) => void;
 }
 
 const Teams: FC<TeamsProps> = ({
@@ -29,31 +34,8 @@ const Teams: FC<TeamsProps> = ({
   showDeletedTeam,
   onShowDeletedTeamChange,
   onAddTeamClick,
+  onTeamExpand,
 }) => {
-  const generateTeamsData = (teams: Team[]) => {
-    const orgnization = teams
-      .filter((team) => team.teamType === TeamType.Organization)
-      .map((team) => {
-        const children = team.children?.map((child) => {
-          const updatedChildren: Team =
-            teams.find((team: Team) => team.id === child.id) || ({} as Team);
-          if (updatedChildren.children?.length === 0) {
-            delete updatedChildren.children;
-          }
-
-          return updatedChildren;
-        });
-
-        return {
-          ...team,
-          key: team.id,
-          children,
-        };
-      });
-
-    return orgnization;
-  };
-
   return (
     <Row className="team-list-container" gutter={[16, 16]}>
       <Col span={24}>
@@ -72,7 +54,7 @@ const Teams: FC<TeamsProps> = ({
         </Space>
       </Col>
       <Col span={24}>
-        <TeamHierarchy data={generateTeamsData(data) as Team[]} />
+        <TeamHierarchy data={data} onTeamExpand={onTeamExpand} />
       </Col>
     </Row>
   );

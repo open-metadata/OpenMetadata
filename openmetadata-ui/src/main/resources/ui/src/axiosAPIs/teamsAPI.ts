@@ -13,6 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { isString } from 'lodash';
+import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
@@ -20,13 +22,26 @@ import APIClient from './index';
 
 export const getTeams = async (
   arrQueryFields?: string | string[],
-  limit = 100000
+  params?: {
+    limit?: number;
+    before?: string;
+    after?: string;
+    parentTeam?: string;
+    include?: string;
+  }
 ) => {
+  const updatedParams = {
+    fields: isString(arrQueryFields)
+      ? arrQueryFields
+      : arrQueryFields?.join(','),
+    limit: 100000,
+    ...params,
+  };
   const url = getURLWithQueryFields('/teams', arrQueryFields);
 
-  const response = await APIClient.get<{ data: Team[]; paging: Paging }>(
-    `${url}${arrQueryFields ? '&' : '?'}limit=${limit}`
-  );
+  const response = await APIClient.get<{ data: Team[]; paging: Paging }>(url, {
+    params: updatedParams,
+  });
 
   return response.data;
 };
@@ -42,8 +57,8 @@ export const getTeamByName = async (
   return response.data;
 };
 
-export const createTeam = async (data: Team) => {
-  const response = await APIClient.post<Team>('/teams', data);
+export const createTeam = async (data: CreateTeam) => {
+  const response = await APIClient.post<CreateTeam>('/teams', data);
 
   return response.data;
 };
