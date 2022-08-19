@@ -410,6 +410,8 @@ site_menu:
     url: /openmetadata/ingestion/workflows/usage/usage-workflow-query-logs
   - category: OpenMetadata / Ingestion / Workflows / Profiler
     url: /openmetadata/ingestion/workflows/profiler
+  - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
+    url: /openmetadata/ingestion/workflows/profiler/metrics
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
   - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually
@@ -430,8 +432,6 @@ site_menu:
     url: /openmetadata/data-quality
   - category: OpenMetadata / Data Quality / Tests
     url: /openmetadata/data-quality/tests
-  - category: OpenMetadata / Data Quality / Metrics
-    url: /openmetadata/data-quality/metrics
 
   - category: OpenMetadata / Teams & Users
     url: /openmetadata/users

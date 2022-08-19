@@ -12,10 +12,11 @@
 """
 Default simple profiler to use
 """
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
 
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import Metric, add_props
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -58,6 +59,8 @@ class DefaultProfiler(Profiler):
     def __init__(
         self,
         profiler_interface: SQAProfilerInterface,
+        include_columns: List[Optional[ColumnProfilerConfig]] = None,
+        exclude_columns: List[Optional[str]] = None,
     ):
 
         _metrics = get_default_metrics(profiler_interface.table)
@@ -65,4 +68,6 @@ class DefaultProfiler(Profiler):
         super().__init__(
             *_metrics,
             profiler_interface=profiler_interface,
+            include_columns=include_columns,
+            exclude_columns=exclude_columns,
         )

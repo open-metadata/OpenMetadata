@@ -16,19 +16,34 @@ JSON workflows to the profiler
 from typing import List, Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+
+
+class TablePartitionConfig(ConfigModel):
+    """table partition config"""
+
+    partitionField: Optional[str] = None
+    partitionQueryDuration: Optional[int] = 1
+    partitionValues: Optional[List] = None
+
+
+class ColumnConfig(ConfigModel):
+    """Column config for profiler"""
+
+    excludeColumns: Optional[List[str]]
+    includeColumns: Optional[List[ColumnProfilerConfig]]
 
 
 class TableConfig(ConfigModel):
     """table profile config"""
 
-    sample: Optional[float] = None
-    partition_field: Optional[str] = None
-    partition_query_duration: Optional[int] = 1
-    partition_values: Optional[List] = None
-    sample_query: Optional[str] = None
-    clear_sample_query_from_entity: bool = False
+    fullyQualifiedName: FullyQualifiedEntityName
+    profileSample: Optional[float] = None
+    profileQuery: Optional[str] = None
+    partitionConfig: Optional[TablePartitionConfig]
+    columnConfig: Optional[ColumnConfig]
 
 
 class TestCase(ConfigModel):

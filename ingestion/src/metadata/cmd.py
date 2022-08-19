@@ -77,11 +77,11 @@ def ingest(config: str) -> None:
     "-c",
     "--config",
     type=click.Path(exists=True, dir_okay=False),
-    help="Profiler and Testing Workflow config",
+    help="Profiler Workflow config",
     required=True,
 )
 def profile(config: str) -> None:
-    """Main command for profiling and testing Table sources into Metadata"""
+    """Main command for profiling Table sources into Metadata"""
     config_file = pathlib.Path(config)
     workflow_config = load_config_file(config_file)
 

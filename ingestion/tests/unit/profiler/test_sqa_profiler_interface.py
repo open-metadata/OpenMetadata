@@ -15,13 +15,21 @@ Test SQA Interface
 
 import os
 from unittest import TestCase
+from uuid import uuid4
 
 from pytest import raises
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    ColumnProfile,
+    DataType,
+    Table,
+    TableProfile,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -49,10 +57,22 @@ class User(declarative_base()):
 
 class SQAProfilerInterfaceTest(TestCase):
     def setUp(self) -> None:
+        table_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName(__root__="id"),
+                    dataType=DataType.INT,
+                )
+            ],
+        )
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        self.sqa_profiler_interface = SQAProfilerInterface(sqlite_conn, table=User)
+        self.sqa_profiler_interface = SQAProfilerInterface(
+            sqlite_conn, table=User, table_entity=table_entity
+        )
         self.table = User
 
     def test_init_interface(self):
@@ -74,12 +94,24 @@ class SQAProfilerInterfaceTest(TestCase):
 
 class SQAProfilerInterfaceTestMultiThread(TestCase):
 
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
     db_path = os.path.join(os.path.dirname(__file__), "test.db")
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn, table=User)
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, table=User, table_entity=table_entity
+    )
 
     @classmethod
     def setUpClass(cls) -> None:

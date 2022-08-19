@@ -21,6 +21,28 @@ const mockSubmit = jest.fn();
 const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
 
+const gsConfig = {
+  authProviderX509CertUrl: 'url',
+
+  authUri: 'uri',
+
+  clientEmail: 'email',
+
+  clientId: 'id',
+
+  clientX509CertUrl: 'certUrl',
+
+  privateKey: 'privateKey',
+
+  privateKeyId: 'keyId',
+
+  projectId: 'projectId',
+
+  tokenUri: 'tokenUri',
+
+  type: 'type',
+};
+
 const mockProps = {
   okText: 'Next',
   cancelText: 'Back',
@@ -86,6 +108,7 @@ describe('Test DBT GCS Config Form', () => {
         {...mockProps}
         dbtSecurityConfig={{
           gcsConfig: {
+            ...gsConfig,
             type: 'CredsType',
           },
         }}
@@ -102,6 +125,7 @@ describe('Test DBT GCS Config Form', () => {
         {...mockProps}
         dbtSecurityConfig={{
           gcsConfig: {
+            ...gsConfig,
             projectId: 'ProjectId',
           },
         }}
@@ -118,6 +142,7 @@ describe('Test DBT GCS Config Form', () => {
         {...mockProps}
         dbtSecurityConfig={{
           gcsConfig: {
+            ...gsConfig,
             privateKeyId: 'PrivateKeyId',
           },
         }}
@@ -134,6 +159,7 @@ describe('Test DBT GCS Config Form', () => {
         {...mockProps}
         dbtSecurityConfig={{
           gcsConfig: {
+            ...gsConfig,
             privateKey: 'PrivateKey',
           },
         }}
@@ -148,7 +174,9 @@ describe('Test DBT GCS Config Form', () => {
     const { container } = render(
       <DBTGCSConfig
         {...mockProps}
-        dbtSecurityConfig={{ gcsConfig: { clientEmail: 'ClientEmail' } }}
+        dbtSecurityConfig={{
+          gcsConfig: { ...gsConfig, clientEmail: 'ClientEmail' },
+        }}
       />
     );
     const inputClientEmail = getByTestId(container, 'client-email');
@@ -160,7 +188,7 @@ describe('Test DBT GCS Config Form', () => {
     const { container } = render(
       <DBTGCSConfig
         {...mockProps}
-        dbtSecurityConfig={{ gcsConfig: { clientId: 'ClientId' } }}
+        dbtSecurityConfig={{ gcsConfig: { ...gsConfig, clientId: 'ClientId' } }}
       />
     );
     const inputClientId = getByTestId(container, 'client-id');
@@ -172,7 +200,9 @@ describe('Test DBT GCS Config Form', () => {
     const { container } = render(
       <DBTGCSConfig
         {...mockProps}
-        dbtSecurityConfig={{ gcsConfig: { authUri: 'http://www.AuthUri.com' } }}
+        dbtSecurityConfig={{
+          gcsConfig: { ...gsConfig, authUri: 'http://www.AuthUri.com' },
+        }}
       />
     );
     const inputAuthUri = getByTestId(container, 'auth-uri');
@@ -185,7 +215,7 @@ describe('Test DBT GCS Config Form', () => {
       <DBTGCSConfig
         {...mockProps}
         dbtSecurityConfig={{
-          gcsConfig: { tokenUri: 'http://www.TokenUri.com' },
+          gcsConfig: { ...gsConfig, tokenUri: 'http://www.TokenUri.com' },
         }}
       />
     );
@@ -199,7 +229,10 @@ describe('Test DBT GCS Config Form', () => {
       <DBTGCSConfig
         {...mockProps}
         dbtSecurityConfig={{
-          gcsConfig: { authProviderX509CertUrl: 'http://www.AuthCertUri.com' },
+          gcsConfig: {
+            ...gsConfig,
+            authProviderX509CertUrl: 'http://www.AuthCertUri.com',
+          },
         }}
       />
     );
@@ -216,7 +249,10 @@ describe('Test DBT GCS Config Form', () => {
       <DBTGCSConfig
         {...mockProps}
         dbtSecurityConfig={{
-          gcsConfig: { clientX509CertUrl: 'http://www.ClientCertUri.com' },
+          gcsConfig: {
+            ...gsConfig,
+            clientX509CertUrl: 'http://www.ClientCertUri.com',
+          },
         }}
       />
     );

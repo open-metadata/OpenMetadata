@@ -37,18 +37,10 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    //Finding and clicking on organization
-    cy.get('.ant-table-tbody')
-      .find('.ant-table-cell > a')
-      .eq(0)
-      .should('exist')
-      .should('contain', orgName)
-      .click();
-
     cy.wait(1000);
   });
 
-  it('Add team to organization', () => {
+  it('Add new team', () => {
     //Fetching the add button and clicking on it
     cy.get('button')
       .find('span')
@@ -63,7 +55,7 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .type(TEAM_DETAILS.name);
 
-    cy.get('[data-testid="displayName"]')
+    cy.get('[data-testid="display-name"]')
       .should('exist')
       .should('be.visible')
       .type(TEAM_DETAILS.displayName);
@@ -74,7 +66,7 @@ describe('Teams flow should work properly', () => {
       .type(TEAM_DETAILS.description);
 
     //Saving the created team
-    cy.get('[data-testid="saveButton"]')
+    cy.get('[form="add-team-form"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -281,14 +273,6 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    //Finding and clicking on organization
-    cy.get('.ant-table-tbody')
-      .find('.ant-table-cell > a')
-      .eq(0)
-      .should('exist')
-      .should('contain', orgName)
-      .click();
-
     //Click on created table
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
     //Click on asset tab
@@ -345,16 +329,7 @@ describe('Teams flow should work properly', () => {
     toastNotification('Team deleted successfully!');
 
     //Validating the deleted team
-    //Finding and clicking on organization
-    cy.get('.ant-table-tbody')
-      .find('.ant-table-cell > a')
-      .eq(0)
-      .should('exist')
-      .should('contain', orgName)
-      .click();
 
-    cy.get('[data-testid="searchbar"]').type(TEAM_DETAILS.name);
-
-    cy.get('.ant-table-cell').should('not.contain', TEAM_DETAILS.name);
+    cy.get('table').should('not.contain', TEAM_DETAILS.name);
   });
 });

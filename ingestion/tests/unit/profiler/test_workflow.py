@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
@@ -104,16 +105,10 @@ def test_init_workflow(mocked_method, mocked_orm):
 
     assert isinstance(workflow.source_config, DatabaseServiceProfilerPipeline)
     assert isinstance(workflow.metadata_config, OpenMetadataConnection)
+    assert isinstance(workflow.profiler_config, ProfilerProcessorConfig)
 
-    workflow.create_profiler_interface(
-        workflow.config.source.serviceConnection.__root__.config,
-        TABLE,
-    )
-    workflow.create_processor_obj()
-
-    assert isinstance(workflow.processor_obj, OrmProfilerProcessor)
-    assert workflow.processor_obj.config.profiler is None
-    assert workflow.processor_obj.config.testSuites is None
+    assert workflow.profiler_config.profiler is None
+    assert workflow.profiler_config.tableConfig is None
 
 
 @patch.object(
@@ -208,28 +203,26 @@ def test_profile_def(mocked_method, mocked_orm):
     Validate the definitions of the profile in the JSON
     """
     profile_config = deepcopy(config)
+    config_metrics = ["row_count", "min", "COUNT", "null_count"]
+    config_metrics_label = ["rowCount", "min", "valuesCount", "nullCount"]
     profile_config["processor"]["config"]["profiler"] = {
         "name": "my_profiler",
-        "metrics": ["row_count", "min", "COUNT", "null_count"],
+        "metrics": config_metrics,
     }
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
-    profile_workflow.create_profiler_interface(
+    profiler_interface = profile_workflow.create_profiler_interface(
         profile_workflow.config.source.serviceConnection.__root__.config,
         TABLE,
     )
-    profile_workflow.create_processor_obj()
+    profile_workflow.create_profiler_obj(TABLE, profiler_interface)
+    profiler_obj_metrics = [
+        metric.name() for metric in profile_workflow.profiler_obj.metrics
+    ]
 
-    profile_definition = ProfilerDef(
-        name="my_profiler",
-        metrics=["ROW_COUNT", "MIN", "COUNT", "NULL_COUNT"],
-        time_metrics=None,
-        custom_metrics=None,
-    )
-
-    assert isinstance(profile_workflow.processor_obj, OrmProfilerProcessor)
-    assert profile_workflow.processor_obj.config.profiler == profile_definition
+    assert profile_workflow.profiler_config.profiler
+    assert config_metrics_label == profiler_obj_metrics
 
 
 @patch.object(
@@ -251,101 +244,16 @@ def test_default_profile_def(mocked_method, mocked_orm):
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    profile_workflow.create_profiler_interface(
-        profile_workflow.config.source.serviceConnection.__root__.config, TABLE
+    profiler_interface = profile_workflow.create_profiler_interface(
+        profile_workflow.config.source.serviceConnection.__root__.config,
+        TABLE,
     )
-    profile_workflow.create_processor_obj()
-
-    assert isinstance(profile_workflow.processor_obj, OrmProfilerProcessor)
-    assert profile_workflow.processor_obj.config.profiler is None
-
-    profile_workflow.create_profiler_obj()
+    profile_workflow.create_profiler_obj(TABLE, profiler_interface)
 
     assert isinstance(
         profile_workflow.profiler_obj,
         DefaultProfiler,
     )
-
-
-# Disabled this test as we'll need to change it entirely
-# should be fixed in https://github.com/open-metadata/OpenMetadata/issues/5661
-# @patch.object(
-#     ProfilerWorkflow,
-#     "_validate_service_name",
-#     return_value=True,
-# )
-# def test_tests_def(mocked_method):
-#     """
-#     Validate the test case definition
-#     """
-#     test_config = deepcopy(config)
-#     test_config["processor"]["config"]["test_suite"] = {
-#         "name": "My Test Suite",
-#         "tests": [
-#             {
-#                 "table": "service.db.name",  # FQDN
-#                 "table_tests": [
-#                     {
-#                         "testCase": {
-#                             "config": {
-#                                 "value": 100,
-#                             },
-#                             "tableTestType": "tableRowCountToEqual",
-#                         },
-#                     },
-#                 ],
-#                 "column_tests": [
-#                     {
-#                         "columnName": "age",
-#                         "testCase": {
-#                             "config": {
-#                                 "minValue": 0,
-#                                 "maxValue": 99,
-#                             },
-#                             "columnTestType": "columnValuesToBeBetween",
-#                         },
-#                     }
-#                 ],
-#             },
-#         ],
-#     }
-
-#     test_workflow = ProfilerWorkflow.create(test_config)
-#     mocked_method.assert_called()
-#     test_workflow.create_processor(
-#         test_workflow.config.source.serviceConnection.__root__.config
-#     )
-
-#     assert isinstance(test_workflow.processor, OrmProfilerProcessor)
-#     suite = test_workflow.processor.config.test_suite
-
-#     expected = TestSuite(
-#         name="My Test Suite",
-#         tests=[
-#             TestDef(
-#                 table="service.db.name",
-#                 table_tests=[
-#                     CreateTableTestRequest(
-#                         testCase=TableTestCase(
-#                             config=TableRowCountToEqual(value=100),
-#                             tableTestType=TableTestType.tableRowCountToEqual,
-#                         ),
-#                     )
-#                 ],
-#                 column_tests=[
-#                     CreateColumnTestRequest(
-#                         columnName="age",
-#                         testCase=ColumnTestCase(
-#                             config=ColumnValuesToBeBetween(minValue=0, maxValue=99),
-#                             columnTestType=ColumnTestType.columnValuesToBeBetween,
-#                         ),
-#                     )
-#                 ],
-#             )
-#         ],
-#     )
-
-#     assert suite == expected
 
 
 def test_service_name_validation_raised():
