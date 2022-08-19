@@ -43,9 +43,9 @@ class MetadataRestSink(Sink[Entity]):
     status: SinkStatus
 
     def __init__(
-        self,
-        config: MetadataRestSinkConfig,
-        metadata_config: OpenMetadataConnection,
+            self,
+            config: MetadataRestSinkConfig,
+            metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
@@ -67,8 +67,8 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_record(self, record: ProfilerResponse) -> None:
         try:
-            self.metadata.ingest_table_profile_data(
-                table=record.table, table_profile=record.profile
+            self.metadata.ingest_profile_data(
+                table=record.table, profile_request=record.profile
             )
             logger.info(
                 f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"

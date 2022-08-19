@@ -383,7 +383,7 @@ class Profiler(Generic[TMetric]):
 
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,
-            profile=self.get_profile().tableProfile,
+            profile=self.get_profile(),
             sample_data=sample_data,
         )
 
