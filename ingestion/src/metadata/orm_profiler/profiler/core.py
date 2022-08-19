@@ -22,7 +22,9 @@ from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from typing_extensions import Self
 
-from metadata.generated.schema.api.data.createTableProfile import CreateTableProfileRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     ColumnProfilerConfig,
@@ -67,12 +69,12 @@ class Profiler(Generic[TMetric]):
     # pylint: disable=too-many-instance-attributes,too-many-public-methods
 
     def __init__(
-            self,
-            *metrics: Type[TMetric],
-            profiler_interface: InterfaceProtocol,
-            profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
-            include_columns: List[Optional[ColumnProfilerConfig]] = None,
-            exclude_columns: List[Optional[str]] = None,
+        self,
+        *metrics: Type[TMetric],
+        profiler_interface: InterfaceProtocol,
+        profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
+        include_columns: List[Optional[ColumnProfilerConfig]] = None,
+        exclude_columns: List[Optional[str]] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -200,7 +202,7 @@ class Profiler(Generic[TMetric]):
         return self._filter_metrics(QueryMetric)
 
     def get_col_metrics(
-            self, metrics: List[Type[TMetric]], column: Optional[Column] = None
+        self, metrics: List[Type[TMetric]], column: Optional[Column] = None
     ) -> List[Type[TMetric]]:
         """
         Filter list of metrics for column metrics with allowed types
@@ -210,8 +212,8 @@ class Profiler(Generic[TMetric]):
             return [metric for metric in metrics if metric.is_col_metric()]
 
         if (
-                self.profiler_interface.table_entity.tableProfilerConfig
-                and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+            self.profiler_interface.table_entity.tableProfilerConfig
+            and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
         ):
             metric_names = (
                 metric_array
@@ -425,7 +427,9 @@ class Profiler(Generic[TMetric]):
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
             )
-            return CreateTableProfileRequest(tableProfile=table_profile, columnProfile=computed_profiles)
+            return CreateTableProfileRequest(
+                tableProfile=table_profile, columnProfile=computed_profiles
+            )
 
         except ValidationError as err:
             logger.error(f"Cannot transform profiler results to TableProfile {err}")

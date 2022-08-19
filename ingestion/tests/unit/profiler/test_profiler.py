@@ -13,9 +13,10 @@
 Test Profiler behavior
 """
 import os
+from datetime import datetime, timezone
 from unittest import TestCase
 from uuid import uuid4
-from datetime import datetime, timezone
+
 import pytest
 import sqlalchemy.types
 from sqlalchemy import Column, Integer, String

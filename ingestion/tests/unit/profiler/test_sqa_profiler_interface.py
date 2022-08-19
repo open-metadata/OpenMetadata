@@ -23,7 +23,9 @@ from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
 
-from metadata.generated.schema.api.data.createTableProfile import CreateTableProfileRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
@@ -217,14 +219,15 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
         )
 
         profile_request = CreateTableProfileRequest(
-            tableProfile=table_profile,
-            columnProfile=column_profile
+            tableProfile=table_profile, columnProfile=column_profile
         )
 
         assert profile_request.tableProfile.columnCount == 6
         assert profile_request.tableProfile.rowCount == 2
         name_column_profile = [
-            profile for profile in profile_request.columnProfile if profile.name == "name"
+            profile
+            for profile in profile_request.columnProfile
+            if profile.name == "name"
         ][0]
         id_column_profile = [
             profile for profile in profile_request.columnProfile if profile.name == "id"
