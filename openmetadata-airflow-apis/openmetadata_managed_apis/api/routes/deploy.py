@@ -11,7 +11,6 @@
 """
 Deploy the DAG and scan it with the scheduler
 """
-import logging
 import traceback
 
 from airflow.api_connexion import security
@@ -24,7 +23,10 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.deploy import DagDeployer
+from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
+
+logger = routes_logger()
 
 
 @blueprint.route("/deploy", methods=["POST"])
@@ -48,15 +50,15 @@ def deploy_dag() -> Response:
         return response
 
     except ValidationError as err:
-        logging.info(f"json request failed: {json_request}")
+        logger.info(f"json request failed: {json_request}")
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
             error=f"Request Validation Error parsing payload. IngestionPipeline expected - {err}",
         )
 
     except Exception as err:
-        logging.info(f"json request failed: {json_request}")
-        logging.error(traceback.format_exc())
+        logger.info(f"json request failed: {json_request}")
+        logger.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
             error=f"Internal error while deploying- {err}",

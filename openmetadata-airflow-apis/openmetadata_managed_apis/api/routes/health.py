@@ -11,12 +11,14 @@
 """
 Health endpoint. Globally accessible
 """
-import logging
 import traceback
 
 from airflow.www.app import csrf
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import routes_logger
+
+logger = routes_logger()
 
 
 @blueprint.route("/health", methods=["GET"])
@@ -29,7 +31,7 @@ def health():
     try:
         return ApiResponse.success({"status": "healthy"})
     except Exception as err:
-        logging.error(traceback.format_exc())
+        logger.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
             error=f"Internal error obtaining REST status - {err}",

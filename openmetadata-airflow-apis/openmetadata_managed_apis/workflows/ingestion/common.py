@@ -15,10 +15,6 @@ import json
 from datetime import datetime, timedelta
 from typing import Callable, Optional, Union
 
-import airflow
-from airflow import DAG
-from openmetadata_managed_apis.api.utils import clean_dag_id
-
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -29,15 +25,15 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
+from openmetadata_managed_apis.api.utils import clean_dag_id
+
+import airflow
+from airflow import DAG
 
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
-
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -51,6 +47,21 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
+
+
+class InvalidServiceException(Exception):
+    """
+    Exception to be thrown when couldn't fetch the service from server
+    """
+
+
+class ClientInitializationError(Exception):
+    """
+    Exception to be thrown when couldn't innitialize the Openmetadata Client
+    """
 
 
 def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
@@ -68,7 +79,10 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         build_secrets_manager_credentials(secrets_manager)
     )
 
-    metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+    try:
+        metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+    except Exception as err:
+        raise ClientInitializationError(f"Failed to initialize the client due to {err}")
 
     service_type = ingestion_pipeline.service.type
     service: Optional[
@@ -97,7 +111,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         )
 
     if not service:
-        raise ValueError(f"Could not get service from type {service_type}")
+        raise InvalidServiceException(f"Could not get service from type {service_type}")
 
     return WorkflowSource(
         type=service.serviceType.value.lower(),

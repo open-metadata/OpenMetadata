@@ -11,7 +11,6 @@
 """
 Test the connection against a source system
 """
-import logging
 import traceback
 
 from airflow.api_connexion import security
@@ -22,7 +21,10 @@ from metadata.ingestion.api.parser import parse_test_connection_request_graceful
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.test_connection import test_source_connection
+from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
+
+logger = routes_logger()
 
 
 @blueprint.route("/test_connection", methods=["POST"])
@@ -44,13 +46,14 @@ def test_connection() -> Response:
         return response
 
     except ValidationError as err:
+        logger.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
             error=f"Request Validation Error parsing payload. (Workflow)Source expected - {err}",
         )
 
     except Exception as err:
-        logging.info(traceback.format_exc())
+        logger.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
             error=f"Internal error testing connection {err}",

@@ -22,6 +22,9 @@ from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.kill_all import kill_all
+from openmetadata_managed_apis.utils.logger import routes_logger
+
+logger = routes_logger()
 
 
 @blueprint.route("/kill", methods=["POST"])

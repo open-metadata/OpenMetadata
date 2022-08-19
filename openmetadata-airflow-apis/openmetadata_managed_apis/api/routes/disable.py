@@ -11,7 +11,6 @@
 """
 Disable/Pause a dag
 """
-import logging
 import traceback
 
 from airflow.api_connexion import security
@@ -22,6 +21,9 @@ from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.state import disable_dag
+from openmetadata_managed_apis.utils.logger import routes_logger
+
+logger = routes_logger()
 
 
 @blueprint.route("/disable", methods=["POST"])
@@ -37,8 +39,8 @@ def disable() -> Response:
         return disable_dag(dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to get last run logs for '{dag_id}'")
-        logging.error(traceback.format_exc())
+        logger.info(f"Failed to get last run logs for '{dag_id}'")
+        logger.error(traceback.format_exc())
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
             error=f"Failed to get last run logs for '{dag_id}' due to {exc}",
