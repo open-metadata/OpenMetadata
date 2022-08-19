@@ -193,7 +193,7 @@ class ProfilerWorkflowTest(TestCase):
             entity=Table, fqn="test_sqlite.main.main.users", fields=["tableProfile"]
         )
 
-        assert table.tableProfile.profileSample == 75.0
+        assert table.tableProfilerConfig.profileSample == 75.0
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""
