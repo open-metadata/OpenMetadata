@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  Row,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -82,10 +92,13 @@ const AddPolicyPage = () => {
   };
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className="tw-bg-body-main tw-h-full" gutter={[16, 16]}>
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-        <Card title="Add New Policy">
+        <Card>
+          <Typography.Paragraph className="tw-text-lg">
+            Add New Policy
+          </Typography.Paragraph>
           <Form
             data-testid="policy-form"
             id="policy-form"

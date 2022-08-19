@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table } from 'antd';
+import { Button, Popover, Space, Table, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -22,6 +22,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
+import { LIST_CAP } from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -62,18 +63,44 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
       {
         title: 'Policies',
         dataIndex: 'policies',
-        width: '200px',
+        width: '250px',
         key: 'policies',
         render: (_, record) => {
+          const listLength = record.policies?.length ?? 0;
+          const hasMore = listLength > LIST_CAP;
+
           return record.policies?.length ? (
             <Space wrap size={4}>
-              {record.policies.map((policy) => (
+              {record.policies.slice(0, LIST_CAP).map((policy) => (
                 <Link
                   key={uniqueId()}
                   to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
                   {getEntityName(policy)}
                 </Link>
               ))}
+              {hasMore && (
+                <Popover
+                  className="tw-cursor-pointer"
+                  content={
+                    <Space wrap size={4}>
+                      {record.policies.slice(LIST_CAP).map((policy) => (
+                        <Link
+                          key={uniqueId()}
+                          to={getPolicyWithFqnPath(
+                            policy.fullyQualifiedName || ''
+                          )}>
+                          {getEntityName(policy)}
+                        </Link>
+                      ))}
+                    </Space>
+                  }
+                  overlayClassName="tw-w-40 tw-text-center"
+                  trigger="click">
+                  <Tag className="tw-ml-1">{`+${
+                    listLength - LIST_CAP
+                  } more`}</Tag>
+                </Popover>
+              )}
             </Space>
           ) : (
             '-- '
