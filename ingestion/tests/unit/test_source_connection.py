@@ -149,6 +149,17 @@ class SouceConnectionTest(TestCase):
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
+    def test_hive_url_without_auth(self):
+        expected_result = "hive://localhost:10000"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username",
+            password="password",
+            hostPort="localhost:10000",
+            connectionArguments={"customKey": "value"},
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
+
     def test_trino_url_without_params(self):
         expected_url = "trino://username:pass@localhost:443/catalog"
         trino_conn_obj = TrinoConnection(
