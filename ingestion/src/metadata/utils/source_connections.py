@@ -337,6 +337,7 @@ def _(connection: HiveConnection):
         if connection.connectionOptions
         else connection.connectionOptions
     )
+
     if options:
         if not connection.databaseSchema:
             url += "/"
