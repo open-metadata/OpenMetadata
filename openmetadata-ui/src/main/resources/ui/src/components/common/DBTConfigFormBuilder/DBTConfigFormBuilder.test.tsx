@@ -25,7 +25,27 @@ const mockSecurityConfigS3 = {
 };
 
 const mockSecurityConfigGCSValue = {
-  gcsConfig: {},
+  gcsConfig: {
+    authProviderX509CertUrl: 'url',
+
+    authUri: 'uri',
+
+    clientEmail: 'email',
+
+    clientId: 'id',
+
+    clientX509CertUrl: 'certUrl',
+
+    privateKey: 'privateKey',
+
+    privateKeyId: 'keyId',
+
+    projectId: 'projectId',
+
+    tokenUri: 'tokenUri',
+
+    type: 'type',
+  },
 };
 
 const mockPrefixConfig = {
