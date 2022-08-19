@@ -87,3 +87,23 @@ After the applying these steps, the users in your realm are able to login in the
     Configure Keycloak SSO for your Kubernetes Deployment.
   </InlineCallout>
 </InlineCalloutContainer>
+
+## Configure Ingestion
+
+After everything has been set up, you will need to configure your workflows if you are running them via the
+`metadata` CLI or with any custom scheduler.
+
+Note that KeyCloak SSO is a layer on top of Custom OIDC.
+
+When setting up the YAML config for the connector, update the `workflowConfig` as follows:
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: custom-oidc
+    securityConfig:
+      clientId: '{your_client_id}'
+      secretKey: '{your_client_secret}'
+      domain: '{your_domain}'
+```

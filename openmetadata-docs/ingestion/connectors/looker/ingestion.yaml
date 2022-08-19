@@ -7,11 +7,26 @@ source:
       username: username
       password: password
       hostPort: http://hostPort
-      env: env
   sourceConfig:
     config:
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
 sink:
   type: metadata-rest
   config: {}

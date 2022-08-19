@@ -6,17 +6,22 @@ source:
       type: Redshift
       hostPort: cluster.name.region.redshift.amazonaws.com:5439
       username: username
-      password: strong_password
+      password: password
       database: dev
+      # If we want to iterate over all databases, set it to true
+      # ingestAllDatabases: true
   sourceConfig:
     config:
-      queryLogDuration: <query log duration integer>
+      # Number of days to look back
+      queryLogDuration: 7
+      # This is a directory that will be DELETED after the usage runs
       stageFileLocation: <path to store the stage file>
-      resultLimit: <query log limit integer>
+      # resultLimit: 1000
+      # If instead of getting the query logs from the database we want to pass a file with the queries
+      # queryLogFilePath: path-to-file
 processor:
   type: query-parser
-  config:
-    filter: ''
+  config: {}
 stage:
   type: table-usage
   config:
