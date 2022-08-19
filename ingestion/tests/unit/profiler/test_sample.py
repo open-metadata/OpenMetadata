@@ -130,7 +130,7 @@ class SampleTest(TestCase):
             self.sqlite_conn,
             table=User,
             table_entity=self.table_entity,
-            workflow_profile_sample=50,
+            profile_sample=50,
         )
         profiler = Profiler(
             table_count,
@@ -150,7 +150,7 @@ class SampleTest(TestCase):
             table_count,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._table_results
+        res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
 
     def test_random_sample_count(self):
@@ -162,41 +162,42 @@ class SampleTest(TestCase):
         """
 
         count = Metrics.COUNT.value
-        # Need to re-implement the logic with https://github.com/open-metadata/OpenMetadata/issues/5831
-        # profiler = Profiler(
-        #     count,
-        #     profiler_interface=self.sqa_profiler_interface,
-        # )
-        # res = profiler.execute()._column_results
-        # assert res.get(User.name.name)[Metrics.COUNT.name] < 30
-
         profiler = Profiler(
             count,
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=SQAProfilerInterface(
+                self.sqlite_conn,
+                table=User,
+                table_entity=self.table_entity,
+                profile_sample=50,
+            ),
         )
-        res = profiler.execute()._column_results
-        assert res.get(User.name.name)[Metrics.COUNT.name] == 30
+        res = profiler.compute_metrics()._column_results
+        assert res.get(User.name.name)[Metrics.COUNT.name] < 30
 
     def test_random_sample_histogram(self):
         """
         Histogram should run correctly
         """
         hist = Metrics.HISTOGRAM.value
-        # Need to re-implement the logic with https://github.com/open-metadata/OpenMetadata/issues/5831
-        # profiler = Profiler(
-        #     hist,
-        #     profiler_interface=self.sqa_profiler_interface,
-        # )
-        # res = profiler.execute()._column_results
+        profiler = Profiler(
+            hist,
+            profiler_interface=SQAProfilerInterface(
+                self.sqlite_conn,
+                table=User,
+                table_entity=self.table_entity,
+                profile_sample=50,
+            ),
+        )
+        res = profiler.compute_metrics()._column_results
 
-        # # The sum of all frequencies should be sampled
-        # assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
+        # The sum of all frequencies should be sampled
+        assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 30.0
@@ -211,7 +212,7 @@ class SampleTest(TestCase):
             hist,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # As we repeat data, we expect 0 unique counts.
         # This tests might very rarely, fail, depending on the sampled random data.
@@ -221,7 +222,7 @@ class SampleTest(TestCase):
             hist,
             profiler_interface=self.sqa_profiler_interface,
         )
-        res = profiler.execute()._column_results
+        res = profiler.compute_metrics()._column_results
 
         # As we repeat data, we expect 0 unique counts.
         # This tests might very rarely, fail, depending on the sampled random data.

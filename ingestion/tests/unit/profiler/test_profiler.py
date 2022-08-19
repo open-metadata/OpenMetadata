@@ -99,7 +99,7 @@ class ProfilerTest(TestCase):
         simple = DefaultProfiler(
             profiler_interface=self.sqa_profiler_interface,
         )
-        simple.execute()
+        simple.compute_metrics()
 
         profile = simple.get_profile()
 

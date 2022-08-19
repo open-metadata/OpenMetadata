@@ -1,6 +1,6 @@
 ---
 title: Metrics
-slug: /openmetadata/data-quality/metrics
+slug: /openmetadata/ingestion/workflows/profiler/metrics
 ---
 
 # Metrics
@@ -97,6 +97,10 @@ Only for concatenable values. Returns the maximum length of the values in a colu
 
 * Numerical values: returns the average of the values.
 * Concatenable values: returns the average length of the values.
+
+### Median
+
+Only for numerical values. This is currently not supported in MySQL.
 
 ### Sum
 

@@ -59,15 +59,14 @@ class Sampler:
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
         """
+        if self._profile_sample_query:
+            return self._fetch_sample_data_with_query_object()
 
         if not self.profile_sample:
             if self._partition_details:
                 return self._random_sample_for_partitioned_tables()
 
             return self.table
-
-        if self._profile_sample_query:
-            return self._fetch_sample_data_with_query_object()
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
