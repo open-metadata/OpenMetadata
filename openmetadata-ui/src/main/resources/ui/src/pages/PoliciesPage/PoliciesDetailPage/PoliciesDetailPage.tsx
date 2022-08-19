@@ -31,13 +31,23 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { getRoleWithFqnPath, getSettingPath } from '../../../utils/RouterUtils';
+import {
+  getRoleWithFqnPath,
+  getSettingPath,
+  getTeamsWithFqnPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
 
 const { TabPane } = Tabs;
 
-const RolesList = ({ roles }: { roles: EntityReference[] }) => {
+const List = ({
+  list,
+  type,
+}: {
+  list: EntityReference[];
+  type: 'role' | 'team';
+}) => {
   const columns: ColumnsType<EntityReference> = useMemo(() => {
     return [
       {
@@ -45,13 +55,28 @@ const RolesList = ({ roles }: { roles: EntityReference[] }) => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          let link = '';
+          switch (type) {
+            case 'role':
+              link = getRoleWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+            case 'team':
+              link = getTeamsWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+
+            default:
+              break;
+          }
+
+          return (
+            <Link className="hover:tw-underline tw-cursor-pointer" to={link}>
+              {getEntityName(record)}
+            </Link>
+          );
+        },
       },
       {
         title: 'Description',
@@ -66,9 +91,9 @@ const RolesList = ({ roles }: { roles: EntityReference[] }) => {
 
   return (
     <Table
-      className="roles-list-table"
+      className="list-table"
       columns={columns}
-      dataSource={roles}
+      dataSource={list}
       pagination={false}
       size="middle"
     />
@@ -179,23 +204,13 @@ const PoliciesDetailPage = () => {
               )}
             </TabPane>
             <TabPane key="roles" tab="Roles">
-              <RolesList roles={policy.roles ?? []} />
+              <List list={policy.roles ?? []} type="role" />
             </TabPane>
             <TabPane key="teams" tab="Teams">
               {isEmpty(policy.teams) ? (
                 <Empty description="No teams found" />
               ) : (
-                <Row gutter={[16, 16]}>
-                  {policy.teams?.map((team) => (
-                    <Col key={uniqueId()} span={6}>
-                      <Card title={getEntityName(team)}>
-                        <RichTextEditorPreviewer
-                          markdown={team.description || ''}
-                        />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
+                <List list={policy.teams ?? []} type="team" />
               )}
             </TabPane>
           </Tabs>
