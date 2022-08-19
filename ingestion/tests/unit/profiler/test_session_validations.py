@@ -12,7 +12,7 @@
 """
 Test validations that need a session configured to run
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase as UnitestTestCase
 from uuid import uuid4
 
@@ -118,7 +118,7 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name")  # column name
+        column_profile = ColumnProfile(name="name", timestamp=datetime.now(tz=timezone.utc).timestamp())  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["random", "forbidden"]),
@@ -150,7 +150,7 @@ class SessionValidation(UnitestTestCase):
 
         res_aborted = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
-            col_profile=ColumnProfile(name="random"),
+            col_profile=ColumnProfile(name="random", timestamp=datetime.now(tz=timezone.utc).timestamp()),
             execution_date=EXECUTION_DATE,
             runner=self.sqa_profiler_interface.runner,
             table=User,
@@ -160,8 +160,8 @@ class SessionValidation(UnitestTestCase):
             timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=(
-                "Error computing ColumnValuesToBeNotInSet for users.random - Cannot find"
-                + " the configured column random for ColumnValuesToBeNotInSet"
+                    "Error computing ColumnValuesToBeNotInSet for users.random - Cannot find"
+                    + " the configured column random for ColumnValuesToBeNotInSet"
             ),
         )
 
@@ -169,7 +169,8 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
+        column_profile = ColumnProfile(name="name", valuesCount=2,
+                                       timestamp=datetime.now(tz=timezone.utc).timestamp())  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
@@ -201,7 +202,7 @@ class SessionValidation(UnitestTestCase):
 
         res_aborted = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
-            col_profile=ColumnProfile(name="name"),
+            col_profile=ColumnProfile(name="name", timestamp=datetime.now(tz=timezone.utc).timestamp()),
             execution_date=EXECUTION_DATE,
             runner=self.sqa_profiler_interface.runner,
             table=User,
@@ -219,7 +220,7 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="nickname", nullCount=1)
+        column_profile = ColumnProfile(name="nickname", nullCount=1, timestamp=datetime.now(tz=timezone.utc).timestamp())
 
         res_ok = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(missingCountValue=1),
@@ -276,7 +277,7 @@ class SessionValidation(UnitestTestCase):
             ColumnValuesMissingCount(
                 missingCountValue=0,
             ),
-            col_profile=ColumnProfile(name="nickname"),
+            col_profile=ColumnProfile(name="nickname", timestamp=datetime.now(tz=timezone.utc).timestamp()),
             execution_date=EXECUTION_DATE,
             runner=self.sqa_profiler_interface.runner,
             table=User,
@@ -294,7 +295,7 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name")  # column name
+        column_profile = ColumnProfile(name="name", timestamp=datetime.now(tz=timezone.utc).timestamp())  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToBeInSet"](
             ColumnValuesToBeInSet(allowedValues=["random", "forbidden"]),
@@ -314,7 +315,8 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
+        column_profile = ColumnProfile(name="name", valuesCount=2,
+                                       timestamp=datetime.now(tz=timezone.utc).timestamp())  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToNotMatchRegex"](
             ColumnValuesToNotMatchRegex(forbiddenRegex="J%"),
@@ -338,32 +340,32 @@ class SessionValidation(UnitestTestCase):
         """
         table_profile = TableProfile(timestamp=EXECUTION_DATE.timestamp())
         res_ok = (
-            validation_enum_registry.registry["TableCustomSQLQuery"](
-                TestCase(
-                    name="my_test_case",
-                    parameterValues=[
-                        TestCaseParameterValue(
-                            name="sqlExpression",
-                            value="SELECT * FROM users WHERE age < 10",
+                validation_enum_registry.registry["TableCustomSQLQuery"](
+                    TestCase(
+                        name="my_test_case",
+                        parameterValues=[
+                            TestCaseParameterValue(
+                                name="sqlExpression",
+                                value="SELECT * FROM users WHERE age < 10",
+                            ),
+                        ],
+                        testDefinition=EntityReference(
+                            id=uuid4(),
+                            type="TestDefinition",
                         ),
-                    ],
-                    testDefinition=EntityReference(
-                        id=uuid4(),
-                        type="TestDefinition",
+                        entityLink="<#E::table::entity.link>",
+                        testSuite=EntityReference(
+                            id=uuid4(),
+                            type="TestSuite",
+                        ),
                     ),
-                    entityLink="<#E::table::entity.link>",
-                    testSuite=EntityReference(
-                        id=uuid4(),
-                        type="TestSuite",
-                    ),
-                ),
-                test_definition=None,
-                table_profile=table_profile,
-                execution_date=EXECUTION_DATE,
-                session=self.session,
-                table=User,
-            )
-            or []
+                    test_definition=None,
+                    table_profile=table_profile,
+                    execution_date=EXECUTION_DATE,
+                    session=self.session,
+                    table=User,
+                )
+                or []
         )
 
         assert res_ok == TestCaseResult(
@@ -373,32 +375,32 @@ class SessionValidation(UnitestTestCase):
         )
 
         res_ok = (
-            validation_enum_registry.registry["TableCustomSQLQuery"](
-                TestCase(
-                    name="my_test_case",
-                    parameterValues=[
-                        TestCaseParameterValue(
-                            name="sqlExpression",
-                            value="SELECT * FROM users WHERE LOWER(name) LIKE '%john%'",
-                        )
-                    ],
-                    testDefinition=EntityReference(
-                        id=uuid4(),
-                        type="TestDefinition",
+                validation_enum_registry.registry["TableCustomSQLQuery"](
+                    TestCase(
+                        name="my_test_case",
+                        parameterValues=[
+                            TestCaseParameterValue(
+                                name="sqlExpression",
+                                value="SELECT * FROM users WHERE LOWER(name) LIKE '%john%'",
+                            )
+                        ],
+                        testDefinition=EntityReference(
+                            id=uuid4(),
+                            type="TestDefinition",
+                        ),
+                        entityLink="<#E::table::entity.link>",
+                        testSuite=EntityReference(
+                            id=uuid4(),
+                            type="TestSuite",
+                        ),
                     ),
-                    entityLink="<#E::table::entity.link>",
-                    testSuite=EntityReference(
-                        id=uuid4(),
-                        type="TestSuite",
-                    ),
-                ),
-                test_definition=None,
-                table_profile=table_profile,
-                execution_date=EXECUTION_DATE,
-                session=self.session,
-                table=User,
-            )
-            or []
+                    test_definition=None,
+                    table_profile=table_profile,
+                    execution_date=EXECUTION_DATE,
+                    session=self.session,
+                    table=User,
+                )
+                or []
         )
 
         assert res_ok == TestCaseResult(

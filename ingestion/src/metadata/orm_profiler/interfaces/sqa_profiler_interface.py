@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 import concurrent.futures
 import threading
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
 
 from sqlalchemy import Column, inspect
@@ -69,15 +69,15 @@ class SQAProfilerInterface(InterfaceProtocol):
     """
 
     def __init__(
-        self,
-        service_connection_config,
-        metadata_config: Optional[OpenMetadataConnection] = None,
-        thread_count: Optional[int] = 5,
-        table_entity: Optional[Table] = None,
-        table: Optional[DeclarativeMeta] = None,
-        profile_sample: Optional[float] = None,
-        profile_query: Optional[str] = None,
-        partition_config: Optional[TablePartitionConfig] = None,
+            self,
+            service_connection_config,
+            metadata_config: Optional[OpenMetadataConnection] = None,
+            thread_count: Optional[int] = 5,
+            table_entity: Optional[Table] = None,
+            table: Optional[DeclarativeMeta] = None,
+            profile_sample: Optional[float] = None,
+            profile_query: Optional[str] = None,
+            partition_config: Optional[TablePartitionConfig] = None,
     ):
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count
@@ -143,7 +143,7 @@ class SQAProfilerInterface(InterfaceProtocol):
         return engine
 
     def _get_partition_details(
-        self, partition_config: TablePartitionConfig
+            self, partition_config: TablePartitionConfig
     ) -> Optional[Dict]:
         """From partition config, get the partition table for a table entity"""
         if self.table_entity.serviceType == DatabaseServiceType.BigQuery:
@@ -151,7 +151,7 @@ class SQAProfilerInterface(InterfaceProtocol):
                 start, end = get_start_and_end(partition_config.partitionQueryDuration)
                 partition_details = {
                     "partition_field": partition_config.partitionField
-                    or get_partition_cols(self.session, self.table),
+                                       or get_partition_cols(self.session, self.table),
                     "partition_start": start,
                     "partition_end": end,
                     "partition_values": partition_config.partitionValues,
@@ -172,9 +172,9 @@ class SQAProfilerInterface(InterfaceProtocol):
             self._metadata = None
 
     def _create_thread_safe_sampler(
-        self,
-        session,
-        table,
+            self,
+            session,
+            table,
     ):
         """Create thread safe runner"""
         if not hasattr(thread_local, "sampler"):
@@ -188,10 +188,10 @@ class SQAProfilerInterface(InterfaceProtocol):
         return thread_local.sampler
 
     def _create_thread_safe_runner(
-        self,
-        session,
-        table,
-        sample,
+            self,
+            session,
+            table,
+            sample,
     ):
         """Create thread safe runner"""
         if not hasattr(thread_local, "runner"):
@@ -213,8 +213,8 @@ class SQAProfilerInterface(InterfaceProtocol):
         return inspect(self.table).c
 
     def compute_metrics_in_thread(
-        self,
-        metric_funcs,
+            self,
+            metric_funcs,
     ):
         """Run metrics in processor worker"""
         (
@@ -255,14 +255,14 @@ class SQAProfilerInterface(InterfaceProtocol):
         return row, column
 
     def get_all_metrics(
-        self,
-        metric_funcs: list,
+            self,
+            metric_funcs: list,
     ):
         """get all profiler metrics"""
         logger.info(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self._thread_count
+                max_workers=self._thread_count
         ) as executor:
             futures = [
                 executor.submit(
@@ -279,7 +279,8 @@ class SQAProfilerInterface(InterfaceProtocol):
             if not column:
                 profile_results["table"].update(profile)
             else:
-                profile_results["columns"][column].update({"name": column, **profile})
+                profile_results["columns"][column].update(
+                    {"name": column, "timestamp": datetime.now(tz=timezone.utc).timestamp(), **profile})
         return profile_results
 
     def fetch_sample_data(self):
@@ -313,7 +314,7 @@ class SQAProfilerInterface(InterfaceProtocol):
         )
 
     def get_composed_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
+            self, column: Column, metric: Metrics, column_results: Dict
     ):
         """Given a list of metrics, compute the given results
         and returns the values
@@ -331,11 +332,11 @@ class SQAProfilerInterface(InterfaceProtocol):
             self.session.rollback()
 
     def run_test_case(
-        self,
-        test_case: TestCase,
-        test_definition: TestDefinition,
-        table_profile: TableProfile,
-        profile_sample: float,
+            self,
+            test_case: TestCase,
+            test_definition: TestDefinition,
+            table_profile: TableProfile,
+            profile_sample: float,
     ) -> Optional[TestCaseResult]:
         """Run table tests where platformsTest=OpenMetadata
 
@@ -362,11 +363,11 @@ class SQAProfilerInterface(InterfaceProtocol):
 
 
 def get_table_metrics(
-    metrics: List[Metrics],
-    runner: QueryRunner,
-    session: Session,
-    *args,
-    **kwargs,
+        metrics: List[Metrics],
+        runner: QueryRunner,
+        session: Session,
+        *args,
+        **kwargs,
 ):
     """Given a list of metrics, compute the given results
     and returns the values
@@ -390,12 +391,12 @@ def get_table_metrics(
 
 
 def get_static_metrics(
-    metrics: List[Metrics],
-    runner: QueryRunner,
-    session: Session,
-    column: Column,
-    *args,
-    **kwargs,
+        metrics: List[Metrics],
+        runner: QueryRunner,
+        session: Session,
+        column: Column,
+        *args,
+        **kwargs,
 ) -> Dict[str, Union[str, int]]:
     """Given a list of metrics, compute the given results
     and returns the values
@@ -423,13 +424,13 @@ def get_static_metrics(
 
 
 def get_query_metrics(
-    metric: Metrics,
-    runner: QueryRunner,
-    session: Session,
-    column: Column,
-    sample,
-    *args,
-    **kwargs,
+        metric: Metrics,
+        runner: QueryRunner,
+        session: Session,
+        column: Column,
+        sample,
+        *args,
+        **kwargs,
 ) -> Optional[Dict[str, Union[str, int]]]:
     """Given a list of metrics, compute the given results
     and returns the values
@@ -461,12 +462,12 @@ def get_query_metrics(
 
 
 def get_window_metrics(
-    metric: Metrics,
-    runner: QueryRunner,
-    session: Session,
-    column: Column,
-    *args,
-    **kwargs,
+        metric: Metrics,
+        runner: QueryRunner,
+        session: Session,
+        column: Column,
+        *args,
+        **kwargs,
 ) -> Dict[str, Union[str, int]]:
     """Given a list of metrics, compute the given results
     and returns the values
