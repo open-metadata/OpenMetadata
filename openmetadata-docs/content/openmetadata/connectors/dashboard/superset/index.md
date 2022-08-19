@@ -7,6 +7,8 @@ slug: /openmetadata/connectors/dashboard/superset
 
 <Requirements />
 
+The ingestion also works with Superset 2.0.0 🎉
+
 <MetadataIngestionService connector="Superset"/>
 
 <h4>Connection Options</h4>
@@ -14,7 +16,7 @@ slug: /openmetadata/connectors/dashboard/superset
 - **Host and Port**: URL to the Superset instance.
 - **Username**: Specify the User to connect to Superset. It should have enough privileges to read all the metadata.
 - **Password**: Password for Superset.
-- **Database Service Name**: Optionally, add the name of the database service to add lineage.
+- **Provider**: Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API.
 
 <IngestionScheduleAndDeploy />
 
