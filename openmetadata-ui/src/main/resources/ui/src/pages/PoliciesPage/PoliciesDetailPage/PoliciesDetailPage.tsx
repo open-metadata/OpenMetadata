@@ -47,6 +47,7 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
 
@@ -96,6 +97,19 @@ const List = ({
         render: (_, record) => (
           <RichTextEditorPreviewer markdown={record?.description || ''} />
         ),
+      },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        width: '80px',
+        key: 'actions',
+        render: () => {
+          return (
+            <Button type="text">
+              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+            </Button>
+          );
+        },
       },
     ];
   }, []);
