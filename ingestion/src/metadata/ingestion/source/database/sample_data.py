@@ -15,7 +15,7 @@ import os
 import sys
 import traceback
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
@@ -841,7 +841,7 @@ class SampleDataSource(Source[Entity]):
                         rowCount=profile["rowCount"],
                         timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
                         columnProfile=[
-                            ColumnProfile(**col_profile)
+                            ColumnProfile(   timestamp=datetime.now(tz=timezone.utc).timestamp(),**col_profile)
                             for col_profile in profile["columnProfile"]
                         ],
                     ),

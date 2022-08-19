@@ -14,7 +14,7 @@ OpenMetadata high-level API Table test
 """
 import uuid
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase
 
 import pytest
@@ -320,6 +320,7 @@ class OMetaTableTest(TestCase):
                     mean=1.5,
                     sum=2,
                     stddev=None,
+                    timestamp=datetime.now(tz=timezone.utc).timestamp()
                 )
             ],
         )
