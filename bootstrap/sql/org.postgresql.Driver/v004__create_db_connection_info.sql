@@ -85,3 +85,7 @@ ALTER TABLE thread_entity
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,databaseSchema}' #- '{connection,config,oracleServiceName}'
 WHERE serviceType = 'Oracle';
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,hostPort}'
+WHERE serviceType = 'Athena';
