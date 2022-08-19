@@ -14,7 +14,6 @@ slug: /openmetadata/connectors/dashboard/metabase
 - **Host and Port**: URL to the Metabase instance.
 - **Username**: Specify the User to connect to Metabase. It should have enough privileges to read all the metadata.
 - **Password**: Password for Metabase.
-- **Database Service Name**: Optionally, add the name of the database service to add lineage.
 
 <IngestionScheduleAndDeploy />
 
