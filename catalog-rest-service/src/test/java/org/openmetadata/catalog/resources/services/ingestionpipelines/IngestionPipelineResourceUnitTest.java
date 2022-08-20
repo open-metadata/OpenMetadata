@@ -115,7 +115,7 @@ public class IngestionPipelineResourceUnitTest {
 
   @Test
   void testTestConnectionCallSecretsManager() {
-    TestServiceConnection testServiceConnection = mock(TestServiceConnection.class);
+    TestServiceConnection testServiceConnection = new TestServiceConnection();
     try (MockedConstruction<AirflowRESTClient> mocked =
         mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
       ingestionPipelineResource.initialize(catalogApplicationConfig);

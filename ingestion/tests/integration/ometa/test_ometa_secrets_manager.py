@@ -16,6 +16,8 @@ from unittest.mock import Mock, patch
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
@@ -70,7 +72,7 @@ class OMetaSecretManagerTest(TestCase):
         assert type(self.metadata.secrets_manager_client) is AWSSecretsManager
         assert type(self.metadata._auth_provider) is NoOpAuthenticationProvider
 
-    @patch("metadata.ingestion.ometa.ometa_api.get_secrets_manager")
+    @patch("metadata.ingestion.ometa.ometa_api.get_secrets_manager_from_om_connection")
     def test_ometa_with_aws_secret_manager_with_google_auth(self, secrets_manager_mock):
         security_config = copy(self.aws_server_config)
         security_config.securityConfig = GoogleSSOClientConfig(secretKey="/fake/path")
