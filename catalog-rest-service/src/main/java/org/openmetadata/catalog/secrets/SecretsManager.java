@@ -21,12 +21,14 @@ import lombok.Getter;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.exception.SecretsManagerException;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -34,10 +36,9 @@ public abstract class SecretsManager {
 
   @Getter private final String clusterPrefix;
 
-  @Getter private final OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider;
+  @Getter private final SecretsManagerProvider secretsManagerProvider;
 
-  protected SecretsManager(
-      OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
+  protected SecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
     this.secretsManagerProvider = secretsManagerProvider;
     this.clusterPrefix = clusterPrefix;
   }
@@ -117,4 +118,6 @@ public abstract class SecretsManager {
   protected String extractConnectionPackageName(ServiceType serviceType) {
     return CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, serviceType.value());
   }
+
+  public abstract Object storeTestConnectionObject(TestServiceConnection testServiceConnection);
 }

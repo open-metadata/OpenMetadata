@@ -14,6 +14,8 @@ Secrets manager implementation for local secrets manager
 """
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
@@ -22,6 +24,7 @@ from metadata.generated.schema.entity.services.connections.serviceConnection imp
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.utils.secrets.secrets_manager import (
     SecretsManager,
+    ServiceConnectionType,
     ServiceWithConnectionType,
     logger,
 )
@@ -51,7 +54,7 @@ class LocalSecretsManager(SecretsManager):
         service_type: str,
     ) -> ServiceConnection:
         """
-        The LocalSecretsManager does not modify the ServiceConnection object
+        Returns the ServiceConnection object with the service connection
         """
         logger.debug(
             f"Retrieving service connection from {self.provider} secrets' manager for {service_type} - {service.name}"
@@ -62,7 +65,7 @@ class LocalSecretsManager(SecretsManager):
         self, source_config: SourceConfig, pipeline_name: str
     ) -> object:
         """
-        Retrieve the DBT source config from the secret manager from a source config object.
+        Retrieve the DBT source config if it is present in the source config object
         :param source_config: SourceConfig object
         :param pipeline_name: the pipeline's name
         :return:
@@ -77,3 +80,15 @@ class LocalSecretsManager(SecretsManager):
             and source_config.config.dbtConfigSource
             else None
         )
+
+    def retrieve_temp_service_test_connection(
+        self,
+        connection: ServiceConnectionType,
+        service_type: str,
+    ) -> ServiceConnectionType:
+        """
+        Returns the connection
+        :param connection: Connection of the service
+        :param service_type: Service type e.g. Database
+        """
+        return connection

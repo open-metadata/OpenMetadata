@@ -21,6 +21,8 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
@@ -39,7 +41,13 @@ from metadata.generated.schema.security.client.googleSSOClientConfig import (
 )
 from metadata.utils.secrets.secrets_manager import AUTH_PROVIDER_MAPPING
 
-DATABASE_CONNECTION = {"username": "test", "hostPort": "localhost:3306"}
+DATABASE_CONNECTION_CONFIG = {
+    "type": "Mysql",
+    "username": "test",
+    "hostPort": "localhost:3306",
+}
+
+DATABASE_CONNECTION = {"config": DATABASE_CONNECTION_CONFIG}
 
 DATABASE_SERVICE = {
     "id": uuid.uuid4(),
@@ -68,7 +76,7 @@ class TestSecretsManager(TestCase):
         service_type: str = "database"
         service: DatabaseService
         service_connection: ServiceConnection
-        database_connection = MysqlConnection(**DATABASE_CONNECTION)
+        database_connection = MysqlConnection(**DATABASE_CONNECTION_CONFIG)
         auth_provider_config = GoogleSSOClientConfig(**AUTH_PROVIDER_CONFIG)
         om_connection: OpenMetadataConnection
         dbt_source_config: DbtHttpConfig

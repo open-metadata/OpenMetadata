@@ -17,6 +17,14 @@ from abc import abstractmethod
 from pydoc import locate
 from typing import Dict, NewType, Union
 
+from metadata.generated.schema.entity.services import (
+    dashboardService,
+    databaseService,
+    messagingService,
+    metadataService,
+    mlmodelService,
+    pipelineService,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
@@ -46,7 +54,7 @@ logger = ingestion_logger()
 
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
 
-# new typing type wrapping types from the '__root__' field of 'ServiceConnection' class
+# new typing type wrapping services with connection field types
 ServiceWithConnectionType = NewType(
     "ServiceWithConnectionType",
     Union[
@@ -56,6 +64,19 @@ ServiceWithConnectionType = NewType(
         MetadataService,
         MlModelService,
         PipelineService,
+    ],
+)
+
+# new typing type wrapping types from the '__root__' field of 'ServiceConnection' class
+ServiceConnectionType = NewType(
+    "ServiceConnectionType",
+    Union[
+        dashboardService.DashboardConnection,
+        databaseService.DatabaseConnection,
+        messagingService.MessagingConnection,
+        metadataService.MetadataConnection,
+        pipelineService.PipelineConnection,
+        mlmodelService.MlModelConnection,
     ],
 )
 
@@ -76,6 +97,8 @@ AUTH_PROVIDER_MAPPING: Dict[AuthProvider, AuthProviderClientType] = {
 DBT_SOURCE_CONFIG_SECRET_PREFIX: str = "database-metadata-pipeline"
 
 AUTH_PROVIDER_SECRET_PREFIX: str = "auth-provider"
+
+TEST_CONNECTION_TEMP_SECRET_PREFIX: str = "test-connection-temp"
 
 
 class SecretsManager(metaclass=Singleton):
@@ -124,6 +147,20 @@ class SecretsManager(metaclass=Singleton):
         """
         pass
 
+    @abstractmethod
+    def retrieve_temp_service_test_connection(
+        self,
+        connection: ServiceConnectionType,
+        service_type: str,
+    ) -> ServiceConnectionType:
+        """
+        Retrieve the service connection from the secret manager stored in a temporary secret depending on the service
+        type.
+        :param connection: Connection of the service
+        :param service_type: Service type e.g. Database
+        """
+        pass
+
     @property
     def secret_id_separator(self) -> str:
         """
@@ -162,15 +199,15 @@ class SecretsManager(metaclass=Singleton):
                 clazz[1]
                 for clazz in inspect.getmembers(
                     locate(
-                        f"metadata.generated.schema.entity.services.{service_type}Service"
+                        f"metadata.generated.schema.entity.services.{service_type.lower()}Service"
                     ),
                     inspect.isclass,
                 )
-                if clazz[0].lower() == f"{service_type}connection"
+                if clazz[0].lower() == f"{service_type.lower()}connection"
             )
         ).__name__
         return locate(
-            f"metadata.generated.schema.entity.services.{service_type}Service.{service_conn_name}"
+            f"metadata.generated.schema.entity.services.{service_type.lower()}Service.{service_conn_name}"
         )
 
     @staticmethod
