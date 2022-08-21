@@ -338,6 +338,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <ProfilerTab
               activeColumnDetails={activeColumnDetails}
               profilerData={profilerData}
+              tableProfile={table.profile}
             />
           </Col>
         )}

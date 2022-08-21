@@ -47,10 +47,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
         title: 'Column Count',
         value: profile?.columnCount ?? 0,
       },
-      {
-        title: 'Table Sample %',
-        value: `${profile?.profileSample ?? 0}%`,
-      },
+      //   {
+      //     title: 'Table Sample %',
+      //     value: `${profile?.profileSample ?? 100}%`,
+      //   },
       {
         title: 'Success',
         value: formTwoDigitNmber(0),
