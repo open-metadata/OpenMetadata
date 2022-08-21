@@ -234,7 +234,7 @@ const TourPage = () => {
             slashedTableName={mockDatasetData.slashedTableName}
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
-              mockDatasetData.tableProfile as unknown as Table['tableProfile']
+              mockDatasetData.tableProfile as unknown as Table['profile']
             }
             tableQueries={[]}
             tableTags={mockDatasetData.tableTags}

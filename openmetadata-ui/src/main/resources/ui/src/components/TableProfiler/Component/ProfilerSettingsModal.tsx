@@ -43,7 +43,7 @@ import '../tableProfiler.less';
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
-  columnProfile,
+  columns,
   visible,
   onVisibilityChange,
 }) => {
@@ -56,11 +56,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   );
 
   const selectOptions = useMemo(() => {
-    return columnProfile.map(({ name }) => ({
+    return columns.map(({ name }) => ({
       label: name,
       value: name,
     }));
-  }, [columnProfile]);
+  }, [columns]);
   const metricsOptions = useMemo(() => {
     const metricsOptions = [
       {
@@ -76,7 +76,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     ];
 
     return metricsOptions;
-  }, [columnProfile]);
+  }, [columns]);
 
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
     const { includeColumns } = tableProfilerConfig;
