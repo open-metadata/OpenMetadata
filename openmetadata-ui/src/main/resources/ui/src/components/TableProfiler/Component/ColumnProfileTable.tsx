@@ -20,7 +20,7 @@ import {
   SECONDARY_COLOR,
   SUCCESS_COLOR,
 } from '../../../constants/constants';
-import { ColumnProfile } from '../../../generated/entity/data/table';
+import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCaseStatus } from '../../../generated/tests/tableTest';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
@@ -32,12 +32,11 @@ import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
-  columnProfile,
   onAddTestClick,
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
-  const [data, setData] = useState(columnProfile);
+  const [data, setData] = useState<Column[]>(columns);
   // TODO:- Once column level test filter is implemented in test case API, remove this hardcoded value
   const testDetails = [
     {
@@ -53,19 +52,17 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
       type: TestCaseStatus.Failed,
     },
   ];
-  const tableColumn: ColumnsType<ColumnProfile> = useMemo(() => {
+  const tableColumn: ColumnsType<Column> = useMemo(() => {
     return [
       {
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => {
-          const data = columns.find((col) => col.name === name);
-
+        render: (name: string, record) => {
           return (
             <Link
               to={getProfilerDashboardWithFqnPath(
-                data?.fullyQualifiedName || ''
+                record.fullyQualifiedName || ''
               )}>
               {name}
             </Link>
@@ -74,61 +71,60 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
       },
       {
         title: 'Data Type',
-        dataIndex: 'name',
+        dataIndex: 'dataTypeDisplay',
         key: 'dataType',
-        render: (name) => {
-          const dataType = columns.find((col) => col.name === name);
-
+        render: (dataTypeDisplay: string) => {
           return (
             <Ellipses tooltip className="tw-w-24">
-              {dataType?.dataTypeDisplay || 'N/A'}
+              {dataTypeDisplay || 'N/A'}
             </Ellipses>
           );
         },
       },
       {
         title: 'Null %',
-        dataIndex: 'nullProportion',
+        dataIndex: 'profile',
         key: 'nullProportion',
         width: 200,
-        render: (nullValue) => {
+        render: (profile: ColumnProfile) => {
           return (
             <ProfilerProgressWidget
               strokeColor={PRIMERY_COLOR}
-              value={nullValue}
+              value={profile.nullProportion || 0}
             />
           );
         },
       },
       {
         title: 'Unique %',
-        dataIndex: 'uniqueProportion',
+        dataIndex: 'profile',
         key: 'uniqueProportion',
         width: 200,
-        render: (uniqueValue) => (
+        render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SECONDARY_COLOR}
-            value={uniqueValue}
+            value={profile.uniqueProportion || 0}
           />
         ),
       },
       {
         title: 'Distinct %',
-        dataIndex: 'distinctProportion',
+        dataIndex: 'profile',
         key: 'distinctProportion',
         width: 200,
-        render: (distValue) => (
+        render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SUCCESS_COLOR}
-            value={distValue}
+            value={profile.distinctProportion || 0}
           />
         ),
       },
       {
         title: 'Value Count',
-        dataIndex: 'valuesCount',
+        dataIndex: 'profile',
         key: 'valuesCount',
-        render: (valuesCount) => formatNumberWithComma(valuesCount),
+        render: (profile: ColumnProfile) =>
+          formatNumberWithComma(profile.valuesCount || 0),
       },
       {
         title: 'Test',
@@ -169,15 +165,15 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
     if (searchText) {
-      setData(columnProfile.filter((col) => col.name?.includes(searchText)));
+      setData(columns.filter((col) => col.name?.includes(searchText)));
     } else {
-      setData(columnProfile);
+      setData(columns);
     }
   };
 
   useEffect(() => {
-    setData(columnProfile);
-  }, [columnProfile]);
+    setData(columns);
+  }, [columns]);
 
   return (
     <div data-testid="column-profile-table-container">
