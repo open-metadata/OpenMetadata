@@ -59,7 +59,7 @@ export interface DatasetDetailsProps {
   activeTab: number;
   owner: EntityReference;
   description: string;
-  tableProfile: Table['tableProfile'];
+  tableProfile: Table['profile'];
   tableQueries: Table['tableQueries'];
   columns: ModifiedTableColumn[];
   tier: TagLabel;
