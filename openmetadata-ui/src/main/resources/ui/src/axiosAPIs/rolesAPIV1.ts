@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreatePolicy } from '../generated/api/policies/createPolicy';
 import { CreateRole } from '../generated/api/teams/createRole';
+import { ResourceDescriptor } from '../generated/entity/policies/accessControl/resourceDescriptor';
 import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Paging } from '../generated/type/paging';
@@ -118,6 +119,15 @@ export const patchPolicy = async (data: Operation[], id: string) => {
     data,
     patchConfig
   );
+
+  return response.data;
+};
+
+export const getPolicyResources = async () => {
+  const response = await APIClient.get<{
+    data: ResourceDescriptor[];
+    paging: Paging;
+  }>('/policies/resources');
 
   return response.data;
 };
