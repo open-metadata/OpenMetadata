@@ -311,7 +311,8 @@ class OrmProfilerProcessor(Processor[Table]):
                     description=test_case.description,
                     testDefinition=EntityReference(
                         id=self.metadata.get_by_name(
-                            fqn=test_definition.fullyQualifiedName.__root__, entity=TestDefinition
+                            fqn=test_definition.fullyQualifiedName.__root__,
+                            entity=TestDefinition,
                         ).id.__root__,
                         type="testDefinition",
                     ),
