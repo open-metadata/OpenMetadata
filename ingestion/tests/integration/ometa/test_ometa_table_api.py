@@ -14,7 +14,7 @@ OpenMetadata high-level API Table test
 """
 import uuid
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase
 
 import pytest
@@ -24,6 +24,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -306,25 +309,28 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        profile = TableProfile(
+        table_profile = TableProfile(
             timestamp=datetime.now().timestamp(),
             columnCount=1.0,
             rowCount=3.0,
-            columnProfile=[
-                ColumnProfile(
-                    name="id",
-                    uniqueCount=3.0,
-                    uniqueProportion=1.0,
-                    min=1,
-                    max=3,
-                    mean=1.5,
-                    sum=2,
-                    stddev=None,
-                )
-            ],
         )
-
-        res_profile = self.metadata.ingest_table_profile_data(res, profile)
+        column_profile = [
+            ColumnProfile(
+                name="id",
+                uniqueCount=3.0,
+                uniqueProportion=1.0,
+                min=1,
+                max=3,
+                mean=1.5,
+                sum=2,
+                stddev=None,
+                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+            )
+        ]
+        profile = CreateTableProfileRequest(
+            tableProfile=table_profile, columnProfile=column_profile
+        )
+        res_profile = self.metadata.ingest_profile_data(res, profile)
         assert profile == res_profile
 
     def test_publish_table_usage(self):

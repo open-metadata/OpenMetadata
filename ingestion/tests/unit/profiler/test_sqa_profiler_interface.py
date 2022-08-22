@@ -14,6 +14,7 @@ Test SQA Interface
 """
 
 import os
+from datetime import datetime, timezone
 from unittest import TestCase
 from uuid import uuid4
 
@@ -22,6 +23,9 @@ from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
 
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
@@ -211,18 +215,22 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
         table_profile = TableProfile(
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            columnProfile=column_profile,
-            profileQuery=None,
-            profileSample=None,
+            timestamp=datetime.now(tz=timezone.utc).timestamp(),
         )
 
-        assert table_profile.columnCount == 6
-        assert table_profile.rowCount == 2
+        profile_request = CreateTableProfileRequest(
+            tableProfile=table_profile, columnProfile=column_profile
+        )
+
+        assert profile_request.tableProfile.columnCount == 6
+        assert profile_request.tableProfile.rowCount == 2
         name_column_profile = [
-            profile for profile in table_profile.columnProfile if profile.name == "name"
+            profile
+            for profile in profile_request.columnProfile
+            if profile.name == "name"
         ][0]
         id_column_profile = [
-            profile for profile in table_profile.columnProfile if profile.name == "id"
+            profile for profile in profile_request.columnProfile if profile.name == "id"
         ][0]
         assert name_column_profile.nullCount == 0
         assert id_column_profile.median == 1.5

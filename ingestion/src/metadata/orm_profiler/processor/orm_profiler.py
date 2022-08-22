@@ -148,7 +148,8 @@ class OrmProfilerProcessor(Processor[Table]):
         if self.workflow_profile_sample:
             if (
                 table.tableProfilerConfig.profileSample is not None
-                and self.workflow_profile_sample != table.profileSample
+                and self.workflow_profile_sample
+                != table.tableProfilerConfig.profileSample
             ):
                 return table.tableProfilerConfig.profileSample
             return self.workflow_profile_sample

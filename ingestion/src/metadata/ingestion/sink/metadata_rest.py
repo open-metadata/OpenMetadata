@@ -24,6 +24,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -302,10 +305,12 @@ class MetadataRestSink(Sink[Entity]):
                         f"Failed to ingest sample data for table {db_schema_and_table.table.name}"
                     )
 
-            if db_schema_and_table.table.tableProfile is not None:
-                self.metadata.ingest_table_profile_data(
-                    table=created_table,
-                    table_profile=db_schema_and_table.table.tableProfile,
+            if db_schema_and_table.table.profile is not None:
+                self.metadata.ingest_profile_data(
+                    table=db_schema_and_table.table,
+                    profile_request=CreateTableProfileRequest(
+                        tableProfile=db_schema_and_table.table.profile
+                    ),
                 )
 
             if db_schema_and_table.table.dataModel is not None:
@@ -559,7 +564,6 @@ class MetadataRestSink(Sink[Entity]):
             to_table_name = db_schema_and_table.table.name.__root__
 
             for from_table_name in parser.source_tables:
-
                 _create_lineage_by_table_name(
                     metadata=self.metadata,
                     from_table=str(from_table_name),
@@ -595,7 +599,7 @@ class MetadataRestSink(Sink[Entity]):
         Use the /tableProfile endpoint to ingest sample profile data
         """
         try:
-            self.metadata.ingest_table_profile_data(
+            self.metadata.ingest_profile_data(
                 table=record.table, table_profile=record.profile
             )
 
