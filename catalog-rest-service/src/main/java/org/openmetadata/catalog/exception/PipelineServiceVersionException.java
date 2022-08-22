@@ -20,7 +20,7 @@ public class PipelineServiceVersionException extends WebServiceException {
   private static final String BY_NAME_MESSAGE = "Pipeline Service Version mismatch due to [%s].";
 
   public PipelineServiceVersionException(String message) {
-    super(Response.Status.BAD_REQUEST, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR, message);
   }
 
   private PipelineServiceVersionException(Response.Status status, String message) {
@@ -32,7 +32,8 @@ public class PipelineServiceVersionException extends WebServiceException {
   }
 
   public static PipelineServiceVersionException byMessage(String name, String errorMessage) {
-    return new PipelineServiceVersionException(Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+    return new PipelineServiceVersionException(
+        Response.Status.INTERNAL_SERVER_ERROR, buildMessageByName(name, errorMessage));
   }
 
   public static String buildMessageByName(String name, String errorMessage) {

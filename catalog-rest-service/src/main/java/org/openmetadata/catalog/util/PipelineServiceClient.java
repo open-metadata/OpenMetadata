@@ -1,6 +1,7 @@
 package org.openmetadata.catalog.util;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -10,7 +11,9 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Pattern;
+import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
@@ -36,6 +39,18 @@ public abstract class PipelineServiceClient {
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
+
+  public static final String SERVER_VERSION;
+
+  static {
+    String _SERVER_VERSION;
+    try {
+      _SERVER_VERSION = getServerVersion();
+    } catch (IOException e) {
+      _SERVER_VERSION = "unknown";
+    }
+    SERVER_VERSION = _SERVER_VERSION;
+  }
 
   public PipelineServiceClient(String userName, String password, String apiEndpoint, int apiTimeout) {
     try {
@@ -73,14 +88,30 @@ public abstract class PipelineServiceClient {
     return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
   }
 
+  public static String getServerVersion() throws IOException {
+    InputStream fileInput = CatalogApplication.class.getResourceAsStream("/catalog/VERSION");
+    Properties props = new Properties();
+    props.load(fileInput);
+    return props.getProperty("version", "unknown");
+  }
+
   public final String getVersionFromString(String version) {
-    return Pattern.compile("(\\d+.\\d+.\\d+)")
-        .matcher(version)
-        .results()
-        .map(m -> m.group(1))
-        .findFirst()
-        .orElseThrow(
-            () -> new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
+    if (version != null) {
+      return Pattern.compile("(\\d+.\\d+.\\d+)")
+          .matcher(version)
+          .results()
+          .map(m -> m.group(1))
+          .findFirst()
+          .orElseThrow(
+              () ->
+                  new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
+    } else {
+      throw new PipelineServiceVersionException("Received version as null");
+    }
+  }
+
+  public final Boolean validServerClientVersions(String clientVersion) {
+    return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
