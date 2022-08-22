@@ -11,6 +11,7 @@
 
 from typing import Any
 
+import boto3
 from boto3 import Session
 
 from metadata.clients.connection_clients import (
@@ -19,6 +20,9 @@ from metadata.clients.connection_clients import (
     GluePipelineClient,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 class AWSClient:
@@ -55,12 +59,19 @@ class AWSClient:
         return Session()
 
     def get_client(self, service_name: str) -> Any:
-        session = self._get_session()
-        if self.config.endPointURL is not None:
-            return session.client(
-                service_name=service_name, endpoint_url=self.config.endPointURL
-            )
-        return session.client(service_name=service_name)
+        # initialize the client depending on the AWSCredentials passed
+        if self.config is not None:
+            logger.info(f"Getting AWS client for service [{service_name}]")
+            session = self._get_session()
+            if self.config.endPointURL is not None:
+                return session.client(
+                    service_name=service_name, endpoint_url=self.config.endPointURL
+                )
+            return session.client(service_name=service_name)
+        else:
+            logger.info(f"Getting AWS default client for service [{service_name}]")
+            # initialized with the credentials loaded from running machine
+            return boto3.client(service_name=service_name)
 
     def get_resource(self, service_name: str) -> Any:
         session = self._get_session()

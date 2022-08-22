@@ -44,7 +44,7 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: azure
+  authProvider: okta
   authConfig:
     okta:
       clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}

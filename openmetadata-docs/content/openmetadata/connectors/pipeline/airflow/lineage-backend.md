@@ -57,6 +57,89 @@ AIRFLOW__LINEAGE__AUTH_PROVIDER_TYPE="no-auth"
 We can choose the option that best adapts to our current architecture. Find more information on Airflow configurations
 [here](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-config.html).
 
+We are now going to list the configurations for the different SSO. We will use the `ini` format for those,
+but on your own Airflow you can freely choose.
+
+#### Google SSO
+
+```ini
+[lineage]
+backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+airflow_service_name = local_airflow
+openmetadata_api_endpoint = http://localhost:8585/api
+auth_provider_type = google
+# Note that the path should be local in Airflow
+secret_key = path-to-secret-key-file.json
+```
+
+#### Okta SSO
+
+```ini
+[lineage]
+backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+airflow_service_name = local_airflow
+openmetadata_api_endpoint = http://localhost:8585/api
+auth_provider_type = okta
+client_id = client id
+org_url = org url
+private_key = private key
+email = email
+# Optional
+scopes = ["scope1", "scope2"]
+```
+
+#### Auth0 SSO
+
+```ini
+[lineage]
+backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+airflow_service_name = local_airflow
+openmetadata_api_endpoint = http://localhost:8585/api
+auth_provider_type = auth0
+client_id = client id
+secret_key = secret key
+domain = domain
+```
+
+#### Azure SSO
+
+```ini
+[lineage]
+backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+airflow_service_name = local_airflow
+openmetadata_api_endpoint = http://localhost:8585/api
+auth_provider_type = azure
+client_id = client id
+client_secret = client secret
+authority = authority
+# Optional
+scopes = ["scope1", "scope2"]
+```
+
+#### OpenMetadata SSO
+
+```ini
+[lineage]
+backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+airflow_service_name = local_airflow
+openmetadata_api_endpoint = http://localhost:8585/api
+auth_provider_type = openmetadata
+jwt_token = token
+```
+
+#### Custom OIDC SSO
+
+```ini
+[lineage]
+backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+airflow_service_name = local_airflow
+openmetadata_api_endpoint = http://localhost:8585/api
+auth_provider_type = custom-oidc
+client_id = client id
+client_secret = client secret
+token_endpoint = endpoint
+```
+
 In the following sections, we'll show how to adapt our pipelines to help us build the lineage information.
 
 ## Lineage Backend

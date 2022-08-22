@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Empty, Row, Table, Tabs } from 'antd';
+import { Button, Empty, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -24,6 +24,7 @@ import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
+import { getUserPath } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -34,13 +35,21 @@ import { getEntityName } from '../../../utils/CommonUtils';
 import {
   getPolicyWithFqnPath,
   getSettingPath,
+  getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './RolesDetail.less';
 
 const { TabPane } = Tabs;
 
-const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
+const List = ({
+  list,
+  type,
+}: {
+  list: EntityReference[];
+  type: 'policy' | 'team' | 'user';
+}) => {
   const columns: ColumnsType<EntityReference> = useMemo(() => {
     return [
       {
@@ -48,13 +57,32 @@ const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          let link = '';
+          switch (type) {
+            case 'policy':
+              link = getPolicyWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+            case 'team':
+              link = getTeamsWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+            case 'user':
+              link = getUserPath(record.fullyQualifiedName || '');
+
+              break;
+
+            default:
+              break;
+          }
+
+          return (
+            <Link className="hover:tw-underline tw-cursor-pointer" to={link}>
+              {getEntityName(record)}
+            </Link>
+          );
+        },
       },
       {
         title: 'Description',
@@ -64,14 +92,27 @@ const PoliciesList = ({ policies }: { policies: EntityReference[] }) => {
           <RichTextEditorPreviewer markdown={record?.description || ''} />
         ),
       },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        width: '80px',
+        key: 'actions',
+        render: () => {
+          return (
+            <Button type="text">
+              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+            </Button>
+          );
+        },
+      },
     ];
   }, []);
 
   return (
     <Table
-      className="policies-list-table"
+      className="list-table"
       columns={columns}
-      dataSource={policies}
+      dataSource={list}
       pagination={false}
       size="middle"
     />
@@ -165,40 +206,20 @@ const RolesDetailPage = () => {
           </div>
           <Tabs defaultActiveKey="policies">
             <TabPane key="policies" tab="Policies">
-              <PoliciesList policies={role.policies ?? []} />
+              <List list={role.policies ?? []} type="policy" />
             </TabPane>
             <TabPane key="teams" tab="Teams">
               {isEmpty(role.teams) ? (
                 <Empty description="No teams found" />
               ) : (
-                <Row gutter={[16, 16]}>
-                  {role.teams?.map((team) => (
-                    <Col key={uniqueId()} span={6}>
-                      <Card title={getEntityName(team)}>
-                        <RichTextEditorPreviewer
-                          markdown={team.description || ''}
-                        />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
+                <List list={role.teams ?? []} type="team" />
               )}
             </TabPane>
             <TabPane key="users" tab="Users">
               {isEmpty(role.users) ? (
                 <Empty description="No users found" />
               ) : (
-                <Row gutter={[16, 16]}>
-                  {role.users?.map((user) => (
-                    <Col key={uniqueId()} span={6}>
-                      <Card title={getEntityName(user)}>
-                        <RichTextEditorPreviewer
-                          markdown={user.description || ''}
-                        />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
+                <List list={role.users ?? []} type="user" />
               )}
             </TabPane>
           </Tabs>

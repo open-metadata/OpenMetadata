@@ -14,6 +14,10 @@ Recovery practices.
 While there are cloud services that feature automatic snapshots and replication, the metadata CLI
 now allows all users to perform backups regardless of the underlying infrastructure.
 
+## Requirements
+
+The backup CLI needs to be used with `openmetadata-ingestion` version 0.12 or higher.
+
 ## Installation
 
 The CLI comes bundled in the base `openmetadata-ingestion` Python package. You can install it with:

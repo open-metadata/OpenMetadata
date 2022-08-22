@@ -15,9 +15,11 @@ package org.openmetadata.catalog.secrets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -27,7 +29,9 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.catalog.services.connections.database.MysqlConnection;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.catalog.util.JsonUtils;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
@@ -44,12 +48,9 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   void testEncryptDatabaseServiceConnectionConfig() {
     mockClientGetValue(null);
     testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<GetParameterRequest> getSecretCaptor = ArgumentCaptor.forClass(GetParameterRequest.class);
     ArgumentCaptor<PutParameterRequest> createSecretCaptor = ArgumentCaptor.forClass(PutParameterRequest.class);
-    verify(ssmClient).getParameter(getSecretCaptor.capture());
     verify(ssmClient).putParameter(createSecretCaptor.capture());
-    assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().name());
-    assertTrue(getSecretCaptor.getValue().withDecryption());
+    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
     assertEquals(EXPECTED_SECRET_ID, createSecretCaptor.getValue().name());
     assertFalse(createSecretCaptor.getValue().overwrite());
     assertEquals(ParameterType.SECURE_STRING, createSecretCaptor.getValue().type());
@@ -60,16 +61,33 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   void testEncryptDatabaseServiceConnectionConfigWhenAlreadyExist() {
     mockClientGetValue(EXPECTED_CONNECTION_JSON);
     testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<GetParameterRequest> getSecretCaptor = ArgumentCaptor.forClass(GetParameterRequest.class);
     ArgumentCaptor<PutParameterRequest> updateSecretCaptor = ArgumentCaptor.forClass(PutParameterRequest.class);
-    verify(ssmClient).getParameter(getSecretCaptor.capture());
     verify(ssmClient).putParameter(updateSecretCaptor.capture());
-    assertEquals(EXPECTED_SECRET_ID, getSecretCaptor.getValue().name());
-    assertTrue(getSecretCaptor.getValue().withDecryption());
+    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
     assertEquals(EXPECTED_SECRET_ID, updateSecretCaptor.getValue().name());
     assertTrue(updateSecretCaptor.getValue().overwrite());
     assertEquals(ParameterType.SECURE_STRING, updateSecretCaptor.getValue().type());
     assertEquals(EXPECTED_CONNECTION_JSON, updateSecretCaptor.getValue().value());
+  }
+
+  @Test
+  void testEncryptTestServiceConnection() {
+    String expectedSecretId = String.format("/openmetadata/%s/database", TEST_CONNECTION_SECRET_ID_PREFIX);
+    mockClientGetValue(null);
+    TestServiceConnection testServiceConnection =
+        new TestServiceConnection()
+            .withConnection(new MysqlConnection())
+            .withConnectionType(TestServiceConnection.ConnectionType.Database)
+            .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider());
+    ArgumentCaptor<PutParameterRequest> createSecretCaptor = ArgumentCaptor.forClass(PutParameterRequest.class);
+    Object serviceConnection = secretsManager.storeTestConnectionObject(testServiceConnection);
+    verify(ssmClient).putParameter(createSecretCaptor.capture());
+    verifySecretIdGetCalls(expectedSecretId, 1);
+    assertEquals(expectedSecretId, createSecretCaptor.getValue().name());
+    assertEquals(
+        "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true}",
+        createSecretCaptor.getValue().value());
+    assertNull(serviceConnection);
   }
 
   @Override
@@ -90,6 +108,15 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   }
 
   @Override
+  void verifySecretIdGetCalls(String expectedSecretId, int times) {
+    ArgumentCaptor<GetParameterRequest> getSecretCaptor = ArgumentCaptor.forClass(GetParameterRequest.class);
+    verify(ssmClient, times(times)).getParameter(getSecretCaptor.capture());
+    for (int i = 0; i < times; i++) {
+      assertEquals(expectedSecretId, getSecretCaptor.getAllValues().get(i).name());
+    }
+  }
+
+  @Override
   void verifyClientCalls(Object expectedAuthProviderConfig, String expectedSecretId) throws JsonProcessingException {
     ArgumentCaptor<PutParameterRequest> createSecretCaptor = ArgumentCaptor.forClass(PutParameterRequest.class);
     if (Objects.isNull(expectedAuthProviderConfig)) {
@@ -103,7 +130,7 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   }
 
   @Override
-  OpenMetadataServerConnection.SecretsManagerProvider expectedSecretManagerProvider() {
-    return OpenMetadataServerConnection.SecretsManagerProvider.AWS_SSM;
+  SecretsManagerProvider expectedSecretManagerProvider() {
+    return SecretsManagerProvider.AWS_SSM;
   }
 }

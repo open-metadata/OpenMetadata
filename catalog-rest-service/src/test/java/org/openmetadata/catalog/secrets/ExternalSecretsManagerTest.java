@@ -55,13 +55,15 @@ import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipelin
 import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.catalog.type.EntityReference;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class ExternalSecretsManagerTest {
 
   static final boolean ENCRYPT = true;
-  static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
+  static final String AUTH_PROVIDER_SECRET_ID_PREFIX = "auth-provider";
+  static final String TEST_CONNECTION_SECRET_ID_PREFIX = "test-connection-temp";
   static final boolean DECRYPT = false;
   static final String EXPECTED_CONNECTION_JSON =
       "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"password\":\"openmetadata-test\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true}";
@@ -112,7 +114,7 @@ public abstract class ExternalSecretsManagerTest {
       OpenMetadataServerConnection.AuthProvider authProvider,
       AuthConfiguration authConfig)
       throws JsonProcessingException {
-    String expectedSecretId = String.format("/openmetadata/%s/%s", AUTH_PROVIDER_SECRET_ID_SUFFIX, authProvider);
+    String expectedSecretId = String.format("/openmetadata/%s/%s", AUTH_PROVIDER_SECRET_ID_PREFIX, authProvider);
     AirflowConfiguration airflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);
     airflowConfiguration.setAuthConfig(authConfig);
     AirflowConfiguration expectedAirflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);
@@ -154,7 +156,6 @@ public abstract class ExternalSecretsManagerTest {
     if (mustBeEncrypted) {
       when(mockedIngestionPipeline.getSourceConfig()).thenReturn(sourceConfigMock);
       when(sourceConfigMock.getConfig()).thenReturn(config);
-      when(mockedIngestionPipeline.getName()).thenReturn("test-pipeline");
       mockClientGetValue("{}");
     }
 
@@ -169,6 +170,7 @@ public abstract class ExternalSecretsManagerTest {
       ArgumentCaptor<Object> configCaptor = ArgumentCaptor.forClass(Object.class);
       verify(mockedIngestionPipeline, times(4)).getSourceConfig();
       verify(sourceConfigMock, times(2)).setConfig(configCaptor.capture());
+      verifySecretIdGetCalls("/openmetadata/database-metadata-pipeline/database-service", 2);
       assertNull(((DatabaseServiceMetadataPipeline) configCaptor.getAllValues().get(0)).getDbtConfigSource());
       assertEquals(configCaptor.getAllValues().get(1), config);
       assertNotSame(configCaptor.getAllValues().get(1), config);
@@ -178,6 +180,8 @@ public abstract class ExternalSecretsManagerTest {
   abstract void setUpSpecific(SecretsManagerConfiguration config);
 
   abstract void mockClientGetValue(String value);
+
+  abstract void verifySecretIdGetCalls(String expectedSecretId, int times);
 
   abstract void verifyClientCalls(Object expectedAuthProviderConfig, String expectedSecretId)
       throws JsonProcessingException;
@@ -221,5 +225,5 @@ public abstract class ExternalSecretsManagerTest {
             ConfigurationFixtures.buildAzureClientConfig(), AZURE, ConfigurationFixtures.buildAzureAuthConfig()));
   }
 
-  abstract OpenMetadataServerConnection.SecretsManagerProvider expectedSecretManagerProvider();
+  abstract SecretsManagerProvider expectedSecretManagerProvider();
 }

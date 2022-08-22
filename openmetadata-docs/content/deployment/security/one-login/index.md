@@ -87,8 +87,10 @@ After the applying these steps, you can update the configuration of your deploym
 
 ## Configure Ingestion
 
-After everything has been set up, you will need to configure your workflows if you are running them via the 
+After everything has been set up, you will need to configure your workflows if you are running them via the
 `metadata` CLI or with any custom scheduler.
+
+Note that OneLogin SSO is a layer on top of Custom OIDC.
 
 When setting up the YAML config for the connector, update the `workflowConfig` as follows:
 

@@ -6,15 +6,44 @@ source:
       type: Airflow
       hostPort: http://localhost:8080
       numberOfStatus: 10
+      # Connection needs to be one of Mysql, Postgres, Mssql or Sqlite
       connection:
         type: Mysql
         username: airflow_user
         password: airflow_pass
         databaseSchema: airflow_db
         hostPort: localhost:3306
+        # #
+        # type: Postgres
+        # username: airflow_user
+        # password: airflow_pass
+        # database: airflow_db
+        # hostPort: localhost:3306
+        # #
+        # type: Mssql
+        # username: airflow_user
+        # password: airflow_pass
+        # database: airflow_db
+        # hostPort: localhost:3306
+        # uriString: http://... (optional)
+        # #
+        # type: Sqlite
+        # username: airflow_user
+        # password: airflow_pass
+        # database: airflow_db
+        # hostPort: localhost:3306
+        # databaseMode: ":memory:" (optional)
   sourceConfig:
     config:
       type: PipelineMetadata
+      # includeLineage: true
+      # pipelineFilterPattern:
+      #   includes:
+      #     - pipeline1
+      #     - pipeline2
+      #   excludes:
+      #     - pipeline3
+      #     - pipeline4
 sink:
   type: metadata-rest
   config: { }

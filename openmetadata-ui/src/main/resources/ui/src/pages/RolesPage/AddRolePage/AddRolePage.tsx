@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  Row,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -90,10 +100,13 @@ const AddRolePage = () => {
   }, []);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className="tw-bg-body-main tw-h-full" gutter={[16, 16]}>
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-        <Card title="Add New Role">
+        <Card>
+          <Typography.Paragraph className="tw-text-lg">
+            Add New Role
+          </Typography.Paragraph>
           <Form
             data-testid="role-form"
             id="role-form"

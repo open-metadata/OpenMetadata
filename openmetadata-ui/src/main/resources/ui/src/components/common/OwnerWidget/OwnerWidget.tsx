@@ -108,7 +108,7 @@ const OwnerWidget = ({
         setTotalTeamsCount(0);
       });
 
-    getTeams('', 0)
+    getTeams('', { limit: 0 })
       .then((res) => {
         if (res.paging) {
           setTotalTeamsCount(res.paging.total);

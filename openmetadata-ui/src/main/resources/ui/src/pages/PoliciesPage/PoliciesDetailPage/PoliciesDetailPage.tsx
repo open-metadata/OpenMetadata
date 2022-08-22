@@ -11,7 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Empty, Row, Table, Tabs } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Empty,
+  Row,
+  Space,
+  Switch,
+  Table,
+  Tabs,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -28,16 +39,27 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Policy } from '../../../generated/entity/policies/policy';
+import { Effect, Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { getRoleWithFqnPath, getSettingPath } from '../../../utils/RouterUtils';
+import {
+  getRoleWithFqnPath,
+  getSettingPath,
+  getTeamsWithFqnPath,
+} from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
 
 const { TabPane } = Tabs;
 
-const RolesList = ({ roles }: { roles: EntityReference[] }) => {
+const List = ({
+  list,
+  type,
+}: {
+  list: EntityReference[];
+  type: 'role' | 'team';
+}) => {
   const columns: ColumnsType<EntityReference> = useMemo(() => {
     return [
       {
@@ -45,13 +67,28 @@ const RolesList = ({ roles }: { roles: EntityReference[] }) => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          let link = '';
+          switch (type) {
+            case 'role':
+              link = getRoleWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+            case 'team':
+              link = getTeamsWithFqnPath(record.fullyQualifiedName || '');
+
+              break;
+
+            default:
+              break;
+          }
+
+          return (
+            <Link className="hover:tw-underline tw-cursor-pointer" to={link}>
+              {getEntityName(record)}
+            </Link>
+          );
+        },
       },
       {
         title: 'Description',
@@ -61,14 +98,27 @@ const RolesList = ({ roles }: { roles: EntityReference[] }) => {
           <RichTextEditorPreviewer markdown={record?.description || ''} />
         ),
       },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        width: '80px',
+        key: 'actions',
+        render: () => {
+          return (
+            <Button type="text">
+              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+            </Button>
+          );
+        },
+      },
     ];
   }, []);
 
   return (
     <Table
-      className="roles-list-table"
+      className="list-table"
       columns={columns}
-      dataSource={roles}
+      dataSource={list}
       pagination={false}
       size="middle"
     />
@@ -167,11 +217,51 @@ const PoliciesDetailPage = () => {
               ) : (
                 <Row gutter={[16, 16]}>
                   {policy.rules.map((rule) => (
-                    <Col key={uniqueId()} span={8}>
-                      <Card title={rule.name}>
-                        <RichTextEditorPreviewer
-                          markdown={rule.description || ''}
-                        />
+                    <Col key={uniqueId()} span={24}>
+                      <Card>
+                        <Space
+                          align="baseline"
+                          className="tw-w-full tw-justify-between"
+                          size={4}>
+                          <Typography.Paragraph className="tw-font-medium tw-text-base">
+                            {rule.name}
+                          </Typography.Paragraph>
+                          <div>
+                            <Switch
+                              checked={rule.effect === Effect.Allow}
+                              size="small"
+                            />
+                            <span className="tw-ml-1">Active</span>
+                          </div>
+                        </Space>
+
+                        <div className="tw-mb-3" data-testid="description">
+                          <Typography.Text className="tw-text-grey-muted">
+                            Description:
+                          </Typography.Text>
+                          <RichTextEditorPreviewer
+                            markdown={rule.description || ''}
+                          />
+                        </div>
+                        <Space direction="vertical">
+                          <Space data-testid="resources" direction="vertical">
+                            <Typography.Text className="tw-text-grey-muted tw-mb-0">
+                              Resources:
+                            </Typography.Text>
+                            <Typography.Text>
+                              {rule.resources?.join(', ')}
+                            </Typography.Text>
+                          </Space>
+
+                          <Space data-testid="operations" direction="vertical">
+                            <Typography.Text className="tw-text-grey-muted">
+                              Operations:
+                            </Typography.Text>
+                            <Typography.Text>
+                              {rule.operations?.join(', ')}
+                            </Typography.Text>
+                          </Space>
+                        </Space>
                       </Card>
                     </Col>
                   ))}
@@ -179,23 +269,13 @@ const PoliciesDetailPage = () => {
               )}
             </TabPane>
             <TabPane key="roles" tab="Roles">
-              <RolesList roles={policy.roles ?? []} />
+              <List list={policy.roles ?? []} type="role" />
             </TabPane>
             <TabPane key="teams" tab="Teams">
               {isEmpty(policy.teams) ? (
                 <Empty description="No teams found" />
               ) : (
-                <Row gutter={[16, 16]}>
-                  {policy.teams?.map((team) => (
-                    <Col key={uniqueId()} span={6}>
-                      <Card title={getEntityName(team)}>
-                        <RichTextEditorPreviewer
-                          markdown={team.description || ''}
-                        />
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
+                <List list={policy.teams ?? []} type="team" />
               )}
             </TabPane>
           </Tabs>

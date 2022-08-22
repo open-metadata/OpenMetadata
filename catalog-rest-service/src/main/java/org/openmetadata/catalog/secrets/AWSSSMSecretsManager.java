@@ -12,7 +12,7 @@
  */
 package org.openmetadata.catalog.secrets;
 
-import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.AWS_SSM;
+import static org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider.AWS_SSM;
 
 import com.google.common.annotations.VisibleForTesting;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
