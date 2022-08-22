@@ -599,7 +599,7 @@ class MetadataRestSink(Sink[Entity]):
         Use the /tableProfile endpoint to ingest sample profile data
         """
         try:
-            self.metadata.ingest_table_profile_data(
+            self.metadata.ingest_profile_data(
                 table=record.table, table_profile=record.profile
             )
 
