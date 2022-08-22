@@ -272,11 +272,7 @@ const PoliciesDetailPage = () => {
               <List list={policy.roles ?? []} type="role" />
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              {isEmpty(policy.teams) ? (
-                <Empty description="No teams found" />
-              ) : (
-                <List list={policy.teams ?? []} type="team" />
-              )}
+              <List list={policy.teams ?? []} type="team" />
             </TabPane>
           </Tabs>
         </div>

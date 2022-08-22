@@ -209,18 +209,10 @@ const RolesDetailPage = () => {
               <List list={role.policies ?? []} type="policy" />
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              {isEmpty(role.teams) ? (
-                <Empty description="No teams found" />
-              ) : (
-                <List list={role.teams ?? []} type="team" />
-              )}
+              <List list={role.teams ?? []} type="team" />
             </TabPane>
             <TabPane key="users" tab="Users">
-              {isEmpty(role.users) ? (
-                <Empty description="No users found" />
-              ) : (
-                <List list={role.users ?? []} type="user" />
-              )}
+              <List list={role.users ?? []} type="user" />
             </TabPane>
           </Tabs>
         </div>
