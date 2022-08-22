@@ -597,38 +597,46 @@ const EntityTable = ({
 
                       {cell.column.id === 'dataTypeDisplay' && (
                         <>
-                          {isReadOnly ? (
-                            <div className="tw-flex tw-flex-wrap tw-w-60 tw-overflow-x-auto">
-                              <RichTextEditorPreviewer
-                                markdown={cell.value.toLowerCase()}
-                              />
-                            </div>
-                          ) : (
+                          {cell.value ? (
                             <>
-                              {cell.value.length > 25 ? (
-                                <span>
-                                  <PopOver
-                                    html={
-                                      <div className="tw-break-words">
-                                        <span>{cell.value.toLowerCase()}</span>
-                                      </div>
-                                    }
-                                    position="bottom"
-                                    theme="light"
-                                    trigger="click">
-                                    <div className="tw-cursor-pointer tw-underline tw-inline-block">
-                                      <RichTextEditorPreviewer
-                                        markdown={`${cell.value
-                                          .slice(0, 20)
-                                          .toLowerCase()}...`}
-                                      />
-                                    </div>
-                                  </PopOver>
-                                </span>
+                              {isReadOnly ? (
+                                <div className="tw-flex tw-flex-wrap tw-w-60 tw-overflow-x-auto">
+                                  <RichTextEditorPreviewer
+                                    markdown={cell.value.toLowerCase()}
+                                  />
+                                </div>
                               ) : (
-                                cell.value.toLowerCase()
+                                <>
+                                  {cell.value.length > 25 ? (
+                                    <span>
+                                      <PopOver
+                                        html={
+                                          <div className="tw-break-words">
+                                            <span>
+                                              {cell.value.toLowerCase()}
+                                            </span>
+                                          </div>
+                                        }
+                                        position="bottom"
+                                        theme="light"
+                                        trigger="click">
+                                        <div className="tw-cursor-pointer tw-underline tw-inline-block">
+                                          <RichTextEditorPreviewer
+                                            markdown={`${cell.value
+                                              .slice(0, 20)
+                                              .toLowerCase()}...`}
+                                          />
+                                        </div>
+                                      </PopOver>
+                                    </span>
+                                  ) : (
+                                    cell.value.toLowerCase()
+                                  )}
+                                </>
                               )}
                             </>
+                          ) : (
+                            '--'
                           )}
                         </>
                       )}
