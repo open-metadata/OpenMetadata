@@ -20,6 +20,10 @@ const mockSampleData = {
   messages: ['{"email":"data","name":"job"}'],
 };
 
+jest.mock('react-router-dom', () => ({
+  Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
+}));
+
 describe('Test SampleData Component', () => {
   it('Should render message cards', () => {
     const { getAllByTestId } = render(
