@@ -35,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.orm_profiler.profiler.models import ProfilerDef
@@ -87,7 +87,7 @@ class User(Base):
 
 
 @patch.object(
-    SQAProfilerInterface,
+    SQAInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -189,7 +189,7 @@ def test_filter_entities(mocked_method):
 
 
 @patch.object(
-    SQAProfilerInterface,
+    SQAInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -226,7 +226,7 @@ def test_profile_def(mocked_method, mocked_orm):
 
 
 @patch.object(
-    SQAProfilerInterface,
+    SQAInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )

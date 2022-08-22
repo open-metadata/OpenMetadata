@@ -49,7 +49,7 @@ from metadata.generated.schema.tests.column.columnValuesToNotMatchRegex import (
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -82,7 +82,7 @@ class SessionValidation(UnitestTestCase):
         ],
     )
     sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
-    sqa_profiler_interface = SQAProfilerInterface(
+    sqa_profiler_interface = SQAInterface(
         sqlite_conn, table=User, table_entity=table_entity
     )
     engine = sqa_profiler_interface.session.get_bind()
