@@ -789,7 +789,7 @@ public class TableRepository extends EntityRepository<Table> {
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getLatestExtension(c.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+                .getLatestExtension(c.getName(), TABLE_COLUMN_PROFILE_EXTENSION),
             ColumnProfile.class);
       }
     }
