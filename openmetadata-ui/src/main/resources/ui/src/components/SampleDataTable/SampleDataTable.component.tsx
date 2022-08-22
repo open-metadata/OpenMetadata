@@ -26,6 +26,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Link } from 'react-router-dom';
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
@@ -151,7 +152,17 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
           </table>
         ) : (
           <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-            No sample data available
+            To view Sample Data, run the Profiler Ingestion. Please refer to
+            this doc to schedule the{' '}
+            <Link
+              className="tw-ml-1"
+              target="_blank"
+              to={{
+                pathname:
+                  'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+              }}>
+              Profiler Ingestion
+            </Link>
           </div>
         )}
       </div>
