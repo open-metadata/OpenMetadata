@@ -14,24 +14,27 @@ Test Local Secrets Manager
 """
 from copy import deepcopy
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
-from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
+from metadata.utils.secrets.secrets_manager_factory import (
+    get_secrets_manager_from_om_connection,
+)
 
 from .test_secrets_manager import TestSecretsManager
 
 
 class TestLocalSecretsManager(TestSecretsManager.External):
     def test_local_manager_add_service_config_connection(self):
-        local_manager = get_secrets_manager(
+        local_manager = get_secrets_manager_from_om_connection(
             self.build_open_metadata_connection(SecretsManagerProvider.local), None
         )
         expected_service_connection = self.service_connection
@@ -46,7 +49,7 @@ class TestLocalSecretsManager(TestSecretsManager.External):
         )
 
     def test_local_manager_add_auth_provider_security_config(self):
-        local_manager = get_secrets_manager(
+        local_manager = get_secrets_manager_from_om_connection(
             self.build_open_metadata_connection(SecretsManagerProvider.local), None
         )
         actual_om_connection = deepcopy(self.om_connection)
@@ -58,7 +61,7 @@ class TestLocalSecretsManager(TestSecretsManager.External):
         assert id(self.auth_provider_config) == id(actual_om_connection.securityConfig)
 
     def test_local_manager_retrieve_dbt_source_config(self):
-        local_manager = get_secrets_manager(
+        local_manager = get_secrets_manager_from_om_connection(
             self.build_open_metadata_connection(SecretsManagerProvider.local), None
         )
         source_config = SourceConfig()
@@ -71,3 +74,20 @@ class TestLocalSecretsManager(TestSecretsManager.External):
         )
 
         self.assertEqual(self.dbt_source_config.dict(), actual_dbt_source_config)
+
+    def test_local_manager_retrieve_temp_service_test_connection(self):
+        local_manager = get_secrets_manager_from_om_connection(
+            self.build_open_metadata_connection(SecretsManagerProvider.local), None
+        )
+        expected_service_connection = self.service.connection
+
+        actual_service_connection: DatabaseConnection = (
+            local_manager.retrieve_temp_service_test_connection(
+                self.service.connection, "Database"
+            )
+        )
+
+        self.assertEqual(actual_service_connection, expected_service_connection)
+        assert id(actual_service_connection.config) == id(
+            expected_service_connection.config
+        )

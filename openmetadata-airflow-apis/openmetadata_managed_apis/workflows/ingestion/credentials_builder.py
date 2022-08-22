@@ -1,7 +1,7 @@
 from airflow.configuration import conf
 from pydantic import SecretStr
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials

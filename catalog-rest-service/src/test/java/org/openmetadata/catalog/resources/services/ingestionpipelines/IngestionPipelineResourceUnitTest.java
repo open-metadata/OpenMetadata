@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
@@ -29,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,6 +48,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -85,11 +88,11 @@ public class IngestionPipelineResourceUnitTest {
     CollectionDAO.EntityRelationshipDAO relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     CollectionDAO.EntityRelationshipRecord entityRelationshipRecord =
         mock(CollectionDAO.EntityRelationshipRecord.class);
-    when(entityRelationshipRecord.getId()).thenReturn(UUID.randomUUID());
-    when(entityRelationshipRecord.getType()).thenReturn("ingestionPipeline");
-    when(relationshipDAO.findFrom(any(), any(), anyInt())).thenReturn(List.of(entityRelationshipRecord));
+    lenient().when(entityRelationshipRecord.getId()).thenReturn(UUID.randomUUID());
+    lenient().when(entityRelationshipRecord.getType()).thenReturn("ingestionPipeline");
+    lenient().when(relationshipDAO.findFrom(any(), any(), anyInt())).thenReturn(List.of(entityRelationshipRecord));
     when(collectionDAO.ingestionPipelineDAO()).thenReturn(entityDAO);
-    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    lenient().when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer, secretsManager);
   }
 
@@ -107,6 +110,21 @@ public class IngestionPipelineResourceUnitTest {
           expectedMap, ingestionPipelineResource.getLastIngestionLogs(null, securityContext, DAG_ID).getEntity());
       PipelineServiceClient client = mocked.constructed().get(0);
       verify(client).getLastIngestionLogs(ingestionPipeline);
+    }
+  }
+
+  @Test
+  void testTestConnectionCallSecretsManager() {
+    TestServiceConnection testServiceConnection = new TestServiceConnection();
+    try (MockedConstruction<AirflowRESTClient> mocked =
+        mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
+      ingestionPipelineResource.initialize(catalogApplicationConfig);
+      PipelineServiceClient client = mocked.constructed().get(0);
+      HttpResponse<String> httpResponse = mock(HttpResponse.class);
+      when(client.testConnection(any())).thenReturn(httpResponse);
+      ingestionPipelineResource.testIngestion(null, null, testServiceConnection);
+      verify(client).testConnection(testServiceConnection);
+      verify(secretsManager).storeTestConnectionObject(testServiceConnection);
     }
   }
 

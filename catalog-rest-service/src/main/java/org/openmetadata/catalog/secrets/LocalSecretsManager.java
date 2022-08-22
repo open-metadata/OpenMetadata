@@ -13,13 +13,14 @@
 
 package org.openmetadata.catalog.secrets;
 
-import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.LOCAL;
+import static org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider.LOCAL;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.fernet.Fernet;
@@ -87,6 +88,11 @@ public class LocalSecretsManager extends SecretsManager {
       default:
         throw new IllegalArgumentException("OpenMetadata doesn't support auth provider type " + authProvider.value());
     }
+  }
+
+  @Override
+  public Object storeTestConnectionObject(TestServiceConnection testServiceConnection) {
+    return testServiceConnection.getConnection();
   }
 
   private void encryptOrDecryptField(Object connConfig, String field, Class<?> clazz, boolean encrypt)

@@ -16,7 +16,7 @@ from typing import Optional
 
 from botocore.exceptions import ClientError
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials

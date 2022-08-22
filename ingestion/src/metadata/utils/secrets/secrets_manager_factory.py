@@ -16,6 +16,8 @@ from typing import Optional, Union
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
@@ -25,7 +27,7 @@ from metadata.utils.secrets.local_secrets_manager import LocalSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
 
 
-def get_secrets_manager(
+def get_secrets_manager_from_om_connection(
     open_metadata_config: OpenMetadataConnection,
     credentials: Optional[Union[AWSCredentials]] = None,
 ) -> SecretsManager:
@@ -35,13 +37,33 @@ def get_secrets_manager(
     :param credentials: optional credentials that could be required by the clients of the secrets manager implementations
     :return: a secrets manager
     """
-    if open_metadata_config.secretsManagerProvider == SecretsManagerProvider.local:
-        return LocalSecretsManager(open_metadata_config.clusterName)
-    elif open_metadata_config.secretsManagerProvider == SecretsManagerProvider.aws:
-        return AWSSecretsManager(credentials, open_metadata_config.clusterName)
-    elif open_metadata_config.secretsManagerProvider == SecretsManagerProvider.aws_ssm:
-        return AWSSSMSecretsManager(credentials, open_metadata_config.clusterName)
+    return get_secrets_manager(
+        open_metadata_config.secretsManagerProvider,
+        open_metadata_config.clusterName,
+        credentials,
+    )
+
+
+def get_secrets_manager(
+    secrets_manager_provider: SecretsManagerProvider,
+    cluster_name: str,
+    credentials: Optional[Union[AWSCredentials]] = None,
+) -> SecretsManager:
+    """
+    Method to get the secrets manager based on the arguments passed
+    :param secrets_manager_provider: the secrets manager provider
+    :param cluster_name: the cluster name
+    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations
+    :return: a secrets manager
+    """
+    if (
+        secrets_manager_provider is None
+        or secrets_manager_provider == SecretsManagerProvider.local
+    ):
+        return LocalSecretsManager(cluster_name)
+    elif secrets_manager_provider == SecretsManagerProvider.aws:
+        return AWSSecretsManager(credentials, cluster_name)
+    elif secrets_manager_provider == SecretsManagerProvider.aws_ssm:
+        return AWSSSMSecretsManager(credentials, cluster_name)
     else:
-        raise NotImplementedError(
-            f"[{open_metadata_config.secretsManagerProvider}] is not implemented."
-        )
+        raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
