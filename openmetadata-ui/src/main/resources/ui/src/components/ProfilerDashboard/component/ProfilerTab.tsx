@@ -124,21 +124,21 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
 
     const countMetricInfo = countMetrics.information.map((item) => ({
       ...item,
-      latestValue: countMetricData[0][item.dataKey],
+      latestValue: countMetricData[0]?.[item.dataKey] || 0,
     }));
     const proportionMetricInfo = proportionMetrics.information.map((item) => ({
       ...item,
       latestValue: parseFloat(
-        `${proportionMetricData[0][item.dataKey]}`
+        `${proportionMetricData[0]?.[item.dataKey] || 0}`
       ).toFixed(2),
     }));
     const mathMetricInfo = mathMetrics.information.map((item) => ({
       ...item,
-      latestValue: mathMetricData[0][item.dataKey],
+      latestValue: mathMetricData[0]?.[item.dataKey] || 0,
     }));
     const sumMetricInfo = sumMetrics.information.map((item) => ({
       ...item,
-      latestValue: sumMetricData[0][item.dataKey],
+      latestValue: sumMetricData[0]?.[item.dataKey] || 0,
     }));
 
     setCountMetrics((pre) => ({
