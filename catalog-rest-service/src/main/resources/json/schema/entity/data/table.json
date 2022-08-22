@@ -535,6 +535,13 @@
           "description": "Timestamp on which profile is taken.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
+        "profileSample": {
+          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "default": null
+        },
         "columnCount": {
           "description": "No.of columns in the table.",
           "type": "number"
