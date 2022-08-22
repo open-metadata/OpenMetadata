@@ -56,10 +56,10 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         title: 'Column Count',
         value: tableProfile?.columnCount || 0,
       },
-      //   {
-      //     title: 'Table Sample %',
-      //     value: `${tableProfile?.profileSample || 100}%`,
-      //   },
+      {
+        title: 'Table Sample %',
+        value: `${tableProfile?.profileSample || 100}%`,
+      },
     ],
     [tableProfile]
   );
