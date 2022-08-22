@@ -55,13 +55,15 @@ import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipelin
 import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.catalog.type.EntityReference;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class ExternalSecretsManagerTest {
 
   static final boolean ENCRYPT = true;
-  static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
+  static final String AUTH_PROVIDER_SECRET_ID_PREFIX = "auth-provider";
+  static final String TEST_CONNECTION_SECRET_ID_PREFIX = "test-connection-temp";
   static final boolean DECRYPT = false;
   static final String EXPECTED_CONNECTION_JSON =
       "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"password\":\"openmetadata-test\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true}";
@@ -112,7 +114,7 @@ public abstract class ExternalSecretsManagerTest {
       OpenMetadataServerConnection.AuthProvider authProvider,
       AuthConfiguration authConfig)
       throws JsonProcessingException {
-    String expectedSecretId = String.format("/openmetadata/%s/%s", AUTH_PROVIDER_SECRET_ID_SUFFIX, authProvider);
+    String expectedSecretId = String.format("/openmetadata/%s/%s", AUTH_PROVIDER_SECRET_ID_PREFIX, authProvider);
     AirflowConfiguration airflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);
     airflowConfiguration.setAuthConfig(authConfig);
     AirflowConfiguration expectedAirflowConfiguration = ConfigurationFixtures.buildAirflowConfig(authProvider);
@@ -223,5 +225,5 @@ public abstract class ExternalSecretsManagerTest {
             ConfigurationFixtures.buildAzureClientConfig(), AZURE, ConfigurationFixtures.buildAzureAuthConfig()));
   }
 
-  abstract OpenMetadataServerConnection.SecretsManagerProvider expectedSecretManagerProvider();
+  abstract SecretsManagerProvider expectedSecretManagerProvider();
 }

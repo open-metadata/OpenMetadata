@@ -14,30 +14,30 @@
 package org.openmetadata.catalog.secrets;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.Locale;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.exception.SecretsManagerException;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.catalog.util.JsonUtils;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
 public abstract class AWSBasedSecretsManager extends SecretsManager {
 
-  public static final String AUTH_PROVIDER_SECRET_ID_SUFFIX = "auth-provider";
+  public static final String AUTH_PROVIDER_SECRET_ID_PREFIX = "auth-provider";
+  public static final String DATABASE_METADATA_PIPELINE_SECRET_ID_PREFIX = "database-metadata-pipeline";
+  public static final String TEST_CONNECTION_TEMP_SECRET_ID_PREFIX = "test-connection-temp";
   public static final String ACCESS_KEY_ID = "accessKeyId";
   public static final String SECRET_ACCESS_KEY = "secretAccessKey";
   public static final String REGION = "region";
-  public static final String DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX = "database-metadata-pipeline";
   public static final String NULL_SECRET_STRING = "null";
 
   protected AWSBasedSecretsManager(
-      OpenMetadataServerConnection.SecretsManagerProvider awsProvider,
-      SecretsManagerConfiguration config,
-      String clusterPrefix) {
+      SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, String clusterPrefix) {
     super(awsProvider, clusterPrefix);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
     if (config != null && config.getParameters() != null) {
@@ -61,8 +61,7 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
   @Override
   public Object encryptOrDecryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
-    String secretName =
-        buildSecretId("service", serviceType.value().toLowerCase(Locale.ROOT), connectionType, connectionName);
+    String secretName = buildSecretId("service", serviceType.value(), connectionType, connectionName);
     try {
       if (encrypt) {
         String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
@@ -80,6 +79,19 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
     } catch (Exception e) {
       throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
     }
+  }
+
+  @Override
+  public Object storeTestConnectionObject(TestServiceConnection testServiceConnection) {
+    String secretName =
+        buildSecretId(TEST_CONNECTION_TEMP_SECRET_ID_PREFIX, testServiceConnection.getConnectionType().value());
+    try {
+      String connectionConfigJson = JsonUtils.pojoToJson(testServiceConnection.getConnection());
+      upsertSecret(secretName, connectionConfigJson);
+    } catch (JsonProcessingException e) {
+      throw new SecretsManagerException("Error parsing to JSON the service connection config: " + e.getMessage());
+    }
+    return null;
   }
 
   @Override
@@ -117,7 +129,7 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
       throw new SecretsManagerException("Error parsing to JSON the auth config :" + e.getMessage());
     }
     if (authProviderJson != null) {
-      upsertSecret(buildSecretId(AUTH_PROVIDER_SECRET_ID_SUFFIX, authProvider.value()), authProviderJson);
+      upsertSecret(buildSecretId(AUTH_PROVIDER_SECRET_ID_PREFIX, authProvider.value()), authProviderJson);
     }
     airflowConfiguration.setAuthConfig(null);
     return airflowConfiguration;
@@ -125,7 +137,7 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
 
   @Override
   public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt) {
-    String secretName = buildSecretId(DATABASE_METADATA_PIPELINE_SECRET_ID_SUFFIX, serviceName);
+    String secretName = buildSecretId(DATABASE_METADATA_PIPELINE_SECRET_ID_PREFIX, serviceName);
     try {
       if (encrypt) {
         String dbtConfigSourceJson = JsonUtils.pojoToJson(dbtConfigSource);

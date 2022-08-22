@@ -17,9 +17,14 @@ from unittest.mock import patch
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
+from metadata.utils.secrets.secrets_manager_factory import (
+    get_secrets_manager,
+    get_secrets_manager_from_om_connection,
+)
 from metadata.utils.singleton import Singleton
 
 from .test_secrets_manager import TestSecretsManager
@@ -38,10 +43,25 @@ class TestSecretsManagerFactory(TestCase):
                 )
             )
             om_connection.secretsManagerProvider = "aws"
-            get_secrets_manager(om_connection)
+            get_secrets_manager_from_om_connection(om_connection)
             self.assertEqual(
                 "[any] is not implemented.", not_implemented_error.exception
             )
+
+    def test_get_none_secret_manager(self):
+        om_connection: OpenMetadataConnection = (
+            TestSecretsManager.External.build_open_metadata_connection(
+                SecretsManagerProvider.local
+            )
+        )
+        om_connection.secretsManagerProvider = None
+        assert get_secrets_manager_from_om_connection(om_connection) is not None
+        assert (
+            get_secrets_manager(
+                om_connection.secretsManagerProvider, om_connection.clusterName
+            )
+            is not None
+        )
 
     @patch("metadata.clients.aws_client.boto3")
     def test_all_providers_has_implementation(self, mocked_boto3):
@@ -55,4 +75,14 @@ class TestSecretsManagerFactory(TestCase):
                 secretsManagerProvider=secret_manager_provider,
                 hostPort="http://localhost:8585",
             )
-            assert get_secrets_manager(open_metadata_connection) is not None
+            assert (
+                get_secrets_manager_from_om_connection(open_metadata_connection)
+                is not None
+            )
+            assert (
+                get_secrets_manager(
+                    open_metadata_connection.secretsManagerProvider,
+                    open_metadata_connection.clusterName,
+                )
+                is not None
+            )

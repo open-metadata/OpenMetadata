@@ -37,6 +37,7 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  DAGSTER,
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
   DATABRICK,
@@ -45,6 +46,7 @@ import {
   DELTALAKE,
   DRUID,
   DYNAMODB,
+  FIVETRAN,
   GLUE,
   HIVE,
   IBMDB2,
@@ -214,6 +216,12 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.Airbyte:
       return AIRBYTE;
+
+    case PipelineServiceType.Dagster:
+      return DAGSTER;
+
+    case PipelineServiceType.Fivetran:
+      return FIVETRAN;
 
     case MlModelServiceType.Mlflow:
       return MLFLOW;
