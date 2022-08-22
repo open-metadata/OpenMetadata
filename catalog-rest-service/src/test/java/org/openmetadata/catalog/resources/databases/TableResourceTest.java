@@ -1224,6 +1224,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         createAndCheckEntity(
             createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
     List<TableProfile> table1ProfileList = new ArrayList<>();
+    List<List<ColumnProfile>> table1ColumnProfileList = new ArrayList<>();
     dateStr = "2021-10-";
     for (int i = 11; i <= 15; i++) {
       timestamp = TestUtils.dateToTimestamp(dateStr + i);
@@ -1245,6 +1246,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               .withUniqueCount(77.0)
               .withTimestamp(timestamp);
       columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+      table1ColumnProfileList.add(columnProfiles);
       createTableProfile = new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
       putTableProfileData(table1.getId(), createTableProfile, ADMIN_AUTH_HEADERS);
       table1ProfileList.add(tableProfile);
@@ -1256,6 +1258,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table1ProfileList.remove(0);
     tableProfiles = getTableProfiles(table1.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, table1ProfileList, 4);
+
+    table1 = getEntity(table1.getId(), "*", ADMIN_AUTH_HEADERS);
+    verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
   }
 
   @Test
