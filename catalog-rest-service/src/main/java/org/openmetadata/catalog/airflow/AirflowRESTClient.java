@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
@@ -166,10 +165,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> getServiceStatus() {
+  public Response getServiceStatus() {
     HttpResponse<String> response;
-    HashMap<String, String> healthyStatus = new HashMap<>();
-    healthyStatus.put("status", "healthy");
     try {
       response = getRequestNoAuthForJsonContent("%s/%s/health", serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
@@ -177,13 +174,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String ingestionVersion = responseJSON.getString("version");
 
         if (validServerClientVersions(ingestionVersion)) {
-          // return response;
-          return response;
+          Map<String, String> status = Map.of("status", "healthy");
+          return Response.status(200, status.toString()).build();
+        } else {
+          Map<String, String> status =
+              Map.of(
+                  "status",
+                  "unhealthy",
+                  "reason",
+                  String.format(
+                      "Got Ingestion Version %s and Server Version %s. They should match.",
+                      ingestionVersion, SERVER_VERSION));
+          return Response.status(500, status.toString()).build();
         }
-        throw new PipelineServiceClientException(
-            String.format(
-                "Got Ingestion Version %s and Server Version %s. They should match.",
-                ingestionVersion, SERVER_VERSION));
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());

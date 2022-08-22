@@ -13,6 +13,7 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
+import javax.ws.rs.core.Response;
 import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -115,7 +116,7 @@ public abstract class PipelineServiceClient {
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
-  public abstract HttpResponse<String> getServiceStatus();
+  public abstract Response getServiceStatus();
 
   /* Test the connection to the service such as database service a pipeline depends on. */
   public abstract HttpResponse<String> testConnection(TestServiceConnection testServiceConnection);
