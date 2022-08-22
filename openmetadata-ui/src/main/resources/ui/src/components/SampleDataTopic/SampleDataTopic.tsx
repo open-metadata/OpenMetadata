@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Empty } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -83,17 +84,26 @@ const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
       <div
         className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
         data-testid="no-data">
-        To view Sample Data, run the MetaData Ingestion. Please refer to this
-        doc to schedule the{' '}
-        <Link
-          className="tw-ml-1"
-          target="_blank"
-          to={{
-            pathname:
-              'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata',
-          }}>
-          MetaData Ingestion
-        </Link>
+        <Empty
+          description={
+            <>
+              <p>No sample data available</p>
+              <p className="tw-mt-2">
+                To view Sample Data, run the MetaData Ingestion. Please refer to
+                this doc to schedule the{' '}
+                <Link
+                  className="tw-ml-1"
+                  target="_blank"
+                  to={{
+                    pathname:
+                      'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata',
+                  }}>
+                  MetaData Ingestion
+                </Link>
+              </p>
+            </>
+          }
+        />
       </div>
     );
   }
