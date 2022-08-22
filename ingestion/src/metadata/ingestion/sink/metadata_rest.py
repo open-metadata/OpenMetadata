@@ -600,15 +600,13 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             self.metadata.ingest_profile_data(
-                table=record.table, table_profile=record.profile
+                table=record.table, profile_request=record.profile
             )
 
             logger.info(
                 f"Successfully ingested profile for table {record.table.name.__root__}"
             )
-            self.status.records_written(
-                f"Profile: {record.table.name.__root__} - {record.profile.timestamp.__root__}"
-            )
+            self.status.records_written(f"Profile: {record.table.name.__root__}")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(err)

@@ -331,7 +331,15 @@ class OMetaTableTest(TestCase):
             tableProfile=table_profile, columnProfile=column_profile
         )
         res_profile = self.metadata.ingest_profile_data(res, profile)
-        assert profile == res_profile
+        res_from_table = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["profile"]
+        )
+        assert res_from_table.profile == table_profile
+
+        res_column_profile = next(
+            (col.profile for col in res_from_table.columns if col.name.__root__ == "id")
+        )
+        assert res_column_profile == column_profile[0]
 
     def test_publish_table_usage(self):
         """

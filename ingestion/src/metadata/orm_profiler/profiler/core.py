@@ -426,6 +426,7 @@ class Profiler(Generic[TMetric]):
                 timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
+                profileSample=self.profiler_interface.profile_sample,
             )
             return CreateTableProfileRequest(
                 tableProfile=table_profile, columnProfile=computed_profiles

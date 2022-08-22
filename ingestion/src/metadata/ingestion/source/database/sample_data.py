@@ -844,11 +844,15 @@ class SampleDataSource(Source[Entity]):
                         tableProfile=TableProfile(
                             columnCount=profile["columnCount"],
                             rowCount=profile["rowCount"],
-                            timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
+                            timestamp=(
+                                datetime.now(tz=timezone.utc) - timedelta(days=i)
+                            ).timestamp(),
                         ),
                         columnProfile=[
                             ColumnProfile(
-                                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                                timestamp=(
+                                    datetime.now(tz=timezone.utc) - timedelta(days=i)
+                                ).timestamp(),
                                 **col_profile,
                             )
                             for col_profile in profile["columnProfile"]
