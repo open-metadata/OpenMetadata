@@ -190,9 +190,10 @@ class ProfilerWorkflowTest(TestCase):
         assert status == 0
 
         table = self.metadata.get_by_name(
-            entity=Table, fqn="test_sqlite.main.main.users", fields=["tableProfile"]
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
         )
-
         assert table.tableProfilerConfig.profileSample == 75.0
 
     def test_worflow_sample_profile(self):
