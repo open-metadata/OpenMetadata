@@ -888,7 +888,7 @@ class SampleDataSource(Source[Entity]):
                             ).id.__root__,
                             type="testDefinition",
                         ),
-                        entityLink=f"<#E::table::{test_case['entityFqn']}>",
+                        entityLink=test_case["entityLink"],
                         testSuite=EntityReference(
                             id=suite.id.__root__,
                             type="testSuite",
@@ -915,7 +915,7 @@ class SampleDataSource(Source[Entity]):
                         testCaseStatus=result["testCaseStatus"],
                         result=result["result"],
                     ),
-                    test_case_uuid=case.id.__root__,
+                    test_case_name=case.fullyQualifiedName.__root__,
                 )
 
     def close(self):

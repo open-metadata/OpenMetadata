@@ -646,13 +646,13 @@ class MetadataRestSink(Sink[Entity]):
         try:
             self.metadata.add_test_case_results(
                 record.test_case_results,
-                record.test_case_uuid,
+                record.test_case_name,
             )
             logger.info(
-                f"Successfully ingested test case results for test case ID {record.test_case_uuid}"
+                f"Successfully ingested test case results for test case {record.test_case_name}"
             )
             self.status.records_written(
-                f"testCaseResults: {record.test_case_uuid} - {record.test_case_results.timestamp.__root__}"
+                f"testCaseResults: {record.test_case_name} - {record.test_case_results.timestamp.__root__}"
             )
         except Exception as err:
             logger.debug(traceback.format_exc())

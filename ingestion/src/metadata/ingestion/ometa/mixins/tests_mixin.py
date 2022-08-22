@@ -38,11 +38,11 @@ class OMetaTestsMixin:
     def add_test_case_results(
         self,
         test_results: TestCaseResult,
-        test_case_id: int,
+        test_case_name: str,
     ):
         """Create test definition"""
         resp = self.client.put(
-            f"{self.get_suffix(TestCase)}/{test_case_id}/testCaseResult",
+            f"{self.get_suffix(TestCase)}/{test_case_name}/testCaseResult",
             test_results.json(),
         )
 
