@@ -311,19 +311,20 @@ class OrmProfilerProcessor(Processor[Table]):
                     description=test_case.description,
                     testDefinition=EntityReference(
                         id=self.metadata.get_by_name(
-                            fqn=test_definition.name, entity=TestDefinition
+                            fqn=test_definition.fullyQualifiedName.__root__,
+                            entity=TestDefinition,
                         ).id.__root__,
                         type="testDefinition",
                     ),
                     entity=EntityReference(
                         id=self.metadata.get_by_name(
-                            fqn=test_case.fullyQualifiedName, entity=Table
+                            fqn=test_case.fullyQualifiedName.__root__, entity=Table
                         ).id.__root__,
                         type="table",
                     ),
                     testSuite=EntityReference(
                         id=self.metadata.get_by_name(
-                            fqn=test_suite.name, entity=TestSuite
+                            fqn=test_suite.fullyQualifiedName.__root__, entity=TestSuite
                         ).id.__root__,
                         type="testSuite",
                     ),
