@@ -2,11 +2,10 @@ package org.openmetadata.catalog.pipelineService;
 
 import java.net.http.HttpResponse;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.util.PipelineServiceClient;
-
-import javax.ws.rs.core.Response;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
 
