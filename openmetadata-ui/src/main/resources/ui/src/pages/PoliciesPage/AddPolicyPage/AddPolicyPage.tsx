@@ -177,7 +177,7 @@ const AddPolicyPage = () => {
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph className="tw-text-lg">
+          <Typography.Paragraph className="tw-text-base">
             Add New Policy
           </Typography.Paragraph>
           <Form
