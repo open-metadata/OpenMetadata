@@ -1129,8 +1129,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     List<ColumnProfile> columnProfileResults = new ArrayList<>();
     columnProfileResults.add(c1Profile);
-    TableProfile tableProfile = new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp)
-        .withProfileSample(10.0);
+    TableProfile tableProfile =
+        new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp).withProfileSample(10.0);
     CreateTableProfile createTableProfile =
         new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
     Table putResponse = putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS);
