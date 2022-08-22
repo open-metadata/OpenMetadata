@@ -15,6 +15,12 @@ If you want to run the Usage Connector, you'll also need to install:
 pip3 install "openmetadata-ingestion[snowflake-usage]"
 ```
 
+<Note>
+
+For running the usage workflow, the user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+
+</Note>
+
 <MetadataIngestionServiceDev service="database" connector="Snowflake" goal="CLI"/>
 
 <h4>Source Configuration - Service Connection</h4>

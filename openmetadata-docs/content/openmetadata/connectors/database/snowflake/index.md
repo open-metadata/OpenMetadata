@@ -6,6 +6,11 @@ slug: /openmetadata/connectors/database/snowflake
 <ConnectorIntro connector="Snowflake" hasUsage="true" hasProfiler="true" hasDBT="true" />
 
 <Requirements />
+<Note>
+
+For running the usage workflow, the user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+
+</Note>
 
 <MetadataIngestionService connector="Snowflake"/>
 
