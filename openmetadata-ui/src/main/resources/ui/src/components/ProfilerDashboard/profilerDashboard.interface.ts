@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Column, Table, TableProfile } from '../../generated/entity/data/table';
+import {
+  Column,
+  ColumnProfile,
+  Table,
+} from '../../generated/entity/data/table';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
   table: Table;
-  profilerData: TableProfile[];
+  profilerData: ColumnProfile[];
   fetchProfilerData: (tableId: string, days?: number) => void;
 }
 
@@ -56,8 +60,9 @@ export type ChartCollection = {
 export type ChartDataCollection = Record<string, ChartCollection>;
 
 export interface ProfilerTabProps {
-  profilerData: TableProfile[];
+  profilerData: ColumnProfile[];
   activeColumnDetails: Column;
+  tableProfile: Table['profile'];
 }
 
 export interface ProfilerSummaryCardProps {

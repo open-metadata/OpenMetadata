@@ -31,7 +31,7 @@ import {
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
-  const { tableProfile, columns } = table;
+  const { profile, columns } = table;
   const [settingModalVisible, setSettingModalVisible] = useState(false);
 
   const handleSettingModal = (value: boolean) => {
@@ -41,15 +41,15 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
     return [
       {
         title: 'Row Count',
-        value: formatNumberWithComma(tableProfile?.rowCount ?? 0),
+        value: formatNumberWithComma(profile?.rowCount ?? 0),
       },
       {
         title: 'Column Count',
-        value: tableProfile?.columnCount ?? 0,
+        value: profile?.columnCount ?? 0,
       },
       {
         title: 'Table Sample %',
-        value: `${tableProfile?.profileSample ?? 0}%`,
+        value: `${profile?.profileSample ?? 100}%`,
       },
       {
         title: 'Success',
@@ -67,9 +67,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
         className: 'failed',
       },
     ];
-  }, [tableProfile]);
+  }, [profile]);
 
-  if (isUndefined(tableProfile)) {
+  if (isUndefined(profile)) {
     return (
       <div
         className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
@@ -137,16 +137,15 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
       </Row>
 
       <ColumnProfileTable
-        columnProfile={(tableProfile?.columnProfile || []).map((col) => ({
+        columns={columns.map((col) => ({
           ...col,
           key: col.name,
         }))}
-        columns={columns}
         onAddTestClick={onAddTestClick}
       />
 
       <ProfilerSettingsModal
-        columnProfile={tableProfile.columnProfile || []}
+        columns={columns}
         tableId={table.id}
         visible={settingModalVisible}
         onVisibilityChange={handleSettingModal}

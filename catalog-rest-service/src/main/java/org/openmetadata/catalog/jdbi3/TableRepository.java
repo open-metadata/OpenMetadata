@@ -53,6 +53,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateTableProfile;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -99,6 +100,8 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
   public static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_COLUMN_EXTENSION = "table.column.";
@@ -128,7 +131,8 @@ public class TableRepository extends EntityRepository<Table> {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
+    table.setProfile(fields.contains("profile") ? getTableProfile(table) : null);
+    getColumnProfile(fields.contains("profile"), table.getColumns());
     table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
@@ -266,62 +270,93 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
+  public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-
-    // Validate all the columns
-    for (ColumnProfile columnProfile : tableProfile.getColumnProfile()) {
-      validateColumn(table, columnProfile.getName());
-    }
-
     TableProfile storedTableProfile =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(tableId.toString(), TABLE_PROFILE_EXTENSION, tableProfile.getTimestamp()),
+                .getExtensionAtTimestamp(
+                    table.getFullyQualifiedName(),
+                    TABLE_PROFILE_EXTENSION,
+                    createTableProfile.getTableProfile().getTimestamp()),
             TableProfile.class);
     if (storedTableProfile != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .update(
-              tableId.toString(),
+              table.getFullyQualifiedName(),
               TABLE_PROFILE_EXTENSION,
-              JsonUtils.pojoToJson(tableProfile),
-              tableProfile.getTimestamp());
+              JsonUtils.pojoToJson(createTableProfile.getTableProfile()),
+              createTableProfile.getTableProfile().getTimestamp());
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              tableId.toString(),
               table.getFullyQualifiedName(),
               TABLE_PROFILE_EXTENSION,
               "tableProfile",
-              JsonUtils.pojoToJson(tableProfile));
-      setFields(table, Fields.EMPTY_FIELDS);
+              JsonUtils.pojoToJson(createTableProfile.getTableProfile()));
     }
-    return table.withTableProfile(tableProfile);
+
+    for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
+      // Validate all the columns
+      Column column =
+          table.getColumns().stream().filter(c -> c.getName().equals(columnProfile.getName())).findFirst().orElse(null);
+      if (column == null) {
+        throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
+      }
+      ColumnProfile storedColumnProfile =
+          JsonUtils.readValue(
+              daoCollection
+                  .entityExtensionTimeSeriesDao()
+                  .getExtensionAtTimestamp(
+                      column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION, columnProfile.getTimestamp()),
+              ColumnProfile.class);
+
+      if (storedColumnProfile != null) {
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .update(
+                column.getFullyQualifiedName(),
+                TABLE_COLUMN_PROFILE_EXTENSION,
+                JsonUtils.pojoToJson(columnProfile),
+                storedColumnProfile.getTimestamp());
+      } else {
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .insert(
+                column.getFullyQualifiedName(),
+                TABLE_COLUMN_PROFILE_EXTENSION,
+                "columnProfile",
+                JsonUtils.pojoToJson(columnProfile));
+      }
+    }
+    setFields(table, Fields.EMPTY_FIELDS);
+    return table.withProfile(createTableProfile.getTableProfile());
   }
 
   @Transaction
-  public Table deleteTableProfile(UUID tableId, Long timestamp) throws IOException {
+  public void deleteTableProfile(String fqn, String entityType, Long timestamp) throws IOException {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    String extension;
+    if (entityType.equalsIgnoreCase(Entity.TABLE)) {
+      extension = "table.tableProfile";
+    } else if (entityType.equalsIgnoreCase("column")) {
+      extension = "table.columnProfile";
+    } else {
+      throw new IllegalArgumentException("entityType must be table or column");
+    }
+
     TableProfile storedTableProfile =
         JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(tableId.toString(), TABLE_PROFILE_EXTENSION, timestamp),
+            daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqn, extension, timestamp),
             TableProfile.class);
-    if (storedTableProfile != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .deleteAtTimestamp(tableId.toString(), TABLE_PROFILE_EXTENSION, timestamp);
-      table.setTableProfile(storedTableProfile);
-      return table;
+    if (storedTableProfile == null) {
+      throw new EntityNotFoundException(String.format("Failed to find table profile for %s at %s", fqn, timestamp));
     }
-    throw new EntityNotFoundException(
-        String.format("Failed to find table profile for %s at %s", table.getName(), timestamp));
+    daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
   }
 
   @Transaction
@@ -748,6 +783,19 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
+  private void getColumnProfile(boolean setProfile, List<Column> columns) throws IOException {
+    if (setProfile) {
+      for (Column c : listOrEmpty(columns)) {
+        c.setProfile(
+            JsonUtils.readValue(
+                daoCollection
+                    .entityExtensionTimeSeriesDao()
+                    .getLatestExtension(c.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+                ColumnProfile.class));
+      }
+    }
+  }
+
   private void validateTableFQN(String fqn) {
     try {
       dao.existsByName(fqn);
@@ -887,6 +935,45 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(tableProfiles, beforeCursor, afterCursor, total);
   }
 
+  public ResultList<ColumnProfile> getColumnProfiles(ListFilter filter, String before, String after, int limit)
+      throws IOException {
+    List<ColumnProfile> columnProfiles;
+    int total;
+    // Here timestamp is used for page marker since table profiles are sorted by timestamp
+    long time = Long.MAX_VALUE;
+
+    if (before != null) { // Reverse paging
+      time = Long.parseLong(RestUtil.decodeCursor(before));
+      columnProfiles =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), ColumnProfile.class);
+    } else { // Forward paging or first page
+      if (after != null) {
+        time = Long.parseLong(RestUtil.decodeCursor(after));
+      }
+      columnProfiles =
+          JsonUtils.readObjects(
+              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), ColumnProfile.class);
+    }
+    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
+    String beforeCursor = null;
+    String afterCursor = null;
+    if (before != null) {
+      if (columnProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
+        columnProfiles.remove(0);
+        beforeCursor = columnProfiles.get(0).getTimestamp().toString();
+      }
+      afterCursor = columnProfiles.get(columnProfiles.size() - 1).getTimestamp().toString();
+    } else {
+      beforeCursor = after == null ? null : columnProfiles.get(0).getTimestamp().toString();
+      if (columnProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
+        columnProfiles.remove(limit);
+        afterCursor = columnProfiles.get(limit - 1).getTimestamp().toString();
+      }
+    }
+    return new ResultList<>(columnProfiles, beforeCursor, afterCursor, total);
+  }
+
   /**
    * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
    * or, if there is already data for the date {@code newDailyCount.getDate()}, replace older count with the new one.
@@ -1005,7 +1092,7 @@ public class TableRepository extends EntityRepository<Table> {
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionTimeSeriesDao()
-            .getLatestExtension(table.getId().toString(), TABLE_PROFILE_EXTENSION),
+            .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
         TableProfile.class);
   }
 

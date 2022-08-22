@@ -78,7 +78,7 @@ export const getEntityOverview = (
 }> => {
   switch (type) {
     case EntityType.TABLE: {
-      const { fullyQualifiedName, owner, tags, usageSummary, tableProfile } =
+      const { fullyQualifiedName, owner, tags, usageSummary, profile } =
         entityDetail as Table;
       const [service, database] = getPartialNameFromTableFQN(
         fullyQualifiedName ?? '',
@@ -136,22 +136,19 @@ export const getEntityOverview = (
         },
         {
           name: 'Columns',
-          value:
-            tableProfile && tableProfile?.columnCount
-              ? tableProfile.columnCount
-              : '--',
+          value: profile && profile?.columnCount ? profile.columnCount : '--',
           isLink: false,
         },
         {
           name: 'Rows',
-          value: tableProfile ? (
+          value: profile ? (
             <TableProfilerGraph
               className="tw--mt-5"
               data={
                 [
                   {
-                    date: new Date(tableProfile?.timestamp || 0),
-                    value: tableProfile.rowCount ?? 0,
+                    date: new Date(profile?.timestamp || 0),
+                    value: profile.rowCount ?? 0,
                   },
                 ] as Array<{
                   date: Date;
