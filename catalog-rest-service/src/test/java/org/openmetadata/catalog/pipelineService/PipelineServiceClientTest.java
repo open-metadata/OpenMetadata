@@ -14,7 +14,7 @@ public class PipelineServiceClientTest {
   @Test
   public void testGetVersionFromString() {
     String version = mockPipelineServiceClient.getVersionFromString("0.12.0.dev0");
-    assertEquals(version, "0.12.0");
+    assertEquals("0.12.0", version);
   }
 
   @Test

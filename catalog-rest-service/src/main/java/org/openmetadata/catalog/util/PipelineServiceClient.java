@@ -44,13 +44,13 @@ public abstract class PipelineServiceClient {
   public static final String SERVER_VERSION;
 
   static {
-    String _SERVER_VERSION;
+    String RAW_SERVER_VERSION;
     try {
-      _SERVER_VERSION = getServerVersion();
+      RAW_SERVER_VERSION = getServerVersion();
     } catch (IOException e) {
-      _SERVER_VERSION = "unknown";
+      RAW_SERVER_VERSION = "unknown";
     }
-    SERVER_VERSION = _SERVER_VERSION;
+    SERVER_VERSION = RAW_SERVER_VERSION;
   }
 
   public PipelineServiceClient(String userName, String password, String apiEndpoint, int apiTimeout) {
