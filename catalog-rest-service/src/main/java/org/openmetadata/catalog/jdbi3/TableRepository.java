@@ -322,7 +322,7 @@ public class TableRepository extends EntityRepository<Table> {
                 column.getFullyQualifiedName(),
                 TABLE_COLUMN_PROFILE_EXTENSION,
                 JsonUtils.pojoToJson(columnProfile),
-                createTableProfile.getTableProfile().getTimestamp());
+                storedColumnProfile.getTimestamp());
       } else {
         daoCollection
             .entityExtensionTimeSeriesDao()
@@ -786,11 +786,12 @@ public class TableRepository extends EntityRepository<Table> {
   private void getColumnProfile(boolean setProfile, List<Column> columns) throws IOException {
     if (setProfile) {
       for (Column c : listOrEmpty(columns)) {
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getLatestExtension(c.getName(), TABLE_COLUMN_PROFILE_EXTENSION),
-            ColumnProfile.class);
+        c.setProfile(
+            JsonUtils.readValue(
+                daoCollection
+                    .entityExtensionTimeSeriesDao()
+                    .getLatestExtension(c.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+                ColumnProfile.class));
       }
     }
   }
