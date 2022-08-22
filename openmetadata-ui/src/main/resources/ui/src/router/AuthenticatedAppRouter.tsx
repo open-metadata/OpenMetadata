@@ -17,6 +17,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
+import ServicesPage from '../pages/services/ServicesPage';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
@@ -42,9 +43,6 @@ const PipelineDetailsPage = withSuspenseFallback(
 const ServicePage = withSuspenseFallback(
   React.lazy(() => import('../pages/service'))
 );
-const ServicesPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/services'))
-);
 const SignupPage = withSuspenseFallback(
   React.lazy(() => import('../pages/signup'))
 );
@@ -62,9 +60,6 @@ const TourPageComponent = withSuspenseFallback(
 );
 const UserPage = withSuspenseFallback(
   React.lazy(() => import('../pages/UserPage/UserPage.component'))
-);
-const WebhooksPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/WebhooksPage/WebhooksPage.component'))
 );
 const AdminProtectedRoute = withSuspenseFallback(
   React.lazy(() => import('./AdminProtectedRoute'))
@@ -97,9 +92,6 @@ const AddWebhookPage = withSuspenseFallback(
 );
 const BotsListPage = withSuspenseFallback(
   React.lazy(() => import('../pages/BotsListpage/BotsListpage.component'))
-);
-const BotsPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/BotsPage/BotsPage.component'))
 );
 const CreateUserPage = withSuspenseFallback(
   React.lazy(() => import('../pages/CreateUserPage/CreateUserPage.component'))
@@ -144,10 +136,6 @@ const GlossaryPageV1 = withSuspenseFallback(
 
 const MlModelPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MlModelPage/MlModelPage.component'))
-);
-
-const CustomPropertiesPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/CustomPropertiesPage/CustomPropertiesPage'))
 );
 
 const RequestDescriptionPage = withSuspenseFallback(
@@ -196,7 +184,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditConnectionFormPage}
         path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
-      <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
+
       <Route exact component={ServicesPage} path={ROUTES.SERVICES_WITH_TAB} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
@@ -265,7 +253,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
-      <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
+
       <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
@@ -320,21 +308,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <AdminProtectedRoute exact component={BotsListPage} path={ROUTES.BOTS} />
-      <AdminProtectedRoute
-        exact
-        component={BotsPage}
-        path={ROUTES.BOTS_PROFILE}
-      />
-      <AdminProtectedRoute
-        exact
-        component={CustomPropertiesPage}
-        path={ROUTES.CUSTOM_PROPERTIES}
-      />
-      <AdminProtectedRoute
-        exact
-        component={CustomPropertiesPage}
-        path={ROUTES.CUSTOM_ENTITY_DETAIL}
-      />
+
       <AdminProtectedRoute
         exact
         component={AddCustomProperty}
