@@ -6,6 +6,8 @@ import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConne
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 
+import javax.ws.rs.core.Response;
+
 public class MockPipelineServiceClient extends PipelineServiceClient {
 
   public MockPipelineServiceClient(String userName, String password, String apiEndpoint, int apiTimeout) {
@@ -13,7 +15,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> getServiceStatus() {
+  public Response getServiceStatus() {
     return null;
   }
 
