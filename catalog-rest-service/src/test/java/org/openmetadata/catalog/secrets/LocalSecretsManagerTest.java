@@ -48,6 +48,7 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
@@ -56,6 +57,7 @@ import org.openmetadata.catalog.fixtures.ConfigurationFixtures;
 import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.catalog.services.connections.mlModel.SklearnConnection;
 import org.openmetadata.catalog.type.EntityReference;
 
@@ -99,6 +101,17 @@ public class LocalSecretsManagerTest {
   }
 
   @Test
+  void testEncryptTestServiceConnection() {
+    TestServiceConnection testServiceConnection =
+        new TestServiceConnection()
+            .withConnection(new MysqlConnection())
+            .withConnectionType(TestServiceConnection.ConnectionType.Database)
+            .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider());
+    Object actualServiceConnection = secretsManager.storeTestConnectionObject(testServiceConnection);
+    assertEquals(testServiceConnection.getConnection(), actualServiceConnection);
+  }
+
+  @Test
   void testEncryptServiceConnectionWithoutPassword() {
     testEncryptDecryptServiceConnectionWithoutPassword(ENCRYPT);
   }
@@ -133,7 +146,7 @@ public class LocalSecretsManagerTest {
 
   @Test
   void testReturnsExpectedSecretManagerProvider() {
-    assertEquals(OpenMetadataServerConnection.SecretsManagerProvider.LOCAL, secretsManager.getSecretsManagerProvider());
+    assertEquals(SecretsManagerProvider.LOCAL, secretsManager.getSecretsManagerProvider());
   }
 
   @ParameterizedTest

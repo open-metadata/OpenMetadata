@@ -20,6 +20,7 @@ from unittest.mock import Mock, patch
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -30,6 +31,7 @@ from metadata.utils.singleton import Singleton
 from .test_secrets_manager import (
     AUTH_PROVIDER_CONFIG,
     DATABASE_CONNECTION,
+    DATABASE_CONNECTION_CONFIG,
     DBT_SOURCE_CONFIG,
     TestSecretsManager,
 )
@@ -45,7 +47,7 @@ class AWSBasedSecretsManager(object):
         def test_aws_manager_add_service_config_connection(self, mocked_get_client):
 
             aws_manager = self.build_secret_manager(
-                mocked_get_client, self.build_response_value(DATABASE_CONNECTION)
+                mocked_get_client, self.build_response_value(DATABASE_CONNECTION_CONFIG)
             )
             expected_service_connection = self.service_connection
 
@@ -69,9 +71,10 @@ class AWSBasedSecretsManager(object):
 
             with self.assertRaises(ValueError) as value_error:
                 aws_manager.retrieve_service_connection(self.service, self.service_type)
-                self.assertEqual(
-                    "[SecretString] not present in the response.", value_error.exception
-                )
+            self.assertTrue(
+                "/openmetadata/service/database/mysql/test_service"
+                in str(value_error.exception)
+            )
 
         @patch("metadata.clients.aws_client.AWSClient.get_client")
         def test_aws_manager_add_auth_provider_security_config(self, mocked_get_client):
@@ -94,6 +97,18 @@ class AWSBasedSecretsManager(object):
             )
 
         @patch("metadata.clients.aws_client.AWSClient.get_client")
+        def test_aws_manager_fails_add_auth_provider_security_config(
+            self, mocked_get_client
+        ):
+            aws_manager = self.build_secret_manager(mocked_get_client, {})
+
+            with self.assertRaises(ValueError) as value_error:
+                aws_manager.add_auth_provider_security_config(self.om_connection)
+            self.assertTrue(
+                "/openmetadata/auth-provider/google" in str(value_error.exception)
+            )
+
+        @patch("metadata.clients.aws_client.AWSClient.get_client")
         def test_aws_manager_retrieve_dbt_source_config(self, mocked_get_client):
             aws_manager = self.build_secret_manager(
                 mocked_get_client, self.build_response_value(DBT_SOURCE_CONFIG)
@@ -113,18 +128,6 @@ class AWSBasedSecretsManager(object):
             self.assertEqual(self.dbt_source_config.dict(), actual_dbt_source_config)
 
         @patch("metadata.clients.aws_client.AWSClient.get_client")
-        def test_aws_manager_fails_add_auth_provider_security_config(
-            self, mocked_get_client
-        ):
-            aws_manager = self.build_secret_manager(mocked_get_client, {})
-
-            with self.assertRaises(ValueError) as value_error:
-                aws_manager.add_auth_provider_security_config(self.om_connection)
-                self.assertEqual(
-                    "[SecretString] not present in the response.", value_error.exception
-                )
-
-        @patch("metadata.clients.aws_client.AWSClient.get_client")
         def test_aws_manager_aws_manager_fails_retrieve_dbt_source_config_when_not_stored(
             self, mocked_get_client
         ):
@@ -137,9 +140,49 @@ class AWSBasedSecretsManager(object):
 
             with self.assertRaises(ValueError) as value_error:
                 aws_manager.retrieve_dbt_source_config(source_config, "test-pipeline")
-                self.assertEqual(
-                    "[SecretString] not present in the response.", value_error.exception
+            self.assertTrue(
+                "/openmetadata/database-metadata-pipeline/test-pipeline"
+                in str(value_error.exception)
+            )
+
+        @patch("metadata.clients.aws_client.AWSClient.get_client")
+        def test_aws_manager_retrieve_temp_service_test_connection(
+            self, mocked_get_client
+        ):
+
+            aws_manager = self.build_secret_manager(
+                mocked_get_client, self.build_response_value(DATABASE_CONNECTION)
+            )
+            expected_service_connection = self.service.connection
+
+            actual_service_connection: DatabaseConnection = (
+                aws_manager.retrieve_temp_service_test_connection(
+                    self.service.connection, "Database"
                 )
+            )
+
+            self.assert_client_called_once(
+                aws_manager, "/openmetadata/test-connection-temp/database"
+            )
+            self.assertEqual(expected_service_connection, actual_service_connection)
+            assert id(actual_service_connection.config) != id(
+                expected_service_connection.config
+            )
+
+        @patch("metadata.clients.aws_client.AWSClient.get_client")
+        def test_aws_manager_fails_retrieve_temp_service_test_connection(
+            self, mocked_get_client
+        ):
+            aws_manager = self.build_secret_manager(mocked_get_client, {})
+
+            with self.assertRaises(ValueError) as value_error:
+                aws_manager.retrieve_temp_service_test_connection(
+                    self.service.connection, self.service_type
+                )
+            self.assertTrue(
+                "/openmetadata/test-connection-temp/database"
+                in str(value_error.exception)
+            )
 
         @abstractmethod
         def build_secret_manager(

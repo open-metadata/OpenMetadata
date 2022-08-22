@@ -27,7 +27,7 @@ from .test_aws_based_secrets_manager import AWSBasedSecretsManager
 class TestAWSSecretsManager(AWSBasedSecretsManager.TestCase, ABC):
     def build_secret_manager(
         self, mocked_get_client: Mock, expected_json: Dict[str, Any]
-    ) -> AWSSecretsManager:
+    ) -> AWSSSMSecretsManager:
         self.init_mocked_get_client(mocked_get_client, expected_json)
         return AWSSSMSecretsManager(
             AWSCredentials(

@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.secrets;
 
-import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.AWS;
+import static org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider.AWS;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;

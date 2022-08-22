@@ -20,6 +20,8 @@ from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
@@ -31,7 +33,9 @@ from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
     AUTH_PROVIDER_SECRET_PREFIX,
     DBT_SOURCE_CONFIG_SECRET_PREFIX,
+    TEST_CONNECTION_TEMP_SECRET_PREFIX,
     SecretsManager,
+    ServiceConnectionType,
     ServiceWithConnectionType,
     logger,
 )
@@ -117,6 +121,25 @@ class AWSBasedSecretsManager(SecretsManager, ABC):
         secret_id = self.build_secret_id(DBT_SOURCE_CONFIG_SECRET_PREFIX, pipeline_name)
         source_config_json = self.get_string_value(secret_id)
         return json.loads(source_config_json) if source_config_json else None
+
+    def retrieve_temp_service_test_connection(
+        self,
+        connection: ServiceConnectionType,
+        service_type: str,
+    ) -> ServiceConnectionType:
+        """
+        Retrieve the service connection from the AWS client stored in a temporary secret depending on the service
+        type.
+        :param connection: Connection of the service
+        :param service_type: Service type e.g. Database
+        """
+        secret_id = self.build_secret_id(
+            TEST_CONNECTION_TEMP_SECRET_PREFIX, service_type
+        )
+        service_conn_class = self.get_service_connection_class(service_type)
+        stored_connection = service_conn_class()
+        source_config_json = self.get_string_value(secret_id)
+        return stored_connection.parse_raw(source_config_json)
 
     @abstractmethod
     def get_string_value(self, name: str) -> str:

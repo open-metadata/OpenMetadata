@@ -26,7 +26,7 @@
       ]
     },
     "connectionType": {
-      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "description": "Type of service such as Database, Dashboard, Messaging, etc.",
       "type": "string",
       "enum": ["Database", "Dashboard", "Messaging", "Pipeline", "MlModel"],
       "javaEnums": [
@@ -46,6 +46,14 @@
           "name": "MlModel"
         }
       ]
+    },
+    "secretsManagerProvider": {
+      "$ref": "../../../entity/services/connections/metadata/secretsManagerProvider.json"
+    },
+    "clusterName": {
+      "description": "Cluster name to differentiate OpenMetadata Server instance",
+      "type": "string",
+      "default": "openmetadata"
     }
   },
   "additionalProperties": false

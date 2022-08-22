@@ -492,6 +492,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid TestServiceConnection testServiceConnection) {
+    testServiceConnection =
+        testServiceConnection
+            .withConnection(secretsManager.storeTestConnectionObject(testServiceConnection))
+            .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider())
+            .withClusterName(catalogApplicationConfig.getClusterName());
     HttpResponse<String> response = pipelineServiceClient.testConnection(testServiceConnection);
     return Response.status(200, response.body()).build();
   }
