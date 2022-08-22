@@ -23,7 +23,7 @@ import React from 'react';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
 import { TableProfilerProps } from './TableProfiler.interface';
-// internel imports
+// internal imports
 import TableProfilerV1 from './TableProfilerV1';
 
 // mock library imports
@@ -99,7 +99,7 @@ describe('Test TableProfiler component', () => {
     render(
       <TableProfilerV1
         {...mockProps}
-        table={{ ...mockProps.table, tableProfile: undefined }}
+        table={{ ...mockProps.table, profile: undefined }}
       />
     );
 

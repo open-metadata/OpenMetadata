@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Column,
-  ColumnProfile,
-  Table,
-} from '../../generated/entity/data/table';
+import { Column, Table } from '../../generated/entity/data/table';
 import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 
@@ -30,7 +26,6 @@ export interface TableProfilerProps {
 
 export interface ColumnProfileTableProps {
   columns: Column[];
-  columnProfile: ColumnProfile[];
   onAddTestClick: (
     tabValue: number,
     testMode?: DatasetTestModeType,
@@ -45,7 +40,7 @@ export interface ProfilerProgressWidgetProps {
 
 export interface ProfilerSettingsModalProps {
   tableId: string;
-  columnProfile: ColumnProfile[];
+  columns: Column[];
   visible: boolean;
   onVisibilityChange: (visible: boolean) => void;
 }

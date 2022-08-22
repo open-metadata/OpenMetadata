@@ -48,6 +48,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.data.CreateTableProfile;
 import org.openmetadata.catalog.api.tests.CreateColumnTest;
 import org.openmetadata.catalog.api.tests.CreateCustomMetric;
 import org.openmetadata.catalog.api.tests.CreateTableTest;
@@ -62,6 +63,7 @@ import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
@@ -121,9 +123,20 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     }
   }
 
+  public static class ColumnProfileList extends ResultList<ColumnProfile> {
+    @SuppressWarnings("unused")
+    public ColumnProfileList() {
+      /* Required for serde */
+    }
+
+    public ColumnProfileList(List<ColumnProfile> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
-          + "tags,followers,joins,sampleData,viewDefinition,tableProfilerConfig,tableProfile,location,tableQueries,dataModel,tests,"
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfilerConfig,profile,location,tableQueries,dataModel,tests,"
           + "extension";
 
   @GET
@@ -551,13 +564,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @GET
-  @Path("/{id}/tableProfile")
+  @Path("/{fqn}/tableProfile")
   @Operation(
-      operationId = "listTableProfiles",
-      summary = "List of table profiles",
+      operationId = "list Profiles",
+      summary = "List of profiles",
       tags = "tables",
       description =
-          "Get a list of all the table profiles for the given table id, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
+          "Get a list of all the table profiles for the given table fqn, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
               + "Use cursor-based pagination to limit the number of "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -569,14 +582,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       })
   public ResultList<TableProfile> listTableProfiles(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
+          String fqn,
       @Parameter(
-              description = "Filter table profiles after the given start timestamp",
+              description = "Filter table/column profiles after the given start timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
-              description = "Filter table profiles before the given end timestamp",
+              description = "Filter table/column profiles before the given end timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs,
@@ -586,20 +600,21 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of table profiles before this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of table/column profiles before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of table profiles after this cursor", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "Returns list of table/column profiles after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException {
     RestUtil.validateCursors(before, after);
 
     ListFilter filter =
-        new ListFilter(Include.ALL)
-            .addQueryParam("entityId", id.toString())
-            .addQueryParam("extension", "table.tableProfile");
-
+        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.tableProfile");
     if (startTs != null) {
       filter.addQueryParam("startTs", String.valueOf(startTs));
     }
@@ -607,6 +622,66 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       filter.addQueryParam("endTs", String.valueOf(endTs));
     }
     return dao.getTableProfiles(filter, before, after, limitParam);
+  }
+
+  @GET
+  @Path("/{fqn}/columnProfile")
+  @Operation(
+      operationId = "list column Profiles",
+      summary = "List of profiles",
+      tags = "tables",
+      description =
+          "Get a list of all the column profiles for the given table fqn, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of table profiles",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ColumnProfileList.class)))
+      })
+  public ResultList<ColumnProfile> listColumnProfiles(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "FQN of the column", schema = @Schema(type = "String")) @PathParam("fqn") String fqn,
+      @Parameter(
+              description = "Filter table/column profiles after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter table/column profiles before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of table/column profiles before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of table/column profiles after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+
+    ListFilter filter =
+        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.columnProfile");
+    if (startTs != null) {
+      filter.addQueryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("endTs", String.valueOf(endTs));
+    }
+    return dao.getColumnProfiles(filter, before, after, limitParam);
   }
 
   @PUT
@@ -626,15 +701,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TableProfile tableProfile)
+      @Valid CreateTableProfile createTableProfile)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Table table = dao.addTableProfileData(id, tableProfile);
+    Table table = dao.addTableProfileData(id, createTableProfile);
     return addHref(uriInfo, table);
   }
 
   @DELETE
-  @Path("/{id}/tableProfile/{timestamp}")
+  @Path("/{fqn}/{entityType}/{timestamp}/profile")
   @Operation(
       operationId = "DeleteDataProfiler",
       summary = "Delete table profile data",
@@ -646,17 +721,21 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "Successfully deleted the Table Profile",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfile.class)))
       })
-  public Table deleteDataProfiler(
+  public Response deleteDataProfiler(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "type of the entity table or column", schema = @Schema(type = "String"))
+          @PathParam("entityType")
+          String entityType,
       @Parameter(description = "Timestamp of the table profile", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Table table = dao.deleteTableProfile(id, timestamp);
-    return addHref(uriInfo, table);
+    dao.deleteTableProfile(fqn, entityType, timestamp);
+    return Response.ok().build();
   }
 
   @PUT

@@ -18,6 +18,9 @@ multiple profilers per table and columns.
 from typing import List, Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.orm_profiler.profiler.models import ProfilerDef
@@ -43,5 +46,5 @@ class ProfilerResponse(ConfigModel):
     """
 
     table: Table
-    profile: TableProfile
+    profile: CreateTableProfileRequest
     sample_data: Optional[TableData] = None

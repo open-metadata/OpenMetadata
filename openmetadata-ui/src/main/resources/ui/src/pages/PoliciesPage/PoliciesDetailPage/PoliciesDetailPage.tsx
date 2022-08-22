@@ -47,7 +47,6 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
 
@@ -56,9 +55,11 @@ const { TabPane } = Tabs;
 const List = ({
   list,
   type,
+  onDelete,
 }: {
   list: EntityReference[];
   type: 'role' | 'team';
+  onDelete: (record: EntityReference) => void;
 }) => {
   const columns: ColumnsType<EntityReference> = useMemo(() => {
     return [
@@ -103,10 +104,10 @@ const List = ({
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',
-        render: () => {
+        render: (_, record) => {
           return (
-            <Button type="text">
-              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+            <Button type="text" onClick={() => onDelete(record)}>
+              Remove
             </Button>
           );
         },
@@ -173,6 +174,28 @@ const PoliciesDetailPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setEditDescription(false);
+    }
+  };
+
+  const handleDelete = async (
+    data: EntityReference,
+    attribute: 'roles' | 'teams'
+  ) => {
+    const attributeData =
+      (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
+    const updatedAttributeData = attributeData.filter(
+      (attrData) => attrData.id !== data.id
+    );
+
+    const patch = compare(policy, {
+      ...policy,
+      [attribute as keyof Policy]: updatedAttributeData,
+    });
+    try {
+      const data = await patchPolicy(patch, policy.id);
+      setPolicy(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -269,14 +292,18 @@ const PoliciesDetailPage = () => {
               )}
             </TabPane>
             <TabPane key="roles" tab="Roles">
-              <List list={policy.roles ?? []} type="role" />
+              <List
+                list={policy.roles ?? []}
+                type="role"
+                onDelete={(record) => handleDelete(record, 'roles')}
+              />
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              {isEmpty(policy.teams) ? (
-                <Empty description="No teams found" />
-              ) : (
-                <List list={policy.teams ?? []} type="team" />
-              )}
+              <List
+                list={policy.teams ?? []}
+                type="team"
+                onDelete={(record) => handleDelete(record, 'teams')}
+              />
             </TabPane>
           </Tabs>
         </div>

@@ -23,7 +23,6 @@ import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -190,10 +189,11 @@ class ProfilerWorkflowTest(TestCase):
         assert status == 0
 
         table = self.metadata.get_by_name(
-            entity=Table, fqn="test_sqlite.main.main.users", fields=["tableProfile"]
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig", "profile"],
         )
-
-        assert table.tableProfile.profileSample == 75.0
+        assert table.profile.profileSample == 75.0
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""

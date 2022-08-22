@@ -325,7 +325,6 @@ class ProfilerWorkflow:
         all_tables = self.metadata.list_all_entities(
             entity=Table,
             fields=[
-                "tableProfile",
                 "tableProfilerConfig",
                 "tests",
             ],

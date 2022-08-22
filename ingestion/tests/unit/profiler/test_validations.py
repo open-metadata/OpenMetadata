@@ -15,7 +15,7 @@ Test Table and Column Tests' validate implementations.
 Each test should validate the Success, Failure and Aborted statuses
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
@@ -324,8 +324,10 @@ def test_column_values_to_be_between():
     """
 
     column_profile = ColumnProfile(
+        name="test_column_profile",
         min=1,
         max=3,
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
     )
 
     res_ok = validation_enum_registry.registry["columnValuesToBeBetween"](
@@ -359,6 +361,8 @@ def test_column_values_to_be_between():
 
     column_profile_aborted = ColumnProfile(
         min=1,
+        name="test_column_profile",
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
     )
 
     res_aborted = validation_enum_registry.registry["columnValuesToBeBetween"](
@@ -388,6 +392,8 @@ def test_column_values_to_be_unique():
     column_profile = ColumnProfile(
         valuesCount=10,
         uniqueCount=10,
+        name="test_column_profile",
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
     )
 
     res_ok = validation_enum_registry.registry["columnValuesToBeUnique"](
@@ -407,6 +413,8 @@ def test_column_values_to_be_unique():
     column_profile_ko = ColumnProfile(
         valuesCount=10,
         uniqueCount=5,
+        name="test_column_profile",
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
     )
 
     res_ko = validation_enum_registry.registry["columnValuesToBeUnique"](
@@ -424,7 +432,9 @@ def test_column_values_to_be_unique():
         ),
     )
 
-    column_profile_aborted = ColumnProfile()
+    column_profile_aborted = ColumnProfile(
+        name="test_column_profile", timestamp=datetime.now(tz=timezone.utc).timestamp()
+    )
 
     res_aborted = validation_enum_registry.registry["columnValuesToBeUnique"](
         ColumnValuesToBeUnique(),
@@ -448,6 +458,8 @@ def test_column_values_to_be_not_null():
     """
 
     column_profile = ColumnProfile(
+        name="test_column_profile",
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
         nullCount=0,
     )
 
@@ -464,6 +476,8 @@ def test_column_values_to_be_not_null():
 
     column_profile_ko = ColumnProfile(
         nullCount=10,
+        name="test_column_profile",
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
     )
 
     res_ko = validation_enum_registry.registry["columnValuesToBeNotNull"](
@@ -478,7 +492,9 @@ def test_column_values_to_be_not_null():
         result=("Found nullCount=10.0. It should be 0."),
     )
 
-    column_profile_aborted = ColumnProfile()
+    column_profile_aborted = ColumnProfile(
+        name="test_column_profile", timestamp=datetime.now(tz=timezone.utc).timestamp()
+    )
 
     res_aborted = validation_enum_registry.registry["columnValuesToBeNotNull"](
         ColumnValuesToBeNotNull(),
@@ -502,6 +518,8 @@ def test_column_value_length_to_be_between():
     col_profile = ColumnProfile(
         minLength=4,
         maxLength=16,
+        name="test_column_profile",
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
     )
 
     res_ok = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
@@ -527,7 +545,11 @@ def test_column_value_length_to_be_between():
         result="Found minLength=4.0, maxLength=16.0 vs. the expected minLength=10, maxLength=20.",
     )
 
-    col_profile_aborted = ColumnProfile(minLength=4)
+    col_profile_aborted = ColumnProfile(
+        minLength=4,
+        name="test_column_profile",
+        timestamp=datetime.now(tz=timezone.utc).timestamp(),
+    )
 
     res_aborted = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
         ColumnValueLengthsToBeBetween(minLength=2, maxLength=20),

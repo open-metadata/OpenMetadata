@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS test_suite (
 CREATE TABLE IF NOT EXISTS test_case (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
-    entityFQN VARCHAR (712) GENERATED ALWAYS AS (json ->> '$.entityFQN') NOT NULL,
+    entityFQN VARCHAR (1024) GENERATED ALWAYS AS (json ->> '$.entityFQN') NOT NULL,
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
@@ -75,8 +75,7 @@ ALTER TABLE webhook_entity
 ADD webhookType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.webhookType') NOT NULL;
 
 CREATE TABLE IF NOT EXISTS entity_extension_time_series (
-    entityId VARCHAR(36) NOT NULL,                    -- ID of the from entity
-    entityFqn VARCHAR(512) NOT NULL,
+    entityFQN VARCHAR(1024) NOT NULL,           -- Entity FQN, we can refer to tables and columns
     extension VARCHAR(256) NOT NULL,            -- Extension name same as entity.fieldName
     jsonSchema VARCHAR(256) NOT NULL,           -- Schema used for generating JSON
     json JSON NOT NULL,
