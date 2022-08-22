@@ -170,7 +170,16 @@ public class AirflowRESTClient extends PipelineServiceClient {
     try {
       response = getRequestNoAuthForJsonContent("%s/%s/health", serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
-        return response;
+        JSONObject responseJSON = new JSONObject(response.body());
+        String ingestionVersion = responseJSON.getString("version");
+        String serverVersion = this.getClass().getPackage().getSpecificationVersion();
+
+        if (getVersionFromString(ingestionVersion).equals(getVersionFromString(serverVersion))) {
+          return response;
+        }
+        throw new PipelineServiceClientException(
+            String.format(
+                "Got Ingestion Version %s and Server Version %s. They should match.", ingestionVersion, serverVersion));
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
