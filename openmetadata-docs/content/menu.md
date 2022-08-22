@@ -239,6 +239,8 @@ site_menu:
     url: /openmetadata/connectors/database/datalake/airflow
   - category: OpenMetadata / Connectors / Database / Datalake / CLI
     url: /openmetadata/connectors/database/datalake/cli
+  - category: OpenMetadata / Connectors / Database / Datalake / Troubleshooting
+    url: /openmetadata/connectors/database/datalake/troubleshooting
   - category: OpenMetadata / Connectors / Database / DB2
     url: /openmetadata/connectors/database/db2
   - category: OpenMetadata / Connectors / Database / DB2 / Airflow
