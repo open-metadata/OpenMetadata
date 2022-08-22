@@ -10,7 +10,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -76,12 +75,12 @@ public abstract class PipelineServiceClient {
 
   public final String getVersionFromString(String version) {
     return Pattern.compile("(\\d+.\\d+.\\d+)")
-            .matcher(version)
-            .results()
-            .map(m -> m.group(1))
-            .findFirst()
-            .orElseThrow(() -> new PipelineServiceVersionException(
-                    String.format("Cannot extract version x.y.z from %s", version)));
+        .matcher(version)
+        .results()
+        .map(m -> m.group(1))
+        .findFirst()
+        .orElseThrow(
+            () -> new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
   }
 
   /* Check the status of pipeline service to ensure it is healthy */

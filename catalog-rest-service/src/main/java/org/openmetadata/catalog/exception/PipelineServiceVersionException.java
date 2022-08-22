@@ -27,14 +27,12 @@ public class PipelineServiceVersionException extends WebServiceException {
     super(status, message);
   }
 
-  public static PipelineServiceVersionException byMessage(
-      String name, String errorMessage, Response.Status status) {
+  public static PipelineServiceVersionException byMessage(String name, String errorMessage, Response.Status status) {
     return new PipelineServiceVersionException(status, buildMessageByName(name, errorMessage));
   }
 
   public static PipelineServiceVersionException byMessage(String name, String errorMessage) {
-    return new PipelineServiceVersionException(
-        Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+    return new PipelineServiceVersionException(Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
   }
 
   public static String buildMessageByName(String name, String errorMessage) {
