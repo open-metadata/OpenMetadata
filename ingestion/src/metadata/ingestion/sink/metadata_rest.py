@@ -177,11 +177,16 @@ class MetadataRestSink(Sink[Entity]):
         :param datamodel_link: Table ID + Data Model
         """
 
-        table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
+        table: Table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
 
-        self.metadata.ingest_table_data_model(
-            table=table, data_model=datamodel_link.datamodel
-        )
+        if table:
+            self.metadata.ingest_table_data_model(
+                table=table, data_model=datamodel_link.datamodel
+            )
+        else:
+            logger.warning(
+                f"Could not find any entity by Table FQN [{datamodel_link.fqn}] when adding DBT models."
+            )
 
     def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
         """
