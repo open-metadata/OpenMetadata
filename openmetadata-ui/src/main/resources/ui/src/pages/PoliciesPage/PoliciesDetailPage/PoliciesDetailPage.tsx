@@ -303,9 +303,7 @@ const PoliciesDetailPage = () => {
                               <Typography.Text className="tw-text-grey-muted">
                                 Condition:
                               </Typography.Text>
-                              <Typography.Text>
-                                {rule.condition}
-                              </Typography.Text>
+                              <code>{rule.condition}</code>
                             </Space>
                           )}
                         </Space>
