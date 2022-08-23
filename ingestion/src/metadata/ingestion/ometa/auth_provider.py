@@ -230,7 +230,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 "client_assertion": jwt_token,
             }
             if config["client"].get("scopes"):
-                parameters["scopes"] = " ".join(config["client"]["scopes"])
+                parameters["scope"] = " ".join(config["client"]["scopes"])
             encoded_parameters = urlencode(parameters, quote_via=quote)
             url = f"{self.security_config.orgURL}?" + encoded_parameters
             token_request_object = await request_exec.create_request(
