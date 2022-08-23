@@ -36,7 +36,7 @@ def last_dag_logs(dag_id: str, compress: bool = True) -> Response:
     if not dag_model:
         return ApiResponse.not_found(f"DAG '{dag_id}' not found.")
 
-    last_dag_run = dag_model.get_last_dagrun()
+    last_dag_run = dag_model.get_last_dagrun(include_externally_triggered=True)
 
     if not last_dag_run:
         return ApiResponse.not_found(f"No DAG run found for '{dag_id}'.")
