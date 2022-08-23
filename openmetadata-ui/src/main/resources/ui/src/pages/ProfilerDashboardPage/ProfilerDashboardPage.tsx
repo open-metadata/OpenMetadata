@@ -21,12 +21,14 @@ import {
   getTableDetailsByFQN,
   patchTableDetails,
 } from '../../axiosAPIs/tableAPI';
+import { getListTestCase } from '../../axiosAPIs/testAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
+import { TestCase } from '../../generated/tests/testCase';
 import jsonData from '../../jsons/en';
 import {
   getNameFromFQN,
@@ -40,6 +42,7 @@ const ProfilerDashboardPage = () => {
   const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
 
   const fetchProfilerData = async (fqn: string, days = 3) => {
     try {
@@ -54,6 +57,22 @@ const ProfilerDashboardPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchTestCases = async (fqn: string) => {
+    try {
+      const { data } = await getListTestCase({
+        fields: 'testDefinition,testCaseResult',
+        entityLink: fqn,
+        limit: API_RES_MAX_SIZE,
+      });
+      setTestCases(data);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-column-test-error']
+      );
     }
   };
 
@@ -118,8 +137,10 @@ const ProfilerDashboardPage = () => {
     <PageContainerV1 className="tw-py-4">
       <ProfilerDashboard
         fetchProfilerData={fetchProfilerData}
+        fetchTestCases={fetchTestCases}
         profilerData={profilerData}
         table={table}
+        testCases={testCases}
         onTableChange={updateTableHandler}
       />
     </PageContainerV1>
