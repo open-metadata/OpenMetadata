@@ -216,11 +216,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                     "privateKey": self.security_config.privateKey,
                     "clientId": self.security_config.clientId,
                     "token": jwt_token,
+                    "scopes": self.security_config.scopes,
                 }
             }
-            config["client"]["scopes"] = []
-            if self.security_config.scopes:
-                config["client"]["scopes"] = self.security_config.scopes
             request_exec = RequestExecutor(
                 config=config, cache=OktaCache(ttl=expiry_time, tti=issued_time)
             )
