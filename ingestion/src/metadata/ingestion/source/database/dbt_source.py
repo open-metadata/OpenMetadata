@@ -15,6 +15,7 @@ import traceback
 from typing import Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -77,6 +78,10 @@ class DBTMixin:
                     schema = mnode["schema"] if mnode["schema"] else "default"
                     raw_sql = mnode.get("raw_sql", "")
                     description = mnode.get("description")
+                    user_name = cnode["metadata"].get("owner")
+                    owner = self.metadata.get_entity_reference(
+                        entity=User, fqn=user_name
+                    )
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=description if description else None,
@@ -85,6 +90,7 @@ class DBTMixin:
                         sql=mnode.get("compiled_sql", raw_sql),
                         columns=columns,
                         upstream=upstream_nodes,
+                        owner=owner,
                     )
                     model_fqn = fqn.build(
                         self.metadata,
