@@ -84,6 +84,7 @@ import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.data.CreateTableProfile;
 import org.openmetadata.catalog.api.tests.CreateColumnTest;
 import org.openmetadata.catalog.api.tests.CreateCustomMetric;
 import org.openmetadata.catalog.api.tests.CreateTableTest;
@@ -1112,50 +1113,73 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void put_tableProfile_200(TestInfo test) throws IOException, ParseException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
-    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
-    ColumnProfile c3Profile = new ColumnProfile().withName("\"c.3\"").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
+    Long timestamp = TestUtils.dateToTimestamp("2021-09-09");
+    ColumnProfile c1Profile =
+        new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0).withTimestamp(timestamp);
+    ColumnProfile c2Profile =
+        new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
+    ColumnProfile c3Profile =
+        new ColumnProfile()
+            .withName("\"c.3\"")
+            .withMax(75.0)
+            .withMin(25.0)
+            .withUniqueCount(77.0)
+            .withTimestamp(timestamp);
     // Add column profiles
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+    List<ColumnProfile> columnProfileResults = new ArrayList<>();
+    columnProfileResults.add(c1Profile);
     TableProfile tableProfile =
-        new TableProfile()
-            .withRowCount(6.0)
-            .withColumnCount(3.0)
-            .withColumnProfile(columnProfiles)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
-    Table putResponse = putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS);
-    verifyTableProfile(putResponse.getTableProfile(), tableProfile);
+        new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp).withProfileSample(10.0);
+    CreateTableProfile createTableProfile =
+        new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
+    Table putResponse = putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS);
+    verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
 
-    ResultList<TableProfile> tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
+    ResultList<TableProfile> tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, List.of(tableProfile), 1);
 
-    // Add new date for TableProfile
-    TableProfile newTableProfile =
-        new TableProfile()
-            .withRowCount(7.0)
-            .withColumnCount(3.0)
-            .withColumnProfile(columnProfiles)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
-    putResponse = putTableProfileData(table.getId(), newTableProfile, ADMIN_AUTH_HEADERS);
-    verifyTableProfile(putResponse.getTableProfile(), newTableProfile);
+    ResultList<ColumnProfile> tableColumnProfiles =
+        getColumnProfiles(table.getFullyQualifiedName() + ".c1", null, ADMIN_AUTH_HEADERS);
+    verifyColumnProfiles(tableColumnProfiles, List.of(c1Profile), 1);
 
-    tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
+    timestamp = TestUtils.dateToTimestamp("2021-09-10");
+
+    // Add new date for TableProfile
+    TableProfile newTableProfile = new TableProfile().withRowCount(7.0).withColumnCount(3.0).withTimestamp(timestamp);
+    c1Profile =
+        new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0).withTimestamp(timestamp);
+    c2Profile =
+        new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
+    c3Profile =
+        new ColumnProfile()
+            .withName("\"c.3\"")
+            .withMax(75.0)
+            .withMin(25.0)
+            .withUniqueCount(77.0)
+            .withTimestamp(timestamp);
+    columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+    columnProfileResults.add(c1Profile);
+    createTableProfile = new CreateTableProfile().withTableProfile(newTableProfile).withColumnProfile(columnProfiles);
+    putResponse = putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS);
+    verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
+
+    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile, tableProfile), 2);
 
-    // Replace table profile for a date
-    TableProfile newTableProfile1 =
-        new TableProfile()
-            .withRowCount(21.0)
-            .withColumnCount(3.0)
-            .withColumnProfile(columnProfiles)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
-    putResponse = putTableProfileData(table.getId(), newTableProfile1, ADMIN_AUTH_HEADERS);
-    assertEquals(newTableProfile1.getTimestamp(), putResponse.getTableProfile().getTimestamp());
-    verifyTableProfile(putResponse.getTableProfile(), newTableProfile1);
+    tableColumnProfiles = getColumnProfiles(table.getFullyQualifiedName() + ".c1", null, ADMIN_AUTH_HEADERS);
+    verifyColumnProfiles(tableColumnProfiles, columnProfileResults, 2);
 
-    table = getEntity(table.getId(), "tableProfile", ADMIN_AUTH_HEADERS);
+    // Replace table profile for a date
+    TableProfile newTableProfile1 = new TableProfile().withRowCount(21.0).withColumnCount(3.0).withTimestamp(timestamp);
+    createTableProfile.setTableProfile(newTableProfile1);
+    putResponse = putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS);
+    assertEquals(newTableProfile1.getTimestamp(), putResponse.getProfile().getTimestamp());
+    verifyTableProfile(putResponse.getProfile(), newTableProfile1);
+
+    table = getEntity(table.getId(), "profile", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
-    tableProfiles = getTableProfiles(table.getId(), null, ADMIN_AUTH_HEADERS);
+    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile1, tableProfile), 2);
 
     String dateStr = "2021-09-";
@@ -1163,59 +1187,103 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     tableProfileList.add(tableProfile);
     tableProfileList.add(newTableProfile1);
     for (int i = 11; i <= 20; i++) {
-      tableProfile =
-          new TableProfile()
-              .withRowCount(21.0)
-              .withColumnCount(3.0)
-              .withColumnProfile(columnProfiles)
-              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
-      putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS);
+      timestamp = TestUtils.dateToTimestamp(dateStr + i);
+      tableProfile = new TableProfile().withRowCount(21.0).withColumnCount(3.0).withTimestamp(timestamp);
+      createTableProfile.setTableProfile(tableProfile);
+      c1Profile =
+          new ColumnProfile()
+              .withName("c1")
+              .withMax(100.0)
+              .withMin(10.0)
+              .withUniqueCount(100.0)
+              .withTimestamp(timestamp);
+      c2Profile =
+          new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
+      c3Profile =
+          new ColumnProfile()
+              .withName("\"c.3\"")
+              .withMax(75.0)
+              .withMin(25.0)
+              .withUniqueCount(77.0)
+              .withTimestamp(timestamp);
+      columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+      columnProfileResults.add(c1Profile);
+      createTableProfile = new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
+      putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS);
       tableProfileList.add(tableProfile);
     }
-    tableProfiles = getTableProfiles(table.getId(), tableProfileList.size(), ADMIN_AUTH_HEADERS);
+    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), tableProfileList.size(), ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, tableProfileList, 12);
+
+    tableColumnProfiles =
+        getColumnProfiles(table.getFullyQualifiedName() + ".c1", columnProfileResults.size(), ADMIN_AUTH_HEADERS);
+    verifyColumnProfiles(tableColumnProfiles, columnProfileResults, 12);
 
     // create another table and add profiles
     Table table1 =
         createAndCheckEntity(
             createRequest(test).withName(test.getDisplayName() + UUID.randomUUID()), ADMIN_AUTH_HEADERS);
     List<TableProfile> table1ProfileList = new ArrayList<>();
+    List<List<ColumnProfile>> table1ColumnProfileList = new ArrayList<>();
     dateStr = "2021-10-";
     for (int i = 11; i <= 15; i++) {
-      tableProfile =
-          new TableProfile()
-              .withRowCount(21.0)
-              .withColumnCount(3.0)
-              .withColumnProfile(columnProfiles)
-              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i));
-      putTableProfileData(table1.getId(), tableProfile, ADMIN_AUTH_HEADERS);
+      timestamp = TestUtils.dateToTimestamp(dateStr + i);
+      tableProfile = new TableProfile().withRowCount(21.0).withColumnCount(3.0).withTimestamp(timestamp);
+      c1Profile =
+          new ColumnProfile()
+              .withName("c1")
+              .withMax(100.0)
+              .withMin(10.0)
+              .withUniqueCount(100.0)
+              .withTimestamp(timestamp);
+      c2Profile =
+          new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
+      c3Profile =
+          new ColumnProfile()
+              .withName("\"c.3\"")
+              .withMax(75.0)
+              .withMin(25.0)
+              .withUniqueCount(77.0)
+              .withTimestamp(timestamp);
+      columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+      table1ColumnProfileList.add(columnProfiles);
+      createTableProfile = new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
+      putTableProfileData(table1.getId(), createTableProfile, ADMIN_AUTH_HEADERS);
       table1ProfileList.add(tableProfile);
     }
-    tableProfiles = getTableProfiles(table1.getId(), null, ADMIN_AUTH_HEADERS);
+    tableProfiles = getTableProfiles(table1.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, table1ProfileList, 5);
-    deleteTableProfile(table1.getId(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
+    deleteTableProfile(
+        table1.getFullyQualifiedName(), TABLE, TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
     table1ProfileList.remove(0);
-    tableProfiles = getTableProfiles(table1.getId(), null, ADMIN_AUTH_HEADERS);
+    tableProfiles = getTableProfiles(table1.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTableProfiles(tableProfiles, table1ProfileList, 4);
+
+    table1 = getEntity(table1.getId(), "*", ADMIN_AUTH_HEADERS);
+    verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
   }
 
   @Test
   void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException, ParseException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
-    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
+    Long timestamp = TestUtils.dateToTimestamp("2021-09-10");
+    ColumnProfile c1Profile =
+        new ColumnProfile().withName("c1").withTimestamp(timestamp).withMax(100.0).withMin(10.0).withUniqueCount(100.0);
+    ColumnProfile c2Profile =
+        new ColumnProfile().withName("c2").withTimestamp(timestamp).withMax(99.0).withMin(20.0).withUniqueCount(89.0);
     ColumnProfile c3Profile =
-        new ColumnProfile().withName("invalidColumn").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
+        new ColumnProfile()
+            .withName("invalidColumn")
+            .withTimestamp(timestamp)
+            .withMax(75.0)
+            .withMin(25.0)
+            .withUniqueCount(77.0);
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
-    TableProfile tableProfile =
-        new TableProfile()
-            .withRowCount(6.0)
-            .withColumnCount(3.0)
-            .withColumnProfile(columnProfiles)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
+    TableProfile tableProfile = new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp);
+    CreateTableProfile createTableProfile =
+        new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
     assertResponseContains(
-        () -> putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS),
+        () -> putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid column name invalidColumn");
   }
@@ -1548,7 +1616,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     ResultList<Table> tableList = listEntities(null, ADMIN_AUTH_HEADERS); // List tables
-    assertEquals(3, tableList.getData().size());
+    assertEquals(4, tableList.getData().size());
     assertFields(tableList.getData(), null);
 
     // List tables with databaseFQN as filter
@@ -1563,7 +1631,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, tableList.getData().size());
+    assertEquals(4, tableList.getData().size());
     assertFields(tableList.getData(), fields);
 
     // List tables with databaseFQN as filter
@@ -1579,7 +1647,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams = new HashMap<>();
     queryParams.put("fields", fields1);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, tableList.getData().size());
+    assertEquals(4, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
       assertEquals(USER_OWNER1, table.getOwner());
@@ -1878,14 +1946,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         table.getJoins(),
         table.getSampleData(),
         table.getViewDefinition(),
-        table.getTableProfile(),
+        table.getProfile(),
         table.getLocation(),
         table.getTableQueries(),
         table.getDataModel());
 
     String fields =
         "tableConstraints,usageSummary,owner,"
-            + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
+            + "tags,followers,joins,sampleData,viewDefinition,profile,location,tableQueries,dataModel";
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -1976,23 +2044,31 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
-  public static Table putTableProfileData(UUID tableId, TableProfile data, Map<String, String> authHeaders)
+  public static Table putTableProfileData(UUID tableId, CreateTableProfile data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table deleteTableProfile(UUID tableId, Long timestamp, Map<String, String> authHeaders)
+  public static void deleteTableProfile(String fqn, String entityType, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile/" + timestamp);
-    return TestUtils.delete(target, Table.class, authHeaders);
+    WebTarget target =
+        CatalogApplicationTest.getResource("tables/" + fqn + "/" + entityType + "/" + timestamp + "/profile");
+    TestUtils.delete(target, authHeaders);
   }
 
-  public static ResultList<TableProfile> getTableProfiles(UUID tableId, Integer limit, Map<String, String> authHeaders)
+  public static ResultList<TableProfile> getTableProfiles(String fqn, Integer limit, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile");
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + fqn + "/tableProfile");
     target = limit != null ? target.queryParam("limit", limit) : target;
     return TestUtils.get(target, TableResource.TableProfileList.class, authHeaders);
+  }
+
+  public static ResultList<ColumnProfile> getColumnProfiles(String fqn, Integer limit, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + fqn + "/columnProfile");
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
   public static Table putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
@@ -2079,7 +2155,26 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
+  private void verifyColumnProfiles(
+      ResultList<ColumnProfile> actualProfiles, List<ColumnProfile> expectedProfiles, int expectedCount) {
+    assertEquals(expectedCount, actualProfiles.getPaging().getTotal());
+    assertEquals(expectedProfiles.size(), actualProfiles.getData().size());
+    Map<Long, ColumnProfile> columnProfileMap = new HashMap<>();
+    for (ColumnProfile profile : actualProfiles.getData()) {
+      columnProfileMap.put(profile.getTimestamp(), profile);
+    }
+    for (ColumnProfile columnProfile : expectedProfiles) {
+      ColumnProfile storedProfile = columnProfileMap.get(columnProfile.getTimestamp());
+      verifyColumnProfile(storedProfile, columnProfile);
+    }
+  }
+
   private void verifyTableProfile(TableProfile actualProfile, TableProfile expectedProfile) {
+    assertNotNull(actualProfile);
+    assertEquals(actualProfile, expectedProfile);
+  }
+
+  private void verifyColumnProfile(ColumnProfile actualProfile, ColumnProfile expectedProfile) {
     assertNotNull(actualProfile);
     assertEquals(actualProfile, expectedProfile);
   }

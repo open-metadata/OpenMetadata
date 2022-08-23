@@ -33,3 +33,5 @@ export const hasPemission = (
 
   return currentPermission?.access === Access.Allow;
 };
+
+export const LIST_CAP = 1;

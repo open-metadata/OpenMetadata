@@ -14,14 +14,12 @@
 import { Card, Col, Row, Statistic } from 'antd';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import {
   INITIAL_COUNT_METRIC_VALUE,
   INITIAL_MATH_METRIC_VALUE,
   INITIAL_PROPORTION_METRIC_VALUE,
   INITIAL_SUM_METRIC_VALUE,
 } from '../../../constants/profiler.constant';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import {
   MetricChartType,
@@ -33,8 +31,8 @@ import ProfilerSummaryCard from './ProfilerSummaryCard';
 const ProfilerTab: React.FC<ProfilerTabProps> = ({
   activeColumnDetails,
   profilerData,
+  tableProfile,
 }) => {
-  const { entityTypeFQN } = useParams<Record<string, string>>();
   const [countMetrics, setCountMetrics] = useState<MetricChartType>(
     INITIAL_COUNT_METRIC_VALUE
   );
@@ -52,18 +50,18 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     () => [
       {
         title: 'Row Count',
-        value: profilerData[0]?.rowCount || 0,
+        value: tableProfile?.rowCount || 0,
       },
       {
         title: 'Column Count',
-        value: profilerData[0]?.columnCount || 0,
+        value: tableProfile?.columnCount || 0,
       },
       {
         title: 'Table Sample %',
-        value: `${profilerData[0]?.profileSample || 100}%`,
+        value: `${tableProfile?.profileSample || 100}%`,
       },
     ],
-    [profilerData]
+    [tableProfile]
   );
   const testSummary = useMemo(
     () => [
@@ -84,18 +82,16 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   );
 
   const createMetricsChartData = () => {
-    const columnName = getNameFromFQN(entityTypeFQN);
     const countMetricData: MetricChartType['data'] = [];
     const proportionMetricData: MetricChartType['data'] = [];
     const mathMetricData: MetricChartType['data'] = [];
     const sumMetricData: MetricChartType['data'] = [];
-    profilerData.forEach((item) => {
-      const x = moment.unix(item.timestamp || 0).format('DD/MMM HH:mm');
-      const col = item.columnProfile?.find((col) => col.name === columnName);
+    profilerData.forEach((col) => {
+      const x = moment.unix(col.timestamp || 0).format('DD/MMM HH:mm');
 
       countMetricData.push({
         name: x,
-        timestamp: item.timestamp || 0,
+        timestamp: col.timestamp || 0,
         distinctCount: col?.distinctCount || 0,
         nullCount: col?.nullCount || 0,
         uniqueCount: col?.uniqueCount || 0,
@@ -104,13 +100,13 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
 
       sumMetricData.push({
         name: x,
-        timestamp: item.timestamp || 0,
+        timestamp: col.timestamp || 0,
         sum: col?.sum || 0,
       });
 
       mathMetricData.push({
         name: x,
-        timestamp: item.timestamp || 0,
+        timestamp: col.timestamp || 0,
         max: (col?.max as number) || 0,
         min: (col?.min as number) || 0,
         mean: col?.mean || 0,
@@ -119,7 +115,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
 
       proportionMetricData.push({
         name: x,
-        timestamp: item.timestamp || 0,
+        timestamp: col.timestamp || 0,
         distinctProportion: col?.distinctProportion || 0,
         nullProportion: col?.nullProportion || 0,
         uniqueProportion: col?.uniqueProportion || 0,
@@ -128,21 +124,21 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
 
     const countMetricInfo = countMetrics.information.map((item) => ({
       ...item,
-      latestValue: countMetricData[0][item.dataKey],
+      latestValue: countMetricData[0]?.[item.dataKey] || 0,
     }));
     const proportionMetricInfo = proportionMetrics.information.map((item) => ({
       ...item,
       latestValue: parseFloat(
-        `${proportionMetricData[0][item.dataKey]}`
+        `${proportionMetricData[0]?.[item.dataKey] || 0}`
       ).toFixed(2),
     }));
     const mathMetricInfo = mathMetrics.information.map((item) => ({
       ...item,
-      latestValue: mathMetricData[0][item.dataKey],
+      latestValue: mathMetricData[0]?.[item.dataKey] || 0,
     }));
     const sumMetricInfo = sumMetrics.information.map((item) => ({
       ...item,
-      latestValue: sumMetricData[0][item.dataKey],
+      latestValue: sumMetricData[0]?.[item.dataKey] || 0,
     }));
 
     setCountMetrics((pre) => ({

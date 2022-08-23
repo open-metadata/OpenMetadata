@@ -17,8 +17,8 @@ import moment from 'moment';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  getColumnProfilerList,
   getTableDetailsByFQN,
-  getTableProfilesList,
   patchTableDetails,
 } from '../../axiosAPIs/tableAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -26,7 +26,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
-import { Table, TableProfile } from '../../generated/entity/data/table';
+import { ColumnProfile, Table } from '../../generated/entity/data/table';
 import jsonData from '../../jsons/en';
 import {
   getNameFromFQN,
@@ -37,19 +37,19 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const ProfilerDashboardPage = () => {
   const { entityTypeFQN } = useParams<Record<string, string>>();
   const [table, setTable] = useState<Table>({} as Table);
-  const [profilerData, setProfilerData] = useState<TableProfile[]>([]);
+  const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const fetchProfilerData = async (tableId: string, days = 3) => {
+  const fetchProfilerData = async (fqn: string, days = 3) => {
     try {
       const startTs = moment().subtract(days, 'days').unix();
 
-      const data = await getTableProfilesList(tableId, {
+      const { data } = await getColumnProfilerList(fqn, {
         startTs: startTs,
         limit: API_RES_MAX_SIZE,
       });
-      setProfilerData(data.data || []);
+      setProfilerData(data || []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -62,10 +62,10 @@ const ProfilerDashboardPage = () => {
       getTableFQNFromColumnFQN(fqn);
       const data = await getTableDetailsByFQN(
         getTableFQNFromColumnFQN(fqn),
-        'tags, usageSummary, owner, followers'
+        'tags, usageSummary, owner, followers, profile'
       );
       setTable(data ?? ({} as Table));
-      fetchProfilerData(data.id);
+      fetchProfilerData(entityTypeFQN);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

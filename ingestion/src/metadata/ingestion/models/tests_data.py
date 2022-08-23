@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -28,4 +27,4 @@ class OMetaTestCaseSample(BaseModel):
 
 class OMetaTestCaseResultsSample(BaseModel):
     test_case_results: TestCaseResult
-    test_case_uuid: UUID
+    test_case_name: str

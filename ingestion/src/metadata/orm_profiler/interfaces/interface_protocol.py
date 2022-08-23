@@ -74,7 +74,8 @@ class InterfaceProtocol(ABC):
         if self.workflow_profile_sample:
             if (
                 self.table.tableProfilerConfig.profileSample is not None
-                and self.workflow_profile_sample != self.table.profileSample
+                and self.workflow_profile_sample
+                != self.table.tableProfilerConfig.profileSample
             ):
                 return self.table.tableProfilerConfig.profileSample
             return self.workflow_profile_sample

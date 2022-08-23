@@ -36,6 +36,7 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipe
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.secrets.SecretsManager;
+import org.openmetadata.catalog.type.EntityReference;
 
 @ExtendWith(MockitoExtension.class)
 public class IngestionPipelineRepositoryTest {
@@ -63,16 +64,17 @@ public class IngestionPipelineRepositoryTest {
   void testStoreEntityCallCorrectlyLocalSecretManager() throws IOException {
     IngestionPipeline ingestionPipeline = initStoreEntityTest(true);
 
-    ArgumentCaptor<String> serviceTypeCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<EntityReference> serviceCaptor = ArgumentCaptor.forClass(EntityReference.class);
     ArgumentCaptor<String> ingestionPipelineStringCaptor = ArgumentCaptor.forClass(String.class);
 
     ingestionPipelineRepository.storeEntity(ingestionPipeline, true);
 
     verify(secretsManager)
-        .encryptOrDecryptDbtConfigSource(any(IngestionPipeline.class), serviceTypeCaptor.capture(), eq(true));
+        .encryptOrDecryptDbtConfigSource(any(IngestionPipeline.class), serviceCaptor.capture(), eq(true));
     verify(dao).update(isNull(), ingestionPipelineStringCaptor.capture());
 
-    assertEquals("databaseService", serviceTypeCaptor.getValue());
+    assertEquals("databaseService", serviceCaptor.getValue().getType());
+    assertEquals("serviceName", serviceCaptor.getValue().getName());
     assertEquals(
         "{\"name\":\"testPipeline\",\"sourceConfig\":{\"config\":{\"type\":\"DatabaseMetadata\",\"markDeletedTables\":true,\"includeTables\":true,\"includeViews\":true,\"includeTags\":true,\"dbtConfigSource\":{}}},\"loggerLevel\":\"INFO\",\"enabled\":true,\"version\":0.1,\"deleted\":false}",
         ingestionPipelineStringCaptor.getValue());
@@ -82,16 +84,17 @@ public class IngestionPipelineRepositoryTest {
   void testStoreEntityCallCorrectlyAWSSecretManager() throws IOException {
     IngestionPipeline ingestionPipeline = initStoreEntityTest(false);
 
-    ArgumentCaptor<String> serviceTypeCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<EntityReference> serviceCaptor = ArgumentCaptor.forClass(EntityReference.class);
     ArgumentCaptor<String> ingestionPipelineStringCaptor = ArgumentCaptor.forClass(String.class);
 
     ingestionPipelineRepository.storeEntity(ingestionPipeline, true);
 
     verify(secretsManager)
-        .encryptOrDecryptDbtConfigSource(any(IngestionPipeline.class), serviceTypeCaptor.capture(), eq(true));
+        .encryptOrDecryptDbtConfigSource(any(IngestionPipeline.class), serviceCaptor.capture(), eq(true));
     verify(dao).update(isNull(), ingestionPipelineStringCaptor.capture());
 
-    assertEquals("databaseService", serviceTypeCaptor.getValue());
+    assertEquals("databaseService", serviceCaptor.getValue().getType());
+    assertEquals("serviceName", serviceCaptor.getValue().getName());
     assertEquals(
         "{\"name\":\"testPipeline\",\"sourceConfig\":{\"config\":{\"type\":\"DatabaseMetadata\",\"markDeletedTables\":true,\"includeTables\":true,\"includeViews\":true,\"includeTags\":true}},\"loggerLevel\":\"INFO\",\"enabled\":true,\"version\":0.1,\"deleted\":false}",
         ingestionPipelineStringCaptor.getValue());
@@ -101,7 +104,8 @@ public class IngestionPipelineRepositoryTest {
     when(secretsManager.isLocal()).thenReturn(isLocal);
     return new IngestionPipeline()
         .withName("testPipeline")
-        .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
+        .withService(
+            new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE).withName("serviceName"))
         .withSourceConfig(
             new SourceConfig()
                 .withConfig(new DatabaseServiceMetadataPipeline().withDbtConfigSource(new LinkedHashMap<>())));

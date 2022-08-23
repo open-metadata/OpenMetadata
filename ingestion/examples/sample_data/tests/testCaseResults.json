@@ -93,6 +93,143 @@
                     "testCaseStatus": "Success"
                 }
             ]
+        },
+        {
+            "name": "shop_id.column_value_max_to_be_between",
+            "results": [
+                {
+                    "result": "Found max=65 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found max=25 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found max=56 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found max=99 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found max=190 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found max=66 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found max=76 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found max=46 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found max=100 vs. the expected min=50, max=100.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "We expect `max` to be informed on the profiler for ColumnValueMaxToBeBetween max=None.",
+                    "testCaseStatus": "Aborted"
+                }
+            ]
+        },
+        {
+            "name": "last_name.column_values_to_match_regex",
+            "results": [
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 0 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Cannot find the configured column last_name for ColumnValuesToBeNotInSet",
+                    "testCaseStatus": "Aborted"
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found 5 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found 2 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Error computing ColumnValuesToMatchRegex for last_name - database error",
+                    "testCaseStatus": "Aborted"
+                },
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success"
+                },
+
+                {
+                    "result": "Found 99 value(s) matching regex pattern vs 99 value(s) in the column.",
+                    "testCaseStatus": "Success"
+                }
+            ]
+        },
+        {
+            "name": "zip.column_values_to_be_between",
+            "results": [
+                {
+                    "result": "We expect `min` & `max` to be informed on the profiler for ColumnValuesToBeBetween but got min=None, max=None.",
+                    "testCaseStatus": "Aborted"
+                },
+                {
+                    "result": "Found min=35005, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found min=90006, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found min=90002, max=95640 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found min=90004, max=99001 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found min=1001, max=2789 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Failed"
+                },
+                {
+                    "result": "Found min=91009, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found min=90008, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success"
+                },
+                {
+                    "result": "Found min=92000, max=92808 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success"
+                },
+
+                {
+                    "result": "Found min=90001, max=96612 vs. the expected min=90001, max=96162.",
+                    "testCaseStatus": "Success"
+                }
+            ]
         }
     ]
 }

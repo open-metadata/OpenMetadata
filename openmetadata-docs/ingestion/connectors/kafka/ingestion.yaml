@@ -5,7 +5,7 @@ source:
     config:
       type: Kafka
       bootstrapServers: localhost:9092
-      schemaRegistryURL: http://localhost:8081
+      schemaRegistryURL: http://localhost:8081  # Needs to be a URI
       consumerConfig: {}
       schemaRegistryConfig: {}
   sourceConfig:
@@ -13,6 +13,8 @@ source:
       topicFilterPattern:
         excludes:
         - _confluent.*
+        # includes:
+        #   - topic1
       generateSampleData: true
 sink:
   type: metadata-rest

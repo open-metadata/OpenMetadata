@@ -12,14 +12,21 @@
 """
 Test validations that need a session configured to run
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase as UnitestTestCase
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, String, create_engine
+from sqlalchemy import TEXT, Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    ColumnProfile,
+    DataType,
+    Table,
+    TableProfile,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
@@ -64,8 +71,20 @@ class SessionValidation(UnitestTestCase):
     Run checks on different metrics
     """
 
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
     sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn, table=User)
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, table=User, table_entity=table_entity
+    )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
 
@@ -99,7 +118,9 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name")  # column name
+        column_profile = ColumnProfile(
+            name="name", timestamp=datetime.now(tz=timezone.utc).timestamp()
+        )  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["random", "forbidden"]),
@@ -131,7 +152,9 @@ class SessionValidation(UnitestTestCase):
 
         res_aborted = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
-            col_profile=ColumnProfile(name="random"),
+            col_profile=ColumnProfile(
+                name="random", timestamp=datetime.now(tz=timezone.utc).timestamp()
+            ),
             execution_date=EXECUTION_DATE,
             runner=self.sqa_profiler_interface.runner,
             table=User,
@@ -150,7 +173,11 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
+        column_profile = ColumnProfile(
+            name="name",
+            valuesCount=2,
+            timestamp=datetime.now(tz=timezone.utc).timestamp(),
+        )  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
@@ -182,7 +209,9 @@ class SessionValidation(UnitestTestCase):
 
         res_aborted = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
-            col_profile=ColumnProfile(name="name"),
+            col_profile=ColumnProfile(
+                name="name", timestamp=datetime.now(tz=timezone.utc).timestamp()
+            ),
             execution_date=EXECUTION_DATE,
             runner=self.sqa_profiler_interface.runner,
             table=User,
@@ -200,7 +229,11 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="nickname", nullCount=1)
+        column_profile = ColumnProfile(
+            name="nickname",
+            nullCount=1,
+            timestamp=datetime.now(tz=timezone.utc).timestamp(),
+        )
 
         res_ok = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(missingCountValue=1),
@@ -257,7 +290,9 @@ class SessionValidation(UnitestTestCase):
             ColumnValuesMissingCount(
                 missingCountValue=0,
             ),
-            col_profile=ColumnProfile(name="nickname"),
+            col_profile=ColumnProfile(
+                name="nickname", timestamp=datetime.now(tz=timezone.utc).timestamp()
+            ),
             execution_date=EXECUTION_DATE,
             runner=self.sqa_profiler_interface.runner,
             table=User,
@@ -275,7 +310,9 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name")  # column name
+        column_profile = ColumnProfile(
+            name="name", timestamp=datetime.now(tz=timezone.utc).timestamp()
+        )  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToBeInSet"](
             ColumnValuesToBeInSet(allowedValues=["random", "forbidden"]),
@@ -295,7 +332,11 @@ class SessionValidation(UnitestTestCase):
         """
         Check that the metric runs and the results are correctly validated
         """
-        column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
+        column_profile = ColumnProfile(
+            name="name",
+            valuesCount=2,
+            timestamp=datetime.now(tz=timezone.utc).timestamp(),
+        )  # column name
 
         res_ok = validation_enum_registry.registry["columnValuesToNotMatchRegex"](
             ColumnValuesToNotMatchRegex(forbiddenRegex="J%"),

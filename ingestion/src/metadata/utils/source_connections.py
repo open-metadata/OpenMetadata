@@ -317,15 +317,17 @@ def _(connection: SnowflakeConnection):
 @get_connection_url.register
 def _(connection: HiveConnection):
     url = f"{connection.scheme.value}://"
-    if connection.connectionArguments:
-        if connection.connectionArguments.auth in ("LDAP", "CUSTOM"):
-            if connection.username:
-                url += f"{connection.username}"
-                if not connection.password:
-                    connection.password = SecretStr("")
-                url += f":{quote_plus(connection.password.get_secret_value())}"
-
-                url += "@"
+    if (
+        connection.username
+        and connection.connectionArguments
+        and hasattr(connection.connectionArguments, "auth")
+        and connection.connectionArguments.auth in ("LDAP", "CUSTOM")
+    ):
+        url += f"{connection.username}"
+        if not connection.password:
+            connection.password = SecretStr("")
+        url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
 
     url += connection.hostPort
     url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
@@ -335,6 +337,7 @@ def _(connection: HiveConnection):
         if connection.connectionOptions
         else connection.connectionOptions
     )
+
     if options:
         if not connection.databaseSchema:
             url += "/"

@@ -15,7 +15,7 @@ import os
 import sys
 import traceback
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
@@ -30,6 +30,9 @@ from metadata.generated.schema.api.data.createLocation import CreateLocationRequ
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -834,14 +837,24 @@ class SampleDataSource(Source[Entity]):
                 fqn=table_profile["fqn"],
             )
             for i, profile in enumerate(table_profile["profile"]):
+
                 yield OMetaTableProfileSampleData(
                     table=table,
-                    profile=TableProfile(
-                        columnCount=profile["columnCount"],
-                        rowCount=profile["rowCount"],
-                        timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
+                    profile=CreateTableProfileRequest(
+                        tableProfile=TableProfile(
+                            columnCount=profile["columnCount"],
+                            rowCount=profile["rowCount"],
+                            timestamp=(
+                                datetime.now(tz=timezone.utc) - timedelta(days=i)
+                            ).timestamp(),
+                        ),
                         columnProfile=[
-                            ColumnProfile(**col_profile)
+                            ColumnProfile(
+                                timestamp=(
+                                    datetime.now(tz=timezone.utc) - timedelta(days=i)
+                                ).timestamp(),
+                                **col_profile,
+                            )
                             for col_profile in profile["columnProfile"]
                         ],
                     ),
@@ -875,7 +888,7 @@ class SampleDataSource(Source[Entity]):
                             ).id.__root__,
                             type="testDefinition",
                         ),
-                        entityLink=f"<#E::table::{test_case['entityFqn']}>",
+                        entityLink=test_case["entityLink"],
                         testSuite=EntityReference(
                             id=suite.id.__root__,
                             type="testSuite",
@@ -902,7 +915,7 @@ class SampleDataSource(Source[Entity]):
                         testCaseStatus=result["testCaseStatus"],
                         result=result["result"],
                     ),
-                    test_case_uuid=case.id.__root__,
+                    test_case_name=case.fullyQualifiedName.__root__,
                 )
 
     def close(self):

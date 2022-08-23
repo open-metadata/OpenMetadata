@@ -67,7 +67,7 @@ const RolesListPage = () => {
         </Space>
       </Col>
       <Col span={24}>
-        <RolesList roles={roles} />
+        <RolesList fetchRoles={fetchRoles} roles={roles} />
       </Col>
     </Row>
   );

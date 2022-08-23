@@ -137,7 +137,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     directTableJoins: [],
   });
   const [tableType, setTableType] = useState<TableType>(TableType.Regular);
-  const [tableProfile, setTableProfile] = useState<Table['tableProfile']>();
+  const [tableProfile, setTableProfile] = useState<Table['profile']>();
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const { datasetFQN, tab } = useParams() as Record<string, string>;
   const [activeTab, setActiveTab] = useState<number>(getCurrentDatasetTab(tab));
@@ -309,7 +309,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             joins,
             tags,
             sampleData,
-            tableProfile,
+            profile,
             tableType,
             version,
             service,
@@ -378,7 +378,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setDescription(description ?? '');
           setColumns(columns || []);
           setSampleData(sampleData as TableData);
-          setTableProfile(tableProfile);
+          setTableProfile(profile);
           setTableTags(getTagsWithoutTier(tags || []));
           setUsageSummary(
             usageSummary as TypeUsedToReturnUsageDetailsOfAnEntity

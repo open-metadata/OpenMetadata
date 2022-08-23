@@ -4,6 +4,7 @@ slug: /sdk/python/build-connector/source
 ---
 
 # Source
+
 The **Source** is the connector to external systems and outputs a record for downstream to process and push to OpenMetadata.
 
 ## Source API
@@ -39,6 +40,7 @@ ctx: WorkflowContext
 **get_status** is for the [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) to call and report the status of the source such as how many records its processed any failures or warnings.
 
 ## Example
+
 A simple example of this implementation is
 
 ```python
@@ -81,3 +83,55 @@ class SampleTablesSource(Source):
     def get_status(self):
         return self.status
 ```
+
+## For Consumers of Openmetadata-ingestion to define custom connectors in their own package with same namespace
+
+As a consumer of Openmetadata-ingestion package, You can to add your custom connectors within the same namespace but in a different package repository.
+<br/>
+
+**Here is the situation**
+
+```
+├─my_code_repository_package
+  ├── src
+      ├── my_other_relevant_code_package
+      ├── metadata
+      │   └── ingestion
+      │       └── source
+      │        └── database
+      │         └── my_awesome_connector.py
+      └── setup.py
+├── openmetadata_ingestion
+  ├── src
+      ├── metadata
+      │   └── ingestion
+      │       └── source
+      │        └── database
+      │         └── existingSource1
+      |         └── existingSource2
+      |         └── ....
+      └── setup.py
+```
+
+If you want my_awesome_connector.py to build as a source and run as a part of workflows defined in openmetadata_ingestion below are the steps.
+<br/>
+
+**First add your coustom project in PyCharm.**
+<Image
+src={"/images/sdk/python/build-connector/add-project-in-pycharm.png"}
+alt="Add project in pycharm"
+/>
+<br/>
+
+**Now Go to IDE and Project Settings in PyCharm, inside that go to project section, and select python interpreter, Select virtual environment created for the project as python interpreter**
+<Image
+src={"/images/sdk/python/build-connector/select-interpreter.png"}
+alt="Select interpreter in pycharm"
+/>
+<br/>
+
+**Now apply and okay that interpreter**
+<Image
+src={"/images/sdk/python/build-connector/add-interpreter.png"}
+alt="Select interpreter in pycharm"
+/>

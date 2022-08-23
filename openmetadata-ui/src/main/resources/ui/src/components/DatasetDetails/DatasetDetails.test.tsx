@@ -125,7 +125,7 @@ const DatasetDetailsProps = {
   settingsUpdateHandler: jest.fn(),
   slashedTableName: [],
   tableDetails: {} as Table,
-  tableProfile: {},
+  tableProfile: {} as Table['profile'],
   tableTags: [],
   tableType: TableType.Regular,
   tier: {} as TagLabel,

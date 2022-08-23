@@ -37,13 +37,16 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  DAGSTER,
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
   DATABRICK,
+  DATALAKE,
   DEFAULT_SERVICE,
   DELTALAKE,
   DRUID,
   DYNAMODB,
+  FIVETRAN,
   GLUE,
   HIVE,
   IBMDB2,
@@ -52,9 +55,11 @@ import {
   MARIADB,
   METABASE,
   MLFLOW,
+  MODE,
   MSSQL,
   MYSQL,
   ORACLE,
+  PINOT,
   PIPELINE_DEFAULT,
   POSTGRES,
   POWERBI,
@@ -173,6 +178,12 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.DeltaLake:
       return DELTALAKE;
 
+    case DatabaseServiceType.PinotDB:
+      return PINOT;
+
+    case DatabaseServiceType.Datalake:
+      return DATALAKE;
+
     case MessagingServiceType.Kafka:
       return KAFKA;
 
@@ -197,11 +208,20 @@ export const serviceTypeLogo = (type: string) => {
     case DashboardServiceType.PowerBI:
       return POWERBI;
 
+    case DashboardServiceType.Mode:
+      return MODE;
+
     case PipelineServiceType.Airflow:
       return AIRFLOW;
 
     case PipelineServiceType.Airbyte:
       return AIRBYTE;
+
+    case PipelineServiceType.Dagster:
+      return DAGSTER;
+
+    case PipelineServiceType.Fivetran:
+      return FIVETRAN;
 
     case MlModelServiceType.Mlflow:
       return MLFLOW;

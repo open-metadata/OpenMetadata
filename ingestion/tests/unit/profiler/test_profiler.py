@@ -13,6 +13,7 @@
 Test Profiler behavior
 """
 import os
+from datetime import datetime, timezone
 from unittest import TestCase
 from uuid import uuid4
 
@@ -99,12 +100,12 @@ class ProfilerTest(TestCase):
         simple = DefaultProfiler(
             profiler_interface=self.sqa_profiler_interface,
         )
-        simple.execute()
+        simple.compute_metrics()
 
         profile = simple.get_profile()
 
-        assert profile.rowCount == 2
-        assert profile.columnCount == 5
+        assert profile.tableProfile.rowCount == 2
+        assert profile.tableProfile.columnCount == 5
 
         age_profile = next(
             (
@@ -136,6 +137,7 @@ class ProfilerTest(TestCase):
             distinctCount=2.0,
             distinctProportion=1.0,
             median=30.5,
+            timestamp=datetime.now(tz=timezone.utc).timestamp()
             # histogram=Histogram(
             #     boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
             # ),

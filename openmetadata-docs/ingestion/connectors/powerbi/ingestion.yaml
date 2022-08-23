@@ -6,22 +6,31 @@ source:
       clientId: clientId
       clientSecret: secret
       tenantId: tenant
-      scope:
-        - https://analysis.windows.net/powerbi/api/.default
+      # scope:
+      #    - https://analysis.windows.net/powerbi/api/.default (default)
+      # authorityURI: https://login.microsoftonline.com/ (default)
+      # hostPort: https://analysis.windows.net/powerbi (default)
       type: PowerBI
   sourceConfig:
     config:
-      chartFilterPattern:
-        includes:
-          - Gross Margin %
-          - Total Defect*
-          - "Number"
-        excludes:
-          - Total Revenue
-      dashboardFilterPattern:
-        includes:
-          - Supplier Quality Analysis Sample
-          - "Customer"
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
 sink:
   type: metadata-rest
   config: {}

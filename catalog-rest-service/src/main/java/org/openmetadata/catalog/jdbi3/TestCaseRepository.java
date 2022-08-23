@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -124,22 +123,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public TestCase addTestCaseResult(UUID testCaseId, TestCaseResult testCaseResult) throws IOException {
+  public TestCase addTestCaseResult(String fqn, TestCaseResult testCaseResult) throws IOException {
     // Validate the request content
-    TestCase testCase = dao.findEntityById(testCaseId);
+    TestCase testCase = dao.findEntityByName(fqn);
 
     TestCaseResult storedTestCaseResult =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
                 .getExtensionAtTimestamp(
-                    testCaseId.toString(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp()),
+                    testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp()),
             TestCaseResult.class);
     if (storedTestCaseResult != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .update(
-              testCaseId.toString(),
+              testCase.getFullyQualifiedName(),
               TESTCASE_RESULT_EXTENSION,
               JsonUtils.pojoToJson(testCaseResult),
               testCaseResult.getTimestamp());
@@ -147,7 +146,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              testCaseId.toString(),
               testCase.getFullyQualifiedName(),
               TESTCASE_RESULT_EXTENSION,
               "testCaseResult",
@@ -158,19 +156,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public TestCase deleteTestCaseResult(UUID testCaseId, Long timestamp) throws IOException {
+  public TestCase deleteTestCaseResult(String fqn, Long timestamp) throws IOException {
     // Validate the request content
-    TestCase testCase = dao.findEntityById(testCaseId);
+    TestCase testCase = dao.findEntityByName(fqn);
     TestCaseResult storedTestCaseResult =
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(testCaseId.toString(), TESTCASE_RESULT_EXTENSION, timestamp),
+                .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
             TestCaseResult.class);
     if (storedTestCaseResult != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .deleteAtTimestamp(testCaseId.toString(), TESTCASE_RESULT_EXTENSION, timestamp);
+      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       testCase.setTestCaseResult(storedTestCaseResult);
       return testCase;
     }
@@ -182,7 +178,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionTimeSeriesDao()
-            .getLatestExtension(testCase.getId().toString(), TESTCASE_RESULT_EXTENSION),
+            .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
         TestCaseResult.class);
   }
 

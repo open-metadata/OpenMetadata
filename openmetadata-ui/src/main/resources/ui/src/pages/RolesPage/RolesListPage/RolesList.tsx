@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Button, Popover, Space, Table, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { uniqueId } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { isUndefined, uniqueId } from 'lodash';
+import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
+import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
+import { LIST_CAP } from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -27,9 +31,12 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface RolesListProps {
   roles: Role[];
+  fetchRoles: (paging?: Paging) => void;
 }
 
-const RolesList: FC<RolesListProps> = ({ roles }) => {
+const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
+  const [selectedRole, setSelectedRole] = useState<Role>();
+
   const columns: ColumnsType<Role> = useMemo(() => {
     return [
       {
@@ -56,18 +63,44 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
       {
         title: 'Policies',
         dataIndex: 'policies',
-        width: '200px',
+        width: '250px',
         key: 'policies',
         render: (_, record) => {
+          const listLength = record.policies?.length ?? 0;
+          const hasMore = listLength > LIST_CAP;
+
           return record.policies?.length ? (
             <Space wrap size={4}>
-              {record.policies.map((policy) => (
+              {record.policies.slice(0, LIST_CAP).map((policy) => (
                 <Link
                   key={uniqueId()}
                   to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
                   {getEntityName(policy)}
                 </Link>
               ))}
+              {hasMore && (
+                <Popover
+                  className="tw-cursor-pointer"
+                  content={
+                    <Space wrap size={4}>
+                      {record.policies.slice(LIST_CAP).map((policy) => (
+                        <Link
+                          key={uniqueId()}
+                          to={getPolicyWithFqnPath(
+                            policy.fullyQualifiedName || ''
+                          )}>
+                          {getEntityName(policy)}
+                        </Link>
+                      ))}
+                    </Space>
+                  }
+                  overlayClassName="tw-w-40 tw-text-center"
+                  trigger="click">
+                  <Tag className="tw-ml-1">{`+${
+                    listLength - LIST_CAP
+                  } more`}</Tag>
+                </Popover>
+              )}
             </Space>
           ) : (
             '-- '
@@ -79,21 +112,41 @@ const RolesList: FC<RolesListProps> = ({ roles }) => {
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',
-        render: () => {
-          return <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />;
+        render: (_, record) => {
+          return (
+            <Button type="text" onClick={() => setSelectedRole(record)}>
+              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+            </Button>
+          );
         },
       },
     ];
   }, []);
 
   return (
-    <Table
-      className="roles-list-table"
-      columns={columns}
-      dataSource={roles}
-      pagination={false}
-      size="middle"
-    />
+    <>
+      <Table
+        className="roles-list-table"
+        columns={columns}
+        dataSource={roles}
+        pagination={false}
+        size="middle"
+      />
+      {selectedRole && (
+        <DeleteWidgetModal
+          afterDeleteAction={fetchRoles}
+          allowSoftDelete={false}
+          deleteMessage={`Are you sure you want to delete ${getEntityName(
+            selectedRole
+          )}`}
+          entityId={selectedRole.id}
+          entityName={getEntityName(selectedRole)}
+          entityType={EntityType.ROLE}
+          visible={!isUndefined(selectedRole)}
+          onCancel={() => setSelectedRole(undefined)}
+        />
+      )}
+    </>
   );
 };
 

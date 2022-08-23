@@ -32,6 +32,8 @@ export enum EntityType {
   TEAM = 'team',
   USER = 'user',
   BOT = 'bot',
+  ROLE = 'role',
+  POLICY = 'policy',
 }
 
 export enum AssetsType {
@@ -63,7 +65,7 @@ export enum EntityLineageNodeType {
 export enum TabSpecificField {
   SAMPLE_DATA = 'sampleData',
   ACTIVITY_FEED = 'activity_feed',
-  TABLE_PROFILE = 'tableProfile',
+  TABLE_PROFILE = 'profile',
   LINEAGE = 'lineage',
   COLUMNS = 'columns',
   USAGE_SUMMARY = 'usageSummary',

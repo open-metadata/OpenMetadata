@@ -111,8 +111,9 @@ const WebhooksV1: FC<WebhooksProps> = ({
       <div className="tw-w-full">
         <div className="tw-flex tw-items-center tw-justify-between">
           <Select
+            showArrow
             bordered={false}
-            className="tw-min-w-64 tw-text-body webhook-filter-select"
+            className="tw-w-48 tw-mb-3 tw-text-body webhook-filter-select cursor-pointer"
             mode="multiple"
             options={statuses}
             placeholder="Filter by status"

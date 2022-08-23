@@ -44,31 +44,36 @@ public class IngestionPipelineResourceUnitTestParams {
       new DatabaseService()
           .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
           .getEntityReference()
-          .withType(Entity.DATABASE_SERVICE);
+          .withType(Entity.DATABASE_SERVICE)
+          .withName("Database-service");
 
   public static final EntityReference PIPELINE_SERVICE_ENTITY =
       new PipelineService()
           .withServiceType(CreatePipelineService.PipelineServiceType.Airbyte)
           .getEntityReference()
-          .withType(Entity.PIPELINE_SERVICE);
+          .withType(Entity.PIPELINE_SERVICE)
+          .withName("Pipeline-service");
 
   public static final EntityReference MESSAGING_SERVICE_ENTITY =
       new MessagingService()
           .withServiceType(CreateMessagingService.MessagingServiceType.Kafka)
           .getEntityReference()
-          .withType(Entity.MESSAGING_SERVICE);
+          .withType(Entity.MESSAGING_SERVICE)
+          .withName("Messaging-service");
 
   public static final EntityReference DASHBOARD_SERVICE_ENTITY =
       new DashboardService()
           .withServiceType(CreateDashboardService.DashboardServiceType.Looker)
           .getEntityReference()
-          .withType(Entity.DASHBOARD_SERVICE);
+          .withType(Entity.DASHBOARD_SERVICE)
+          .withName("Dashboard-service");
 
   public static final EntityReference MLMODEL_SERVICE_ENTITY =
       new MlModelService()
           .withServiceType(CreateMlModelService.MlModelServiceType.Mlflow)
           .getEntityReference()
-          .withType(Entity.MLMODEL_SERVICE);
+          .withType(Entity.MLMODEL_SERVICE)
+          .withName("Mlmodel-service");
 
   public static Stream<Arguments> params() {
     return Stream.of(

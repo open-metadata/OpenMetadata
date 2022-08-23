@@ -12,6 +12,7 @@
  */
 
 @primary-color: #7147e8;
+@select-arrow-color: #4a5461;
 
 .webhook-right-panel {
   max-width: 290px;
@@ -27,7 +28,31 @@
 .webhook-page-container {
   justify-content: space-between;
 
+  .ant-select {
+    margin-top: -8px;
+  }
+
   .ant-space-item:first-child {
     width: 100%;
+  }
+
+  .ant-select-selector {
+    padding-left: 2px;
+    padding-top: 0px;
+  }
+
+  .ant-select-selection-search {
+    margin: 0px;
+  }
+
+  .ant-select-selection-placeholder {
+    color: @select-arrow-color;
+    font-weight: 500;
+    font-size: 14px;
+    left: 2px;
+  }
+
+  .ant-select-arrow {
+    color: @select-arrow-color;
   }
 }

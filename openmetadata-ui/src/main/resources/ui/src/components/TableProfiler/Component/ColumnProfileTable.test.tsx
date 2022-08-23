@@ -100,7 +100,6 @@ jest.mock('../../../utils/DatasetDetailsUtils');
 
 const mockProps: ColumnProfileTableProps = {
   columns: MOCK_TABLE.columns,
-  columnProfile: MOCK_TABLE.tableProfile?.columnProfile || [],
   onAddTestClick: jest.fn,
 };
 

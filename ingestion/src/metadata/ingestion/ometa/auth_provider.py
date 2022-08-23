@@ -224,10 +224,11 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             )
             parameters = {
                 "grant_type": "client_credentials",
-                "scope": " ".join(config["client"]["scopes"]),
                 "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
                 "client_assertion": jwt_token,
             }
+            if config["client"].get("scopes"):
+                parameters["scope"] = " ".join(config["client"]["scopes"])
             encoded_parameters = urlencode(parameters, quote_via=quote)
             url = f"{self.security_config.orgURL}?" + encoded_parameters
             token_request_object = await request_exec.create_request(

@@ -244,6 +244,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference DATABASE_SCHEMA_REFERENCE;
 
   public static Table TEST_TABLE1;
+  public static Table TEST_TABLE2;
   public static TestSuite TEST_SUITE1;
   public static EntityReference TEST_SUITE1_REFERENCE;
 

@@ -87,7 +87,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   ) : (
     <RichTextEditorPreviewer
       className="activity-feed-card-text"
-      enableSeeMoreVariant={false}
       markdown={getFrontEndFormat(postMessage)}
     />
   );
@@ -111,7 +110,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             </Typography.Text>
             <RichTextEditorPreviewer
               className="activity-feed-card-text"
-              enableSeeMoreVariant={false}
               markdown={announcementDetails.description || ''}
             />
           </Space>

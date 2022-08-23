@@ -264,7 +264,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
     if (value !== selectedTimeRange) {
       setSelectedTimeRange(value);
-      fetchProfilerData(table.id, PROFILER_FILTER_RANGE[value].days);
+      fetchProfilerData(entityTypeFQN, PROFILER_FILTER_RANGE[value].days);
     }
   };
 
@@ -338,6 +338,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <ProfilerTab
               activeColumnDetails={activeColumnDetails}
               profilerData={profilerData}
+              tableProfile={table.profile}
             />
           </Col>
         )}

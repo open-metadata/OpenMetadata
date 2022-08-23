@@ -15,13 +15,16 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.orm_profiler.profiler.models import ProfilerDef
-from metadata.orm_profiler.validations.models import TestSuite
+from metadata.orm_profiler.validations.models import TableConfig
 
 
 class ProfilerProcessorConfig(ConfigModel):
@@ -31,7 +34,7 @@ class ProfilerProcessorConfig(ConfigModel):
     """
 
     profiler: Optional[ProfilerDef] = None
-    testSuites: Optional[List[TestSuite]] = None
+    tableConfig: Optional[List[TableConfig]] = None
 
 
 class ProfilerResponse(ConfigModel):
@@ -43,6 +46,5 @@ class ProfilerResponse(ConfigModel):
     """
 
     table: Table
-    profile: TableProfile
-    test_results: Optional[Tuple] = None
+    profile: CreateTableProfileRequest
     sample_data: Optional[TableData] = None

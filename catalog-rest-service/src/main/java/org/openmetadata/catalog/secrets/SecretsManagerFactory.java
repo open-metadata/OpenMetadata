@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.secrets;
 
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 
 public class SecretsManagerFactory {
 
