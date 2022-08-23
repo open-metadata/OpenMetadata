@@ -1,15 +1,18 @@
-import { Dropdown } from 'antd';
+import { Col, Dropdown, Popover, Row, Space } from 'antd';
+import { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import { isString } from 'lodash';
+import { isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
+import './EntitySummaryDetails.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
@@ -18,6 +21,31 @@ export interface GetInfoElementsProps {
   currentTier?: string;
   updateTier?: (value: string) => void;
 }
+
+const EditIcon = (): JSX.Element => (
+  <SVGIcons
+    alt="edit"
+    className="tw-ml-2"
+    icon={Icons.EDIT}
+    title="Edit"
+    width="15px"
+  />
+);
+
+const InfoIcon = ({
+  content,
+}: {
+  content: React.ReactNode | RenderFunction;
+}): JSX.Element => (
+  <Popover
+    destroyTooltipOnHide
+    content={content}
+    overlayClassName="ant-popover-request-description"
+    trigger="hover"
+    zIndex={999}>
+    <SVGIcons alt="info-secondary" icon="info-secondary" width="12px" />
+  </Popover>
+);
 
 const EntitySummaryDetails = ({
   data,
@@ -29,20 +57,50 @@ const EntitySummaryDetails = ({
   const displayVal = data.placeholderText || data.value;
   const [show, setshow] = useState(false);
 
+  const { isEntityCard, isEntityDetails, userDetails, isTier, isOwner } =
+    useMemo(() => {
+      const userDetails = getTeamsUser(data);
+
+      return {
+        isEntityCard: data?.isEntityCard,
+        isEntityDetails: data?.isEntityDetails,
+        userDetails,
+        isTier: data.key === 'Tier',
+        isOwner: data.key === 'Owner',
+      };
+    }, [data]);
+
   switch (data.key) {
     case 'Owner':
       {
         retVal =
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
-              <div className="tw-inline-block tw-mr-2">
-                <ProfilePicture
-                  displayName={displayVal}
-                  id=""
-                  name={data.profileName || ''}
-                  width={data.avatarWidth || '20'}
-                />
-              </div>
+              <Row gutter={6}>
+                {!isUndefined(userDetails) && (
+                  <Col>
+                    <Space>
+                      <ProfilePicture
+                        displayName={userDetails.ownerName}
+                        id={userDetails.id as string}
+                        name={userDetails.ownerName || ''}
+                        width="20"
+                      />
+                      <span>{userDetails.ownerName} |</span>
+                    </Space>
+                  </Col>
+                )}
+                <Col>
+                  <Space>
+                    <ProfilePicture
+                      displayName={displayVal}
+                      id=""
+                      name={data.profileName || ''}
+                      width={data.avatarWidth || '20'}
+                    />
+                  </Space>
+                </Col>
+              </Row>
             ) : (
               <></>
             )
@@ -52,15 +110,7 @@ const EntitySummaryDetails = ({
               <span
                 data-testid={`edit-${data.key}-icon`}
                 onClick={() => setshow(!show)}>
-                {updateOwner ? (
-                  <SVGIcons
-                    alt="edit"
-                    className="tw-ml-2 tw-mb-1"
-                    icon={Icons.EDIT}
-                    title="Edit"
-                    width="15px"
-                  />
-                ) : null}
+                {updateOwner ? <EditIcon /> : null}
               </span>
             </>
           );
@@ -82,15 +132,7 @@ const EntitySummaryDetails = ({
                 }
                 trigger={['click']}>
                 <span data-testid={`edit-${data.key}-icon`}>
-                  {updateTier ? (
-                    <SVGIcons
-                      alt="edit"
-                      className="tw-ml-2 tw-mb-1"
-                      icon={Icons.EDIT}
-                      title="Edit"
-                      width="15px"
-                    />
-                  ) : null}
+                  {updateTier ? <EditIcon /> : null}
                 </span>
               </Dropdown>
             </>
@@ -119,140 +161,151 @@ const EntitySummaryDetails = ({
   }
 
   return (
-    <span>
-      <span className="tw-text-grey-muted">{retVal}</span>
-      {displayVal ? (
-        <span>
-          {data.isLink ? (
-            <>
-              <a
-                data-testid="owner-link"
-                href={data.value as string}
-                rel="noopener noreferrer"
-                target={data.openInNewTab ? '_blank' : '_self'}>
-                <>
-                  <span
-                    className={classNames(
-                      'tw-mr-1 tw-inline-block tw-truncate link-text tw-align-middle',
-                      {
-                        'tw-w-52': (displayVal as string).length > 32,
-                      }
-                    )}>
-                    {displayVal}
-                  </span>
-
-                  {data.openInNewTab && (
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="16px"
-                    />
-                  )}
-                </>
-              </a>
-              <span
-                data-testid={`edit-${data.key}-icon`}
-                onClick={() => setshow(true)}>
-                <SVGIcons
-                  alt="edit"
-                  className="tw-ml-2 tw-mb-1"
-                  icon={Icons.EDIT}
-                  title="Edit"
-                  width="15px"
-                />
-              </span>
-            </>
-          ) : (
-            <>
-              {data.key === 'Owner' ? (
-                <>
-                  <span
-                    className={classNames(
-                      'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
-                      { 'tw-w-52': (displayVal as string).length > 32 }
-                    )}
-                    data-testid="owner-name"
-                    title={displayVal as string}>
-                    <Button
-                      data-testid="owner-dropdown"
-                      size="custom"
-                      theme="primary"
-                      variant="text">
-                      {displayVal}
-                    </Button>
+    <Row data-testid="entity-summary-details" gutter={7}>
+      <Col>
+        <Space className="tw-text-grey-muted">{retVal}</Space>
+      </Col>
+      <Col>
+        {displayVal ? (
+          <span>
+            {data.isLink ? (
+              <>
+                <a
+                  data-testid="owner-link"
+                  href={data.value as string}
+                  rel="noopener noreferrer"
+                  target={data.openInNewTab ? '_blank' : '_self'}>
+                  <>
                     <span
-                      data-testid={`edit-${data.key}-icon`}
-                      onClick={() => setshow(true)}>
-                      {updateOwner ? (
-                        <SVGIcons
-                          alt="edit"
-                          className="tw-ml-2 tw-mb-1"
-                          icon={Icons.EDIT}
-                          title="Edit"
-                          width="15px"
-                        />
-                      ) : null}
+                      className={classNames(
+                        'tw-mr-1 tw-inline-block tw-truncate link-text tw-align-middle',
+                        {
+                          'tw-w-52': (displayVal as string).length > 32,
+                        }
+                      )}>
+                      {displayVal}
                     </span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  {data.key === 'Tier' ? (
-                    <>
-                      <span
-                        className={classNames(
-                          'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
-                          { 'tw-w-52': (displayVal as string).length > 32 }
-                        )}
-                        data-testid="tier-name"
-                        title={displayVal as string}>
-                        <Button
-                          data-testid="tier-dropdown"
-                          size="custom"
-                          theme="primary"
-                          variant="text">
-                          {displayVal}
-                        </Button>
-                        <span>
-                          <Dropdown
-                            overlay={
-                              <TierCard
-                                currentTier={tier?.tagFQN}
-                                updateTier={updateTier}
-                              />
+
+                    {!isEntityCard && isEntityDetails ? (
+                      <InfoIcon
+                        content={
+                          displayVal
+                            ? `This Entity is Owned by ${displayVal} ${
+                                !isUndefined('Bharat')
+                                  ? `and followed team owned by ${'Bharat'}`
+                                  : ''
+                              }`
+                            : ''
+                        }
+                      />
+                    ) : null}
+
+                    {data.openInNewTab && (
+                      <SVGIcons
+                        alt="external-link"
+                        className="tw-align-middle"
+                        icon="external-link"
+                        width="16px"
+                      />
+                    )}
+                  </>
+                </a>
+                <span
+                  data-testid={`edit-${data.key}-icon`}
+                  onClick={() => setshow(true)}>
+                  <EditIcon />
+                </span>
+              </>
+            ) : (
+              <>
+                {isOwner ? (
+                  <>
+                    <span
+                      className={classNames(
+                        'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
+                        { 'tw-w-52': (displayVal as string).length > 32 }
+                      )}
+                      data-testid="owner-name"
+                      title={displayVal as string}>
+                      <Button
+                        data-testid="owner-dropdown"
+                        size="custom"
+                        theme="primary"
+                        variant="text">
+                        {displayVal}
+                      </Button>
+
+                      {!isEntityCard && isEntityDetails ? (
+                        <Space>
+                          <InfoIcon
+                            content={
+                              displayVal
+                                ? `This Entity is Owned by ${displayVal}`
+                                : ''
                             }
-                            trigger={['click']}>
-                            <span data-testid={`edit-${data.key}-icon`}>
-                              {updateTier ? (
-                                <SVGIcons
-                                  alt="edit"
-                                  className="tw-ml-2 tw-mb-1"
-                                  icon={Icons.EDIT}
-                                  title="Edit"
-                                  width="15px"
-                                />
-                              ) : null}
-                            </span>
-                          </Dropdown>
-                        </span>
+                          />
+                        </Space>
+                      ) : null}
+                      <span
+                        data-testid={`edit-${data.key}-icon`}
+                        onClick={() => setshow(true)}>
+                        {updateOwner ? <EditIcon /> : null}
                       </span>
-                    </>
-                  ) : (
-                    <span>{displayVal}</span>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </span>
-      ) : null}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {isTier ? (
+                      <>
+                        <Space
+                          className={classNames(
+                            'tw-mr-1  tw-truncate tw-align-middle',
+                            { 'tw-w-52': (displayVal as string).length > 32 }
+                          )}
+                          data-testid="tier-name"
+                          direction="horizontal"
+                          title={displayVal as string}>
+                          <Button
+                            data-testid="tier-dropdown"
+                            size="custom"
+                            theme="primary"
+                            variant="text">
+                            {displayVal}
+                          </Button>
+                          <span>
+                            <Dropdown
+                              overlay={
+                                <TierCard
+                                  currentTier={tier?.tagFQN}
+                                  updateTier={updateTier}
+                                />
+                              }
+                              trigger={['click']}>
+                              <span
+                                className="tw-flex"
+                                data-testid={`edit-${data.key}-icon`}>
+                                {updateTier ? <EditIcon /> : null}
+                              </span>
+                            </Dropdown>
+                          </span>
+                        </Space>
+                      </>
+                    ) : (
+                      <span>{displayVal}</span>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </span>
+        ) : null}
+      </Col>
       <OwnerWidgetWrapper
         hideWidget={() => setshow(false)}
         updateUser={updateOwner}
         visible={show}
       />
-    </span>
+    </Row>
   );
 };
 

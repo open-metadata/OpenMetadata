@@ -33,7 +33,7 @@ import { OwnerType } from '../../../enums/user.enum';
 import { TableType } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { getEntityId, getEntityName } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
@@ -93,8 +93,10 @@ const TableDataCard: FunctionComponent<Props> = ({
     {
       key: 'Owner',
       value: getEntityName(owner),
+      id: getEntityId(owner),
       avatarWidth: '16',
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+      isEntityCard: true,
     },
     { key: 'Tier', value: getTier() },
   ];
