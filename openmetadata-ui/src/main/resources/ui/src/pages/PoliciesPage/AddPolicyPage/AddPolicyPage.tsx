@@ -19,35 +19,30 @@ import {
   Form,
   Input,
   Row,
-  Select,
   Space,
-  TreeSelect,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, startCase, uniq } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { addPolicy, getPolicyResources } from '../../../axiosAPIs/rolesAPIV1';
+import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
+import { ADD_POLICY_TEXT } from '../../../constants/HelperTextUtil';
 import {
   CreatePolicy,
   Effect,
-  Operation,
   PolicyType,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
-import { ResourceDescriptor } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
 import {
   getPath,
   getPolicyWithFqnPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
-const { Option } = Select;
+import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -68,9 +63,7 @@ const breadcrumb = [
 
 const AddPolicyPage = () => {
   const history = useHistory();
-  const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
-    []
-  );
+
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [ruleData, setRuleData] = useState<Rule>({
@@ -80,69 +73,6 @@ const AddPolicyPage = () => {
     operations: [],
     effect: Effect.Allow,
   });
-
-  /**
-   * Derive the resources from policy resources
-   */
-  const resourcesOptions = useMemo(() => {
-    const resources = policyResources.filter(
-      (resource) => resource.name !== 'all'
-    );
-    const option = [
-      {
-        title: 'All',
-        value: 'all',
-        key: 'all',
-        children: resources.map((resource) => ({
-          title: startCase(resource.name),
-          value: resource.name,
-          key: resource.name,
-        })),
-      },
-    ];
-
-    return option;
-  }, [policyResources]);
-
-  /**
-   * Derive the operations from selected resources
-   */
-  const operationOptions = useMemo(() => {
-    const selectedResources = policyResources.filter((resource) =>
-      ruleData.resources?.includes(resource.name || '')
-    );
-    const operations = selectedResources
-      .reduce(
-        (prev: Operation[], curr: ResourceDescriptor) =>
-          uniq([...prev, ...(curr.operations || [])]),
-        []
-      )
-      .filter((operation) => operation !== Operation.All);
-
-    const option = [
-      {
-        title: 'All',
-        value: Operation.All,
-        key: 'All',
-        children: operations.map((operation) => ({
-          title: operation,
-          value: operation,
-          key: operation,
-        })),
-      },
-    ];
-
-    return option;
-  }, [ruleData.resources, policyResources]);
-
-  const fetchPolicyResources = async () => {
-    try {
-      const data = await getPolicyResources();
-      setPolicyResources(data.data || []);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
 
   const handleCancel = () => {
     history.push(policiesPath);
@@ -168,13 +98,9 @@ const AddPolicyPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPolicyResources();
-  }, []);
-
   return (
     <Row className="tw-bg-body-main tw-h-auto" gutter={[16, 16]}>
-      <Col offset={5} span={14}>
+      <Col offset={4} span={12}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph className="tw-text-base">
@@ -217,98 +143,7 @@ const AddPolicyPage = () => {
             </Form.Item>
 
             <Divider>Add Rule</Divider>
-            <Form.Item
-              label="Rule Name:"
-              name="ruleName"
-              rules={[
-                {
-                  required: true,
-                  max: 128,
-                  min: 1,
-                },
-              ]}>
-              <Input
-                placeholder="Rule Name"
-                type="text"
-                value={ruleData.name}
-                onChange={(e) =>
-                  setRuleData((prev) => ({ ...prev, name: e.target.value }))
-                }
-              />
-            </Form.Item>
-            <Form.Item label="Description:" name="ruleDescription">
-              <RichTextEditor
-                height="200px"
-                initialValue={ruleData.description || ''}
-                placeHolder="Write your description"
-                style={{ margin: 0 }}
-                onTextChange={(value) =>
-                  setRuleData((prev) => ({ ...prev, description: value }))
-                }
-              />
-            </Form.Item>
-            <Form.Item
-              label="Resources:"
-              name="resources"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <TreeSelect
-                treeCheckable
-                className="tw-w-full"
-                placeholder="Select Resources"
-                showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                treeData={resourcesOptions}
-                onChange={(values) => {
-                  setRuleData((prev) => ({
-                    ...prev,
-                    resources: values,
-                  }));
-                }}
-              />
-            </Form.Item>
-            <Form.Item
-              label="Operations:"
-              name="operations"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <TreeSelect
-                treeCheckable
-                className="tw-w-full"
-                placeholder="Select Operations"
-                showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                treeData={operationOptions}
-                onChange={(values) => {
-                  setRuleData((prev) => ({
-                    ...prev,
-                    operations: values,
-                  }));
-                }}
-              />
-            </Form.Item>
-            <Form.Item
-              label="Effect:"
-              name="ruleEffect"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <Select
-                placeholder="Select Rule Effect"
-                value={ruleData.effect}
-                onChange={(value) =>
-                  setRuleData((prev) => ({ ...prev, effect: value }))
-                }>
-                <Option key={Effect.Allow}>{capitalize(Effect.Allow)}</Option>
-                <Option key={Effect.Deny}>{capitalize(Effect.Deny)}</Option>
-              </Select>
-            </Form.Item>
+            <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
             <Space align="center" className="tw-w-full tw-justify-end">
               <Button type="link" onClick={handleCancel}>
@@ -320,6 +155,12 @@ const AddPolicyPage = () => {
             </Space>
           </Form>
         </Card>
+      </Col>
+      <Col className="tw-mt-4" span={4}>
+        <Typography.Paragraph className="tw-text-base tw-font-medium">
+          Add Policy
+        </Typography.Paragraph>
+        <Typography.Text>{ADD_POLICY_TEXT}</Typography.Text>
       </Col>
     </Row>
   );
