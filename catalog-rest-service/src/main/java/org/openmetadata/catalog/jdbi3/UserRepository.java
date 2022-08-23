@@ -77,7 +77,7 @@ public class UserRepository extends EntityRepository<User> {
     updated
         .withId(original.getId())
         .withName(original.getName())
-        .withInheritedRoles(original.getInheritedRoles())
+        .withInheritedRoles(original.getInheritedRoles() != null ? original.getInheritedRoles() : null)
         .withAuthenticationMechanism(original.getAuthenticationMechanism());
   }
 
