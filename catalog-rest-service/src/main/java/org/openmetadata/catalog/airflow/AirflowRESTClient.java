@@ -165,12 +165,28 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> getServiceStatus() {
+  public Response getServiceStatus() {
     HttpResponse<String> response;
     try {
       response = getRequestNoAuthForJsonContent("%s/%s/health", serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
-        return response;
+        JSONObject responseJSON = new JSONObject(response.body());
+        String ingestionVersion = responseJSON.getString("version");
+
+        if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
+          Map<String, String> status = Map.of("status", "healthy");
+          return Response.status(200, status.toString()).build();
+        } else {
+          Map<String, String> status =
+              Map.of(
+                  "status",
+                  "unhealthy",
+                  "reason",
+                  String.format(
+                      "Got Ingestion Version %s and Server Version %s. They should match.",
+                      ingestionVersion, SERVER_VERSION));
+          return Response.status(500, status.toString()).build();
+        }
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());

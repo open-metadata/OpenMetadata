@@ -13,6 +13,21 @@ This workflow is available ONLY for the following connectors:
 - [Redshift](/openmetadata/connectors/database/redshift)
 - [Clickhouse](/openmetadata/connectors/database/clickhouse)
 
+If your database service is not yet supported, you can use this same workflow by providing a Query Log file!
+
+Learn how to do so 👇
+
+<InlineCalloutContainer>
+  <InlineCallout
+    color="violet-70"
+    bold="Usage Workflow through Query Logs"
+    icon="add_moderator"
+    href="/openmetadata/ingestion/workflows/usage/usage-workflow-query-logs"
+  >
+    Configure the usage workflow by providing a Query Log file.
+  </InlineCallout>
+</InlineCalloutContainer>
+
 ## UI Configuration
 
 Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add Query Usage and Entity Lineage information.

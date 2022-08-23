@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Empty } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
 import { FormattedTableData } from 'Models';
@@ -130,7 +131,20 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        searchValue && (
+          <div className="tw-origin-top-right tw-absolute tw-z-20 tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none">
+            <Empty
+              description="No data found"
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{
+                width: '326px',
+                height: '70px',
+              }}
+            />
+          </div>
+        )
+      )}
     </div>
   );
 };
