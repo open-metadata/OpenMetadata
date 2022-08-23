@@ -16,7 +16,9 @@ import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
@@ -32,6 +34,7 @@ const Tags: FunctionComponent<TagProps> = ({
   isRemovable = true,
   showOnlyName = false,
 }: TagProps) => {
+  const history = useHistory();
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
   const textBaseStyle = tagStyles.text.base;
@@ -42,7 +45,7 @@ const Tags: FunctionComponent<TagProps> = ({
     return tag.startsWith('#') ? tag.slice(1) : tag;
   };
 
-  const getTag = (tag: string, startWith = '') => {
+  const getTag = (tag: string, startWith = '', source?: string) => {
     const startIcon =
       startWith === '+ ' ? (
         <SVGIcons
@@ -60,7 +63,14 @@ const Tags: FunctionComponent<TagProps> = ({
     return (
       <span
         className={classNames(baseStyle, layoutStyles, className)}
-        data-testid="tags">
+        data-testid="tags"
+        onClick={() => {
+          if (source) {
+            source === 'Glossary'
+              ? history.push(`${ROUTES.GLOSSARY}/${tag}`)
+              : history.push(ROUTES.TAGS);
+          }
+        }}>
         <span
           className={classNames(
             textBaseStyle,
@@ -96,6 +106,7 @@ const Tags: FunctionComponent<TagProps> = ({
         <>
           {!editable && tag.description ? (
             <Tooltip
+              className="tw-cursor-pointer"
               placement="bottomLeft"
               title={
                 <div className="tw-text-left tw-p-1">
@@ -111,10 +122,10 @@ const Tags: FunctionComponent<TagProps> = ({
                 </div>
               }
               trigger="hover">
-              {getTag(tag.tagFQN, startWith)}
+              {getTag(tag.tagFQN, startWith, tag.source)}
             </Tooltip>
           ) : (
-            getTag(tag.tagFQN, startWith)
+            getTag(tag.tagFQN, startWith, tag.source)
           )}
         </>
       )}
