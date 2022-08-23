@@ -170,58 +170,66 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Test
-  void post_policiesWithInvalidConditions(TestInfo test) {
+  void test_policiesWithInvalidConditions(TestInfo test) throws HttpResponseException {
+    // This test checks to see if invalid expression is handled in Rule conditions by:
+    // - Posting a policy that has a rule with invalid condition
+    // - By checking validation api for rule conditions
     String policyName = getEntityName(test);
-    Rule rule = accessControlRule(List.of("all"), List.of(MetadataOperation.ALL), ALLOW);
-    CreatePolicy create = createAccessControlPolicyWithRules(policyName, List.of(rule));
+
+    // Ensure validation API works for the valid conditions
+    for (String condition : List.of("isOwner()", "!isOwner()", "noOwner()", "isOwner() || noOwner()")) {
+      System.out.println("XXX condition " + condition);
+      validateCondition(condition); // No exception should be thrown
+    }
 
     // No ending parenthesis
-    rule.withCondition("!matchAnyTag('tag1'");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+    failsToParse(policyName, "!matchAnyTag('tag1'");
 
     // No starting parenthesis
-    rule.withCondition("!matchAnyTag'tag1')");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+    failsToParse(policyName, "!matchAnyTag'tag1')");
 
     // Non-terminating quoted string 'unexpectedParam (missing end quote) or unexpectedParam' (missing beginning quote)
-    rule.withCondition("!isOwner('unexpectedParam)");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
-    rule.withCondition("!isOwner(unexpectedParam')");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+    failsToParse(policyName, "!isOwner('unexpectedParam)");
+    failsToParse(policyName, "!isOwner(unexpectedParam')");
 
     // Incomplete expressions - right operand problem
-    rule.withCondition("!isOwner() ||");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
-    rule.withCondition("|| isOwner()");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+    failsToParse(policyName, "!isOwner() ||");
+    failsToParse(policyName, "|| isOwner()");
 
     // Incomplete expressions
-    rule.withCondition("!");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to parse");
+    failsToParse(policyName, "!");
 
     // matchAnyTag() method does not input parameters
-    rule.withCondition("!matchAnyTag()");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+    failsToEvaluate(policyName, "!matchAnyTag()");
 
     // isOwner() has Unexpected input parameter
-    rule.withCondition("!isOwner('unexpectedParam')");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+    failsToEvaluate(policyName, "!isOwner('unexpectedParam')");
 
     // Invalid function name
-    rule.withCondition("invalidFunction()");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
-    rule.withCondition("isOwner() || invalidFunction()");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+    failsToEvaluate(policyName, "invalidFunction()");
+    failsToEvaluate(policyName, "isOwner() || invalidFunction()");
 
     // Function matchTags() has no input parameter
-    rule.withCondition("matchTags()");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+    failsToEvaluate(policyName, "matchTags()");
 
     // Invalid text
-    rule.withCondition("a");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
-    rule.withCondition("abc");
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Failed to evaluate");
+    failsToEvaluate(policyName, "a");
+    failsToEvaluate(policyName, "abc");
+  }
+
+  private void failsToParse(String policyName, String condition) {
+    validateCondition(policyName, condition, "Failed to parse");
+  }
+
+  private void failsToEvaluate(String policyName, String condition) {
+    validateCondition(policyName, condition, "Failed to evaluate");
+  }
+
+  private void validateCondition(String policyName, String condition, String expectedReason) {
+    Rule rule = accessControlRule(List.of("all"), List.of(MetadataOperation.ALL), ALLOW).withCondition(condition);
+    CreatePolicy create = createAccessControlPolicyWithRules(policyName, List.of(rule));
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, expectedReason);
+    assertResponseContains(() -> validateCondition(condition), BAD_REQUEST, expectedReason);
   }
 
   @Test
@@ -255,7 +263,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     List<String> entities = Entity.getEntityList();
     for (String entity : entities) {
       ResourceDescriptor resourceDescriptor =
-          actualResourceDescriptors.getData().stream().filter(rd -> rd.getName().equals(entity)).findFirst().get();
+          actualResourceDescriptors.getData().stream()
+              .filter(rd -> rd.getName().equals(entity))
+              .findFirst()
+              .orElse(null);
       assertNotNull(resourceDescriptor);
     }
   }
@@ -328,6 +339,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         .withPolicyType(PolicyType.AccessControl)
         .withRules(rules.stream().map(rule -> (Object) rule).collect(Collectors.toList()))
         .withOwner(USER_OWNER1);
+  }
+
+  private void validateCondition(String expression) throws HttpResponseException {
+    WebTarget target = getResource(collectionName + "/validation/condition/" + expression);
+    TestUtils.get(target, ADMIN_AUTH_HEADERS);
   }
 
   private static Location createLocation() throws HttpResponseException {

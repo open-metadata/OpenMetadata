@@ -274,6 +274,11 @@ public final class TestUtils {
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
+  public static void get(WebTarget target, Map<String, String> headers) throws HttpResponseException {
+    final Response response = SecurityUtil.addHeaders(target, headers).get();
+    readResponse(response, Status.NO_CONTENT.getStatusCode());
+  }
+
   public static <T> T get(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).get();
     return readResponse(response, clz, Status.OK.getStatusCode());
