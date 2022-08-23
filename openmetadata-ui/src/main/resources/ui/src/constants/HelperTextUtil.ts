@@ -24,3 +24,15 @@ export const CONFIGURE_WEBHOOK_TEXT =
 
 export const CONFIGURE_SLACK_TEXT =
   'Automatically send out event notifications to registered Slack webhooks through OpenMetadata. Enter the webhook name, and an Endpoint URL to receive the HTTP call back on. Use Event Filters to only receive notifications for the required entities. Filter events based on when an entity is created, updated, or deleted. Add a description to note the use case of the webhook. You can use advanced configuration to set up a shared secret key to verify the Slack webhook events using HMAC signature.';
+
+export const ADD_ROLE_TEXT = `Roles are assigned to Users. In OpenMetadata, Roles are a collection of
+        Policies. Each Role must have at least one policy attached to it. A Role
+        supports multiple policies with a one to many relationship. Ensure that
+        the necessary policies are created before creating a new role. Build
+        rich access control roles with well-defined policies based on
+        conditional rules.`;
+
+export const ADD_POLICY_TEXT = `
+Policies are assigned to Teams. In OpenMetadata, a Policy is a collection of Rules, which define access based on certain conditions. We support rich SpEL (Spring Expression Language) based conditions. All the operations supported by an Entity are published. Use these fine grained operations to define the conditional Rules for each Policy.
+Create well-defined policies based on conditional rules to build rich access control roles.
+        `;
