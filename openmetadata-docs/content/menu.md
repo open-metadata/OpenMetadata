@@ -406,8 +406,8 @@ site_menu:
     url: /openmetadata/ingestion/workflows/metadata/dbt
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
     url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
-  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT CLI
-    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-cli
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
 
   - category: OpenMetadata / Ingestion / Workflows / Usage
     url: /openmetadata/ingestion/workflows/usage
