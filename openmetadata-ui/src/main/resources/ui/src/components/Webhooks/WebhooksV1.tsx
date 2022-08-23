@@ -19,13 +19,13 @@ import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
-import { WebhookType } from '../../generated/api/events/createWebhook';
-import { Webhook } from '../../generated/entity/events/webhook';
-import { useAuth } from '../../hooks/authHooks';
 import {
   SLACK_LISTING_TEXT,
   WEBHOOK_LISTING_TEXT,
-} from '../../utils/HelperTextUtil';
+} from '../../constants/HelperTextUtil';
+import { WebhookType } from '../../generated/api/events/createWebhook';
+import { Webhook } from '../../generated/entity/events/webhook';
+import { useAuth } from '../../hooks/authHooks';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';

@@ -19,6 +19,10 @@ import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import {
+  CONFIGURE_SLACK_TEXT,
+  CONFIGURE_WEBHOOK_TEXT,
+} from '../../constants/HelperTextUtil';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
@@ -35,10 +39,6 @@ import {
   isValidUrl,
   requiredField,
 } from '../../utils/CommonUtils';
-import {
-  CONFIGURE_SLACK_TEXT,
-  CONFIGURE_WEBHOOK_TEXT,
-} from '../../utils/HelperTextUtil';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
