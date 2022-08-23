@@ -21,6 +21,7 @@ import dateutil.parser as dateparser
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
@@ -196,9 +197,9 @@ class SupersetSource(DashboardServiceSource):
         if raw_position_data:
             position_data = json.loads(raw_position_data)
             return [
-                value.get("meta", {}).get("chartId", "unknown")
+                value.get("meta", {}).get("chartId")
                 for key, value in position_data.items()
-                if key.startswith("CHART-")
+                if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
             ]
         return []
 
@@ -257,18 +258,17 @@ class SupersetSource(DashboardServiceSource):
         """
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
             chart_json = self.all_charts.get(chart_id)
-            chart_id = chart_json["id"]
-            params = json.loads(chart_json["params"])
-            group_bys = params.get("groupby", []) or []
-            if isinstance(group_bys, str):
-                group_bys = [group_bys]
-
+            if not chart_json:
+                logger.warning(f"chart details for id: {chart_id} not found, skipped")
+                continue
             chart = CreateChartRequest(
-                name=chart_id,
-                displayName=chart_json["slice_name"],
+                name=chart_json["id"],
+                displayName=chart_json.get("slice_name"),
                 description="",
-                chartType=get_standard_chart_type(chart_json["viz_type"]),
-                chartUrl=chart_json["url"],
+                chartType=get_standard_chart_type(
+                    chart_json.get("viz_type", ChartType.Other.value)
+                ),
+                chartUrl=chart_json.get("url"),
                 service=EntityReference(
                     id=self.context.dashboard_service.id.__root__,
                     type="dashboardService",
