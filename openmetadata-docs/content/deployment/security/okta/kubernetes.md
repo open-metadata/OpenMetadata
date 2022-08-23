@@ -22,7 +22,7 @@ global:
       - "user2"
     botPrincipals:
       - ingestion-bot
-      - "<ingestion_client_id>"
+      - "<service_application_client_id>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "okta"
