@@ -1,8 +1,10 @@
-import { Table } from 'antd';
+import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import moment from 'moment';
 import React, { useMemo } from 'react';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
+import SVGIcons from '../../../utils/SvgUtils';
+import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
@@ -12,7 +14,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
         title: 'Last Run Result',
         dataIndex: 'testCaseResult',
         key: 'testCaseResult',
-        render: (result: TestCaseResult) => result.testCaseStatus,
+        render: (result: TestCaseResult) => (
+          <Space size={8}>
+            <SVGIcons
+              alt="result"
+              className="tw-w-4"
+              icon={getTestResultBadgeIcon(result.testCaseStatus)}
+            />
+            <span>{result.testCaseStatus}</span>
+          </Space>
+        ),
       },
       {
         title: 'Last Run',
@@ -44,6 +55,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
     <Table
       columns={columns}
       dataSource={testCases}
+      expandable={{
+        rowExpandable: () => true,
+        expandedRowRender: (recode) => recode.description,
+      }}
       pagination={false}
       size="small"
     />

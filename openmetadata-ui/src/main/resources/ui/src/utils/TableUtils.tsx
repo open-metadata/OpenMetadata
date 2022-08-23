@@ -323,6 +323,22 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
   }
 };
 
+export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
+  switch (status) {
+    case TestCaseStatus.Success:
+      return Icons.SUCCESS_BADGE;
+
+    case TestCaseStatus.Failed:
+      return Icons.FAIL_BADGE;
+
+    case TestCaseStatus.Aborted:
+      return Icons.PENDING_BADGE;
+
+    default:
+      return '';
+  }
+};
+
 export const getTableTestsValue = (tableTestCase: TableTest[]) => {
   const tableTestLength = tableTestCase.length;
 
