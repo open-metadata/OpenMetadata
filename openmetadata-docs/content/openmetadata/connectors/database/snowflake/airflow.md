@@ -14,6 +14,13 @@ If you want to run the Usage Connector, you'll also need to install:
 ```bash
 pip3 install "openmetadata-ingestion[snowflake-usage]"
 ```
+<Note>
+
+While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
+
+For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+
+</Note>
 
 <MetadataIngestionServiceDev service="database" connector="Snowflake" goal="Airflow"/>
 

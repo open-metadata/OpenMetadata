@@ -6,6 +6,13 @@ slug: /openmetadata/connectors/database/snowflake
 <ConnectorIntro connector="Snowflake" hasUsage="true" hasProfiler="true" hasDBT="true" />
 
 <Requirements />
+<Note>
+
+While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
+
+For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+
+</Note>
 
 <MetadataIngestionService connector="Snowflake"/>
 
