@@ -37,6 +37,7 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './RolesDetail.less';
 
@@ -101,7 +102,7 @@ const List = ({
         render: (_, record) => {
           return (
             <Button type="text" onClick={() => onDelete(record)}>
-              Remove
+              <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
             </Button>
           );
         },
