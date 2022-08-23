@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
@@ -215,10 +216,7 @@ const GlossaryV1 = ({
   const fetchLeftPanel = () => {
     return (
       <div className="tw-h-full tw-px-2" id="glossary-left-panel">
-        <div className="tw-bg-white tw-shadow-box tw-border tw-border-border-gray tw-rounded-md tw-h-full tw-py-2">
-          <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
-            <h6 className="tw-heading tw-text-base">Glossary</h6>
-          </div>
+        <Card className="tw-h-full left-panel-card" title="Glossary">
           <div>
             {treeData.length ? (
               <Fragment>
@@ -265,7 +263,7 @@ const GlossaryV1 = ({
               <Loader />
             )}
           </div>
-        </div>
+        </Card>
       </div>
     );
   };

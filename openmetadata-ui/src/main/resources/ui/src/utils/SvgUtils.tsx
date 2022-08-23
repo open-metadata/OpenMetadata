@@ -109,8 +109,10 @@ import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
+import IcEditPrimary from '../assets/svg/icon-edit-primary.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
+import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
@@ -269,6 +271,7 @@ export const Icons = {
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
   ICON_PLUS_PRIMERY: 'icon-plus-primary',
+  ICON_PLUS_PRIMARY_OUTLINED: 'icon-plus-primary-outlined',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TAG_GREY: 'icon-tag-grey',
@@ -329,6 +332,7 @@ export const Icons = {
   FOREGIN_KEY: 'foreign-key',
   ROLE_GREY: 'role-grey',
   POLICIES: 'policies',
+  IC_EDIT_PRIMARY: 'ic-edit-primary',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -962,6 +966,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.POLICIES:
       IconComponent = IconPolicies;
+
+      break;
+    case Icons.IC_EDIT_PRIMARY:
+      IconComponent = IcEditPrimary;
+
+      break;
+    case Icons.ICON_PLUS_PRIMARY_OUTLINED:
+      IconComponent = IconPlusPrimaryOutlined;
 
       break;
 
