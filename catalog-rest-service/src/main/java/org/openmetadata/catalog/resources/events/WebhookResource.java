@@ -59,7 +59,6 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.type.WebhookType;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 

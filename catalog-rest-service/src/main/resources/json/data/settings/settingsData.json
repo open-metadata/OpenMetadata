@@ -1,50 +1,5 @@
 [
   {
-    "config_type": "airflowConfiguration",
-    "config_value": {
-      "apiEndpoint": "http://localhost:8080",
-      "username": "admin",
-      "password": "admin",
-      "metadataApiEndpoint": "http://localhost:8585/api",
-      "authProvider": "no-auth",
-      "authConfig": {
-        "azure": {
-          "clientSecret": "",
-          "authority": "",
-          "scopes": [
-
-          ],
-          "clientId": ""
-        },
-        "google": {
-          "secretKey": "",
-          "audience": "https://www.googleapis.com/oauth2/v4/token"
-        },
-        "okta": {
-          "clientId": "",
-          "orgURL": "",
-          "privateKey": "",
-          "email": "",
-          "scopes": [
-          ]
-        },
-        "auth0": {
-          "clientId": "",
-          "secretKey": "",
-          "domain": ""
-        },
-        "customOidc": {
-          "clientId": "",
-          "secretKey": "",
-          "tokenEndpoint": ""
-        },
-        "openmetadata": {
-          "jwtToken": ""
-        }
-      }
-    }
-  },
-  {
     "config_type": "activityFeedFilterSetting",
     "config_value": [
       {

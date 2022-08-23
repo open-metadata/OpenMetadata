@@ -96,8 +96,8 @@ WHERE serviceType = 'Athena';
 
 CREATE TABLE IF NOT EXISTS openmetadata_settings (
      id MEDIUMINT NOT NULL AUTO_INCREMENT,
-     config_type VARCHAR(36) NOT NULL,
+     configType VARCHAR(36) NOT NULL,
      json JSON NOT NULL,
-     PRIMARY KEY (id, config_type),
-     UNIQUE(config_type)
+     PRIMARY KEY (id, configType),
+     UNIQUE(configType)
  );

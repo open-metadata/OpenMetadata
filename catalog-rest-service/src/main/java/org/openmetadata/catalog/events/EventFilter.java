@@ -26,13 +26,13 @@ import org.openmetadata.catalog.util.ParallelStreamUtil;
 
 @Slf4j
 @Provider
-public class ResponseFilter implements ContainerResponseFilter {
+public class EventFilter implements ContainerResponseFilter {
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
   private static final int FORK_JOIN_POOL_PARALLELISM = 20;
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
-  public ResponseFilter(CatalogApplicationConfig config, Jdbi jdbi) {
+  public EventFilter(CatalogApplicationConfig config, Jdbi jdbi) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
     registerEventHandlers(config, jdbi);
