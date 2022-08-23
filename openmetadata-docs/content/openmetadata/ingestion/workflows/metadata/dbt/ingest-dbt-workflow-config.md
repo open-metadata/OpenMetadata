@@ -1,9 +1,9 @@
 ---
-title: DBT Ingestion CLI
-slug: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-cli
+title: DBT Ingestion from Workflow config
+slug: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
 ---
 
-# Add DBT while ingesting from CLI
+# Add DBT to your Workflow config
 
 Provide and configure the DBT manifest and catalog file source locations.
 

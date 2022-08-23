@@ -29,6 +29,7 @@ import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
+import { ADD_ROLE_TEXT } from '../../../constants/HelperTextUtil';
 import { Policy } from '../../../generated/entity/policies/policy';
 import {
   getPath,
@@ -101,7 +102,7 @@ const AddRolePage = () => {
 
   return (
     <Row className="tw-bg-body-main tw-h-full" gutter={[16, 16]}>
-      <Col offset={5} span={14}>
+      <Col offset={4} span={12}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph className="tw-text-base">
@@ -169,6 +170,12 @@ const AddRolePage = () => {
             </Space>
           </Form>
         </Card>
+      </Col>
+      <Col className="tw-mt-4" span={4}>
+        <Typography.Paragraph className="tw-text-base tw-font-medium">
+          Add Role
+        </Typography.Paragraph>
+        <Typography.Text>{ADD_ROLE_TEXT}</Typography.Text>
       </Col>
     </Row>
   );

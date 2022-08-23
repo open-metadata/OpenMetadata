@@ -49,7 +49,7 @@ export const GLOBAL_SETTINGS_MENU = [
   },
   {
     category: 'Access',
-    isProtected: false,
+    isProtected: true,
     items: [
       {
         label: 'Roles',

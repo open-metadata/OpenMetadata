@@ -85,6 +85,7 @@ export const PLACEHOLDER_TASK_ID = ':taskId';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
+export const PLACEHOLDER_RULE_NAME = ':ruleName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -229,6 +230,8 @@ export const ROUTES = {
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
   ADD_ROLE: '/settings/access/roles/add-role',
   ADD_POLICY: '/settings/access/policies/add-policy',
+  ADD_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/add-rule`,
+  EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
 };
 
 export const SOCKET_EVENTS = {

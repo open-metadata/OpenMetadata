@@ -13,6 +13,11 @@ Health endpoint. Globally accessible
 """
 import traceback
 
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
+
 from airflow.www.app import csrf
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
@@ -26,7 +31,9 @@ def health():
     """
 
     try:
-        return ApiResponse.success({"status": "healthy"})
+        return ApiResponse.success(
+            {"status": "healthy", "version": version("openmetadata-ingestion")}
+        )
     except Exception as err:
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,

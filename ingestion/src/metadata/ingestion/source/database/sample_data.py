@@ -75,7 +75,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
@@ -914,6 +914,10 @@ class SampleDataSource(Source[Entity]):
                         timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
                         testCaseStatus=result["testCaseStatus"],
                         result=result["result"],
+                        testResultValue=[
+                            TestResultValue.parse_obj(res_value)
+                            for res_value in result["testResultValues"]
+                        ],
                     ),
                     test_case_name=case.fullyQualifiedName.__root__,
                 )
