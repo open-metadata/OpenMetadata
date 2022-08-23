@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { FunctionComponent, useRef, useState } from 'react';
+import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -35,6 +35,10 @@ import {
   isValidUrl,
   requiredField,
 } from '../../utils/CommonUtils';
+import {
+  CONFIGURE_SLACK_TEXT,
+  CONFIGURE_WEBHOOK_TEXT,
+} from '../../utils/HelperTextUtil';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
@@ -447,24 +451,18 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     ) : null;
   };
 
-  const fetchRightPanel = () => {
+  const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
         <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
         <div className="tw-mb-5">
-          OpenMetadata can be configured to automatically send out event
-          notifications to registered webhooks. Enter the webhook name, and an
-          Endpoint URL to receive the HTTP call back on. Use Event Filters to
-          only receive notifications based on events of interest, like when an
-          entity is created, updated, or deleted; and for the entities your
-          application is interested in. Add a description to help people
-          understand the purpose of the webhook and to keep track of the use
-          case. Use advanced configuration to set up a shared secret key to
-          verify the webhook events using HMAC signature.
+          {webhookType === WebhookType.Slack
+            ? CONFIGURE_SLACK_TEXT
+            : CONFIGURE_WEBHOOK_TEXT}
         </div>
       </div>
     );
-  };
+  }, [webhookType]);
 
   return (
     <div className="add-webhook-container">

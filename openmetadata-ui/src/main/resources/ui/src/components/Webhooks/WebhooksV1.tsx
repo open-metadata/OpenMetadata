@@ -22,6 +22,10 @@ import {
 import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
+import {
+  SLACK_LISTING_TEXT,
+  WEBHOOK_LISTING_TEXT,
+} from '../../utils/HelperTextUtil';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -61,10 +65,9 @@ const WebhooksV1: FC<WebhooksProps> = ({
         size="small"
         style={leftPanelAntCardStyle}>
         <div className="tw-my-2">
-          The webhook allows external services to be notified of the metadata
-          change events happening in your organization through APIs. Register
-          callback URLs with webhook integration to receive metadata event
-          notifications. You can add, list, update, and delete webhooks.
+          {webhookType === WebhookType.Slack
+            ? SLACK_LISTING_TEXT
+            : WEBHOOK_LISTING_TEXT}
         </div>
       </Card>
     );
