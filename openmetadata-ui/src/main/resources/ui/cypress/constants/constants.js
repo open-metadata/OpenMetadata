@@ -161,3 +161,35 @@ export const SERVICE_TYPE = {
   Pipelines: 'Pipelines',
   MLModels: 'ML Models',
 };
+
+export const ENTITIES = {
+  entity_table: {
+    name: 'table',
+    description: 'This is Table custom property',
+    integerValue: '45',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+  entity_topic: {
+    name: 'topic',
+    description: 'This is Topic custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+  entity_dashboard: {
+    name: 'dashboard',
+    description: 'This is Dashboard custom property',
+    integerValue: '14',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+  entity_pipeline: {
+    name: 'pipeline',
+    description: 'This is Pipeline custom property',
+    integerValue: '78',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+  },
+
+};
