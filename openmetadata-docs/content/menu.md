@@ -413,6 +413,8 @@ site_menu:
     url: /openmetadata/ingestion/workflows/usage
   - category: OpenMetadata / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
     url: /openmetadata/ingestion/workflows/usage/usage-workflow-query-logs
+  - category: OpenMetadata / Ingestion / Workflows / Lineage
+    url: /openmetadata/ingestion/workflows/lineage
   - category: OpenMetadata / Ingestion / Workflows / Profiler
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
