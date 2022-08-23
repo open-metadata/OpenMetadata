@@ -16,6 +16,7 @@ import {
   Card,
   Col,
   Empty,
+  Modal,
   Row,
   Space,
   Switch,
@@ -26,7 +27,7 @@ import {
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
@@ -52,6 +53,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
 
 const { TabPane } = Tabs;
+
+type Attribute = 'roles' | 'teams';
 
 const List = ({
   list,
@@ -134,6 +137,8 @@ const PoliciesDetailPage = () => {
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
+  const [selectedEntity, setEntity] =
+    useState<{ attribute: Attribute; record: EntityReference }>();
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -178,10 +183,7 @@ const PoliciesDetailPage = () => {
     }
   };
 
-  const handleDelete = async (
-    data: EntityReference,
-    attribute: 'roles' | 'teams'
-  ) => {
+  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
     const attributeData =
       (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
     const updatedAttributeData = attributeData.filter(
@@ -296,18 +298,39 @@ const PoliciesDetailPage = () => {
               <List
                 list={policy.roles ?? []}
                 type="role"
-                onDelete={(record) => handleDelete(record, 'roles')}
+                onDelete={(record) => setEntity({ record, attribute: 'roles' })}
               />
             </TabPane>
             <TabPane key="teams" tab="Teams">
               <List
                 list={policy.teams ?? []}
                 type="team"
-                onDelete={(record) => handleDelete(record, 'teams')}
+                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
               />
             </TabPane>
           </Tabs>
         </div>
+      )}
+      {selectedEntity && (
+        <Modal
+          centered
+          okText="Confirm"
+          title={`Remove ${getEntityName(
+            selectedEntity.record
+          )} from ${getEntityName(policy)}`}
+          visible={!isUndefined(selectedEntity.record)}
+          onCancel={() => setEntity(undefined)}
+          onOk={() => {
+            handleDelete(selectedEntity.record, selectedEntity.attribute);
+            setEntity(undefined);
+          }}>
+          <Typography.Text>
+            Are you sure you want to remove the{' '}
+            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
+              policy
+            )}?`}
+          </Typography.Text>
+        </Modal>
       )}
     </div>
   );
