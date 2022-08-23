@@ -25,6 +25,8 @@ public final class CatalogExceptionMessage {
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
   public static final String FIELD_ALREADY_TOKENIZED = "Field is already tokenized";
   public static final String INVALID_ENTITY_LINK = "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
+  public static final String EMPTY_POLICIES_IN_ROLE = "At least one policy is required in a role";
+  public static final String EMPTY_RULES_IN_POLICY = "At least one rule is required in a policy";
 
   private CatalogExceptionMessage() {}
 

@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.ALLOW;
 import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.DENY;
+import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -88,13 +89,15 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   public void setupPolicies() throws HttpResponseException {
-    POLICY1 = createEntity(createRequest("policy1"), ADMIN_AUTH_HEADERS);
-    POLICY2 = createEntity(createRequest("policy2"), ADMIN_AUTH_HEADERS);
+    POLICY1 = createEntity(createRequest("policy1").withOwner(null), ADMIN_AUTH_HEADERS);
+    POLICY2 = createEntity(createRequest("policy2").withOwner(null), ADMIN_AUTH_HEADERS);
   }
 
   @Override
   public CreatePolicy createRequest(String name) {
-    return new CreatePolicy().withName(name).withPolicyType(PolicyType.Lifecycle);
+    List<Rule> rules = new ArrayList<>();
+    rules.add(accessControlRule("rule1", List.of("all"), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW));
+    return createAccessControlPolicyWithRules(name, rules);
   }
 
   @Override
@@ -104,7 +107,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     if (createRequest.getLocation() != null) {
       assertEquals(createRequest.getLocation(), policy.getLocation().getId());
     }
-    assertEquals(createRequest.getRules(), EntityUtil.resolveRules(policy.getRules()));
+    assertEquals(createRequest.getRules(), resolveRules(policy.getRules()));
   }
 
   @Override
@@ -123,6 +126,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       EntityReference expectedLocation = (EntityReference) expected;
       EntityReference actualLocation = JsonUtils.readValue(actual.toString(), EntityReference.class);
       assertEquals(expectedLocation.getId(), actualLocation.getId());
+    } else if (fieldName.equals("rules")) {
+      List<Rule> expectedRule = (List<Rule>) expected;
+      List<Rule> actualRule = resolveRules(JsonUtils.readObjects(actual.toString(), Object.class));
+      assertEquals(expectedRule, actualRule);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -254,6 +261,36 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Test
+  void patch_PolicyRules(TestInfo test) throws IOException {
+    Rule rule1 = accessControlRule("rule1", List.of("all"), List.of(MetadataOperation.VIEW_ALL), ALLOW);
+    Policy policy = createAndCheckEntity(createRequest(test).withRules(List.of(rule1)), ADMIN_AUTH_HEADERS);
+
+    // Change an existing rule1
+    String origJson = JsonUtils.pojoToJson(policy);
+    Rule updatedRule1 = accessControlRule("rule1", List.of("all"), List.of(MetadataOperation.ALL), ALLOW);
+    policy.setRules(List.of(updatedRule1));
+    ChangeDescription change = getChangeDescription(policy.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("rules").withOldValue(List.of(rule1)));
+    change.getFieldsAdded().add(new FieldChange().withName("rules").withNewValue(List.of(updatedRule1)));
+    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Add a new rule
+    origJson = JsonUtils.pojoToJson(policy);
+    Rule newRule = accessControlRule("newRule", List.of("all"), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW);
+    policy.getRules().add(newRule);
+    change = getChangeDescription(policy.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("rules").withNewValue(List.of(newRule)));
+    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Delete newRule1 rule
+    origJson = JsonUtils.pojoToJson(policy);
+    policy.setRules(List.of(newRule));
+    change = getChangeDescription(policy.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("rules").withOldValue(List.of(updatedRule1)));
+    patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
   void get_policyResources() throws HttpResponseException {
     // Get list of policy resources and make sure it has all the entities and other resources
     ResourceDescriptorList actualResourceDescriptors = getPolicyResources(ADMIN_AUTH_HEADERS);
@@ -364,6 +401,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
   private static Rule accessControlRule(List<String> resources, List<MetadataOperation> operations, Effect effect) {
     String name = "rule" + new Random().nextInt(21);
+    return accessControlRule(name, resources, operations, effect);
+  }
+
+  private static Rule accessControlRule(
+      String name, List<String> resources, List<MetadataOperation> operations, Effect effect) {
     return new Rule().withName(name).withResources(resources).withOperations(operations).withEffect(effect);
   }
 }

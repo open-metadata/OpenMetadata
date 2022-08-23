@@ -14,8 +14,10 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.POLICIES;
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.EntityReference;
@@ -77,6 +80,9 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   public void prepare(Role role) throws IOException {
     setFullyQualifiedName(role);
+    if (listOrEmpty(role.getPolicies()).isEmpty()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
+    }
     EntityUtil.populateEntityReferences(role.getPolicies());
   }
 
@@ -136,6 +142,25 @@ public class RoleRepository extends EntityRepository<Role> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateDefault(original, updated);
+      updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
+    }
+
+    private void updatePolicies(List<EntityReference> origPolicies, List<EntityReference> updatedPolicies)
+        throws JsonProcessingException {
+      // Record change description
+      List<EntityReference> deletedPolicies = new ArrayList<>();
+      List<EntityReference> addedPolicies = new ArrayList<>();
+      boolean changed =
+          recordListChange(
+              "policies", origPolicies, updatedPolicies, addedPolicies, deletedPolicies, entityReferenceMatch);
+
+      if (changed) {
+        // Remove all the Role to policy relationships
+        deleteFrom(original.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
+
+        // Add Role to policy relationships back based on Updated entity
+        storeRelationships(updated);
+      }
     }
 
     private void updateDefault(Role origRole, Role updatedRole) throws IOException {
