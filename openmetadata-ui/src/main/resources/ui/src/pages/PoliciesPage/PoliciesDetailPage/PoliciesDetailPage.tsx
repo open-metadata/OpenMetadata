@@ -41,6 +41,8 @@ import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
+  getAddPolicyRulePath,
+  getEditPolicyRulePath,
   getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
@@ -240,79 +242,96 @@ const PoliciesDetailPage = () => {
               {isEmpty(policy.rules) ? (
                 <Empty description="No rules found" />
               ) : (
-                <Space className="tw-w-full" direction="vertical">
-                  {policy.rules.map((rule) => (
-                    <Collapse key={uniqueId()}>
-                      <Panel
-                        header={
-                          <Space
-                            className="tw-w-full"
-                            direction="vertical"
-                            size={4}>
+                <Space className="tw-w-full rules-tab" direction="vertical">
+                  <Button
+                    type="primary"
+                    onClick={() => history.push(getAddPolicyRulePath(fqn))}>
+                    Add Rule
+                  </Button>
+                  <Space className="tw-w-full" direction="vertical">
+                    {policy.rules.map((rule) => (
+                      <Collapse key={uniqueId()}>
+                        <Panel
+                          header={
                             <Space
-                              align="baseline"
-                              className="tw-w-full tw-justify-between"
+                              className="tw-w-full"
+                              direction="vertical"
                               size={4}>
-                              <Typography.Text className="tw-font-medium tw-text-base">
-                                {rule.name}
-                              </Typography.Text>
-                              <Button
-                                data-testid="edit-rule"
-                                type="text"
-                                onClick={(e) => e.stopPropagation()}>
-                                <SVGIcons alt="edit" icon={Icons.EDIT} />
-                              </Button>
+                              <Space
+                                align="baseline"
+                                className="tw-w-full tw-justify-between"
+                                size={4}>
+                                <Typography.Text className="tw-font-medium tw-text-base">
+                                  {rule.name}
+                                </Typography.Text>
+                                <Button
+                                  data-testid="edit-rule"
+                                  type="text"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    history.push(
+                                      getEditPolicyRulePath(
+                                        fqn,
+                                        rule.name || ''
+                                      )
+                                    );
+                                  }}>
+                                  <SVGIcons alt="edit" icon={Icons.EDIT} />
+                                </Button>
+                              </Space>
+                              <div
+                                className="tw--ml-5"
+                                data-testid="description">
+                                <Typography.Text className="tw-text-grey-muted">
+                                  Description:
+                                </Typography.Text>
+                                <RichTextEditorPreviewer
+                                  markdown={rule.description || ''}
+                                />
+                              </div>
                             </Space>
-                            <div className="tw--ml-5" data-testid="description">
-                              <Typography.Text className="tw-text-grey-muted">
-                                Description:
-                              </Typography.Text>
-                              <RichTextEditorPreviewer
-                                markdown={rule.description || ''}
-                              />
-                            </div>
-                          </Space>
-                        }
-                        key={rule.name || 'rule'}>
-                        <Space direction="vertical">
-                          <Space
-                            data-testid="resources"
-                            direction="vertical"
-                            size={4}>
-                            <Typography.Text className="tw-text-grey-muted tw-mb-0">
-                              Resources:
-                            </Typography.Text>
-                            <Typography.Text>
-                              {rule.resources?.join(', ')}
-                            </Typography.Text>
-                          </Space>
-
-                          <Space
-                            data-testid="operations"
-                            direction="vertical"
-                            size={4}>
-                            <Typography.Text className="tw-text-grey-muted">
-                              Operations:
-                            </Typography.Text>
-                            <Typography.Text>
-                              {rule.operations?.join(', ')}
-                            </Typography.Text>
-                          </Space>
-                          {rule.condition && (
+                          }
+                          key={rule.name || 'rule'}>
+                          <Space direction="vertical">
                             <Space
-                              data-testid="condition"
+                              data-testid="resources"
+                              direction="vertical"
+                              size={4}>
+                              <Typography.Text className="tw-text-grey-muted tw-mb-0">
+                                Resources:
+                              </Typography.Text>
+                              <Typography.Text>
+                                {rule.resources?.join(', ')}
+                              </Typography.Text>
+                            </Space>
+
+                            <Space
+                              data-testid="operations"
                               direction="vertical"
                               size={4}>
                               <Typography.Text className="tw-text-grey-muted">
-                                Condition:
+                                Operations:
                               </Typography.Text>
-                              <code>{rule.condition}</code>
+                              <Typography.Text>
+                                {rule.operations?.join(', ')}
+                              </Typography.Text>
                             </Space>
-                          )}
-                        </Space>
-                      </Panel>
-                    </Collapse>
-                  ))}
+                            {rule.condition && (
+                              <Space
+                                data-testid="condition"
+                                direction="vertical"
+                                size={4}>
+                                <Typography.Text className="tw-text-grey-muted">
+                                  Condition:
+                                </Typography.Text>
+                                <code>{rule.condition}</code>
+                              </Space>
+                            )}
+                          </Space>
+                        </Panel>
+                      </Collapse>
+                    ))}
+                  </Space>
                 </Space>
               )}
             </TabPane>
