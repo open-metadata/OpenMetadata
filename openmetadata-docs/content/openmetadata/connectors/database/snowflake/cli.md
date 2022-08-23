@@ -17,7 +17,9 @@ pip3 install "openmetadata-ingestion[snowflake-usage]"
 
 <Note>
 
-For running the usage workflow, the user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
+While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
+
+For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
 
 </Note>
 
