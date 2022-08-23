@@ -80,3 +80,7 @@ export interface ProfilerSummaryCardProps {
 export interface DataQualityTabProps {
   testCases: TestCase[];
 }
+
+export interface TestSummaryProps {
+  data: TestCase;
+}
