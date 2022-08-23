@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -43,9 +44,11 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -166,6 +169,41 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
   }
 
+  @Test
+  void patch_rolePolicies(TestInfo test) throws IOException {
+    Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Add new DATA_STEWARD_POLICY to role in addition to DATA_CONSUMER_POLICY
+    String originalJson = JsonUtils.pojoToJson(role);
+    role.getPolicies().addAll(DATA_STEWARD_ROLE.getPolicies());
+    ChangeDescription change = getChangeDescription(role.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("policies").withNewValue(DATA_STEWARD_ROLE.getPolicies()));
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove new DATA_CONSUMER_POLICY
+    originalJson = JsonUtils.pojoToJson(role);
+    role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
+    change = getChangeDescription(role.getVersion());
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("policies").withOldValue(DATA_CONSUMER_ROLE.getPolicies()));
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove all the policies. It should be disallowed
+    final String originalJson1 = JsonUtils.pojoToJson(role);
+    final UUID id = role.getId();
+    final Role role1 = role;
+    role1.setPolicies(null);
+    change = getChangeDescription(role1.getVersion());
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("policies").withOldValue(DATA_CONSUMER_ROLE.getPolicies()));
+    assertResponse(
+        () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
+  }
+
   private static void validateRole(
       Role role, String expectedDescription, String expectedDisplayName, String expectedUpdatedBy) {
     assertListNotNull(role.getId(), role.getHref());
@@ -240,6 +278,15 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("policies")) {
+      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEntityReferences(expectedRefs, actualRefs);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }
