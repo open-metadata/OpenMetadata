@@ -18,12 +18,16 @@ public class FilterUtil {
       String entityType = changeEvent.getEntityType();
       EventType eventType = changeEvent.getEventType();
       Map<EventType, Filters> filtersOfEntity = filtersMap.get(entityType);
-      Filters sf;
-      if (filtersOfEntity == null || filtersOfEntity.size() == 0 || (sf = filtersOfEntity.get(eventType)) == null) {
+      if (filtersOfEntity == null || filtersOfEntity.size() == 0) {
         // check if we have all entities Filter
         return handleWithWildCardFilter(filtersMap.get("all"), eventType, getUpdateField(changeEvent));
       } else {
-        return sf.getFields().contains("all") || checkIfFilterContainField(sf, getUpdateField(changeEvent));
+        Filters sf;
+        if ((sf = filtersOfEntity.get(eventType)) == null) {
+          return false;
+        } else {
+          return sf.getFields().contains("all") || checkIfFilterContainField(sf, getUpdateField(changeEvent));
+        }
       }
     }
     return false;
