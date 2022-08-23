@@ -245,6 +245,5 @@ workflowConfig:
       orgURL: "{ISSUER_URL}/v1/token"
       privateKey: "{public/private keypair}"
       email: "{email}"
-      scopes:
-      - token
+      scopes: []
 ```
