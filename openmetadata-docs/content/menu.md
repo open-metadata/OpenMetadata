@@ -392,6 +392,9 @@ site_menu:
   - category: OpenMetadata / Connectors / Metadata / Amundsen
     url: /openmetadata/connectors/metadata/amundsen
 
+  - category: OpenMetadata / Connectors / Managing Credentials
+    url: /openmetadata/connectors/credentials
+
   - category: OpenMetadata / Ingestion
     url: /openmetadata/ingestion
   - category: OpenMetadata / Ingestion / Workflows
