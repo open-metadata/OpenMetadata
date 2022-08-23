@@ -245,7 +245,10 @@ const PoliciesDetailPage = () => {
                     <Collapse key={uniqueId()}>
                       <Panel
                         header={
-                          <Space className="tw-w-full" direction="vertical">
+                          <Space
+                            className="tw-w-full"
+                            direction="vertical"
+                            size={4}>
                             <Space
                               align="baseline"
                               className="tw-w-full tw-justify-between"
