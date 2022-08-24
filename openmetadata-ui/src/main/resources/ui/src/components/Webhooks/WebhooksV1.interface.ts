@@ -15,7 +15,7 @@ import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { Paging } from '../../generated/type/paging';
 
-export interface WebhooksProps {
+export interface WebhooksV1Props {
   data: Array<Webhook>;
   paging: Paging;
   webhookType?: WebhookType;
