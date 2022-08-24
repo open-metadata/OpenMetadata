@@ -88,11 +88,3 @@ WHERE serviceType = 'Oracle';
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,hostPort}'
 WHERE serviceType = 'Athena';
-
-CREATE TABLE IF NOT EXISTS openmetadata_settings (
-     id SERIAL NOT NULL ,
-     configType VARCHAR(36) NOT NULL,
-     json JSON NOT NULL,
-     PRIMARY KEY (id, configType),
-     UNIQUE(configType)
- );
