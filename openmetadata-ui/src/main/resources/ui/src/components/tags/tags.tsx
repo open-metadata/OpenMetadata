@@ -68,7 +68,7 @@ const Tags: FunctionComponent<TagProps> = ({
           if (source) {
             source === 'Glossary'
               ? history.push(`${ROUTES.GLOSSARY}/${tag}`)
-              : history.push(ROUTES.TAGS);
+              : history.push(`${ROUTES.TAGS}/${tag.split('.')[0]}`);
           }
         }}>
         <span
@@ -78,8 +78,7 @@ const Tags: FunctionComponent<TagProps> = ({
             textEditStyles,
             'tw-flex tw-items-center'
           )}
-          data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}
-          title={tag}>
+          data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}>
           {startIcon}
           <span>{tagName}</span>
         </span>
@@ -104,31 +103,25 @@ const Tags: FunctionComponent<TagProps> = ({
       {isString(tag) ? (
         getTag(tag, startWith)
       ) : (
-        <>
-          {!editable && tag.description ? (
-            <Tooltip
-              className="tw-cursor-pointer"
-              placement="bottomLeft"
-              title={
-                <div className="tw-text-left tw-p-1">
-                  {tag.description && (
-                    <div className="tw-mb-2">
-                      <RichTextEditorPreviewer
-                        enableSeeMoreVariant={false}
-                        markdown={tag.description}
-                        textVariant="white"
-                      />
-                    </div>
-                  )}
+        <Tooltip
+          className="tw-cursor-pointer"
+          placement="bottomLeft"
+          title={
+            <div className="tw-text-left tw-p-1">
+              {tag.description && (
+                <div className="tw-mb-2">
+                  <RichTextEditorPreviewer
+                    enableSeeMoreVariant={false}
+                    markdown={`**${tag.tagFQN}**\n${tag.description}`}
+                    textVariant="white"
+                  />
                 </div>
-              }
-              trigger="hover">
-              {getTag(tag.tagFQN, startWith, tag.source)}
-            </Tooltip>
-          ) : (
-            getTag(tag.tagFQN, startWith, tag.source)
-          )}
-        </>
+              )}
+            </div>
+          }
+          trigger="hover">
+          {getTag(tag.tagFQN, startWith, tag.source)}
+        </Tooltip>
       )}
     </>
   );

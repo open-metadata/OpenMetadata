@@ -25,6 +25,7 @@ import {
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_SETTING_CATEGORY,
+  PLACEHOLDER_TAG_NAME,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
@@ -298,6 +299,16 @@ export const getProfilerDashboardWithFqnPath = (entityTypeFQN: string) => {
   let path = ROUTES.PROFILER_DASHBOARD;
 
   path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getTagPath = (fqn?: string) => {
+  let path = ROUTES.TAGS;
+  if (fqn) {
+    path = ROUTES.TAG_DETAILS;
+    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+  }
 
   return path;
 };
