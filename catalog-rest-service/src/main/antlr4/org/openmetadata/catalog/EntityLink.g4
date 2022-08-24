@@ -1,11 +1,12 @@
 grammar EntityLink;
 
 entitylink
-    : '<#E' ('::' entity)+ '>' EOF
+    : '<#E' (RESERVED entity)+ '>' EOF
     ;
 
 entity
     : ENTITY_TYPE # entityType
+    | ENTITY_ATTRIBUTE # entityAttribute
     | ENTITY_FQN # entityFqn
     | ENTITY_FIELD # entityField
     ;
@@ -42,6 +43,11 @@ ENTITY_FIELD
 RESERVED
     : '::'
     ;
+
+ENTITY_ATTRIBUTE
+    : [a-z]+
+    ;
+
 ENTITY_FQN
     : [a-zA-Z0-9,._"']+
     ;
