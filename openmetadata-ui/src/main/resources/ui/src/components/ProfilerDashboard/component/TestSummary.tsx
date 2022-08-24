@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import moment from 'moment';
 import React, { useEffect, useState } from 'react';
 import {
@@ -128,14 +128,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
           </Col>
           <Col span={24}>
             <Typography.Text type="secondary">Parameter: </Typography.Text>
-            <Space size={8}>
-              {data.parameterValues?.map((param) => (
-                <Typography key={param.name}>
-                  <Typography.Text>{param.name}: </Typography.Text>
-                  <Typography.Text>{param.value}</Typography.Text>
-                </Typography>
-              ))}
-            </Space>
+          </Col>
+          <Col offset={2} span={24}>
+            {data.parameterValues?.map((param) => (
+              <Typography key={param.name}>
+                <Typography.Text>{param.name}: </Typography.Text>
+                <Typography.Text>{param.value}</Typography.Text>
+              </Typography>
+            ))}
           </Col>
 
           <Col className="tw-flex tw-gap-2" span={24}>
