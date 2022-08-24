@@ -1,11 +1,53 @@
 grammar EntityLink;
 
-entitylink: STARTPOINT SEPARATOR ENTITY_TYPE SEPARATOR ENTITY_FQN (SEPARATOR ENTITY_FIELD (SEPARATOR ENTITY_ATTRIBUTE)*)* ENDPOINT;
+entitylink
+    : '<#E' (RESERVED entity)+ '>' EOF
+    ;
 
-ENTITY_TYPE: ('table'|'database'|'databaseSchema'|'metrics'|'dashboard'|'pipeline'|'chart'|'report'|'topic'|'mlmodel'|'bot'|'THREAD'|'location'|'glossary'|'glossaryTerm'|'tag'|'tagCategory'|'type'|'testDefinition'|'testSuite'|'testCase');
-STARTPOINT: '<#E' ;
-ENDPOINT: '>';
-SEPARATOR: '::';
-ENTITY_FIELD: ('columns'| 'description' | 'tags' | 'tasks' );
-ENTITY_ATTRIBUTE: [a-z]+;
-ENTITY_FQN: [a-zA-Z0-9,._"']+ ;
+entity
+    : ENTITY_TYPE # entityType
+    | ENTITY_ATTRIBUTE # entityAttribute
+    | ENTITY_FQN # entityFqn
+    | ENTITY_FIELD # entityField
+    ;
+
+ENTITY_TYPE
+    : 'table'
+    | 'database'
+    | 'databaseSchema'
+    | 'metrics'
+    | 'dashboard'
+    | 'pipeline'
+    | 'chart'
+    | 'report'
+    | 'topic'
+    | 'mlmodel'
+    | 'bot'
+    | 'THREAD'
+    | 'location'
+    | 'glossary'
+    | 'glossaryTerm'
+    | 'tag'
+    | 'tagCategory'
+    | 'type'
+    | 'testDefinition'
+    | 'testSuite'
+    | 'testCase'
+    ;
+ENTITY_FIELD
+    : 'columns'
+    | 'description' 
+    | 'tags' 
+    | 'tasks'
+    ;
+RESERVED
+    : '::'
+    ;
+
+ENTITY_ATTRIBUTE
+    : [a-z]+
+    ;
+
+ENTITY_FQN
+    : [a-zA-Z0-9,._"']+
+    ;
