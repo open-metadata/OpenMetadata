@@ -1236,8 +1236,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription())) {
-        // Update description only when stored is empty to retain user authored descriptions
+      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
+        // Revert the non-empty task description if being updated by a bot
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }

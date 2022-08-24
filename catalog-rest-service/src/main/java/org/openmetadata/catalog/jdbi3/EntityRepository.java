@@ -72,6 +72,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -136,7 +137,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
-  protected boolean allowEdits = false;
 
   /** Fields that can be updated during PATCH operation */
   private final Fields patchFields;
@@ -1122,12 +1122,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected final Operation operation;
     protected final ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
+    protected final User updatingUser;
     private boolean entityRestored = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
+      this.updatingUser = SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -1154,11 +1156,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDescription() throws JsonProcessingException {
-      if (operation.isPut()
-          && original.getDescription() != null
-          && !original.getDescription().isEmpty()
-          && !allowEdits) {
-        // Update description only when stored is empty to retain user authored descriptions
+      if (operation.isPut() && !nullOrEmpty(original.getDescription()) && updatedByBot()) {
+        // Revert change to non-empty description if it is being updated by a bot
         updated.setDescription(original.getDescription());
         return;
       }
@@ -1183,11 +1182,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDisplayName() throws JsonProcessingException {
-      if (operation.isPut()
-          && original.getDisplayName() != null
-          && !original.getDisplayName().isEmpty()
-          && !allowEdits) {
-        // Update displayName only when stored is empty to retain user authored descriptions
+      if (operation.isPut() && !nullOrEmpty(original.getDisplayName()) && updatedByBot()) {
+        // Revert change to non-empty description if it is being updated by a bot
         updated.setDisplayName(original.getDisplayName());
         return;
       }
@@ -1231,9 +1227,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateExtension() throws JsonProcessingException {
+      if (updatedByBot()) {
+        // Revert changes to extension field, if being updated by a bot
+        updated.setExtension(original.getExtension());
+        return;
+      }
+
       removeExtension(original);
       storeExtension(updated);
-      // TODO change descriptions for custom attributes
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -1279,7 +1280,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     public final <K> boolean recordChange(
         String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch)
         throws JsonProcessingException {
-      if (orig == null && updated == null) {
+      if (orig == updated) {
         return false;
       }
       FieldChange fieldChange =
@@ -1421,6 +1422,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void storeNewVersion() throws IOException {
       EntityRepository.this.storeEntity(updated, true);
+    }
+
+    public final boolean updatedByBot() {
+      return Boolean.TRUE.equals(updatingUser.getIsBot());
     }
   }
 }

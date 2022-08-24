@@ -122,6 +122,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
+
+    create = createRequest(test, 3).withIsBot(true);
+    BOT_USER = createEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test

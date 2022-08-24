@@ -104,13 +104,6 @@ import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
-import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.entity.services.MlModelService;
-import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -185,6 +178,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static User USER2;
   public static EntityReference USER2_REF;
   public static User USER_TEAM21;
+  public static User BOT_USER;
 
   public static Team ORG_TEAM;
   public static Team TEAM1;
@@ -996,28 +990,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    // Update non-empty description with a new description
+    // Updating non-empty description and non-empty displayName allowed for users except bot
     Double oldVersion = entity.getVersion();
-    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request = createRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
     entity = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
-    // For service resources, we allow update of non-empty description via PUT
-    List<Class<?>> services =
-        Arrays.asList(
-            DatabaseService.class,
-            PipelineService.class,
-            StorageService.class,
-            DashboardService.class,
-            MessagingService.class,
-            IngestionPipeline.class,
-            MlModelService.class,
-            Type.class);
-    if (services.contains(entity.getClass())) {
-      assertNotEquals(oldVersion, entity.getVersion()); // Version did change
-      assertEquals("updatedDescription", entity.getDescription()); // Description did change
-    } else {
-      assertEquals(oldVersion, entity.getVersion()); // Version did not change
-      assertEquals("description", entity.getDescription()); // Description did not change
-    }
+    assertNotEquals(oldVersion, entity.getVersion()); // Version did change
+    assertEquals("updatedDescription", entity.getDescription()); // Description changed
+    assertEquals("updatedDisplayName", entity.getDisplayName()); // DisplayName changed
+
+    // Updating non-empty description and non-empty displayName is ignored for bots
+    oldVersion = entity.getVersion();
+    request = createRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
+    entity = updateEntity(request, OK, authHeaders(BOT_USER.getName()));
+    assertEquals(oldVersion, entity.getVersion()); // Version did not change
+    assertEquals("updatedDescription", entity.getDescription()); // Description did not change
+    assertEquals("updatedDisplayName", entity.getDisplayName()); // DisplayName did not change
   }
 
   @Test
@@ -1322,10 +1309,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
 
-    // PUT and remove field intA from the the entity extension
-    // TODO to do change description for stored customProperties
+    // PUT and remove field intA from the entity extension - for BOT this should be ignored
+    JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
     create = createRequest(test).withExtension(jsonNode);
+    entity = updateEntity(create, Status.OK, authHeaders(BOT_USER.getName()));
+    assertNotEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
+
+    // PUT and remove field intA from the the entity extension
+    // TODO to do change description for stored customProperties
     entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 

@@ -49,7 +49,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-    this.allowEdits = true;
     this.secretsManager = secretsManager;
   }
 
