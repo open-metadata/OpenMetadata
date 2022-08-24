@@ -3,7 +3,9 @@ package org.openmetadata.catalog.security.policyevaluator;
 import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.Function;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.TagLabel;
 
 /**
@@ -12,18 +14,17 @@ import org.openmetadata.catalog.type.TagLabel;
  */
 @Slf4j
 public class RuleEvaluator {
-  private final OperationContext operationContext;
+  private final PolicyContext policyContext;
   private final SubjectContext subjectContext;
   private final ResourceContextInterface resourceContext;
 
   public RuleEvaluator(
-      OperationContext operationContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
-    this.operationContext = operationContext;
+      PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+    this.policyContext = policyContext;
     this.subjectContext = subjectContext;
     this.resourceContext = resourceContext;
   }
 
-  /** Returns true if the resource being accessed has no owner */
   @Function(
       name = "noOwner",
       input = "none",
@@ -33,7 +34,6 @@ public class RuleEvaluator {
     return resourceContext != null && resourceContext.getOwner() == null;
   }
 
-  /** Returns true if the resource is owned by the subject/user */
   @Function(
       name = "isOwner",
       input = "none",
@@ -43,7 +43,6 @@ public class RuleEvaluator {
     return subjectContext != null && subjectContext.isOwner(resourceContext.getOwner());
   }
 
-  /** Returns true if the tags of a resource being accessed matches all the tags provided as parameters */
   @Function(
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
@@ -63,11 +62,10 @@ public class RuleEvaluator {
     return true;
   }
 
-  /** Returns true if the tags of a resource being accessed matches at least one tag provided as parameters */
   @Function(
-      name = "matchAllTags",
+      name = "matchAnyTag",
       input = "List of comma separated tag or glossary fully qualified names",
-      description = "Returns true if the entity being accessed at least one of the tags given as input",
+      description = "Returns true if the entity being accessed has at least one of the tags given as input",
       examples = {"matchAnyTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
   public boolean matchAnyTag(List<String> tagFQNs) throws IOException {
     if (resourceContext == null) {
@@ -81,5 +79,24 @@ public class RuleEvaluator {
       }
     }
     return false;
+  }
+
+  @Function(
+      name = "matchTeam",
+      input = "None",
+      description =
+          "Returns true if the user and the resource belongs to the team hierarchy where this policy is"
+              + "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
+      examples = {"matchTeam()"},
+      resourceBased = true)
+  public boolean matchTeam() throws IOException {
+    if (resourceContext == null || resourceContext.getOwner() == null) {
+      return true; // No ownership information
+    }
+    if (policyContext == null || !policyContext.getEntityType().equals(Entity.TEAM)) {
+      return true; // Policy must be attached to a team for this function to work
+    }
+    return subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwner())
+        && subjectContext.isUserUnderTeam(policyContext.getEntityName());
   }
 }

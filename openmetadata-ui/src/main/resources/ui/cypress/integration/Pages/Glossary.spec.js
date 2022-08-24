@@ -357,7 +357,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
 
     cy.get(
-      ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"] > div'
+      ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"] > div > span.tw-text-primary > [data-testid="tags"]'
     )
       .scrollIntoView()
       .should('be.visible')
@@ -378,7 +378,7 @@ describe('Glossary page should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click({ force: true });
-      
+
     cy.wait(500);
     goToAssetsTab(term);
     cy.get('.tableBody-cell')

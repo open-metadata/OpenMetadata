@@ -183,6 +183,17 @@ const AddPolicyPage = withSuspenseFallback(
   React.lazy(() => import('../pages/PoliciesPage/AddPolicyPage/AddPolicyPage'))
 );
 
+const AddRulePage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
+  )
+);
+const EditRulePage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
@@ -216,6 +227,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       </Route>
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
+      <Route exact component={TagsPage} path={ROUTES.TAG_DETAILS} />
       <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route
         exact
@@ -367,6 +379,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={AddPolicyPage}
         path={ROUTES.ADD_POLICY}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddRulePage}
+        path={ROUTES.ADD_POLICY_RULE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditRulePage}
+        path={ROUTES.EDIT_POLICY_RULE}
       />
 
       <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />

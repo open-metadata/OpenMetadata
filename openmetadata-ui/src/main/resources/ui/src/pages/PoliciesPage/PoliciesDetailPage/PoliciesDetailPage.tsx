@@ -13,12 +13,10 @@
 
 import {
   Button,
-  Card,
-  Col,
+  Collapse,
   Empty,
-  Row,
+  Modal,
   Space,
-  Switch,
   Table,
   Tabs,
   Typography,
@@ -26,10 +24,15 @@ import {
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
+import {
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
+} from '../../../axiosAPIs/rolesAPIV1';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -39,18 +42,25 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Effect, Policy } from '../../../generated/entity/policies/policy';
+import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import {
+  getAddPolicyRulePath,
+  getEditPolicyRulePath,
   getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './PoliciesDetail.less';
 
+const { Panel } = Collapse;
+
 const { TabPane } = Tabs;
+
+type Attribute = 'roles' | 'teams';
 
 const List = ({
   list,
@@ -107,7 +117,7 @@ const List = ({
         render: (_, record) => {
           return (
             <Button type="text" onClick={() => onDelete(record)}>
-              Remove
+              <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
             </Button>
           );
         },
@@ -133,6 +143,8 @@ const PoliciesDetailPage = () => {
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
+  const [selectedEntity, setEntity] =
+    useState<{ attribute: Attribute; record: EntityReference }>();
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -177,25 +189,54 @@ const PoliciesDetailPage = () => {
     }
   };
 
-  const handleDelete = async (
-    data: EntityReference,
-    attribute: 'roles' | 'teams'
-  ) => {
-    const attributeData =
-      (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
-    const updatedAttributeData = attributeData.filter(
-      (attrData) => attrData.id !== data.id
-    );
-
-    const patch = compare(policy, {
-      ...policy,
-      [attribute as keyof Policy]: updatedAttributeData,
-    });
+  const handleRolesUpdate = async (data: EntityReference) => {
     try {
-      const data = await patchPolicy(patch, policy.id);
-      setPolicy(data);
+      const role = await getRoleByName(
+        data.fullyQualifiedName || '',
+        'policies'
+      );
+      const updatedAttributeData = (role.policies ?? []).filter(
+        (attrData) => attrData.id !== policy.id
+      );
+
+      const patch = compare(role, {
+        ...role,
+        policies: updatedAttributeData,
+      });
+
+      const response = await patchRole(patch, role.id);
+
+      if (response) {
+        const updatedRoles = (policy.roles ?? []).filter(
+          (role) => role.id !== data.id
+        );
+        setPolicy((prev) => ({ ...prev, roles: updatedRoles }));
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    if (attribute === 'roles') {
+      handleRolesUpdate(data);
+    } else {
+      const attributeData =
+        (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
+      const updatedAttributeData = attributeData.filter(
+        (attrData) => attrData.id !== data.id
+      );
+
+      const patch = compare(policy, {
+        ...policy,
+        [attribute as keyof Policy]: updatedAttributeData,
+      });
+      try {
+        const data = await patchPolicy(patch, policy.id);
+        setPolicy(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
 
@@ -238,75 +279,149 @@ const PoliciesDetailPage = () => {
               {isEmpty(policy.rules) ? (
                 <Empty description="No rules found" />
               ) : (
-                <Row gutter={[16, 16]}>
-                  {policy.rules.map((rule) => (
-                    <Col key={uniqueId()} span={24}>
-                      <Card>
-                        <Space
-                          align="baseline"
-                          className="tw-w-full tw-justify-between"
-                          size={4}>
-                          <Typography.Paragraph className="tw-font-medium tw-text-base">
-                            {rule.name}
-                          </Typography.Paragraph>
-                          <div>
-                            <Switch
-                              checked={rule.effect === Effect.Allow}
-                              size="small"
-                            />
-                            <span className="tw-ml-1">Active</span>
-                          </div>
-                        </Space>
+                <Space className="tw-w-full tabpane-space" direction="vertical">
+                  <Button
+                    type="primary"
+                    onClick={() => history.push(getAddPolicyRulePath(fqn))}>
+                    Add Rule
+                  </Button>
+                  <Space className="tw-w-full" direction="vertical">
+                    {policy.rules.map((rule) => (
+                      <Collapse key={uniqueId()}>
+                        <Panel
+                          header={
+                            <Space
+                              className="tw-w-full"
+                              direction="vertical"
+                              size={4}>
+                              <Space
+                                align="baseline"
+                                className="tw-w-full tw-justify-between"
+                                size={4}>
+                                <Typography.Text className="tw-font-medium tw-text-base">
+                                  {rule.name}
+                                </Typography.Text>
+                                <Button
+                                  data-testid="edit-rule"
+                                  type="text"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    history.push(
+                                      getEditPolicyRulePath(
+                                        fqn,
+                                        rule.name || ''
+                                      )
+                                    );
+                                  }}>
+                                  <SVGIcons alt="edit" icon={Icons.EDIT} />
+                                </Button>
+                              </Space>
+                              <div
+                                className="tw--ml-5"
+                                data-testid="description">
+                                <Typography.Text className="tw-text-grey-muted">
+                                  Description:
+                                </Typography.Text>
+                                <RichTextEditorPreviewer
+                                  markdown={rule.description || ''}
+                                />
+                              </div>
+                            </Space>
+                          }
+                          key={rule.name || 'rule'}>
+                          <Space direction="vertical">
+                            <Space
+                              data-testid="resources"
+                              direction="vertical"
+                              size={4}>
+                              <Typography.Text className="tw-text-grey-muted tw-mb-0">
+                                Resources:
+                              </Typography.Text>
+                              <Typography.Text>
+                                {rule.resources
+                                  ?.map((resource) => startCase(resource))
+                                  ?.join(', ')}
+                              </Typography.Text>
+                            </Space>
 
-                        <div className="tw-mb-3" data-testid="description">
-                          <Typography.Text className="tw-text-grey-muted">
-                            Description:
-                          </Typography.Text>
-                          <RichTextEditorPreviewer
-                            markdown={rule.description || ''}
-                          />
-                        </div>
-                        <Space direction="vertical">
-                          <Space data-testid="resources" direction="vertical">
-                            <Typography.Text className="tw-text-grey-muted tw-mb-0">
-                              Resources:
-                            </Typography.Text>
-                            <Typography.Text>
-                              {rule.resources?.join(', ')}
-                            </Typography.Text>
+                            <Space
+                              data-testid="operations"
+                              direction="vertical"
+                              size={4}>
+                              <Typography.Text className="tw-text-grey-muted">
+                                Operations:
+                              </Typography.Text>
+                              <Typography.Text>
+                                {rule.operations?.join(', ')}
+                              </Typography.Text>
+                            </Space>
+                            <Space
+                              data-testid="effect"
+                              direction="vertical"
+                              size={4}>
+                              <Typography.Text className="tw-text-grey-muted">
+                                Effect:
+                              </Typography.Text>
+                              <Typography.Text>
+                                {startCase(rule.effect)}
+                              </Typography.Text>
+                            </Space>
+                            {rule.condition && (
+                              <Space
+                                data-testid="condition"
+                                direction="vertical"
+                                size={4}>
+                                <Typography.Text className="tw-text-grey-muted">
+                                  Condition:
+                                </Typography.Text>
+                                <code>{rule.condition}</code>
+                              </Space>
+                            )}
                           </Space>
-
-                          <Space data-testid="operations" direction="vertical">
-                            <Typography.Text className="tw-text-grey-muted">
-                              Operations:
-                            </Typography.Text>
-                            <Typography.Text>
-                              {rule.operations?.join(', ')}
-                            </Typography.Text>
-                          </Space>
-                        </Space>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
+                        </Panel>
+                      </Collapse>
+                    ))}
+                  </Space>
+                </Space>
               )}
             </TabPane>
             <TabPane key="roles" tab="Roles">
               <List
                 list={policy.roles ?? []}
                 type="role"
-                onDelete={(record) => handleDelete(record, 'roles')}
+                onDelete={(record) => setEntity({ record, attribute: 'roles' })}
               />
             </TabPane>
             <TabPane key="teams" tab="Teams">
               <List
                 list={policy.teams ?? []}
                 type="team"
-                onDelete={(record) => handleDelete(record, 'teams')}
+                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
               />
             </TabPane>
           </Tabs>
         </div>
+      )}
+      {selectedEntity && (
+        <Modal
+          centered
+          okText="Confirm"
+          title={`Remove ${getEntityName(
+            selectedEntity.record
+          )} from ${getEntityName(policy)}`}
+          visible={!isUndefined(selectedEntity.record)}
+          onCancel={() => setEntity(undefined)}
+          onOk={() => {
+            handleDelete(selectedEntity.record, selectedEntity.attribute);
+            setEntity(undefined);
+          }}>
+          <Typography.Text>
+            Are you sure you want to remove the{' '}
+            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
+              policy
+            )}?`}
+          </Typography.Text>
+        </Modal>
       )}
     </div>
   );

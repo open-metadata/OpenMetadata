@@ -27,6 +27,7 @@ import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Permission.Access;
 import org.openmetadata.catalog.type.ResourcePermission;
@@ -37,6 +38,7 @@ import org.openmetadata.catalog.util.RestUtil;
 public class NoopAuthorizer implements Authorizer {
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
+    SubjectCache.initialize();
     addAnonymousUser();
   }
 

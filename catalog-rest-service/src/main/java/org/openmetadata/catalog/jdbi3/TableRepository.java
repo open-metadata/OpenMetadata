@@ -1250,11 +1250,12 @@ public class TableRepository extends EntityRepository<Table> {
       recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
     }
 
-    private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
+    protected void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
       String columnField = getColumnField(original, origColumn, "dataLength");
       boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
-      if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
-        // The data length of a column was reduced. Treat it as backward-incompatible change
+      if (updated
+          && (origColumn.getDataLength() == null || updatedColumn.getDataLength() < origColumn.getDataLength())) {
+        // The data length of a column was reduced or added. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
     }

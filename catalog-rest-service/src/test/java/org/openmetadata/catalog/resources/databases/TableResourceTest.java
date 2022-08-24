@@ -530,9 +530,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void put_tableTableConstraintUpdate_200(TestInfo test) throws IOException {
     // Create table without table constraints
     CreateTable request =
-        createRequest(test).withOwner(USER_OWNER1).withDescription("description").withTableConstraints(null);
+        createRequest(test).withOwner(USER1_REF).withDescription("description").withTableConstraints(null);
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    checkOwnerOwns(USER_OWNER1, table.getId(), true);
+    checkOwnerOwns(USER1_REF, table.getId(), true);
 
     // Update the table with constraints and ensure minor version change
     ChangeDescription change = getChangeDescription(table.getVersion());
@@ -1560,7 +1560,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
-    CreateTable create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    CreateTable create = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
     // Create first time using POST
     Table table = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
     Table tableBeforeDeletion = getEntity(table.getId(), TableResource.FIELDS, ADMIN_AUTH_HEADERS);
@@ -1579,7 +1579,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create a table test1 with 1 table tag and 3 column tags
     CreateTable create =
         createRequest(test, 1)
-            .withOwner(USER_OWNER1)
+            .withOwner(USER1_REF)
             .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)) // 2 table tags - USER_ADDRESS, g2t1
             .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 g1t1
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -1604,7 +1604,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable create1 =
         createRequest(test, 2)
             .withDescription("description")
-            .withOwner(USER_OWNER1)
+            .withOwner(USER1_REF)
             .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 USER_BANK_ACCOUNT
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
@@ -1650,7 +1650,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(4, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertEquals(USER_OWNER1, table.getOwner());
+      assertEquals(USER1_REF, table.getOwner());
       assertReference(DATABASE_REFERENCE, table.getDatabase());
     }
 
