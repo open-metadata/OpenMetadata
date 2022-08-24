@@ -329,7 +329,7 @@ def parse_workflow_config_gracefully(
         workflow_config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
         return workflow_config
 
-    except ValidationError:
+    except ValidationError as err:
         parse_workflow_source(config_dict)
         parse_server_config(config_dict)
 
