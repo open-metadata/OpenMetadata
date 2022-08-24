@@ -520,6 +520,24 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return pipelineServiceClient.getServiceStatus();
   }
 
+  @GET
+  @Path("/ip")
+  @Operation(
+      operationId = "checkAirflowHostIp",
+      summary = "Check the Airflow REST host IP",
+      tags = "IngestionPipelines",
+      description = "Check the Airflow REST host IP",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Status message",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    HttpResponse<String> response = pipelineServiceClient.getHostIp();
+    return Response.status(200, response.body()).build();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
