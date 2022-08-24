@@ -399,3 +399,9 @@ class TestSuiteWorkflow:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()
                 )
+
+    def stop(self):
+        """
+        Close all connections
+        """
+        self.metadata.close()

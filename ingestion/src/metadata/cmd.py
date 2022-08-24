@@ -93,6 +93,7 @@ def test(config: str) -> None:
         sys.exit(1)
 
     workflow.execute()
+    workflow.stop()
     ret = workflow.print_status()
     sys.exit(ret)
 
