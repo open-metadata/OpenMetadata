@@ -1,5 +1,5 @@
-import { Col, Dropdown, Popover, Row, Space } from 'antd';
-import { RenderFunction } from 'antd/lib/tooltip';
+import { Dropdown, Space } from 'antd';
+import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -24,7 +24,7 @@ export interface GetInfoElementsProps {
 const EditIcon = (): JSX.Element => (
   <SVGIcons
     alt="edit"
-    className="tw-ml-2"
+    className="tw-cursor-pointer tw-align-text-top"
     icon={Icons.EDIT}
     title="Edit"
     width="15px"
@@ -36,14 +36,9 @@ const InfoIcon = ({
 }: {
   content: React.ReactNode | RenderFunction;
 }): JSX.Element => (
-  <Popover
-    destroyTooltipOnHide
-    content={content}
-    overlayClassName="ant-popover-request-description"
-    trigger="hover"
-    zIndex={999}>
+  <Tooltip className="tw-ml-2" title={content}>
     <SVGIcons alt="info-secondary" icon="info-secondary" width="12px" />
-  </Popover>
+  </Tooltip>
 );
 
 const EntitySummaryDetails = ({
@@ -56,18 +51,17 @@ const EntitySummaryDetails = ({
   const displayVal = data.placeholderText || data.value;
   const [show, setshow] = useState(false);
 
-  const { isEntityCard, isEntityDetails, userDetails, isTier, isOwner } =
-    useMemo(() => {
-      const userDetails = getTeamsUser(data);
+  const { isEntityDetails, userDetails, isTier, isOwner } = useMemo(() => {
+    const userDetails = getTeamsUser(data);
 
-      return {
-        isEntityCard: data?.isEntityCard,
-        isEntityDetails: data?.isEntityDetails,
-        userDetails,
-        isTier: data.key === 'Tier',
-        isOwner: data.key === 'Owner',
-      };
-    }, [data]);
+    return {
+      isEntityCard: data?.isEntityCard,
+      isEntityDetails: data?.isEntityDetails,
+      userDetails,
+      isTier: data.key === 'Tier',
+      isOwner: data.key === 'Owner',
+    };
+  }, [data]);
 
   switch (data.key) {
     case 'Owner':
@@ -75,31 +69,28 @@ const EntitySummaryDetails = ({
         retVal =
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
-              <Row gutter={6}>
-                {!isUndefined(userDetails) && (
-                  <Col>
-                    <Space>
-                      <ProfilePicture
-                        displayName={userDetails.ownerName}
-                        id={userDetails.id as string}
-                        name={userDetails.ownerName || ''}
-                        width="20"
-                      />
-                      <span>{userDetails.ownerName} |</span>
-                    </Space>
-                  </Col>
-                )}
-                <Col>
-                  <Space>
+              <>
+                {!isUndefined(userDetails) && isEntityDetails && (
+                  <>
                     <ProfilePicture
-                      displayName={displayVal}
-                      id=""
-                      name={data.profileName || ''}
-                      width={data.avatarWidth || '20'}
+                      displayName={userDetails.ownerName}
+                      id={userDetails.id as string}
+                      name={userDetails.ownerName || ''}
+                      width="20"
                     />
-                  </Space>
-                </Col>
-              </Row>
+                    <span>{userDetails.ownerName}</span>
+                    <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
+                      |
+                    </span>
+                  </>
+                )}
+                <ProfilePicture
+                  displayName={displayVal}
+                  id=""
+                  name={data.profileName || ''}
+                  width={data.avatarWidth || '20'}
+                />
+              </>
             ) : (
               <></>
             )
@@ -160,151 +151,135 @@ const EntitySummaryDetails = ({
   }
 
   return (
-    <Row data-testid="entity-summary-details" gutter={7}>
-      <Col>
-        <Space className="tw-text-grey-muted">{retVal}</Space>
-      </Col>
-      <Col>
-        {displayVal ? (
-          <span>
-            {data.isLink ? (
-              <>
-                <a
-                  data-testid="owner-link"
-                  href={data.value as string}
-                  rel="noopener noreferrer"
-                  target={data.openInNewTab ? '_blank' : '_self'}>
-                  <>
-                    <span
-                      className={classNames(
-                        'tw-mr-1 tw-inline-block tw-truncate link-text tw-align-middle',
-                        {
-                          'tw-w-52': (displayVal as string).length > 32,
-                        }
-                      )}>
-                      {displayVal}
-                    </span>
-
-                    {!isEntityCard && isEntityDetails ? (
-                      <InfoIcon
-                        content={
-                          displayVal
-                            ? `This Entity is Owned by ${displayVal} ${
-                                !isUndefined('Bharat')
-                                  ? `and followed team owned by ${'Bharat'}`
-                                  : ''
-                              }`
-                            : ''
-                        }
-                      />
-                    ) : null}
-
-                    {data.openInNewTab && (
-                      <SVGIcons
-                        alt="external-link"
-                        className="tw-align-middle"
-                        icon="external-link"
-                        width="16px"
-                      />
-                    )}
-                  </>
-                </a>
-                <span
-                  data-testid={`edit-${data.key}-icon`}
-                  onClick={() => setshow(true)}>
-                  <EditIcon />
-                </span>
-              </>
-            ) : (
-              <>
-                {isOwner ? (
-                  <>
-                    <span
-                      className={classNames(
-                        'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
-                        { 'tw-w-52': (displayVal as string).length > 32 }
-                      )}
-                      data-testid="owner-name"
-                      title={displayVal as string}>
-                      <Button
-                        data-testid="owner-dropdown"
-                        size="custom"
-                        theme="primary"
-                        variant="text">
-                        {displayVal}
-                      </Button>
-
-                      {!isEntityCard && isEntityDetails ? (
-                        <Space>
-                          <InfoIcon
-                            content={
-                              displayVal
-                                ? `This Entity is Owned by ${displayVal}`
-                                : ''
-                            }
-                          />
-                        </Space>
-                      ) : null}
-                      <span
-                        data-testid={`edit-${data.key}-icon`}
-                        onClick={() => setshow(true)}>
-                        {updateOwner ? <EditIcon /> : null}
-                      </span>
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    {isTier ? (
-                      <>
-                        <Space
-                          className={classNames(
-                            'tw-mr-1  tw-truncate tw-align-middle',
-                            { 'tw-w-52': (displayVal as string).length > 32 }
-                          )}
-                          data-testid="tier-name"
-                          direction="horizontal"
-                          title={displayVal as string}>
-                          <Button
-                            data-testid="tier-dropdown"
-                            size="custom"
-                            theme="primary"
-                            variant="text">
-                            {displayVal}
-                          </Button>
-                          <span>
-                            <Dropdown
-                              overlay={
-                                <TierCard
-                                  currentTier={tier?.tagFQN}
-                                  updateTier={updateTier}
-                                />
-                              }
-                              trigger={['click']}>
-                              <span
-                                className="tw-flex"
-                                data-testid={`edit-${data.key}-icon`}>
-                                {updateTier ? <EditIcon /> : null}
-                              </span>
-                            </Dropdown>
-                          </span>
-                        </Space>
-                      </>
-                    ) : (
-                      <span>{displayVal}</span>
-                    )}
-                  </>
+    <Space data-testid="entity-summary-details" direction="horizontal">
+      {retVal}
+      {displayVal && (
+        <>
+          {data.isLink ? (
+            <>
+              <a
+                className={classNames(
+                  'tw-inline-block tw-truncate link-text tw-align-middle',
+                  {
+                    'tw-w-52': (displayVal as string).length > 32,
+                  }
                 )}
-              </>
-            )}
-          </span>
-        ) : null}
-      </Col>
+                data-testid="owner-link"
+                href={data.value as string}
+                rel="noopener noreferrer"
+                target={data.openInNewTab ? '_blank' : '_self'}>
+                {displayVal}
+                {isEntityDetails && (
+                  <InfoIcon
+                    content={
+                      displayVal
+                        ? `This Entity is Owned by ${displayVal} ${
+                            !isUndefined(userDetails)
+                              ? `and followed team owned by ${userDetails.ownerName}`
+                              : ''
+                          }`
+                        : ''
+                    }
+                  />
+                )}
+                {data.openInNewTab && (
+                  <SVGIcons
+                    alt="external-link"
+                    className="tw-align-middle"
+                    icon="external-link"
+                    width="16px"
+                  />
+                )}
+              </a>
+
+              <span
+                data-testid={`edit-${data.key}-icon`}
+                onClick={() => setshow(true)}>
+                <EditIcon />
+              </span>
+            </>
+          ) : (
+            <>
+              {isOwner ? (
+                <>
+                  <span
+                    className={classNames(
+                      'tw-inline-block tw-truncate tw-align-middle',
+                      {
+                        'tw-w-52': (displayVal as string).length > 32,
+                      }
+                    )}
+                    data-testid="owner-name"
+                    title={displayVal as string}>
+                    <Button
+                      data-testid="owner-dropdown"
+                      size="custom"
+                      theme="primary"
+                      variant="text">
+                      {displayVal}
+                    </Button>
+
+                    <span
+                      className="tw-ml-2"
+                      data-testid={`edit-${data.key}-icon`}
+                      onClick={() => setshow(true)}>
+                      {updateOwner ? <EditIcon /> : null}
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  {isTier ? (
+                    <>
+                      <Space
+                        className={classNames(
+                          'tw-mr-1  tw-truncate tw-align-middle',
+                          { 'tw-w-52': (displayVal as string).length > 32 }
+                        )}
+                        data-testid="tier-name"
+                        direction="horizontal"
+                        size={0.1}
+                        title={displayVal as string}>
+                        <Button
+                          data-testid="tier-dropdown"
+                          size="custom"
+                          theme="primary"
+                          variant="text">
+                          {displayVal}
+                        </Button>
+                        <span>
+                          <Dropdown
+                            overlay={
+                              <TierCard
+                                currentTier={tier?.tagFQN}
+                                updateTier={updateTier}
+                              />
+                            }
+                            trigger={['click']}>
+                            <span
+                              className="tw-flex"
+                              data-testid={`edit-${data.key}-icon`}>
+                              {updateTier ? <EditIcon /> : null}
+                            </span>
+                          </Dropdown>
+                        </span>
+                      </Space>
+                    </>
+                  ) : (
+                    <span>{displayVal}</span>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
       <OwnerWidgetWrapper
         hideWidget={() => setshow(false)}
         updateUser={updateOwner}
         visible={show}
       />
-    </Row>
+    </Space>
   );
 };
 
