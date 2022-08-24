@@ -20,7 +20,6 @@ import { cloneDeep, isEqual, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
 import { TERM_ALL } from '../../constants/constants';
-import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   CONFIGURE_SLACK_TEXT,
   CONFIGURE_WEBHOOK_TEXT,
