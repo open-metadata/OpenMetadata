@@ -1,12 +1,47 @@
 grammar EntityLink;
 
-entitylink: startpoint (RESERVED link)+ endpoint EOF;
-link:  (entity_type|ENTITY_FQN|entity_field|ENTITY_ATTRIBUTE)*;
+entitylink
+    : '<#E' ('::' entity)+ '>' EOF
+    ;
 
-RESERVED: '::';
-ENTITY_ATTRIBUTE: [a-z]+;
-ENTITY_FQN: [a-zA-Z0-9,._"']+ ;
-startpoint: '<#E';
-endpoint: '>';
-entity_type: ('table'|'database'|'databaseSchema'|'metrics'|'dashboard'|'pipeline'|'chart'|'report'|'topic'|'mlmodel'|'bot'|'THREAD'|'location'|'glossary'|'glossaryTerm'|'tag'|'tagCategory'|'type'|'testDefinition'|'testSuite'|'testCase');
-entity_field: ('columns'| 'description' | 'tags' | 'tasks' );
+entity
+    : ENTITY_TYPE # entityType
+    | ENTITY_FQN # entityFqn
+    | ENTITY_FIELD # entityField
+    ;
+
+ENTITY_TYPE
+    : 'table'
+    | 'database'
+    | 'databaseSchema'
+    | 'metrics'
+    | 'dashboard'
+    | 'pipeline'
+    | 'chart'
+    | 'report'
+    | 'topic'
+    | 'mlmodel'
+    | 'bot'
+    | 'THREAD'
+    | 'location'
+    | 'glossary'
+    | 'glossaryTerm'
+    | 'tag'
+    | 'tagCategory'
+    | 'type'
+    | 'testDefinition'
+    | 'testSuite'
+    | 'testCase'
+    ;
+ENTITY_FIELD
+    : 'columns'
+    | 'description' 
+    | 'tags' 
+    | 'tasks'
+    ;
+RESERVED
+    : '::'
+    ;
+ENTITY_FQN
+    : [a-zA-Z0-9,._"']+
+    ;
