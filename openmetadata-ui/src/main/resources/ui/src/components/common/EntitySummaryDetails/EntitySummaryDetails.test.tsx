@@ -14,7 +14,7 @@ const mockData = {
 };
 
 jest.mock('antd', () => ({
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  ...jest.requireActual('antd'),
   Row: jest
     .fn()
     .mockImplementation(({ children }) => (
