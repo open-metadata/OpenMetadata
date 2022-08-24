@@ -12,7 +12,6 @@ import { Button } from '../../buttons/Button/Button';
 import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
-import './EntitySummaryDetails.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
