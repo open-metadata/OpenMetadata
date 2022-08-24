@@ -349,6 +349,7 @@ class TestSuiteWorkflow:
                     test_result = data_test_runner.run_and_handle(test_case)
                     if hasattr(self, "sink"):
                         self.sink.write_record(test_result)
+                    logger.info(f"Successfuly ran test case {test_case.name.__root__}")
                     self.status.processed(test_case.fullyQualifiedName.__root__)
                 except Exception as err:
                     logger.error(traceback.format_exc(err))

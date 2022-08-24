@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig
-from metadata.utils.processor_config_helper import get_record_test_def
 
 
 class InterfaceProtocol(ABC):
@@ -55,31 +54,3 @@ class InterfaceProtocol(ABC):
     def run_test_case(*args, **kwargs) -> Optional[TestCaseResult]:
         """run column data quality tests"""
         raise NotImplementedError
-
-    def get_table_profile_sample(self) -> Optional[float]:
-        """
-        Pick the Table profileSample value, either from the test
-        definition or the value from the instance.
-
-        :param table: Table instance
-        :return: profileSample value to use
-        """
-        if self.profiler_config.testSuites:
-            # If the processed table has information about the profile_sample,
-            # use that instead of the Entity stored profileSample
-            my_record_tests = get_record_test_def(self.table)
-            if my_record_tests and my_record_tests.profile_sample:
-                return my_record_tests.profile_sample
-
-        if self.workflow_profile_sample:
-            if (
-                self.table.tableProfilerConfig.profileSample is not None
-                and self.workflow_profile_sample != self.table.profileSample
-            ):
-                return self.table.tableProfilerConfig.profileSample
-            return self.workflow_profile_sample
-
-        if not self.table.tableProfilerConfig:
-            return None
-
-        return self.table.tableProfilerConfig.profileSample

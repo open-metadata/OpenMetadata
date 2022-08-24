@@ -48,11 +48,14 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.interfaces.sqa_interface import SQAInterface
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig
+from metadata.orm_profiler.api.models import (
+    ProfilerProcessorConfig,
+    TableConfig,
+    TablePartitionConfig,
+)
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
-from metadata.orm_profiler.validations.models import TableConfig, TablePartitionConfig
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,

@@ -24,7 +24,7 @@ from sqlalchemy import Column, inspect
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta, Session
 
-from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -33,9 +33,9 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.interface_protocol import InterfaceProtocol
+from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.handle_partition import (
@@ -44,8 +44,7 @@ from metadata.orm_profiler.profiler.handle_partition import (
 )
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.validations.core import validation_enum_registry
-from metadata.orm_profiler.validations.models import TablePartitionConfig
+from metadata.test_suite.validations.core import validation_enum_registry
 from metadata.utils.connections import (
     create_and_bind_thread_safe_session,
     get_connection,

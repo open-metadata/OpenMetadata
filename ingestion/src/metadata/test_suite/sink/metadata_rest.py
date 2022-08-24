@@ -73,7 +73,7 @@ class MetadataRestSink(Sink[Entity]):
                 test_case_name=record.testCase.fullyQualifiedName.__root__,
             )
             logger.info(
-                f"Successfully ingested profile metrics for {record.testCase.fullyQualifiedName.__root__}"
+                f"Successfully ingested test case results for test case {record.testCase.name.__root__}"
             )
 
             self.status.records_written(
@@ -82,7 +82,7 @@ class MetadataRestSink(Sink[Entity]):
 
         except APIError as err:
             logger.error(
-                f"Failed to sink profiler & test data for {record.testCase.fullyQualifiedName.__root__} - {err}"
+                f"Failed to sink test case results for {record.testCase.fullyQualifiedName.__root__} - {err}"
             )
             logger.debug(traceback.format_exc())
             self.status.failure(

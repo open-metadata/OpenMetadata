@@ -76,3 +76,4 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
     ingestion_logger().setLevel(level)
     utils_logger().setLevel(level)
     great_expectations_logger().setLevel(level)
+    test_suite_logger().setLevel(level)
