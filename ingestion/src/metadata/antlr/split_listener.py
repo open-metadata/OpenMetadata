@@ -11,11 +11,12 @@
 """
 Helper class to handle FQN splitting logic
 """
+from metadata.generated.antlr.EntityLinkListener import EntityLinkListener
 from metadata.generated.antlr.FqnListener import FqnListener
 from metadata.generated.antlr.FqnParser import FqnParser
 
 
-class SplitListener(FqnListener):
+class FqnSplitListener(FqnListener):
     def __init__(self):
         self.xs = []
 
@@ -24,6 +25,14 @@ class SplitListener(FqnListener):
 
     def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):
         self.xs.append(ctx.getText())
+
+    def split(self):
+        return self.xs
+
+
+class EntityLinkSplitListener(EntityLinkListener):
+    def __init__(self):
+        self.xs = []
 
     def split(self):
         return self.xs
