@@ -95,6 +95,8 @@ site_menu:
     url: /deployment/security/okta/bare-metal
   - category: Deployment / Enable Security / Okta SSO / Kubernetes
     url: /deployment/security/okta/kubernetes
+  - category: Deployment / Enable Security / Okta SSO / Troubleshoot
+    url: /deployment/security/okta/troubleshoot
   - category: Deployment / Enable Security / Amazon Cognito SSO
     url: /deployment/security/amazon-cognito
   - category: Deployment / Enable Security / Amazon Cognito SSO / Docker

@@ -246,7 +246,13 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             )
             if err:
                 raise APIError(f"{err}")
-            response_dict = json.loads(res_json)
+
+            try:
+                response_dict = json.loads(res_json)
+            except ValueError:
+                raise AuthenticationException(
+                    "Could not fetch the access token please validate the orgURL & clientId in configuration"
+                )
 
             token = response_dict.get(ACCESS_TOKEN)
             if not token:
