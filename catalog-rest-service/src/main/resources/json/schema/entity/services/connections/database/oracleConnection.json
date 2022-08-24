@@ -72,6 +72,7 @@
     },
     "oracleConnectionType": {
       "title": "Oracle Connection Type",
+      "type": "object",
       "description": "Connect with oracle by either passing service name or database schema name.",
       "oneOf": [
         {

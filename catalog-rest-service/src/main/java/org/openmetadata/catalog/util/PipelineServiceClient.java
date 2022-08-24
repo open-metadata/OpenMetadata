@@ -141,4 +141,7 @@ public abstract class PipelineServiceClient {
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
+
+  /* Get the Pipeline Service host IP to whitelist in source systems */
+  public abstract Map<String, String> getHostIp();
 }
