@@ -78,6 +78,7 @@ const Tags: FunctionComponent<TagProps> = ({
             textEditStyles,
             'tw-flex tw-items-center'
           )}
+          data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}
           title={tag}>
           {startIcon}
           <span>{tagName}</span>
