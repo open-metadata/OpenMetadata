@@ -15,8 +15,13 @@ import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getBots } from '../../axiosAPIs/botsAPI';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../constants/constants';
+import {
+  getBotsPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
@@ -65,6 +70,13 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
         title: 'Name',
         dataIndex: 'displayName',
         key: 'displayName',
+        render: (name, record) => (
+          <Link
+            className="hover:tw-underline tw-cursor-pointer"
+            to={getBotsPath(record.fullyQualifiedName || record.name)}>
+            {name}
+          </Link>
+        ),
       },
       {
         title: 'Description',

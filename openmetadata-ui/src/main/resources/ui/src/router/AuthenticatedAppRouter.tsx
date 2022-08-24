@@ -15,7 +15,6 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
-import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -29,6 +28,15 @@ const ProfilerDashboardPage = withSuspenseFallback(
   )
 );
 
+const AddCustomProperty = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty'
+      )
+  )
+);
+
 const MyDataPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MyDataPage/MyDataPage.component'))
 );
@@ -38,7 +46,9 @@ const PipelineDetailsPage = withSuspenseFallback(
     () => import('../pages/PipelineDetails/PipelineDetailsPage.component')
   )
 );
-
+const BotDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/BotDetailsPage/BotDetailsPage'))
+);
 const ServicePage = withSuspenseFallback(
   React.lazy(() => import('../pages/service'))
 );
@@ -311,6 +321,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={CreateUserPage}
         path={ROUTES.CREATE_USER_WITH_BOT}
+      />
+      <AdminProtectedRoute
+        exact
+        component={BotDetailsPage}
+        path={ROUTES.BOTS_PROFILE}
       />
       <AdminProtectedRoute
         exact
