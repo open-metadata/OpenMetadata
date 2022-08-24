@@ -463,6 +463,17 @@ const EntityTable = ({
     );
   };
 
+  /* eslint-disable-next-line */
+  const handleTagContainerClick = (row: any) => {
+    if (!editColumnTag) {
+      handleEditColumnTag(row.original, row.id);
+      // Fetch tags and terms only once
+      if (allTags.length === 0 || tagFetchFailed) {
+        fetchTagsAndGlossaryTerms();
+      }
+    }
+  };
+
   useEffect(() => {
     if (!searchText) {
       setSearchedColumns(tableColumns);
@@ -653,15 +664,7 @@ const EntityTable = ({
                           ) : (
                             <div
                               data-testid="tags-wrapper"
-                              onClick={() => {
-                                if (!editColumnTag) {
-                                  handleEditColumnTag(row.original, row.id);
-                                  // Fetch tags and terms only once
-                                  if (allTags.length === 0 || tagFetchFailed) {
-                                    fetchTagsAndGlossaryTerms();
-                                  }
-                                }
-                              }}>
+                              onClick={() => handleTagContainerClick(row)}>
                               <NonAdminAction
                                 html={getHtmlForNonAdminAction(Boolean(owner))}
                                 isOwner={hasEditAccess}

@@ -13,12 +13,21 @@
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
 import React from 'react';
+import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import Tags from './tags';
 
 const mockCallback = jest.fn();
+const mockPush = jest.fn();
+
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
+  })),
+}));
 
 describe('Test tags Component', () => {
   it('Component should render', () => {
@@ -32,9 +41,26 @@ describe('Test tags Component', () => {
     expect(remove).toBeInTheDocument();
   });
 
+  it('Component should render properly for add tag button', () => {
+    const { container } = render(
+      <Tags editable removeTag={mockCallback} startWith="+ " tag="add tag" />
+    );
+    const tags = getByTestId(container, 'tags');
+    const remove = getByTestId(container, 'remove');
+
+    expect(tags).toBeInTheDocument();
+    expect(remove).toBeInTheDocument();
+  });
+
   it('onClick of X callback function should call', () => {
     const { container } = render(
-      <Tags editable removeTag={mockCallback} startWith="#" tag="test" />
+      <Tags
+        editable
+        isRemovable
+        removeTag={mockCallback}
+        startWith="#"
+        tag="test"
+      />
     );
     const remove = getByTestId(container, 'remove');
     fireEvent.click(
@@ -46,5 +72,50 @@ describe('Test tags Component', () => {
     );
 
     expect(mockCallback).toBeCalledTimes(1);
+  });
+
+  it('Clicking on tag with source Tag should redirect to the proper tag category page', () => {
+    const { container } = render(
+      <Tags
+        editable
+        removeTag={mockCallback}
+        startWith="#"
+        tag={{
+          labelType: LabelType.Manual,
+          source: TagSource.Tag,
+          state: State.Confirmed,
+          tagFQN: 'testTag.Test1',
+        }}
+      />
+    );
+    const tag = getByTestId(container, 'tags');
+
+    fireEvent.click(tag);
+
+    expect(mockPush).toBeCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith('/tags/testTag');
+  });
+
+  it('Clicking on tag with source Glossary should redirect to the proper glossary term page', () => {
+    const { container } = render(
+      <Tags
+        editable
+        removeTag={mockCallback}
+        startWith="#"
+        tag={{
+          description: 'TestDescription',
+          labelType: LabelType.Manual,
+          source: TagSource.Glossary,
+          state: State.Confirmed,
+          tagFQN: 'glossaryTag.Test1',
+        }}
+      />
+    );
+    const tag = getByTestId(container, 'tags');
+
+    fireEvent.click(tag);
+
+    expect(mockPush).toBeCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith('/glossary/glossaryTag.Test1');
   });
 });

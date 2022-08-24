@@ -26,6 +26,7 @@ import {
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
+  PLACEHOLDER_TAG_NAME,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
@@ -317,6 +318,16 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, fqn)
     .replace(PLACEHOLDER_RULE_NAME, ruleName);
+
+  return path;
+};
+
+export const getTagPath = (fqn?: string) => {
+  let path = ROUTES.TAGS;
+  if (fqn) {
+    path = ROUTES.TAG_DETAILS;
+    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+  }
 
   return path;
 };

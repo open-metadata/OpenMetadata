@@ -82,6 +82,7 @@ export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
+export const PLACEHOLDER_TAG_NAME = ':tagCategoryName';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
@@ -180,6 +181,7 @@ export const ROUTES = {
   SCORECARD: '/scorecard',
   SWAGGER: '/docs',
   TAGS: '/tags',
+  TAG_DETAILS: `/tags/${PLACEHOLDER_TAG_NAME}`,
   SIGNUP: '/signup',
   SIGNIN: '/signin',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,

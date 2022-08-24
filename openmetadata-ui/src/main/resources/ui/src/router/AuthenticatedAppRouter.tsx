@@ -227,6 +227,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       </Route>
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
+      <Route exact component={TagsPage} path={ROUTES.TAG_DETAILS} />
       <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route
         exact
