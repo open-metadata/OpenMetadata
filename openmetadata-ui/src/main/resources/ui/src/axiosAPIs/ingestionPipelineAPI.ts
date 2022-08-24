@@ -101,9 +101,11 @@ export const checkAirflowStatus = (): Promise<AxiosResponse> => {
 };
 
 export const getPipelineServiceHostIp = async () => {
-  const response = await APIClient.get<{ ip?: string }>('/services/ingestionPipelines/ip')
-  
-  return response.data
+  const response = await APIClient.get<{ ip?: string }>(
+    '/services/ingestionPipelines/ip'
+  );
+
+  return response.data;
 };
 
 export const getIngestionPipelineLogById = (

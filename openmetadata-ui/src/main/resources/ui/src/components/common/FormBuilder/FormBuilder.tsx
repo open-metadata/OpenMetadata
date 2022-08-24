@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Form, { FormProps } from '@rjsf/core';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
@@ -61,9 +61,9 @@ const FormBuilder: FunctionComponent<Props> = ({
   const [hostIp, setHostIp] = useState<string>('[fetching]');
 
   const fetchHostIp = async () => {
-  try {
+    try {
       const data = await getPipelineServiceHostIp();
-      setHostIp(data?.ip || '[unknown]')
+      setHostIp(data?.ip || '[unknown]');
     } catch (error) {
       setHostIp('[error - unknown]');
       showErrorToast(error as AxiosError);
