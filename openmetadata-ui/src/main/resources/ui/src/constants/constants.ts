@@ -13,7 +13,12 @@
 
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { WebhookType } from '../generated/api/events/createWebhook';
+import { getSettingPath } from '../utils/RouterUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from './globalSettings.constants';
 
 export const PRIMERY_COLOR = '#7147E8';
 export const SECONDARY_COLOR = '#B02AAC';
@@ -161,8 +166,6 @@ export const ROUTES = {
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
-  TEAMS_AND_USERS: '/teams-and-users',
-  TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
   SETTINGS: `/settings`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
@@ -173,7 +176,6 @@ export const ROUTES = {
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   EDIT_SERVICE_CONNECTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}/edit-connection`,
-  SERVICES: '/services',
   SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
   ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   EDIT_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
@@ -203,7 +205,6 @@ export const ROUTES = {
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
   USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   ROLES: '/roles',
-  WEBHOOKS: '/webhooks',
   ADD_WEBHOOK: '/add-webhook/',
   ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
@@ -213,11 +214,9 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
-  BOTS: `/bots`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
   MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
   MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
   PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
@@ -370,10 +369,17 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
 };
 
 export const getTeamAndUserDetailsPath = (name?: string) => {
-  let path = ROUTES.TEAMS_AND_USERS;
+  let path = getSettingPath(
+    GlobalSettingsMenuCategory.MEMBERS,
+    GlobalSettingOptions.TEAMS
+  );
   if (name) {
-    path = ROUTES.TEAMS_AND_USERS_DETAILS;
-    path = path.replace(PLACEHOLDER_ROUTE_TEAM_AND_USER, name);
+    path = getSettingPath(
+      GlobalSettingsMenuCategory.MEMBERS,
+      GlobalSettingOptions.TEAMS,
+      true
+    );
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, name);
   }
 
   return path;
@@ -445,26 +451,6 @@ export const navLinkDevelop = [
   { name: 'Reports', to: '/reports', disabled: false },
   { name: 'SQL Builder', to: '/sql-builder', disabled: false },
   { name: 'Workflows', to: '/workflows', disabled: false },
-];
-
-export const navLinkSettings = [
-  { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
-  {
-    name: 'Custom Properties',
-    to: '/custom-properties',
-    disabled: false,
-    isAdminOnly: true,
-  },
-  { name: 'Glossaries', to: '/glossary', disabled: false },
-  { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
-  { name: 'Services', to: '/services', disabled: false },
-  { name: 'Tags', to: '/tags', disabled: false },
-  {
-    name: 'Teams & Users',
-    to: ROUTES.TEAMS_AND_USERS,
-    disabled: false,
-  },
-  { name: 'Webhooks', to: '/webhooks', disabled: false, isAdminOnly: true },
 ];
 
 export const TITLE_FOR_NON_OWNER_ACTION =

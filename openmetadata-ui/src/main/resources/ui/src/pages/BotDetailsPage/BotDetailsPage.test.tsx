@@ -15,7 +15,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getUserByName } from '../../axiosAPIs/userAPI';
-import BotsPage from './BotsPage.component';
+import BotDetailsPage from './BotDetailsPage';
 
 const mockUserDetail = {
   id: 'cb3db26a-5e01-4d14-8f06-bb1040c28ad0',
@@ -31,7 +31,7 @@ const mockUserDetail = {
   deleted: false,
 };
 
-jest.mock('../../components/BotsDetail/BotsDetail.component', () => {
+jest.mock('../../components/BotDetails/BotDetails.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="bots-details">BotsDetails</div>);
@@ -48,7 +48,7 @@ describe('Test BotsPage Component', () => {
     (getUserByName as jest.Mock).mockImplementationOnce(() => {
       return Promise.resolve({ data: mockUserDetail });
     });
-    const { findByTestId } = render(<BotsPage />, {
+    const { findByTestId } = render(<BotDetailsPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -61,7 +61,7 @@ describe('Test BotsPage Component', () => {
     (getUserByName as jest.Mock).mockImplementationOnce(() => {
       return Promise.reject();
     });
-    const { findByTestId } = render(<BotsPage />, {
+    const { findByTestId } = render(<BotDetailsPage />, {
       wrapper: MemoryRouter,
     });
 

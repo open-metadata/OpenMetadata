@@ -20,7 +20,7 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
-import BotsDetail from './BotsDetail.component';
+import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
 const updateBotsDetails = jest.fn();
@@ -85,7 +85,7 @@ jest.mock('../common/description/Description', () => {
 
 describe('Test BotsDetail Component', () => {
   it('Should render all child elements', async () => {
-    const { container } = render(<BotsDetail {...mockProp} />, {
+    const { container } = render(<BotDetails {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
@@ -102,7 +102,7 @@ describe('Test BotsDetail Component', () => {
   });
 
   it('Should render token if token is present', async () => {
-    const { container } = render(<BotsDetail {...mockProp} />, {
+    const { container } = render(<BotDetails {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
@@ -121,7 +121,7 @@ describe('Test BotsDetail Component', () => {
         JWTTokenExpiresAt: '',
       })
     );
-    const { container } = render(<BotsDetail {...mockProp} />, {
+    const { container } = render(<BotDetails {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
@@ -140,7 +140,7 @@ describe('Test BotsDetail Component', () => {
     (getUserToken as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' })
     );
-    const { container } = render(<BotsDetail {...mockProp} />, {
+    const { container } = render(<BotDetails {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
@@ -162,7 +162,7 @@ describe('Test BotsDetail Component', () => {
   });
 
   it('Test Re-generate token flow', async () => {
-    const { container } = render(<BotsDetail {...mockProp} />, {
+    const { container } = render(<BotDetails {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
@@ -203,7 +203,7 @@ describe('Test BotsDetail Component', () => {
   });
 
   it('Test Revoke token flow', async () => {
-    const { container } = render(<BotsDetail {...mockProp} />, {
+    const { container } = render(<BotDetails {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 

@@ -59,6 +59,7 @@ import {
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -87,8 +88,11 @@ import {
   getEntityFieldThreadCounts,
   updateThreadData,
 } from '../../utils/FeedUtils';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import {
+  getServiceRouteFromServiceType,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -245,7 +249,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setSlashedTableName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
-              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              ),
             },
             {
               name: service.name ?? '',

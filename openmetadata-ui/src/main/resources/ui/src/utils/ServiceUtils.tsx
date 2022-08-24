@@ -22,6 +22,7 @@ import {
 } from 'Models';
 import React from 'react';
 import { getEntityCount } from '../axiosAPIs/miscAPI';
+import { GlobalSettingOptions } from '../constants/globalSettings.constants';
 import {
   addLineageIngestionGuide,
   addMetadataIngestionGuide,
@@ -724,4 +725,21 @@ export const getDeleteEntityMessage = (
     default:
       return;
   }
+};
+
+export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
+  if (type === 'messagingServices') {
+    return GlobalSettingOptions.MESSAGING;
+  }
+  if (type === 'dashboardServices') {
+    return GlobalSettingOptions.DASHBOARDS;
+  }
+  if (type === 'pipelineServices') {
+    return GlobalSettingOptions.PIPELINES;
+  }
+  if (type === 'mlmodelServices') {
+    return GlobalSettingOptions.MLMODELS;
+  }
+
+  return GlobalSettingOptions.DATABASES;
 };

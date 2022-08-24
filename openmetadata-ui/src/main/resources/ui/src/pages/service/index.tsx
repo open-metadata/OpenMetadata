@@ -56,6 +56,7 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -77,14 +78,12 @@ import {
   getEntityName,
   isEven,
 } from '../../utils/CommonUtils';
-import {
-  getEditConnectionPath,
-  getServicesWithTabPath,
-} from '../../utils/RouterUtils';
+import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
   getDeleteEntityMessage,
   getServiceCategoryFromType,
+  getServiceRouteFromServiceType,
   servicePageTabs,
   serviceTypeLogo,
   setServiceSchemaCount,
@@ -695,7 +694,10 @@ const ServicePage: FunctionComponent = () => {
           setSlashedTableName([
             {
               name: startCase(serviceName || ''),
-              url: getServicesWithTabPath(serviceName || ''),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(serviceName)
+              ),
             },
             {
               name: getEntityName(resService),

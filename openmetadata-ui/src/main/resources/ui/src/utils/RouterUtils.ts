@@ -143,13 +143,6 @@ export const getExplorePathWithInitFilters = (
     : path;
 };
 
-export const getServicesWithTabPath = (serviceCat: string) => {
-  let path = ROUTES.SERVICES_WITH_TAB;
-  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat);
-
-  return path;
-};
-
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
