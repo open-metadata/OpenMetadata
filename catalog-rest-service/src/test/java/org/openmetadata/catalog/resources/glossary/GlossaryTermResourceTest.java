@@ -30,7 +30,6 @@ import static org.openmetadata.catalog.resources.databases.TableResourceTest.get
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityReferences;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -163,9 +162,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Add reviewer USER1, synonym1, reference1 in PATCH request
     String origJson = JsonUtils.pojoToJson(term);
     TermReference reference1 = new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
-    term.withReviewers(List.of(USER_OWNER1)).withSynonyms(List.of("synonym1")).withReferences(List.of(reference1));
+    term.withReviewers(List.of(USER1_REF)).withSynonyms(List.of("synonym1")).withReferences(List.of(reference1));
     ChangeDescription change = getChangeDescription(term.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER1)));
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER1_REF)));
     change.getFieldsAdded().add(new FieldChange().withName("synonyms").withNewValue(List.of("synonym1")));
     change.getFieldsAdded().add(new FieldChange().withName("references").withNewValue(List.of(reference1)));
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -173,20 +172,20 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Add reviewer USER2, synonym2, reference2 in PATCH request
     origJson = JsonUtils.pojoToJson(term);
     TermReference reference2 = new TermReference().withName("reference2").withEndpoint(URI.create("http://reference2"));
-    term.withReviewers(List.of(USER_OWNER1, USER_OWNER2))
+    term.withReviewers(List.of(USER1_REF, USER2_REF))
         .withSynonyms(List.of("synonym1", "synonym2"))
         .withReferences(List.of(reference1, reference2));
     change = getChangeDescription(term.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER2)));
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER2_REF)));
     change.getFieldsAdded().add(new FieldChange().withName("synonyms").withNewValue(List.of("synonym2")));
     change.getFieldsAdded().add(new FieldChange().withName("references").withNewValue(List.of(reference2)));
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
     origJson = JsonUtils.pojoToJson(term);
-    term.withReviewers(List.of(USER_OWNER2)).withSynonyms(List.of("synonym2")).withReferences(List.of(reference2));
+    term.withReviewers(List.of(USER2_REF)).withSynonyms(List.of("synonym2")).withReferences(List.of(reference2));
     change = getChangeDescription(term.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER_OWNER1)));
+    change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER1_REF)));
     change.getFieldsDeleted().add(new FieldChange().withName("synonyms").withOldValue(List.of("synonym1")));
     change.getFieldsDeleted().add(new FieldChange().withName("references").withOldValue(List.of(reference1)));
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -340,7 +339,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         .withSynonyms(List.of("syn1", "syn2", "syn3"))
         .withGlossary(GLOSSARY1_REF)
         .withRelatedTerms(Arrays.asList(GLOSSARY1_TERM1_REF, GLOSSARY2_TERM1_REF))
-        .withReviewers(List.of(USER_OWNER1));
+        .withReviewers(List.of(USER1_REF));
   }
 
   @Override

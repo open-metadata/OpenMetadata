@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -58,40 +59,85 @@ public class PolicyEvaluator {
   public static void hasPermission(
       @NonNull SubjectContext subjectContext,
       @NonNull ResourceContextInterface resourceContext,
-      @NonNull OperationContext operationContext) {
+      @NonNull OperationContext operationContext)
+      throws IOException {
+    // First run through all the DENY policies based on the user
+    evaluateDenySubjectPolicies(subjectContext, resourceContext, operationContext);
 
-    // First run through all the DENY policies
-    Iterator<PolicyContext> policies = subjectContext.getPolicies();
-    while (policies.hasNext()) {
-      PolicyContext policyContext = policies.next();
-      for (CompiledRule rule : policyContext.getRules()) {
-        LOG.debug(
-            "evaluating policy for deny {}:{}:{}",
-            policyContext.getRoleName(),
-            policyContext.getPolicyName(),
-            rule.getName());
-        rule.evaluateDenyRule(policyContext, operationContext, subjectContext, resourceContext);
-      }
+    // Next run through all the DENY policies based on the resource
+    evaluateDenyResourcePolicies(subjectContext, resourceContext, operationContext);
+
+    // Next run through all the ALLOW policies based on the user
+    evaluateAllowSubjectPolicies(subjectContext, resourceContext, operationContext);
+
+    // Next run through all the ALLOW policies based on the resource
+    evaluateAllowResourcePolicies(subjectContext, resourceContext, operationContext);
+
+    if (!operationContext.getOperations().isEmpty()) { // Some operations have not been allowed
+      throw new AuthorizationException(
+          CatalogExceptionMessage.permissionNotAllowed(
+              subjectContext.getUser().getName(), operationContext.getOperations()));
     }
-    // Next run through all the ALLOW policies
-    policies = subjectContext.getPolicies(); // Refresh the iterator
-    while (policies.hasNext()) {
-      PolicyContext policyContext = policies.next();
-      for (CompiledRule rule : policyContext.getRules()) {
+  }
+
+  private static void evaluateDenySubjectPolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+    evaluatePolicies(subjectContext.getPolicies(), subjectContext, resourceContext, operationContext, true, false);
+  }
+
+  private static void evaluateAllowSubjectPolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+    evaluatePolicies(subjectContext.getPolicies(), subjectContext, resourceContext, operationContext, false, false);
+  }
+
+  private static void evaluateDenyResourcePolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext)
+      throws IOException {
+    if (resourceContext == null || resourceContext.getOwner() == null) {
+      return; // No owner for a resource. No need to walk the hierarchy of user and teams that are resource owners
+    }
+    Iterator<PolicyContext> resourcePolicies = subjectContext.getResourcePolicies(resourceContext.getOwner());
+    evaluatePolicies(resourcePolicies, subjectContext, resourceContext, operationContext, true, true);
+  }
+
+  private static void evaluateAllowResourcePolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext)
+      throws IOException {
+    if (resourceContext == null || resourceContext.getOwner() == null) {
+      return; // No owner for a resource. No need to walk the hierarchy of user and teams that are resource owners
+    }
+    Iterator<PolicyContext> resourcePolicies = subjectContext.getResourcePolicies(resourceContext.getOwner());
+    evaluatePolicies(resourcePolicies, subjectContext, resourceContext, operationContext, false, true);
+  }
+
+  private static void evaluatePolicies(
+      Iterator<PolicyContext> policies,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext,
+      OperationContext operationContext,
+      boolean evaluateDeny,
+      boolean evaluateResourcePolicies) {
+    // When an operation is allowed by a rule, it is removed from operation context
+    // When list of operations is empty in the operation context, all operations have been allowed
+    while (policies.hasNext() && !operationContext.getOperations().isEmpty()) {
+      PolicyContext context = policies.next();
+      for (CompiledRule rule : context.getRules()) {
+        if (evaluateResourcePolicies && !rule.isResourceBased()) {
+          continue; // Only evaluate resource based rules
+        }
         LOG.debug(
-            "evaluating policy for allow {}:{}:{}",
-            policyContext.getRoleName(),
-            policyContext.getPolicyName(),
+            "evaluating policy for {} {}:{}:{}",
+            evaluateDeny ? "deny" : "allow",
+            context.getRoleName(),
+            context.getPolicyName(),
             rule.getName());
-        rule.evaluateAllowRule(operationContext, subjectContext, resourceContext);
-        if (operationContext.getOperations().isEmpty()) {
-          return; // All operations are allowed
+        if (evaluateDeny) {
+          rule.evaluateDenyRule(operationContext, subjectContext, resourceContext, context);
+        } else {
+          rule.evaluateAllowRule(operationContext, subjectContext, resourceContext, context);
         }
       }
     }
-    throw new AuthorizationException(
-        CatalogExceptionMessage.permissionNotAllowed(
-            subjectContext.getUser().getName(), operationContext.getOperations()));
   }
 
   /** Returns a list of operations that a user can perform on all the resources. */

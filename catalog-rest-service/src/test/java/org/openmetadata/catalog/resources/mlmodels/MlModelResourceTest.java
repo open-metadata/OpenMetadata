@@ -157,7 +157,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   @Test
   void put_MlModelUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a Model with POST
-    CreateMlModel request = createRequest(test).withOwner(USER_OWNER1);
+    CreateMlModel request = createRequest(test).withOwner(USER1_REF);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
 

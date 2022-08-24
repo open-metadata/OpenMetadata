@@ -12,12 +12,14 @@ To enable security for the Docker deployment, follow the next steps:
 Create an `openmetadata_okta.env` file and add the following contents as an example. Use the information
 generated when setting up the account.
 
+Note: Make sure to add the Ingestion Client ID for the Service application in `AUTHORIZER_INGESTION_PRINCIPALS`. This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
+
 ```shell
 # OpenMetadata Server Authentication Configuration
 AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
 AUTHORIZER_REQUEST_FILTER=org.openmetadata.catalog.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
+AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot, <service_application_client_id>]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=okta
