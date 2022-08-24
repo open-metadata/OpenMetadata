@@ -80,7 +80,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (isEmpty(selectedCaseFqn)) return;
 
     try {
-      const startTs = moment(PROFILER_FILTER_RANGE[timeRange].days).unix();
+      const startTs = moment()
+        .subtract(PROFILER_FILTER_RANGE[timeRange].days, 'days')
+        .unix();
       const { data } = await getListTestCaseResults(selectedCaseFqn, {
         startTs,
         limit: API_RES_MAX_SIZE,

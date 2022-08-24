@@ -278,7 +278,8 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     } else if (ProfilerDashboardTab.DATA_QUALITY === value) {
       fetchTestCases(generateEntityLink(entityTypeFQN, true));
     }
-
+    setSelectedTimeRange('last3days');
+    setSelectedTestCaseStatus('');
     setActiveTab(value);
   };
 
@@ -301,6 +302,14 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
     }
+  };
+
+  const getFilterTestCase = () => {
+    return testCases.filter(
+      (data) =>
+        selectedTestCaseStatus === '' ||
+        data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
+    );
   };
 
   useEffect(() => {
@@ -356,12 +365,14 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             />
 
             <Space size={16}>
-              <Select
-                className="tw-w-32"
-                options={testCaseStatusOption}
-                value={selectedTestCaseStatus}
-                onChange={handleTestCaseStatusChange}
-              />
+              {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
+                <Select
+                  className="tw-w-32"
+                  options={testCaseStatusOption}
+                  value={selectedTestCaseStatus}
+                  onChange={handleTestCaseStatusChange}
+                />
+              )}
               <Select
                 className="tw-w-32"
                 options={timeRangeOption}
@@ -387,7 +398,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
-              testCases={testCases}
+              testCases={getFilterTestCase()}
               timeRange={selectedTimeRange}
             />
           </Col>
