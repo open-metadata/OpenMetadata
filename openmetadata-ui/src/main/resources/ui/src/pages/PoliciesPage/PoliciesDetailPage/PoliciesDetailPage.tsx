@@ -27,7 +27,12 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
+import {
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
+} from '../../../axiosAPIs/rolesAPIV1';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -184,22 +189,54 @@ const PoliciesDetailPage = () => {
     }
   };
 
-  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
-    const attributeData =
-      (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
-    const updatedAttributeData = attributeData.filter(
-      (attrData) => attrData.id !== data.id
-    );
-
-    const patch = compare(policy, {
-      ...policy,
-      [attribute as keyof Policy]: updatedAttributeData,
-    });
+  const handleRolesUpdate = async (data: EntityReference) => {
     try {
-      const data = await patchPolicy(patch, policy.id);
-      setPolicy(data);
+      const role = await getRoleByName(
+        data.fullyQualifiedName || '',
+        'policies'
+      );
+      const updatedAttributeData = (role.policies ?? []).filter(
+        (attrData) => attrData.id !== policy.id
+      );
+
+      const patch = compare(role, {
+        ...role,
+        policies: updatedAttributeData,
+      });
+
+      const response = await patchRole(patch, role.id);
+
+      if (response) {
+        const updatedRoles = (policy.roles ?? []).filter(
+          (role) => role.id !== data.id
+        );
+        setPolicy((prev) => ({ ...prev, roles: updatedRoles }));
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    if (attribute === 'roles') {
+      handleRolesUpdate(data);
+    } else {
+      const attributeData =
+        (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
+      const updatedAttributeData = attributeData.filter(
+        (attrData) => attrData.id !== data.id
+      );
+
+      const patch = compare(policy, {
+        ...policy,
+        [attribute as keyof Policy]: updatedAttributeData,
+      });
+      try {
+        const data = await patchPolicy(patch, policy.id);
+        setPolicy(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
 
@@ -242,7 +279,7 @@ const PoliciesDetailPage = () => {
               {isEmpty(policy.rules) ? (
                 <Empty description="No rules found" />
               ) : (
-                <Space className="tw-w-full rules-tab" direction="vertical">
+                <Space className="tw-w-full tabpane-space" direction="vertical">
                   <Button
                     type="primary"
                     onClick={() => history.push(getAddPolicyRulePath(fqn))}>
