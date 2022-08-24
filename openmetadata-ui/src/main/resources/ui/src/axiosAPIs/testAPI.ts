@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
@@ -27,6 +27,14 @@ export type ListTestCaseParams = {
   include?: Include;
 };
 
+export type ListTestCaseResultsParams = {
+  startTs?: number;
+  endTs?: number;
+  before?: string;
+  after?: string;
+  limit?: number;
+};
+
 const baseUrl = '/testCase';
 
 export const getListTestCase = async (params?: ListTestCaseParams) => {
@@ -36,6 +44,21 @@ export const getListTestCase = async (params?: ListTestCaseParams) => {
       params,
     }
   );
+
+  return response.data;
+};
+
+export const getListTestCaseResults = async (
+  fqn: string,
+  params?: ListTestCaseResultsParams
+) => {
+  const url = `${baseUrl}/${fqn}/testCaseResult`;
+  const response = await APIClient.get<{
+    data: TestCaseResult[];
+    paging: Paging;
+  }>(url, {
+    params,
+  });
 
   return response.data;
 };

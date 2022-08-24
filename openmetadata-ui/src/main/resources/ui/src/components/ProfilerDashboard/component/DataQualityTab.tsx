@@ -13,15 +13,26 @@
 
 import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import moment from 'moment';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getListTestCaseResults } from '../../../axiosAPIs/testAPI';
+import { API_RES_MAX_SIZE } from '../../../constants/constants';
+import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
-const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
+const DataQualityTab: React.FC<DataQualityTabProps> = ({
+  testCases,
+  timeRange,
+}) => {
+  const [testResults, setTestResults] = useState<TestCaseResult[]>([]);
+  const [selectedCaseFqn, setSelectedCaseFqn] = useState<string>('');
   const columns: ColumnsType<TestCase> = useMemo(() => {
     return [
       {
@@ -65,18 +76,41 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
     ];
   }, []);
 
+  const fetchTestResults = async () => {
+    if (isEmpty(selectedCaseFqn)) return;
+
+    try {
+      const startTs = moment(PROFILER_FILTER_RANGE[timeRange].days).unix();
+      const { data } = await getListTestCaseResults(selectedCaseFqn, {
+        startTs,
+        limit: API_RES_MAX_SIZE,
+      });
+      setTestResults(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchTestResults();
+  }, [timeRange, selectedCaseFqn]);
+
   return (
     <Table
       columns={columns}
       dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
       expandable={{
-        // onExpand(expanded, record) {
-        //   if (expanded) {
-        //     console.log(record);
-        //   }
-        // },
+        onExpand(expanded, record) {
+          setTestResults([]);
+          setSelectedCaseFqn('');
+          if (expanded) {
+            setSelectedCaseFqn(record.fullyQualifiedName || '');
+          }
+        },
         rowExpandable: () => true,
-        expandedRowRender: (recode) => <TestSummary data={recode} />,
+        expandedRowRender: (recode) => (
+          <TestSummary data={recode} results={testResults} />
+        ),
       }}
       pagination={false}
       size="small"

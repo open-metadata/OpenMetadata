@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import {
   Column,
   ColumnProfile,
   Table,
 } from '../../generated/entity/data/table';
-import { TestCase } from '../../generated/tests/testCase';
+import { TestCase, TestCaseResult } from '../../generated/tests/testCase';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
@@ -79,8 +80,10 @@ export interface ProfilerSummaryCardProps {
 
 export interface DataQualityTabProps {
   testCases: TestCase[];
+  timeRange: keyof typeof PROFILER_FILTER_RANGE;
 }
 
 export interface TestSummaryProps {
   data: TestCase;
+  results: TestCaseResult[];
 }

@@ -12,15 +12,115 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import React from 'react';
+import moment from 'moment';
+import React, { useEffect, useState } from 'react';
+import {
+  Line,
+  LineChart,
+  ReferenceArea,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { TestCaseStatus } from '../../../generated/tests/tableTest';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 
-const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
+type ChartDataType = {
+  information: string[];
+  data: { [key: string]: string }[];
+};
+
+const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
+  const [chartData, setChartData] = useState<ChartDataType>(
+    {} as ChartDataType
+  );
+
+  const generateChartData = () => {
+    const test: { [key: string]: string }[] = [];
+    results.forEach((result) => {
+      const values = result.testResultValue?.reduce((acc, curr) => {
+        return {
+          ...acc,
+          [curr.name || 'value']: parseInt(curr.value || '') || 0,
+        };
+      }, {});
+
+      test.push({
+        name: moment.unix(result.timestamp || 0).format('DD/MMM HH:mm'),
+        status: result.testCaseStatus || '',
+        ...values,
+      });
+    });
+    setChartData({
+      information:
+        results[0]?.testResultValue?.map((info) => info.name || '') || [],
+      data: test,
+    });
+  };
+  useEffect(() => {
+    generateChartData();
+  }, [results]);
+
+  const referenceArea = () => {
+    const yValues = data.parameterValues?.reduce((acc, curr, i) => {
+      return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
+    }, {});
+
+    return (
+      <ReferenceArea
+        fill="#28A745"
+        fillOpacity={0.3}
+        stroke="#E6F4EB"
+        {...yValues}
+      />
+    );
+  };
+
   return (
     <Row gutter={16}>
-      <Col span={12}>chart</Col>
-      <Col span={12}>
+      <Col span={14}>
+        <ResponsiveContainer minHeight={300}>
+          <LineChart data={chartData.data}>
+            <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
+            <YAxis allowDataOverflow padding={{ top: 16, bottom: 16 }} />
+            <Tooltip />
+
+            {data.parameterValues?.length === 2 && referenceArea()}
+            {chartData?.information?.map((info: string) => (
+              <Line
+                dataKey={info}
+                dot={(props) => {
+                  const { cx = 0, cy = 0, payload } = props;
+                  const fill =
+                    payload.status === TestCaseStatus.Success
+                      ? '#28A745'
+                      : payload.status === TestCaseStatus.Failed
+                      ? '#CB2431'
+                      : '#EFAE2F';
+
+                  return (
+                    <svg
+                      fill="none"
+                      height={8}
+                      width={8}
+                      x={cx - 4}
+                      xmlns="http://www.w3.org/2000/svg"
+                      y={cy - 4}>
+                      <circle cx={4} cy={4} fill={fill} r={4} />
+                    </svg>
+                  );
+                }}
+                key={info}
+                stroke="#82ca9d"
+                type="monotone"
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </Col>
+      <Col span={10}>
         <Row gutter={[8, 8]}>
           <Col span={24}>
             <Typography.Text type="secondary">Name: </Typography.Text>

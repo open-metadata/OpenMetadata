@@ -386,7 +386,10 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
-            <DataQualityTab testCases={testCases} />
+            <DataQualityTab
+              testCases={testCases}
+              timeRange={selectedTimeRange}
+            />
           </Col>
         )}
       </Row>

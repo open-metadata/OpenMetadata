@@ -172,13 +172,13 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       <Col span={8}>
         <Card className="tw-rounded-md tw-border tw-h-full">
           <Row gutter={16}>
-            <Col span={18}>
+            <Col span={16}>
               <p className="tw-font-medium tw-text-base">Column summary</p>
               <Ellipses className="tw-text-grey-muted" rows={4}>
-                {activeColumnDetails.description}
+                {activeColumnDetails.description || 'No Description'}
               </Ellipses>
             </Col>
-            <Col span={6}>
+            <Col span={8}>
               <Statistic
                 title="Data type"
                 value={activeColumnDetails.dataTypeDisplay || ''}
