@@ -41,7 +41,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final String USER_PATCH_FIELDS = "profile,roles,teams,inheritedRoles,authenticationMechanism";
+  static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism";
   static final String USER_UPDATE_FIELDS = "profile,roles,teams";
   private final EntityReference organization;
 
@@ -81,24 +81,17 @@ public class UserRepository extends EntityRepository<User> {
         .withAuthenticationMechanism(original.getAuthenticationMechanism());
   }
 
-  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException {
-    List<EntityReference> teamsRef = listOrEmpty(user.getTeams());
-    List<EntityReference> defaultRoles = new ArrayList<>();
-    for (EntityReference teamRef : teamsRef) {
-      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")), Include.NON_DELETED);
-      if (team.getDefaultRoles() != null) {
-        defaultRoles.addAll(team.getDefaultRoles());
-      }
-    }
-    return defaultRoles.stream().distinct().collect(Collectors.toList());
+  private List<EntityReference> getInheritedRoles(User user) throws IOException {
+    getTeams(user);
+    return SubjectCache.getInstance().getRolesForTeams(getTeams(user));
   }
 
   @Override
   public void storeEntity(User user, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> roles = user.getRoles();
-    List<EntityReference> inheritedRoles = user.getInheritedRoles();
     List<EntityReference> teams = user.getTeams();
+    List<EntityReference> inheritedRoles = user.getInheritedRoles();
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
@@ -106,7 +99,7 @@ public class UserRepository extends EntityRepository<User> {
     store(user.getId(), user, update);
 
     // Restore the relationships
-    user.withRoles(roles).withTeams(teams).withInheritedRoles(inheritedRoles);
+    user.withRoles(roles).withTeams(teams);
   }
 
   @Override
@@ -198,23 +191,10 @@ public class UserRepository extends EntityRepository<User> {
     return validatedRoles;
   }
 
-  private List<EntityReference> getDefaultRole() throws IOException {
-    List<UUID> defaultRoleIds = toIds(daoCollection.roleDAO().getDefaultRolesIds());
-    List<EntityReference> refs = EntityUtil.toEntityReferences(defaultRoleIds, Entity.ROLE);
-    return EntityUtil.populateEntityReferences(refs);
-  }
-
   /* Get all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
     List<EntityRelationshipRecord> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
-  }
-
-  /* Get all the roles that user has been assigned and inherited from the team to User entity */
-  private List<EntityReference> getInheritedRoles(User user) throws IOException {
-    List<EntityReference> roles = getDefaultRole();
-    roles.addAll(getTeamDefaultRoles(user));
-    return roles.stream().distinct().collect(Collectors.toList()); // Remove duplicates
   }
 
   /* Get all the teams that user belongs to User entity */
@@ -261,8 +241,6 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
       recordChange("email", original.getEmail(), updated.getEmail());
-      // Add inherited roles to the entity after update
-      updated.setInheritedRoles(getInheritedRoles(updated));
       updateAuthenticationMechanism(original, updated);
     }
 

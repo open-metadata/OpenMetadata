@@ -112,6 +112,10 @@
       "description": "Default roles of a team. These roles will be inherited by all the users that are part of this team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "inheritedRoles": {
+      "description": "Roles that a team is inheriting through membership in teams that have set team default roles.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "policies": {
       "description": "Policies that is attached to this team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"

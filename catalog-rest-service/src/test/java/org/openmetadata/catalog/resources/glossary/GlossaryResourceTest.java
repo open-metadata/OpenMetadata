@@ -95,23 +95,23 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     // Add reviewer USER1 in PATCH request
     String origJson = JsonUtils.pojoToJson(glossary);
-    glossary.withReviewers(List.of(USER_OWNER1));
+    glossary.withReviewers(List.of(USER1_REF));
     ChangeDescription change = getChangeDescription(glossary.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER1)));
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER1_REF)));
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Add another reviewer USER2 in PATCH request
     origJson = JsonUtils.pojoToJson(glossary);
-    glossary.withReviewers(List.of(USER_OWNER1, USER_OWNER2));
+    glossary.withReviewers(List.of(USER1_REF, USER2_REF));
     change = getChangeDescription(glossary.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER2)));
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER2_REF)));
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Remove a reviewer USER1 in PATCH request
     origJson = JsonUtils.pojoToJson(glossary);
-    glossary.withReviewers(List.of(USER_OWNER2));
+    glossary.withReviewers(List.of(USER2_REF));
     change = getChangeDescription(glossary.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER_OWNER1)));
+    change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER1_REF)));
     patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
