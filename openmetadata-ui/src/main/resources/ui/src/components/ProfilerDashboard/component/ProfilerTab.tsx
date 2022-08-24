@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Row, Statistic } from 'antd';
+import { sortBy } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -82,11 +83,12 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   );
 
   const createMetricsChartData = () => {
+    const updateProfilerData = sortBy(profilerData, 'timestamp');
     const countMetricData: MetricChartType['data'] = [];
     const proportionMetricData: MetricChartType['data'] = [];
     const mathMetricData: MetricChartType['data'] = [];
     const sumMetricData: MetricChartType['data'] = [];
-    profilerData.forEach((col) => {
+    updateProfilerData.forEach((col) => {
       const x = moment.unix(col.timestamp || 0).format('DD/MMM HH:mm');
 
       countMetricData.push({
@@ -124,21 +126,27 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
 
     const countMetricInfo = countMetrics.information.map((item) => ({
       ...item,
-      latestValue: countMetricData[0]?.[item.dataKey] || 0,
+      latestValue:
+        countMetricData[countMetricData.length - 1]?.[item.dataKey] || 0,
     }));
     const proportionMetricInfo = proportionMetrics.information.map((item) => ({
       ...item,
       latestValue: parseFloat(
-        `${proportionMetricData[0]?.[item.dataKey] || 0}`
+        `${
+          proportionMetricData[proportionMetricData.length - 1]?.[
+            item.dataKey
+          ] || 0
+        }`
       ).toFixed(2),
     }));
     const mathMetricInfo = mathMetrics.information.map((item) => ({
       ...item,
-      latestValue: mathMetricData[0]?.[item.dataKey] || 0,
+      latestValue:
+        mathMetricData[mathMetricData.length - 1]?.[item.dataKey] || 0,
     }));
     const sumMetricInfo = sumMetrics.information.map((item) => ({
       ...item,
-      latestValue: sumMetricData[0]?.[item.dataKey] || 0,
+      latestValue: sumMetricData[sumMetricData.length - 1]?.[item.dataKey] || 0,
     }));
 
     setCountMetrics((pre) => ({

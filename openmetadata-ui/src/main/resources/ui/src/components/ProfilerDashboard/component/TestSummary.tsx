@@ -38,7 +38,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
   );
 
   const generateChartData = () => {
-    const test: { [key: string]: string }[] = [];
+    const chartData: { [key: string]: string }[] = [];
     results.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
@@ -47,7 +47,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
         };
       }, {});
 
-      test.push({
+      chartData.push({
         name: moment.unix(result.timestamp || 0).format('DD/MMM HH:mm'),
         status: result.testCaseStatus || '',
         ...values,
@@ -56,7 +56,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
     setChartData({
       information:
         results[0]?.testResultValue?.map((info) => info.name || '') || [],
-      data: test,
+      data: chartData.reverse(),
     });
   };
   useEffect(() => {
