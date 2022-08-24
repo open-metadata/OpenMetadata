@@ -35,7 +35,7 @@ logger = ingestion_logger()
 C = TypeVar("C", bound=BaseModel)
 
 
-class MissingExpectedEntityAck(Exception):
+class MissingExpectedEntityAckException(Exception):
     """
     After running the ack to the sink, we got no
     Entity back
