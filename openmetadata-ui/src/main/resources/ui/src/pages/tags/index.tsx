@@ -18,7 +18,7 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createTag,
@@ -61,7 +61,10 @@ import {
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
-import { getExplorePathWithInitFilters } from '../../utils/RouterUtils';
+import {
+  getExplorePathWithInitFilters,
+  getTagPath,
+} from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
@@ -82,6 +85,8 @@ type DeleteTagsType = {
 };
 
 const TagsPage = () => {
+  const history = useHistory();
+  const { tagCategoryName } = useParams<Record<string, string>>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
@@ -403,6 +408,10 @@ const TagsPage = () => {
     }
   }, [categories, currentCategory]);
 
+  useEffect(() => {
+    fetchCurrentCategory(tagCategoryName);
+  }, [tagCategoryName]);
+
   const fetchLeftPanel = () => {
     return (
       <Card
@@ -447,7 +456,7 @@ const TagsPage = () => {
                 data-testid="side-panel-category"
                 key={category.name}
                 onClick={() => {
-                  fetchCurrentCategory(category.name);
+                  history.push(getTagPath(category.name));
                 }}>
                 <Ellipses
                   tooltip

@@ -43,6 +43,7 @@ const AddRulePage = () => {
     description: '',
     resources: [],
     operations: [],
+    condition: '',
     effect: Effect.Allow,
   });
 

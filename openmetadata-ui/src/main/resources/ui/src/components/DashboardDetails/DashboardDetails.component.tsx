@@ -429,6 +429,16 @@ const DashboardDetails = ({
     }
   };
 
+  const handleTagContainerClick = (chart: ChartType, index: number) => {
+    if (!editChartTags) {
+      // Fetch tags and terms only once
+      if (tagList.length === 0 || tagFetchFailed) {
+        fetchTagsAndGlossaryTerms();
+      }
+      handleEditChartTag(chart, index);
+    }
+  };
+
   useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
@@ -602,15 +612,9 @@ const DashboardDetails = ({
                             <td
                               className="tw-group tw-relative tableBody-cell"
                               data-testid="tags-wrapper"
-                              onClick={() => {
-                                if (!editChartTags) {
-                                  // Fetch tags and terms only once
-                                  if (tagList.length === 0 || tagFetchFailed) {
-                                    fetchTagsAndGlossaryTerms();
-                                  }
-                                  handleEditChartTag(chart, index);
-                                }
-                              }}>
+                              onClick={() =>
+                                handleTagContainerClick(chart, index)
+                              }>
                               {deleted ? (
                                 <div className="tw-flex tw-flex-wrap">
                                   <TagsViewer

@@ -191,7 +191,6 @@ const EntitySummaryDetails = ({
                   />
                 )}
               </a>
-
               <span
                 data-testid={`edit-${data.key}-icon`}
                 onClick={() => setshow(true)}>

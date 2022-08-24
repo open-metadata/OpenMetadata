@@ -126,6 +126,11 @@
       "type": "boolean",
       "default": true
     },
+    "markDeletedTablesFromFilterOnly": {
+      "description": "Optional configuration to mark deleted tables only to the filtered schema",
+      "type": "boolean",
+      "default": false
+    },
     "includeTables": {
       "description": "Optional configuration to turn off fetching metadata for tables.",
       "type": "boolean",

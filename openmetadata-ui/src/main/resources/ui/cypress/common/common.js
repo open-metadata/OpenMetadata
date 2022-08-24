@@ -554,8 +554,6 @@ export const toastNotification = (msg) => {
   cy.get('.Toastify__close-button').should('be.visible').click();
 };
 
-
-
 export const addCustomPropertiesForEntity = (entityType, customType, value) => {
   const propertyName = `entity${entityType.name}test${uuid()}`;
 

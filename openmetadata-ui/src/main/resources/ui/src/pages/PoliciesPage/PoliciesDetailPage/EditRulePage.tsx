@@ -33,11 +33,12 @@ import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
-const InitialData = {
+const InitialData: Rule = {
   name: '',
   description: '',
   resources: [],
   operations: [],
+  condition: '',
   effect: Effect.Allow,
 };
 
@@ -140,6 +141,7 @@ const EditRulePage = () => {
               ruleName: ruleData.name,
               resources: ruleData.resources,
               operations: ruleData.operations,
+              condition: ruleData.condition,
             }}
             layout="vertical"
             onFinish={handleSubmit}>
