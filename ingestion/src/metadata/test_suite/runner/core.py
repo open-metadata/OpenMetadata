@@ -15,7 +15,6 @@ Main class to run data tests
 
 
 from metadata.generated.schema.tests.testCase import TestCase
-
 from metadata.interfaces.interface_protocol import InterfaceProtocol
 from metadata.test_suite.runner.models import TestCaseResultResponse
 
@@ -26,14 +25,10 @@ class DataTestsRunner:
     def __init__(self, test_runner_interface: InterfaceProtocol):
         self.test_runner_interace = test_runner_interface
 
-
     def run_and_handle(self, test_case: TestCase):
         """run and handle test case validation"""
         test_result = self.test_runner_interace.run_test_case(
             test_case,
         )
 
-        return TestCaseResultResponse(
-            testCaseResult=test_result,
-            testCase=test_case
-        )
+        return TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)

@@ -16,15 +16,16 @@ We need to define this class as we end up having
 multiple test cases per workflow.
 """
 
-from typing import Optional, List
+from typing import List, Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.generated.schema.type.basic import EntityLink
 
 
 class TestCaseDefinition(ConfigModel):
     """Test case definition for the CLI"""
+
     name: str
     description: Optional[str] = "Default suite description"
     testDefinitionName: str
@@ -34,12 +35,13 @@ class TestCaseDefinition(ConfigModel):
 
 class TestSuiteDefinition(ConfigModel):
     """definition for a test suite"""
+
     name: str
     description: Optional[str] = "Default test suite description"
     testCases: List[TestCaseDefinition]
+
 
 class TestSuiteProcessorConfig(ConfigModel):
     """class for the processor config"""
 
     testSuites: Optional[List[TestSuiteDefinition]] = None
-

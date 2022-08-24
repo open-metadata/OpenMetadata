@@ -15,14 +15,19 @@ ColumnValuesToBeBetween validation implementation
 # pylint: disable=duplicate-code
 
 from datetime import datetime
-from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy import inspect
 
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from sqlalchemy import inspect
+from sqlalchemy.orm import DeclarativeMeta
+
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.utils.logger import test_suite_logger
-from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
@@ -41,42 +46,51 @@ def column_value_max_to_be_between(
     """
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">","")
+        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
         col = next(
-                (col for col in inspect(runner.table).c if col.name == column_name),
-                None,
-            )
+            (col for col in inspect(runner.table).c if col.name == column_name),
+            None,
+        )
         if col is None:
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        max_value_dict = dict(runner.dispatch_query_select_first(Metrics.MAX.value(col).fn()))
+        max_value_dict = dict(
+            runner.dispatch_query_select_first(Metrics.MAX.value(col).fn())
+        )
         max_value_res = max_value_dict.get(Metrics.MAX.name)
 
     except Exception as err:  # pylint: disable=broad-except
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="max",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="max", value=None)],
         )
 
-    min_bound = next((float(param.value) for param in test_case.parameterValues if param.name == "minValueForMaxInCol"))
-    max_bound = next((float(param.value) for param in test_case.parameterValues if param.name == "maxValueForMaxInCol"))
+    min_bound = next(
+        (
+            float(param.value)
+            for param in test_case.parameterValues
+            if param.name == "minValueForMaxInCol"
+        )
+    )
+    max_bound = next(
+        (
+            float(param.value)
+            for param in test_case.parameterValues
+            if param.name == "maxValueForMaxInCol"
+        )
+    )
 
     status = (
         TestCaseStatus.Success
-        if min_bound
-        <= max_value_res
-        <= max_bound
+        if min_bound <= max_value_res <= max_bound
         else TestCaseStatus.Failed
     )
     result = (
@@ -88,10 +102,5 @@ def column_value_max_to_be_between(
         timestamp=execution_date,
         testCaseStatus=status,
         result=result,
-        testResultValue=[
-            TestResultValue(
-                name="max",
-                value=str(max_value_res)
-            )
-        ],
+        testResultValue=[TestResultValue(name="max", value=str(max_value_res))],
     )

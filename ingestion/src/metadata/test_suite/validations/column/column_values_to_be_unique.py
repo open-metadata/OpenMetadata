@@ -19,13 +19,17 @@ from datetime import datetime
 from sqlalchemy import inspect
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
 )
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -45,22 +49,30 @@ def column_values_to_be_unique(
     """
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">","")
+        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
         col = next(
-                (col for col in inspect(runner.table).c if col.name == column_name),
-                None,
-            )
+            (col for col in inspect(runner.table).c if col.name == column_name),
+            None,
+        )
         if col is None:
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name.__root__}"
             )
 
-        value_count_value_dict = dict(runner.dispatch_query_select_first(Metrics.COUNT.value(col).fn()))
+        value_count_value_dict = dict(
+            runner.dispatch_query_select_first(Metrics.COUNT.value(col).fn())
+        )
         value_count_value_res = value_count_value_dict.get(Metrics.COUNT.name)
-        unique_count_value_dict = dict(runner.select_all_from_query(Metrics.UNIQUE_COUNT.value(col).query(
-            sample=runner._sample if isinstance(runner._sample, AliasedClass) else runner.table,
-            session=runner._session
-            ))[0])
+        unique_count_value_dict = dict(
+            runner.select_all_from_query(
+                Metrics.UNIQUE_COUNT.value(col).query(
+                    sample=runner._sample
+                    if isinstance(runner._sample, AliasedClass)
+                    else runner.table,
+                    session=runner._session,
+                )
+            )[0]
+        )
         unique_count_value_res = unique_count_value_dict.get(Metrics.UNIQUE_COUNT.name)
 
     except Exception as err:
@@ -71,15 +83,9 @@ def column_values_to_be_unique(
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
             testResultValue=[
-                    TestResultValue(
-                    name="valueCount",
-                    value=None
-                ),
-                    TestResultValue(
-                    name="uniqueCount",
-                    value=None
-                ),
-            ]
+                TestResultValue(name="valueCount", value=None),
+                TestResultValue(name="uniqueCount", value=None),
+            ],
         )
 
     status = (
@@ -93,15 +99,11 @@ def column_values_to_be_unique(
     )
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-                    testResultValue=[
-                    TestResultValue(
-                    name="valueCount",
-                    value=str(value_count_value_res)
-                ),
-                    TestResultValue(
-                    name="uniqueCount",
-                    value=str(unique_count_value_res)
-                ),
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="valueCount", value=str(value_count_value_res)),
+            TestResultValue(name="uniqueCount", value=str(unique_count_value_res)),
+        ],
     )

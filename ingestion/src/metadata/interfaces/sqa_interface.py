@@ -349,7 +349,9 @@ class SQAInterface(InterfaceProtocol):
             profile_sample: sample for the profile
         """
 
-        return validation_enum_registry.registry[test_case.testDefinition.fullyQualifiedName](
+        return validation_enum_registry.registry[
+            test_case.testDefinition.fullyQualifiedName
+        ](
             test_case,
             execution_date=datetime.now(tz=timezone.utc).timestamp(),
             runner=self.runner,

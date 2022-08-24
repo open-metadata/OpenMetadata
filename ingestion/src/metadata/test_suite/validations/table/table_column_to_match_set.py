@@ -21,9 +21,13 @@ from typing import List
 
 from sqlalchemy import inspect
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -57,23 +61,19 @@ def table_column_to_match_set(
         TestCaseResult with status and results
     """
 
-
     try:
         column_names = inspect(runner.table).c
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnNames",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="columnNames", value=None)],
         )
 
     column_name = next(
@@ -86,7 +86,8 @@ def table_column_to_match_set(
             bool(param_value.value)
             for param_value in test_case.parameterValues
             if param_value.name == "ordered"
-        ), None
+        ),
+        None,
     )
     expected_column_names = [item.strip() for item in column_name.split(",")]
     compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
@@ -104,11 +105,12 @@ def table_column_to_match_set(
     )
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
         testResultValue=[
-                TestResultValue(
-                name="columnNames",
-                value=str([col.name for col in column_names])
+            TestResultValue(
+                name="columnNames", value=str([col.name for col in column_names])
             )
-        ]
+        ],
     )

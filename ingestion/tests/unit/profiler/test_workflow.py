@@ -33,9 +33,9 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 
 TABLE = Table(

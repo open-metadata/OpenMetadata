@@ -18,10 +18,13 @@ from datetime import datetime
 
 from sqlalchemy import inspect
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
-from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -47,18 +50,15 @@ def table_column_count_to_be_between(
         column_count = len(inspect(runner.table).c)
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
     if column_count is None:
@@ -68,12 +68,7 @@ def table_column_count_to_be_between(
             executionTime=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
     min_ = next(
@@ -81,7 +76,8 @@ def table_column_count_to_be_between(
             int(param_value.value)
             for param_value in test_case.parameterValues
             if param_value.name == "minColvalue"
-        ), None
+        ),
+        None,
     )
 
     max_ = next(
@@ -89,7 +85,6 @@ def table_column_count_to_be_between(
         for param_value in test_case.parameterValues
         if param_value.name == "maxColvalue"
     )
-
 
     status = (
         TestCaseStatus.Success
@@ -99,11 +94,8 @@ def table_column_count_to_be_between(
     result = f"Found {column_count} column vs. the expected range [{min_}, {max_}]."
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-                    testResultValue=[
-                    TestResultValue(
-                    name="columnCount",
-                    value=column_count
-                )
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnCount", value=column_count)],
     )

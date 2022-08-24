@@ -15,27 +15,25 @@ Test Table and Column Tests' validate implementations.
 Each test should validate the Success, Failure and Aborted statuses
 """
 
+import os
+import unittest
 from datetime import datetime
 from uuid import uuid4
-import unittest
-import os
 
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.entity.data.table import Table, Column, DataType
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.test_suite.validations.core import validation_enum_registry
 from metadata.interfaces.sqa_interface import SQAInterface
-
+from metadata.test_suite.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 
@@ -57,6 +55,7 @@ TABLE = Table(
 
 TEST_SUITE = TestSuite(name="my_test_suite", description="description")
 
+
 class User(Base):
     __tablename__ = "users"
     id = sqa.Column(sqa.Integer, primary_key=True)
@@ -64,7 +63,6 @@ class User(Base):
     fullname = sqa.Column(sqa.String(256))
     nickname = sqa.Column(sqa.String(256))
     age = sqa.Column(sqa.Integer)
-
 
 
 class testSuiteValidation(unittest.TestCase):
@@ -79,7 +77,9 @@ class testSuiteValidation(unittest.TestCase):
     )
 
     sqa_profiler_interface = SQAInterface(
-        sqlite_conn, table=User, table_entity=TABLE,
+        sqlite_conn,
+        table=User,
+        table_entity=TABLE,
     )
     runner = sqa_profiler_interface.runner
     engine = sqa_profiler_interface.session.get_bind()
@@ -116,7 +116,6 @@ class testSuiteValidation(unittest.TestCase):
             cls.session.add_all(data)
             cls.session.commit()
 
-
     def test_column_value_length_to_be_between(self):
         """
         Check ColumnValueLengthsToBeBetween
@@ -125,24 +124,12 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::nickname>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minLength",
-                    value="1"
-                ),
-                TestCaseParameterValue(
-                    name="maxLength",
-                    value="10"
-                ),
-            ]
+                TestCaseParameterValue(name="minLength", value="1"),
+                TestCaseParameterValue(name="maxLength", value="10"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
@@ -156,30 +143,17 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testResultValue[0].value == "8"
         assert res.testResultValue[1].value == "14"
 
-
     def test_column_value_max_to_be_between(self):
         """test column value max to be between"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::age>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValueForMaxInCol",
-                    value="1"
-                ),
-                TestCaseParameterValue(
-                    name="maxValueForMaxInCol",
-                    value="10"
-                ),
-            ]
+                TestCaseParameterValue(name="minValueForMaxInCol", value="1"),
+                TestCaseParameterValue(name="maxValueForMaxInCol", value="10"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValueMaxToBeBetween"](
@@ -192,30 +166,17 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "31"
 
-
     def test_column_value_mean_to_be_between(self):
         """test column value mean to be between"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::age>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValueForMeanInCol",
-                    value="1"
-                ),
-                TestCaseParameterValue(
-                    name="maxValueForMeanInCol",
-                    value="10"
-                ),
-            ]
+                TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
+                TestCaseParameterValue(name="maxValueForMeanInCol", value="10"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValueMeanToBeBetween"](
@@ -228,30 +189,17 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "30.5"
 
-
     def test_column_value_median_to_be_between(self):
         """test column value median to be between"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::age>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValueForMedianInCol",
-                    value="1"
-                ),
-                TestCaseParameterValue(
-                    name="maxValueForMedianInCol",
-                    value="10"
-                ),
-            ]
+                TestCaseParameterValue(name="minValueForMedianInCol", value="1"),
+                TestCaseParameterValue(name="maxValueForMedianInCol", value="10"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValueMedianToBeBetween"](
@@ -269,24 +217,12 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::age>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValueForMinInCol",
-                    value="25"
-                ),
-                TestCaseParameterValue(
-                    name="maxValueForMinInCol",
-                    value="40"
-                ),
-            ]
+                TestCaseParameterValue(name="minValueForMinInCol", value="25"),
+                TestCaseParameterValue(name="maxValueForMinInCol", value="40"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValueMinToBeBetween"](
@@ -304,24 +240,12 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::age>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValueForStdDevInCol",
-                    value="20"
-                ),
-                TestCaseParameterValue(
-                    name="maxValueForStdDevInCol",
-                    value="40"
-                ),
-            ]
+                TestCaseParameterValue(name="minValueForStdDevInCol", value="20"),
+                TestCaseParameterValue(name="maxValueForStdDevInCol", value="40"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValueStdDevToBeBetween"](
@@ -334,26 +258,16 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "0.25"
 
-
     def test_column_value_in_set(self):
         """test column value in set"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::name>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="allowedValues",
-                    value="['John']"
-                ),
-            ]
+                TestCaseParameterValue(name="allowedValues", value="['John']"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesToBeInSet"](
@@ -366,26 +280,16 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "20"
 
-
     def test_column_values_missing_count_to_be_equal(self):
         """test column value missing count to be equal"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::nickname>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="missingCountValue",
-                    value="10"
-                ),
-            ]
+                TestCaseParameterValue(name="missingCountValue", value="10"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
@@ -401,24 +305,12 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::nickname>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="missingCountValue",
-                    value="10"
-                ),
-                TestCaseParameterValue(
-                    name="missingValueMatch",
-                    value="['Johnny d']"
-                ),
-            ]
+                TestCaseParameterValue(name="missingCountValue", value="10"),
+                TestCaseParameterValue(name="missingValueMatch", value="['Johnny d']"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
@@ -428,26 +320,16 @@ class testSuiteValidation(unittest.TestCase):
         )
         assert res.testResultValue[0].value == "20"
 
-
     def test_column_values_not_in_set(self):
         """test column value not in set"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::name>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="forbiddenValues",
-                    value="['John']"
-                ),
-            ]
+                TestCaseParameterValue(name="forbiddenValues", value="['John']"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesToBeNotInSet"](
@@ -460,30 +342,17 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "20"
 
-
     def test_column_sum_to_be_between(self):
         """test column value sum to be between"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::age>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValueForColSum",
-                    value="10"
-                ),
-                TestCaseParameterValue(
-                    name="maxValueForColSum",
-                    value="100"
-                ),
-            ]
+                TestCaseParameterValue(name="minValueForColSum", value="10"),
+                TestCaseParameterValue(name="maxValueForColSum", value="100"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesSumToBeBetween"](
@@ -496,30 +365,17 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "610"
 
-
     def test_column_values_to_be_between(self):
         """test column value to be between"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::age>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValue",
-                    value="29"
-                ),
-                TestCaseParameterValue(
-                    name="maxValue",
-                    value="33"
-                ),
-            ]
+                TestCaseParameterValue(name="minValue", value="29"),
+                TestCaseParameterValue(name="maxValue", value="33"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesToBeBetween"](
@@ -532,20 +388,13 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "30"
 
-
     def test_column_values_to_be_not_null(self):
         """test column value to be not null"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::nickname>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
         )
 
         res = validation_enum_registry.registry["columnValuesToBeNotNull"](
@@ -558,20 +407,13 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "10"
 
-
     def test_column_values_to_be_unique(self):
         """test column value to be unique"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::nickname>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
         )
 
         res = validation_enum_registry.registry["columnValuesToBeUnique"](
@@ -590,20 +432,11 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::name>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="regex",
-                    value="J%"
-                ),
-            ]
+                TestCaseParameterValue(name="regex", value="J%"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesToMatchRegex"](
@@ -621,20 +454,11 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::name>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="forbiddenRegex",
-                    value="X%"
-                ),
-            ]
+                TestCaseParameterValue(name="forbiddenRegex", value="X%"),
+            ],
         )
 
         res = validation_enum_registry.registry["columnValuesToNotMatchRegex"](
@@ -647,30 +471,17 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "0"
 
-
     def test_table_column_count_to_be_between(self):
         """test column value count to be between"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minColValue",
-                    value="2"
-                ),
-                TestCaseParameterValue(
-                    name="maxColValue",
-                    value="10"
-                ),
-            ]
+                TestCaseParameterValue(name="minColvalue", value="2"),
+                TestCaseParameterValue(name="maxColvalue", value="10"),
+            ],
         )
 
         res = validation_enum_registry.registry["TableColumnCountToBeBetween"](
@@ -683,26 +494,14 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "5"
 
-
     def test_table_column_count_to_equal(self):
         """test column value to be equal"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
-            parameterValues=[
-                TestCaseParameterValue(
-                    name="columnCount",
-                    value="6"
-                )
-            ]
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[TestCaseParameterValue(name="columnCount", value="6")],
         )
 
         res = validation_enum_registry.registry["TableColumnCountToEqual"](
@@ -720,20 +519,9 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
-            parameterValues=[
-                TestCaseParameterValue(
-                    name="columnName",
-                    value="id"
-                )
-            ]
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[TestCaseParameterValue(name="columnName", value="id")],
         )
 
         res = validation_enum_registry.registry["TableColumnNameToExist"](
@@ -751,20 +539,11 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="columnNames",
-                    value="id,name,nickname"
-                )
-            ]
+                TestCaseParameterValue(name="columnNames", value="id,name,nickname")
+            ],
         )
 
         res = validation_enum_registry.registry["TableColumnToMatchSet"](
@@ -775,26 +554,21 @@ class testSuiteValidation(unittest.TestCase):
 
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
-        assert res.testResultValue[0].value == "['id', 'name', 'fullname', 'nickname', 'age']"
-
+        assert (
+            res.testResultValue[0].value
+            == "['id', 'name', 'fullname', 'nickname', 'age']"
+        )
 
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
                 TestCaseParameterValue(
-                    name="columnNames",
-                    value="id,name,nickname,fullname,age"
+                    name="columnNames", value="id,name,nickname,fullname,age"
                 )
-            ]
+            ],
         )
 
         res = validation_enum_registry.registry["TableColumnToMatchSet"](
@@ -805,28 +579,17 @@ class testSuiteValidation(unittest.TestCase):
 
         assert res.testCaseStatus == TestCaseStatus.Success
 
-
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
                 TestCaseParameterValue(
-                    name="columnNames",
-                    value="id,name,nickname,fullname,age"
+                    name="columnNames", value="id,name,nickname,fullname,age"
                 ),
-                TestCaseParameterValue(
-                    name="ordered",
-                    value="True"
-                )
-            ]
+                TestCaseParameterValue(name="ordered", value="True"),
+            ],
         )
 
         res = validation_enum_registry.registry["TableColumnToMatchSet"](
@@ -837,26 +600,18 @@ class testSuiteValidation(unittest.TestCase):
 
         assert res.testCaseStatus == TestCaseStatus.Failed
 
-
     def test_table_custom_sql_query(self):
         """test custom sql"""
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users::columns::name>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
                 TestCaseParameterValue(
-                    name="sqlExpression",
-                    value="SELECT * FROM users WHERE age > 20"
+                    name="sqlExpression", value="SELECT * FROM users WHERE age > 20"
                 ),
-            ]
+            ],
         )
 
         res = validation_enum_registry.registry["TableCustomSQLQuery"](
@@ -869,24 +624,16 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "20"
 
-
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
                 TestCaseParameterValue(
-                    name="sqlExpression",
-                    value="SELECT * FROM users WHERE age < 0"
+                    name="sqlExpression", value="SELECT * FROM users WHERE age < 0"
                 ),
-            ]
+            ],
         )
 
         res = validation_enum_registry.registry["TableCustomSQLQuery"](
@@ -902,24 +649,12 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="minValue",
-                    value="10"
-                ),
-                TestCaseParameterValue(
-                    name="maxValue",
-                    value="35"
-                ),
-            ]
+                TestCaseParameterValue(name="minValue", value="10"),
+                TestCaseParameterValue(name="maxValue", value="35"),
+            ],
         )
 
         res = validation_enum_registry.registry["TableRowCountToBeBetween"](
@@ -937,20 +672,11 @@ class testSuiteValidation(unittest.TestCase):
         test_case = TestCase(
             name="my_test_case",
             entityLink="<#E::table::service.db.users>",
-            testSuite=EntityReference(
-                id=uuid4(),
-                type="TestSuite"
-            ),
-            testDefinition=EntityReference(
-                id=uuid4(),
-                type="TestDefinition"
-            ),
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(
-                    name="value",
-                    value="10"
-                ),
-            ]
+                TestCaseParameterValue(name="value", value="10"),
+            ],
         )
 
         res = validation_enum_registry.registry["TableRowCountToEqual"](
@@ -962,7 +688,6 @@ class testSuiteValidation(unittest.TestCase):
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "30"
-
 
     @classmethod
     def tearDownClass(cls) -> None:

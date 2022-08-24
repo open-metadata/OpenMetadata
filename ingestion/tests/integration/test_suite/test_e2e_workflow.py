@@ -13,33 +13,38 @@
 Validate workflow e2e
 """
 
-import unittest
 import os
+import unittest
 
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
-from metadata.interfaces.sqa_interface import SQAInterface
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
+    DatabaseServiceType,
 )
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceRequest
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 test_suite_config = {
@@ -60,31 +65,20 @@ test_suite_config = {
                             "testDefinitionName": "TableColumnCountToBeBetween",
                             "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users>",
                             "parameterValues": [
-                                {
-                                "name": "minColvalue",
-                                "value": 1
-                                },
-                                {
-                                "name": "maxColvalue",
-                                "value": 5
-                                }
-                            ]
+                                {"name": "minColvalue", "value": 1},
+                                {"name": "maxColvalue", "value": 5},
+                            ],
                         },
                         {
-                            "name": "column_values_to_match_regex",
-                            "testDefinitionName": "columnValuesToMatchRegex",
-                            "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users::columns::nickname>",
-                            "parameterValues": [
-                                {
-                                "name": "regex",
-                                "value": "Doe.*"
-                                }
-                            ]
+                            "name": "table_column_name_to_exists",
+                            "testDefinitionName": "TableColumnNameToExist",
+                            "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users>",
+                            "parameterValues": [{"name": "columnName", "value": "id"}],
                         },
-                    ]
+                    ],
                 }
             ],
-        }
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -96,8 +90,9 @@ test_suite_config = {
 
 Base = declarative_base()
 
+
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = ("users",)
     id = sqa.Column(sqa.Integer, primary_key=True)
     name = sqa.Column(sqa.String(256))
     fullname = sqa.Column(sqa.String(256))
@@ -109,7 +104,9 @@ class TestE2EWorkflow(unittest.TestCase):
     """e2e test for the workflow"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.parse_obj(test_suite_config["workflowConfig"]["openMetadataServerConfig"])
+        OpenMetadataConnection.parse_obj(
+            test_suite_config["workflowConfig"]["openMetadataServerConfig"]
+        )
     )
 
     db_path = os.path.join(
@@ -117,9 +114,9 @@ class TestE2EWorkflow(unittest.TestCase):
     )
     sqlite_conn = DatabaseConnection(
         config=SQLiteConnection(
-                scheme=SQLiteScheme.sqlite_pysqlite,
-                databaseMode=db_path + "?check_same_thread=False",
-            )
+            scheme=SQLiteScheme.sqlite_pysqlite,
+            databaseMode=db_path + "?check_same_thread=False",
+        )
     )
 
     @classmethod
@@ -137,9 +134,8 @@ class TestE2EWorkflow(unittest.TestCase):
             CreateDatabaseRequest(
                 name="test_suite_database",
                 service=cls.metadata.get_entity_reference(
-                    entity=DatabaseService,
-                    fqn=service.fullyQualifiedName
-                )
+                    entity=DatabaseService, fqn=service.fullyQualifiedName
+                ),
             )
         )
 
@@ -147,9 +143,8 @@ class TestE2EWorkflow(unittest.TestCase):
             CreateDatabaseSchemaRequest(
                 name="test_suite_database_schema",
                 database=cls.metadata.get_entity_reference(
-                    entity=Database,
-                    fqn=database.fullyQualifiedName
-                )
+                    entity=Database, fqn=database.fullyQualifiedName
+                ),
             )
         )
 
@@ -164,14 +159,15 @@ class TestE2EWorkflow(unittest.TestCase):
                     Column(name="age", dataType=DataType.INT),
                 ],
                 databaseSchema=cls.metadata.get_entity_reference(
-                    entity=DatabaseSchema,
-                    fqn=database_schema.fullyQualifiedName
-                )
+                    entity=DatabaseSchema, fqn=database_schema.fullyQualifiedName
+                ),
             )
         )
 
         sqa_profiler_interface = SQAInterface(
-            cls.sqlite_conn.config, table=User, table_entity=table,
+            cls.sqlite_conn.config,
+            table=User,
+            table_entity=table,
         )
         engine = sqa_profiler_interface.session.get_bind()
         session = sqa_profiler_interface.session
@@ -204,7 +200,6 @@ class TestE2EWorkflow(unittest.TestCase):
 
         del sqa_profiler_interface
 
-
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -230,5 +225,27 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         workflow = TestSuiteWorkflow.create(test_suite_config)
         workflow.execute()
-        assert False
-    
+
+        test_case_1 = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn="test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",
+            fields=["testDefinition", "testSuite"],
+        )
+        test_case_2 = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn="test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists",
+            fields=["testDefinition", "testSuite"],
+        )
+
+        assert test_case_1
+        assert test_case_2
+
+        test_case_result_1 = self.metadata.client.get(
+            "/testCase/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult"
+        )
+        test_case_result_2 = self.metadata.client.get(
+            "/testCase/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult"
+        )
+
+        assert test_case_result_1
+        assert test_case_result_2

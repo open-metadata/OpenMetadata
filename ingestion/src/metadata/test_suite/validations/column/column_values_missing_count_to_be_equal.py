@@ -12,20 +12,22 @@
 """
 ColumnValuesMissingCount validation implementation
 """
+from ast import literal_eval
+
 # pylint: disable=duplicate-code
 from datetime import datetime
-from typing import Optional
-from ast import literal_eval
 
 from sqlalchemy import inspect
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual import (
     ColumnValuesMissingCount,
 )
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -50,44 +52,56 @@ def column_values_missing_count_to_be_equal(
     :return: TestCaseResult with status and results
     """
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">","")
+        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
         col = next(
-                (col for col in inspect(runner.table).c if col.name == column_name),
-                None,
-            )
+            (col for col in inspect(runner.table).c if col.name == column_name),
+            None,
+        )
         if col is None:
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        null_count_value_dict = dict(runner.dispatch_query_select_first(Metrics.NULL_COUNT.value(col).fn()))
+        null_count_value_dict = dict(
+            runner.dispatch_query_select_first(Metrics.NULL_COUNT.value(col).fn())
+        )
         null_count_value_res = null_count_value_dict.get(Metrics.NULL_COUNT.name)
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="nullCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="nullCount", value=None)],
         )
 
-    missing_values = next((literal_eval(param.value) for param in test_case.parameterValues if param.name == "missingValueMatch"), None)
-    missing_count_values = next((literal_eval(param.value) for param in test_case.parameterValues if param.name == "missingCountValue"))
+    missing_values = next(
+        (
+            literal_eval(param.value)
+            for param in test_case.parameterValues
+            if param.name == "missingValueMatch"
+        ),
+        None,
+    )
+    missing_count_values = next(
+        (
+            literal_eval(param.value)
+            for param in test_case.parameterValues
+            if param.name == "missingCountValue"
+        )
+    )
 
     if missing_values:
-        set_count = add_props(values=missing_values)(
-            Metrics.COUNT_IN_SET.value
-        )
+        set_count = add_props(values=missing_values)(Metrics.COUNT_IN_SET.value)
 
         try:
-            set_count_dict = dict(runner.dispatch_query_select_first(set_count(col).fn()))
+            set_count_dict = dict(
+                runner.dispatch_query_select_first(set_count(col).fn())
+            )
             set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
             # Add set count for special values into the missing count
@@ -100,12 +114,7 @@ def column_values_missing_count_to_be_equal(
                 timestamp=execution_date,
                 testCaseStatus=TestCaseStatus.Aborted,
                 result=msg,
-                testResultValue=[
-                        TestResultValue(
-                        name="nullCount",
-                        value=None
-                    )
-                ]
+                testResultValue=[TestResultValue(name="nullCount", value=None)],
             )
 
     status = (
@@ -116,11 +125,10 @@ def column_values_missing_count_to_be_equal(
     result = f"Found missingCount={null_count_value_res}. It should be {missing_count_values}."
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-            testResultValue=[
-                TestResultValue(
-                    name="missingCount",
-                    value=str(null_count_value_res)
-                )
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="missingCount", value=str(null_count_value_res))
+        ],
     )

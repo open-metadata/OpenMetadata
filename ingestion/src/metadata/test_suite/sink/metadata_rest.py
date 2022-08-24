@@ -13,12 +13,10 @@
 OpenMetadata REST Sink implementation for the ORM Profiler results
 """
 
-from typing import Optional
 import traceback
+from typing import Optional
 
-from metadata.test_suite.runner.models import TestCaseResultResponse
 from metadata.config.common import ConfigModel
-from metadata.utils.logger import test_suite_logger
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -26,8 +24,11 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.test_suite.runner.models import TestCaseResultResponse
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
 
 class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
@@ -69,7 +70,7 @@ class MetadataRestSink(Sink[Entity]):
         try:
             self.metadata.add_test_case_results(
                 test_results=record.testCaseResult,
-                test_case_name=record.testCase.fullyQualifiedName.__root__
+                test_case_name=record.testCase.fullyQualifiedName.__root__,
             )
             logger.info(
                 f"Successfully ingested profile metrics for {record.testCase.fullyQualifiedName.__root__}"
@@ -84,4 +85,6 @@ class MetadataRestSink(Sink[Entity]):
                 f"Failed to sink profiler & test data for {record.testCase.fullyQualifiedName.__root__} - {err}"
             )
             logger.debug(traceback.format_exc())
-            self.status.failure(f"Test Case: {record.testCase.fullyQualifiedName.__root__}")
+            self.status.failure(
+                f"Test Case: {record.testCase.fullyQualifiedName.__root__}"
+            )

@@ -14,41 +14,44 @@ Workflow definition for the test suite
 """
 
 from __future__ import annotations
+
+import traceback
 from logging import Logger
 from typing import List, Optional, Tuple
-import traceback
 
-from pydantic import ValidationError
 import click
+from pydantic import ValidationError
 
-from metadata.test_suite.runner.core import DataTestsRunner
-from metadata.generated.schema.entity.data.table import Table
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
-from metadata.ingestion.api.processor import ProcessorStatus
-from metadata.generated.schema.type.basic import EntityLink
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.test_suite.api.models import TestCaseDefinition
-from metadata.generated.schema.tests.testDefinition import TestDefinition
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
-from metadata.test_suite.api.models import TestSuiteProcessorConfig
-from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    TestSuitePipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import EntityLink
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.utils.logger import test_suite_logger
-from metadata.generated.schema.metadataIngestion.testSuitePipeline import TestSuitePipeline
+from metadata.ingestion.api.processor import ProcessorStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
+from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
+from metadata.utils.logger import test_suite_logger
 
 logger: Logger = test_suite_logger()
+
 
 class TestSuiteWorkflow:
     """workflow to run the test suite"""
@@ -56,7 +59,7 @@ class TestSuiteWorkflow:
     def __init__(self, config: OpenMetadataWorkflowConfig):
         """
         Instantiate test suite workflow class
-        
+
         Args:
             config: OM workflow configuration object
 
@@ -67,13 +70,15 @@ class TestSuiteWorkflow:
         self.config = config
 
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
-        self.processor_config: TestSuiteProcessorConfig = TestSuiteProcessorConfig.parse_obj(
-            self.config.processor.dict().get("config")
+        self.processor_config: TestSuiteProcessorConfig = (
+            TestSuiteProcessorConfig.parse_obj(
+                self.config.processor.dict().get("config")
+            )
         )
 
         self.metadata_config: OpenMetadataConnection = (
-                self.config.workflowConfig.openMetadataServerConfig
-            )
+            self.config.workflowConfig.openMetadataServerConfig
+        )
         self.metadata = OpenMetadata(self.metadata_config)
 
         self.status = ProcessorStatus()
@@ -86,12 +91,11 @@ class TestSuiteWorkflow:
                 _from="test_suite",
             )
 
-
     @classmethod
     def create(cls, config_dict) -> TestSuiteWorkflow:
         """
         Instantiate a TestSuiteWorkflow object form a yaml or json config file
-        
+
         Args:
             config_dict: json or yaml configuration file
         Returns:
@@ -104,20 +108,18 @@ class TestSuiteWorkflow:
             logger.error("Error trying to parse the Profiler Workflow configuration")
             raise err
 
-
     def _get_unique_table_entities(self, test_cases: List[TestCase]) -> List:
         """from a list of test cases extract unique table entities"""
         table_fqns = [
-            test_case.entityLink.__root__.split("::")[2].replace(">","")
+            test_case.entityLink.__root__.split("::")[2].replace(">", "")
             for test_case in test_cases
-            ]
+        ]
 
         return set(table_fqns)
 
-
     def _get_service_connection_from_test_case(self, table_fqn: str):
         """given an entityLink return the service connection
-        
+
         Args:
             entity_link: entity link for the test case
         """
@@ -128,18 +130,22 @@ class TestSuiteWorkflow:
             )
 
             if service:
-                service_connection  = self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service,
-                    "databaseservice",
+                service_connection = (
+                    self.metadata.secrets_manager_client.retrieve_service_connection(
+                        service,
+                        "databaseservice",
+                    )
                 )
                 return service_connection.__root__.config
-            
-            logger.error(f"Could not retrive connection details for entity {entity_link}")
+
+            logger.error(
+                f"Could not retrive connection details for entity {entity_link}"
+            )
             raise ValueError()
 
     def _get_table_entity_from_test_case(self, table_fqn: str):
         """given an entityLink return the table entity
-        
+
         Args:
             entity_link: entity link for the test case
         """
@@ -148,7 +154,6 @@ class TestSuiteWorkflow:
             fqn=table_fqn,
             fields=["profile"],
         )
-
 
     def _get_profile_sample(self, entity: Table) -> Optional[float]:
         """Get profile sample
@@ -175,7 +180,9 @@ class TestSuiteWorkflow:
         """create the interface to execute test against SQA sources"""
         table_entity = self._get_table_entity_from_test_case(table_fqn)
         return SQAInterface(
-            service_connection_config=self._get_service_connection_from_test_case(table_fqn),
+            service_connection_config=self._get_service_connection_from_test_case(
+                table_fqn
+            ),
             metadata_config=self.metadata_config,
             table_entity=table_entity,
             profile_sample=self._get_profile_sample(table_entity)
@@ -186,14 +193,9 @@ class TestSuiteWorkflow:
             else None,
         )
 
-
     def _create_data_tests_runner(self, sqa_interface):
         """create main object to run data test validation"""
-        return DataTestsRunner(
-            sqa_interface
-        )
-
-
+        return DataTestsRunner(sqa_interface)
 
     def get_test_suite_entity_for_ui_workflow(self) -> List[TestSuite]:
         """
@@ -209,10 +211,9 @@ class TestSuiteWorkflow:
             return [test_suite]
         return None
 
-
     def get_or_create_test_suite_entity_for_cli_workflow(
         self,
-        ) -> List[TestSuite]:
+    ) -> List[TestSuite]:
         """
         Fro the CLI workflow we'll have n testSuite in the
         processor.config.testSuites
@@ -221,9 +222,9 @@ class TestSuiteWorkflow:
 
         for test_suite in self.processor_config.testSuites:
             test_suite_entity = self.metadata.get_by_name(
-                                    entity=TestSuite,
-                                    fqn=test_suite.name,
-                                )
+                entity=TestSuite,
+                fqn=test_suite.name,
+            )
             if not test_suite_entity:
                 test_suite_entity = self.metadata.create_or_update(
                     CreateTestSuiteRequest(
@@ -235,8 +236,9 @@ class TestSuiteWorkflow:
 
         return test_suite_entities
 
-        
-    def get_test_cases_from_test_suite(self, test_suites: List[TestSuite]) -> List[TestCase]:
+    def get_test_cases_from_test_suite(
+        self, test_suites: List[TestSuite]
+    ) -> List[TestCase]:
         """
         Get test cases from test suite name
 
@@ -248,29 +250,26 @@ class TestSuiteWorkflow:
         for test_suite in test_suites:
             test_case_entity_list = self.metadata.list_entities(
                 entity=TestCase,
-                fields=["testSuite","entityLink","testDefinition"],
-                params={"testSuiteId":test_suite.id},
+                fields=["testSuite", "entityLink", "testDefinition"],
+                params={"testSuiteId": test_suite.id.__root__},
             )
-
             test_cases_entity.extend(test_case_entity_list.entities)
 
         return test_cases_entity
 
-
     def get_test_case_from_cli_config(self) -> List[str]:
         """Get all the test cases names defined in the CLI config file"""
         return [
-            (test_case, test_suite) for 
-            test_suite in self.processor_config.testSuites for
-            test_case in test_suite.testCases
+            (test_case, test_suite)
+            for test_suite in self.processor_config.testSuites
+            for test_case in test_suite.testCases
         ]
 
-    
     def compare_and_create_test_cases(
         self,
         cli_config_test_cases_def: List[Tuple[TestCaseDefinition, TestSuite]],
-        test_cases: List[TestCase]
-        ) -> None:
+        test_cases: List[TestCase],
+    ) -> None:
         """
         compare test cases defined in CLI config workflow with test cases
         defined on the server
@@ -279,7 +278,9 @@ class TestSuiteWorkflow:
             cli_config_test_case_name: test cases defined in CLI workflow associated with its test suite
             test_cases: list of test cases entities fetch from the server using test suite names in the config file
         """
-        test_case_names_to_create = set([test_case_def[0].name for test_case_def in cli_config_test_cases_def]) - set([test_case.name.__root__ for test_case in test_cases])
+        test_case_names_to_create = set(
+            [test_case_def[0].name for test_case_def in cli_config_test_cases_def]
+        ) - set([test_case.name.__root__ for test_case in test_cases])
 
         if not test_case_names_to_create:
             return None
@@ -289,10 +290,11 @@ class TestSuiteWorkflow:
             logger.info(f"Creating test case with name {test_case_name_to_create}")
             test_case_to_create, test_suite = next(
                 (
-                    cli_config_test_case_def for cli_config_test_case_def in cli_config_test_cases_def
+                    cli_config_test_case_def
+                    for cli_config_test_case_def in cli_config_test_cases_def
                     if cli_config_test_case_def[0].name == test_case_name_to_create
                 ),
-                (None, None)
+                (None, None),
             )
             try:
                 created_test_case.append(
@@ -302,36 +304,38 @@ class TestSuiteWorkflow:
                             entityLink=test_case_to_create.entityLink,
                             testDefinition=self.metadata.get_entity_reference(
                                 entity=TestDefinition,
-                                fqn=test_case_to_create.testDefinitionName
+                                fqn=test_case_to_create.testDefinitionName,
                             ),
                             testSuite=self.metadata.get_entity_reference(
-                                entity=TestSuite,
-                                fqn=test_suite.name
+                                entity=TestSuite, fqn=test_suite.name
                             ),
                             parameterValues=[
-                                parameter_values for parameter_values in
-                                test_case_to_create.parameterValues
-                            ]
+                                parameter_values
+                                for parameter_values in test_case_to_create.parameterValues
+                            ],
                         )
                     )
                 )
             except Exception as err:
-                logger.error(f"Couldn't create test case name {test_case_name_to_create}")
+                logger.error(
+                    f"Couldn't create test case name {test_case_name_to_create}"
+                )
                 logger.error(traceback.format_exc(err))
 
         return created_test_case
 
-
     def execute(self):
         """Execute test suite workflow"""
         test_suites = (
-            self.get_test_suite_entity_for_ui_workflow() or
-            self.get_or_create_test_suite_entity_for_cli_workflow()
+            self.get_test_suite_entity_for_ui_workflow()
+            or self.get_or_create_test_suite_entity_for_cli_workflow()
         )
         test_cases = self.get_test_cases_from_test_suite(test_suites)
         if self.processor_config:
             cli_config_test_cases_def = self.get_test_case_from_cli_config()
-            runtime_created_test_cases = self.compare_and_create_test_cases(cli_config_test_cases_def, test_cases)
+            runtime_created_test_cases = self.compare_and_create_test_cases(
+                cli_config_test_cases_def, test_cases
+            )
             if runtime_created_test_cases:
                 test_cases.extend(runtime_created_test_cases)
 
@@ -352,7 +356,6 @@ class TestSuiteWorkflow:
                     logger.error(err)
                     self.status.failure(test_case.fullyQualifiedName.__root__)
 
-
     def print_status(self) -> int:
         """
         Runs click echo to print the
@@ -366,16 +369,14 @@ class TestSuiteWorkflow:
             click.echo(self.sink.get_status().as_string())
             click.echo()
 
-        if (
-            self.status.failures
-            or (hasattr(self, "sink") and self.sink.get_status().failures)
+        if self.status.failures or (
+            hasattr(self, "sink") and self.sink.get_status().failures
         ):
             click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
 
         click.secho("Workflow finished successfully", fg="green", bold=True)
         return 0
-
 
     def raise_from_status(self, raise_warnings=False):
         """
@@ -397,11 +398,3 @@ class TestSuiteWorkflow:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()
                 )
-
-
-
-
-
-        
-
-

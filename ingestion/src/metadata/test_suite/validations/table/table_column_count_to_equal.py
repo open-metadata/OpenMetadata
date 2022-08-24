@@ -18,10 +18,13 @@ from datetime import datetime
 
 from sqlalchemy import inspect
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
-from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -44,18 +47,15 @@ def table_column_count_to_equal(
         column_count = len(inspect(runner.table).c)
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
     if column_count is None:
@@ -65,12 +65,7 @@ def table_column_count_to_equal(
             executionTime=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
     count = next(
@@ -79,19 +74,12 @@ def table_column_count_to_equal(
         if param_value.name == "columnCount"
     )
 
-    status = (
-        TestCaseStatus.Success
-        if column_count == count
-        else TestCaseStatus.Failed
-    )
+    status = TestCaseStatus.Success if column_count == count else TestCaseStatus.Failed
     result = f"Found {column_count} columns vs. the expected {count}"
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnCount",
-                    value=str(column_count)
-                )
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnCount", value=str(column_count))],
     )

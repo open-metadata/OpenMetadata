@@ -18,14 +18,17 @@ from datetime import datetime
 
 from sqlalchemy import inspect
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.orm_profiler.metrics.registry import Metrics
-
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.column.columnValueStdDevToBeBetween import (
     ColumnValueStdDevToBeBetween,
 )
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -45,42 +48,51 @@ def column_value_stddev_to_be_between(
     """
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">","")
+        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
         col = next(
-                (col for col in inspect(runner.table).c if col.name == column_name),
-                None,
-            )
+            (col for col in inspect(runner.table).c if col.name == column_name),
+            None,
+        )
         if col is None:
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        stddev_value_dict = dict(runner.dispatch_query_select_first(Metrics.STDDEV.value(col).fn()))
+        stddev_value_dict = dict(
+            runner.dispatch_query_select_first(Metrics.STDDEV.value(col).fn())
+        )
         stddev_value_res = stddev_value_dict.get(Metrics.STDDEV.name)
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="stddev",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="stddev", value=None)],
         )
 
-    min_bound = next((float(param.value) for param in test_case.parameterValues if param.name == "minValueForStdDevInCol"))
-    max_bound = next((float(param.value) for param in test_case.parameterValues if param.name == "maxValueForStdDevInCol"))
+    min_bound = next(
+        (
+            float(param.value)
+            for param in test_case.parameterValues
+            if param.name == "minValueForStdDevInCol"
+        )
+    )
+    max_bound = next(
+        (
+            float(param.value)
+            for param in test_case.parameterValues
+            if param.name == "maxValueForStdDevInCol"
+        )
+    )
 
     status = (
         TestCaseStatus.Success
-        if min_bound
-        <= stddev_value_res
-        <= max_bound
+        if min_bound <= stddev_value_res <= max_bound
         else TestCaseStatus.Failed
     )
     result = (
@@ -89,11 +101,8 @@ def column_value_stddev_to_be_between(
     )
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-        testResultValue=[
-            TestResultValue(
-                name="min",
-                value=str(stddev_value_res)
-            )
-        ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="min", value=str(stddev_value_res))],
     )

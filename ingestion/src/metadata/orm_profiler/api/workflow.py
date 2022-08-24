@@ -47,8 +47,8 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics

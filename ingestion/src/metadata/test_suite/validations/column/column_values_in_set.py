@@ -14,20 +14,20 @@ ColumnValuesToBeNotNull validation implementation
 """
 # pylint: disable=duplicate-code
 
-from datetime import datetime
-from typing import Optional
 from ast import literal_eval
+from datetime import datetime
 
 from sqlalchemy import inspect
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.orm_profiler.metrics.registry import Metrics
-
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeInSet import (
     ColumnValuesToBeInSet,
 )
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -52,15 +52,21 @@ def column_values_in_set(
     :return: TestCaseResult with status and results
     """
 
-    allowed_value = next((literal_eval(param.value) for param in test_case.parameterValues if param.name == "allowedValues"))
+    allowed_value = next(
+        (
+            literal_eval(param.value)
+            for param in test_case.parameterValues
+            if param.name == "allowedValues"
+        )
+    )
     set_count = add_props(values=allowed_value)(Metrics.COUNT_IN_SET.value)
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">","")
+        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
         col = next(
-                (col for col in inspect(runner.table).c if col.name == column_name),
-                None,
-            )
+            (col for col in inspect(runner.table).c if col.name == column_name),
+            None,
+        )
         if col is None:
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name.__root__}"
@@ -70,29 +76,28 @@ def column_values_in_set(
         set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
     except Exception as err:  # pylint: disable=broad-except
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="allowedValueCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="allowedValueCount", value=None)],
         )
 
     status = TestCaseStatus.Success if set_count_res >= 1 else TestCaseStatus.Failed
     result = f"Found countInSet={set_count_res}"
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
         testResultValue=[
-                TestResultValue(
+            TestResultValue(
                 name="allowedValueCount",
                 value=str(set_count_res),
             )
-        ]
+        ],
     )

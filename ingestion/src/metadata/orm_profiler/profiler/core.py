@@ -30,9 +30,9 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     TableProfile,
 )
-from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.interfaces.interface_protocol import InterfaceProtocol
 from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,

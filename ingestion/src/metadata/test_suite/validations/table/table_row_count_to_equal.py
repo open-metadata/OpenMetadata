@@ -16,10 +16,14 @@ TableRowCountToEqual validation implementation
 
 from datetime import datetime
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
-from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -39,22 +43,21 @@ def table_row_count_to_equal(
     """
 
     try:
-        row_count_dict = dict(runner.dispatch_query_select_first(Metrics.ROW_COUNT.value().fn()))
+        row_count_dict = dict(
+            runner.dispatch_query_select_first(Metrics.ROW_COUNT.value().fn())
+        )
         row_count_value = row_count_dict.get(Metrics.ROW_COUNT.name)
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="rowCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="rowCount", value=None)],
         )
 
     value = next(
@@ -64,18 +67,13 @@ def table_row_count_to_equal(
     )
 
     status = (
-        TestCaseStatus.Success
-        if row_count_value == value
-        else TestCaseStatus.Failed
+        TestCaseStatus.Success if row_count_value == value else TestCaseStatus.Failed
     )
     result = f"Found {row_count_value} rows vs. the expected {value}"
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-            testResultValue=[
-                    TestResultValue(
-                    name="rowCount",
-                    value=str(row_count_value)
-                )
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="rowCount", value=str(row_count_value))],
     )

@@ -20,9 +20,13 @@ from typing import List
 
 from sqlalchemy import inspect
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -60,18 +64,15 @@ def table_column_name_to_exist(
         column_names = inspect(runner.table).c
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnNameExits",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="columnNameExits", value=None)],
         )
 
     if column_names is None:
@@ -81,12 +82,7 @@ def table_column_name_to_exist(
             executionTime=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnNameExits",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="columnNameExits", value=None)],
         )
 
     column_name = next(
@@ -104,11 +100,8 @@ def table_column_name_to_exist(
     result = f"{column_name} column expected vs {format_column_list(status, [col.name for col in column_names])}"
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-            testResultValue=[
-                    TestResultValue(
-                    name="columnNameExits",
-                    value=str(True)
-                )
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnNameExits", value=str(True))],
     )

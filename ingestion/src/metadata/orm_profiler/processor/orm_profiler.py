@@ -46,8 +46,8 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.interfaces.interface_protocol import InterfaceProtocol
+from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.profiler.handle_partition import (
     get_partition_cols,
     is_partitioned,

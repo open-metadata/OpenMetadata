@@ -18,13 +18,17 @@ from datetime import datetime
 
 from sqlalchemy import inspect
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeNotNull import (
     ColumnValuesToBeNotNull,
 )
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -44,32 +48,31 @@ def column_values_to_be_not_null(
     """
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">","")
+        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
         col = next(
-                (col for col in inspect(runner.table).c if col.name == column_name),
-                None,
-            )
+            (col for col in inspect(runner.table).c if col.name == column_name),
+            None,
+        )
         if col is None:
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        null_count_value_dict = dict(runner.dispatch_query_select_first(Metrics.NULL_COUNT.value(col).fn()))
+        null_count_value_dict = dict(
+            runner.dispatch_query_select_first(Metrics.NULL_COUNT.value(col).fn())
+        )
         null_count_value_res = null_count_value_dict.get(Metrics.NULL_COUNT.name)
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="nullCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="nullCount", value=None)],
         )
 
     status = (
@@ -78,11 +81,10 @@ def column_values_to_be_not_null(
     result = f"Found nullCount={null_count_value_res}. It should be 0."
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-            testResultValue=[
-                    TestResultValue(
-                    name="nullCount",
-                    value=str(null_count_value_res)
-                )
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="nullCount", value=str(null_count_value_res))
+        ],
     )

@@ -15,17 +15,18 @@ ColumnValuesToBeNotNull validation implementation
 # pylint: disable=duplicate-code
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import inspect
 
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
     ColumnValuesToMatchRegex,
 )
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -50,38 +51,41 @@ def column_values_to_match_regex(
     :return: TestCaseResult with status and results
     """
 
-    regex = next((param.value for param in test_case.parameterValues if param.name == "regex"))
+    regex = next(
+        (param.value for param in test_case.parameterValues if param.name == "regex")
+    )
     like_count = add_props(expression=regex)(Metrics.LIKE_COUNT.value)
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">","")
+        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
         col = next(
-                (col for col in inspect(runner.table).c if col.name == column_name),
-                None,
-            )
+            (col for col in inspect(runner.table).c if col.name == column_name),
+            None,
+        )
         if col is None:
             raise ValueError(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        value_count_value_dict = dict(runner.dispatch_query_select_first(Metrics.COUNT.value(col).fn()))
+        value_count_value_dict = dict(
+            runner.dispatch_query_select_first(Metrics.COUNT.value(col).fn())
+        )
         value_count_value_res = value_count_value_dict.get(Metrics.COUNT.name)
-        like_count_value_dict = dict(runner.dispatch_query_select_first(like_count(col).fn()))
+        like_count_value_dict = dict(
+            runner.dispatch_query_select_first(like_count(col).fn())
+        )
         like_count_value_res = like_count_value_dict.get(Metrics.LIKE_COUNT.name)
 
     except Exception as err:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+        )
         logger.error(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
             result=msg,
-            testResultValue=[
-                    TestResultValue(
-                    name="likeCount",
-                    value=None
-                )
-            ]
+            testResultValue=[TestResultValue(name="likeCount", value=None)],
         )
 
     status = (
@@ -92,11 +96,10 @@ def column_values_to_match_regex(
     result = f"Found {like_count_value_res} value(s) matching regex pattern vs {value_count_value_res} value(s) in the column."
 
     return TestCaseResult(
-        timestamp=execution_date, testCaseStatus=status, result=result,
-            testResultValue=[
-                    TestResultValue(
-                    name="likeCount",
-                    value=str(like_count_value_res)
-                )
-            ]
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="likeCount", value=str(like_count_value_res))
+        ],
     )
