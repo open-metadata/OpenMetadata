@@ -92,8 +92,7 @@ class ConfigResourceTest extends CatalogApplicationTest {
     WebTarget target = getConfigResource("slackChat");
     SlackChatConfiguration slackChatConfiguration =
         TestUtils.get(target, SlackChatConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getSlackChatConfiguration().getApiToken(), slackChatConfiguration.getApiToken());
-    assertEquals(config.getSlackChatConfiguration().getBotName(), slackChatConfiguration.getBotName());
+    assertEquals(config.getSlackChatConfiguration().getSlackUrl(), slackChatConfiguration.getSlackUrl());
   }
 
   @Test

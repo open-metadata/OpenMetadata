@@ -171,6 +171,4 @@ airflowConfiguration:
   authProvider: "no-auth"
 
 slackChat:
-  apiToken: "token"
-  botName: "bot"
-  channels: ["support"]
+  slackUrl: "http://localhost:8080"

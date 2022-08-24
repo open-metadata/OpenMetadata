@@ -196,9 +196,7 @@ declare module 'Models' {
   };
 
   export type SlackChatConfig = {
-    apiToken: string;
-    botName: string;
-    channels: string[];
+    slackUrl: string;
   };
 
   export type FormattedTableData = {

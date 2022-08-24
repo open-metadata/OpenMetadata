@@ -56,11 +56,9 @@ const AppRouter = () => {
     fetchSlackConfig()
       .then((res) => {
         if (res.data) {
-          const { apiToken, botName, channels } = res.data;
+          const { slackUrl } = res.data;
           const slackConfig = {
-            apiToken,
-            botName,
-            channels,
+            slackUrl,
           };
           setSlackConfig(slackConfig);
         } else {
@@ -79,7 +77,7 @@ const AppRouter = () => {
   }, []);
 
   const slackChat =
-    slackConfig && slackConfig.apiToken ? (
+    slackConfig && slackConfig.slackUrl ? (
       <SlackChat slackConfig={slackConfig} />
     ) : null;
 
