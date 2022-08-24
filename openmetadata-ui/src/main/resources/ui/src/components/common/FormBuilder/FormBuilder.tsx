@@ -60,15 +60,14 @@ const FormBuilder: FunctionComponent<Props> = ({
 
   const [hostIp, setHostIp] = useState<string>('[fetching]');
 
-  const fetchHostIp = () => {
-    getPipelineServiceHostIp()
-      .then((res: AxiosResponse<{ ip?: string }>) =>
-        setHostIp(res.data?.ip || '[unknown]')
-      )
-      .catch((err: AxiosError) => {
-        setHostIp('[error - unknown]');
-        showErrorToast(err);
-      });
+  const fetchHostIp = async () => {
+  try {
+      const data = await getPipelineServiceHostIp();
+      setHostIp(data?.ip || '[unknown]')
+    } catch (error) {
+      setHostIp('[error - unknown]');
+      showErrorToast(error as AxiosError);
+    }
   };
 
   useEffect(() => {
