@@ -24,12 +24,16 @@ import {
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
-import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
-import { Webhook } from '../../generated/entity/events/webhook';
+import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditWebhookPage: FunctionComponent = () => {
@@ -59,7 +63,12 @@ const EditWebhookPage: FunctionComponent = () => {
   };
 
   const goToWebhooks = () => {
-    history.push(ROUTES.WEBHOOKS);
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.INTEGRATIONS,
+        GlobalSettingOptions.WEBHOOK
+      )
+    );
   };
 
   const handleCancel = () => {
@@ -116,7 +125,11 @@ const EditWebhookPage: FunctionComponent = () => {
             allowAccess={isAdminUser || isAuthDisabled}
             data={webhookData}
             deleteState={deleteStatus}
-            header="Edit Webhook"
+            header={
+              webhookData?.webhookType === WebhookType.Slack
+                ? 'Edit Slack'
+                : 'Edit Webhook'
+            }
             mode={FormSubmitType.EDIT}
             saveState={status}
             webhookType={webhookData?.webhookType}

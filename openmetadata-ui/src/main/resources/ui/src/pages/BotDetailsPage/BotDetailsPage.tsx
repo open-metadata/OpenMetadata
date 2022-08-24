@@ -20,7 +20,7 @@ import {
   revokeUserToken,
   updateUserDetail,
 } from '../../axiosAPIs/userAPI';
-import BotsDetail from '../../components/BotsDetail/BotsDetail.component';
+import BotDetails from '../../components/BotDetails/BotDetails.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import { UserDetails } from '../../components/Users/Users.interface';
@@ -28,7 +28,7 @@ import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const BotsPage = () => {
+const BotDetailsPage = () => {
   const { botsName } = useParams<{ [key: string]: string }>();
 
   const [botsData, setBotsData] = useState<User>({} as User);
@@ -102,7 +102,7 @@ const BotsPage = () => {
       return <ErrorPlaceholder />;
     } else {
       return (
-        <BotsDetail
+        <BotDetails
           botsData={botsData}
           revokeTokenHandler={revokeBotsToken}
           updateBotsDetails={updateBotsDetails}
@@ -121,4 +121,4 @@ const BotsPage = () => {
   );
 };
 
-export default BotsPage;
+export default BotDetailsPage;

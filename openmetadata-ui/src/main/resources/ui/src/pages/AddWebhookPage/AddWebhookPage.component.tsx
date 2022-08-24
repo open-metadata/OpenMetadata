@@ -90,8 +90,8 @@ const AddWebhookPage: FunctionComponent = () => {
         <AddWebhook
           allowAccess={isAdminUser || isAuthDisabled}
           header={`Add ${
-            webhookType === WebhookType.Slack ? 'Slack' : ''
-          }  Webhook`}
+            webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'
+          }`}
           mode={FormSubmitType.ADD}
           saveState={status}
           webhookType={webhookType}

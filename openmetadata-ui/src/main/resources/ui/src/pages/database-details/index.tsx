@@ -63,6 +63,7 @@ import {
   pagingObject,
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -89,9 +90,12 @@ import {
 } from '../../utils/FeedUtils';
 import {
   getExplorePathWithInitFilters,
-  getServicesWithTabPath,
+  getSettingPath,
 } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import {
+  getServiceRouteFromServiceType,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -269,7 +273,12 @@ const DatabaseDetails: FunctionComponent = () => {
           setSlashedDatabaseName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
-              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              ),
             },
             {
               name: service.name ?? '',
