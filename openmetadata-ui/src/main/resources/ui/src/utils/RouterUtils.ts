@@ -24,6 +24,7 @@ import {
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   ROUTES,
 } from '../constants/constants';
@@ -298,6 +299,24 @@ export const getProfilerDashboardWithFqnPath = (entityTypeFQN: string) => {
   let path = ROUTES.PROFILER_DASHBOARD;
 
   path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getAddPolicyRulePath = (fqn: string) => {
+  let path = ROUTES.ADD_POLICY_RULE;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
+  let path = ROUTES.EDIT_POLICY_RULE;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_RULE_NAME, ruleName);
 
   return path;
 };

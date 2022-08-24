@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Empty, Table, Tabs } from 'antd';
+import { Button, Empty, Modal, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -37,10 +37,13 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './RolesDetail.less';
 
 const { TabPane } = Tabs;
+
+type Attribute = 'policies' | 'teams' | 'users';
 
 const List = ({
   list,
@@ -101,7 +104,7 @@ const List = ({
         render: (_, record) => {
           return (
             <Button type="text" onClick={() => onDelete(record)}>
-              Remove
+              <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
             </Button>
           );
         },
@@ -127,6 +130,8 @@ const RolesDetailPage = () => {
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
+  const [selectedEntity, setEntity] =
+    useState<{ attribute: Attribute; record: EntityReference }>();
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -171,10 +176,7 @@ const RolesDetailPage = () => {
     }
   };
 
-  const handleDelete = async (
-    data: EntityReference,
-    attribute: 'policies' | 'teams' | 'users'
-  ) => {
+  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
     const attributeData =
       (role[attribute as keyof Role] as EntityReference[]) ?? [];
     const updatedAttributeData = attributeData.filter(
@@ -232,25 +234,48 @@ const RolesDetailPage = () => {
               <List
                 list={role.policies ?? []}
                 type="policy"
-                onDelete={(record) => handleDelete(record, 'policies')}
+                onDelete={(record) =>
+                  setEntity({ record, attribute: 'policies' })
+                }
               />
             </TabPane>
             <TabPane key="teams" tab="Teams">
               <List
                 list={role.teams ?? []}
                 type="team"
-                onDelete={(record) => handleDelete(record, 'teams')}
+                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
               />
             </TabPane>
             <TabPane key="users" tab="Users">
               <List
                 list={role.users ?? []}
                 type="user"
-                onDelete={(record) => handleDelete(record, 'users')}
+                onDelete={(record) => setEntity({ record, attribute: 'users' })}
               />
             </TabPane>
           </Tabs>
         </div>
+      )}
+      {selectedEntity && (
+        <Modal
+          centered
+          okText="Confirm"
+          title={`Remove ${getEntityName(
+            selectedEntity.record
+          )} from ${getEntityName(role)}`}
+          visible={!isUndefined(selectedEntity.record)}
+          onCancel={() => setEntity(undefined)}
+          onOk={() => {
+            handleDelete(selectedEntity.record, selectedEntity.attribute);
+            setEntity(undefined);
+          }}>
+          <Typography.Text>
+            Are you sure you want to remove the{' '}
+            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
+              role
+            )}?`}
+          </Typography.Text>
+        </Modal>
       )}
     </div>
   );

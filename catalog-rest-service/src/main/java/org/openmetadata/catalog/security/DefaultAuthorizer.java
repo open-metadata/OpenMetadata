@@ -37,7 +37,6 @@ import org.openmetadata.catalog.security.policyevaluator.RoleCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.Permission.Access;
 import org.openmetadata.catalog.type.ResourcePermission;
 import org.openmetadata.catalog.util.RestUtil;
@@ -51,7 +50,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) {
-    LOG.debug("Initializing DefaultAuthorizer with config {}", config);
+    LOG.info("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.testUsers = new HashSet<>(config.getTestPrincipals());
@@ -154,12 +153,6 @@ public class DefaultAuthorizer implements Authorizer {
       throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin() || (allowBots && subjectContext.isBot())) {
-      return;
-    }
-
-    // TODO view is currently allowed for everyone
-    if (operationContext.getOperations().size() == 1
-        && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
       return;
     }
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);

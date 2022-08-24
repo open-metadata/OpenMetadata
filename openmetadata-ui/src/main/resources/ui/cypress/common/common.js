@@ -553,3 +553,143 @@ export const toastNotification = (msg) => {
   cy.wait(1000);
   cy.get('.Toastify__close-button').should('be.visible').click();
 };
+
+
+
+export const addCustomPropertiesForEntity = (entityType, customType, value) => {
+  const propertyName = `entity${entityType.name}test${uuid()}`;
+
+  //Add Custom property for selected entity
+  cy.get('[data-testid="add-field-button"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="name"]').should('be.visible').type(propertyName);
+  cy.get('select').select(customType);
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .should('be.visible')
+    .type(entityType.description);
+  cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
+
+  //Check if the property got added
+  cy.get('[data-testid="data-row"]').should('contain', propertyName);
+
+  //Navigating to home page
+  cy.clickOnLogo();
+
+  //Checking the added property in Entity
+  //cy.contains(entityType.name).scrollIntoView().should('be.visible').click();
+
+  cy.get(`[data-testid*="${entityType.name}"] > .ant-btn > span`)
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  cy.wait(1000);
+  cy.get('[data-testid="table-link"]')
+    .first()
+    .should('exist')
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="Custom Properties"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="table-body"]').should('contain', propertyName);
+
+  //Adding value for the custom property
+
+  //Navigating through the created custom property for adding value
+  cy.get('[data-testid="data-row"]')
+    .contains(propertyName)
+    .scrollIntoView()
+    .next('td')
+    .contains('No data')
+    .next('[data-testid="edit-icon"]')
+    .as('editbutton');
+
+  cy.wait(1000);
+
+  cy.get('@editbutton').should('exist').should('be.visible').click();
+
+  //Checking for value text box or markdown box
+  cy.get('body').then(($body) => {
+    if ($body.find('[data-testid="value-input"]').length > 0) {
+      cy.get('[data-testid="value-input"]').should('be.visible').type(value);
+      cy.get('[data-testid="save-value"]').click();
+    } else if (
+      $body.find(
+        '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
+      )
+    ) {
+      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+        .should('be.visible')
+        .type(value);
+      cy.get('[data-testid="save"]').click();
+    }
+  });
+
+  //Checking the added value to the property
+  cy.get('[data-testid="data-row"]')
+    .contains(propertyName)
+    .scrollIntoView()
+    .next('td')
+    .as('value');
+
+  cy.get('@value').should('contain', value);
+
+  //returning the property name since it needs to be deleted and updated
+  return propertyName;
+};
+
+export const editCreatedProperty = (propertyName) => {
+  //Fetching for edit button
+  cy.get('[data-testid="table-body"]')
+    .children()
+    .contains(propertyName)
+    .scrollIntoView()
+    .nextUntil('button')
+    .find('[data-testid="edit-button"]')
+    .as('editbutton');
+
+  cy.get('@editbutton').click();
+
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .should('be.visible')
+    .clear()
+    .type('This is new description');
+
+  cy.get('[data-testid="save"]').should('be.visible').click();
+
+  cy.wait(1000);
+
+  //Fetching for updated descriptions for the created custom property
+  cy.get('[data-testid="table-body"]')
+    .children()
+    .contains(propertyName)
+    .nextUntil('div')
+    .find('[data-testid="viewer-container"]')
+    .should('contain', 'This is new description');
+};
+
+export const deleteCreatedProperty = (propertyName) => {
+  //Fetching for delete button
+
+  cy.get('[data-testid="table-body"]')
+    .children()
+    .contains(propertyName)
+    .nextUntil('button')
+    .find('[data-testid="delete-button"]')
+    .as('deletebutton');
+
+  cy.get('@deletebutton').click();
+
+  //Checking property name is present on the delete pop-up
+  cy.get('[data-testid="body-text"] > p').should('contain', propertyName);
+
+  cy.get('[data-testid="save-button"]').should('be.visible').click();
+
+  //Checking if property got deleted successfully
+  cy.get('[data-testid="table-body"]').should('not.contain', propertyName);
+};

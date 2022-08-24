@@ -85,16 +85,9 @@ You can check the latest release [here](/overview/releases).
     bordercolor="blue-70"
   >
     <li>Fivetran</li>
-    <li>Mode</li>
     <li>Redpanda</li>
     <li>Dagster</li>
   </Tile>
-    <Tile
-    title="ML Features"
-    text="With the addition of the SageMaker connector"
-    background="blue-70"
-    bordercolor="blue-70"
-  />
 </TileContainer>
 
 ## 0.13.0 Release - Oct 12th, 2022

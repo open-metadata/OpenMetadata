@@ -3,7 +3,7 @@ package org.openmetadata.catalog.pipelineService;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.exception.PipelineServiceVersionException;
 
 public class PipelineServiceClientTest {

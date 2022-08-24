@@ -15,4 +15,10 @@ public @interface Function {
   String description();
 
   String[] examples();
+
+  /**
+   * Some functions are used for capturing resource based rules where policies are applied based on resource being
+   * accessed and team hierarchy the resource belongs to instead of the subject.
+   */
+  boolean resourceBased() default false;
 }
