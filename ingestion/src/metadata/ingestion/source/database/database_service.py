@@ -467,7 +467,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             )
             schema_names_list = (
                 self.get_database_schema_names()
-                if self.source_config.isPartialWorkflow
+                if self.source_config.markDeletedTablesFromFilterOnly
                 else self.get_raw_database_schema_names()
             )
             for schema_name in schema_names_list:
