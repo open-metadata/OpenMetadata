@@ -60,12 +60,10 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -106,30 +104,24 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    USER1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER1 = USER1.getEntityReference();
+    CreateUser create = createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    USER1 = createEntity(create, ADMIN_AUTH_HEADERS);
+    USER1_REF = USER1.getEntityReference();
 
-    USER2 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER2 = USER2.getEntityReference();
+    create = createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    USER2 = createEntity(create, ADMIN_AUTH_HEADERS);
+    USER2_REF = USER2.getEntityReference();
 
-    USER_WITH_DATA_STEWARD_ROLE =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("user-data-steward", "", "", null)
-                .withRoles(List.of(DATA_STEWARD_ROLE.getId())),
-            ADMIN_AUTH_HEADERS);
+    create = createRequest("user-data-steward", "", "", null).withRoles(List.of(DATA_STEWARD_ROLE.getId()));
+    USER_WITH_DATA_STEWARD_ROLE = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    USER_WITH_DATA_CONSUMER_ROLE =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("user-data-consumer", "", "", null)
-                .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
-            ADMIN_AUTH_HEADERS);
+    create = createRequest("user-data-consumer", "", "", null).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    USER_WITH_DATA_CONSUMER_ROLE = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // USER_TEAM21 is part of TEAM21
+    create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
+    USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
+    USER2_REF = USER2.getEntityReference();
   }
 
   @Test
@@ -137,111 +129,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public void post_entity_as_non_admin_401(TestInfo test) {
     // Override the method as a User can create a User entity for himself
     // during first time login without being an admin
-  }
-
-  @Order(Integer.MAX_VALUE) // Run this test last to avoid side effects of default role creation to fail other tests.
-  @Test
-  void userDefaultRoleAssignment(TestInfo test) throws IOException {
-    // Find a nonDefault role
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
-    Role nonDefaultRole = roles.stream().filter(role -> !role.getDefaultRole()).findAny().orElseThrow();
-    EntityReference nonDefaultRoleRef = nonDefaultRole.getEntityReference();
-
-    // Find a default role
-    EntityReference defaultRoleRef = getDefaultRole();
-    assertNotNull(defaultRoleRef);
-
-    // ... when a user is created without any roles, then the global default role should be assigned.
-    CreateUser create = createRequest(test, 1);
-    User user1 = createUserAndCheckRoles(create, Collections.emptyList(), Arrays.asList(defaultRoleRef));
-
-    // ... when a user is created with a non default role, then the global default role
-    // should be assigned along with the non default role.
-    create = createRequest(test, 2).withRoles(List.of(nonDefaultRole.getId()));
-    User user2 = createUserAndCheckRoles(create, Arrays.asList(nonDefaultRoleRef), Arrays.asList(defaultRoleRef));
-
-    // ... when a user is created with both global default and non-default role, then both roles should be assigned.
-    create = createRequest(test, 3).withRoles(List.of(nonDefaultRole.getId(), defaultRoleRef.getId()));
-    User user3 =
-        createUserAndCheckRoles(
-            create, Arrays.asList(nonDefaultRoleRef, defaultRoleRef), Arrays.asList(defaultRoleRef));
-
-    // Change the default roles and make sure the change is reflected in all users
-    Role newDefaultRole = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1000), ADMIN_AUTH_HEADERS);
-    EntityReference newDefaultRoleRef = newDefaultRole.getEntityReference();
-    String defaultRoleJson = JsonUtils.pojoToJson(newDefaultRole);
-    newDefaultRole.setDefaultRole(true);
-    roleResourceTest.patchEntity(newDefaultRole.getId(), defaultRoleJson, newDefaultRole, ADMIN_AUTH_HEADERS);
-
-    // ... when user1 exists, then ensure that the default role changed.
-    user1 = getEntity(user1.getId(), ADMIN_AUTH_HEADERS);
-    assertRoles(user1, Collections.emptyList(), Arrays.asList(newDefaultRoleRef));
-
-    // ... when user2 exists, then ensure that the default role changed.
-    user2 = getEntity(user2.getId(), ADMIN_AUTH_HEADERS);
-    assertRoles(user2, Arrays.asList(nonDefaultRoleRef), Arrays.asList(newDefaultRoleRef));
-
-    // ... when user3 exists, then ensure that the default role changed.
-    user3 = getEntity(user3.getId(), ADMIN_AUTH_HEADERS);
-    assertRoles(user3, Arrays.asList(nonDefaultRoleRef), Arrays.asList(newDefaultRoleRef));
-
-    // Create team1 with defaultRole role1
-    Role role1 =
-        roleResourceTest.createEntity(
-            roleResourceTest.createRequest("teamDefaultRole1", "", "", null), ADMIN_AUTH_HEADERS);
-    EntityReference role1Ref = role1.getEntityReference();
-
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team1 =
-        teamResourceTest.createEntity(
-            teamResourceTest.createRequest(test, 1).withDefaultRoles(List.of(role1.getId())), ADMIN_AUTH_HEADERS);
-    EntityReference team1Ref = team1.getEntityReference();
-
-    // Create team2 with defaultRole role2
-    Role role2 =
-        roleResourceTest.createEntity(
-            roleResourceTest.createRequest("teamDefaultRole2", "", "", null), ADMIN_AUTH_HEADERS);
-    EntityReference role2Ref = role2.getEntityReference();
-
-    Team team2 =
-        teamResourceTest.createEntity(
-            teamResourceTest.createRequest(test, 2).withDefaultRoles(List.of(role1.getId(), role2.getId())),
-            ADMIN_AUTH_HEADERS);
-    EntityReference team2Ref = team2.getEntityReference();
-
-    // user1 has defaultRole
-    // Add user1 to team1 to inherit default of roles of team1(role1)
-    String originalUser1 = JsonUtils.pojoToJson(user1);
-    user1.setTeams(List.of(team1Ref));
-    user1 = patchEntity(user1.getId(), originalUser1, user1, ADMIN_AUTH_HEADERS);
-    assertRoles(user1, Collections.emptyList(), Arrays.asList(newDefaultRoleRef, role1Ref));
-
-    // user1 now has default role and role1 (through team1)
-    // Add user1 to team2 to inherit default of roles team1 (role1 and role2)
-    originalUser1 = JsonUtils.pojoToJson(user1);
-    user1.setTeams(List.of(team1Ref, team2Ref));
-    user1 = patchEntity(user1.getId(), originalUser1, user1, ADMIN_AUTH_HEADERS);
-    assertRoles(user1, Collections.emptyList(), Arrays.asList(newDefaultRoleRef, role1Ref, role2Ref));
-
-    // user2 has defaultRole and nonDefaultRole
-    // Add user2 to team2 and inherit default roles role1 and role2 of team2
-    String originalUser2 = JsonUtils.pojoToJson(user2);
-    user2.setTeams(List.of(team2Ref));
-    user2 = patchEntity(user2.getId(), originalUser2, user2, ADMIN_AUTH_HEADERS);
-    assertRoles(user2, Arrays.asList(nonDefaultRoleRef), Arrays.asList(newDefaultRoleRef, role1Ref, role2Ref));
-
-    // Given user2 has a non default role assigned, when user2 leaves team2, then user2 should get assigned the global
-    // default role and retain its non-default role. Also note that user2 is assigned to organization.
-    originalUser2 = JsonUtils.pojoToJson(user2);
-    ChangeDescription change = getChangeDescription(user2.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(List.of(team2Ref)));
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("teams").withNewValue(List.of(ORG_TEAM.getEntityReference())));
-    user2.setTeams(null);
-    user2 = patchEntityAndCheck(user2, originalUser2, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertRoles(user2, Arrays.asList(nonDefaultRoleRef), Arrays.asList(newDefaultRoleRef));
   }
 
   @Test
@@ -770,6 +657,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
   }
 
+  @Test
+  void testInheritedRole() throws HttpResponseException {
+    // USER1 inherits DATA_CONSUMER_ROLE from Organization
+    User user1 = getEntity(USER1.getId(), "roles", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF), user1.getInheritedRoles());
+
+    // USER_TEAM21 inherits DATA_CONSUMER_ROLE from Organization and DATA_STEWARD_ROLE from Team2
+    User user_team21 = getEntity(USER_TEAM21.getId(), "roles", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF, DATA_STEWARD_ROLE_REF), user_team21.getInheritedRoles());
+  }
+
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -788,21 +686,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     return jwt;
   }
 
-  @SneakyThrows
-  private User createUserAndCheckRoles(
-      CreateUser create, List<EntityReference> expectedRoles, List<EntityReference> expectedInheritedRoles) {
-    User user = createEntity(create, ADMIN_AUTH_HEADERS);
-    assertRoles(user, expectedRoles, expectedInheritedRoles);
-
-    user = getEntity(user.getId(), "roles", ADMIN_AUTH_HEADERS);
-    assertRoles(user, expectedRoles, expectedInheritedRoles);
-    return user;
-  }
-
-  private void assertRoles(
-      User user, List<EntityReference> expectedRoles, List<EntityReference> expectedInheritedRoles) {
+  private void assertRoles(User user, List<EntityReference> expectedRoles) {
     TestUtils.assertEntityReferences(expectedRoles, user.getRoles());
-    TestUtils.assertEntityReferences(expectedInheritedRoles, user.getInheritedRoles());
   }
 
   @Override
@@ -839,7 +724,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     locationResourceTest.createEntity(
         locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), ADMIN_AUTH_HEADERS);
     locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM_OWNER1), ADMIN_AUTH_HEADERS);
+        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM11_REF), ADMIN_AUTH_HEADERS);
     return user;
   }
 
@@ -870,7 +755,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (UUID roleId : listOrEmpty(createRequest.getRoles())) {
       expectedRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
     }
-    assertRoles(user, expectedRoles, List.of(DATA_CONSUMER_ROLE_REFERENCE));
+    assertRoles(user, expectedRoles);
 
     List<EntityReference> expectedTeams = new ArrayList<>();
     for (UUID teamId : listOrEmpty(createRequest.getTeams())) {
@@ -879,6 +764,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     if (expectedTeams.isEmpty()) {
       expectedTeams = new ArrayList<>(List.of(ORG_TEAM.getEntityReference())); // Organization is default team
     }
+    assertEntityReferences(expectedTeams, user.getTeams());
 
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
@@ -918,14 +804,5 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
-  }
-
-  private EntityReference getDefaultRole() throws HttpResponseException {
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    List<Role> roles = roleResourceTest.getDefaultRoles();
-    if (roleResourceTest.getDefaultRoles().size() == 0) {
-      return null;
-    }
-    return roles.get(0).getEntityReference();
   }
 }

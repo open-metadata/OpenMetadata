@@ -142,16 +142,16 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
 
     UserResourceTest userResourceTest = new UserResourceTest();
-    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
+    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 4), TEST_AUTH_HEADERS);
 
     CreateTable createTable = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable.withOwner(TableResourceTest.USER_OWNER1);
+    createTable.withOwner(TableResourceTest.USER1_REF);
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
         teamResourceTest
-            .createRequest(test, 2)
+            .createRequest(test, 4)
             .withDisplayName("Team2")
             .withDescription("Team2 description")
             .withUsers(List.of(USER2.getId()));

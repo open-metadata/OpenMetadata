@@ -137,6 +137,7 @@ import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconReaction from '../assets/svg/Reaction.svg';
+import IconRemove from '../assets/svg/Remove.svg';
 import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
@@ -331,6 +332,7 @@ export const Icons = {
   ROLE_GREY: 'role-grey',
   POLICIES: 'policies',
   INFO_SECONDARY: 'info-secondary',
+  ICON_REMOVE: 'icon-remove',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -966,6 +968,11 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconPolicies;
 
       break;
+    case Icons.ICON_REMOVE:
+      IconComponent = IconRemove;
+
+      break;
+
     case Icons.INFO_SECONDARY:
       IconComponent = IconInfoSecondary;
 

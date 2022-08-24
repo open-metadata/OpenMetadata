@@ -77,7 +77,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER_OWNER1);
+            .withOwner(USER1_REF);
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     tableReq =
         tableResourceTest
@@ -91,7 +91,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER_OWNER1);
+            .withOwner(USER1_REF);
     TEST_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     TABLE_LINK = String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName());
     TABLE_LINK_2 = String.format("<#E::table::%s>", TEST_TABLE2.getFullyQualifiedName());

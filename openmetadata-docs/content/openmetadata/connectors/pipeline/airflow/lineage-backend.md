@@ -192,3 +192,11 @@ and downstream for outlets) between the Pipeline and Table Entities.
 
 It is important to get the naming right, as we will fetch the Table Entity by its FQN. If no information is specified 
 in terms of lineage, we will just ingest the Pipeline Entity without adding further information.
+
+<Note>
+
+While we are showing here how to parse the lineage using the Lineage Backend, the setup of `inlets` and `outlets`
+is supported as well through external metadata ingestion from Airflow, be it via the UI, CLI or directly running
+an extraction DAG from Airflow itself.
+
+</Note>

@@ -77,7 +77,7 @@ kubectl create -f dags_pv_pvc.yml
 
 </Collapse>
 
-<Collapse title="Code Samples for PV and PVC for Airflow DAGs">
+<Collapse title="Code Samples for PV and PVC for Airflow Logs">
 
 ```yaml
 # logs_pv_pvc.yml

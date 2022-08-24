@@ -40,10 +40,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final K dao;
   protected final Authorizer authorizer;
   private final boolean supportsOwner;
-  protected final OperationContext createOperationContext;
-  protected final OperationContext deleteOperationContext;
-  protected final OperationContext getOperationContext;
-  protected final OperationContext listOperationContext;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
@@ -52,12 +48,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.dao = repository;
     this.authorizer = authorizer;
-
-    createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    deleteOperationContext = new OperationContext(entityType, MetadataOperation.DELETE);
-
-    listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
   }
 
   public final Fields getFields(String fields) {
@@ -84,6 +74,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String after)
       throws IOException {
     RestUtil.validateCursors(before, after);
+    OperationContext listOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, listOperationContext, getResourceContext(), true);
     Fields fields = getFields(fieldsParam);
 
@@ -98,6 +89,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, UUID id, String fieldsParam, Include include)
       throws IOException {
+    OperationContext getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, getOperationContext, getResourceContextById(id), true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
@@ -106,6 +98,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
+    OperationContext getOperationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, getOperationContext, getResourceContextByName(name), true);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
@@ -121,6 +114,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, boolean allowBots)
       throws IOException {
+    OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     dao.prepare(entity);
     authorizer.authorize(
         securityContext, createOperationContext, getResourceContextByName(entity.getFullyQualifiedName()), allowBots);
