@@ -2847,7 +2847,7 @@ public interface CollectionDAO {
   class SettingsRowMapper implements RowMapper<Settings> {
     @Override
     public Settings map(ResultSet rs, StatementContext ctx) throws SQLException {
-      return getSettings(SettingsType.fromValue(rs.getString("config_type")), rs.getString("json"));
+      return getSettings(SettingsType.fromValue(rs.getString("configType")), rs.getString("json"));
     }
 
     public static Settings getSettings(SettingsType configType, String json) {

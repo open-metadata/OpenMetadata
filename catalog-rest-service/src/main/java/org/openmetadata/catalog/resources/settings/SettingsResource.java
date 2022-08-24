@@ -1,8 +1,20 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.resources.settings;
 
 import static org.openmetadata.catalog.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,12 +25,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -36,7 +44,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -46,6 +53,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FilterUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -56,7 +64,6 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "settings")
 @Slf4j
 public class SettingsResource {
-  private final ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
   private final SettingsRepository settingsRepository;
   private final Authorizer authorizer;
 
@@ -84,25 +91,9 @@ public class SettingsResource {
                 settingsRepository.createNewSetting(setting);
                 storedSettings = setting;
               }
+              // Only Filter Setting allowed
               if (storedSettings.getConfigType().equals(ACTIVITY_FEED_FILTER_SETTING)) {
-                String filterJson = JsonUtils.pojoToJson(storedSettings.getConfigValue());
-                List<EventFilter> eventFilterList =
-                    JsonUtils.readValue(filterJson, new TypeReference<ArrayList<EventFilter>>() {});
-                FilterRegistry.add(eventFilterList);
-                exec.scheduleAtFixedRate(
-                    () -> {
-                      // activityFeedFilters Update every 5 minutes
-                      try {
-                        Settings filterSettings =
-                            settingsRepository.getConfigWithKey(ACTIVITY_FEED_FILTER_SETTING.toString());
-                        FilterRegistry.add((List<EventFilter>) filterSettings.getConfigValue());
-                      } catch (Exception ex) {
-                        LOG.error("Fetching from DB failed during filter update ", ex);
-                      }
-                    },
-                    0,
-                    300,
-                    TimeUnit.SECONDS);
+                FilterRegistry.add(FilterUtil.getEventFilterFromSettings(storedSettings));
               }
             } catch (Exception ex) {
               LOG.debug("Fetching from DB failed ", ex);
@@ -127,6 +118,7 @@ public class SettingsResource {
   public SettingsResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "SettingsRepository must not be null");
     this.settingsRepository = new SettingsRepository(dao);
+    SettingsCache.initialize(dao);
     this.authorizer = authorizer;
   }
 

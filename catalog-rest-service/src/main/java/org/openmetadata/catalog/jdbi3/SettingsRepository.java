@@ -1,17 +1,30 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.compareEventFilters;
-import static org.openmetadata.catalog.util.EntityUtil.compareFilters;
+import static org.openmetadata.catalog.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
 
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.filter.EventFilter;
+import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.settings.SettingsType;
+import org.openmetadata.catalog.util.FilterUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -66,35 +79,8 @@ public class SettingsRepository {
   public Response updateEntityFilter(String entityType, List<Filters> filters) {
     Settings oldValue = getConfigWithKey(SettingsType.ACTIVITY_FEED_FILTER_SETTING.toString());
     // all existing filters
-    List<EventFilter> existingEntityFilter = (List<EventFilter>) oldValue.getConfigValue();
-    EventFilter entititySpecificFilter = null;
-    int position = 0;
-    for (EventFilter e : existingEntityFilter) {
-      if (e.getEntityType().equals(entityType)) {
-        // filters for entity to Update
-        entititySpecificFilter = e;
-        break;
-      }
-      position++;
-    }
-    // sort based on eventType
-    filters.sort(compareFilters);
-    if (entititySpecificFilter != null) {
-      // entity has some existing filter
-      entititySpecificFilter.setFilters(filters);
-      existingEntityFilter.set(position, entititySpecificFilter);
-    } else {
-      entititySpecificFilter = new EventFilter();
-      entititySpecificFilter.setEntityType(entityType);
-      entititySpecificFilter.setFilters(filters);
-      existingEntityFilter.add(entititySpecificFilter);
-    }
-    // sort based on eventType
-    existingEntityFilter.sort(compareEventFilters);
-    // Put in DB
-    oldValue.setConfigValue(existingEntityFilter);
     try {
-      updateSetting(oldValue);
+      updateSetting(FilterUtil.updateEntityFilter(oldValue, entityType, filters));
       return (new RestUtil.PutResponse<>(Response.Status.OK, oldValue, RestUtil.ENTITY_UPDATED)).toResponse();
     } catch (Exception ex) {
       LOG.error("Failed to Update Settings" + ex.getMessage());
@@ -130,6 +116,9 @@ public class SettingsRepository {
     try {
       dao.getSettingsDAO()
           .insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
+      if (setting.getConfigType().equals(ACTIVITY_FEED_FILTER_SETTING)) {
+        FilterRegistry.add(FilterUtil.getEventFilterFromSettings(setting));
+      }
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }
