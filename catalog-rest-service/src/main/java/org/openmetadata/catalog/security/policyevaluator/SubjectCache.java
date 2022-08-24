@@ -13,14 +13,19 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -29,12 +34,13 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectCache {
-  private static final SubjectCache INSTANCE = new SubjectCache();
+  private static SubjectCache INSTANCE;
   private static volatile boolean INITIALIZED = false;
 
   protected static LoadingCache<String, SubjectContext> USER_CACHE;
@@ -56,7 +62,11 @@ public class SubjectCache {
       USER_FIELDS = USER_REPOSITORY.getFields("roles, teams");
       TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
       TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
+      INSTANCE = new SubjectCache();
       INITIALIZED = true;
+      LOG.info("Subject cache is initialized");
+    } else {
+      LOG.info("Subject cache is already initialized");
     }
   }
 
@@ -68,6 +78,7 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
+      ex.printStackTrace();
       throw new EntityNotFoundException(ex.getMessage());
     }
   }
@@ -81,6 +92,7 @@ public class SubjectCache {
   }
 
   public static void cleanUp() {
+    LOG.info("Subject cache is cleaned up");
     USER_CACHE.invalidateAll();
     TEAM_CACHE.invalidateAll();
     INITIALIZED = false;
@@ -92,6 +104,31 @@ public class SubjectCache {
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for user {}", userName, ex);
     }
+  }
+
+  public void invalidateTeam(UUID teamId) {
+    try {
+      TEAM_CACHE.invalidate(teamId);
+    } catch (Exception ex) {
+      LOG.error("Failed to invalidate cache for team {}", teamId, ex);
+    }
+  }
+
+  public List<EntityReference> getInheritedRolesForUser(String userName) {
+    return getRolesForTeams(getSubjectContext(userName).getTeams());
+  }
+
+  public List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
+    System.out.println("Getting roles for teams " + teams);
+    List<EntityReference> roles = new ArrayList<>();
+    for (EntityReference teamRef : listOrEmpty(teams)) {
+      System.out.println("roles for team " + teamRef.getName());
+      Team team = getTeam(teamRef.getId());
+      System.out.println("roles for team adding " + team.getDefaultRoles());
+      roles.addAll(team.getDefaultRoles());
+      roles.addAll(getRolesForTeams(team.getParents()));
+    }
+    return roles.stream().distinct().collect(Collectors.toList());
   }
 
   static class UserLoader extends CacheLoader<String, SubjectContext> {

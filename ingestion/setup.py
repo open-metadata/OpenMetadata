@@ -176,6 +176,7 @@ setup(
         "Source": "https://github.com/open-metadata/OpenMetadata",
     },
     packages=find_namespace_packages(where="./src", exclude=["tests*"]),
+    namespace_package=["metadata"],
     entry_points={
         "console_scripts": ["metadata = metadata.cmd:metadata"],
         "apache_airflow_provider": [

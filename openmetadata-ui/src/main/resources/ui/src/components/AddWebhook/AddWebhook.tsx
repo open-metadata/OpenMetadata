@@ -18,8 +18,13 @@ import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { cloneDeep, isEqual, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { FunctionComponent, useRef, useState } from 'react';
+import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
 import { TERM_ALL } from '../../constants/constants';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import {
+  CONFIGURE_SLACK_TEXT,
+  CONFIGURE_WEBHOOK_TEXT,
+} from '../../constants/HelperTextUtil';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -316,24 +321,18 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     ) : null;
   };
 
-  const fetchRightPanel = () => {
+  const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
         <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
         <div className="tw-mb-5">
-          OpenMetadata can be configured to automatically send out event
-          notifications to registered webhooks. Enter the webhook name, and an
-          Endpoint URL to receive the HTTP call back on. Use Event Filters to
-          only receive notifications based on events of interest, like when an
-          entity is created, updated, or deleted; and for the entities your
-          application is interested in. Add a description to help people
-          understand the purpose of the webhook and to keep track of the use
-          case. Use advanced configuration to set up a shared secret key to
-          verify the webhook events using HMAC signature.
+          {webhookType === WebhookType.Slack
+            ? CONFIGURE_SLACK_TEXT
+            : CONFIGURE_WEBHOOK_TEXT}
         </div>
       </div>
     );
-  };
+  }, [webhookType]);
 
   return (
     <div className="add-webhook-container">

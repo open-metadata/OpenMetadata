@@ -455,7 +455,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE))
-            .withOwner(USER_OWNER1);
+            .withOwner(USER1_REF);
     IngestionPipeline ingestionPipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update pipeline attributes
@@ -590,9 +590,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     // Add description and tasks
     ChangeDescription change = getChangeDescription(ingestion.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
-    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
+    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER1_REF));
     updateAndCheckEntity(
-        request.withDescription("newDescription").withOwner(USER_OWNER1), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+        request.withDescription("newDescription").withOwner(USER1_REF), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   private IngestionPipeline updateIngestionPipeline(

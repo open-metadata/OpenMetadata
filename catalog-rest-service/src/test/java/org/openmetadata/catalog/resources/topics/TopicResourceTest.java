@@ -102,7 +102,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
         createRequest(test)
-            .withOwner(USER_OWNER1)
+            .withOwner(USER1_REF)
             .withMaximumMessageSize(1)
             .withMinimumInSyncReplicas(1)
             .withPartitions(1)
@@ -116,7 +116,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // Patch and update the topic
     Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
     createTopic
-        .withOwner(TEAM_OWNER1)
+        .withOwner(TEAM11_REF)
         .withMinimumInSyncReplicas(2)
         .withMaximumMessageSize(2)
         .withPartitions(2)
@@ -130,7 +130,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     ChangeDescription change = getChangeDescription(topic.getVersion());
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
+        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF).withNewValue(TEAM11_REF));
     change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
@@ -155,7 +155,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
         createRequest(test)
-            .withOwner(USER_OWNER1)
+            .withOwner(USER1_REF)
             .withMaximumMessageSize(1)
             .withMinimumInSyncReplicas(1)
             .withPartitions(1)
@@ -171,7 +171,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     String origJson = JsonUtils.pojoToJson(topic);
 
     topic
-        .withOwner(TEAM_OWNER1)
+        .withOwner(TEAM11_REF)
         .withMinimumInSyncReplicas(2)
         .withMaximumMessageSize(2)
         .withPartitions(2)
@@ -185,7 +185,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     ChangeDescription change = getChangeDescription(topic.getVersion());
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
+        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF).withNewValue(TEAM11_REF));
     change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
