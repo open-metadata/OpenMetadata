@@ -66,11 +66,8 @@ const FormBuilder: FunctionComponent<Props> = ({
         setHostIp(res.data?.ip || '[unknown]')
       )
       .catch((err: AxiosError) => {
-        if (err.response?.status === 404) {
-          setHostIp('[error - unknown]');
-        } else {
-          showErrorToast(err);
-        }
+        setHostIp('[error - unknown]');
+        showErrorToast(err);
       });
   };
 
