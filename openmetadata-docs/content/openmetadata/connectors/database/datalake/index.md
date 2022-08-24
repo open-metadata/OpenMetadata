@@ -7,6 +7,31 @@ slug: /openmetadata/connectors/database/datalake
 
 <Requirements />
 
+<br/>
+
+** S3 Permissions **
+
+<p> To execute metadata extraction AWS account should have enough access to fetch required data. The <strong>Bucket Policy</strong> in AWS requires at least these permissions: </p>
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::<my bucket>",
+                "arn:aws:s3:::<my bucket>/*"
+            ]
+        }
+    ]
+}
+```
+
 <MetadataIngestionService connector="Datalake"/>
 
 <h4>Connection Options</h4>

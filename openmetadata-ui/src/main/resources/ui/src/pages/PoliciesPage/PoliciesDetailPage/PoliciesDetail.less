@@ -11,11 +11,38 @@
  *  limitations under the License.
  */
 
+@primary: #7147e8;
+@white: #ffffff;
+
 .policies-detail {
   .list-table {
     .ant-table-row .ant-table-cell:first-child,
     .ant-table-thead .ant-table-cell:first-child {
       padding-left: 16px;
+    }
+  }
+  .ant-collapse {
+    background-color: @white;
+    .ant-collapse-item {
+      .ant-collapse-header {
+        padding: 6px 16px;
+        .ant-collapse-arrow {
+          color: @primary;
+          font-size: 14px;
+          margin-right: 6px;
+        }
+      }
+    }
+    .ant-collapse-content {
+      border-top: none;
+      .ant-collapse-content-box {
+        padding-top: 0px;
+      }
+    }
+  }
+  .rules-tab {
+    > .ant-space-item:first-child {
+      align-self: flex-end;
     }
   }
 }

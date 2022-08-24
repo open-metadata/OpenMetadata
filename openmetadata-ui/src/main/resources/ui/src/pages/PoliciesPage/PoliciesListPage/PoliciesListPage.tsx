@@ -16,8 +16,13 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
+import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
-import { ROUTES } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../../constants/constants';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -28,6 +33,8 @@ const PoliciesListPage = () => {
   const history = useHistory();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [paging, setPaging] = useState<Paging>();
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const fetchPolicies = async (paging?: Paging) => {
     setIsLoading(true);
@@ -39,6 +46,7 @@ const PoliciesListPage = () => {
       );
 
       setPolicies(data.data || []);
+      setPaging(data.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -48,6 +56,11 @@ const PoliciesListPage = () => {
 
   const handleAddPolicy = () => {
     history.push(ROUTES.ADD_POLICY);
+  };
+
+  const handlePaging = (_: string | number, activePage?: number) => {
+    setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    fetchPolicies(paging);
   };
 
   useEffect(() => {
@@ -67,6 +80,17 @@ const PoliciesListPage = () => {
       </Col>
       <Col span={24}>
         <PoliciesList fetchPolicies={fetchPolicies} policies={policies} />
+      </Col>
+      <Col span={24}>
+        {paging && paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={handlePaging}
+            totalCount={paging.total}
+          />
+        )}
       </Col>
     </Row>
   );

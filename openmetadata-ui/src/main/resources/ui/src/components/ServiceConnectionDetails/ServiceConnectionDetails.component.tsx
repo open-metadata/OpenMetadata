@@ -47,6 +47,9 @@ const ServiceConnectionDetails = ({
   const [data, setData] = useState<ReactNode>();
 
   const getKeyValues = (obj: {}, schemaPropertyObject: {}): ReactNode => {
+    const internalRef = '$ref';
+    const oneOf = 'oneOf';
+
     return Object.keys(obj).map((key) => {
       const value = obj[key];
 
@@ -77,6 +80,58 @@ const ServiceConnectionDetails = ({
               schemaPropertyObject[key].definitions.GCSCredentialsPath;
 
             return getKeyValues(value, newSchemaPropertyObject);
+          }
+        } else if (
+          serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
+          key === 'configSource'
+        ) {
+          if (isObject(value.securityConfig)) {
+            if (!value.securityConfig.gcsConfig) {
+              if (Object.keys(schemaPropertyObject[key]).includes(oneOf)) {
+                if (
+                  value.securityConfig?.awsAccessKeyId ||
+                  value.securityConfig?.awsSecretAccessKey
+                ) {
+                  const newSchemaPropertyObject =
+                    schema.definitions.S3Config.properties.securityConfig
+                      .properties;
+
+                  return getKeyValues(
+                    value.securityConfig,
+                    newSchemaPropertyObject
+                  );
+                }
+              } else if (
+                Object.keys(schemaPropertyObject[key]).includes(internalRef)
+              ) {
+                const definition = schemaPropertyObject[key][internalRef]
+                  .split('/')
+                  .splice(2);
+
+                const newSchemaPropertyObject = schema.definitions[definition];
+
+                return getKeyValues(value, newSchemaPropertyObject);
+              }
+            } else {
+              if (isObject(value.securityConfig.gcsConfig)) {
+                // Condition for GCS Credentials value
+                const newGcsSchemaPropertyObject =
+                  schema.definitions.GCSConfig.properties.securityConfig
+                    .definitions.GCSValues.properties;
+
+                return getKeyValues(
+                  value.securityConfig.gcsConfig,
+                  newGcsSchemaPropertyObject
+                );
+              } else {
+                // Condition for GCS Credentials path
+                const newSchemaPropertyObject =
+                  schema.definitions.GCSConfig.properties.securityConfig
+                    .definitions.GCSCredentialsPath;
+
+                return getKeyValues(value, newSchemaPropertyObject);
+              }
+            }
           }
         } else {
           return getKeyValues(

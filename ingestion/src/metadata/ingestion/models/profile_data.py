@@ -11,9 +11,12 @@
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
+from metadata.generated.schema.entity.data.table import Table
 
 
 class OMetaTableProfileSampleData(BaseModel):
     table: Table
-    profile: TableProfile
+    profile: CreateTableProfileRequest

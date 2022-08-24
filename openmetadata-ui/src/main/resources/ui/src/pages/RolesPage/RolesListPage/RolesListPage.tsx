@@ -16,8 +16,13 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getRoles } from '../../../axiosAPIs/rolesAPIV1';
+import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
-import { ROUTES } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../../constants/constants';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -29,6 +34,8 @@ const RolesListPage = () => {
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [paging, setPaging] = useState<Paging>();
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const fetchRoles = async (paging?: Paging) => {
     setIsLoading(true);
@@ -40,6 +47,7 @@ const RolesListPage = () => {
       );
 
       setRoles(data.data || []);
+      setPaging(data.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -49,6 +57,11 @@ const RolesListPage = () => {
 
   const handleAddRole = () => {
     history.push(ROUTES.ADD_ROLE);
+  };
+
+  const handlePaging = (_: string | number, activePage?: number) => {
+    setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    fetchRoles(paging);
   };
 
   useEffect(() => {
@@ -68,6 +81,17 @@ const RolesListPage = () => {
       </Col>
       <Col span={24}>
         <RolesList fetchRoles={fetchRoles} roles={roles} />
+      </Col>
+      <Col span={24}>
+        {paging && paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={handlePaging}
+            totalCount={paging.total}
+          />
+        )}
       </Col>
     </Row>
   );

@@ -62,6 +62,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.CompiledRule;
 import org.openmetadata.catalog.security.policyevaluator.PolicyCache;
 import org.openmetadata.catalog.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -404,6 +405,23 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
     PolicyCache.getInstance().invalidatePolicy(id);
     return response;
+  }
+
+  @GET
+  @Path("/validation/condition/{expression}")
+  @Operation(
+      operationId = "validateCondition",
+      summary = "Validate a given condition",
+      tags = "policies",
+      description = "Validate a given condition expressionused in authoring rules.",
+      responses = {
+        @ApiResponse(responseCode = "204", description = "No value is returned"),
+        @ApiResponse(responseCode = "400", description = "Invalid expression")
+      })
+  public void validateCondition(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression)
+      throws IOException {
+    CompiledRule.validateExpression(expression, Boolean.class);
   }
 
   private Policy getPolicy(CreatePolicy create, String user) throws IOException {

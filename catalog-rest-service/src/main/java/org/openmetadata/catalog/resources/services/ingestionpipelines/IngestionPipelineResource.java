@@ -67,9 +67,11 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 import org.openmetadata.catalog.util.ResultList;
@@ -515,8 +517,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             content = @Content(mediaType = "application/json"))
       })
   public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    HttpResponse<String> response = pipelineServiceClient.getServiceStatus();
-    return Response.status(200, response.body()).build();
+    return pipelineServiceClient.getServiceStatus();
   }
 
   @DELETE
@@ -596,7 +597,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     try {
       authorizer.authorize(
           securityContext,
-          getOperationContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
           getResourceContextById(ingestionPipeline.getId()),
           secretsManager.isLocal());
     } catch (AuthorizationException | IOException e) {

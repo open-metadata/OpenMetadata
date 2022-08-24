@@ -239,6 +239,11 @@
             "$ref": "../../tests/customMetric.json"
           },
           "default": null
+        },
+        "profile": {
+          "description": "Latest Data profile for a Column.",
+          "$ref": "#/definitions/columnProfile",
+          "default": null
         }
       },
       "required": ["name", "dataType"],
@@ -353,6 +358,10 @@
           "description": "Column Name.",
           "type": "string"
         },
+        "timestamp": {
+          "description": "Timestamp on which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
         "valuesCount": {
           "description": "Total count of the values in this column.",
           "type": "number"
@@ -460,6 +469,7 @@
           "default": null
         }
       },
+      "required": ["name", "timestamp"],
       "additionalProperties": false
     },
     "columnProfilerConfig": {
@@ -526,14 +536,11 @@
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "profileSample": {
-          "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",
+          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
           "type": "number",
           "exclusiveMinimum": 0,
-          "maximum": 100
-        },
-        "profileQuery": {
-          "description": "Users' raw SQL query to fetch sample data and profile the table",
-          "type": "string"
+          "maximum": 100,
+          "default": null
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -542,15 +549,9 @@
         "rowCount": {
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
-        },
-        "columnProfile": {
-          "description": "List of local column profiles of the table.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/columnProfile"
-          }
         }
       },
+      "required": ["timestamp"],
       "additionalProperties": false
     },
     "sqlQuery": {
@@ -763,7 +764,7 @@
       "description": "Table Profiler Config to include or exclude columns from profiling.",
       "$ref": "#/definitions/tableProfilerConfig"
     },
-    "tableProfile": {
+    "profile": {
       "description": "Latest Data profile for a table.",
       "$ref": "#/definitions/tableProfile",
       "default": null

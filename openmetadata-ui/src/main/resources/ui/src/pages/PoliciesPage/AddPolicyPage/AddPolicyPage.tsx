@@ -15,10 +15,10 @@ import {
   Button,
   Card,
   Col,
+  Divider,
   Form,
   Input,
   Row,
-  Select,
   Space,
   Typography,
 } from 'antd';
@@ -29,9 +29,12 @@ import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
+import { ADD_POLICY_TEXT } from '../../../constants/HelperTextUtil';
 import {
   CreatePolicy,
+  Effect,
   PolicyType,
+  Rule,
 } from '../../../generated/api/policies/createPolicy';
 import {
   getPath,
@@ -39,8 +42,7 @@ import {
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
-const { Option } = Select;
+import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -61,11 +63,16 @@ const breadcrumb = [
 
 const AddPolicyPage = () => {
   const history = useHistory();
+
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [policyType, setPolicyType] = useState<PolicyType>(
-    PolicyType.AccessControl
-  );
+  const [ruleData, setRuleData] = useState<Rule>({
+    name: '',
+    description: '',
+    resources: [],
+    operations: [],
+    effect: Effect.Allow,
+  });
 
   const handleCancel = () => {
     history.push(policiesPath);
@@ -75,8 +82,8 @@ const AddPolicyPage = () => {
     const data: CreatePolicy = {
       name,
       description,
-      policyType,
-      rules: [],
+      policyType: PolicyType.AccessControl,
+      rules: [ruleData],
     };
 
     try {
@@ -92,17 +99,19 @@ const AddPolicyPage = () => {
   };
 
   return (
-    <Row className="tw-bg-body-main tw-h-full" gutter={[16, 16]}>
-      <Col offset={5} span={14}>
+    <Row className="tw-bg-body-main tw-h-auto" gutter={[16, 16]}>
+      <Col offset={4} span={12}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph className="tw-text-lg">
+          <Typography.Paragraph className="tw-text-base">
             Add New Policy
           </Typography.Paragraph>
           <Form
             data-testid="policy-form"
             id="policy-form"
-            initialValues={{ policyType }}
+            initialValues={{
+              ruleEffect: ruleData.effect,
+            }}
             layout="vertical"
             onFinish={handleSumbit}>
             <Form.Item
@@ -122,35 +131,19 @@ const AddPolicyPage = () => {
                 onChange={(e) => setName(e.target.value)}
               />
             </Form.Item>
-            <Form.Item
-              label="Policy type:"
-              name="policyType"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <Select
-                placeholder="Select PolicyType"
-                value={policyType}
-                onChange={(value) => setPolicyType(value)}>
-                <Option key={PolicyType.AccessControl}>
-                  {PolicyType.AccessControl}
-                </Option>
-                <Option key={PolicyType.Lifecycle}>
-                  {PolicyType.Lifecycle}
-                </Option>
-              </Select>
-            </Form.Item>
+
             <Form.Item label="Description:" name="description">
               <RichTextEditor
                 height="200px"
                 initialValue={description}
-                placeHolder="write your description"
+                placeHolder="Write your description"
                 style={{ margin: 0 }}
                 onTextChange={(value) => setDescription(value)}
               />
             </Form.Item>
+
+            <Divider>Add Rule</Divider>
+            <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
             <Space align="center" className="tw-w-full tw-justify-end">
               <Button type="link" onClick={handleCancel}>
@@ -162,6 +155,12 @@ const AddPolicyPage = () => {
             </Space>
           </Form>
         </Card>
+      </Col>
+      <Col className="tw-mt-4" span={4}>
+        <Typography.Paragraph className="tw-text-base tw-font-medium">
+          Add Policy
+        </Typography.Paragraph>
+        <Typography.Text>{ADD_POLICY_TEXT}</Typography.Text>
       </Col>
     </Row>
   );

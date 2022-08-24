@@ -96,11 +96,25 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   public void setupTeams(TestInfo test) throws HttpResponseException {
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = TEAM1.getEntityReference();
+    CreateTeam createTeam = createRequest(test, 1).withTeamType(DEPARTMENT);
+    TEAM1 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
-    ORG_TEAM = teamResourceTest.getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
+    createTeam = createRequest(test, 11).withParents(List.of(TEAM1.getId()));
+    TEAM11 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // TEAM2 has Team only policy - users from other teams can't access its assets
+    createTeam =
+        createRequest(test, 2)
+            .withTeamType(DEPARTMENT)
+            .withPolicies(List.of(TEAM_ONLY_POLICY.getId()))
+            .withDefaultRoles(List.of(DATA_STEWARD_ROLE.getId()));
+    TEAM2 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    createTeam = createRequest(test, 21).withParents(List.of(TEAM2.getId()));
+    TEAM21 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    TEAM11_REF = TEAM11.getEntityReference();
+    ORG_TEAM = getEntityByName(ORGANIZATION_NAME, "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -476,7 +490,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     }
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
-    roleResourceTest.createRolesAndSetDefault(test, 5, 0);
+    roleResourceTest.createRoles(test, 5, 0);
     List<Role> roles = roleResourceTest.listEntities(Map.of(), ADMIN_AUTH_HEADERS).getData();
     List<UUID> rolesIds = roles.stream().map(Role::getId).collect(Collectors.toList());
 
@@ -568,6 +582,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
                 .withName("policies")
                 .withOldValue(List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference())));
     patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void testInheritedRole() throws HttpResponseException {
+    // team11 inherits DATA_CONSUMER_ROLE from Organization
+    Team team11 = getEntity(TEAM11.getId(), "defaultRoles", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF), team11.getInheritedRoles());
+
+    // TEAM21 inherits DATA_CONSUMER_ROLE from Organization and DATA_STEWARD_ROLE from Team2
+    Team team21 = getEntity(TEAM21.getId(), "defaultRoles", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF, DATA_STEWARD_ROLE_REF), team21.getInheritedRoles());
   }
 
   private static void validateTeam(

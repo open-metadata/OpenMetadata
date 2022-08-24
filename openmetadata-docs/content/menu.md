@@ -95,6 +95,8 @@ site_menu:
     url: /deployment/security/okta/bare-metal
   - category: Deployment / Enable Security / Okta SSO / Kubernetes
     url: /deployment/security/okta/kubernetes
+  - category: Deployment / Enable Security / Okta SSO / Troubleshoot
+    url: /deployment/security/okta/troubleshoot
   - category: Deployment / Enable Security / Amazon Cognito SSO
     url: /deployment/security/amazon-cognito
   - category: Deployment / Enable Security / Amazon Cognito SSO / Docker
@@ -239,6 +241,8 @@ site_menu:
     url: /openmetadata/connectors/database/datalake/airflow
   - category: OpenMetadata / Connectors / Database / Datalake / CLI
     url: /openmetadata/connectors/database/datalake/cli
+  - category: OpenMetadata / Connectors / Database / Datalake / Troubleshooting
+    url: /openmetadata/connectors/database/datalake/troubleshooting
   - category: OpenMetadata / Connectors / Database / DB2
     url: /openmetadata/connectors/database/db2
   - category: OpenMetadata / Connectors / Database / DB2 / Airflow
@@ -390,6 +394,9 @@ site_menu:
   - category: OpenMetadata / Connectors / Metadata / Amundsen
     url: /openmetadata/connectors/metadata/amundsen
 
+  - category: OpenMetadata / Connectors / Managing Credentials
+    url: /openmetadata/connectors/credentials
+
   - category: OpenMetadata / Ingestion
     url: /openmetadata/ingestion
   - category: OpenMetadata / Ingestion / Workflows
@@ -401,13 +408,15 @@ site_menu:
     url: /openmetadata/ingestion/workflows/metadata/dbt
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
     url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
-  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT CLI
-    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-cli
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
 
   - category: OpenMetadata / Ingestion / Workflows / Usage
     url: /openmetadata/ingestion/workflows/usage
   - category: OpenMetadata / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
     url: /openmetadata/ingestion/workflows/usage/usage-workflow-query-logs
+  - category: OpenMetadata / Ingestion / Workflows / Lineage
+    url: /openmetadata/ingestion/workflows/lineage
   - category: OpenMetadata / Ingestion / Workflows / Profiler
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics

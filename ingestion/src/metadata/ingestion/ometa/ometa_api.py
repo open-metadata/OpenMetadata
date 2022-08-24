@@ -577,7 +577,7 @@ class OpenMetadata(
             return EntityReference(
                 id=instance.id,
                 type=get_entity_type(entity),
-                name=model_str(instance.fullyQualifiedName),
+                fullyQualifiedName=model_str(instance.fullyQualifiedName),
                 description=instance.description,
                 href=instance.href,
             )

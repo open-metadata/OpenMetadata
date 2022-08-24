@@ -60,11 +60,6 @@
       "description": "Policies that is attached to this role.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
-    "defaultRole": {
-      "description": "If `true`, this role is set as default system role and will be inherited by all the users.",
-      "type": "boolean",
-      "default": false
-    },
     "users": {
       "description": "Users that have this role assigned to them.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"

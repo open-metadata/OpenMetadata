@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.Entity.POLICY;
+import static org.openmetadata.catalog.Entity.ROLE;
 import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
@@ -39,6 +40,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.TeamResource;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
@@ -64,6 +66,7 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setUsers(fields.contains("users") ? getUsers(team) : null);
     team.setOwns(fields.contains("owns") ? getOwns(team) : null);
     team.setDefaultRoles(fields.contains("defaultRoles") ? getDefaultRoles(team) : null);
+    team.setInheritedRoles(fields.contains("defaultRoles") ? getInheritedRoles(team) : null);
     team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
     team.setParents(fields.contains("parents") ? getParents(team) : null);
     team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
@@ -73,10 +76,15 @@ public class TeamRepository extends EntityRepository<Team> {
     return team;
   }
 
+  private List<EntityReference> getInheritedRoles(Team team) throws IOException {
+    return SubjectCache.getInstance().getRolesForTeams(getParents(team));
+  }
+
   @Override
   public void restorePatchAttributes(Team original, Team updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
+    updated.withInheritedRoles(original.getInheritedRoles());
   }
 
   @Override
@@ -100,7 +108,7 @@ public class TeamRepository extends EntityRepository<Team> {
     List<EntityReference> policies = team.getPolicies();
 
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null);
+    team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null).withInheritedRoles(null);
 
     store(team.getId(), team, update);
 
@@ -114,7 +122,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void storeRelationships(Team team) {
+  public void storeRelationships(Team team) throws IOException {
     // Add team owner relationship
     storeOwner(team, team.getOwner());
     for (EntityReference user : listOrEmpty(team.getUsers())) {
@@ -162,6 +170,7 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
     super.cleanup(team);
+    SubjectCache.getInstance().invalidateTeam(team.getId());
   }
 
   private List<EntityReference> getUsers(Team team) throws IOException {
@@ -192,7 +201,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getParents(Team team) throws IOException {
     List<EntityRelationshipRecord> parents = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
-    if (listOrEmpty(parents).isEmpty() && !team.getId().equals(organization.getId())) {
+    if (organization != null && listOrEmpty(parents).isEmpty() && !team.getId().equals(organization.getId())) {
       return new ArrayList<>(List.of(organization.getEntityReference()));
     }
     return EntityUtil.populateEntityReferences(parents, TEAM);
@@ -320,6 +329,7 @@ public class TeamRepository extends EntityRepository<Team> {
     if (json == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
       EntityReference organizationPolicy = Entity.getEntityReferenceByName(POLICY, "OrganizationPolicy", Include.ALL);
+      EntityReference dataConsumerRole = Entity.getEntityReferenceByName(ROLE, "DataConsumer", Include.ALL);
       Team team =
           new Team()
               .withId(UUID.randomUUID())
@@ -329,7 +339,8 @@ public class TeamRepository extends EntityRepository<Team> {
               .withTeamType(ORGANIZATION)
               .withUpdatedBy("admin")
               .withUpdatedAt(System.currentTimeMillis())
-              .withPolicies(new ArrayList<>(List.of(organizationPolicy)));
+              .withPolicies(new ArrayList<>(List.of(organizationPolicy)))
+              .withDefaultRoles(new ArrayList<>(List.of(dataConsumerRole)));
       // Teams
       try {
         organization = create(null, team);

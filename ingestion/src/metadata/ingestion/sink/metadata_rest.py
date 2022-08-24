@@ -24,6 +24,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -186,11 +189,16 @@ class MetadataRestSink(Sink[Entity]):
         :param datamodel_link: Table ID + Data Model
         """
 
-        table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
+        table: Table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
 
-        self.metadata.ingest_table_data_model(
-            table=table, data_model=datamodel_link.datamodel
-        )
+        if table:
+            self.metadata.ingest_table_data_model(
+                table=table, data_model=datamodel_link.datamodel
+            )
+        else:
+            logger.warning(
+                f"Could not find any entity by Table FQN [{datamodel_link.fqn}] when adding DBT models."
+            )
 
     def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
         """
@@ -302,10 +310,12 @@ class MetadataRestSink(Sink[Entity]):
                         f"Failed to ingest sample data for table {db_schema_and_table.table.name}"
                     )
 
-            if db_schema_and_table.table.tableProfile is not None:
-                self.metadata.ingest_table_profile_data(
-                    table=created_table,
-                    table_profile=db_schema_and_table.table.tableProfile,
+            if db_schema_and_table.table.profile is not None:
+                self.metadata.ingest_profile_data(
+                    table=db_schema_and_table.table,
+                    profile_request=CreateTableProfileRequest(
+                        tableProfile=db_schema_and_table.table.profile
+                    ),
                 )
 
             if db_schema_and_table.table.dataModel is not None:
@@ -559,7 +569,6 @@ class MetadataRestSink(Sink[Entity]):
             to_table_name = db_schema_and_table.table.name.__root__
 
             for from_table_name in parser.source_tables:
-
                 _create_lineage_by_table_name(
                     metadata=self.metadata,
                     from_table=str(from_table_name),
@@ -581,11 +590,8 @@ class MetadataRestSink(Sink[Entity]):
         data to a Pipeline Entity
         """
         try:
-            pipeline = self.metadata.get_by_name(
-                entity=Pipeline, fqn=record.pipeline_fqn
-            )
             self.metadata.add_pipeline_status(
-                pipeline=pipeline, status=record.pipeline_status
+                fqn=record.pipeline_fqn, status=record.pipeline_status
             )
             self.status.records_written(f"Pipeline Status: {record.pipeline_fqn}")
 
@@ -598,16 +604,14 @@ class MetadataRestSink(Sink[Entity]):
         Use the /tableProfile endpoint to ingest sample profile data
         """
         try:
-            self.metadata.ingest_table_profile_data(
-                table=record.table, table_profile=record.profile
+            self.metadata.ingest_profile_data(
+                table=record.table, profile_request=record.profile
             )
 
             logger.info(
                 f"Successfully ingested profile for table {record.table.name.__root__}"
             )
-            self.status.records_written(
-                f"Profile: {record.table.name.__root__} - {record.profile.timestamp.__root__}"
-            )
+            self.status.records_written(f"Profile: {record.table.name.__root__}")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(err)
@@ -647,13 +651,13 @@ class MetadataRestSink(Sink[Entity]):
         try:
             self.metadata.add_test_case_results(
                 record.test_case_results,
-                record.test_case_uuid,
+                record.test_case_name,
             )
             logger.info(
-                f"Successfully ingested test case results for test case ID {record.test_case_uuid}"
+                f"Successfully ingested test case results for test case {record.test_case_name}"
             )
             self.status.records_written(
-                f"testCaseResults: {record.test_case_uuid} - {record.test_case_results.timestamp.__root__}"
+                f"testCaseResults: {record.test_case_name} - {record.test_case_results.timestamp.__root__}"
             )
         except Exception as err:
             logger.debug(traceback.format_exc())

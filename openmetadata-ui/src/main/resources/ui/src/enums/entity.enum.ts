@@ -65,7 +65,7 @@ export enum EntityLineageNodeType {
 export enum TabSpecificField {
   SAMPLE_DATA = 'sampleData',
   ACTIVITY_FEED = 'activity_feed',
-  TABLE_PROFILE = 'tableProfile',
+  TABLE_PROFILE = 'profile',
   LINEAGE = 'lineage',
   COLUMNS = 'columns',
   USAGE_SUMMARY = 'usageSummary',

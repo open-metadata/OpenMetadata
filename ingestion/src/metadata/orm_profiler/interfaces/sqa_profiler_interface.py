@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 import concurrent.futures
 import threading
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
 
 from sqlalchemy import Column, inspect
@@ -279,7 +279,13 @@ class SQAProfilerInterface(InterfaceProtocol):
             if not column:
                 profile_results["table"].update(profile)
             else:
-                profile_results["columns"][column].update({"name": column, **profile})
+                profile_results["columns"][column].update(
+                    {
+                        "name": column,
+                        "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                        **profile,
+                    }
+                )
         return profile_results
 
     def fetch_sample_data(self):

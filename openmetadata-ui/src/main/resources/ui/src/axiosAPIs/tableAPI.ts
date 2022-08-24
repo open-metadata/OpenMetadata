@@ -16,6 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import {
+  ColumnProfile,
   ColumnTestType,
   Table,
   TableProfile,
@@ -229,6 +230,26 @@ export const getTableProfilesList = async (
 
   const response = await APIClient.get<{
     data: TableProfile[];
+    paging: Paging;
+  }>(url, { params });
+
+  return response.data;
+};
+
+export const getColumnProfilerList = async (
+  columnFqn: string,
+  params?: {
+    startTs?: number;
+    endTs?: number;
+    limit?: number;
+    before?: string;
+    after?: string;
+  }
+) => {
+  const url = `/tables/${columnFqn}/columnProfile`;
+
+  const response = await APIClient.get<{
+    data: ColumnProfile[];
     paging: Paging;
   }>(url, { params });
 
