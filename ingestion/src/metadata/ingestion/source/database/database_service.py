@@ -111,6 +111,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_service",
                 processor="yield_create_request_database_service",
                 overwrite=False,
+                must_return=True,
             ),
             NodeStage(
                 type_=StorageService,

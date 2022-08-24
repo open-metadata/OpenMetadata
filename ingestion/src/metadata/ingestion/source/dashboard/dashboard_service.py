@@ -80,6 +80,7 @@ class DashboardServiceTopology(ServiceTopology):
                 context="dashboard_service",
                 processor="yield_create_request_dashboard_service",
                 overwrite=False,
+                must_return=True,
             ),
             NodeStage(
                 type_=OMetaTagAndCategory,

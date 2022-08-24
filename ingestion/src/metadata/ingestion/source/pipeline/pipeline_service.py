@@ -63,6 +63,7 @@ class PipelineServiceTopology(ServiceTopology):
                 context="pipeline_service",
                 processor="yield_create_request_pipeline_service",
                 overwrite=False,
+                must_return=True,
             ),
         ],
         children=["pipeline"],
