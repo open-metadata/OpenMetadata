@@ -15,6 +15,7 @@ import { Col, Row, Typography } from 'antd';
 import moment from 'moment';
 import React, { useEffect, useState } from 'react';
 import {
+  Legend,
   Line,
   LineChart,
   ReferenceArea,
@@ -23,12 +24,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { COLORS } from '../../../constants/profiler.constant';
 import { TestCaseStatus } from '../../../generated/tests/tableTest';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 
 type ChartDataType = {
-  information: string[];
+  information: { label: string; color: string }[];
   data: { [key: string]: string }[];
 };
 
@@ -55,7 +57,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
     });
     setChartData({
       information:
-        results[0]?.testResultValue?.map((info) => info.name || '') || [],
+        results[0]?.testResultValue?.map((info, i) => ({
+          label: info.name || '',
+          color: COLORS[i],
+        })) || [],
       data: chartData.reverse(),
     });
   };
@@ -86,11 +91,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
             <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
             <YAxis allowDataOverflow padding={{ top: 16, bottom: 16 }} />
             <Tooltip />
-
+            <Legend />
             {data.parameterValues?.length === 2 && referenceArea()}
-            {chartData?.information?.map((info: string) => (
+            {chartData?.information?.map((info) => (
               <Line
-                dataKey={info}
+                dataKey={info.label}
                 dot={(props) => {
                   const { cx = 0, cy = 0, payload } = props;
                   const fill =
@@ -112,8 +117,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
                     </svg>
                   );
                 }}
-                key={info}
-                stroke="#82ca9d"
+                key={info.label}
+                stroke={info.color}
                 type="monotone"
               />
             ))}

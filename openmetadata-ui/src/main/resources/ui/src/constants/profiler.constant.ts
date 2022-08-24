@@ -63,6 +63,8 @@ export const PROFILER_FILTER_RANGE = {
   last60days: { days: 60, title: 'Last 60 days' },
 };
 
+export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
+
 export const DEFAULT_CHART_COLLECTION_VALUE = {
   distinctCount: { data: [], color: '#1890FF' },
   uniqueCount: { data: [], color: '#008376' },
