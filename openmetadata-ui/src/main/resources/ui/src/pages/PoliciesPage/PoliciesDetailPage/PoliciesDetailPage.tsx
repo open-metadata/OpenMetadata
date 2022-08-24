@@ -24,7 +24,7 @@ import {
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
@@ -301,7 +301,9 @@ const PoliciesDetailPage = () => {
                                 Resources:
                               </Typography.Text>
                               <Typography.Text>
-                                {rule.resources?.join(', ')}
+                                {rule.resources
+                                  ?.map((resource) => startCase(resource))
+                                  ?.join(', ')}
                               </Typography.Text>
                             </Space>
 
@@ -314,6 +316,17 @@ const PoliciesDetailPage = () => {
                               </Typography.Text>
                               <Typography.Text>
                                 {rule.operations?.join(', ')}
+                              </Typography.Text>
+                            </Space>
+                            <Space
+                              data-testid="effect"
+                              direction="vertical"
+                              size={4}>
+                              <Typography.Text className="tw-text-grey-muted">
+                                Effect:
+                              </Typography.Text>
+                              <Typography.Text>
+                                {startCase(rule.effect)}
                               </Typography.Text>
                             </Space>
                             {rule.condition && (
