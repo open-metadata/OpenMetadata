@@ -59,7 +59,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> getHostIp() {
+  public Map<String, String> getHostIp() {
     return null;
   }
 }

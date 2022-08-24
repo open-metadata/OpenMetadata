@@ -231,12 +231,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> getHostIp() {
+  public Map<String, String> getHostIp() {
     HttpResponse<String> response;
     try {
       response = getRequestAuthenticatedForJsonContent("%s/%s/ip", serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
-        return response;
+        return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());

@@ -530,12 +530,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Status message",
+            description = "Pipeline Service host IP",
             content = @Content(mediaType = "application/json"))
       })
   public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    HttpResponse<String> response = pipelineServiceClient.getHostIp();
-    return Response.status(200, response.body()).build();
+    Map<String, String> hostIp = pipelineServiceClient.getHostIp();
+    return Response.ok(hostIp, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
   @DELETE

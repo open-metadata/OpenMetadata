@@ -100,6 +100,10 @@ export const checkAirflowStatus = (): Promise<AxiosResponse> => {
   return APIClient.get('/services/ingestionPipelines/status');
 };
 
+export const getPipelineServiceHostIp = (): Promise<AxiosResponse> => {
+  return APIClient.get('/services/ingestionPipelines/ip');
+};
+
 export const getIngestionPipelineLogById = (
   id: string
 ): Promise<AxiosResponse> => {

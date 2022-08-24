@@ -143,5 +143,5 @@ public abstract class PipelineServiceClient {
   public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the Pipeline Service host IP to whitelist in source systems */
-  public abstract HttpResponse<String> getHostIp();
+  public abstract Map<String, String> getHostIp();
 }

@@ -12,6 +12,7 @@
 IP endpoint
 """
 import traceback
+
 import requests
 
 try:
@@ -36,9 +37,7 @@ def get_host_ip():
     """
 
     try:
-        return ApiResponse.success(
-            {"ip": requests.get('https://api.ipify.org').text}
-        )
+        return ApiResponse.success({"ip": requests.get("https://api.ipify.org").text})
     except Exception as err:
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
