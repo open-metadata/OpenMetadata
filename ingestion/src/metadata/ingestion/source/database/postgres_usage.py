@@ -24,5 +24,5 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
     """
     Postgres class for Usage
     """
-    
+
     sql_stmt = POSTGRES_SQL_STATEMENT

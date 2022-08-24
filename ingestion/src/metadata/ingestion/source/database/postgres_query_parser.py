@@ -14,7 +14,7 @@ Postgres Query parser module
 import traceback
 from abc import ABC
 from datetime import datetime, timedelta
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy.engine.base import Engine
 
@@ -69,14 +69,13 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             result_limit=self.config.sourceConfig.config.resultLimit,
-            filters=self.filters,
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:
         database = self.config.serviceConnection.__root__.config.database
         if database:
             self.engine: Engine = get_connection(self.connection)
-            yield from super().get_table_query()
+            yield from self.process_table_query()
         else:
             query = "select datname from pg_catalog.pg_database"
             results = self.engine.execute(query)
@@ -85,72 +84,70 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                 logger.info(f"Ingesting from database: {row[0]}")
                 self.config.serviceConnection.__root__.config.database = row[0]
                 self.engine = get_connection(self.connection)
-                
-                
-                
-                daydiff = self.end - self.start
-                for i in range(daydiff.days):
-                    logger.info(
-                        f"Scanning query logs for {(self.start + timedelta(days=i)).date()} - "
-                        f"{(self.start + timedelta(days=i+1)).date()}"
+                yield from self.process_table_query()
+
+    def process_table_query(self) -> Optional[Iterable[TableQuery]]:
+        daydiff = self.end - self.start
+        for i in range(daydiff.days):
+            logger.info(
+                f"Scanning query logs for {(self.start + timedelta(days=i)).date()} - "
+                f"{(self.start + timedelta(days=i+1)).date()}"
+            )
+            try:
+                with get_connection(self.connection).connect() as conn:
+                    rows = conn.execute(
+                        self.get_sql_statement(
+                            start_time=self.start + timedelta(days=i),
+                            end_time=self.start + timedelta(days=i + 2),
+                        )
                     )
-                    try:
-                        with get_connection(self.connection).connect() as conn:
-                            rows = conn.execute(
-                                self.get_sql_statement(
-                                    start_time=self.start + timedelta(days=i),
-                                    end_time=self.start + timedelta(days=i + 1),
+                    queries = []
+                    for row in rows:
+                        row = dict(row)
+                        try:
+                            if filter_by_database(
+                                self.source_config.databaseFilterPattern,
+                                self.get_database_name(row),
+                            ) or filter_by_schema(
+                                self.source_config.schemaFilterPattern,
+                                schema_name=row.get("schema_name"),
+                            ):
+                                continue
+
+                            end_time = row["start_time"] + timedelta(
+                                milliseconds=row["total_exec_time"]
+                            )
+                            date_time = end_time.strftime("%m/%d/%Y, %H:%M:%S")
+                            queries.append(
+                                TableQuery(
+                                    query=row["query_text"],
+                                    userName=row["usename"],
+                                    startTime=str(row["start_time"]),
+                                    endTime=date_time,
+                                    analysisDate=row["start_time"],
+                                    aborted=self.get_aborted_status(row),
+                                    databaseName=self.get_database_name(row),
+                                    serviceName=self.config.serviceName,
+                                    databaseSchema=self.get_schema_name(row),
                                 )
                             )
-                            queries = []
-                            for row in rows:
-                                row = dict(row)
-                                try:
-                                    if filter_by_database(
-                                        self.source_config.databaseFilterPattern,
-                                        self.get_database_name(row),
-                                    ) or filter_by_schema(
-                                        self.source_config.schemaFilterPattern,
-                                        schema_name=row["schema_name"],
-                                    ):
-                                        continue
-                                    
-                                    row["aborted"] = row["sql_state_code"] == "00000"
-                                    if "statement" in row["message"]:
-                                        row["message"] = row["message"].split(":")[1]
-                                        
-                                    queries.append(
-                                        TableQuery(
-                                            query=row["query_text"],
-                                            userName=row["user_name"],
-                                            startTime=str(row["start_time"]),
-                                            endTime=str(row["end_time"]),
-                                            analysisDate=row["start_time"],
-                                            aborted=self.get_aborted_status(row),
-                                            databaseName=self.get_database_name(row),
-                                            serviceName=self.config.serviceName,
-                                            databaseSchema=self.get_schema_name(row),
-                                        )
-                                    )
-                                except Exception as err:
-                                    logger.debug(traceback.format_exc())
-                                    logger.error(str(err))
-                        yield TableQueries(queries=queries)
-                    except Exception as err:
-                        logger.error(f"Source usage processing error - {err}")
-                        logger.debug(traceback.format_exc())
+                        except Exception as err:
+                            logger.debug(traceback.format_exc())
+                            logger.error(str(err))
+                yield TableQueries(queries=queries)
+            except Exception as err:
+                logger.error(f"Source usage processing error - {err}")
+                logger.debug(traceback.format_exc())
 
     def next_record(self) -> Iterable[TableQuery]:
         for table_queries in self.get_table_query():
             if table_queries:
                 yield table_queries
 
-                
-                
     def get_database_name(self, data: dict) -> str:
         """
         Method to get database name
         """
-        if not data["database_name"] and self.connection.database:
+        if not data["datname"] and self.connection.database:
             return self.connection.database
-        return data["database_name"]
+        return data["datname"]

@@ -465,24 +465,24 @@ TRINO_GET_COLUMNS = textwrap.dedent(
 
 POSTGRES_SQL_STATEMENT = textwrap.dedent(
     """
-        SELECT 
-          query_type,
-          query_text,
-          user_name,
-          database_name,
-          schema_name,
-          session_start_time start_time,
-          end_time
-          from
-          postgres_log
-          Where 
-          starttime >= '{start_time}'
-          AND starttime < '{end_time}'
-           {filters}
-          AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-
-          LIMIT {result_limit}
-        """
-          
+      SELECT
+        u.usename,
+        d.datname,
+        s.query query_text,
+        a.query_start start_time,
+        s.total_exec_time,
+        s.mean_exec_time,
+        s.calls
+      FROM
+        pg_stat_statements s
+        JOIN pg_catalog.pg_database d ON s.dbid = d.oid
+        JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
+        JOIN pg_catalog.pg_stat_activity a ON d.datname = a.datname
+      WHERE
+        a.query_start >= '{start_time}' AND
+        a.state_change <  current_timestamp
+        AND s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      LIMIT {result_limit}
+    """
 )
