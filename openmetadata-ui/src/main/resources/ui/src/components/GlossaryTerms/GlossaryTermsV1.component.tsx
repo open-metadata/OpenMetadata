@@ -435,9 +435,10 @@ const GlossaryTermsV1 = ({
     children,
     setShow,
     data,
+    ...props
   }: SummaryDetailsProps) => {
     return (
-      <Space direction="vertical">
+      <Space direction="vertical" {...props}>
         <Space>
           <Text type="secondary">{title}</Text>
           <div className="tw-ml-2" data-testid={`section-${title}`}>
@@ -470,6 +471,7 @@ const GlossaryTermsV1 = ({
             <Divider className="m-r-1" />
             <SummaryDetail
               data={relatedTerms}
+              key="related_term"
               setShow={setShowRelatedTermsModal}
               title="Related Terms">
               <>
@@ -496,16 +498,23 @@ const GlossaryTermsV1 = ({
             </SummaryDetail>
             <Divider className="m-r-1" />
 
-            <SummaryDetail setShow={setIsSynonymsEditing} title="Synonyms">
+            <SummaryDetail
+              key="synonyms"
+              setShow={setIsSynonymsEditing}
+              title="Synonyms">
               <>
                 {isSynonymsEditing ? (
-                  <div className="tw-flex tw-items-center tw-gap-1">
+                  <div
+                    className="tw-flex tw-items-center tw-gap-1"
+                    key="synonym-div">
                     <input
+                      autoFocus
                       className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-72"
                       data-testid="synonyms"
                       id="synonyms"
+                      key="synonym-input"
                       name="synonyms"
-                      placeholder="Enter comma seprated term"
+                      placeholder="Enter comma separated term"
                       type="text"
                       value={synonyms}
                       onChange={handleValidation}
@@ -548,6 +557,7 @@ const GlossaryTermsV1 = ({
 
             <SummaryDetail
               data={references}
+              key="references"
               setShow={setIsReferencesEditing}
               title="References">
               <>
