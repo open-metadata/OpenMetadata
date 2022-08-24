@@ -352,7 +352,10 @@ const GlossaryTermsV1 = ({
   const addButton = (onClick: () => void) => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <span className="tw-cursor-pointer" onClick={onClick}>
+        <span
+          className="tw-cursor-pointer"
+          data-testid="add-button"
+          onClick={onClick}>
           <SVGIcons alt="icon-plus-primary" icon="icon-plus-primary-outlined" />
         </span>
       </NonAdminAction>
@@ -437,7 +440,7 @@ const GlossaryTermsV1 = ({
       <Space direction="vertical">
         <Space>
           <Text type="secondary">{title}</Text>
-          <div className="tw-ml-2">
+          <div className="tw-ml-2" data-testid={`section-${title}`}>
             {addButton(() => setShow && setShow(true))}
           </div>
         </Space>
