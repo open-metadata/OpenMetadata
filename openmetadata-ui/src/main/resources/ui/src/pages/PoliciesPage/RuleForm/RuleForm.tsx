@@ -12,6 +12,7 @@
  */
 
 import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
+import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -45,9 +46,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
 
   const [policyFunctions, setPolicyFunctions] = useState<Function[]>([]);
 
-  const [conditionOptions, setConditionOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
+  const [conditionOptions, setConditionOptions] = useState<BaseOptionType[]>(
+    []
+  );
 
   const [validationError, setValidationError] = useState<string>('');
 
@@ -106,17 +107,14 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   }, [ruleData.resources, policyResources]);
 
   const getConditionOptions = (funtions: Function[]) => {
-    return funtions.reduce(
-      (prev: { label: string; value: string }[], curr: Function) => {
-        const currentValues = (curr.examples || []).map((example: string) => ({
-          label: example,
-          value: example,
-        }));
+    return funtions.reduce((prev: BaseOptionType[], curr: Function) => {
+      const currentValues = (curr.examples || []).map((example: string) => ({
+        label: example,
+        value: example,
+      }));
 
-        return uniqBy([...prev, ...currentValues], 'value');
-      },
-      []
-    );
+      return uniqBy([...prev, ...currentValues], 'value');
+    }, []);
   };
 
   const handleConditionSearch = (value: string) => {
@@ -157,6 +155,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
          * If request is successful then we will only get response as success without any data
          * So, here we have to check the response status code
          */
+
         [200, 204].includes(response.status)
           ? setValidationError('')
           : setValidationError(defaultErrorText);
