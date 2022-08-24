@@ -17,9 +17,12 @@ from metadata.ingestion.source.database.postgres_query_parser import (
     PostgresQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
+from metadata.utils.sql_queries import POSTGRES_SQL_STATEMENT
 
 
 class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
     """
     Postgres class for Usage
     """
+    
+    sql_stmt = POSTGRES_SQL_STATEMENT

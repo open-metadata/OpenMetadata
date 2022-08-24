@@ -461,3 +461,28 @@ TRINO_GET_COLUMNS = textwrap.dedent(
     ORDER BY "ordinal_position" ASC
 """
 )
+
+
+POSTGRES_SQL_STATEMENT = textwrap.dedent(
+    """
+        SELECT 
+          query_type,
+          query_text,
+          user_name,
+          database_name,
+          schema_name,
+          session_start_time start_time,
+          end_time
+          from
+          postgres_log
+          Where 
+          starttime >= '{start_time}'
+          AND starttime < '{end_time}'
+           {filters}
+          AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+
+          LIMIT {result_limit}
+        """
+          
+)
