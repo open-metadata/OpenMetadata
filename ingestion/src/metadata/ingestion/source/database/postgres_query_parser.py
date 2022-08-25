@@ -11,6 +11,7 @@
 """
 Postgres Query parser module
 """
+import csv
 import traceback
 from abc import ABC
 from datetime import datetime, timedelta
@@ -72,19 +73,66 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:
-        database = self.config.serviceConnection.__root__.config.database
-        if database:
-            self.engine: Engine = get_connection(self.connection)
-            yield from self.process_table_query()
-        else:
-            query = "select datname from pg_catalog.pg_database"
-            results = self.engine.execute(query)
-            for res in results:
-                row = list(res)
-                logger.info(f"Ingesting from database: {row[0]}")
-                self.config.serviceConnection.__root__.config.database = row[0]
-                self.engine = get_connection(self.connection)
-                yield from self.process_table_query()
+        
+        try:
+            if self.config.sourceConfig.config.queryLogFilePath:
+                table_query_list = []
+                with open(
+                    self.config.sourceConfig.config.queryLogFilePath, "r"
+                ) as query_log_file:
+
+                    for i in csv.DictReader(query_log_file):
+                        query_dict = dict(i)
+
+                        analysis_date = (
+                            datetime.utcnow()
+                            if not query_dict.get("session_start_time")
+                            else datetime.strptime(
+                                query_dict.get("session_start_time"),
+                                "%Y-%m-%d %H:%M:%S+%f",
+                            )
+                        )
+
+                        query_dict["aborted"] = query_dict["sql_state_code"] == "00000"
+                        if "statement" in query_dict["message"]:
+                            query_dict["message"] = query_dict["message"].split(":")[1]
+
+                        table_query_list.append(
+                            TableQuery(
+                                query=query_dict["message"],
+                                userName=query_dict.get("user_name", ""),
+                                startTime=query_dict.get("session_start_time", ""),
+                                endTime=query_dict.get("log_time", ""),
+                                analysisDate=analysis_date,
+                                aborted=self.get_aborted_status(query_dict),
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        )
+                yield TableQueries(queries=table_query_list)
+                
+            else:
+                database = self.config.serviceConnection.__root__.config.database
+                if database:
+                    self.engine: Engine = get_connection(self.connection)
+                    yield from self.process_table_query()
+                else:
+                    query = "select datname from pg_catalog.pg_database"
+                    results = self.engine.execute(query)
+                    for res in results:
+                        row = list(res)
+                        logger.info(f"Ingesting from database: {row[0]}")
+                        self.config.serviceConnection.__root__.config.database = row[0]
+                        self.engine = get_connection(self.connection)
+                        yield from self.process_table_query()
+                        
+        except Exception as err:
+            logger.error(f"Source usage processing error - {err}")
+            logger.debug(traceback.format_exc())
+
+        
+        
 
     def process_table_query(self) -> Optional[Iterable[TableQuery]]:
         daydiff = self.end - self.start
@@ -148,6 +196,9 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         """
         Method to get database name
         """
-        if not data["datname"] and self.connection.database:
+        key = "datname"
+        if self.config.sourceConfig.config.queryLogFilePath:
+            key = "database_name"
+        if not data[key] and self.connection.database:
             return self.connection.database
-        return data["datname"]
+        return data[key]
