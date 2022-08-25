@@ -47,5 +47,5 @@ def _(*_, **__):
 
 
 @compiles(ConnTestFn, Dialects.Db2)
-def _(*_, **_):
+def _(*_, **__):
     return "SELECT 42 FROM SYSIBM.SYSDUMMY1;"
