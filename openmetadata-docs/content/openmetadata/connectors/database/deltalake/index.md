@@ -22,6 +22,9 @@ We are internally running with `pyspark` 3.X and `delta-lake` 2.0.0. This means 
 - If you need further information regarding the Hive metastore, you can find it [here](https://spark.apache.org/docs/3.0.0-preview/sql-data-sources-hive-tables.html),
   and in The Internals of Spark SQL [book](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html).
 
+<DatabaseIngestionConfig />
+
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="DeltaLake" hasDBT="true" />

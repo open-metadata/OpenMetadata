@@ -18,6 +18,8 @@ slug: /openmetadata/connectors/dashboard/powerbi
 - **Authority URI**: Authority URI for the service.
 - **Scope**: Service scope. By default `["https://analysis.windows.net/powerbi/api/.default"]`.
 
+<DashboardIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="PowerBI" />

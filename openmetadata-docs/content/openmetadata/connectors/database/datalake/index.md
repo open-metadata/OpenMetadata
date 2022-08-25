@@ -107,6 +107,8 @@ We support two ways of authenticating to GCS:
 
 </Collapse>
 
+<DatabaseIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Datalake" goal="Airflow"  />

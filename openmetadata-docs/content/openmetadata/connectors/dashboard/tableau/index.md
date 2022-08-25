@@ -21,6 +21,8 @@ slug: /openmetadata/connectors/dashboard/tableau
 - **Personal Access Token Secret**: Access token Secret. To be used if not logging in with user/password.
 - **Environment**: Tableau Environment.
 
+<DashboardIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Tableau" />
