@@ -12,7 +12,9 @@
 Postgres lineage module
 """
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.postgres_query_parser import PostgresQueryParserSource
+from metadata.ingestion.source.database.postgres_query_parser import (
+    PostgresQueryParserSource,
+)
 from metadata.utils.sql_queries import POSTGRES_SQL_STATEMENT
 
 
