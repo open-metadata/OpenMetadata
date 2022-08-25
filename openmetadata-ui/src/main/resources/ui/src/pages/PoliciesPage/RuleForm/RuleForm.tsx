@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Select, TreeSelect } from 'antd';
+import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
+import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { capitalize, startCase, uniq } from 'lodash';
+import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { getPolicyResources } from '../../../axiosAPIs/rolesAPIV1';
+import {
+  getPolicyFunctions,
+  getPolicyResources,
+  validateRuleCondition,
+} from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import {
   Effect,
@@ -23,6 +28,8 @@ import {
   Rule,
 } from '../../../generated/api/policies/createPolicy';
 import { ResourceDescriptor } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
+import { Function } from '../../../generated/type/function';
+import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const { Option } = Select;
@@ -36,6 +43,14 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
     []
   );
+
+  const [policyFunctions, setPolicyFunctions] = useState<Function[]>([]);
+
+  const [conditionOptions, setConditionOptions] = useState<BaseOptionType[]>(
+    []
+  );
+
+  const [validationError, setValidationError] = useState<string>('');
 
   /**
    * Derive the resources from policy resources
@@ -91,6 +106,27 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
     return option;
   }, [ruleData.resources, policyResources]);
 
+  const getConditionOptions = (funtions: Function[]) => {
+    return funtions.reduce((prev: BaseOptionType[], curr: Function) => {
+      const currentValues = (curr.examples || []).map((example: string) => ({
+        label: example,
+        value: example,
+      }));
+
+      return uniqBy([...prev, ...currentValues], 'value');
+    }, []);
+  };
+
+  const handleConditionSearch = (value: string) => {
+    if (value) {
+      setConditionOptions((prev) =>
+        prev.filter((condition) => condition.value.includes(value))
+      );
+    } else {
+      setConditionOptions(getConditionOptions(policyFunctions));
+    }
+  };
+
   const fetchPolicyResources = async () => {
     try {
       const data = await getPolicyResources();
@@ -100,9 +136,43 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
     }
   };
 
+  const fetchPolicyFuntions = async () => {
+    try {
+      const data = await getPolicyFunctions();
+      setPolicyFunctions(data.data || []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleConditionValidation = async () => {
+    const defaultErrorText = 'Condition is invalid';
+    if (ruleData.condition) {
+      try {
+        const response = await validateRuleCondition(ruleData.condition);
+
+        /**
+         * If request is successful then we will only get response as success without any data
+         * So, here we have to check the response status code
+         */
+
+        [200, 204].includes(response.status)
+          ? setValidationError('')
+          : setValidationError(defaultErrorText);
+      } catch (error) {
+        setValidationError(getErrorText(error as AxiosError, defaultErrorText));
+      }
+    }
+  };
+
   useEffect(() => {
     fetchPolicyResources();
+    fetchPolicyFuntions();
   }, []);
+
+  useEffect(() => {
+    setConditionOptions(getConditionOptions(policyFunctions));
+  }, [policyFunctions]);
 
   return (
     <>
@@ -121,7 +191,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           type="text"
           value={ruleData.name}
           onChange={(e) =>
-            setRuleData((prev) => ({ ...prev, name: e.target.value }))
+            setRuleData((prev: Rule) => ({ ...prev, name: e.target.value }))
           }
         />
       </Form.Item>
@@ -132,7 +202,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           placeHolder="Write your description"
           style={{ margin: 0 }}
           onTextChange={(value) =>
-            setRuleData((prev) => ({ ...prev, description: value }))
+            setRuleData((prev: Rule) => ({ ...prev, description: value }))
           }
         />
       </Form.Item>
@@ -151,7 +221,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
           onChange={(values) => {
-            setRuleData((prev) => ({
+            setRuleData((prev: Rule) => ({
               ...prev,
               resources: values,
             }));
@@ -173,7 +243,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
           onChange={(values) => {
-            setRuleData((prev) => ({
+            setRuleData((prev: Rule) => ({
               ...prev,
               operations: values,
             }));
@@ -192,11 +262,31 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           placeholder="Select Rule Effect"
           value={ruleData.effect}
           onChange={(value) =>
-            setRuleData((prev) => ({ ...prev, effect: value }))
+            setRuleData((prev: Rule) => ({ ...prev, effect: value }))
           }>
           <Option key={Effect.Allow}>{capitalize(Effect.Allow)}</Option>
           <Option key={Effect.Deny}>{capitalize(Effect.Deny)}</Option>
         </Select>
+      </Form.Item>
+      <Form.Item label="Condition:" name="condition">
+        <>
+          <AutoComplete
+            options={conditionOptions}
+            placeholder="Condition"
+            value={ruleData.condition}
+            onBlur={handleConditionValidation}
+            onChange={(value) => {
+              setRuleData((prev: Rule) => ({ ...prev, condition: value }));
+              !value && setValidationError('');
+            }}
+            onSearch={handleConditionSearch}
+          />
+          {validationError && (
+            <div className="ant-form-item-explain-error" role="alert">
+              {validationError}
+            </div>
+          )}
+        </>
       </Form.Item>
     </>
   );

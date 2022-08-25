@@ -17,7 +17,7 @@ from typing import List, Optional
 from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.core import Metric, add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
@@ -58,7 +58,7 @@ class DefaultProfiler(Profiler):
 
     def __init__(
         self,
-        profiler_interface: SQAProfilerInterface,
+        profiler_interface: SQAInterface,
         include_columns: List[Optional[ColumnProfilerConfig]] = None,
         exclude_columns: List[Optional[str]] = None,
     ):

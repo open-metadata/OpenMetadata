@@ -52,6 +52,8 @@ In terms of `connection` we support the following selections:
 - `MySQL`, `Postgres`, `MSSQL` and `SQLite`: Pass the required credentials to reach out each of these services. We
     will create a connection to the pointed database and read Airflow data from there.
 
+<PipelineIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Airflow" />

@@ -57,6 +57,7 @@ import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
@@ -87,6 +88,7 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
+  public static final Comparator<MetadataOperation> compareOperation = Comparator.comparing(MetadataOperation::value);
 
   //
   // Matchers used for matching two items in a list
@@ -136,6 +138,14 @@ public final class EntityUtil {
 
   public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName());
+
+  public static final BiPredicate<Rule, Rule> ruleMatch =
+      (ref1, ref2) ->
+          ref1.getName().equals(ref2.getName())
+              && ref1.getOperations().equals(ref2.getOperations())
+              && ref1.getResources().equals(ref2.getResources())
+              && ref1.getEffect().equals(ref2.getEffect())
+              && Objects.equals(ref1.getCondition(), ref2.getCondition());
 
   private EntityUtil() {}
 

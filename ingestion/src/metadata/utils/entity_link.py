@@ -13,23 +13,16 @@ Handle Entity Link building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
-from typing import List, TypeVar
+from typing import List
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from pydantic import BaseModel
 
-from metadata.antlr.split_listener import SplitListener
+from metadata.antlr.split_listener import EntityLinkSplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
 from metadata.generated.antlr.EntityLinkParser import EntityLinkParser
-from metadata.utils.dispatch import class_register
-
-T = TypeVar("T", bound=BaseModel)
-
-ENTITY_SEPARATOR: str = "::"
-entity_link_build_registry = class_register()
 
 
 class EntityLinkBuildingException(Exception):
@@ -45,6 +38,6 @@ def split(s: str) -> List[str]:
     parser._errHandler = BailErrorStrategy()
     tree = parser.entitylink()
     walker = ParseTreeWalker()
-    splitter = SplitListener()
+    splitter = EntityLinkSplitListener()
     walker.walk(splitter, tree)
     return splitter.split()

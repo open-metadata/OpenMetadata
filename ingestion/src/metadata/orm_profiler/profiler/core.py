@@ -30,9 +30,9 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     TableProfile,
 )
+from metadata.interfaces.interface_protocol import InterfaceProtocol
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.api.models import ProfilerResponse
-from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
@@ -107,7 +107,7 @@ class Profiler(Generic[TMetric]):
             "`<instance>.profiler_interface` to see if session is supported by the profiler interface",
             DeprecationWarning,
         )
-        if isinstance(self.profiler_interface, SQAProfilerInterface):
+        if isinstance(self.profiler_interface, SQAInterface):
             return self.profiler_interface.session
 
         raise ValueError(

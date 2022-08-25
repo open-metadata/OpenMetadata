@@ -185,3 +185,51 @@ helm uninstall openmetadata-dependencies
 MySql and ElasticSearch OpenMetadata Dependencies as deployed as StatefulSets and have persistent volumes (pv) and
 persistent volume claims (`pvc`). These will need to be manually cleaned after helm uninstall. You can use `kubectl delete`
 CLI command for the same.
+
+## Run OpenMetadata with AWS Services
+
+If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html) and [Amazon OpenSearch Service](https://docs.aws.amazon.com/opensearch-service/?id=docs_gateway).
+
+We support 
+
+- Amazon RDS (MySQL) engine version upto 8.0.29
+- Amazon OpenSearch (ElasticSearch) engine version upto 7.1
+- Amazon RDS (PostgreSQL) engine version upto 14.2-R1
+
+For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
+
+Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+global:
+  elasticsearch:
+    host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
+    port: 443
+    scheme: https
+    connectionTimeoutSecs: 5
+    socketTimeoutSecs: 60
+    batchSize: 10
+    auth:
+      enabled: false
+      username: <AMAZON_OPENSEARCH_USERNAME>
+      password:
+        secretRef: elasticsearch-secrets
+        secretKey: openmetadata-elasticsearch-password
+  database:
+    host: <AMAZON_RDS_ENDPOINT>
+    port: 3306
+    driverClass: com.mysql.cj.jdbc.Driver
+    dbScheme: mysql
+    dbUseSSL: true
+    databaseName: <RDS_DATABASE_NAME>
+    auth:
+      username: <RDS_DATABASE_USERNAME>
+      password:
+        secretRef: mysql-secrets
+        secretKey: openmetadata-mysql-password
+...
+```
+
+Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).

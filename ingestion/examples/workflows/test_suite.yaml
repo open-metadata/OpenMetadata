@@ -1,0 +1,34 @@
+source:
+  type: TestSuite
+  serviceName: <Workflow Name>
+  sourceConfig:
+    config:
+      type: TestSuite
+    
+processor:
+  type: "orm-test-runner"
+  config:
+    testSuites:
+      - name: <test suite name>
+        description: <this is a description>
+        testCases:
+          - name: <test case name>
+            description: <test case description>
+            testDefinitionName: <name of the test definition for this test case>
+            entityLink: "<#E::table::fqn> or <#E::table::fqn::columns::column_name>"     
+            parameterValues:
+              - name: <parameter name>
+                value: <value>
+              - name: <parameter name>
+                value: <value>
+            ...
+      ...
+
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+

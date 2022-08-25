@@ -67,9 +67,11 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 import org.openmetadata.catalog.util.ResultList;
@@ -518,6 +520,24 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return pipelineServiceClient.getServiceStatus();
   }
 
+  @GET
+  @Path("/ip")
+  @Operation(
+      operationId = "checkAirflowHostIp",
+      summary = "Check the Airflow REST host IP",
+      tags = "IngestionPipelines",
+      description = "Check the Airflow REST host IP",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline Service host IP",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    Map<String, String> hostIp = pipelineServiceClient.getHostIp();
+    return Response.ok(hostIp, MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -595,7 +615,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     try {
       authorizer.authorize(
           securityContext,
-          getOperationContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
           getResourceContextById(ingestionPipeline.getId()),
           secretsManager.isLocal());
     } catch (AuthorizationException | IOException e) {

@@ -70,6 +70,7 @@ export interface ConfigureIngestionProps {
   includeView: boolean;
   includeTags: boolean;
   markDeletedTables?: boolean;
+  markDeletedTablesFromFilterOnly?: boolean;
   enableDebugLog: boolean;
   profileSample?: number;
   ingestSampleData: boolean;
@@ -92,6 +93,7 @@ export interface ConfigureIngestionProps {
   handleIncludeView: () => void;
   handleIncludeTags: () => void;
   handleMarkDeletedTables?: () => void;
+  handleMarkDeletedTablesFromFilterOnly?: () => void;
   handleEnableDebugLog: () => void;
   handleIngestSampleData: () => void;
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;

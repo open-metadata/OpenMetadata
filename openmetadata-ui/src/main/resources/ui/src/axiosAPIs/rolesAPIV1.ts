@@ -18,6 +18,7 @@ import { CreateRole } from '../generated/api/teams/createRole';
 import { ResourceDescriptor } from '../generated/entity/policies/accessControl/resourceDescriptor';
 import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
+import { Function } from '../generated/type/function';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
 
@@ -130,4 +131,26 @@ export const getPolicyResources = async () => {
   }>('/policies/resources');
 
   return response.data;
+};
+
+export const getPolicyFunctions = async () => {
+  const response = await APIClient.get<{ data: Function[]; paging: Paging }>(
+    '/policies/functions'
+  );
+
+  return response.data;
+};
+
+export const validateRuleCondition = async (condition: string) => {
+  /**
+   * This endpoint is not returning any data so we don't have to specify the types
+   */
+  const response = await APIClient.get(
+    `/policies/validation/condition/${condition}`
+  );
+
+  /**
+   * Returning directly response because we will need status code as well
+   */
+  return response;
 };

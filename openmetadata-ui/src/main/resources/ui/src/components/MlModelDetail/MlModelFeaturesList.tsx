@@ -157,6 +157,15 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       });
   };
 
+  const handleTagContainerClick = (feature: MlFeature) => {
+    setSelectedFeature(feature);
+    setEditTag(true);
+    // Fetch tags and terms only once
+    if (allTags.length === 0 || tagFetchFailed) {
+      fetchTagsAndGlossaryTerms();
+    }
+  };
+
   const Separator = () => {
     return <span className="tw-mx-2 tw-inline-block tw-text-gray-400">|</span>;
   };
@@ -249,14 +258,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     <div
                       className="tw-ml-1 tw-self-center"
                       data-testid="feature-tags-wrapper"
-                      onClick={() => {
-                        setSelectedFeature(feature);
-                        setEditTag(true);
-                        // Fetch tags and terms only once
-                        if (allTags.length === 0 || tagFetchFailed) {
-                          fetchTagsAndGlossaryTerms();
-                        }
-                      }}>
+                      onClick={() => handleTagContainerClick(feature)}>
                       <NonAdminAction
                         html={getHtmlForNonAdminAction(Boolean(owner))}
                         isOwner={hasEditAccess}

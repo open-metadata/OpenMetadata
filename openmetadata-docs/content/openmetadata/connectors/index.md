@@ -38,6 +38,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 
 - [Looker](/openmetadata/connectors/dashboard/looker)
 - [Metabase](/openmetadata/connectors/dashboard/metabase)
+- [Mode](/openmetadata/connectors/dashboard/mode)
 - [PowerBI](/openmetadata/connectors/dashboard/powerbi)
 - [Redash](/openmetadata/connectors/dashboard/redash)
 - [Superset](/openmetadata/connectors/dashboard/superset)
