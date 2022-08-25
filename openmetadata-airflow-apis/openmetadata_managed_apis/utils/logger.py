@@ -1,12 +1,23 @@
 import logging
 from enum import Enum
+from logging.handlers import RotatingFileHandler
+
+from airflow.configuration import conf
 
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 )
 
 logging.basicConfig(
-    filename="std.out", filemode="a", format=BASE_LOGGING_FORMAT, level=logging.DEBUG
+    handlers=[
+        RotatingFileHandler(
+            f"{conf.get('logging', 'base_log_folder', fallback='.')}/openmetadata_airflow_api.log",
+            maxBytes=1000000,
+            backupCount=10,
+        )
+    ],
+    format=BASE_LOGGING_FORMAT,
+    level=logging.DEBUG,
 )
 
 

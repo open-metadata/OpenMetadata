@@ -240,8 +240,3 @@ def build_dag(
         )
 
         return dag
-
-
-workflow = workflow_factory.WorkflowFactory.create(
-    "/Users/nahuelverdugo/dev/git/OpenMetadata/ingestion/examples/workflows/mysql.yaml"
-)
