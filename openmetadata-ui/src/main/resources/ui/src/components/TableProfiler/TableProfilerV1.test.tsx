@@ -20,7 +20,7 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
 import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
@@ -68,6 +68,12 @@ jest.mock('../../utils/CommonUtils', () => ({
   formTwoDigitNmber: jest.fn(),
 }));
 const mockGetCurrentDatasetTab = getCurrentDatasetTab as jest.Mock;
+
+jest.mock('../../axiosAPIs/testAPI', () => ({
+  getListTestCase: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(TEST_CASE)),
+}));
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
@@ -128,9 +134,6 @@ describe('Test TableProfiler component', () => {
   });
 
   it('CTA: Setting button should work properly', async () => {
-    const setSettingModalVisible = jest.fn();
-    const handleClick = jest.spyOn(React, 'useState');
-    handleClick.mockImplementation(() => [false, setSettingModalVisible]);
     render(<TableProfilerV1 {...mockProps} />);
 
     const settingBtn = await screen.findByTestId('profiler-setting-btn');
@@ -141,6 +144,8 @@ describe('Test TableProfiler component', () => {
       fireEvent.click(settingBtn);
     });
 
-    expect(setSettingModalVisible).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText('ProfilerSettingsModal.component')
+    ).toBeInTheDocument();
   });
 });
