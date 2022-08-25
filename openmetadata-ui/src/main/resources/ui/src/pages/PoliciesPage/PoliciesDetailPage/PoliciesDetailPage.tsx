@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button,
   Collapse,
+  Dropdown,
   Empty,
+  Menu,
   Modal,
   Space,
   Table,
@@ -25,7 +28,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getPolicyByName,
@@ -42,6 +45,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -240,6 +244,68 @@ const PoliciesDetailPage = () => {
     }
   };
 
+  const getRuleActionElement = useCallback((rule: Rule) => {
+    return (
+      <Dropdown
+        overlay={
+          <Menu
+            items={[
+              {
+                label: (
+                  <Button
+                    className="tw-p-0"
+                    data-testid="edit-rule"
+                    type="text"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      history.push(getEditPolicyRulePath(fqn, rule.name || ''));
+                    }}>
+                    <Space align="center">
+                      <SVGIcons alt="edit" icon={Icons.EDIT} />
+                      Edit
+                    </Space>
+                  </Button>
+                ),
+                key: 'edit-button',
+              },
+              {
+                label: (
+                  <Button
+                    className="tw-p-0"
+                    data-testid="delete-rule"
+                    type="text"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}>
+                    <Space align="center">
+                      <SVGIcons alt="delete" icon={Icons.DELETE} width="16px" />
+                      Delete
+                    </Space>
+                  </Button>
+                ),
+                key: 'delete-button',
+              },
+            ]}
+          />
+        }
+        placement="bottomRight"
+        trigger={['click']}>
+        <Button
+          data-testid="manage-button"
+          size="small"
+          type="text"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}>
+          <FontAwesomeIcon
+            className="tw-text-grey-body"
+            icon="ellipsis-vertical"
+          />
+        </Button>
+      </Dropdown>
+    );
+  }, []);
+
   useEffect(() => {
     fetchPolicy();
   }, [fqn]);
@@ -301,21 +367,7 @@ const PoliciesDetailPage = () => {
                                 <Typography.Text className="tw-font-medium tw-text-base tw-text-grey-body">
                                   {rule.name}
                                 </Typography.Text>
-                                <Button
-                                  className="tw-p-0"
-                                  data-testid="edit-rule"
-                                  type="text"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    history.push(
-                                      getEditPolicyRulePath(
-                                        fqn,
-                                        rule.name || ''
-                                      )
-                                    );
-                                  }}>
-                                  <SVGIcons alt="edit" icon={Icons.EDIT} />
-                                </Button>
+                                {getRuleActionElement(rule)}
                               </Space>
                               <div
                                 className="tw--ml-5"
