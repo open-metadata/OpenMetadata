@@ -20,6 +20,8 @@ slug: /openmetadata/connectors/pipeline/glue
 - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the
   region. You may override this behavior by entering a value to the endpoint URL.
 
+<PipelineIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Glue" />

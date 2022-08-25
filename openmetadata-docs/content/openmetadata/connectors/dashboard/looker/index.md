@@ -16,6 +16,8 @@ slug: /openmetadata/connectors/dashboard/looker
 - **Password**: Password to connect to Looker.
 - **Environment**: Looker Environment.
 
+<DashboardIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Looker" />

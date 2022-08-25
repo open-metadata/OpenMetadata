@@ -15,6 +15,8 @@ slug: /openmetadata/connectors/dashboard/metabase
 - **Username**: Specify the User to connect to Metabase. It should have enough privileges to read all the metadata.
 - **Password**: Password for Metabase.
 
+<DashboardIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Metabase" />
