@@ -42,6 +42,7 @@ import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
@@ -628,6 +629,7 @@ export const getEntityName = (
     | Team
     | Policy
     | Role
+    | GlossaryTerm
 ) => {
   return entity?.displayName || entity?.name || '';
 };
