@@ -244,67 +244,92 @@ const PoliciesDetailPage = () => {
     }
   };
 
-  const getRuleActionElement = useCallback((rule: Rule) => {
-    return (
-      <Dropdown
-        overlay={
-          <Menu
-            items={[
-              {
-                label: (
-                  <Button
-                    className="tw-p-0"
-                    data-testid="edit-rule"
-                    type="text"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      history.push(getEditPolicyRulePath(fqn, rule.name || ''));
-                    }}>
-                    <Space align="center">
-                      <SVGIcons alt="edit" icon={Icons.EDIT} />
-                      Edit
-                    </Space>
-                  </Button>
-                ),
-                key: 'edit-button',
-              },
-              {
-                label: (
-                  <Button
-                    className="tw-p-0"
-                    data-testid="delete-rule"
-                    type="text"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}>
-                    <Space align="center">
-                      <SVGIcons alt="delete" icon={Icons.DELETE} width="16px" />
-                      Delete
-                    </Space>
-                  </Button>
-                ),
-                key: 'delete-button',
-              },
-            ]}
-          />
-        }
-        placement="bottomRight"
-        trigger={['click']}>
-        <Button
-          data-testid="manage-button"
-          size="small"
-          type="text"
-          onClick={(e) => {
-            e.stopPropagation();
-          }}>
-          <FontAwesomeIcon
-            className="tw-text-grey-body"
-            icon="ellipsis-vertical"
-          />
-        </Button>
-      </Dropdown>
+  const handleRuleDelete = async (data: Rule) => {
+    const updatedRules = (policy.rules ?? []).filter(
+      (rule) => rule.name !== data.name
     );
-  }, []);
+
+    const patch = compare(policy, { ...policy, rules: updatedRules });
+
+    try {
+      const data = await patchPolicy(patch, policy.id);
+      setPolicy(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const getRuleActionElement = useCallback(
+    (rule: Rule) => {
+      return (
+        <Dropdown
+          overlay={
+            <Menu
+              items={[
+                {
+                  label: (
+                    <Button
+                      className="tw-p-0"
+                      data-testid="edit-rule"
+                      type="text"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        history.push(
+                          getEditPolicyRulePath(fqn, rule.name || '')
+                        );
+                      }}>
+                      <Space align="center">
+                        <SVGIcons alt="edit" icon={Icons.EDIT} />
+                        Edit
+                      </Space>
+                    </Button>
+                  ),
+                  key: 'edit-button',
+                },
+                {
+                  label: (
+                    <Button
+                      className="tw-p-0"
+                      data-testid="delete-rule"
+                      type="text"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRuleDelete(rule);
+                      }}>
+                      <Space align="center">
+                        <SVGIcons
+                          alt="delete"
+                          icon={Icons.DELETE}
+                          width="16px"
+                        />
+                        Delete
+                      </Space>
+                    </Button>
+                  ),
+                  key: 'delete-button',
+                },
+              ]}
+            />
+          }
+          placement="bottomRight"
+          trigger={['click']}>
+          <Button
+            data-testid="manage-button"
+            size="small"
+            type="text"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}>
+            <FontAwesomeIcon
+              className="tw-text-grey-body"
+              icon="ellipsis-vertical"
+            />
+          </Button>
+        </Dropdown>
+      );
+    },
+    [policy]
+  );
 
   useEffect(() => {
     fetchPolicy();
