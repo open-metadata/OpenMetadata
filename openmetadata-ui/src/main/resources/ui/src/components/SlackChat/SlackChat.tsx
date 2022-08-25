@@ -11,14 +11,10 @@
  *  limitations under the License.
  */
 
+import { faMessage } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { SlackChatConfig } from 'Models';
-import React, { FC, useMemo } from 'react';
-// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-// @ts-ignore
-import { ReactSlackChat } from 'react-slack-chat/dist/react-slack-chat-with-default-hooks';
-import AppState from '../../AppState';
-import ChannelIcon from '../../assets/img/slackChat/icon-support.svg';
-import UserIcon from '../../assets/img/slackChat/icon-user.svg';
+import React, { FC } from 'react';
 import './SlackChat.css';
 
 type Props = {
@@ -26,44 +22,19 @@ type Props = {
 };
 
 const SlackChat: FC<Props> = ({ slackConfig }) => {
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-  const channels = slackConfig.channels.map((ch) => {
-    return { name: ch, icon: ChannelIcon };
-  });
-  const customHooks = [
-    {
-      id: 'getUrl',
-      action: () => Promise.resolve('URL: ' + window.location.href),
-    },
-    {
-      id: 'getUser',
-      action: () =>
-        Promise.resolve(
-          `User: ${currentUser?.name}, Email: ${currentUser?.email}, Name: ${currentUser?.displayName}, Admin: ${currentUser?.isAdmin}`
-        ),
-    },
-  ];
-  const botName = currentUser?.name || slackConfig.botName || 'support-bot';
+  const url = slackConfig.slackUrl;
 
-  return (
+  return url && url.length > 0 ? (
     <div className="slack-chat">
-      <ReactSlackChat
-        closeChatButton
-        apiToken={slackConfig.apiToken}
-        botName={botName}
-        channels={channels}
-        defaultMessage="Welcome! Someone will help shortly."
-        helpText="Need Help?"
-        hooks={customHooks}
-        singleUserMode={false}
-        themeColor="#7147E8"
-        userImage={UserIcon}
-      />
+      <a href={url} rel="noreferrer" target="_blank">
+        <div className="bubble">
+          <div className="chatIcon">
+            <FontAwesomeIcon icon={faMessage} size="2x" />
+          </div>
+        </div>
+      </a>
     </div>
-  );
+  ) : null;
 };
 
 export default SlackChat;

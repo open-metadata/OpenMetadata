@@ -209,6 +209,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('xyz'),
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
+  getEntityId: jest.fn().mockReturnValue('id-entity-test'),
 }));
 
 const mockObserve = jest.fn();

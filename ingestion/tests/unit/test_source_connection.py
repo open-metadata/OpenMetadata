@@ -119,6 +119,19 @@ class SouceConnectionTest(TestCase):
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
+        expected_http_result = "hive+http://localhost:1000"
+        http_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive_http, hostPort="localhost:1000"
+        )
+
+        assert expected_http_result == get_connection_url(http_conn_obj)
+
+        exptected_https_result = "hive+https://localhost:1000"
+        http_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive_https, hostPort="localhost:1000"
+        )
+        assert exptected_https_result == get_connection_url(http_conn_obj)
+
     def test_hive_url_custom_auth(self):
         expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(

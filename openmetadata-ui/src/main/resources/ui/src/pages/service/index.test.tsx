@@ -182,6 +182,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
       field: 'databases',
     },
   ]),
+  getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
@@ -210,6 +211,11 @@ jest.mock(
       .fn()
       .mockReturnValue(<p>ModalWithMarkdownEditor</p>),
   })
+);
+
+jest.mock(
+  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  () => jest.fn().mockReturnValue(<p>EntitySummaryDetails</p>)
 );
 
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {

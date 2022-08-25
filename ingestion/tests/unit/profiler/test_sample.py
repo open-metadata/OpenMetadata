@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.orm_profiler.profiler.core import Profiler
@@ -68,7 +68,7 @@ class SampleTest(TestCase):
         ],
     )
 
-    sqa_profiler_interface = SQAProfilerInterface(
+    sqa_profiler_interface = SQAInterface(
         sqlite_conn, table=User, table_entity=table_entity
     )
     engine = sqa_profiler_interface.session.get_bind()
@@ -126,7 +126,7 @@ class SampleTest(TestCase):
 
         # Randomly pick table_count to init the Profiler, we don't care for this test
         table_count = Metrics.ROW_COUNT.value
-        sqa_profiler_interface = SQAProfilerInterface(
+        sqa_profiler_interface = SQAInterface(
             self.sqlite_conn,
             table=User,
             table_entity=self.table_entity,
@@ -164,7 +164,7 @@ class SampleTest(TestCase):
         count = Metrics.COUNT.value
         profiler = Profiler(
             count,
-            profiler_interface=SQAProfilerInterface(
+            profiler_interface=SQAInterface(
                 self.sqlite_conn,
                 table=User,
                 table_entity=self.table_entity,
@@ -181,7 +181,7 @@ class SampleTest(TestCase):
         hist = Metrics.HISTOGRAM.value
         profiler = Profiler(
             hist,
-            profiler_interface=SQAProfilerInterface(
+            profiler_interface=SQAInterface(
                 self.sqlite_conn,
                 table=User,
                 table_entity=self.table_entity,

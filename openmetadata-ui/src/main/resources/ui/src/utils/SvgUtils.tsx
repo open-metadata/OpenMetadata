@@ -110,6 +110,7 @@ import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
 import IcEditPrimary from '../assets/svg/icon-edit-primary.svg';
+import IconInfoSecondary from '../assets/svg/icon-info.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
@@ -333,6 +334,7 @@ export const Icons = {
   FOREGIN_KEY: 'foreign-key',
   ROLE_GREY: 'role-grey',
   POLICIES: 'policies',
+  INFO_SECONDARY: 'info-secondary',
   ICON_REMOVE: 'icon-remove',
   IC_EDIT_PRIMARY: 'ic-edit-primary',
 };
@@ -980,6 +982,11 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ICON_PLUS_PRIMARY_OUTLINED:
       IconComponent = IconPlusPrimaryOutlined;
+
+      break;
+
+    case Icons.INFO_SECONDARY:
+      IconComponent = IconInfoSecondary;
 
       break;
 

@@ -13,7 +13,7 @@
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
 # pylint: disable=duplicate-code
-
+import traceback
 from uuid import UUID
 
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
@@ -43,7 +43,8 @@ class UUIDString(TypeDecorator):
         try:
             return UUID(value)
         except ValueError as err:
-            logger.error(f"Error converting value {value} to UUID")
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error converting value [{value}] to UUID: {err}")
             raise err
 
     def process_result_value(self, value: str, dialect):
