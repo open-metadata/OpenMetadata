@@ -27,10 +27,10 @@ import './AddAttributeModal.less';
 
 interface Props {
   type: EntityType;
-  selectedKeys: React.Key[];
+  selectedKeys: string[];
   title: string;
   isOpen: boolean;
-  onSave: () => void;
+  onSave: (values: string[]) => void;
   onCancel: () => void;
 }
 
@@ -43,7 +43,9 @@ const AddAttributeModal: FC<Props> = ({
   selectedKeys,
 }) => {
   const [data, setData] = useState<EntityReference[]>([]);
+  const [searchedData, setSearchedData] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedValues, setSelectedValues] = useState<string[]>(selectedKeys);
 
   const fetchPolicies = async () => {
     setIsLoading(true);
@@ -61,10 +63,35 @@ const AddAttributeModal: FC<Props> = ({
       );
 
       setData(entityReferenceData);
+      setSearchedData(entityReferenceData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleValuSelect = (id: string) => {
+    const isAdded = selectedValues.includes(id);
+    if (isAdded) {
+      setSelectedValues((prev) => prev.filter((v) => v !== id));
+    } else {
+      setSelectedValues((prev) => [...prev, id]);
+    }
+  };
+
+  const handleSearch = (value: string) => {
+    if (value) {
+      setSearchedData(
+        data.filter(
+          (pData) =>
+            pData.name?.includes(value) ||
+            pData.displayName?.includes(value) ||
+            pData.description?.includes(value)
+        )
+      );
+    } else {
+      setSearchedData(data);
     }
   };
 
@@ -82,31 +109,39 @@ const AddAttributeModal: FC<Props> = ({
       visible={isOpen}
       width={750}
       onCancel={onCancel}
-      onOk={onSave}>
+      onOk={() => onSave(selectedValues)}>
       {isLoading ? (
         <Loader />
       ) : (
         <>
-          <Input
-            className="tw-mb-4"
-            placeholder={`Search ${type}`}
-            prefix={
-              <FontAwesomeIcon icon="search" style={{ color: '#37352F4D' }} />
-            }
-          />
-          {data.map((option) => (
+          <Row className="ant-search-box-row">
+            <Col span={24}>
+              <Input
+                placeholder={`Search ${type}`}
+                prefix={
+                  <FontAwesomeIcon
+                    icon="search"
+                    style={{ color: '#37352F4D' }}
+                  />
+                }
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+            </Col>
+          </Row>
+          {searchedData.map((option) => (
             <Row
               className={classNames({
-                selected: selectedKeys.includes(option.id),
+                selected: selectedValues.includes(option.id),
               })}
               gutter={[16, 16]}
-              key={option.id}>
+              key={option.id}
+              onClick={() => handleValuSelect(option.id)}>
               <Col span={6}>{getEntityName(option)}</Col>
               <Col span={16}>
                 <RichTextEditorPreviewer markdown={option.description || ''} />
               </Col>
               <Col span={2}>
-                {selectedKeys.includes(option.id) && (
+                {selectedValues.includes(option.id) && (
                   <FontAwesomeIcon className="tw-text-primary" icon="check" />
                 )}
               </Col>

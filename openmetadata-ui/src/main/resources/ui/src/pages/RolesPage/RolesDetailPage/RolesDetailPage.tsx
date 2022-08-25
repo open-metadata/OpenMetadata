@@ -203,6 +203,27 @@ const RolesDetailPage = () => {
     }
   };
 
+  const handleAddAttribute = async (selectedIds: string[]) => {
+    if (addAttribute) {
+      const updatedPolicies = selectedIds.map((id) => {
+        const existingData = addAttribute.selectedData.find(
+          (data) => data.id === id
+        );
+
+        return existingData ? existingData : { id, type: addAttribute.type };
+      });
+      const patch = compare(role, { ...role, policies: updatedPolicies });
+      try {
+        const data = await patchRole(patch, role.id);
+        setRole(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setAddAttribute(undefined);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchRole();
   }, [fqn]);
@@ -314,7 +335,7 @@ const RolesDetailPage = () => {
           title={`Add ${addAttribute.type}`}
           type={addAttribute.type}
           onCancel={() => setAddAttribute(undefined)}
-          onSave={() => setAddAttribute(undefined)}
+          onSave={(data) => handleAddAttribute(data)}
         />
       )}
     </div>
