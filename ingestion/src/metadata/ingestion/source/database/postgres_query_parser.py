@@ -73,7 +73,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:
-        
+
         try:
             if self.config.sourceConfig.config.queryLogFilePath:
                 table_query_list = []
@@ -111,7 +111,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                             )
                         )
                 yield TableQueries(queries=table_query_list)
-                
+
             else:
                 database = self.config.serviceConnection.__root__.config.database
                 if database:
@@ -126,13 +126,10 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                         self.config.serviceConnection.__root__.config.database = row[0]
                         self.engine = get_connection(self.connection)
                         yield from self.process_table_query()
-                        
+
         except Exception as err:
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
-
-        
-        
 
     def process_table_query(self) -> Optional[Iterable[TableQuery]]:
         daydiff = self.end - self.start
