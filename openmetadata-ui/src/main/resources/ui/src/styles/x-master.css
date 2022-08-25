@@ -786,7 +786,7 @@ body .profiler-graph .recharts-active-dot circle {
   position: fixed;
   overflow-y: scroll;
   width: 304px;
-  height: calc(100vh - 90px);
+  height: calc(100vh - 80px);
 }
 
 #right-panel {

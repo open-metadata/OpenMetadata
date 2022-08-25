@@ -19,9 +19,7 @@
 
 .global-setting-left-panel.ant-menu-root.ant-menu-inline {
   background: @background-color;
-  border: 1px solid @left-panel-border-color;
-  border-radius: 4px;
-  box-shadow: 1px 1px 8px @box-shadow-color;
+  border: 0px;
   overflow: hidden;
 
   .ant-menu-item::after {
@@ -73,4 +71,17 @@
 
 .side-panel-icons {
   color: @icon-color;
+}
+
+.global-settings-left-panel-container {
+  height: calc(100vh - 90px);
+  border: 1px solid @left-panel-border-color;
+  border-radius: 4px;
+  box-shadow: 1px 1px 8px @box-shadow-color;
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.global-settings-left-panel-container::-webkit-scrollbar {
+  display: none;
 }
