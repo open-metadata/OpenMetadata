@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Empty, Modal, Table, Tabs, Typography } from 'antd';
+import { Button, Empty, Modal, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -39,11 +39,17 @@ import {
 } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
 import './RolesDetail.less';
 
 const { TabPane } = Tabs;
 
 type Attribute = 'policies' | 'teams' | 'users';
+
+interface AddAttribute {
+  type: EntityType;
+  selectedData: EntityReference[];
+}
 
 const List = ({
   list,
@@ -132,6 +138,8 @@ const RolesDetailPage = () => {
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
+
+  const [addAttribute, setAddAttribute] = useState<AddAttribute>();
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -231,27 +239,49 @@ const RolesDetailPage = () => {
           </div>
           <Tabs defaultActiveKey="policies">
             <TabPane key="policies" tab="Policies">
-              <List
-                list={role.policies ?? []}
-                type="policy"
-                onDelete={(record) =>
-                  setEntity({ record, attribute: 'policies' })
-                }
-              />
+              <Space className="tw-w-full" direction="vertical">
+                <Button
+                  type="primary"
+                  onClick={() =>
+                    setAddAttribute({
+                      type: EntityType.POLICY,
+                      selectedData: role.policies || [],
+                    })
+                  }>
+                  Add Policy
+                </Button>
+                <List
+                  list={role.policies ?? []}
+                  type="policy"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'policies' })
+                  }
+                />
+              </Space>
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              <List
-                list={role.teams ?? []}
-                type="team"
-                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
-              />
+              <Space className="tw-w-full" direction="vertical">
+                <Button type="primary">Add Team</Button>
+                <List
+                  list={role.teams ?? []}
+                  type="team"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'teams' })
+                  }
+                />
+              </Space>
             </TabPane>
             <TabPane key="users" tab="Users">
-              <List
-                list={role.users ?? []}
-                type="user"
-                onDelete={(record) => setEntity({ record, attribute: 'users' })}
-              />
+              <Space className="tw-w-full" direction="vertical">
+                <Button type="primary">Add User</Button>
+                <List
+                  list={role.users ?? []}
+                  type="user"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'users' })
+                  }
+                />
+              </Space>
             </TabPane>
           </Tabs>
         </div>
@@ -276,6 +306,16 @@ const RolesDetailPage = () => {
             )}?`}
           </Typography.Text>
         </Modal>
+      )}
+      {addAttribute && (
+        <AddAttributeModal
+          isOpen={!isUndefined(addAttribute)}
+          selectedKeys={addAttribute.selectedData.map((data) => data.id)}
+          title={`Add ${addAttribute.type}`}
+          type={addAttribute.type}
+          onCancel={() => setAddAttribute(undefined)}
+          onSave={() => setAddAttribute(undefined)}
+        />
       )}
     </div>
   );

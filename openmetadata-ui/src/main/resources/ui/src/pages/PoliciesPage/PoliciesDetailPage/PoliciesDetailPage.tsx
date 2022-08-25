@@ -285,7 +285,7 @@ const PoliciesDetailPage = () => {
                     onClick={() => history.push(getAddPolicyRulePath(fqn))}>
                     Add Rule
                   </Button>
-                  <Space className="tw-w-full" direction="vertical">
+                  <Space className="tw-w-full" direction="vertical" size={16}>
                     {policy.rules.map((rule) => (
                       <Collapse key={uniqueId()}>
                         <Panel
@@ -298,10 +298,11 @@ const PoliciesDetailPage = () => {
                                 align="baseline"
                                 className="tw-w-full tw-justify-between"
                                 size={4}>
-                                <Typography.Text className="tw-font-medium tw-text-base">
+                                <Typography.Text className="tw-font-medium tw-text-base tw-text-grey-body">
                                   {rule.name}
                                 </Typography.Text>
                                 <Button
+                                  className="tw-p-0"
                                   data-testid="edit-rule"
                                   type="text"
                                   onClick={(e) => {
@@ -329,7 +330,7 @@ const PoliciesDetailPage = () => {
                             </Space>
                           }
                           key={rule.name || 'rule'}>
-                          <Space direction="vertical">
+                          <Space direction="vertical" size={16}>
                             <Space
                               data-testid="resources"
                               direction="vertical"
@@ -337,7 +338,7 @@ const PoliciesDetailPage = () => {
                               <Typography.Text className="tw-text-grey-muted tw-mb-0">
                                 Resources:
                               </Typography.Text>
-                              <Typography.Text>
+                              <Typography.Text className="tw-text-grey-body">
                                 {rule.resources
                                   ?.map((resource) => startCase(resource))
                                   ?.join(', ')}
@@ -351,7 +352,7 @@ const PoliciesDetailPage = () => {
                               <Typography.Text className="tw-text-grey-muted">
                                 Operations:
                               </Typography.Text>
-                              <Typography.Text>
+                              <Typography.Text className="tw-text-grey-body">
                                 {rule.operations?.join(', ')}
                               </Typography.Text>
                             </Space>
@@ -362,7 +363,7 @@ const PoliciesDetailPage = () => {
                               <Typography.Text className="tw-text-grey-muted">
                                 Effect:
                               </Typography.Text>
-                              <Typography.Text>
+                              <Typography.Text className="tw-text-grey-body">
                                 {startCase(rule.effect)}
                               </Typography.Text>
                             </Space>
@@ -393,11 +394,16 @@ const PoliciesDetailPage = () => {
               />
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              <List
-                list={policy.teams ?? []}
-                type="team"
-                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
-              />
+              <Space className="tw-w-full tabpane-space" direction="vertical">
+                <Button type="primary">Add Team</Button>
+                <List
+                  list={policy.teams ?? []}
+                  type="team"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'teams' })
+                  }
+                />
+              </Space>
             </TabPane>
           </Tabs>
         </div>

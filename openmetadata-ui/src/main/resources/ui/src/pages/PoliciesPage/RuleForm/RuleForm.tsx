@@ -51,6 +51,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   );
 
   const [validationError, setValidationError] = useState<string>('');
+  const [isValidatingCondition, setIsvalidating] = useState<boolean>(false);
 
   /**
    * Derive the resources from policy resources
@@ -148,6 +149,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   const handleConditionValidation = async () => {
     const defaultErrorText = 'Condition is invalid';
     if (ruleData.condition) {
+      setIsvalidating(true);
       try {
         const response = await validateRuleCondition(ruleData.condition);
 
@@ -161,6 +163,8 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           : setValidationError(defaultErrorText);
       } catch (error) {
         setValidationError(getErrorText(error as AxiosError, defaultErrorText));
+      } finally {
+        setIsvalidating(false);
       }
     }
   };
@@ -284,6 +288,11 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           {validationError && (
             <div className="ant-form-item-explain-error" role="alert">
               {validationError}
+            </div>
+          )}
+          {isValidatingCondition && (
+            <div className="tw-text-grey-body" role="alert">
+              Validating the condition...
             </div>
           )}
         </>
