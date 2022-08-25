@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite"]
     },
     "pipelineStatus": {
       "type": "object",

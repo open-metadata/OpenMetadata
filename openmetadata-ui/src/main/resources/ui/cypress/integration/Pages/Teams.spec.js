@@ -156,8 +156,11 @@ describe('Teams flow should work properly', () => {
 
     //Click on confirm button
     cy.get('[data-testid="save-button"]').should('be.visible').click();
-
-    cy.wait(1000);
+    
+    // TODO: Remove cy.wait and wait for API to be completed before querying for new element
+    cy.wait(2000);
+    
+    //
     //Verify if user is removed
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')

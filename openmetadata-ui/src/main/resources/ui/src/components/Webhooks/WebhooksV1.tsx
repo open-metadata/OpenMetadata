@@ -33,10 +33,10 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { WebhooksProps } from './Webhooks.interface';
+import { WebhooksV1Props } from './WebhooksV1.interface';
 import './webhookV1.less';
 
-const WebhooksV1: FC<WebhooksProps> = ({
+const WebhooksV1: FC<WebhooksV1Props> = ({
   data = [],
   webhookType,
   paging,

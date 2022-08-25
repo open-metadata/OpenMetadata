@@ -16,6 +16,8 @@ slug: /openmetadata/connectors/messaging/kafka
 - **Consumer Config**: Confluent Kafka Consumer Config.
 - **Schema Registry Config**:Confluent Kafka Schema Registry Config.
 
+<MessagingIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Kafka" />

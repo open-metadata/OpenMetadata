@@ -14,6 +14,8 @@ slug: /openmetadata/connectors/pipeline/fivetran
 - **Fivetran API Key**: Fivetran API Key.
 - **Fivetran API Secret**: Fivetran API Secret.
 
+<PipelineIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Fivetran" />
