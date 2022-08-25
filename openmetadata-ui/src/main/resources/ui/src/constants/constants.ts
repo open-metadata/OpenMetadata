@@ -444,6 +444,14 @@ export const getCreateUserPath = (bot: boolean) => {
   return path;
 };
 
+export const getUsersPagePath = () => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/users`;
+};
+
+export const getBotsPagePath = () => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.INTEGRATIONS}/bots`;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
