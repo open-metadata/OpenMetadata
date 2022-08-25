@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Modal, Table, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import React, { FC, useEffect, useState } from 'react';
 import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../../components/Loader/Loader';
@@ -22,6 +23,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import './AddAttributeModal.less';
 
 interface Props {
   type: EntityType;
@@ -32,10 +34,6 @@ interface Props {
   onCancel: () => void;
 }
 
-interface DataType extends EntityReference {
-  key: React.Key;
-}
-
 const AddAttributeModal: FC<Props> = ({
   isOpen,
   onSave,
@@ -44,19 +42,17 @@ const AddAttributeModal: FC<Props> = ({
   type,
   selectedKeys,
 }) => {
-  const [data, setData] = useState<DataType[]>([]);
+  const [data, setData] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [selectedRowKeys, setKeys] = useState<React.Key[]>(selectedKeys);
 
   const fetchPolicies = async () => {
     setIsLoading(true);
     try {
       const data = await getPolicies('');
 
-      const entityReferenceData: DataType[] = (data.data || []).map(
+      const entityReferenceData: EntityReference[] = (data.data || []).map(
         (record) => ({
           id: record.id,
-          key: record.id,
           name: record.name,
           displayName: record.displayName,
           type,
@@ -72,33 +68,6 @@ const AddAttributeModal: FC<Props> = ({
     }
   };
 
-  const columns: ColumnsType<DataType> = useMemo(() => {
-    return [
-      {
-        title: 'Name',
-        dataIndex: 'name',
-        key: 'name',
-        render: (_, record) => {
-          return <Typography.Text>{getEntityName(record)}</Typography.Text>;
-        },
-      },
-      {
-        title: 'Description',
-        dataIndex: 'description',
-        key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
-        ),
-      },
-    ];
-  }, []);
-
-  const rowSelection = {
-    onChange: (selectedRowKeys: React.Key[]) => {
-      setKeys(selectedRowKeys);
-    },
-  };
-
   useEffect(() => {
     fetchPolicies();
   }, []);
@@ -106,6 +75,8 @@ const AddAttributeModal: FC<Props> = ({
   return (
     <Modal
       centered
+      className="ant-attribute-modal"
+      closable={false}
       okText="Submit"
       title={title}
       visible={isOpen}
@@ -115,17 +86,33 @@ const AddAttributeModal: FC<Props> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Table
-          columns={columns}
-          dataSource={data}
-          pagination={false}
-          rowSelection={{
-            type: 'checkbox',
-            ...rowSelection,
-            selectedRowKeys,
-          }}
-          size="middle"
-        />
+        <>
+          <Input
+            className="tw-mb-4"
+            placeholder={`Search ${type}`}
+            prefix={
+              <FontAwesomeIcon icon="search" style={{ color: '#37352F4D' }} />
+            }
+          />
+          {data.map((option) => (
+            <Row
+              className={classNames({
+                selected: selectedKeys.includes(option.id),
+              })}
+              gutter={[16, 16]}
+              key={option.id}>
+              <Col span={6}>{getEntityName(option)}</Col>
+              <Col span={16}>
+                <RichTextEditorPreviewer markdown={option.description || ''} />
+              </Col>
+              <Col span={2}>
+                {selectedKeys.includes(option.id) && (
+                  <FontAwesomeIcon className="tw-text-primary" icon="check" />
+                )}
+              </Col>
+            </Row>
+          ))}
+        </>
       )}
     </Modal>
   );
