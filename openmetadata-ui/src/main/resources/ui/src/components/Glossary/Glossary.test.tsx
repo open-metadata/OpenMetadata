@@ -49,6 +49,18 @@ jest.mock('../../components/GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
 
+jest.mock('antd', () => ({
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Typography: {
+    Title: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
+}));
+
 const mockProps = {
   assetData: mockedAssetData,
   currentPage: 1,

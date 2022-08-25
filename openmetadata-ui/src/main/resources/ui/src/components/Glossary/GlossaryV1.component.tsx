@@ -12,8 +12,9 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Col, Input, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
@@ -27,7 +28,7 @@ import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import { useAfterMount } from '../../hooks/useAfterMount';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
-import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { getEntityDeleteMessage, getEntityName } from '../../utils/CommonUtils';
 import { generateTreeData } from '../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -43,6 +44,8 @@ import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
+import './GlossaryV1.style.less';
+const { Title } = Typography;
 
 type Props = {
   assetData: GlossaryTermAssets;
@@ -120,12 +123,13 @@ const GlossaryV1 = ({
   const [leftPanelWidth, setLeftPanelWidth] = useState(
     document.getElementById('glossary-left-panel')?.offsetWidth || 0
   );
-
+  const [isNameEditing, setIsNameEditing] = useState(false);
+  const [displayName, setDisplayName] = useState<string>();
   /**
    * To create breadcrumb from the fqn
    * @param fqn fqn of glossary or glossary term
    */
-  const handleBreadcrum = (fqn: string) => {
+  const handleBreadcrumb = (fqn: string) => {
     const arr = fqn.split(FQN_SEPARATOR_CHAR);
     const dataFQN: Array<string> = [];
     const newData = arr.map((d, i) => {
@@ -159,7 +163,34 @@ const GlossaryV1 = ({
     if (selectedKey !== key) {
       handleChildLoading(true);
       handleSelectedData(key);
+      setIsNameEditing(false);
     }
+  };
+
+  const onDisplayNameChange = (value: string) => {
+    if (selectedData.displayName !== value) {
+      setDisplayName(value);
+    }
+  };
+
+  const onDisplayNameSave = () => {
+    let updatedDetails = cloneDeep(selectedData);
+
+    updatedDetails = {
+      ...selectedData,
+      displayName: displayName,
+    };
+
+    if (
+      (updatedDetails as GlossaryTerm)?.glossary ||
+      (updatedDetails as GlossaryTerm)?.parent
+    ) {
+      handleGlossaryTermUpdate(updatedDetails as GlossaryTerm);
+    } else {
+      updateGlossary(updatedDetails as Glossary);
+    }
+
+    setIsNameEditing(false);
   };
 
   useEffect(() => {
@@ -170,7 +201,7 @@ const GlossaryV1 = ({
   }, [glossaryList]);
 
   useEffect(() => {
-    handleBreadcrum(selectedKey);
+    handleBreadcrumb(selectedKey);
   }, [selectedKey]);
 
   useAfterMount(() => {
@@ -270,14 +301,16 @@ const GlossaryV1 = ({
     );
   };
 
+  useEffect(() => {
+    setDisplayName(selectedData?.displayName);
+  }, [selectedData]);
+
   return glossaryList.length ? (
     <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
       <div
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
-        <div
-          className="tw-heading tw-text-link tw-text-base"
-          data-testid="category-name">
+        <div className="tw-text-link tw-text-base" data-testid="category-name">
           <TitleBreadcrumb
             titleLinks={breadcrumb}
             widthDeductions={
@@ -329,26 +362,81 @@ const GlossaryV1 = ({
       {isChildLoading ? (
         <Loader />
       ) : (
-        !isEmpty(selectedData) &&
-        (isGlossaryActive ? (
-          <GlossaryDetails
-            glossary={selectedData as Glossary}
-            handleUserRedirection={handleUserRedirection}
-            isHasAccess={isHasAccess}
-            updateGlossary={updateGlossary}
-          />
-        ) : (
-          <GlossaryTermsV1
-            assetData={assetData}
-            currentPage={currentPage}
-            glossaryTerm={selectedData as GlossaryTerm}
-            handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-            handleUserRedirection={handleUserRedirection}
-            isHasAccess={isHasAccess}
-            onAssetPaginate={onAssetPaginate}
-            onRelatedTermClick={onRelatedTermClick}
-          />
-        ))
+        <>
+          <div className="edit-input">
+            {isNameEditing ? (
+              <Row align="middle" gutter={8}>
+                <Col>
+                  <Input
+                    className="input-width"
+                    data-testid="displayName"
+                    name="displayName"
+                    value={displayName}
+                    onChange={(e) => onDisplayNameChange(e.target.value)}
+                  />
+                </Col>
+                <Col>
+                  <Button
+                    className="icon-buttons"
+                    data-testid="cancelAssociatedTag"
+                    size="custom"
+                    theme="primary"
+                    variant="contained"
+                    onMouseDown={() => setIsNameEditing(false)}>
+                    <FontAwesomeIcon
+                      className="tw-w-3.5 tw-h-3.5"
+                      icon="times"
+                    />
+                  </Button>
+                  <Button
+                    className="icon-buttons"
+                    data-testid="saveAssociatedTag"
+                    size="custom"
+                    theme="primary"
+                    variant="contained"
+                    onMouseDown={onDisplayNameSave}>
+                    <FontAwesomeIcon
+                      className="tw-w-3.5 tw-h-3.5"
+                      icon="check"
+                    />
+                  </Button>
+                </Col>
+              </Row>
+            ) : (
+              <Space className="display-name">
+                <Title level={4}>{getEntityName(selectedData)}</Title>
+                <button onClick={() => setIsNameEditing(true)}>
+                  <SVGIcons
+                    alt="icon-tag"
+                    className="tw-mx-1"
+                    icon={Icons.EDIT}
+                    width="16"
+                  />
+                </button>
+              </Space>
+            )}
+          </div>
+          {!isEmpty(selectedData) &&
+            (isGlossaryActive ? (
+              <GlossaryDetails
+                glossary={selectedData as Glossary}
+                handleUserRedirection={handleUserRedirection}
+                isHasAccess={isHasAccess}
+                updateGlossary={updateGlossary}
+              />
+            ) : (
+              <GlossaryTermsV1
+                assetData={assetData}
+                currentPage={currentPage}
+                glossaryTerm={selectedData as GlossaryTerm}
+                handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+                handleUserRedirection={handleUserRedirection}
+                isHasAccess={isHasAccess}
+                onAssetPaginate={onAssetPaginate}
+                onRelatedTermClick={onRelatedTermClick}
+              />
+            ))}
+        </>
       )}
       {selectedData && isDelete && (
         <EntityDeleteModal

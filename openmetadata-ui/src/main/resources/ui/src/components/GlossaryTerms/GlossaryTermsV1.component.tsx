@@ -30,7 +30,6 @@ import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../generated/entity/type';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -623,16 +622,13 @@ const GlossaryTermsV1 = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-term">
-      <p className="tw-text-lg tw-font-medium tw--mt-3">
-        {getEntityName(glossaryTerm as unknown as EntityReference)}
-      </p>
       {/* TODO: Add this stat when supporting status updation  */}
       {/* <div className="tw-flex tw-gap-11 tw-mb-2">
         <div className="tw-font-medium">Status</div>
         <div>{glossaryTerm.status}</div>
       </div> */}
 
-      <div className="tw-flex tw-flex-wrap tw-group tw-mt-3" data-testid="tags">
+      <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
         {!isTagEditable && (
           <>
             {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
