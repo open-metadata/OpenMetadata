@@ -1,9 +1,13 @@
 FROM apache/airflow:2.1.4-python3.9
 USER root
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 RUN apt-get update \
     && apt-get install -y \
-        gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        gcc libsasl2-dev gnupg build-essential libssl-dev libffi-dev \
         librdkafka-dev unixodbc-dev libxml2 libevent-dev --no-install-recommends  \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+
     && rm -rf /var/lib/apt/lists/*
 USER airflow
 # Download openmetadata airflow plugins
