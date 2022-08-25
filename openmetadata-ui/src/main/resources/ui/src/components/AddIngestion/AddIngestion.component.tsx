@@ -154,6 +154,15 @@ const AddIngestion = ({
         )
       : undefined
   );
+  const [markDeletedTablesFromFilterOnly, setMarkDeletedTablesFromFilterOnly] =
+    useState(
+      isDatabaseService
+        ? Boolean(
+            (data?.sourceConfig.config as ConfigClass)
+              ?.markDeletedTablesFromFilterOnly ?? false
+          )
+        : undefined
+    );
   const [includeView, setIncludeView] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
   );
@@ -400,6 +409,7 @@ const AddIngestion = ({
             showTableFilter
           ),
           markDeletedTables,
+          markDeletedTablesFromFilterOnly,
           ...DatabaseConfigData,
           type: ConfigType.DatabaseMetadata,
         };
@@ -636,6 +646,9 @@ const AddIngestion = ({
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
+            handleMarkDeletedTablesFromFilterOnly={() =>
+              setMarkDeletedTablesFromFilterOnly((pre) => !pre)
+            }
             handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={setResultLimit}
@@ -648,6 +661,7 @@ const AddIngestion = ({
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
             markDeletedTables={markDeletedTables}
+            markDeletedTablesFromFilterOnly={markDeletedTablesFromFilterOnly}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
             profileSample={profileSample}

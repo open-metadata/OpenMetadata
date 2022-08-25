@@ -33,7 +33,7 @@ const BotsPageV1 = withSuspenseFallback(
 );
 const CustomPropertiesPageV1 = withSuspenseFallback(
   React.lazy(
-    () => import('../pages/CustomPropertiesPage/CustomPropertiesPageV1')
+    () => import('../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
 const RolesListPage = withSuspenseFallback(

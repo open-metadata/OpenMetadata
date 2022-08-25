@@ -21,10 +21,38 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
-from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    Table,
+    TableData,
+)
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.orm_profiler.profiler.models import ProfilerDef
-from metadata.orm_profiler.validations.models import TableConfig
+
+
+class TablePartitionConfig(ConfigModel):
+    """table partition config"""
+
+    partitionField: Optional[str] = None
+    partitionQueryDuration: Optional[int] = 1
+    partitionValues: Optional[List] = None
+
+
+class ColumnConfig(ConfigModel):
+    """Column config for profiler"""
+
+    excludeColumns: Optional[List[str]]
+    includeColumns: Optional[List[ColumnProfilerConfig]]
+
+
+class TableConfig(ConfigModel):
+    """table profile config"""
+
+    fullyQualifiedName: FullyQualifiedEntityName
+    profileSample: Optional[float] = None
+    profileQuery: Optional[str] = None
+    partitionConfig: Optional[TablePartitionConfig]
+    columnConfig: Optional[ColumnConfig]
 
 
 class ProfilerProcessorConfig(ConfigModel):

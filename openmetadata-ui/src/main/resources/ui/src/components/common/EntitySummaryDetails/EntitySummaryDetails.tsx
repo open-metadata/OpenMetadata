@@ -151,17 +151,6 @@ const EntitySummaryDetails = ({
                   )}
                 </>
               </a>
-              <span
-                data-testid={`edit-${data.key}-icon`}
-                onClick={() => setshow(true)}>
-                <SVGIcons
-                  alt="edit"
-                  className="tw-ml-2 tw-mb-1"
-                  icon={Icons.EDIT}
-                  title="Edit"
-                  width="15px"
-                />
-              </span>
             </>
           ) : (
             <>

@@ -28,6 +28,7 @@ from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import set_loggers_level
 
 try:
@@ -75,7 +76,14 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         Union[DatabaseService, MessagingService, PipelineService, DashboardService]
     ] = None
 
-    if service_type == "databaseService":
+    if service_type == "TestSuite":
+        return WorkflowSource(
+            type=service_type,
+            serviceName=ingestion_pipeline.service.name,
+            sourceConfig=ingestion_pipeline.sourceConfig,
+        )
+
+    elif service_type == "databaseService":
         service: DatabaseService = metadata.get_by_name(
             entity=DatabaseService, fqn=ingestion_pipeline.service.name
         )
@@ -142,6 +150,27 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = ProfilerWorkflow.create(config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
+    """
+    Task that creates and runs the test suite workflow.
+
+    The workflow_config gets cooked form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+    """
+
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+    workflow = TestSuiteWorkflow.create(config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()

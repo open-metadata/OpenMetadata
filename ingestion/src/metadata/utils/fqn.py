@@ -22,7 +22,7 @@ from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
 from pydantic import BaseModel
 
-from metadata.antlr.split_listener import SplitListener
+from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.data.chart import Chart
@@ -59,7 +59,7 @@ def split(s: str) -> List[str]:
     parser._errHandler = BailErrorStrategy()
     tree = parser.fqn()
     walker = ParseTreeWalker()
-    splitter = SplitListener()
+    splitter = FqnSplitListener()
     walker.walk(splitter, tree)
     return splitter.split()
 

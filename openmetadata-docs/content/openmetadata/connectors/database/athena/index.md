@@ -25,6 +25,8 @@ slug: /openmetadata/connectors/database/athena
     - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 
+<DatabaseIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Athena" hasProfiler="true" hasDBT="true" />
