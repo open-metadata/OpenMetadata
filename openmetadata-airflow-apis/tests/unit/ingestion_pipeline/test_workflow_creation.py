@@ -25,10 +25,14 @@ from openmetadata_managed_apis.workflows.ingestion.metadata import (
 from openmetadata_managed_apis.workflows.ingestion.profiler import (
     build_profiler_workflow_config,
 )
+from openmetadata_managed_apis.workflows.ingestion.test_suite import (
+    build_test_suite_workflow_config,
+)
 from openmetadata_managed_apis.workflows.ingestion.usage import (
     build_usage_workflow_config,
 )
 
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -50,15 +54,20 @@ from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipe
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
     DatabaseServiceQueryUsagePipeline,
 )
+from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    TestSuitePipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 
 class OMetaServiceTest(TestCase):
@@ -137,6 +146,13 @@ class OMetaServiceTest(TestCase):
             config=cls.usage_workflow_source,
         )
 
+        cls.test_suite: TestSuite = cls.metadata.create_or_update(
+            CreateTestSuiteRequest(
+                name="airflow_workflow_test_suite",
+                description="This is a test suite airflow worflow",
+            )
+        )
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -145,6 +161,13 @@ class OMetaServiceTest(TestCase):
         cls.metadata.delete(
             entity=DatabaseService,
             entity_id=cls.service.id,
+            recursive=True,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=TestSuite,
+            entity_id=cls.test_suite.id,
             recursive=True,
             hard_delete=True,
         )
@@ -264,3 +287,31 @@ class OMetaServiceTest(TestCase):
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
         ProfilerWorkflow.create(config)
+
+    def test_test_suite_workflow(self):
+        """
+        Validate that the ingestionPipeline can be parsed
+        and properly load a Profiler Workflow
+        """
+
+        ingestion_pipeline = IngestionPipeline(
+            id=uuid.uuid4(),
+            name="test_test_suite_workflow",
+            pipelineType=PipelineType.TestSuite,
+            fullyQualifiedName="local_mysql.test_test_suite_workflow",
+            sourceConfig=SourceConfig(config=TestSuitePipeline(type="TestSuite")),
+            openMetadataServerConnection=self.server_config,
+            airflowConfig=AirflowConfig(
+                startDate="2022-06-10T15:06:47+00:00",
+            ),
+            service=EntityReference(
+                id=self.test_suite.id,
+                type="TestSuite",
+                name=self.test_suite.name.__root__,
+            ),
+        )
+
+        workflow_config = build_test_suite_workflow_config(ingestion_pipeline)
+        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+        TestSuiteWorkflow.create(config)
