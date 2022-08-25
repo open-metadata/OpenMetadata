@@ -12,7 +12,16 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card as AntdCard, Col, Divider, Row, Space, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Input,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -22,6 +31,7 @@ import {
   isEqual,
   isString,
   isUndefined,
+  kebabCase,
 } from 'lodash';
 import {
   EntityTags,
@@ -49,8 +59,6 @@ import {
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
-import Card from '../common/Card/Card';
 import DescriptionV1 from '../common/description/DescriptionV1';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -417,9 +425,9 @@ const GlossaryTermsV1 = ({
     );
   };
 
-  const getSynonyms = (synonyms: string) => {
-    return !isEmpty(synonyms) ? (
-      synonyms.split(',').map((synonym, index) => (
+  const getSynonyms = (synonymsList: string) => {
+    return !isEmpty(synonymsList) ? (
+      synonymsList.split(',').map((synonym, index) => (
         <>
           {index > 0 ? <span className="tw-mr-2">,</span> : null}
           <span>{synonym}</span>
@@ -446,9 +454,13 @@ const GlossaryTermsV1 = ({
           </div>
         </Space>
         {!isString(data) && !isUndefined(data) && data.length > 0 ? (
-          <div className="tw-flex">{children}</div>
+          <div
+            className="tw-flex"
+            data-testid={`${kebabCase(title)}-container`}>
+            {children}
+          </div>
         ) : (
-          <div>{children}</div>
+          <div data-testid={`${kebabCase(title)}-container`}>{children}</div>
         )}
       </Space>
     );
@@ -458,7 +470,7 @@ const GlossaryTermsV1 = ({
     return (
       <Row gutter={16}>
         <Col flex="75%">
-          <AntdCard className="glossary-card">
+          <Card className="glossary-card">
             <DescriptionV1
               removeBlur
               description={glossaryTerm.description || ''}
@@ -504,30 +516,22 @@ const GlossaryTermsV1 = ({
               title="Synonyms">
               <>
                 {isSynonymsEditing ? (
-                  <div
-                    className="tw-flex tw-items-center tw-gap-1"
-                    key="synonym-div">
-                    <input
+                  <Space>
+                    <Input
                       autoFocus
-                      className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-72"
                       data-testid="synonyms"
                       id="synonyms"
                       key="synonym-input"
                       name="synonyms"
                       placeholder="Enter comma separated term"
-                      type="text"
                       value={synonyms}
                       onChange={handleValidation}
                     />
-                    <div
-                      className="tw-flex tw-justify-end"
-                      data-testid="buttons">
+                    <Space data-testid="buttons">
                       <Button
-                        className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
                         data-testid="cancelAssociatedTag"
-                        size="custom"
-                        theme="primary"
-                        variant="contained"
+                        size="small"
+                        type="primary"
                         onMouseDown={() => setIsSynonymsEditing(false)}>
                         <FontAwesomeIcon
                           className="tw-w-3.5 tw-h-3.5"
@@ -535,21 +539,19 @@ const GlossaryTermsV1 = ({
                         />
                       </Button>
                       <Button
-                        className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
                         data-testid="saveAssociatedTag"
-                        size="custom"
-                        theme="primary"
-                        variant="contained"
+                        size="small"
+                        type="primary"
                         onMouseDown={handleSynonymsSave}>
                         <FontAwesomeIcon
                           className="tw-w-3.5 tw-h-3.5"
                           icon="check"
                         />
                       </Button>
-                    </div>
-                  </div>
+                    </Space>
+                  </Space>
                 ) : (
-                  <div>{getSynonyms(synonyms)}</div>
+                  <>{getSynonyms(synonyms)}</>
                 )}
               </>
             </SummaryDetail>
@@ -584,10 +586,17 @@ const GlossaryTermsV1 = ({
                   ))}
               </>
             </SummaryDetail>
-          </AntdCard>
+          </Card>
         </Col>
         <Col className="tw-px-10" flex="25%">
-          <Card action={addReviewerButton()} heading="Reviewer">
+          <Card
+            className="glossary-card right-card"
+            extra={addReviewerButton()}
+            title={
+              <Text strong className="p-bt-3">
+                Reviewer
+              </Text>
+            }>
             <div>{getReviewerTabData()}</div>
           </Card>
         </Col>

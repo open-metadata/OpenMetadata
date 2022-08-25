@@ -229,9 +229,7 @@ describe('Glossary page should work properly', () => {
     cy.get('@synonyms').type(uSynonyms);
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     cy.wait(100);
-    cy.get('.ant-space-item div div span')
-      .as('synonyms-container')
-      .should('be.visible');
+    cy.get('synonyms-container').as('synonyms-container').should('be.visible');
 
     uSynonyms.split(',').forEach((synonym) => {
       cy.get('@synonyms-container').contains(synonym).should('be.visible');
@@ -248,7 +246,7 @@ describe('Glossary page should work properly', () => {
     cy.get('#name-1').should('be.visible').type(newRef.name);
     cy.get('#url-1').should('be.visible').type(newRef.url);
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
-    cy.get('.ant-space-item .tw-flex')
+    cy.get('references-container')
       .contains(newRef.name)
       .should('be.visible')
       .invoke('attr', 'href')

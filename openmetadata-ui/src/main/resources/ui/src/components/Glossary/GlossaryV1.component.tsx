@@ -216,7 +216,7 @@ const GlossaryV1 = ({
   const fetchLeftPanel = () => {
     return (
       <div className="tw-h-full tw-px-2" id="glossary-left-panel">
-        <Card className="tw-h-full left-panel-card" title="Glossary">
+        <Card className="left-panel-card" title="Glossary">
           <div>
             {treeData.length ? (
               <Fragment>
