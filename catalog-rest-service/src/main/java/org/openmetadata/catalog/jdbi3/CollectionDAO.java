@@ -17,8 +17,11 @@ import static org.openmetadata.catalog.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -64,10 +67,13 @@ import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.catalog.settings.Settings;
+import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.tests.TestSuite;
@@ -82,6 +88,7 @@ import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntitiesCount;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ServicesCount;
 import org.openmetadata.common.utils.CommonUtil;
 
@@ -208,6 +215,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   UtilDAO utilDAO();
+
+  @CreateSqlObject
+  SettingsDAO getSettingsDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -2832,5 +2842,53 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM mlmodel_service_entity) as mlModelServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount() throws StatementException;
+  }
+
+  class SettingsRowMapper implements RowMapper<Settings> {
+    @Override
+    public Settings map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return getSettings(SettingsType.fromValue(rs.getString("configType")), rs.getString("json"));
+    }
+
+    public static Settings getSettings(SettingsType configType, String json) {
+      Settings settings = new Settings();
+      settings.setConfigType(configType);
+      Object value = null;
+      try {
+        switch (configType) {
+          case ACTIVITY_FEED_FILTER_SETTING:
+            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+            break;
+          default:
+            throw new RuntimeException("Invalid Settings Type");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      settings.setConfigValue(value);
+      return settings;
+    }
+  }
+
+  interface SettingsDAO {
+    @SqlQuery("SELECT configType,json FROM openmetadata_settings")
+    @RegisterRowMapper(SettingsRowMapper.class)
+    List<Settings> getAllConfig() throws StatementException;
+
+    @SqlQuery("SELECT configType, json FROM openmetadata_settings WHERE configType = :configType")
+    @RegisterRowMapper(SettingsRowMapper.class)
+    Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into openmetadata_settings (configType, json)"
+                + "VALUES (:configType, :json) ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into openmetadata_settings (configType, json)"
+                + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
   }
 }

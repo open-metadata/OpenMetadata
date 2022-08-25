@@ -5,7 +5,6 @@
   "description": "This schema defines the change event type to capture the changes to entities. Entities change due to user activity, such as updating description of a dataset, changing ownership, or adding new tags. Entity also changes due to activities at the metadata sources, such as a new dataset was created, a datasets was deleted, or schema of a dataset is modified. When state of entity changes, an event is produced. These events can be used to build apps and bots that respond to the change from activities.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.ChangeEvent",
-
   "definitions": {
     "eventType": {
       "javaType": "org.openmetadata.catalog.type.EventType",
@@ -18,23 +17,45 @@
         "entityDeleted"
       ]
     },
-    "eventFilter": {
+    "filters": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.EventFilter",
+      "javaType": "org.openmetadata.catalog.filter.Filters",
       "properties": {
         "eventType": {
           "description": "Event type that is being requested.",
           "$ref": "#/definitions/eventType"
         },
-        "entities": {
-          "description": "Entities for which the events are needed. Example - `table`, `topic`, etc. **When not set, events for all the entities will be provided**.",
+        "fields": {
+          "description": "Field on which to apply the filter on",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "default": ["all"],
+          "uniqueItems": true
         }
       },
       "required": ["eventType"],
+      "additionalProperties": false
+    },
+    "eventFilter": {
+      "javaType": "org.openmetadata.catalog.filter.EventFilter",
+      "description": "Represents a Filter attached to a entity.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "description": "Entity type for filter , example : topic , table, dashboard, mlmodel , etc",
+          "type": "string"
+        },
+        "filters": {
+          "description": "List of operations supported by the resource.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/filters"
+          }
+        }
+      },
+      "required": ["entityType"],
       "additionalProperties": false
     }
   },
