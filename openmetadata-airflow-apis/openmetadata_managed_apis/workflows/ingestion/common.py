@@ -17,6 +17,9 @@ from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
+from openmetadata_managed_apis.api.utils import clean_dag_id
+from openmetadata_managed_apis.workflows import workflow_factory
+
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -27,13 +30,15 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
-from openmetadata_managed_apis.api.utils import clean_dag_id
-from openmetadata_managed_apis.workflows import workflow_factory
 
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
+
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -47,9 +52,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 
 def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:

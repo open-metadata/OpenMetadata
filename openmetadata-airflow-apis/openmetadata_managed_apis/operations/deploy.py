@@ -18,10 +18,6 @@ from typing import Dict
 from airflow import DAG, settings
 from airflow.models import DagModel
 from jinja2 import Template
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,
@@ -34,6 +30,11 @@ from openmetadata_managed_apis.api.utils import (
     import_path,
     scan_dags_job_background,
 )
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
+from metadata.ingestion.models.encoders import show_secrets_encoder
 
 logger = logging.getLogger(__name__)
 

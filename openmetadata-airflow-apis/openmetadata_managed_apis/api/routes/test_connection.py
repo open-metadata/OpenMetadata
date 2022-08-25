@@ -18,11 +18,12 @@ from airflow.api_connexion import security
 from airflow.security import permissions
 from airflow.www.app import csrf
 from flask import Response, request
-from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.test_connection import test_source_connection
 from pydantic import ValidationError
+
+from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 
 logger = logging.getLogger(__name__)
 

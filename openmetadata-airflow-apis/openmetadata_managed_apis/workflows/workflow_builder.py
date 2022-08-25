@@ -12,12 +12,13 @@
 import logging
 
 from airflow import DAG
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
 
 # these are params only used in the DAG factory, not in the tasks
 from openmetadata_managed_apis.workflows.ingestion.registry import build_registry
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 
 logger = logging.getLogger(__name__)
 
