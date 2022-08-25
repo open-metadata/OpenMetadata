@@ -13,6 +13,7 @@ Redshift source ingestion
 """
 
 import re
+import traceback
 from collections import defaultdict
 from typing import Iterable, Optional, Tuple
 
@@ -508,7 +509,8 @@ class RedshiftSource(CommonDbSourceService):
                 try:
                     self.set_inspector(database_name=new_database)
                     yield new_database
-                except Exception as err:
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error trying to connect to database {new_database} - {err}"
+                        f"Error trying to connect to database {new_database}: {exc}"
                     )

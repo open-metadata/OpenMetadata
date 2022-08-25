@@ -237,9 +237,11 @@ class SqlColumnHandlerMixin:
                 om_column.tags = self.get_column_tag_labels(
                     table_name=table_name, column=column
                 )
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(f"{err} : {column}")
+                logger.warning(
+                    f"Unexpected exception processing column [{column}]: {exc}"
+                )
                 continue
             table_columns.append(om_column)
         return table_columns, table_constraints

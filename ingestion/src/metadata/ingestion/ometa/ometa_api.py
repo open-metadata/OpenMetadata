@@ -14,7 +14,7 @@ for the metadata-server API. It is based on the generated pydantic
 models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
-
+import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
@@ -526,7 +526,7 @@ class OpenMetadata(
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
-    ) -> Optional[T]:
+    ) -> Optional[T, None]:
         """
         Generic GET operation for an entity
         :param entity: Entity Class
@@ -542,24 +542,14 @@ class OpenMetadata(
                 )
             return entity(**resp)
         except APIError as err:
-            if err.status_code == 404:
-                logger.debug(
-                    "GET %s for %s. HTTP %s - %s",
-                    entity.__name__,
-                    path,
-                    err.status_code,
-                    err,
-                )
-
-            else:
-                logger.error(
-                    "GET %s for %s." "Error %s - %s",
-                    entity.__name__,
-                    path,
-                    err.status_code,
-                    err,
-                )
-
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "GET %s for %s." "Error %s - %s",
+                entity.__name__,
+                path,
+                err.status_code,
+                err,
+            )
             return None
 
     def get_entity_reference(

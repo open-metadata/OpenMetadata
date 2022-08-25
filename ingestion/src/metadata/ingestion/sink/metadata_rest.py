@@ -173,14 +173,13 @@ class MetadataRestSink(Sink[Entity]):
                 logger.error(f"Failed to ingest {log}")
 
         except (APIError, HTTPError) as err:
-            logger.error(f"Failed to ingest {log} due to api request failure")
-            logger.error(err)
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to ingest {log} due to api request failure: {err}")
             self.status.failure(log)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to ingest {log}")
-            logger.error(err)
+            logger.warning(f"Failed to ingest {log}: {exc}")
             self.status.failure(log)
 
     def write_datamodel(self, datamodel_link: DataModelLink) -> None:
@@ -213,9 +212,11 @@ class MetadataRestSink(Sink[Entity]):
                 entity=Location, fqn=table_location_link.location_fqn
             )
             self.metadata.add_location(table=table, location=location)
-        except Exception as err:
-            logger.error(traceback.format_exc())
-            logger.error(err)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to write table location link [{table_location_link}]: {exc}"
+            )
             self.status.failure(
                 f"{table_location_link.table_fqn} <-> {table_location_link.location_fqn}"
             )
@@ -234,9 +235,9 @@ class MetadataRestSink(Sink[Entity]):
             logger.info(
                 f"Successfully ingested usage for {dashboard_usage.dashboard.fullyQualifiedName.__root__}"
             )
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(f"Failed to write dashboard usage [{dashboard_usage}]: {exc}")
 
     def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable):
         try:
@@ -305,9 +306,10 @@ class MetadataRestSink(Sink[Entity]):
                         table=created_table,
                         sample_data=db_schema_and_table.table.sampleData,
                     )
-                except Exception as e:
-                    logging.error(
-                        f"Failed to ingest sample data for table {db_schema_and_table.table.name}"
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logging.warning(
+                        f"Failed to ingest sample data for table {db_schema_and_table.table.name}: {exc}"
                     )
 
             if db_schema_and_table.table.profile is not None:
@@ -353,19 +355,22 @@ class MetadataRestSink(Sink[Entity]):
                 f"Table: {db_schema_and_table.database.name.__root__}.{created_table.name.__root__}"
             )
         except (APIError, HTTPError, ValidationError) as err:
-            logger.error(
-                "Failed to ingest table {} in database {}".format(
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Failed to ingest table {} in database {}: {}".format(
                     db_schema_and_table.table.name.__root__,
                     db_schema_and_table.database.name.__root__,
+                    str(err),
                 )
             )
-            logger.debug(traceback.format_exc())
             logger.error(err)
             self.status.failure(f"Table: {db_schema_and_table.table.name.__root__}")
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(
+                f"Unexpected error writing db schema and table [{db_schema_and_table}]: {exc}"
+            )
 
     def write_policies(self, ometa_policy: OMetaPolicy) -> None:
         try:
@@ -390,9 +395,10 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(f"Policy: {created_policy.name}")
 
         except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest Policy {ometa_policy.policy.name}")
-            logger.error(err)
             logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to ingest Policy [{ometa_policy.policy.name}]: {err}"
+            )
             self.status.failure(f"Policy: {ometa_policy.policy.name}")
 
     def _create_location(self, location: Location) -> Location:
@@ -407,9 +413,9 @@ class MetadataRestSink(Sink[Entity]):
                 service=location.service,
             )
             return self.metadata.create_or_update(location_request)
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected error creating location [{location}]: {exc}")
 
     def write_tag_category(self, record: OMetaTagAndCategory):
         try:
@@ -417,9 +423,11 @@ class MetadataRestSink(Sink[Entity]):
                 tag_category_body=record.category_name,
                 category_name=record.category_name.name.__root__,
             )
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(
+                f"Unexpected error writing tag category [{record.category_name}]: {exc}"
+            )
         try:
             self.metadata.create_or_update_primary_tag(
                 category_name=record.category_name.name.__root__,
@@ -431,9 +439,11 @@ class MetadataRestSink(Sink[Entity]):
                     tag_name=record.category_details.name.__root__,
                 ),
             )
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(
+                f"Unexpected error writing tag category [{record.category_name}]: {exc}"
+            )
 
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:
@@ -441,9 +451,8 @@ class MetadataRestSink(Sink[Entity]):
             logger.info(f"Successfully added Lineage {created_lineage}")
             self.status.records_written(f"Lineage: {created_lineage}")
         except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest lineage {add_lineage}")
-            logger.error(err)
             logger.debug(traceback.format_exc())
+            logger.error(f"Failed to ingest lineage [{add_lineage}]: {err}")
             self.status.failure(f"Lineage: {add_lineage}")
 
     def _create_role(self, create_role: CreateRoleRequest) -> Role:
@@ -451,18 +460,20 @@ class MetadataRestSink(Sink[Entity]):
             role = self.metadata.create_or_update(create_role)
             self.role_entities[role.name] = str(role.id.__root__)
             return role
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(f"Unexpected error creating role [{create_role}]: {exc}")
 
     def _create_team(self, create_team: CreateTeamRequest) -> Team:
         try:
             team = self.metadata.create_or_update(create_team)
             self.team_entities[team.name.__root__] = str(team.id.__root__)
             return team
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warnerroring(
+                f"Unexpected error creating team [{create_team}]: {exc}"
+            )
 
     def write_users(self, record: OMetaUserProfile):
         """
@@ -507,8 +518,9 @@ class MetadataRestSink(Sink[Entity]):
                 except APIError:
                     team_entity = self._create_team(team)
                     team_ids.append(team_entity.id.__root__)
-                except Exception as err:
-                    logger.error(err)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Unexpected error writing team [{team}]: {exc}")
         else:
             team_ids = None
 
@@ -523,9 +535,9 @@ class MetadataRestSink(Sink[Entity]):
             user = self.metadata.create_or_update(metadata_user)
             self.status.records_written(user.displayName)
             logger.info("User: {}".format(user.displayName))
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(f"Unexpected error writing user [{metadata_user}]: {exc}")
 
     def delete_table(self, record: DeleteTable):
         try:
@@ -533,9 +545,11 @@ class MetadataRestSink(Sink[Entity]):
             logger.info(
                 f"{record.table.name} doesn't exist in source state, marking it as deleted"
             )
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Unexpected error deleting table [{record.table.name}]: {exc}"
+            )
 
     def write_table_tests(self, record: OMetaTableTest) -> None:
         """
@@ -559,9 +573,11 @@ class MetadataRestSink(Sink[Entity]):
 
             logger.info(f"Table Tests: {record.table_name}.{test}")
             self.status.records_written(f"Table Tests: {record.table_name}.{test}")
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Unexpected error writing table tests [{record.table_name}]: {exc}"
+            )
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):
         try:
@@ -579,10 +595,11 @@ class MetadataRestSink(Sink[Entity]):
                     query=db_schema_and_table.table.viewDefinition.__root__,
                 )
 
-        except Exception as e:
-            logger.error("Failed to create view lineage")
-            logger.debug(f"Query : {db_schema_and_table.table.viewDefinition.__root__}")
+        except Exception as exc:
             logger.debug(traceback.format_exc())
+            logger.error(
+                f"Failed to create view lineage for query [{db_schema_and_table.table.viewDefinition.__root__}]: {exc}"
+            )
 
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:
         """
@@ -595,9 +612,9 @@ class MetadataRestSink(Sink[Entity]):
             )
             self.status.records_written(f"Pipeline Status: {record.pipeline_fqn}")
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(f"Unexpected error writing pipeline status [{record}]: {exc}")
 
     def write_profile_sample_data(self, record: OMetaTableProfileSampleData):
         """
@@ -612,9 +629,11 @@ class MetadataRestSink(Sink[Entity]):
                 f"Successfully ingested profile for table {record.table.name.__root__}"
             )
             self.status.records_written(f"Profile: {record.table.name.__root__}")
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Unexpected error writing profile sample data [{record}]: {exc}"
+            )
 
     def write_test_suite_sample(self, record: OMetaTestSuiteSample):
         """
@@ -626,9 +645,11 @@ class MetadataRestSink(Sink[Entity]):
                 f"Successfully created test Suite {record.test_suite.name.__root__}"
             )
             self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Unexpected error writing test suite sample [{record}]: {exc}"
+            )
 
     def write_test_case_sample(self, record: OMetaTestCaseSample):
         """
@@ -640,9 +661,9 @@ class MetadataRestSink(Sink[Entity]):
                 f"Successfully created test case {record.test_case.name.__root__}"
             )
             self.status.records_written(f"testCase: {record.test_case.name.__root__}")
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(err)
+        except Exception as exc:
+            logger.error(f"Unexpected error writing test case sample [{record}]: {exc}")
+            logger.error(exc)
 
     def write_test_case_results_sample(self, record: OMetaTestCaseResultsSample):
         """
@@ -659,9 +680,11 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(
                 f"testCaseResults: {record.test_case_name} - {record.test_case_results.timestamp.__root__}"
             )
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Unexpected error writing test case result sample [{record}]: {exc}"
+            )
 
     def get_status(self):
         return self.status

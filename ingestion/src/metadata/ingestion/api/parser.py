@@ -12,6 +12,7 @@
 """
 Helper to parse workflow configurations
 """
+import traceback
 from typing import Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
@@ -190,14 +191,14 @@ def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
     Given a config dictionary and the class it should match,
     try to parse it or log the given message
     """
-
+    logger.debug(f"Parsing message: [{message}]")
     # Parse the service connection dictionary with the scoped class
     try:
         cls.parse_obj(config)
     except ValidationError as err:
-        logger.error(message)
+        logger.debug(traceback.format_exc())
         logger.error(
-            f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}"
+            f"The supported properties for {cls.__name__} are {list(cls.__fields__.keys())}: {err}"
         )
         raise err
 
@@ -231,7 +232,7 @@ def parse_service_connection(config_dict: dict) -> None:
     # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
     source_type = config_dict["source"]["serviceConnection"]["config"]["type"]
 
-    logger.error(
+    logger.warning(
         f"Error parsing the Workflow Configuration for {source_type} ingestion"
     )
 
@@ -292,7 +293,7 @@ def parse_server_config(config_dict: dict) -> None:
     auth_provider = config_dict["workflowConfig"]["openMetadataServerConfig"][
         "authProvider"
     ]
-    logger.error(
+    logger.warning(
         f"Error parsing the Workflow Server Configuration with {auth_provider} auth provider"
     )
 
@@ -350,11 +351,12 @@ def parse_test_connection_request_gracefully(
         test_service_connection = TestServiceConnectionRequest.parse_obj(config_dict)
         return test_service_connection
 
-    except ValidationError:
+    except ValidationError as err:
+        logger.debug(traceback.format_exc())
         # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
         source_type = config_dict["connection"]["config"]["type"]
-        logger.error(
-            f"Error parsing the Workflow Configuration for {source_type} ingestion"
+        logger.warning(
+            f"Error parsing the Workflow Configuration for {source_type} ingestion: {err}"
         )
 
         service_type = get_service_type(source_type)
