@@ -16,12 +16,15 @@ import {
   ColumnProfile,
   Table,
 } from '../../generated/entity/data/table';
+import { TestCase } from '../../generated/tests/testCase';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
   table: Table;
+  testCases: TestCase[];
   profilerData: ColumnProfile[];
   fetchProfilerData: (tableId: string, days?: number) => void;
+  fetchTestCases: (fqn: string) => void;
 }
 
 export type MetricChartType = {
@@ -72,4 +75,12 @@ export interface ProfilerSummaryCardProps {
     value: number | string;
   }[];
   showIndicator?: boolean;
+}
+
+export interface DataQualityTabProps {
+  testCases: TestCase[];
+}
+
+export interface TestSummaryProps {
+  data: TestCase;
 }

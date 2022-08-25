@@ -37,6 +37,7 @@ import { Column, DataType } from '../generated/entity/data/table';
 import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
 import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
+import { getNameFromFQN, getTableFQNFromColumnFQN } from './CommonUtils';
 import { getGlossaryPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
@@ -303,6 +304,38 @@ export const getDataTypeString = (dataType: string): string => {
       return PrimaryTableDataTypes.BOOLEAN;
     default:
       return dataType;
+  }
+};
+
+export const generateEntityLink = (fqn: string, includeColumn = false) => {
+  const columnLink = '<#E::table::ENTITY_FQN::columns::COLUMN>';
+  const tableLink = '<#E::table::ENTITY_FQN>';
+
+  if (includeColumn) {
+    const tableFqn = getTableFQNFromColumnFQN(fqn);
+    const columnName = getNameFromFQN(fqn);
+
+    return columnLink
+      .replace('ENTITY_FQN', tableFqn)
+      .replace('COLUMN', columnName);
+  } else {
+    return tableLink.replace('ENTITY_FQN', fqn);
+  }
+};
+
+export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
+  switch (status) {
+    case TestCaseStatus.Success:
+      return Icons.SUCCESS_BADGE;
+
+    case TestCaseStatus.Failed:
+      return Icons.FAIL_BADGE;
+
+    case TestCaseStatus.Aborted:
+      return Icons.PENDING_BADGE;
+
+    default:
+      return '';
   }
 };
 

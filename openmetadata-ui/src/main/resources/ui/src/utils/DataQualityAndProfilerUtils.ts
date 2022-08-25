@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,23 +11,25 @@
  *  limitations under the License.
  */
 
-export enum ConstraintTypes {
-  PRIMARY_KEY = 'PRIMARY_KEY',
-  NULL = 'NULL',
-  NOT_NULL = 'NOT_NULL',
-  UNIQUE = 'UNIQUE',
-  FOREIGN_KEY = 'FOREIGN_KEY',
-}
+import { TableTestsType } from '../components/TableProfiler/TableProfiler.interface';
+import { TestCaseStatus } from '../generated/tests/tableTest';
 
-export enum PrimaryTableDataTypes {
-  VARCHAR = 'varchar',
-  TIMESTAMP = 'timestamp',
-  DATE = 'date',
-  NUMERIC = 'numeric',
-  BOOLEAN = 'boolean',
-}
+export const updateTestResults = (
+  results: TableTestsType['results'],
+  testCaseStatus: string
+) => {
+  switch (testCaseStatus) {
+    case TestCaseStatus.Success:
+      results.success += 1;
 
-export enum ProfilerDashboardType {
-  TABLE = 'table',
-  COLUMN = 'column',
-}
+      break;
+    case TestCaseStatus.Failed:
+      results.failed += 1;
+
+      break;
+    case TestCaseStatus.Aborted:
+      results.aborted += 1;
+
+      break;
+  }
+};
