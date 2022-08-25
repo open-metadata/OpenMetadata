@@ -17,6 +17,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.catalog.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -1216,6 +1217,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
 
         updateColumnDescription(stored, updated);
+        updateColumnDisplayName(stored, updated);
         updateColumnDataLength(stored, updated);
         updateColumnPrecision(stored, updated);
         updateColumnScale(stored, updated);
@@ -1243,6 +1245,16 @@ public class TableRepository extends EntityRepository<Table> {
       }
       String columnField = getColumnField(original, origColumn, FIELD_DESCRIPTION);
       recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
+    }
+
+    private void updateColumnDisplayName(Column origColumn, Column updatedColumn) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
+        // Revert the non-empty task description if being updated by a bot
+        updatedColumn.setDisplayName(origColumn.getDisplayName());
+        return;
+      }
+      String columnField = getColumnField(original, origColumn, FIELD_DISPLAY_NAME);
+      recordChange(columnField, origColumn.getDisplayName(), updatedColumn.getDisplayName());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {
