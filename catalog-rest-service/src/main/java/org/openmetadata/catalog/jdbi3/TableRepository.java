@@ -843,7 +843,7 @@ public class TableRepository extends EntityRepository<Table> {
    * {@code entityRelationType}) are ({@link Table#getFullyQualifiedName()}, "table") and ({@link
    * Column#getFullyQualifiedName()}, "table.columns.column").
    *
-   * <p>If for an field relation (any relation between {@code entityFQN} and a FQN from {@code joinedWithList}), after
+   * <p>If for a field relation (any relation between {@code entityFQN} and a FQN from {@code joinedWithList}), after
    * combining the existing list of {@link DailyCount} with join data from {@code joinedWithList}, there are multiple
    * {@link DailyCount} with the {@link DailyCount#getDate()}, these will <bold>NOT</bold> be merged - the value of
    * {@link JoinedWith#getJoinCount()} will override the current value.
@@ -1005,7 +1005,7 @@ public class TableRepository extends EntityRepository<Table> {
         .collect(Collectors.toList());
   }
 
-  private TableJoins getJoins(Table table) throws IOException {
+  private TableJoins getJoins(Table table) {
     String today = RestUtil.DATE_FORMAT.format(new Date());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     return new TableJoins()
@@ -1015,7 +1015,7 @@ public class TableRepository extends EntityRepository<Table> {
         .withDirectTableJoins(getDirectTableJoins(table));
   }
 
-  private List<JoinedWith> getDirectTableJoins(Table table) throws IOException {
+  private List<JoinedWith> getDirectTableJoins(Table table) {
     // Pair<toTableFQN, List<DailyCount>>
     List<Pair<String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
@@ -1037,7 +1037,7 @@ public class TableRepository extends EntityRepository<Table> {
         .collect(Collectors.toList());
   }
 
-  private List<ColumnJoin> getColumnJoins(Table table) throws IOException {
+  private List<ColumnJoin> getColumnJoins(Table table) {
     // Triple<fromRelativeColumnName, toFQN, List<DailyCount>>
     List<Triple<String, String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()

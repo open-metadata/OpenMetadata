@@ -27,7 +27,6 @@ import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidColumnFQN;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
@@ -62,7 +61,6 @@ import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -2004,8 +2002,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Make a copy before sorting in case the lists are immutable
     List<Column> expected = new ArrayList<>(expectedColumns);
     List<Column> actual = new ArrayList<>(actualColumns);
-    Collections.sort(expected, Comparator.comparing(Column::getName));
-    Collections.sort(actual, Comparator.comparing(Column::getName));
+    expected.sort(Comparator.comparing(Column::getName));
+    actual.sort(Comparator.comparing(Column::getName));
     for (int i = 0; i < expected.size(); i++) {
       assertColumn(expected.get(i), actual.get(i));
     }

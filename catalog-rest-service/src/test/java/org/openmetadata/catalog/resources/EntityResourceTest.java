@@ -347,6 +347,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final K createRequest(String name, String description, String displayName, EntityReference owner) {
+    if (!supportsEmptyDescription && description == null) {
+      throw new IllegalArgumentException("Entity " + entityType + " does not support empty description");
+    }
     return createRequest(name)
         .withDescription(description)
         .withDisplayName(displayName)
@@ -993,13 +996,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with non-empty description
-    K request = createRequest(getEntityName(test), null, null, null);
+    K request = createRequest(getEntityName(test), supportsEmptyDescription ? null : "description", null, null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // BOT user can update empty description and empty displayName
-    request = createRequest(getEntityName(test), "description", "displayName", null);
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
+    request = createRequest(getEntityName(test), "description", "displayName", null);
+    if (supportsEmptyDescription) {
+      change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
+    }
     change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
     entity = updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, MINOR_UPDATE, change);
 
