@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import importlib
-import logging
 import os
 import re
 import sys
@@ -22,8 +21,9 @@ from airflow import settings
 from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagBag
 from flask import request
+from openmetadata_managed_apis.utils.logger import api_logger
 
-logger = logging.getLogger(__name__)
+logger = api_logger()
 
 
 class MissingArgException(Exception):

@@ -12,11 +12,11 @@
 Module containing the logic to test a connection
 from a WorkflowSource
 """
-import logging
 import traceback
 
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import operations_logger
 from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
     build_secrets_manager_credentials,
 )
@@ -31,7 +31,7 @@ from metadata.utils.connections import (
 )
 from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
 
-logger = logging.getLogger(__name__)
+logger = operations_logger()
 
 
 def test_source_connection(

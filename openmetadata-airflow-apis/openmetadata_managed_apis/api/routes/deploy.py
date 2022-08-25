@@ -11,7 +11,6 @@
 """
 Deploy the DAG and scan it with the scheduler
 """
-import logging
 import traceback
 
 from airflow.api_connexion import security
@@ -21,13 +20,14 @@ from flask import Response, request
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.deploy import DagDeployer
+from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 
-logger = logging.getLogger(__name__)
+logger = routes_logger()
 
 
 @blueprint.route("/deploy", methods=["POST"])
@@ -51,19 +51,19 @@ def deploy_dag() -> Response:
         return response
 
     except ValidationError as err:
-        msg = f"Request Validation Error parsing payload [{json_request}]. IngestionPipeline expected: {err}"
         logger.debug(traceback.format_exc())
-        logger.error(msg)
+        logger.error(
+            f"Request Validation Error parsing payload [{json_request}]. IngestionPipeline expected: {err}"
+        )
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
-            error=msg,
+            error=f"Request Validation Error parsing payload. IngestionPipeline expected: {err}",
         )
 
     except Exception as exc:
-        msg = f"Internal error deploying [{json_request}] - [{exc}] - {traceback.format_exc()}"
         logger.debug(traceback.format_exc())
-        logger.error(msg)
+        logger.error(f"Internal error deploying [{json_request}] due to [{exc}] ")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=msg,
+            error=f"Internal error while deploying due to [{exc}] ",
         )

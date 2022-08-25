@@ -11,7 +11,6 @@
 """
 Test the connection against a source system
 """
-import logging
 import traceback
 
 from airflow.api_connexion import security
@@ -21,11 +20,12 @@ from flask import Response, request
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.test_connection import test_source_connection
+from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
 from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 
-logger = logging.getLogger(__name__)
+logger = routes_logger()
 
 
 @blueprint.route("/test_connection", methods=["POST"])
@@ -56,7 +56,7 @@ def test_connection() -> Response:
         )
 
     except Exception as exc:
-        msg = f"Internal error testing connection - [{exc}] - {traceback.format_exc()}"
+        msg = f"Internal error testing connection due to [{exc}] "
         logger.debug(traceback.format_exc())
         logger.error(msg)
         return ApiResponse.error(

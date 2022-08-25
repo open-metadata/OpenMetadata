@@ -9,18 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
-
 from airflow import DAG
 
 # these are params only used in the DAG factory, not in the tasks
+from openmetadata_managed_apis.utils.logger import workflow_logger
 from openmetadata_managed_apis.workflows.ingestion.registry import build_registry
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 
-logger = logging.getLogger(__name__)
+logger = workflow_logger()
 
 
 class WorkflowBuilder:

@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import pkgutil
 import traceback
 from pathlib import Path
@@ -30,13 +29,14 @@ from openmetadata_managed_apis.api.utils import (
     import_path,
     scan_dags_job_background,
 )
+from openmetadata_managed_apis.utils.logger import operations_logger
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
 
-logger = logging.getLogger(__name__)
+logger = operations_logger()
 
 
 class DeployDagException(Exception):

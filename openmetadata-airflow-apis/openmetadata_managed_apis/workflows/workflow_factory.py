@@ -14,7 +14,6 @@ based on incoming configs.
 
 Called in dag_runner.j2
 """
-import logging
 import pathlib
 import traceback
 from typing import Any, Dict
@@ -22,6 +21,7 @@ from typing import Any, Dict
 from airflow.models import DAG
 
 # these are params that cannot be a dag name
+from openmetadata_managed_apis.utils.logger import workflow_logger
 from openmetadata_managed_apis.workflows.config import load_config_file
 from openmetadata_managed_apis.workflows.workflow_builder import WorkflowBuilder
 
@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
 )
 
-logger = logging.getLogger(__name__)
+logger = workflow_logger()
 
 
 class WorkflowCreationError(Exception):
