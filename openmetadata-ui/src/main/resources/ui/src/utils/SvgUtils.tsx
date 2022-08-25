@@ -66,6 +66,9 @@ import IconGithubStar from '../assets/svg/github-star.svg';
 import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconCommentGrey from '../assets/svg/ic-comment-grey.svg';
+import IconDeleteColored, {
+  ReactComponent as IcDeleteColored,
+} from '../assets/svg/ic-delete-colored.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
@@ -333,6 +336,7 @@ export const Icons = {
   POLICIES: 'policies',
   INFO_SECONDARY: 'info-secondary',
   ICON_REMOVE: 'icon-remove',
+  DELETE_COLORED: 'icon-delete-colored',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -978,6 +982,11 @@ const SVGIcons: FunctionComponent<Props> = ({
 
       break;
 
+    case Icons.DELETE_COLORED:
+      IconComponent = IconDeleteColored;
+
+      break;
+
     default:
       IconComponent = null;
 
@@ -997,3 +1006,5 @@ const SVGIcons: FunctionComponent<Props> = ({
 };
 
 export default SVGIcons;
+
+export { IcDeleteColored };

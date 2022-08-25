@@ -35,8 +35,8 @@ import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import Description from '../../components/common/description/Description';
-import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
@@ -89,6 +89,7 @@ import {
   setServiceSchemaCount,
   setServiceTableCount,
 } from '../../utils/ServiceUtils';
+import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -127,6 +128,8 @@ const ServicePage: FunctionComponent = () => {
 
   const [schemaCount, setSchemaCount] = useState<number>(0);
   const [tableCount, setTableCount] = useState<number>(0);
+
+  const [deleteWidgetVisible, setDeleteWidgetVisible] = useState(false);
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -880,6 +883,10 @@ const ServicePage: FunctionComponent = () => {
     goToEditConnection();
   };
 
+  const handleDelete = () => {
+    setDeleteWidgetVisible(true);
+  };
+
   return (
     <>
       {isLoading ? (
@@ -898,7 +905,20 @@ const ServicePage: FunctionComponent = () => {
               className="tw-justify-between"
               style={{ width: '100%' }}>
               <TitleBreadcrumb titleLinks={slashedTableName} />
-              <ManageButton
+              <Button
+                size="small"
+                theme="primary"
+                variant="outlined"
+                onClick={handleDelete}>
+                <IcDeleteColored
+                  className="tw-mr-1.5"
+                  height={14}
+                  viewBox="0 0 24 24"
+                  width={14}
+                />
+                Delete
+              </Button>
+              <DeleteWidgetModal
                 isRecursiveDelete
                 allowSoftDelete={false}
                 deleteMessage={getDeleteEntityMessage(
@@ -907,14 +927,15 @@ const ServicePage: FunctionComponent = () => {
                   schemaCount,
                   tableCount
                 )}
-                entityFQN={serviceFQN}
                 entityId={serviceDetails?.id}
                 entityName={serviceDetails?.name || ''}
                 entityType={serviceName?.slice(0, -1)}
+                visible={deleteWidgetVisible}
+                onCancel={() => setDeleteWidgetVisible(false)}
               />
             </Space>
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
@@ -932,7 +953,7 @@ const ServicePage: FunctionComponent = () => {
             </div>
 
             <div
-              className="tw-my-2 tw-ml-2"
+              className="tw-my-2 tw--ml-5"
               data-testid="description-container">
               <Description
                 description={description || ''}
