@@ -618,7 +618,6 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException {
     Table table = dao.findEntityById(tableId);
-    EntityReference oldOwner = table.getOwner();
     table.withDataModel(dataModel);
 
     // Carry forward the table description from the model to table entity, if empty
@@ -628,8 +627,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Carry forward the table owner from the model to table entity, if empty
     if (table.getOwner() == null) {
-      table.setOwner(dataModel.getOwner());
-      updateOwner(table, oldOwner, table.getOwner());
+      storeOwner(table, dataModel.getOwner());
     }
 
     // Carry forward the column description from the model to table columns, if empty
