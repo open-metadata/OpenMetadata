@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -278,6 +279,36 @@ def _(
     column_name: str,
 ) -> str:
     return _build(service_name, database_name, schema_name, table_name, column_name)
+
+
+@fqn_build_registry.add(User)
+def _(
+    metadata: OpenMetadata,
+    *,
+    user_name: str,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
+    """
+    Building logic for User
+    :param metadata: OMeta client
+    :param user_name: User name
+    :return:
+    """
+
+    fqn_search_string = _build(user_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=User,
+        fqn_search_string=fqn_search_string,
+    )
+    entity: Optional[Union[User, List[User]]] = get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+    if not entity:
+        return None
+    if fetch_multiple_entities:
+        return [str(user.fullyQualifiedName.__root__) for user in entity]
+    return str(entity.fullyQualifiedName.__root__)
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:

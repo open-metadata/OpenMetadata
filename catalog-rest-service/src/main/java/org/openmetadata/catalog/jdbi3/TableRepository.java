@@ -618,12 +618,20 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException {
     Table table = dao.findEntityById(tableId);
+    EntityReference oldOwner = table.getOwner();
     table.withDataModel(dataModel);
 
     // Carry forward the table description from the model to table entity, if empty
     if (nullOrEmpty(table.getDescription())) {
       table.setDescription(dataModel.getDescription());
     }
+
+    // Carry forward the table owner from the model to table entity, if empty
+    if (table.getOwner() == null) {
+      table.setOwner(dataModel.getOwner());
+      updateOwner(table, oldOwner, table.getOwner());
+    }
+
     // Carry forward the column description from the model to table columns, if empty
     for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
       Column stored =
@@ -639,7 +647,9 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
-    setFields(table, Fields.EMPTY_FIELDS);
+
+    setFields(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
+
     return table;
   }
 
