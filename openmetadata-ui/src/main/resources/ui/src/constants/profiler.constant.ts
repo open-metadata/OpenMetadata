@@ -13,6 +13,7 @@
 
 import { CSMode } from '../enums/codemirror.enum';
 import { ColumnProfilerConfig } from '../generated/entity/data/table';
+import { TestCaseStatus } from '../generated/tests/tableTest';
 import { JSON_TAB_SIZE } from './constants';
 
 export const excludedMetrics = [
@@ -160,6 +161,27 @@ export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
   {
     columnName: undefined,
     metrics: ['all'],
+  },
+];
+
+export const INITIAL_TEST_RESULT_SUMMARY = {
+  success: 0,
+  aborted: 0,
+  failed: 0,
+};
+
+export const DEFAULT_TEST_VALUE = [
+  {
+    value: 0,
+    type: TestCaseStatus.Success,
+  },
+  {
+    value: 0,
+    type: TestCaseStatus.Aborted,
+  },
+  {
+    value: 0,
+    type: TestCaseStatus.Failed,
   },
 ];
 
