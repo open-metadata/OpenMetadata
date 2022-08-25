@@ -20,6 +20,7 @@ import {
   SECONDARY_COLOR,
   SUCCESS_COLOR,
 } from '../../../constants/constants';
+import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCaseStatus } from '../../../generated/tests/tableTest';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
@@ -62,6 +63,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           return (
             <Link
               to={getProfilerDashboardWithFqnPath(
+                ProfilerDashboardType.COLUMN,
                 record.fullyQualifiedName || ''
               )}>
               {name}
