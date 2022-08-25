@@ -27,6 +27,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import ProfilerDashboard from '../../components/ProfilerDashboard/ProfilerDashboard';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import jsonData from '../../jsons/en';
@@ -34,10 +35,12 @@ import {
   getNameFromFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
+import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
-  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [table, setTable] = useState<Table>({} as Table);
   const [profilerData, setProfilerData] = useState<ColumnProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,9 +50,11 @@ const ProfilerDashboardPage = () => {
   const fetchProfilerData = async (fqn: string, days = 3) => {
     try {
       const startTs = moment().subtract(days, 'days').unix();
+      const endTs = moment().unix();
 
       const { data } = await getColumnProfilerList(fqn, {
-        startTs: startTs,
+        startTs,
+        endTs,
         limit: API_RES_MAX_SIZE,
       });
       setProfilerData(data || []);
@@ -73,18 +78,26 @@ const ProfilerDashboardPage = () => {
         error as AxiosError,
         jsonData['api-error-messages']['fetch-column-test-error']
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchTableEntity = async (fqn: string) => {
+  const fetchTableEntity = async () => {
     try {
-      getTableFQNFromColumnFQN(fqn);
-      const data = await getTableDetailsByFQN(
-        getTableFQNFromColumnFQN(fqn),
-        'tags, usageSummary, owner, followers, profile'
-      );
+      const fqn = isColumnView
+        ? getTableFQNFromColumnFQN(entityTypeFQN)
+        : entityTypeFQN;
+      const field = `tags, usageSummary, owner, followers${
+        isColumnView ? ', profile' : ''
+      }`;
+      const data = await getTableDetailsByFQN(fqn, field);
       setTable(data ?? ({} as Table));
-      fetchProfilerData(entityTypeFQN);
+      if (isColumnView) {
+        fetchProfilerData(entityTypeFQN);
+      } else {
+        fetchTestCases(generateEntityLink(entityTypeFQN));
+      }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -111,7 +124,7 @@ const ProfilerDashboardPage = () => {
 
   useEffect(() => {
     if (entityTypeFQN) {
-      fetchTableEntity(entityTypeFQN);
+      fetchTableEntity();
     } else {
       setIsLoading(false);
       setError(true);

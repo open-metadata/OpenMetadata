@@ -16,11 +16,13 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ProfilerDashboardType } from '../../enums/table.enum';
 import {
   formatNumberWithComma,
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
 import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
+import { getProfilerDashboardWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
@@ -134,6 +136,15 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
             </p>
           </Col>
         ))}
+        <Col className="tw-flex tw-justify-end" span={24}>
+          <Link
+            to={getProfilerDashboardWithFqnPath(
+              ProfilerDashboardType.TABLE,
+              table.fullyQualifiedName || ''
+            )}>
+            View more detail
+          </Link>
+        </Col>
       </Row>
 
       <ColumnProfileTable

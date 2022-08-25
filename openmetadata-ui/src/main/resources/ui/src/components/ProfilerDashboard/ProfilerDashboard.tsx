@@ -28,6 +28,7 @@ import {
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
   Column,
@@ -72,11 +73,14 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   onTableChange,
 }) => {
   const history = useHistory();
-  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
-    ProfilerDashboardTab.PROFILER
+    isColumnView
+      ? ProfilerDashboardTab.PROFILER
+      : ProfilerDashboardTab.DATA_QUALITY
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
@@ -85,6 +89,16 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
   );
+
+  const tabOptions = useMemo(() => {
+    return Object.values(ProfilerDashboardTab).filter((value) => {
+      if (value === ProfilerDashboardTab.PROFILER) {
+        return isColumnView;
+      }
+
+      return value;
+    });
+  }, [dashboardType]);
 
   const timeRangeOption = useMemo(() => {
     return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
@@ -313,11 +327,13 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   useEffect(() => {
     if (table) {
-      const columnName = getNameFromFQN(entityTypeFQN);
-      const selectedColumn = table.columns.find(
-        (col) => col.name === columnName
-      );
-      setActiveColumnDetails(selectedColumn || ({} as Column));
+      if (isColumnView) {
+        const columnName = getNameFromFQN(entityTypeFQN);
+        const selectedColumn = table.columns.find(
+          (col) => col.name === columnName
+        );
+        setActiveColumnDetails(selectedColumn || ({} as Column));
+      }
       setFollower(table?.followers || []);
       setIsFollowing(
         follower.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -358,7 +374,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Radio.Group
               buttonStyle="solid"
               optionType="button"
-              options={Object.values(ProfilerDashboardTab)}
+              options={tabOptions}
               value={activeTab}
               onChange={handleTabChange}
             />
