@@ -120,7 +120,10 @@ class ProfilerWorkflow:
             config = parse_workflow_config_gracefully(config_dict)
             return cls(config)
         except ValidationError as err:
-            logger.error("Error trying to parse the Profiler Workflow configuration")
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to parse the Profiler Workflow configuration: {err}"
+            )
             raise err
 
     def get_config_for_entity(self, entity: Table) -> Optional[TableConfig]:
@@ -293,10 +296,12 @@ class ProfilerWorkflow:
 
                 self.source_status.scanned(table.fullyQualifiedName.__root__)
                 yield table
-            except Exception as err:  # pylint: disable=broad-except
-                self.source_status.filter(table.fullyQualifiedName.__root__, f"{err}")
-                logger.error(err)
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error filtering entities for table [{table}]: {exc}"
+                )
+                self.source_status.filter(table.fullyQualifiedName.__root__, f"{exc}")
 
     def get_database_entities(self):
         """List all databases in service"""
@@ -390,12 +395,16 @@ class ProfilerWorkflow:
                         if hasattr(self, "sink"):
                             self.sink.write_record(profile)
                         self.status.processed(entity.fullyQualifiedName.__root__)
-                    except Exception as err:  # pylint: disable=broad-except
-                        logger.error(err)
-                        logger.error(traceback.format_exc())
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(err)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Unexpected exception processing entity [{entity}]: {exc}"
+                        )
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Unexpected exception executing in database [{database}]: {exc}"
+                )
 
     def print_status(self) -> int:
         """

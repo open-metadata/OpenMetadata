@@ -317,10 +317,10 @@ class TestSuiteWorkflow:
                     )
                 )
             except Exception as err:
-                logger.error(
-                    f"Couldn't create test case name {test_case_name_to_create}"
+                logger.warning(
+                    f"Couldn't create test case name {test_case_name_to_create}: {err}"
                 )
-                logger.error(traceback.format_exc(err))
+                logger.debug(traceback.format_exc(err))
 
         return created_test_case
 
@@ -352,9 +352,8 @@ class TestSuiteWorkflow:
                     logger.info(f"Successfuly ran test case {test_case.name.__root__}")
                     self.status.processed(test_case.fullyQualifiedName.__root__)
                 except Exception as err:
-                    logger.error(traceback.format_exc(err))
-                    logger.error(f"Could not run test case {test_case.name}")
-                    logger.error(err)
+                    logger.debug(traceback.format_exc(err))
+                    logger.warning(f"Could not run test case {test_case.name}: {err}")
                     self.status.failure(test_case.fullyQualifiedName.__root__)
 
     def print_status(self) -> int:

@@ -13,7 +13,7 @@
 ColumnValuesToBeNotNull validation implementation
 """
 # pylint: disable=duplicate-code
-
+import traceback
 from datetime import datetime
 
 from sqlalchemy import inspect
@@ -75,9 +75,10 @@ def column_values_to_not_match_regex(
 
     except Exception as err:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
         )
-        logger.error(msg)
+        logger.debug(traceback.format_exc())
+        logger.warning(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,

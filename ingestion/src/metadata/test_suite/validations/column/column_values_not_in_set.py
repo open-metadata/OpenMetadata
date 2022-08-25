@@ -13,7 +13,7 @@
 ColumnValuesToBeNotNull validation implementation
 """
 # pylint: disable=duplicate-code
-
+import traceback
 from ast import literal_eval
 from datetime import datetime
 
@@ -73,9 +73,10 @@ def column_values_not_in_set(
 
     except Exception as err:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
         )
-        logger.error(msg)
+        logger.debug(traceback.format_exc())
+        logger.warning(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
