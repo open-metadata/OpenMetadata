@@ -61,16 +61,6 @@ def table_column_count_to_be_between(
             testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
-    if column_count is None:
-        msg = "columnCount should not be None for TableColumnCountToBeBetween"
-        logger.error(msg)
-        return TestCaseResult(
-            executionTime=execution_date,
-            testCaseStatus=TestCaseStatus.Aborted,
-            result=msg,
-            testResultValue=[TestResultValue(name="columnCount", value=None)],
-        )
-
     min_ = next(
         (
             int(param_value.value)

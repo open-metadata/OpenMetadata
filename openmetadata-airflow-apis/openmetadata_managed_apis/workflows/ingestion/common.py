@@ -76,7 +76,14 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         Union[DatabaseService, MessagingService, PipelineService, DashboardService]
     ] = None
 
-    if service_type == "databaseService":
+    if service_type == "TestSuite":
+        return WorkflowSource(
+            type=service_type,
+            serviceName=ingestion_pipeline.service.name,
+            sourceConfig=ingestion_pipeline.sourceConfig,
+        )
+
+    elif service_type == "databaseService":
         service: DatabaseService = metadata.get_by_name(
             entity=DatabaseService, fqn=ingestion_pipeline.service.name
         )
@@ -95,12 +102,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     elif service_type == "mlmodelService":
         service: MlModelService = metadata.get_by_name(
             entity=MlModelService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "TestSuite":
-        return WorkflowSource(
-            type=service_type,
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
         )
 
     if not service:

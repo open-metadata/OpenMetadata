@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import traceback
 from logging import Logger
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 import click
 from pydantic import ValidationError
@@ -108,7 +108,7 @@ class TestSuiteWorkflow:
             logger.error("Error trying to parse the Profiler Workflow configuration")
             raise err
 
-    def _get_unique_table_entities(self, test_cases: List[TestCase]) -> List:
+    def _get_unique_table_entities(self, test_cases: List[TestCase]) -> Set:
         """from a list of test cases extract unique table entities"""
         table_fqns = [
             test_case.entityLink.__root__.split("::")[2].replace(">", "")
@@ -197,7 +197,7 @@ class TestSuiteWorkflow:
         """create main object to run data test validation"""
         return DataTestsRunner(sqa_interface)
 
-    def get_test_suite_entity_for_ui_workflow(self) -> List[TestSuite]:
+    def get_test_suite_entity_for_ui_workflow(self) -> Optional[List[TestSuite]]:
         """
         try to get test suite name from source.servicName.
         In the UI workflow we'll write the entity name (i.e. the test suite)
@@ -269,7 +269,7 @@ class TestSuiteWorkflow:
         self,
         cli_config_test_cases_def: List[Tuple[TestCaseDefinition, TestSuite]],
         test_cases: List[TestCase],
-    ) -> None:
+    ) -> Optional[List[TestCase]]:
         """
         compare test cases defined in CLI config workflow with test cases
         defined on the server
