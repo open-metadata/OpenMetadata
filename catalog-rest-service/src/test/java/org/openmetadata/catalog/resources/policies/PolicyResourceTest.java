@@ -187,7 +187,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Ensure validation API works for the valid conditions
     for (String condition : List.of("isOwner()", "!isOwner()", "noOwner()", "isOwner() || noOwner()")) {
-      System.out.println("XXX condition " + condition);
       validateCondition(condition); // No exception should be thrown
     }
 

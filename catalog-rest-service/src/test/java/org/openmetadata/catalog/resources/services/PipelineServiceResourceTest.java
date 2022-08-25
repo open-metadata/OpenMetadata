@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.AIRFLOW_CONNECTION;
+import static org.openmetadata.catalog.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.MYSQL_DATABASE_CONNECTION;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -274,7 +275,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
     // Use the database service tests utilities for the comparison
     // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
+    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || BOT_AUTH_HEADERS.equals(authHeaders)) {
       DatabaseConnection actualDatabaseConnection =
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
       MysqlConnection actualMysqlConnection =

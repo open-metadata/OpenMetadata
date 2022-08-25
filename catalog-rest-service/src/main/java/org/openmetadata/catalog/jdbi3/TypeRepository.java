@@ -47,7 +47,6 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public TypeRepository(CollectionDAO dao) {
     super(TypeResource.COLLECTION_PATH, Entity.TYPE, Type.class, dao.typeEntityDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
-    allowEdits = true;
   }
 
   @Override
