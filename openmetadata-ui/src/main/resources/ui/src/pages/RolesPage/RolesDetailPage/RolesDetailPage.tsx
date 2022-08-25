@@ -215,7 +215,7 @@ const RolesDetailPage = () => {
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       {isEmpty(role) ? (
-        <Empty description={`No roles found for ${fqn}`}>
+        <Empty data-testid="no-data" description={`No roles found for ${fqn}`}>
           <Button
             size="small"
             type="primary"
@@ -237,7 +237,7 @@ const RolesDetailPage = () => {
               onDescriptionUpdate={handleDescriptionUpdate}
             />
           </div>
-          <Tabs defaultActiveKey="policies">
+          <Tabs data-testid="tabs" defaultActiveKey="policies">
             <TabPane key="policies" tab="Policies">
               <Space className="tw-w-full" direction="vertical">
                 <Button
