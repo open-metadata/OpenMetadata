@@ -13,6 +13,7 @@
 ColumnValuesMissingCount validation implementation
 """
 # pylint: disable=duplicate-code
+import traceback
 from datetime import datetime
 from typing import Optional
 
@@ -81,9 +82,10 @@ def column_values_missing_count_to_be_equal(
             # Add set count for special values into the missing count
             missing_count += set_count_res
 
-        except Exception as err:  # pylint: disable=broad-except
-            msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name} - {err}"
-            logger.error(msg)
+        except Exception as exc:  # pylint: disable=broad-except
+            msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name}: {exc}"
+            logger.debug(traceback.format_exc())
+            logger.warning(msg)
             return TestCaseResult(
                 timestamp=execution_date.timestamp(),
                 testCaseStatus=TestCaseStatus.Aborted,

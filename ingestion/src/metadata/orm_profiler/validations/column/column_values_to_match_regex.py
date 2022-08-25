@@ -13,7 +13,7 @@
 ColumnValuesToBeNotNull validation implementation
 """
 # pylint: disable=duplicate-code
-
+import traceback
 from datetime import datetime
 from typing import Optional
 
@@ -72,12 +72,12 @@ def column_values_to_match_regex(
                 f"Cannot find the configured column {col_profile.name} for ColumnValuesToBeNotInSet"
             )
         like_count_dict = dict(runner.select_first_from_sample(like_count(col).fn()))
-        print(like_count_dict)
         like_count_res = like_count_dict.get(Metrics.LIKE_COUNT.name)
 
-    except Exception as err:  # pylint: disable=broad-except
-        msg = f"Error computing ColumnValuesToMatchRegex for {col_profile.name} - {err}"
-        logger.error(msg)
+    except Exception as exc:  # pylint: disable=broad-except
+        msg = f"Error computing ColumnValuesToMatchRegex for {col_profile.name}: {exc}"
+        logger.debug(traceback.format_exc())
+        logger.warning(msg)
         return TestCaseResult(
             timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,

@@ -16,6 +16,7 @@ For each table, we compute its profiler
 and run the validations.
 """
 import logging
+import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -668,9 +669,10 @@ class OrmProfilerProcessor(Processor[Table]):
         """
         try:
             return self.processor_interface.fetch_sample_data()
-        except Exception as err:
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
             logger.error(
-                f"Could not obtain sample data from {self.processor_interface.table.__tablename__} - {err}"
+                f"Could not obtain sample data from {self.processor_interface.table.__tablename__}: {exc}"
             )
 
     def process(

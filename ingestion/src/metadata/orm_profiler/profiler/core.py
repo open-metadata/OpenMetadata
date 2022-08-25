@@ -12,6 +12,7 @@
 """
 Main Profile definition and queries to execute
 """
+import traceback
 import warnings
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
@@ -433,7 +434,8 @@ class Profiler(Generic[TMetric]):
             )
 
         except ValidationError as err:
-            logger.error(f"Cannot transform profiler results to TableProfile {err}")
+            logger.debug(traceback.format_exc())
+            logger.error(f"Cannot transform profiler results to TableProfile: {err}")
             raise err
 
     @property

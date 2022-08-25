@@ -16,6 +16,7 @@ supporting sqlalchemy abstraction layer
 
 import concurrent.futures
 import threading
+import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
@@ -165,9 +166,10 @@ class SQAProfilerInterface(InterfaceProtocol):
         try:
             self._metadata = OpenMetadata(metadata_config)
             self._metadata.health_check()
-        except Exception:
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
             logger.warning(
-                "No OpenMetadata server configuration found. Running profiler interface without OM server connection"
+                f"No OpenMetadata server configuration found. Running profiler interface without OM server connection: {exc}"
             )
             self._metadata = None
 
@@ -249,8 +251,9 @@ class SQAProfilerInterface(InterfaceProtocol):
 
         try:
             column = column.name
-        except Exception as err:
-            logger.debug(err)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
 
         return row, column
 
@@ -332,8 +335,9 @@ class SQAProfilerInterface(InterfaceProtocol):
         """
         try:
             return metric(column).fn(column_results)
-        except Exception as err:
-            logger.error(err)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
 
     def run_test_case(
@@ -388,9 +392,10 @@ def get_table_metrics(
         if row:
             return dict(row)
 
-    except Exception as err:
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
         logger.error(
-            f"Error trying to compute profile for {runner.table.__tablename__} - {err}"
+            f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
         )
         session.rollback()
 
@@ -421,9 +426,10 @@ def get_static_metrics(
             ]
         )
         return dict(row)
-    except Exception as err:
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
         logger.error(
-            f"Error trying to compute profile for {runner.table.__tablename__}.{column.name} - {err}"
+            f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
 
@@ -459,9 +465,10 @@ def get_query_metrics(
         else:
             row = runner.select_first_from_query(metric_query)
             return dict(row)
-    except Exception as err:
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
         logger.error(
-            f"Error trying to compute profile for {runner.table.__tablename__}.{column.name} - {err}"
+            f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
 
@@ -488,9 +495,10 @@ def get_window_metrics(
         if not isinstance(row, Row):
             return {metric.name(): row}
         return dict(row)
-    except Exception as err:
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
         logger.error(
-            f"Error trying to compute profile for {runner.table.__tablename__}.{column.name} - {err}"
+            f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
 

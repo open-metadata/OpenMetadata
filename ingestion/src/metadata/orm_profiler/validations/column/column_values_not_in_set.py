@@ -13,7 +13,7 @@
 ColumnValuesToBeNotNull validation implementation
 """
 # pylint: disable=duplicate-code
-
+import traceback
 from datetime import datetime
 from typing import Optional
 
@@ -65,9 +65,10 @@ def column_values_not_in_set(
         set_count_dict = dict(runner.select_first_from_sample(set_count(col).fn()))
         set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
-    except Exception as err:  # pylint: disable=broad-except
-        msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name} - {err}"
-        logger.error(msg)
+    except Exception as exc:  # pylint: disable=broad-except
+        msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name}: {exc}"
+        logger.debug(traceback.format_exc())
+        logger.warning(msg)
         return TestCaseResult(
             timestamp=execution_date.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
