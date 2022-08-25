@@ -28,6 +28,9 @@ describe('Custom Properties should work properly', () => {
         .scrollIntoView()
         .should('be.visible')
         .click();
+
+      cy.wait(1000);
+      
       //Getting the property
       const propertyName = addCustomPropertiesForEntity(
         entity,

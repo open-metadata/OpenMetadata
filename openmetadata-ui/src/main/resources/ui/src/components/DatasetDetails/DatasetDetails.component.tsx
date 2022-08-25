@@ -42,6 +42,7 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityId,
   getEntityName,
   getEntityPlaceHolder,
   getPartialNameFromTableFQN,
@@ -381,6 +382,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         getEntityName(owner),
         owner?.deleted
       ),
+      id: getEntityId(owner),
+      isEntityDetails: true,
       isLink: owner?.type === 'team',
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
