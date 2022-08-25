@@ -164,7 +164,7 @@ class SessionValidation(UnitestTestCase):
             timestamp=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=(
-                "Error computing ColumnValuesToBeNotInSet for users.random - Cannot find"
+                "Error computing ColumnValuesToBeNotInSet for users.random: Cannot find"
                 + " the configured column random for ColumnValuesToBeNotInSet"
             ),
         )
