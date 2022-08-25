@@ -39,6 +39,7 @@ import {
 } from '../../../generated/tests/tableTest';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '../../Loader/Loader';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 
 type ChartDataType = {
@@ -53,6 +54,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const [results, setResults] = useState<TestCaseResult[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
+  const [isLoading, setIsLoading] = useState(true);
 
   const timeRangeOption = useMemo(() => {
     return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
@@ -135,6 +137,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       generateChartData(chartData);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -161,7 +165,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   return (
     <Row gutter={16}>
       <Col span={14}>
-        {results.length ? (
+        {isLoading ? (
+          <Loader />
+        ) : results.length ? (
           <div>
             <Space align="end" className="tw-w-full" direction="vertical">
               <Select
