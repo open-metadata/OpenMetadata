@@ -23,6 +23,8 @@ from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_arg_dag_id
 from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
 
+logger = logging.getLogger(__name__)
+
 
 @blueprint.route("/last_dag_logs", methods=["GET"])
 @csrf.exempt
@@ -38,8 +40,9 @@ def last_logs() -> Response:
         return last_dag_logs(dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to get last run logs for '{dag_id}'")
+        logger.debug(traceback.format_exc())
+        logger.error(f"Failed to get last run logs for [{dag_id}]: {exc}")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to get last run logs for [{dag_id}] - [{exc}] - {traceback.format_exc()}",
         )

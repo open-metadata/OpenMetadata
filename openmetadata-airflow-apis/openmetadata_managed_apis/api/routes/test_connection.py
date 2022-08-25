@@ -11,18 +11,20 @@
 """
 Test the connection against a source system
 """
+import logging
 import traceback
 
 from airflow.api_connexion import security
 from airflow.security import permissions
 from airflow.www.app import csrf
 from flask import Response, request
+from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.test_connection import test_source_connection
 from pydantic import ValidationError
 
-from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
+logger = logging.getLogger(__name__)
 
 
 @blueprint.route("/test_connection", methods=["POST"])
@@ -44,13 +46,19 @@ def test_connection() -> Response:
         return response
 
     except ValidationError as err:
+        msg = f"Request Validation Error parsing payload. (Workflow)Source expected: {err}"
+        logger.debug(traceback.format_exc())
+        logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
-            error=f"Request Validation Error parsing payload. (Workflow)Source expected - {err}",
+            error=msg,
         )
 
-    except Exception as err:
+    except Exception as exc:
+        msg = f"Internal error testing connection - [{exc}] - {traceback.format_exc()}"
+        logger.debug(traceback.format_exc())
+        logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Internal error testing connection {err} - {traceback.format_exc()}",
+            error=msg,
         )

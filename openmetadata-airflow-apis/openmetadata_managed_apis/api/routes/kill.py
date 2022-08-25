@@ -23,6 +23,8 @@ from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.kill_all import kill_all
 
+logger = logging.getLogger(__name__)
+
 
 @blueprint.route("/kill", methods=["POST"])
 @csrf.exempt
@@ -38,8 +40,9 @@ def kill() -> Response:
         return kill_all(dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to get kill runs for '{dag_id}'")
+        logger.debug(traceback.format_exc())
+        logger.error(f"Failed to get kill runs for [{dag_id}]: {exc}")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to kill runs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to kill runs for [{dag_id}] - [{exc}] - {traceback.format_exc()}",
         )

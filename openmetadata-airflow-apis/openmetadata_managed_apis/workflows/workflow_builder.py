@@ -12,13 +12,12 @@
 import logging
 
 from airflow import DAG
-
-# these are params only used in the DAG factory, not in the tasks
-from openmetadata_managed_apis.workflows.ingestion.registry import build_registry
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+
+# these are params only used in the DAG factory, not in the tasks
+from openmetadata_managed_apis.workflows.ingestion.registry import build_registry
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +43,14 @@ class WorkflowBuilder:
 
         build_fn = build_registry.registry.get(dag_type)
         if not build_fn:
-            raise ValueError(
-                f"Cannot find build function for {dag_type} in {build_registry.registry}"
-            )
+            msg = f"Cannot find build function for {dag_type} in {build_registry.registry}"
+            logger.error(msg)
+            raise ValueError(msg)
 
         dag = build_fn(self.airflow_pipeline)
         if not isinstance(dag, DAG):
-            raise ValueError(
-                f"Invalid return type from {build_fn.__name__} when building {dag_type}."
-            )
+            msg = f"Invalid return type from {build_fn.__name__} when building {dag_type}."
+            logger.error(msg)
+            raise ValueError(msg)
 
         return dag

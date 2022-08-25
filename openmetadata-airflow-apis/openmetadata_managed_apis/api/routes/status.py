@@ -23,6 +23,8 @@ from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_arg_dag_id
 from openmetadata_managed_apis.operations.status import status
 
+logger = logging.getLogger(__name__)
+
 
 @blueprint.route("/status", methods=["GET"])
 @csrf.exempt
@@ -37,8 +39,9 @@ def dag_status() -> Response:
         return status(dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to get dag {dag_id} status")
+        logger.debug(traceback.format_exc())
+        logger.error(f"Failed to get dag [{dag_id}] status: {exc}")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to get status for {dag_id} due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to get status for [{dag_id}] - [{exc}] - {traceback.format_exc()}",
         )

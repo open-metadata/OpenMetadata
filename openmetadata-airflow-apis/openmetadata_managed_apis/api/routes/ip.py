@@ -11,6 +11,7 @@
 """
 IP endpoint
 """
+import logging
 import traceback
 
 import requests
@@ -26,6 +27,8 @@ from airflow.www.app import csrf
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 
+logger = logging.getLogger(__name__)
+
 
 @blueprint.route("/ip", methods=["GET"])
 @csrf.exempt
@@ -38,8 +41,11 @@ def get_host_ip():
 
     try:
         return ApiResponse.success({"ip": requests.get("https://api.ipify.org").text})
-    except Exception as err:
+    except Exception as exc:
+        msg = f"Internal error obtaining host IP - [{exc}] - {traceback.format_exc()}"
+        logger.debug(traceback.format_exc())
+        logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Internal error obtaining host IP - {err} - {traceback.format_exc()}",
+            error=msg,
         )

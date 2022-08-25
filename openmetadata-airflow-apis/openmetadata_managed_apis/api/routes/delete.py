@@ -24,6 +24,8 @@ from openmetadata_managed_apis.api.utils import get_arg_dag_id
 from openmetadata_managed_apis.operations.delete import delete_dag_id
 from werkzeug.utils import secure_filename
 
+logger = logging.getLogger(__name__)
+
 
 @blueprint.route("/delete", methods=["DELETE"])
 @csrf.exempt
@@ -45,8 +47,11 @@ def delete_dag() -> Response:
         return delete_dag_id(secure_dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to delete dag {dag_id} [secured: {secure_dag_id}]")
+        logger.debug(traceback.format_exc())
+        logger.error(
+            f"Failed to delete dag [{dag_id}] [secured: {secure_dag_id}]: {exc}"
+        )
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to delete {dag_id} [secured: {secure_dag_id}] due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to delete [{dag_id}] [secured: {secure_dag_id}] due to [{exc}] - {traceback.format_exc()}",
         )

@@ -12,12 +12,10 @@
 Module containing the logic to test a connection
 from a WorkflowSource
 """
-from flask import Response
-from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
+import logging
+import traceback
 
+from flask import Response
 from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
     TestServiceConnectionRequest,
 )
@@ -27,6 +25,12 @@ from metadata.utils.connections import (
     test_connection,
 )
 from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
+from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def test_source_connection(
@@ -55,10 +59,13 @@ def test_source_connection(
     try:
         test_connection(connection)
 
-    except SourceConnectionException as err:
+    except SourceConnectionException as exc:
+        msg = f"Connection error from [{connection}]: {exc}"
+        logger.debug(traceback.format_exc())
+        logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Connection error from {connection} - {err}",
+            error=msg,
         )
 
     return ApiResponse.success({"message": f"Connection with {connection} successful!"})
