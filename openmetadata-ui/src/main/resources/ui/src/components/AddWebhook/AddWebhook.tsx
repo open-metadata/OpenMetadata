@@ -20,6 +20,11 @@ import { cloneDeep, isEqual, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
 import { TERM_ALL } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
 import {
   CONFIGURE_SLACK_TEXT,
   CONFIGURE_WEBHOOK_TEXT,
@@ -39,6 +44,7 @@ import {
   isValidUrl,
   requiredField,
 } from '../../utils/CommonUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
@@ -340,6 +346,19 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         header={
           <TitleBreadcrumb
             titleLinks={[
+              {
+                name: 'Settings',
+                url: ROUTES.SETTINGS,
+              },
+              {
+                name: webhookType === WebhookType.Slack ? 'Slack' : 'Webhook',
+                url: getSettingPath(
+                  GlobalSettingsMenuCategory.INTEGRATIONS,
+                  webhookType === WebhookType.Slack
+                    ? GlobalSettingOptions.SLACK
+                    : GlobalSettingOptions.WEBHOOK
+                ),
+              },
               {
                 name: header,
                 url: '',

@@ -71,6 +71,7 @@ const AddPolicyPage = () => {
     description: '',
     resources: [],
     operations: [],
+    condition: '',
     effect: Effect.Allow,
   });
 

@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { ServiceOption, ServicesData } from 'Models';
+import { ServiceOption, ServicesData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
@@ -24,17 +24,18 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { addServiceGuide } from '../../constants/service-guide.constant';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
+import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import {
-  getPathByServiceFQN,
-  getServicesWithTabPath,
-} from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+  getServiceRouteFromServiceType,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
@@ -106,7 +107,10 @@ function EditConnectionFormPage() {
           setSlashedBreadcrumb([
             {
               name: startCase(serviceCategory),
-              url: getServicesWithTabPath(serviceCategory),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+              ),
             },
             {
               name: getEntityName(resService),

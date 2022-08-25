@@ -40,6 +40,7 @@ const ConfigureIngestion = ({
   includeView,
   includeTags,
   markDeletedTables,
+  markDeletedTablesFromFilterOnly,
   serviceCategory,
   pipelineType,
   showDatabaseFilter,
@@ -66,6 +67,7 @@ const ConfigureIngestion = ({
   handleIncludeView,
   handleIncludeTags,
   handleMarkDeletedTables,
+  handleMarkDeletedTablesFromFilterOnly,
   handleIngestSampleData,
   handleDatasetServiceName,
   handleQueryLogDuration,
@@ -224,6 +226,27 @@ const ConfigureIngestion = ({
               <p className="tw-text-grey-muted tw-mt-3">
                 Any deleted tables in the data source will be soft deleted in
                 OpenMetadata
+              </p>
+              {getSeparator('')}
+            </Field>
+          )}
+          {!isNil(markDeletedTablesFromFilterOnly) && (
+            <Field>
+              <div className="tw-flex tw-gap-1">
+                <label>Mark Deleted Tables from Filter Only</label>
+                <ToggleSwitchV1
+                  checked={markDeletedTablesFromFilterOnly}
+                  handleCheck={() => {
+                    if (handleMarkDeletedTablesFromFilterOnly) {
+                      handleMarkDeletedTablesFromFilterOnly();
+                    }
+                  }}
+                  testId="mark-deleted-filter-only"
+                />
+              </div>
+              <p className="tw-text-grey-muted tw-mt-3">
+                Optional configuration to mark deleted tables only to the
+                filtered schema
               </p>
               {getSeparator('')}
             </Field>

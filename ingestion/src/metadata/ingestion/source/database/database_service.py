@@ -337,6 +337,12 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
         return
 
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        """
+        fetch all schema names without any filtering.
+        """
+        yield from self.get_database_schema_names()
+
     def yield_datamodel(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[DataModelLink]:
@@ -440,12 +446,12 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def delete_database_tables(self, database_fqn: str) -> Iterable[DeleteTable]:
+    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteTable]:
         """
         Returns Deleted tables
         """
         database_state = self.metadata.list_all_entities(
-            entity=Table, params={"database": database_fqn}
+            entity=Table, params={"database": schema_fqn}
         )
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
@@ -459,10 +465,18 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            databse_fqn = fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.config.serviceName,
-                database_name=self.context.database.name.__root__,
+            schema_names_list = (
+                self.get_database_schema_names()
+                if self.source_config.markDeletedTablesFromFilterOnly
+                else self.get_raw_database_schema_names()
             )
-            yield from self.delete_database_tables(databse_fqn)
+            for schema_name in schema_names_list:
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.serviceName,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                )
+
+                yield from self.delete_schema_tables(schema_fqn)

@@ -26,10 +26,14 @@ import React, {
 } from 'react';
 import Select, { SingleValue } from 'react-select';
 import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
-import { ROUTES } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/globalSettings.constants';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
@@ -52,7 +56,7 @@ interface Option {
   label: string;
 }
 
-const BotsDetail: FC<BotsDetailProp> = ({
+const BotDetails: FC<BotsDetailProp> = ({
   botsData,
   updateBotsDetails,
   revokeTokenHandler,
@@ -451,7 +455,10 @@ const BotsDetail: FC<BotsDetailProp> = ({
           titleLinks={[
             {
               name: 'Bots',
-              url: ROUTES.BOTS,
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.INTEGRATIONS,
+                GlobalSettingOptions.BOTS
+              ),
             },
             { name: botsData.name || '', url: '', activeTitle: true },
           ]}
@@ -490,4 +497,4 @@ const BotsDetail: FC<BotsDetailProp> = ({
   );
 };
 
-export default BotsDetail;
+export default BotDetails;

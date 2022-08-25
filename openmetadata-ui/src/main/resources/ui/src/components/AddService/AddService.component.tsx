@@ -15,7 +15,8 @@ import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getServiceDetailsPath, ROUTES } from '../../constants/constants';
+import { getServiceDetailsPath } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
 import { FormSubmitType } from '../../enums/form.enum';
@@ -24,10 +25,11 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigData, DataObj } from '../../interface/service.interface';
 import { getCurrentUserId, isUrlFriendlyName } from '../../utils/CommonUtils';
-import { getAddServicePath } from '../../utils/RouterUtils';
+import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceCreatedLabel,
   getServiceIngestionStepGuide,
+  getServiceRouteFromServiceType,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -94,7 +96,12 @@ const AddService = ({
   };
 
   const handleSelectServiceCancel = () => {
-    history.push(ROUTES.SERVICES);
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(serviceCategory)
+      )
+    );
   };
 
   const handleSelectServiceNextClick = () => {
