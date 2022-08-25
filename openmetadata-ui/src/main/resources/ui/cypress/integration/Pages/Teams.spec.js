@@ -87,10 +87,7 @@ describe('Teams flow should work properly', () => {
     cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
 
     //Clicking on edit owner button
-    cy.get('.tw-text-grey-muted')
-      .find('span > img[title="Edit"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
     cy.wait(1000);
 
@@ -159,7 +156,8 @@ describe('Teams flow should work properly', () => {
 
     //Click on confirm button
     cy.get('[data-testid="save-button"]').should('be.visible').click();
-    //
+
+    cy.wait(1000);
     //Verify if user is removed
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
