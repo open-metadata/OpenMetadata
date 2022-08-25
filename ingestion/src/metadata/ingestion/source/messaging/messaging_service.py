@@ -60,6 +60,7 @@ class MessagingServiceTopology(ServiceTopology):
                 context="messaging_service",
                 processor="yield_create_request_messaging_service",
                 overwrite=False,
+                must_return=True,
             )
         ],
         children=["topic"],
