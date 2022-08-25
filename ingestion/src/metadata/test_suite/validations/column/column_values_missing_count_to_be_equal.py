@@ -12,10 +12,9 @@
 """
 ColumnValuesMissingCount validation implementation
 """
-from ast import literal_eval
-
 # pylint: disable=duplicate-code
 import traceback
+from ast import literal_eval
 from datetime import datetime
 
 from sqlalchemy import inspect
@@ -67,9 +66,10 @@ def column_values_missing_count_to_be_equal(
 
     except Exception as err:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
         )
-        logger.error(msg)
+        logger.debug(traceback.format_exc())
+        logger.warning(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
@@ -106,7 +106,7 @@ def column_values_missing_count_to_be_equal(
             null_count_value_res += set_count_res
 
         except Exception as err:  # pylint: disable=broad-except
-            msg = f"Error computing {test_case.__class__.__name__} for {runner.table.__tablename__} - {err}"
+            msg = f"Error computing {test_case.__class__.__name__} for {runner.table.__tablename__}: {err}"
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return TestCaseResult(

@@ -16,6 +16,7 @@ TableColumnCountToBeBetween validation implementation
 
 import collections
 import reprlib
+import traceback
 from datetime import datetime
 from typing import List
 
@@ -66,9 +67,10 @@ def table_column_to_match_set(
 
     except Exception as err:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
         )
-        logger.error(msg)
+        logger.debug(traceback.format_exc())
+        logger.warning(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,

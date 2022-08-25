@@ -14,6 +14,7 @@ ColumnValuesToBeNotNull validation implementation
 """
 # pylint: disable=duplicate-code
 
+import traceback
 from datetime import datetime
 
 from sqlalchemy import inspect
@@ -22,9 +23,6 @@ from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
-)
-from metadata.generated.schema.tests.column.columnValuesToBeNotNull import (
-    ColumnValuesToBeNotNull,
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -65,9 +63,10 @@ def column_values_to_be_not_null(
 
     except Exception as err:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__} - {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
         )
-        logger.error(msg)
+        logger.debug(traceback.format_exc())
+        logger.warning(msg)
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,

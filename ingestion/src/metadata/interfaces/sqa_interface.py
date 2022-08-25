@@ -336,7 +336,7 @@ class SQAInterface(InterfaceProtocol):
             return metric(column).fn(column_results)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected exception computing metrics: {exc}")
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
 
     def run_test_case(
@@ -388,7 +388,7 @@ def get_table_metrics(
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(
+        logger.warning(
             f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
         )
         session.rollback()
@@ -422,7 +422,7 @@ def get_static_metrics(
         return dict(row)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(
+        logger.warning(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
@@ -461,7 +461,7 @@ def get_query_metrics(
             return dict(row)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(
+        logger.warning(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
@@ -491,7 +491,7 @@ def get_window_metrics(
         return dict(row)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(
+        logger.warning(
             f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
         )
         session.rollback()
