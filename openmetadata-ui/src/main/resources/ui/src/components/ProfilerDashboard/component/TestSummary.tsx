@@ -11,21 +11,33 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Empty, Row, Select, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import moment from 'moment';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Legend,
   Line,
   LineChart,
+  LineProps,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { COLORS } from '../../../constants/profiler.constant';
-import { TestCaseStatus } from '../../../generated/tests/tableTest';
+import { getListTestCaseResults } from '../../../axiosAPIs/testAPI';
+import { API_RES_MAX_SIZE } from '../../../constants/constants';
+import {
+  COLORS,
+  PROFILER_FILTER_RANGE,
+} from '../../../constants/profiler.constant';
+import {
+  TestCaseResult,
+  TestCaseStatus,
+} from '../../../generated/tests/tableTest';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 
@@ -34,14 +46,30 @@ type ChartDataType = {
   data: { [key: string]: string }[];
 };
 
-const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
+const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const [chartData, setChartData] = useState<ChartDataType>(
     {} as ChartDataType
   );
+  const [results, setResults] = useState<TestCaseResult[]>([]);
+  const [selectedTimeRange, setSelectedTimeRange] =
+    useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
 
-  const generateChartData = () => {
+  const timeRangeOption = useMemo(() => {
+    return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
+      label: value.title,
+      value: key,
+    }));
+  }, []);
+
+  const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
+    if (value !== selectedTimeRange) {
+      setSelectedTimeRange(value);
+    }
+  };
+
+  const generateChartData = (currentData: TestCaseResult[]) => {
     const chartData: { [key: string]: string }[] = [];
-    results.forEach((result) => {
+    currentData.forEach((result) => {
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
           ...acc,
@@ -57,16 +85,62 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
     });
     setChartData({
       information:
-        results[0]?.testResultValue?.map((info, i) => ({
+        currentData[0]?.testResultValue?.map((info, i) => ({
           label: info.name || '',
           color: COLORS[i],
         })) || [],
       data: chartData.reverse(),
     });
   };
+
+  const updatedDot: LineProps['dot'] = (props) => {
+    const { cx = 0, cy = 0, payload } = props;
+    const fill =
+      payload.status === TestCaseStatus.Success
+        ? '#28A745'
+        : payload.status === TestCaseStatus.Failed
+        ? '#CB2431'
+        : '#EFAE2F';
+
+    return (
+      <svg
+        fill="none"
+        height={8}
+        width={8}
+        x={cx - 4}
+        xmlns="http://www.w3.org/2000/svg"
+        y={cy - 4}>
+        <circle cx={4} cy={4} fill={fill} r={4} />
+      </svg>
+    );
+  };
+
+  const fetchTestResults = async () => {
+    if (isEmpty(data)) return;
+
+    try {
+      const startTs = moment()
+        .subtract(PROFILER_FILTER_RANGE[selectedTimeRange].days, 'days')
+        .unix();
+      const endTs = moment().unix();
+      const { data: chartData } = await getListTestCaseResults(
+        data.fullyQualifiedName || '',
+        {
+          startTs,
+          endTs,
+          limit: API_RES_MAX_SIZE,
+        }
+      );
+      setResults(chartData);
+      generateChartData(chartData);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
-    generateChartData();
-  }, [results]);
+    fetchTestResults();
+  }, [selectedTimeRange]);
 
   const referenceArea = () => {
     const yValues = data.parameterValues?.reduce((acc, curr, i) => {
@@ -75,9 +149,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
 
     return (
       <ReferenceArea
-        fill="#28A745"
-        fillOpacity={0.3}
-        stroke="#E6F4EB"
+        fill="#28A74530"
+        ifOverflow="extendDomain"
+        stroke="#28A745"
+        strokeDasharray="4"
         {...yValues}
       />
     );
@@ -86,44 +161,44 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data, results }) => {
   return (
     <Row gutter={16}>
       <Col span={14}>
-        <ResponsiveContainer minHeight={300}>
-          <LineChart data={chartData.data}>
-            <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
-            <YAxis allowDataOverflow padding={{ top: 16, bottom: 16 }} />
-            <Tooltip />
-            <Legend />
-            {data.parameterValues?.length === 2 && referenceArea()}
-            {chartData?.information?.map((info) => (
-              <Line
-                dataKey={info.label}
-                dot={(props) => {
-                  const { cx = 0, cy = 0, payload } = props;
-                  const fill =
-                    payload.status === TestCaseStatus.Success
-                      ? '#28A745'
-                      : payload.status === TestCaseStatus.Failed
-                      ? '#CB2431'
-                      : '#EFAE2F';
-
-                  return (
-                    <svg
-                      fill="none"
-                      height={8}
-                      width={8}
-                      x={cx - 4}
-                      xmlns="http://www.w3.org/2000/svg"
-                      y={cy - 4}>
-                      <circle cx={4} cy={4} fill={fill} r={4} />
-                    </svg>
-                  );
-                }}
-                key={info.label}
-                stroke={info.color}
-                type="monotone"
+        {results.length ? (
+          <div>
+            <Space align="end" className="tw-w-full" direction="vertical">
+              <Select
+                className="tw-w-32 tw-mb-2"
+                options={timeRangeOption}
+                value={selectedTimeRange}
+                onChange={handleTimeRangeChange}
               />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+            </Space>
+            <ResponsiveContainer className="tw-bg-white" minHeight={300}>
+              <LineChart
+                data={chartData.data}
+                margin={{
+                  top: 8,
+                  bottom: 8,
+                  right: 8,
+                }}>
+                <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
+                <YAxis allowDataOverflow padding={{ top: 8, bottom: 8 }} />
+                <Tooltip />
+                <Legend />
+                {data.parameterValues?.length === 2 && referenceArea()}
+                {chartData?.information?.map((info, i) => (
+                  <Line
+                    dataKey={info.label}
+                    dot={updatedDot}
+                    key={i}
+                    stroke={info.color}
+                    type="monotone"
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <Empty description="No Result Available" />
+        )}
       </Col>
       <Col span={10}>
         <Row gutter={[8, 8]}>

@@ -11,28 +11,20 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Button, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isUndefined } from 'lodash';
 import moment from 'moment';
-import React, { useEffect, useMemo, useState } from 'react';
-import { getListTestCaseResults } from '../../../axiosAPIs/testAPI';
-import { API_RES_MAX_SIZE } from '../../../constants/constants';
-import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
+import React, { useMemo, useState } from 'react';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
-import SVGIcons from '../../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
-const DataQualityTab: React.FC<DataQualityTabProps> = ({
-  testCases,
-  timeRange,
-}) => {
-  const [testResults, setTestResults] = useState<TestCaseResult[]>([]);
-  const [selectedCaseFqn, setSelectedCaseFqn] = useState<string>('');
+const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
+  const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
   const columns: ColumnsType<TestCase> = useMemo(() => {
     return [
       {
@@ -41,12 +33,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'testCaseResult',
         render: (result: TestCaseResult) => (
           <Space size={8}>
-            <SVGIcons
-              alt="result"
-              className="tw-w-4"
-              icon={getTestResultBadgeIcon(result.testCaseStatus)}
-            />
-            <span>{result.testCaseStatus}</span>
+            {result?.testCaseStatus && (
+              <SVGIcons
+                alt="result"
+                className="tw-w-4"
+                icon={getTestResultBadgeIcon(result.testCaseStatus)}
+              />
+            )}
+            <span>{result?.testCaseStatus || '--'}</span>
           </Space>
         ),
       },
@@ -55,7 +49,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'testCaseResult',
         key: 'lastRun',
         render: (result: TestCaseResult) =>
-          moment.unix(result.timestamp || 0).format('DD/MMM HH:mm'),
+          result?.timestamp
+            ? moment.unix(result.timestamp || 0).format('DD/MMM HH:mm')
+            : '--',
       },
       {
         title: 'Name',
@@ -71,52 +67,53 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: 'Actions',
         dataIndex: 'actions',
         key: 'actions',
-        render: () => <span>action</span>,
+        render: (_, record) => (
+          <Space>
+            <Tooltip placement="bottom" title="Delete">
+              <Button
+                icon={
+                  <SVGIcons
+                    alt="Delete"
+                    className="tw-w-4"
+                    icon={Icons.DELETE}
+                  />
+                }
+                type="text"
+                onClick={() => {
+                  setSelectedTestCase(record);
+                }}
+              />
+            </Tooltip>
+          </Space>
+        ),
       },
     ];
   }, []);
 
-  const fetchTestResults = async () => {
-    if (isEmpty(selectedCaseFqn)) return;
-
-    try {
-      const startTs = moment()
-        .subtract(PROFILER_FILTER_RANGE[timeRange].days, 'days')
-        .unix();
-      const { data } = await getListTestCaseResults(selectedCaseFqn, {
-        startTs,
-        limit: API_RES_MAX_SIZE,
-      });
-      setTestResults(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  useEffect(() => {
-    fetchTestResults();
-  }, [timeRange, selectedCaseFqn]);
-
   return (
-    <Table
-      columns={columns}
-      dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
-      expandable={{
-        onExpand(expanded, record) {
-          setTestResults([]);
-          setSelectedCaseFqn('');
-          if (expanded) {
-            setSelectedCaseFqn(record.fullyQualifiedName || '');
-          }
-        },
-        rowExpandable: () => true,
-        expandedRowRender: (recode) => (
-          <TestSummary data={recode} results={testResults} />
-        ),
-      }}
-      pagination={false}
-      size="small"
-    />
+    <>
+      <Table
+        columns={columns}
+        dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
+        expandable={{
+          rowExpandable: () => true,
+          expandedRowRender: (recode) => <TestSummary data={recode} />,
+        }}
+        pagination={false}
+        size="small"
+      />
+
+      <DeleteWidgetModal
+        entityId={selectedTestCase?.id || ''}
+        entityName={selectedTestCase?.name || ''}
+        entityType="testCase"
+        prepareType={false}
+        visible={!isUndefined(selectedTestCase)}
+        onCancel={() => {
+          setSelectedTestCase(undefined);
+        }}
+      />
+    </>
   );
 };
 
