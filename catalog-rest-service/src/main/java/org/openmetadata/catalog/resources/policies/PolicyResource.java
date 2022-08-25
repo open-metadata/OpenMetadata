@@ -48,7 +48,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.FunctionList;
@@ -73,6 +72,7 @@ import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 @Path("/v1/policies")
@@ -413,7 +413,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       operationId = "validateCondition",
       summary = "Validate a given condition",
       tags = "policies",
-      description = "Validate a given condition expressionused in authoring rules.",
+      description = "Validate a given condition expression used in authoring rules.",
       responses = {
         @ApiResponse(responseCode = "204", description = "No value is returned"),
         @ApiResponse(responseCode = "400", description = "Invalid expression")
@@ -444,7 +444,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
     String jsonDataFile = jsonDataFiles.get(0);
     try {
-      String json = IOUtil.toString(PolicyResource.class.getClassLoader().getResourceAsStream(jsonDataFile));
+      String json = CommonUtil.getResourceAsStream(PolicyResource.class.getClassLoader(), jsonDataFile);
       return JsonUtils.readObjects(json, ResourceDescriptor.class);
     } catch (Exception e) {
       LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);

@@ -17,6 +17,8 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -49,7 +51,6 @@ import org.openmetadata.catalog.services.connections.database.RedshiftConnection
 import org.openmetadata.catalog.services.connections.database.SnowflakeConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -125,7 +126,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     CreateDatabaseService update = createRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    fieldAdded(change, "description", "description1");
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     SnowflakeConnection snowflakeConnection = new SnowflakeConnection().withUsername("test").withPassword("test12");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
@@ -170,7 +171,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     CreateDatabaseService update = createRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    fieldAdded(change, "description", "description1");
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     MysqlConnection mysqlConnection = new MysqlConnection().withHostPort("localhost:3300").withUsername("test");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(mysqlConnection);
@@ -196,13 +197,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // Update database connection to a new connection
     CreateDatabaseService update = createRequest(test).withConnection(databaseConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("connection")
-                .withOldValue(oldDatabaseConnection)
-                .withNewValue(databaseConnection));
+    fieldUpdated(change, "connection", oldDatabaseConnection, databaseConnection);
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     oldDatabaseConnection = service.getConnection();
     oldDatabaseConnection.setConfig(
@@ -219,13 +214,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     databaseConnection.withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
     change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("connection")
-                .withOldValue(oldDatabaseConnection)
-                .withNewValue(databaseConnection));
+    fieldUpdated(change, "connection", oldDatabaseConnection, databaseConnection);
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Add ingestion pipeline to the database service
