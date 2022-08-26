@@ -11,17 +11,11 @@
  *  limitations under the License.
  */
 
-import { Empty } from 'antd';
+import { Col, Empty, Row } from 'antd';
 import classNames from 'classnames';
-import { isEqual, isNil, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, {
-  Fragment,
-  RefObject,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
@@ -709,26 +703,24 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
               )}
               {activeTab === 4 && (
-                <div
-                  className="tw-p-2 tw-grid tw-grid-cols-3 entity-feed-list"
-                  id="tablequeries">
-                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
-                    <Fragment>
-                      <div />
+                <Row className="tw-p-2" id="tablequeries">
+                  {!isEmpty(tableQueries) || isQueriesLoading ? (
+                    <Col offset={3} span={18}>
                       <TableQueries
                         isLoading={isQueriesLoading}
                         queries={tableQueries}
                       />
-                      <div />
-                    </Fragment>
+                    </Col>
                   ) : (
-                    <div
+                    <Col
                       className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
-                      data-testid="no-queries">
-                      <Empty description={<p>No queries data available</p>} />
-                    </div>
+                      span={24}>
+                      <div data-testid="no-queries">
+                        <Empty description={<p>No queries data available</p>} />
+                      </div>
+                    </Col>
                   )}
-                </div>
+                </Row>
               )}
               {activeTab === 5 && (
                 <TableProfilerV1
