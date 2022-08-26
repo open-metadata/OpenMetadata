@@ -64,7 +64,12 @@ const AddRolePage = () => {
 
   const fetchPolicies = async () => {
     try {
-      const data = await getPolicies('owner,location,roles,teams', '', '', 100);
+      const data = await getPolicies(
+        'owner,location,roles,teams',
+        undefined,
+        undefined,
+        100
+      );
 
       setPolicies(data.data || []);
     } catch (error) {
@@ -126,6 +131,7 @@ const AddRolePage = () => {
                   required: true,
                   max: 128,
                   min: 1,
+                  message: 'Invalid name',
                 },
               ]}>
               <Input
@@ -151,6 +157,7 @@ const AddRolePage = () => {
               rules={[
                 {
                   required: true,
+                  message: 'At least one policy is required!',
                 },
               ]}>
               <Select
