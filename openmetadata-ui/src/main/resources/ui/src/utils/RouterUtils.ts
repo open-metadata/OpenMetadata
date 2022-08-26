@@ -330,3 +330,11 @@ export const getTagPath = (fqn?: string) => {
 
   return path;
 };
+
+export const getAddDataQualityTableTestPath = (fqn: string) => {
+  let path = ROUTES.ADD_TABLE_TEST_CASE;
+
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+
+  return path;
+};

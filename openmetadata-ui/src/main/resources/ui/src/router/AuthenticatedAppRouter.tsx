@@ -16,6 +16,7 @@ import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import { ROUTES } from '../constants/constants';
+import AddDataQualityTestPage from '../pages/AddDataQualityTestPage/AddDataQualityTestPage';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
@@ -277,6 +278,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
+      <Route
+        exact
+        component={AddDataQualityTestPage}
+        path={ROUTES.ADD_TABLE_TEST_CASE}
+      />
       <Route
         exact
         component={ProfilerDashboardPage}
