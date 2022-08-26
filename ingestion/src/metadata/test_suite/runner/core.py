@@ -38,5 +38,7 @@ class DataTestsRunner:
         )
 
         if test_result:
-            return TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
+            return TestCaseResultResponse(
+                testCaseResult=test_result, testCase=test_case
+            )
         return None
