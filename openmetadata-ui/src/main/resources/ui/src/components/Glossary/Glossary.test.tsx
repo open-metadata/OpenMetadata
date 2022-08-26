@@ -49,7 +49,12 @@ jest.mock('../../components/GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
 
+jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => {
+  return jest.fn().mockReturnValue(<>TitleBreadcrumb</>);
+});
+
 jest.mock('antd', () => ({
+  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),

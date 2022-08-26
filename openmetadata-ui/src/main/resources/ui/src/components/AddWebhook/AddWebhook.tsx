@@ -19,8 +19,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { cloneDeep, isEqual, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
-import { TERM_ALL } from '../../constants/constants';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, TERM_ALL } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
