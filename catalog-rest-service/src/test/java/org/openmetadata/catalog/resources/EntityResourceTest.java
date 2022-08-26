@@ -40,6 +40,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permiss
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
@@ -855,9 +858,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Update the entity as USER_OWNER1
     request = createRequest(getEntityName(test), "newDescription", null, USER1_REF);
-    FieldChange fieldChange = new FieldChange().withName("description").withOldValue("").withNewValue("newDescription");
-    ChangeDescription change =
-        getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    fieldUpdated(change, "description", "", "newDescription");
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
   }
 
@@ -871,17 +873,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM11_REF);
     request = createRequest(getEntityName(test), "description", "displayName", TEAM11_REF);
-    ChangeDescription change =
-        getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
-    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM11_REF).withNewValue(USER1_REF);
-    change = getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
+    change = getChangeDescription(entity.getVersion());
+    fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
@@ -911,17 +912,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Set TEAM_OWNER1 as owner using PATCH request
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwner(TEAM11_REF);
-    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM11_REF);
-    ChangeDescription change =
-        getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PATCH request
     json = JsonUtils.pojoToJson(entity);
     entity.setOwner(USER1_REF);
-    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM11_REF).withNewValue(USER1_REF);
-    change = getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
+    change = getChangeDescription(entity.getVersion());
+    fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
@@ -929,15 +929,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Set the owner to the existing owner. No ownership change must be recorded.
     json = JsonUtils.pojoToJson(entity);
     entity.setOwner(USER1_REF);
-    change = getChangeDescription(entity.getVersion());
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
 
     // Remove ownership (from USER_OWNER1) using PATCH request. Owner is expected to remain the same and not removed.
     json = JsonUtils.pojoToJson(entity);
     entity.setOwner(null);
-    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF);
-    change = getChangeDescription(entity.getVersion()).withFieldsDeleted(Collections.singletonList(fieldChange));
+    change = getChangeDescription(entity.getVersion());
+    fieldDeleted(change, FIELD_OWNER, USER1_REF);
     patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), false);
   }
@@ -972,9 +971,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Update null description with a new description
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
-    FieldChange fieldChange = new FieldChange().withName("description").withNewValue("updatedDescription");
-    ChangeDescription change =
-        getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    fieldAdded(change, "description", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -987,9 +985,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Update empty description with a new description
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("description").withOldValue("").withNewValue("updatedDescription"));
+    fieldUpdated(change, "description", "", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -1003,23 +999,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     ChangeDescription change = getChangeDescription(entity.getVersion());
     request = createRequest(getEntityName(test), "description", "displayName", null);
     if (supportsEmptyDescription) {
-      change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
+      fieldAdded(change, "description", "description");
     }
-    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
+    fieldAdded(change, "displayName", "displayName");
     entity = updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is allowed for users other than bots
     request = createRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
     change = getChangeDescription(entity.getVersion());
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("description").withOldValue("description").withNewValue("updatedDescription"));
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("updatedDisplayName"));
-    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
+    fieldUpdated(change, "description", "description", "updatedDescription");
+    fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
+    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Updating non-empty description and non-empty displayName is not allowed for bot users
+    // Updating non-empty description and non-empty displayName is ignored for bot users
     request = createRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
     updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
   }
@@ -1119,7 +1111,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Set the owner for the entity
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER1_REF));
+    fieldAdded(change, FIELD_OWNER, USER1_REF);
     entity.setOwner(USER1_REF);
     entity =
         patchEntityAndCheck(
@@ -1145,7 +1137,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     entity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
-    String oldDisplayName = entity.getDisplayName();
 
     //
     // Add displayName, description, owner, and tags when previously they were null
@@ -1158,12 +1149,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Field changes
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("description").withOldValue("").withNewValue("description"));
+    fieldUpdated(change, "description", "", "description");
     if (supportsOwner) {
       entity.setOwner(TEAM11_REF);
-      change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM11_REF));
+      fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     }
     if (supportsTags) {
       entity.setTags(new ArrayList<>());
@@ -1171,16 +1160,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
       entity.getTags().add(GLOSSARY2_TERM1_LABEL);
       entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
-      change
-          .getFieldsAdded()
-          .add(
-              new FieldChange()
-                  .withName(FIELD_TAGS)
-                  .withNewValue(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)));
+      fieldAdded(change, FIELD_TAGS, List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
     }
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("displayName").withOldValue(oldDisplayName).withNewValue("displayName"));
+    fieldAdded(change, "displayName", "displayName");
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1195,22 +1177,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Field changes
     change = getChangeDescription(entity.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("description").withOldValue("description").withNewValue("description1"));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("displayName1"));
+    fieldUpdated(change, "description", "description", "description1");
+    fieldUpdated(change, "displayName", "displayName", "displayName1");
     if (supportsOwner) {
       entity.setOwner(USER1_REF);
-      change
-          .getFieldsUpdated()
-          .add(new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM11_REF).withNewValue(USER1_REF));
+      fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
     }
 
     if (supportsTags) {
       entity.getTags().add(TIER1_TAG_LABEL);
-      change.getFieldsAdded().add(new FieldChange().withName(FIELD_TAGS).withNewValue(List.of(TIER1_TAG_LABEL)));
+      fieldAdded(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
     }
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1227,12 +1203,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Field changes
     change = getChangeDescription(entity.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
+    fieldDeleted(change, "description", "description1");
     if (supportsOwner) {
-      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF));
+      fieldDeleted(change, FIELD_OWNER, USER1_REF);
     }
     if (supportsTags) {
-      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_TAGS).withOldValue(removedTags));
+      fieldDeleted(change, FIELD_TAGS, removedTags);
     }
 
     patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1278,7 +1254,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     String json = JsonUtils.pojoToJson(entityType);
     ChangeDescription change = getChangeDescription(entityType.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("customProperties").withNewValue(Arrays.asList(fieldB)));
+    fieldAdded(change, "customProperties", Arrays.asList(fieldB));
     entityType.getCustomProperties().add(fieldB);
     entityType = typeResourceTest.patchEntityAndCheck(entityType, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1402,7 +1378,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       // Send PUT request (with no changes) to restore the entity from soft deleted state
       ChangeDescription change = getChangeDescription(version);
-      change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withNewValue(false).withOldValue(true));
+      fieldUpdated(change, FIELD_DELETED, true, false);
       updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     } else {
       assertEntityDeleted(entity, true);
@@ -1585,7 +1561,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       T getEntity = getEntity(id, queryParams, allFields, authHeaders);
       assertEquals(expectedVersion, getEntity.getVersion());
       ChangeDescription change = getChangeDescription(entity.getVersion());
-      change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withOldValue(false).withNewValue(true));
+      fieldUpdated(change, FIELD_DELETED, false, true);
       assertEquals(change, getEntity.getChangeDescription());
     } else { // Hard delete
       validateDeletedEvent(id, timestamp, EventType.ENTITY_DELETED, entity.getVersion(), authHeaders);
@@ -1737,9 +1713,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     String originalDescription = entity.getDescription();
     String newDescription = format("Description added by %s", userName);
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("description").withOldValue(originalDescription).withNewValue(newDescription));
+    fieldUpdated(change, "description", originalDescription, newDescription);
 
     entity.setDescription(newDescription);
 
