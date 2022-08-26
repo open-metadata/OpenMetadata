@@ -714,9 +714,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   ) : (
                     <Col
                       className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
-                      data-testid="no-queries"
                       span={24}>
-                      <Empty description={<p>No queries data available</p>} />
+                      <div data-testid="no-queries">
+                        <Empty description={<p>No queries data available</p>} />
+                      </div>
                     </Col>
                   )}
                 </Row>
