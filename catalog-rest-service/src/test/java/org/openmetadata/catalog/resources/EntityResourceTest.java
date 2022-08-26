@@ -41,6 +41,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnl
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -104,13 +105,6 @@ import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
-import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.entity.services.MlModelService;
-import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -185,6 +179,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static User USER2;
   public static EntityReference USER2_REF;
   public static User USER_TEAM21;
+  public static User BOT_USER;
 
   public static Team ORG_TEAM;
   public static Team TEAM1;
@@ -352,6 +347,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final K createRequest(String name, String description, String displayName, EntityReference owner) {
+    if (!supportsEmptyDescription && description == null) {
+      throw new IllegalArgumentException("Entity " + entityType + " does not support empty description");
+    }
     return createRequest(name)
         .withDescription(description)
         .withDisplayName(displayName)
@@ -383,17 +381,22 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public abstract void validateCreatedEntity(T createdEntity, K request, Map<String, String> authHeaders)
       throws HttpResponseException;
 
-  // Entity specific validate for entity create using PUT
-  public void validateUpdatedEntity(T updatedEntity, K request, Map<String, String> authHeaders)
+  // Entity specific validate for entity created using PUT
+  public void validateUpdatedEntity(T updatedEntity, K request, Map<String, String> authHeaders, UpdateType updateType)
       throws HttpResponseException {
-    validateCommonEntityFields(updatedEntity, request, authHeaders);
+    if (updateType == NO_CHANGE) {
+      // Check updated entity only when a change is made
+      assertListNotNull(updatedEntity.getId(), updatedEntity.getHref(), updatedEntity.getFullyQualifiedName());
+      return;
+    }
+    validateCommonEntityFields(updatedEntity, request, getPrincipalName(authHeaders));
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   protected void validateDeletedEntity(
       K create, T entityBeforeDeletion, T entityAfterDeletion, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(entityAfterDeletion, create, authHeaders);
+    validateCommonEntityFields(entityAfterDeletion, create, getPrincipalName(authHeaders));
     validateCreatedEntity(entityAfterDeletion, create, authHeaders);
   }
 
@@ -993,31 +996,32 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with non-empty description
-    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    K request = createRequest(getEntityName(test), supportsEmptyDescription ? null : "description", null, null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    // Update non-empty description with a new description
-    Double oldVersion = entity.getVersion();
-    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
-    entity = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
-    // For service resources, we allow update of non-empty description via PUT
-    List<Class<?>> services =
-        Arrays.asList(
-            DatabaseService.class,
-            PipelineService.class,
-            StorageService.class,
-            DashboardService.class,
-            MessagingService.class,
-            IngestionPipeline.class,
-            MlModelService.class,
-            Type.class);
-    if (services.contains(entity.getClass())) {
-      assertNotEquals(oldVersion, entity.getVersion()); // Version did change
-      assertEquals("updatedDescription", entity.getDescription()); // Description did change
-    } else {
-      assertEquals(oldVersion, entity.getVersion()); // Version did not change
-      assertEquals("description", entity.getDescription()); // Description did not change
+    // BOT user can update empty description and empty displayName
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    request = createRequest(getEntityName(test), "description", "displayName", null);
+    if (supportsEmptyDescription) {
+      change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
     }
+    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
+    entity = updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Updating non-empty description and non-empty displayName is allowed for users other than bots
+    request = createRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
+    change = getChangeDescription(entity.getVersion());
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("description").withOldValue("description").withNewValue("updatedDescription"));
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("updatedDisplayName"));
+    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
+
+    // Updating non-empty description and non-empty displayName is not allowed for bot users
+    request = createRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
+    updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -1322,10 +1326,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
 
-    // PUT and remove field intA from the the entity extension
-    // TODO to do change description for stored customProperties
+    // PUT and remove field intA from the entity extension - for BOT this should be ignored
+    JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
     create = createRequest(test).withExtension(jsonNode);
+    entity = updateEntity(create, Status.OK, BOT_AUTH_HEADERS);
+    assertNotEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
+
+    // PUT and remove field intA from the the entity extension
+    // TODO to do change description for stored customProperties
     entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
@@ -1596,31 +1606,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
-  public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
-    return createAndCheckEntity(create, authHeaders, create);
-  }
-
   /** Helper function to create an entity, submit POST API request and validate response. */
-  public final T createAndCheckEntity(K create, Map<String, String> authHeaders, K created) throws IOException {
+  public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
     T entity = createEntity(create, authHeaders);
 
     assertEquals(updatedBy, entity.getUpdatedBy());
     assertEquals(0.1, entity.getVersion()); // First version of the entity
-    validateCommonEntityFields(entity, created, authHeaders);
-    validateCreatedEntity(entity, created, authHeaders);
+    validateCommonEntityFields(entity, create, updatedBy);
+    validateCreatedEntity(entity, create, authHeaders);
 
     // GET the entity created and ensure it has all the information set in create request
     T getEntity = getEntity(entity.getId(), authHeaders);
     assertEquals(0.1, entity.getVersion()); // First version of the entity
-    validateCommonEntityFields(entity, created, authHeaders);
-    validateCreatedEntity(getEntity, created, authHeaders);
+    validateCommonEntityFields(entity, create, updatedBy);
+    validateCreatedEntity(getEntity, create, authHeaders);
 
     getEntity = getEntityByName(entity.getFullyQualifiedName(), allFields, authHeaders);
     assertEquals(0.1, entity.getVersion()); // First version of the entity
-    validateCommonEntityFields(entity, created, authHeaders);
-    validateCreatedEntity(getEntity, created, authHeaders);
+    validateCommonEntityFields(entity, create, updatedBy);
+    validateCreatedEntity(getEntity, create, authHeaders);
 
     // Validate that change event was created
     validateChangeEvents(entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
@@ -1635,14 +1641,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       ChangeDescription changeDescription)
       throws IOException {
     T updated = updateEntity(request, status, authHeaders);
-    validateUpdatedEntity(updated, request, authHeaders);
+    validateUpdatedEntity(updated, request, authHeaders, updateType);
     validateChangeDescription(updated, updateType, changeDescription);
     validateEntityHistory(updated.getId(), updateType, changeDescription, authHeaders);
     validateLatestVersion(updated, updateType, changeDescription, authHeaders);
 
     // GET the newly updated entity and validate
     T getEntity = getEntity(updated.getId(), authHeaders);
-    validateUpdatedEntity(getEntity, request, authHeaders);
+    validateUpdatedEntity(getEntity, request, authHeaders, updateType);
     validateChangeDescription(getEntity, updateType, changeDescription);
 
     // Check if the entity change events are record
@@ -1699,10 +1705,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       ChangeDescription expectedChange)
       throws IOException {
 
+    String updatedBy = updateType == NO_CHANGE ? updated.getUpdatedBy() : getPrincipalName(authHeaders);
+
     // Validate information returned in patch response has the updates
     T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders);
 
-    validateCommonEntityFields(updated, returned, authHeaders);
+    validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, returned, authHeaders);
     validateChangeDescription(returned, updateType, expectedChange);
     validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
@@ -1710,7 +1718,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // GET the entity and Validate information returned
     T getEntity = getEntity(returned.getId(), authHeaders);
-    validateCommonEntityFields(updated, returned, authHeaders);
+    validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, getEntity, authHeaders);
     validateChangeDescription(getEntity, updateType, expectedChange);
 
@@ -1748,24 +1756,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         entity, originalJson, authHeaders(userName + "@open-metadata.org"), MINOR_UPDATE, change);
   }
 
-  protected final void validateCommonEntityFields(T entity, CreateEntity create, Map<String, String> authHeaders) {
+  protected final void validateCommonEntityFields(T entity, CreateEntity create, String updatedBy) {
     assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
     assertEquals(create.getName(), entity.getName());
     assertEquals(create.getDisplayName(), entity.getDisplayName());
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     assertReference(create.getOwner(), entity.getOwner());
-    assertEquals(getPrincipalName(authHeaders), entity.getUpdatedBy());
+    assertEquals(updatedBy, entity.getUpdatedBy());
   }
 
-  protected final void validateCommonEntityFields(T expected, T actual, Map<String, String> authHeaders) {
+  protected final void validateCommonEntityFields(T expected, T actual, String updatedBy) {
     assertListNotNull(actual.getId(), actual.getHref(), actual.getFullyQualifiedName());
     assertEquals(expected.getName(), actual.getName());
     assertEquals(expected.getDisplayName(), actual.getDisplayName());
     assertEquals(expected.getDescription(), actual.getDescription());
     assertEquals(JsonUtils.valueToTree(expected.getExtension()), JsonUtils.valueToTree(actual.getExtension()));
     assertReference(expected.getOwner(), actual.getOwner());
-    assertEquals(getPrincipalName(authHeaders), actual.getUpdatedBy());
+    assertEquals(updatedBy, actual.getUpdatedBy());
   }
 
   protected final void validateChangeDescription(T updated, UpdateType updateType, ChangeDescription expectedChange)
@@ -1773,9 +1781,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (updateType == UpdateType.CREATED) {
       return; // PUT operation was used to create an entity. No change description expected.
     }
-    TestUtils.validateUpdate(expectedChange.getPreviousVersion(), updated.getVersion(), updateType);
 
     if (updateType != UpdateType.NO_CHANGE) {
+      TestUtils.validateUpdate(expectedChange.getPreviousVersion(), updated.getVersion(), updateType);
       assertChangeDescription(expectedChange, updated.getChangeDescription());
     }
   }
@@ -1866,7 +1874,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertEquals(0.1, changeEvent.getPreviousVersion());
       assertNull(changeEvent.getChangeDescription());
       T changeEventEntity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
-      validateCommonEntityFields(entity, changeEventEntity, authHeaders);
+      validateCommonEntityFields(entity, changeEventEntity, getPrincipalName(authHeaders));
       compareChangeEventsEntities(entity, changeEventEntity, authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());

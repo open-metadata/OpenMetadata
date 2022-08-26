@@ -21,6 +21,8 @@ Note that the user should have access to the `INFORMATION_SCHEMA` table.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
+<DatabaseIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="MySQL" hasProfiler="true" hasDBT="true" />

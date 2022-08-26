@@ -13,7 +13,7 @@
 CountInSet Metric definition
 """
 # pylint: disable=duplicate-code
-
+import traceback
 from typing import List
 
 from sqlalchemy import case, column, func
@@ -57,6 +57,7 @@ class CountInSet(StaticMetric):
             set_values = set(self.values)
             return SumFn(case([(column(self.col.name).in_(set_values), 1)], else_=0))
 
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(f"Error trying to run countInSet for {self.col.name} - {err}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None

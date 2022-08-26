@@ -31,6 +31,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmi
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.BOT_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -122,6 +123,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
+
+    create = createRequest(BOT_USER_NAME).withIsBot(true);
+    BOT_USER = createEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -246,7 +250,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     CreateUser create = createRequest(test).withRoles(roles);
     List<UUID> createdRoles = Arrays.asList(role1.getId(), role2.getId());
     CreateUser created = createRequest(test).withRoles(createdRoles);
-    User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS, created);
+    User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure User has relationship to these roles
     String[] expectedRoles = createdRoles.stream().map(UUID::toString).sorted().toArray(String[]::new);

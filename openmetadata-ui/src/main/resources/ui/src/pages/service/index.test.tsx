@@ -213,6 +213,11 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  () => jest.fn().mockReturnValue(<p>EntitySummaryDetails</p>)
+);
+
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
   return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
 });

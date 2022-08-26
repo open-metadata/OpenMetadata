@@ -13,6 +13,8 @@ slug: /openmetadata/connectors/pipeline/airbyte
 
 - **Host and Port**: Pipeline Service Management UI URL
 
+<PipelineIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Airbyte" />

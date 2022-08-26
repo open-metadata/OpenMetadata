@@ -119,12 +119,9 @@ public class SubjectCache {
   }
 
   public List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
-    System.out.println("Getting roles for teams " + teams);
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
-      System.out.println("roles for team " + teamRef.getName());
       Team team = getTeam(teamRef.getId());
-      System.out.println("roles for team adding " + team.getDefaultRoles());
       roles.addAll(team.getDefaultRoles());
       roles.addAll(getRolesForTeams(team.getParents()));
     }

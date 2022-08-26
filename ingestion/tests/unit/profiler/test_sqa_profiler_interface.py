@@ -38,7 +38,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     MetricTypes,
@@ -59,7 +59,7 @@ class User(declarative_base()):
     age = Column(Integer)
 
 
-class SQAProfilerInterfaceTest(TestCase):
+class SQAInterfaceTest(TestCase):
     def setUp(self) -> None:
         table_entity = Table(
             id=uuid4(),
@@ -74,7 +74,7 @@ class SQAProfilerInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        self.sqa_profiler_interface = SQAProfilerInterface(
+        self.sqa_profiler_interface = SQAInterface(
             sqlite_conn, table=User, table_entity=table_entity
         )
         self.table = User
@@ -96,7 +96,7 @@ class SQAProfilerInterfaceTest(TestCase):
         self.sqa_profiler_interface._sampler = None
 
 
-class SQAProfilerInterfaceTestMultiThread(TestCase):
+class SQAInterfaceTestMultiThread(TestCase):
 
     table_entity = Table(
         id=uuid4(),
@@ -113,7 +113,7 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(
+    sqa_profiler_interface = SQAInterface(
         sqlite_conn, table=User, table_entity=table_entity
     )
 

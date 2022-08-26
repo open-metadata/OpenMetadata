@@ -15,6 +15,8 @@ slug: /openmetadata/connectors/dashboard/redash
 - **Username**: Specify the User to connect to Redash. It should have enough privileges to read all the metadata.
 - **API Key**: API key of the redash instance to access.
 
+<DashboardIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Redash" />

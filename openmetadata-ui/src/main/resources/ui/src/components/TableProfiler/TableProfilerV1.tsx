@@ -12,27 +12,43 @@
  */
 
 import { Button, Col, Row } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getListTestCase } from '../../axiosAPIs/testAPI';
+import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
+import { ProfilerDashboardType } from '../../enums/table.enum';
+import { TestCase } from '../../generated/tests/testCase';
 import {
   formatNumberWithComma,
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
+import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
+import { getProfilerDashboardWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { generateEntityLink } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import {
   OverallTableSummeryType,
   TableProfilerProps,
+  TableTestsType,
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
   const { profile, columns } = table;
   const [settingModalVisible, setSettingModalVisible] = useState(false);
+  const [columnTests, setColumnTests] = useState<TestCase[]>([]);
+  const [tableTests, setTableTests] = useState<TableTestsType>({
+    tests: [],
+    results: INITIAL_TEST_RESULT_SUMMARY,
+  });
 
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
@@ -53,21 +69,59 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
       },
       {
         title: 'Success',
-        value: formTwoDigitNmber(0),
+        value: formTwoDigitNmber(tableTests.results.success),
         className: 'success',
       },
       {
         title: 'Aborted',
-        value: formTwoDigitNmber(0),
+        value: formTwoDigitNmber(tableTests.results.aborted),
         className: 'aborted',
       },
       {
         title: 'Failed',
-        value: formTwoDigitNmber(0),
+        value: formTwoDigitNmber(tableTests.results.failed),
         className: 'failed',
       },
     ];
-  }, [profile]);
+  }, [profile, tableTests]);
+
+  const fetchAllTests = async () => {
+    try {
+      const { data } = await getListTestCase({
+        fields: 'testCaseResult',
+        entityLink: generateEntityLink(table.fullyQualifiedName || ''),
+        includeAllTests: true,
+        limit: API_RES_MAX_SIZE,
+      });
+      const columnTestsCase: TestCase[] = [];
+      const tableTests: TableTestsType = {
+        tests: [],
+        results: { ...INITIAL_TEST_RESULT_SUMMARY },
+      };
+      data.forEach((test) => {
+        if (test.entityFQN === table.fullyQualifiedName) {
+          tableTests.tests.push(test);
+
+          updateTestResults(
+            tableTests.results,
+            test.testCaseResult?.testCaseStatus || ''
+          );
+
+          return;
+        }
+        columnTestsCase.push(test);
+      });
+      setTableTests(tableTests);
+      setColumnTests(columnTestsCase);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    if (isEmpty(table)) return;
+    fetchAllTests();
+  }, [table]);
 
   if (isUndefined(profile)) {
     return (
@@ -134,9 +188,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
             </p>
           </Col>
         ))}
+        <Col className="tw-flex tw-justify-end" span={24}>
+          <Link
+            to={getProfilerDashboardWithFqnPath(
+              ProfilerDashboardType.TABLE,
+              table.fullyQualifiedName || ''
+            )}>
+            View more detail
+          </Link>
+        </Col>
       </Row>
 
       <ColumnProfileTable
+        columnTests={columnTests}
         columns={columns.map((col) => ({
           ...col,
           key: col.name,

@@ -109,6 +109,7 @@ import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconCopy from '../assets/svg/icon-copy.svg';
 import IconDown from '../assets/svg/icon-down.svg';
+import IconInfoSecondary from '../assets/svg/icon-info.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
@@ -330,6 +331,7 @@ export const Icons = {
   FOREGIN_KEY: 'foreign-key',
   ROLE_GREY: 'role-grey',
   POLICIES: 'policies',
+  INFO_SECONDARY: 'info-secondary',
   ICON_REMOVE: 'icon-remove',
 };
 
@@ -968,6 +970,11 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ICON_REMOVE:
       IconComponent = IconRemove;
+
+      break;
+
+    case Icons.INFO_SECONDARY:
+      IconComponent = IconInfoSecondary;
 
       break;
 

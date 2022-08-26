@@ -26,3 +26,8 @@ export enum PrimaryTableDataTypes {
   NUMERIC = 'numeric',
   BOOLEAN = 'boolean',
 }
+
+export enum ProfilerDashboardType {
+  TABLE = 'table',
+  COLUMN = 'column',
+}

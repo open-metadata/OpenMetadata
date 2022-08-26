@@ -93,6 +93,7 @@ export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
+export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -220,7 +221,7 @@ export const ROUTES = {
   MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
-  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,

@@ -56,6 +56,12 @@ def get_entity_type(
     if "service" in class_name:
         # Capitalize service, e.g., pipelineService
         return class_name.replace("service", "Service")
+    if "testdefinition" in class_name:
+        return class_name.replace("testdefinition", "testDefinition")
+    if "testsuite" in class_name:
+        return class_name.replace("testsuite", "testSuite")
+    if "databaseschema" in class_name:
+        return class_name.replace("databaseschema", "databaseSchema")
 
     return class_name
 
