@@ -36,6 +36,7 @@ import {
   patchPolicy,
   patchRole,
 } from '../../../axiosAPIs/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -221,9 +222,39 @@ const PoliciesDetailPage = () => {
     }
   };
 
+  const handleTeamsUpdate = async (data: EntityReference) => {
+    try {
+      const team = await getTeamByName(
+        data.fullyQualifiedName || '',
+        'policies'
+      );
+      const updatedAttributeData = (team.policies ?? []).filter(
+        (attrData) => attrData.id !== policy.id
+      );
+
+      const patch = compare(team, {
+        ...team,
+        policies: updatedAttributeData,
+      });
+
+      const response = await patchTeamDetail(team.id, patch);
+
+      if (response) {
+        const updatedTeams = (policy.teams ?? []).filter(
+          (team) => team.id !== data.id
+        );
+        setPolicy((prev) => ({ ...prev, teams: updatedTeams }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const handleDelete = async (data: EntityReference, attribute: Attribute) => {
     if (attribute === 'roles') {
       handleRolesUpdate(data);
+    } else if (attribute === 'teams') {
+      handleTeamsUpdate(data);
     } else {
       const attributeData =
         (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
