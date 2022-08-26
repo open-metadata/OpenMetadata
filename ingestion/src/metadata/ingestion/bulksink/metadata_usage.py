@@ -117,7 +117,7 @@ class MetadataUsageBulkSink(BulkSink):
                 )
                 logger.info(
                     "Successfully table usage published for {}".format(
-                        value_dict["table_entity"].name.__root__
+                        value_dict["table_entity"].fullyQualifiedName.__root__
                     )
                 )
                 self.status.records_written(
