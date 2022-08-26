@@ -1,0 +1,36 @@
+[
+  {
+    "config_type": "activityFeedFilterSetting",
+    "config_value": [
+      {
+        "entityType": "all",
+        "filters": [
+          {
+            "eventType": "entityCreated",
+            "fields": [
+              "all"
+            ]
+          },
+          {
+            "eventType": "entityUpdated",
+            "fields": [
+              "all"
+            ]
+          },
+          {
+            "eventType": "entityDeleted",
+            "fields": [
+              "all"
+            ]
+          },
+          {
+            "eventType": "entitySoftDeleted",
+            "fields": [
+              "all"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

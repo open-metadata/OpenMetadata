@@ -12,7 +12,7 @@
  */
 
 import { Column, Table } from '../../generated/entity/data/table';
-import { TestCaseStatus } from '../../generated/tests/tableTest';
+import { TestCase } from '../../generated/tests/testCase';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 
 export interface TableProfilerProps {
@@ -24,8 +24,20 @@ export interface TableProfilerProps {
   table: Table;
 }
 
+export type TableTestsType = {
+  tests: TestCase[];
+  results: {
+    success: number;
+    aborted: number;
+    failed: number;
+  };
+};
+
+export type columnTestResultType = { [key: string]: TableTestsType['results'] };
+
 export interface ColumnProfileTableProps {
   columns: Column[];
+  columnTests: TestCase[];
   onAddTestClick: (
     tabValue: number,
     testMode?: DatasetTestModeType,
@@ -47,7 +59,7 @@ export interface ProfilerSettingsModalProps {
 
 export interface TestIndicatorProps {
   value: number | string;
-  type: TestCaseStatus;
+  type: string;
 }
 
 export type OverallTableSummeryType = {

@@ -44,11 +44,7 @@ public abstract class ServiceEntityRepository<
       SecretsManager secretsManager,
       Class<S> serviceConnectionClass,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", UPDATE_FIELDS);
-    this.allowEdits = true;
-    this.secretsManager = secretsManager;
-    this.serviceConnectionClass = serviceConnectionClass;
-    this.serviceType = serviceType;
+    this(collectionPath, service, dao, entityDAO, secretsManager, serviceConnectionClass, UPDATE_FIELDS, serviceType);
   }
 
   protected ServiceEntityRepository(
@@ -61,7 +57,6 @@ public abstract class ServiceEntityRepository<
       String updatedFields,
       ServiceType serviceType) {
     super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
-    this.allowEdits = true;
     this.secretsManager = secretsManager;
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;

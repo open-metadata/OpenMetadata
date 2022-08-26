@@ -12,7 +12,7 @@
  */
 
 import { startCase } from 'lodash';
-import { Status } from '../../generated/entity/events/webhook';
+import { EventFilter, Status } from '../../generated/entity/events/webhook';
 
 export const CREATE_EVENTS_DEFAULT_VALUE = {
   eventType: 'entityCreated',
@@ -27,6 +27,41 @@ export const UPDATE_EVENTS_DEFAULT_VALUE = {
 export const DELETE_EVENTS_DEFAULT_VALUE = {
   eventType: 'entityDeleted',
   entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
+};
+
+export const EVENT_FILTERS_DEFAULT_VALUE = {
+  entityType: 'all',
+  filters: [
+    {
+      eventType: 'entityCreated',
+      fields: ['all'],
+    },
+    {
+      eventType: 'entityUpdated',
+      fields: ['all'],
+    },
+    {
+      eventType: 'entityDeleted',
+      fields: ['all'],
+    },
+    {
+      eventType: 'entitySoftDeleted',
+      fields: ['all'],
+    },
+  ],
+} as EventFilter;
+
+export const EVENT_FILTER_FORM_INITIAL_VALUE = {
+  table: true,
+  'table-tree': ['all'],
+  topic: true,
+  'topic-tree': ['all'],
+  dashboard: true,
+  'dashboard-tree': ['all'],
+  pipeline: true,
+  'pipeline-tree': ['all'],
+  mlmodel: true,
+  'mlmodel-tree': ['all'],
 };
 
 export const statuses = [
@@ -51,3 +86,11 @@ export const statuses = [
     value: Status.RetryLimitReached,
   },
 ];
+
+export const Entities = {
+  table: 'Tables',
+  topic: 'Topics',
+  dashboard: 'Dashboards',
+  pipeline: 'Pipelines',
+  mlmodel: 'ML Models',
+} as Record<string, string>;

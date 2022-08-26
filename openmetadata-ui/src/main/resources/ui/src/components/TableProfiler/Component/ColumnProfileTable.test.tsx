@@ -101,6 +101,7 @@ jest.mock('../../../utils/DatasetDetailsUtils');
 const mockProps: ColumnProfileTableProps = {
   columns: MOCK_TABLE.columns,
   onAddTestClick: jest.fn,
+  columnTests: [],
 };
 
 describe('Test ColumnProfileTable component', () => {

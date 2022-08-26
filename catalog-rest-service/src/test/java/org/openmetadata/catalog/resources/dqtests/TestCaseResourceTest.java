@@ -4,6 +4,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -428,7 +429,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   @Override
   public void validateCreatedEntity(TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(createdEntity, request, authHeaders);
+    validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getEntityLink(), createdEntity.getEntityLink());
     assertEquals(request.getTestSuite(), createdEntity.getTestSuite());
     assertEquals(request.getTestDefinition(), createdEntity.getTestDefinition());
@@ -439,7 +440,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   @Override
   public void compareEntities(TestCase expected, TestCase updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(expected, updated, authHeaders);
+    validateCommonEntityFields(expected, updated, getPrincipalName(authHeaders));
     assertEquals(expected.getEntityLink(), updated.getEntityLink());
     assertEquals(expected.getTestSuite(), updated.getTestSuite());
     assertEquals(expected.getTestDefinition(), updated.getTestDefinition());
