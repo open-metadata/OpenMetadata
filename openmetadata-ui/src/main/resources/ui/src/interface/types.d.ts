@@ -196,9 +196,7 @@ declare module 'Models' {
   };
 
   export type SlackChatConfig = {
-    apiToken: string;
-    botName: string;
-    channels: string[];
+    slackUrl: string;
   };
 
   export type FormattedTableData = {
@@ -492,12 +490,15 @@ declare module 'Models' {
   export type ExtraInfo = {
     key?: string;
     value: string | number | React.ReactNode;
+    id?: string;
     isLink?: boolean;
     placeholderText?: string;
     openInNewTab?: boolean;
     showLabel?: boolean;
     avatarWidth?: string;
     profileName?: string;
+    isEntityCard?: boolean;
+    isEntityDetails?: boolean;
   };
 
   export interface FormErrorData {

@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
 import {
   EntityFieldThreadCount,
+  ExtraInfo,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -42,6 +43,7 @@ import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
@@ -628,9 +630,25 @@ export const getEntityName = (
     | Team
     | Policy
     | Role
+    | GlossaryTerm
 ) => {
   return entity?.displayName || entity?.name || '';
 };
+
+export const getEntityId = (
+  entity?:
+    | EntityReference
+    | ServicesType
+    | User
+    | Topic
+    | Database
+    | Dashboard
+    | Table
+    | Pipeline
+    | Team
+    | Policy
+    | Role
+) => entity?.id || '';
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
@@ -782,4 +800,26 @@ export const formTwoDigitNmber = (number: number) => {
     minimumIntegerDigits: 2,
     useGrouping: false,
   });
+};
+
+export const getTeamsUser = (
+  data?: ExtraInfo
+): Record<string, string | undefined> | undefined => {
+  if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
+    const currentUser = AppState.getCurrentUserDetails();
+    const teams = currentUser?.teams;
+
+    const dataFound = teams?.find((team) => {
+      return data.id === team.id;
+    });
+
+    if (dataFound) {
+      return {
+        ownerName: currentUser?.displayName as string,
+        id: currentUser?.id as string,
+      };
+    }
+  }
+
+  return;
 };

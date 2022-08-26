@@ -17,6 +17,7 @@ import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
 import io.dropwizard.jdbi3.JdbiFactory;
@@ -93,29 +94,12 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
-    final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
-    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
-
+    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
-
-    SqlLogger sqlLogger =
-        new SqlLogger() {
-          @Override
-          public void logAfterExecution(StatementContext context) {
-            LOG.debug(
-                "sql {}, parameters {}, timeTaken {} ms",
-                context.getRenderedSql(),
-                context.getBinding(),
-                context.getElapsedTime(ChronoUnit.MILLIS));
-          }
-        };
-    if (LOG.isDebugEnabled()) {
-      jdbi.setSqlLogger(sqlLogger);
-    }
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -170,6 +154,30 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
     intializeWebsockets(catalogConfig, environment);
+  }
+
+  private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
+    Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
+    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
+
+    SqlLogger sqlLogger =
+        new SqlLogger() {
+          @Override
+          public void logAfterExecution(StatementContext context) {
+            LOG.debug(
+                "sql {}, parameters {}, timeTaken {} ms",
+                context.getRenderedSql(),
+                context.getBinding(),
+                context.getElapsedTime(ChronoUnit.MILLIS));
+          }
+        };
+    if (LOG.isDebugEnabled()) {
+      jdbi.setSqlLogger(sqlLogger);
+    }
+    // Set the Database type for choosing correct queries from annotations
+    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+
+    return jdbi;
   }
 
   @SneakyThrows

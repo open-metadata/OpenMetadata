@@ -148,7 +148,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (listOrEmpty(rules).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_RULES_IN_POLICY);
     }
-    System.out.println("XXX rules count " + rules.size());
 
     // Validate all the expressions in the rule
     for (Rule rule : rules) {
