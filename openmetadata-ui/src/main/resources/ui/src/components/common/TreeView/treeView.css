@@ -52,6 +52,6 @@
 }
 
 .rc-tree-title {
-  overflow: auto;
+  overflow-x: hidden;
   text-overflow: ellipsis;
 }

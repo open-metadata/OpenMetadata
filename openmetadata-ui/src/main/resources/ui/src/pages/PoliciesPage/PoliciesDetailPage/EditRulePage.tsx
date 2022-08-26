@@ -130,7 +130,9 @@ const EditRulePage = () => {
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph className="tw-text-base">
+          <Typography.Paragraph
+            className="tw-text-base"
+            data-testid="edit-rule-title">
             Edit Rule {`"${ruleName}"`}
           </Typography.Paragraph>
           <Form
@@ -147,10 +149,14 @@ const EditRulePage = () => {
             onFinish={handleSubmit}>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
             <Space align="center" className="tw-w-full tw-justify-end">
-              <Button type="link" onClick={handleBack}>
+              <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
                 Cancel
               </Button>
-              <Button form="rule-form" htmlType="submit" type="primary">
+              <Button
+                data-testid="submit-btn"
+                form="rule-form"
+                htmlType="submit"
+                type="primary">
                 Submit
               </Button>
             </Space>

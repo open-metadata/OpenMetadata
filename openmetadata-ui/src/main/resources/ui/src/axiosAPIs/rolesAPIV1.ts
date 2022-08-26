@@ -53,7 +53,7 @@ export const getPolicies = async (
   fields: string,
   after?: string,
   before?: string,
-  limit = 100
+  limit = 10
 ) => {
   const params = {
     limit,

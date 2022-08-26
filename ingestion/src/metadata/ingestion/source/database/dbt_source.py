@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -77,6 +78,14 @@ class DBTMixin:
                     schema = mnode["schema"] if mnode["schema"] else "default"
                     raw_sql = mnode.get("raw_sql", "")
                     description = mnode.get("description")
+                    dbt_user_name = cnode["metadata"].get("owner")
+                    user_name = f"*{dbt_user_name}*"
+                    user_fqn = fqn.build(
+                        self.metadata, entity_type=User, user_name=user_name
+                    )
+                    owner = self.metadata.get_entity_reference(
+                        entity=User, fqn=user_fqn
+                    )
                     model = DataModel(
                         modelType=ModelType.DBT,
                         description=description if description else None,
@@ -85,6 +94,7 @@ class DBTMixin:
                         sql=mnode.get("compiled_sql", raw_sql),
                         columns=columns,
                         upstream=upstream_nodes,
+                        owner=owner,
                     )
                     model_fqn = fqn.build(
                         self.metadata,
