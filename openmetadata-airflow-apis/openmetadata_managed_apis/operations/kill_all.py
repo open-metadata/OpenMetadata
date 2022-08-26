@@ -17,7 +17,7 @@ from airflow import settings
 from airflow.models import DagModel, DagRun, TaskInstance
 from airflow.utils.state import DagRunState, TaskInstanceState
 from flask import Response
-from openmetadata_managed_apis.api.response import ApiResponse, ResponseFormat
+from openmetadata_managed_apis.api.response import ApiResponse
 
 
 def kill_all(dag_id: str) -> Response:
