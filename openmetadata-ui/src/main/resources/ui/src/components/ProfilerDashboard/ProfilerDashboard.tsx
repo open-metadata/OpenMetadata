@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Button, Col, Radio, Row, Select, Space } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
@@ -29,8 +28,13 @@ import {
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { Column, Table } from '../../generated/entity/data/table';
+import {
+  Column,
+  Table,
+  TestCaseStatus,
+} from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -44,6 +48,7 @@ import {
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
+  generateEntityLink,
   getTagsWithoutTier,
   getTierTags,
   getUsagePercentile,
@@ -51,6 +56,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import PageLayout from '../containers/PageLayout';
+import DataQualityTab from './component/DataQualityTab';
 import ProfilerTab from './component/ProfilerTab';
 import {
   ProfilerDashboardProps,
@@ -60,28 +66,60 @@ import './profilerDashboard.less';
 
 const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   table,
+  testCases,
   fetchProfilerData,
+  fetchTestCases,
   profilerData,
   onTableChange,
 }) => {
   const history = useHistory();
-  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const isColumnView = dashboardType === ProfilerDashboardType.COLUMN;
   const [follower, setFollower] = useState<EntityReference[]>([]);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
-    ProfilerDashboardTab.PROFILER
+    isColumnView
+      ? ProfilerDashboardTab.PROFILER
+      : ProfilerDashboardTab.DATA_QUALITY
   );
+  const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
+    useState<string>('');
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
   );
 
+  const tabOptions = useMemo(() => {
+    return Object.values(ProfilerDashboardTab).filter((value) => {
+      if (value === ProfilerDashboardTab.PROFILER) {
+        return isColumnView;
+      }
+
+      return value;
+    });
+  }, [dashboardType]);
+
   const timeRangeOption = useMemo(() => {
     return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
       label: value.title,
       value: key,
     }));
+  }, []);
+
+  const testCaseStatusOption = useMemo(() => {
+    const testCaseStatus: Record<string, string>[] = Object.values(
+      TestCaseStatus
+    ).map((value) => ({
+      label: value,
+      value: value,
+    }));
+    testCaseStatus.unshift({
+      label: 'All Test',
+      value: '',
+    });
+
+    return testCaseStatus;
   }, []);
 
   const tier = useMemo(() => getTierTags(table.tags ?? []), [table]);
@@ -251,7 +289,10 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     const value = e.target.value as ProfilerDashboardTab;
     if (ProfilerDashboardTab.SUMMARY === value) {
       history.push(getTableTabPath(table.fullyQualifiedName || '', 'profiler'));
+    } else if (ProfilerDashboardTab.DATA_QUALITY === value) {
+      fetchTestCases(generateEntityLink(entityTypeFQN, true));
     }
+    setSelectedTestCaseStatus('');
     setActiveTab(value);
   };
 
@@ -264,17 +305,35 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
     if (value !== selectedTimeRange) {
       setSelectedTimeRange(value);
-      fetchProfilerData(entityTypeFQN, PROFILER_FILTER_RANGE[value].days);
+      if (activeTab === ProfilerDashboardTab.PROFILER) {
+        fetchProfilerData(entityTypeFQN, PROFILER_FILTER_RANGE[value].days);
+      }
     }
+  };
+
+  const handleTestCaseStatusChange = (value: string) => {
+    if (value !== selectedTestCaseStatus) {
+      setSelectedTestCaseStatus(value);
+    }
+  };
+
+  const getFilterTestCase = () => {
+    return testCases.filter(
+      (data) =>
+        selectedTestCaseStatus === '' ||
+        data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
+    );
   };
 
   useEffect(() => {
     if (table) {
-      const columnName = getNameFromFQN(entityTypeFQN);
-      const selectedColumn = table.columns.find(
-        (col) => col.name === columnName
-      );
-      setActiveColumnDetails(selectedColumn || ({} as Column));
+      if (isColumnView) {
+        const columnName = getNameFromFQN(entityTypeFQN);
+        const selectedColumn = table.columns.find(
+          (col) => col.name === columnName
+        );
+        setActiveColumnDetails(selectedColumn || ({} as Column));
+      }
       setFollower(table?.followers || []);
       setIsFollowing(
         follower.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -315,18 +374,28 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Radio.Group
               buttonStyle="solid"
               optionType="button"
-              options={Object.values(ProfilerDashboardTab)}
+              options={tabOptions}
               value={activeTab}
               onChange={handleTabChange}
             />
 
             <Space size={16}>
-              <Select
-                className="tw-w-32"
-                options={timeRangeOption}
-                value={selectedTimeRange}
-                onChange={handleTimeRangeChange}
-              />
+              {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
+                <Select
+                  className="tw-w-32"
+                  options={testCaseStatusOption}
+                  value={selectedTestCaseStatus}
+                  onChange={handleTestCaseStatusChange}
+                />
+              )}
+              {activeTab === ProfilerDashboardTab.PROFILER && (
+                <Select
+                  className="tw-w-32"
+                  options={timeRangeOption}
+                  value={selectedTimeRange}
+                  onChange={handleTimeRangeChange}
+                />
+              )}
               <Button type="primary" onClick={handleAddTestClick}>
                 Add Test
               </Button>
@@ -344,7 +413,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         )}
 
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
-          <Col span={24}>Data Quality</Col>
+          <Col span={24}>
+            <DataQualityTab testCases={getFilterTestCase()} />
+          </Col>
         )}
       </Row>
     </PageLayout>

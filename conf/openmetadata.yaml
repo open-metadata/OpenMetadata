@@ -202,24 +202,6 @@ airflowConfiguration:
     openmetadata:
       jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
 
-slackEventPublishers:
-  - name: "slack events"
-    webhookUrl: ${SLACK_WEBHOOK_URL:-""}
-    openMetadataUrl: ${OPENMETADATA_SERVER_URL}
-    filters:
-      - eventType: "entityCreated"
-        entities:
-         - "*"
-      - eventType: "entityUpdated"
-        entities:
-         - "*"
-      - eventType: "entitySoftDeleted"
-        entities:
-         - "*"
-      - eventType: "entityDeleted"
-        entities:
-         - "*"
-
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
 fernetConfiguration:

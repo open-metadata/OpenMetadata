@@ -201,3 +201,71 @@ export const MOCK_TABLE = {
   ],
   deleted: false,
 } as unknown as Table;
+
+export const TEST_CASE = {
+  data: [
+    {
+      id: 'b9d059d8-b968-42ad-9f89-2b40b92a6659',
+      name: 'column_value_max_to_be_between',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.dim_address.shop_id.column_value_max_to_be_between',
+      description: 'test the value of a column is between x and z, new value',
+      testDefinition: {
+        id: '16b32e12-21c5-491c-919e-88748d9d5d67',
+        type: 'testDefinition',
+        name: 'columnValueMaxToBeBetween',
+        fullyQualifiedName: 'columnValueMaxToBeBetween',
+        description:
+          'This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.',
+        displayName: 'columnValueMaxToBeBetween',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/testDefinition/16b32e12-21c5-491c-919e-88748d9d5d67',
+      },
+      entityLink:
+        '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',
+      entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.shop_id',
+      parameterValues: [
+        {
+          name: 'minValueForMaxInCol',
+          value: '40',
+        },
+        {
+          name: 'maxValueForMaxInCol',
+          value: '100',
+        },
+      ],
+      testCaseResult: {
+        timestamp: 1661416859,
+        testCaseStatus: 'Success',
+        result: 'Found max=65 vs. the expected min=50, max=100.',
+        testResultValue: [
+          {
+            name: 'max',
+            value: '65',
+          },
+        ],
+      },
+      version: 0.3,
+      updatedAt: 1661425991294,
+      updatedBy: 'anonymous',
+      href: 'http://localhost:8585/api/v1/testCase/b9d059d8-b968-42ad-9f89-2b40b92a6659',
+      changeDescription: {
+        fieldsAdded: [],
+        fieldsUpdated: [
+          {
+            name: 'description',
+            oldValue: 'test the value of a column is between x and y',
+            newValue:
+              'test the value of a column is between x and z, new value',
+          },
+        ],
+        fieldsDeleted: [],
+        previousVersion: 0.2,
+      },
+      deleted: false,
+    },
+  ],
+  paging: {
+    total: 1,
+  },
+};

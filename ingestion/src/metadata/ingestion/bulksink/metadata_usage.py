@@ -117,11 +117,13 @@ class MetadataUsageBulkSink(BulkSink):
                 )
                 logger.info(
                     "Successfully table usage published for {}".format(
-                        value_dict["table_entity"].name.__root__
+                        value_dict["table_entity"].fullyQualifiedName.__root__
                     )
                 )
                 self.status.records_written(
-                    "Table: {}".format(value_dict["table_entity"].name.__root__)
+                    "Table: {}".format(
+                        value_dict["table_entity"].fullyQualifiedName.__root__
+                    )
                 )
             except ValidationError as err:
                 logger.error(
@@ -131,11 +133,13 @@ class MetadataUsageBulkSink(BulkSink):
                 self.status.failures.append(table_usage_request)
                 logger.error(
                     "Failed to update usage for {} {}".format(
-                        value_dict["table_entity"].name.__root__, err
+                        value_dict["table_entity"].fullyQualifiedName.__root__, err
                     )
                 )
                 self.status.failures.append(
-                    "Table: {}".format(value_dict["table_entity"].name.__root__)
+                    "Table: {}".format(
+                        value_dict["table_entity"].fullyQualifiedName.__root__
+                    )
                 )
 
     def iterate_files(self):

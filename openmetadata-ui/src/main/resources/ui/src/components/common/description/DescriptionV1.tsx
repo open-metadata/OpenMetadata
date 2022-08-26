@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
@@ -22,10 +23,10 @@ import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import Card from '../Card/Card';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+const { Text } = Typography;
 
 interface Props {
   entityName?: string;
@@ -45,7 +46,6 @@ interface Props {
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
 }
-
 const DescriptionV1 = ({
   owner,
   hasEditAccess,
@@ -76,7 +76,12 @@ const DescriptionV1 = ({
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-description"
           onClick={onDescriptionEdit}>
-          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
+          <SVGIcons
+            alt="edit"
+            icon={Icons.IC_EDIT_PRIMARY}
+            title="Edit"
+            width="16px"
+          />
         </button>
       </NonAdminAction>
     ) : (
@@ -85,27 +90,25 @@ const DescriptionV1 = ({
   };
 
   return (
-    <div className="schema-description tw-relative">
+    <Space className="schema-description tw-flex" direction="vertical">
+      <Space
+        style={{
+          display: 'flex',
+          width: '100%',
+          justifyContent: 'space-between',
+        }}>
+        <Text type="secondary">Description</Text>
+        <div>{editButton()}</div>
+      </Space>
       <div>
-        <Card
-          action={editButton()}
-          className="tw-relative"
-          heading="Description">
-          <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative"
-            data-testid="description"
-            id="center">
-            {description?.trim() ? (
-              <RichTextEditorPreviewer
-                enableSeeMoreVariant={!removeBlur}
-                markdown={description}
-              />
-            ) : (
-              <span className="tw-no-description tw-p-2">No description </span>
-            )}
-          </div>
-        </Card>
-
+        {description?.trim() ? (
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={!removeBlur}
+            markdown={description}
+          />
+        ) : (
+          <span className="">No description </span>
+        )}
         {isEdit && (
           <ModalWithMarkdownEditor
             header={`Edit description for ${entityName}`}
@@ -184,7 +187,7 @@ const DescriptionV1 = ({
           )}
         </div>
       ) : null}
-    </div>
+    </Space>
   );
 };
 
