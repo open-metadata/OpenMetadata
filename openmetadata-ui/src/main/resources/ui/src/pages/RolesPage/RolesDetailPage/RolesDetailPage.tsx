@@ -20,6 +20,8 @@ import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
+import { getUserByName, updateUserDetail } from '../../../axiosAPIs/userAPI';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -184,22 +186,81 @@ const RolesDetailPage = () => {
     }
   };
 
-  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
-    const attributeData =
-      (role[attribute as keyof Role] as EntityReference[]) ?? [];
-    const updatedAttributeData = attributeData.filter(
-      (attrData) => attrData.id !== data.id
-    );
-
-    const patch = compare(role, {
-      ...role,
-      [attribute as keyof Role]: updatedAttributeData,
-    });
+  const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const data = await patchRole(patch, role.id);
-      setRole(data);
+      const team = await getTeamByName(
+        data.fullyQualifiedName || '',
+        'defaultRoles'
+      );
+      const updatedAttributeData = (team.defaultRoles ?? []).filter(
+        (attrData) => attrData.id !== role.id
+      );
+
+      const patch = compare(team, {
+        ...team,
+        defaultRoles: updatedAttributeData,
+      });
+
+      const response = await patchTeamDetail(team.id, patch);
+
+      if (response) {
+        const updatedTeams = (role.teams ?? []).filter(
+          (team) => team.id !== data.id
+        );
+        setRole((prev) => ({ ...prev, teams: updatedTeams }));
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleUsersUpdate = async (data: EntityReference) => {
+    try {
+      const user = await getUserByName(data.fullyQualifiedName || '', 'roles');
+      const updatedAttributeData = (user.roles ?? []).filter(
+        (attrData) => attrData.id !== role.id
+      );
+
+      const patch = compare(user, {
+        ...user,
+        roles: updatedAttributeData,
+      });
+
+      const response = await updateUserDetail(user.id, patch);
+
+      if (response) {
+        const updatedUsers = (role.users ?? []).filter(
+          (user) => user.id !== data.id
+        );
+        setRole((prev) => ({ ...prev, users: updatedUsers }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    if (attribute === 'teams') {
+      handleTeamsUpdate(data);
+    } else if (attribute === 'users') {
+      handleUsersUpdate(data);
+    } else {
+      const attributeData =
+        (role[attribute as keyof Role] as EntityReference[]) ?? [];
+      const updatedAttributeData = attributeData.filter(
+        (attrData) => attrData.id !== data.id
+      );
+
+      const patch = compare(role, {
+        ...role,
+        [attribute as keyof Role]: updatedAttributeData,
+      });
+      try {
+        const data = await patchRole(patch, role.id);
+        setRole(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
 
