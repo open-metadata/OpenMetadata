@@ -12,6 +12,7 @@
  */
 
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
+import { TestSuite } from '../generated/tests/testSuite';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
@@ -35,11 +36,20 @@ export type ListTestCaseResultsParams = {
   limit?: number;
 };
 
-const baseUrl = '/testCase';
+export type ListTestSuitesParam = {
+  fields?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+  include?: Include;
+};
+
+const testCaseUrl = '/testCase';
+const testSuiteUrl = '/testSuite';
 
 export const getListTestCase = async (params?: ListTestCaseParams) => {
   const response = await APIClient.get<{ data: TestCase[]; paging: Paging }>(
-    baseUrl,
+    testCaseUrl,
     {
       params,
     }
@@ -52,11 +62,22 @@ export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${baseUrl}/${fqn}/testCaseResult`;
+  const url = `${testCaseUrl}/${fqn}/testCaseResult`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;
   }>(url, {
+    params,
+  });
+
+  return response.data;
+};
+
+export const getListTestSuites = async (params?: ListTestSuitesParam) => {
+  const response = await APIClient.get<{
+    data: TestSuite[];
+    paging: Paging;
+  }>(testSuiteUrl, {
     params,
   });
 

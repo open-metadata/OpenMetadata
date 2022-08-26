@@ -12,7 +12,19 @@
  */
 
 import { Table } from '../../generated/entity/data/table';
+import { EntityReference } from '../../generated/tests/tableTest';
 
 export interface AddDataQualityTestProps {
   table: Table;
 }
+
+export interface SelectTestSuiteProps {
+  onSubmit: (data: SelectTestSuiteType) => void;
+}
+
+export type SelectTestSuiteType = {
+  name?: string;
+  description?: string;
+  data?: EntityReference;
+  isNewTestSuite: boolean;
+};
