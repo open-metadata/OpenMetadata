@@ -161,9 +161,13 @@ MOCK_PIPELINE = Pipeline(
 
 class NifiUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.pipeline.nifi.NifiClient.token", new_callable=PropertyMock)
+    def __init__(self, methodName, nifi_token_prop, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
+
+        nifi_token_prop.return_value.token.return_value = "token"
+
         config = OpenMetadataWorkflowConfig.parse_obj(mock_nifi_config)
         self.nifi = NifiSource.create(
             mock_nifi_config["source"],
