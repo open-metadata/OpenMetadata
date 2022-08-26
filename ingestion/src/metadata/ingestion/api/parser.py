@@ -330,7 +330,10 @@ def parse_workflow_config_gracefully(
         workflow_config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
         return workflow_config
 
-    except ValidationError:
+    except ValidationError as e:
+        if e.model.__name__ == OpenMetadataWorkflowConfig.__name__:
+            logger.error(e)
+            exit()
         parse_workflow_source(config_dict)
         parse_server_config(config_dict)
 
