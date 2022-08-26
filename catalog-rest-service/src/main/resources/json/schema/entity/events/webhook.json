@@ -12,7 +12,7 @@
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.WebhookType",
       "default": "generic",
-      "enum": ["slack", "generic", "kafka"],
+      "enum": ["slack", "generic", "kafka", "teams"],
       "javaEnums": [
         {
           "name": "slack"
@@ -22,6 +22,9 @@
         },
         {
           "name": "kafka"
+        },
+        {
+          "name": "teams"
         }
       ]
     }

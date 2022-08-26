@@ -41,6 +41,7 @@ import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.slack.SlackAttachment;
 import org.openmetadata.catalog.slack.SlackMessage;
+import org.openmetadata.catalog.slack.TeamsMessage;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
@@ -77,7 +78,7 @@ public final class ChangeEventParser {
     if (Objects.nonNull(urlInstance)) {
       String scheme = urlInstance.getScheme();
       String host = urlInstance.getHost();
-      return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
+      return String.format("<%s://%s/%s/%s>", scheme, host, event.getEntityType(), fqn);
     }
     return urlInstance.toString();
   }
@@ -103,6 +104,28 @@ public final class ChangeEventParser {
     }
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
     return slackMessage;
+  }
+
+  public static TeamsMessage buildTeamsMessage(ChangeEvent event) {
+    TeamsMessage teamsMessage = new TeamsMessage();
+    teamsMessage.setSummary("Change Event From OMD");
+    TeamsMessage.Section teamsSections = new TeamsMessage.Section();
+    if (event.getEntity() != null) {
+      String headerTxt = "%s posted on " + event.getEntityType() + " %s";
+      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(event));
+      teamsSections.setActivityTitle(headerText);
+    }
+    Map<EntityLink, String> messages =
+        getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
+    List<TeamsMessage.Section> attachmentList = new ArrayList<>();
+    for (var entry : messages.entrySet()) {
+      TeamsMessage.Section section = new TeamsMessage.Section();
+      section.setActivityTitle(teamsSections.getActivityTitle());
+      section.setActivityText(entry.getValue());
+      attachmentList.add(section);
+    }
+    teamsMessage.setSections(attachmentList);
+    return teamsMessage;
   }
 
   public static Map<EntityLink, String> getFormattedMessages(

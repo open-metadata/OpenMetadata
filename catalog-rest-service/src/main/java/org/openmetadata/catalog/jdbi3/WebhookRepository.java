@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.events.EventPubSub.ChangeEventHolder;
+import org.openmetadata.catalog.events.TeamWebhookEventPublisher;
 import org.openmetadata.catalog.events.WebhookPublisher;
 import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.kafka.KafkaWebhookEventPublisher;
@@ -92,6 +93,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       publisher = new SlackWebhookEventPublisher(webhook, daoCollection);
     } else if (webhook.getWebhookType() == WebhookType.kafka) {
       publisher = new KafkaWebhookEventPublisher(webhook, daoCollection);
+    } else if (webhook.getWebhookType() == WebhookType.teams) {
+      publisher = new TeamWebhookEventPublisher(webhook, daoCollection);
     } else {
       publisher = new WebhookPublisher(webhook, daoCollection);
     }
