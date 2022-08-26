@@ -327,12 +327,13 @@ class MigrateBulkSink(BulkSink):
                     logger.info("User: {}".format(user_obj.displayName))
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(exc)
+                    logger.warning(f"Failed to create user [{user}]: {exc}")
 
         except Exception as exc:
+            msg = f"Failed to write users from file [{file}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write users from file [{file}]: {exc}")
-            self.status.failure(f"User: {user_obj.name}")
+            logger.error(msg)
+            self.status.failure(msg)
 
     def _add_entity_owner_by_patch(self, owner_dict, entity, entity_id):
         if owner_dict:
@@ -470,7 +471,7 @@ class MigrateBulkSink(BulkSink):
             except (APIError, ValidationError) as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to write glossary [{glossary}]: {err}")
-                self.status.failure(f"Pipeline: {glossary_obj.name}")
+                self.status.failure(f"Glossary: {glossary}")
 
     def _get_glossary_entity(self, glossary):
         glossary_obj = self.metadata.get_by_name(entity=Glossary, fqn=glossary.name)
@@ -521,7 +522,7 @@ class MigrateBulkSink(BulkSink):
                 logger.warning(
                     f"Failed to write glossary term [{glossary_term}]: {err}"
                 )
-                self.status.failure(f"Pipeline: {glossary_term_obj.name}")
+                self.status.failure(f"Glossary term: {glossary_term}")
 
     def _create_tag_category(self, tag_category: CreateTagCategoryRequest):
         resp = self.metadata.client.post(
@@ -567,8 +568,8 @@ class MigrateBulkSink(BulkSink):
 
                     self._add_tag_to_category(tag_category.get("name"), tag_request)
 
-                logger.info(f"Successfully ingested Tag {tag_category_request.name}")
-                self.status.records_written(f"Tag: {tag_category_request.name}")
+                logger.info(f"Successfully ingested Tag {tag_category.get('name')}")
+                self.status.records_written(f"Tag: {tag_category.get('name')}")
 
             except (APIError, ValidationError) as err:
                 logger.debug(traceback.format_exc())

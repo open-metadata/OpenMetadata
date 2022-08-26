@@ -526,7 +526,7 @@ class OpenMetadata(
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
-    ) -> Optional[T, None]:
+    ) -> Optional[T]:
         """
         Generic GET operation for an entity
         :param entity: Entity Class
@@ -571,8 +571,7 @@ class OpenMetadata(
                 description=instance.description,
                 href=instance.href,
             )
-
-        logger.error("Cannot find the Entity %s", fqn)
+        logger.warning("Cannot find the Entity %s", fqn)
         return None
 
     # pylint: disable=too-many-arguments,dangerous-default-value

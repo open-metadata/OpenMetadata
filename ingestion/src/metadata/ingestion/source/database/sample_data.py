@@ -793,7 +793,7 @@ class SampleDataSource(Source[Entity]):
                 yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error ingesting user [{user}]: {exc}")
+            logger.error(f"Error ingesting users: {exc}")
 
     def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
         """
@@ -827,7 +827,7 @@ class SampleDataSource(Source[Entity]):
                     )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(f"Error ingesting table tests for [{test_def}]: {exc}")
+            logger.error(f"Error ingesting table tests: {exc}")
 
     def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
         """Iterate over all the profile data and ingest them"""

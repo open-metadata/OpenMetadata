@@ -205,13 +205,13 @@ class MetadataUsageBulkSink(BulkSink):
                                     table_entity, table_join_request
                                 )
                         except APIError as err:
-                            self.status.failures.append(table_join_request)
                             logger.debug(traceback.format_exc())
                             logger.warning(
                                 "Failed to update query join for {}: {}".format(
                                     table_usage.table, err
                                 )
                             )
+                            self.status.failures.append(table_join_request)
                         except Exception as exc:
                             logger.debug(traceback.format_exc())
                             logger.warning(

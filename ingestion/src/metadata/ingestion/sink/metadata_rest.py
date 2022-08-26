@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import traceback
 from logging.config import DictConfigurator
 from typing import TypeVar
@@ -33,7 +32,6 @@ from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.location import Location
-from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -152,7 +150,7 @@ class MetadataRestSink(Sink[Entity]):
         elif isinstance(record, OMetaTestCaseResultsSample):
             self.write_test_case_results_sample(record)
         else:
-            logging.debug(f"Processing Create request {type(record)}")
+            logger.debug(f"Processing Create request {type(record)}")
             self.write_create_request(record)
 
     def write_create_request(self, entity_request) -> None:
@@ -308,7 +306,7 @@ class MetadataRestSink(Sink[Entity]):
                     )
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logging.warning(
+                    logger.warning(
                         f"Failed to ingest sample data for table {db_schema_and_table.table.name}: {exc}"
                     )
 
@@ -471,9 +469,7 @@ class MetadataRestSink(Sink[Entity]):
             return team
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warnerroring(
-                f"Unexpected error creating team [{create_team}]: {exc}"
-            )
+            logger.error(f"Unexpected error creating team [{create_team}]: {exc}")
 
     def write_users(self, record: OMetaUserProfile):
         """
@@ -662,8 +658,8 @@ class MetadataRestSink(Sink[Entity]):
             )
             self.status.records_written(f"testCase: {record.test_case.name.__root__}")
         except Exception as exc:
+            logger.debug(traceback.format_exc())
             logger.error(f"Unexpected error writing test case sample [{record}]: {exc}")
-            logger.error(exc)
 
     def write_test_case_results_sample(self, record: OMetaTestCaseResultsSample):
         """

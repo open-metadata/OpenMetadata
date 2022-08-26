@@ -34,7 +34,7 @@ logger = ingestion_logger()
 class SqlColumnHandlerMixin:
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         if self.source_config.includeTags:
-            logger.info("Fetching tags not implemeneted for this connector")
+            logger.info("Fetching tags not implemented for this connector")
             self.source_config.includeTags = False
 
     def _get_display_datatype(

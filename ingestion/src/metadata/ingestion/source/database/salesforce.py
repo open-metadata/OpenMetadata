@@ -126,6 +126,7 @@ class SalesforceSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.database_schema.name.__root__
+        table_name = ""
         try:
             if self.service_connection.sobjectName:
                 table_name = self.standardize_table_name(

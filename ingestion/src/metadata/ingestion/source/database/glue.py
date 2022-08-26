@@ -230,7 +230,7 @@ class GlueSource(DatabaseServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception to get table [{table}]: {exc}")
                 self.status.failures.append(
-                    "{}.{}".format(self.config.serviceName, table_name)
+                    "{}.{}".format(self.config.serviceName, table.get("Name"))
                 )
 
     def yield_table(

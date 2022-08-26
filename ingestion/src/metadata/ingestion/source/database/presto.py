@@ -65,7 +65,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error reading row [{row}]: {err}")
             util.warn(
-                "Did not recognize type '%s' of column '%s'" % (col_type, row.Column)
+                "Did not recognize type '%s' of column '%s'" % (row.Type, row.Column)
             )
             coltype = types.NullType
         result.append(

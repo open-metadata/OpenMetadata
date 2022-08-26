@@ -164,7 +164,7 @@ class OMetaPatchMixin(Generic[T]):
         )
 
         if not col_index:
-            logger.error(f"Cannot find column {column_name} in Table.")
+            logger.warning(f"Cannot find column {column_name} in Table.")
             return None
 
         if col.description and not force:
