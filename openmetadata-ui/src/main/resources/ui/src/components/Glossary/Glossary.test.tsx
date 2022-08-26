@@ -50,6 +50,7 @@ jest.mock('../../components/GlossaryTerms/GlossaryTermsV1.component', () => {
 });
 
 jest.mock('antd', () => ({
+  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),

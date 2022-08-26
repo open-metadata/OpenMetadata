@@ -216,11 +216,11 @@ describe('Glossary page should work properly', () => {
     cy.wait(500);
     cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
 
-    // updating synonyms
-    cy.get('[data-testid="section-Synonyms"] [data-testid="add-button"]')
+    cy.get('[data-testid="section-synonyms"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+
     cy.get('[data-testid="synonyms"]')
       .scrollIntoView()
       .should('be.visible')
@@ -238,7 +238,7 @@ describe('Glossary page should work properly', () => {
     });
 
     // updating References
-    cy.get('[data-testid="section-References"] [data-testid="add-button"]')
+    cy.get('[data-testid="section-references"] [data-testid="add-button"]')
       .should('exist')
       .click();
     cy.get('.tw-modal-container').should('be.visible');

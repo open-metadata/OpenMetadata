@@ -448,7 +448,7 @@ const GlossaryTermsV1 = ({
       <Space direction="vertical" {...props}>
         <Space>
           <Text type="secondary">{title}</Text>
-          <div className="tw-ml-2" data-testid={`section-${title}`}>
+          <div className="tw-ml-2" data-testid={`section-${kebabCase(title)}`}>
             {addButton(() => setShow && setShow(true))}
           </div>
         </Space>
