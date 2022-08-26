@@ -115,7 +115,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         render: (_, record) => {
           return (
             <Button
-              data-testid="delete-action"
+              data-testid={`delete-action-${getEntityName(record)}`}
               type="text"
               onClick={() => setSelectedPolicy(record)}>
               <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />

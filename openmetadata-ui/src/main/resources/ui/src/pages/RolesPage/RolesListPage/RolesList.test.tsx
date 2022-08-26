@@ -103,7 +103,7 @@ describe('Test Roles List Component', () => {
     const nameRows = await screen.findAllByTestId('role-name');
     const descriptionRows = await screen.findAllByTestId('previewer');
     const policiesRows = await screen.findAllByTestId('policy-link');
-    const actionsRows = await screen.findAllByTestId('delete-action');
+    const actionsRows = await screen.findAllByTestId('delete-action-data');
 
     expect(container).toBeInTheDocument();
     expect(nameRows).toHaveLength(3);

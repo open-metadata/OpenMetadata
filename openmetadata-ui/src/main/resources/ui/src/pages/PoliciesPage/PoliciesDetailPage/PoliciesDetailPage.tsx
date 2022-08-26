@@ -121,7 +121,10 @@ const List = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button type="text" onClick={() => onDelete(record)}>
+            <Button
+              data-testid={`remove-action-${getEntityName(record)}`}
+              type="text"
+              onClick={() => onDelete(record)}>
               <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
             </Button>
           );
