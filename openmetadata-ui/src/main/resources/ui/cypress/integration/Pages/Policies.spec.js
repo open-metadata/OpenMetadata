@@ -33,8 +33,6 @@ const ruledetails = {
 };
 
 const errormessageValidation = {
-  ifPolicyNotSelected: "'openmetadata-ui' is required",
-  ifNameNotEntered: "'openmetadata-ui' is required",
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
   lastRuleCannotBeRemoved: 'At least one rule is required in a policy',
 };
