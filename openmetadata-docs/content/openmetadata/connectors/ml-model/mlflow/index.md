@@ -14,6 +14,8 @@ slug: /openmetadata/connectors/ml-model/mlflow
 - **trackingUri**: Mlflow Experiment tracking URI. E.g., http://localhost:5000
 - **registryUri**: Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments
 
+<MlModelIngestionConfig />
+
 <IngestionScheduleAndDeploy />
 
 <ConnectorOutro connector="Mlflow" />
