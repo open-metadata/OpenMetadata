@@ -348,7 +348,7 @@ const PoliciesDetailPage = () => {
           placement="bottomRight"
           trigger={['click']}>
           <Button
-            data-testid="manage-button"
+            data-testid={`manage-button-${rule.name}`}
             size="small"
             type="text"
             onClick={(e) => {
