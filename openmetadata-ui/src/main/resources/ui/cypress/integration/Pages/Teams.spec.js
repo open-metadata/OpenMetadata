@@ -146,7 +146,10 @@ describe('Teams flow should work properly', () => {
     cy.get('.ant-table-row').should('contain', TEAM_DETAILS.ownername);
 
     //Removing the added user
-    cy.get('.ant-btn').should('exist').should('be.visible').click();
+    cy.get('.ant-btn > [data-testid="image"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
 
     //Validating the user added
     cy.get('[data-testid="body-text"]').should(
@@ -156,10 +159,10 @@ describe('Teams flow should work properly', () => {
 
     //Click on confirm button
     cy.get('[data-testid="save-button"]').should('be.visible').click();
-    
+
     // TODO: Remove cy.wait and wait for API to be completed before querying for new element
     cy.wait(2000);
-    
+
     //
     //Verify if user is removed
     cy.get('[data-testid="searchbar"]')
@@ -307,6 +310,12 @@ describe('Teams flow should work properly', () => {
     cy.wait(500);
 
     cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.wait(1000);
+    cy.get('.ant-dropdown-menu-item')
       .should('exist')
       .should('be.visible')
       .click();

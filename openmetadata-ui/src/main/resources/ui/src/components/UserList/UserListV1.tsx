@@ -136,7 +136,7 @@ const UserListV1: FC<UserListV1Props> = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center"
+            className="tw-w-full tw-justify-center action-icons"
             size={8}>
             {showRestore && (
               <Tooltip placement="bottom" title="Restore">
@@ -144,7 +144,7 @@ const UserListV1: FC<UserListV1Props> = ({
                   icon={
                     <SVGIcons
                       alt="Restore"
-                      className="tw-w-4"
+                      className="tw-w-4 tw-mb-2.5"
                       icon={Icons.RESTORE}
                     />
                   }
@@ -161,7 +161,7 @@ const UserListV1: FC<UserListV1Props> = ({
                 icon={
                   <SVGIcons
                     alt="Delete"
-                    className="tw-w-4"
+                    className="tw-w-4 tw-mb-2.5"
                     icon={Icons.DELETE}
                   />
                 }

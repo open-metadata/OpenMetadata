@@ -40,7 +40,6 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   public TagCategoryRepository(CollectionDAO dao, TagRepository tagRepository) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG_CATEGORY, TagCategory.class, dao.tagCategoryDAO(), dao, "", "");
-    allowEdits = true;
     this.tagRepository = tagRepository;
   }
 

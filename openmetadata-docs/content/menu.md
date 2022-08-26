@@ -153,7 +153,6 @@ site_menu:
   - category: Deployment / Airflow
     url: /deployment/airflow
 
-
   - category: OpenMetadata
     url: /openmetadata
     color: violet-70
@@ -350,6 +349,12 @@ site_menu:
     url: /openmetadata/connectors/dashboard/metabase/airflow
   - category: OpenMetadata / Connectors / Dashboard / Metabase / CLI
     url: /openmetadata/connectors/dashboard/metabase/cli
+  - category: OpenMetadata / Connectors / Dashboard / Mode
+    url: /openmetadata/connectors/dashboard/mode
+  - category: OpenMetadata / Connectors / Dashboard / Mode / Airflow
+    url: /openmetadata/connectors/dashboard/mode/airflow
+  - category: OpenMetadata / Connectors / Dashboard / Mode / CLI
+    url: /openmetadata/connectors/dashboard/mode/cli
 
   - category: OpenMetadata / Connectors / Messaging
     url: /openmetadata/connectors/messaging
@@ -388,6 +393,15 @@ site_menu:
     url: /openmetadata/connectors/pipeline/fivetran/airflow
   - category: OpenMetadata / Connectors / Pipeline / Fivetran / CLI
     url: /openmetadata/connectors/pipeline/fivetran/cli
+
+  - category: OpenMetadata / Connectors / ML Model
+    url: /openmetadata/connectors/ml-model
+  - category: OpenMetadata / Connectors / ML Model / ML Flow
+    url: /openmetadata/connectors/ml-model/mlflow
+  - category: OpenMetadata / Connectors / ML Model / ML Flow / Airflow
+    url: /openmetadata/connectors/ml-model/mlflow/airflow
+  - category: OpenMetadata / Connectors / ML Model / ML Flow / CLI
+    url: /openmetadata/connectors/ml-model/mlflow/cli
 
   - category: OpenMetadata / Connectors / Metadata
     url: /openmetadata/connectors/metadata
@@ -922,7 +936,6 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/type/usagedetails
   - category: Main Concepts / Metadata Standard / Schemas / Type / UsageRequest
     url: /main-concepts/metadata-standard/schemas/type/usagerequest
-
 
   - category: Main Concepts / Metadata Standard / APIs
     url: /main-concepts/metadata-standard/apis

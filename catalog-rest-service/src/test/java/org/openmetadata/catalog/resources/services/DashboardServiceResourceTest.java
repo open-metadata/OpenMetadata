@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
@@ -231,7 +232,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         }
         assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
         assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
-        if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
+        if (ADMIN_AUTH_HEADERS.equals(authHeaders) || BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
           assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
           assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());

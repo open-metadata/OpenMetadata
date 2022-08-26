@@ -41,6 +41,7 @@ import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.FullyQualifiedName.build;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -290,115 +291,116 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void put_tableWithColumnWithOrdinalPositionAndWithoutOrdinalPosition(TestInfo test) throws IOException {
     CreateTable create = createRequest(test);
-    List<Column> columns = new ArrayList<>();
-    Column column1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("column1");
-    Column column2 = getColumn("column2", INT, null).withOrdinalPosition(2).withDescription("column2");
-    List<Column> origColumns = new ArrayList<>();
-    origColumns.add(column1);
-    origColumns.add(column2);
-    // add 2 columns
-    columns.add(column1);
-    columns.add(column2);
+    Column column1 = getColumn("column1", INT, null, "column1", "c1").withOrdinalPosition(1);
+    Column column2 = getColumn("column2", INT, null, "column2", "c2").withOrdinalPosition(2);
+    Column column3 =
+        getColumn("column3", STRING, null, "column3", null)
+            .withOrdinalPosition(3)
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
+
     TableConstraint constraint =
-        new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(columns.get(0).getName()));
+        new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(column1.getName()));
     TablePartition partition =
         new TablePartition()
-            .withColumns(List.of(columns.get(0).getName(), columns.get(1).getName()))
+            .withColumns(List.of(column1.getName(), column2.getName()))
             .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
             .withInterval("column");
-    create.setColumns(columns);
+
+    //
+    // Create a table with two columns - column1, column2, table constraint and table partition
+    //
+    create.setColumns(new ArrayList<>(List.of(column1, column2)));
     create.setTableConstraints(List.of(constraint));
     create.setTablePartition(partition);
-    Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    Column column = created.getColumns().get(0);
-    assertEquals("column1", column.getName());
-    assertEquals("column1", column.getDescription());
-    assertTablePartition(partition, created.getTablePartition());
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // keep original ordinalPosition add a column at the end and do not pass descriptions for the first 2 columns
-    // we should retain the original description
+    //
+    // Update the column description and display name as a BOT user.
+    // The updates are ignored for a BOT user and the table version does not change
+    //
+    create.getColumns().set(0, getColumn("column1", INT, null, "x", "y"));
+    Table table = updateAndCheckEntity(create, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
+    create.getColumns().set(0, column1); // Revert to previous value
 
-    Column updateColumn1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("");
-    Column updateColumn2 = getColumn("column2", INT, null).withOrdinalPosition(2).withDescription("");
-    Column column3 =
-        getColumn("column3", STRING, null)
-            .withOrdinalPosition(3)
-            .withDescription("column3")
-            .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
-    columns = new ArrayList<>();
-    columns.add(updateColumn1);
-    columns.add(updateColumn2);
-    columns.add(column3);
+    //
+    // Description and DisplayName can be updated by a non-bot user
+    // Update column1 description and displayName.
+    // Remove column2 display name.
+    // Add a new column column3.
+    // Update table partition
+    //
+    column1.withDescription("").withDisplayName("");
+    column2.withDisplayName(null);
+    create.getColumns().add(column3);
     partition =
         new TablePartition()
-            .withColumns(List.of(columns.get(2).getName()))
+            .withColumns(List.of(column3.getName()))
             .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
             .withInterval("column");
-    create.setColumns(columns);
-    create.setTableConstraints(List.of(constraint));
     create.setTablePartition(partition);
-    // Update the table with constraints and ensure minor version change
-    ChangeDescription change = getChangeDescription(created.getVersion());
+
+    ChangeDescription change = getChangeDescription(table.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(column3)));
-    Table updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
-    origColumns.add(column3);
-    assertColumns(origColumns, updatedTable.getColumns());
-    assertTablePartition(partition, updatedTable.getTablePartition());
-    Table getTable = getEntity(updatedTable.getId(), "tablePartition", ADMIN_AUTH_HEADERS);
-    assertTablePartition(partition, getTable.getTablePartition());
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange()
+                .withName(build("columns", "column1", "description"))
+                .withOldValue("column1")
+                .withNewValue(""));
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange().withName(build("columns", "column1", "displayName")).withOldValue("c1").withNewValue(""));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName(build("columns", "column2", "displayName")).withOldValue("c2"));
+    table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    TestUtils.validateUpdate(created.getVersion(), updatedTable.getVersion(), MINOR_UPDATE);
-    // keep ordinalPosition and add a column in between
-    updateColumn1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("");
-    Column updateColumn4 = getColumn("column4", STRING, null).withOrdinalPosition(2).withDescription("column4");
-    updateColumn2 = getColumn("column2", INT, null).withOrdinalPosition(3).withDescription("");
-    Column updateColumn3 = getColumn("column3", STRING, null).withOrdinalPosition(4).withDescription("");
-    columns = new ArrayList<>();
-    columns.add(updateColumn1);
-    columns.add(updateColumn2);
-    columns.add(updateColumn4);
-    columns.add(updateColumn3);
-    create.setColumns(columns);
-    create.setTableConstraints(List.of(constraint));
+    //
+    // Change the ordinal position of column2 from 2 to 3.
+    // Change the ordinal position of column3 from 3 to 4.
+    // Add column4 with ordinal position 3.
+    //
+    // After the update: TODO is this correct?
+    // Column 3 must retain the ordinal position as 3
+    // Column 4 must change to ordinal position as 4
+    //
+    column2.setOrdinalPosition(3);
+    column3.setOrdinalPosition(4);
+    Column column4 = getColumn("column4", STRING, null, "column4", null).withOrdinalPosition(2);
+    create.getColumns().add(2, column4);
 
-    Double prevVersion = updatedTable.getVersion();
-    updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
-    TestUtils.validateUpdate(prevVersion, updatedTable.getVersion(), MINOR_UPDATE);
-    origColumns.add(2, updateColumn4);
-    assertColumns(origColumns, updatedTable.getColumns());
+    change = getChangeDescription(table.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(column4)));
+    table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Change data type to cause major update
-    updateColumn3 = getColumn("column3", INT, null).withOrdinalPosition(4).withDescription("");
-    columns = new ArrayList<>();
-    columns.add(updateColumn1);
-    columns.add(updateColumn2);
-    columns.add(updateColumn4);
-    columns.add(updateColumn3);
-    create.setColumns(columns);
-    create.setTableConstraints(List.of(constraint));
-    prevVersion = updatedTable.getVersion();
-    updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
-    TestUtils.validateUpdate(prevVersion, updatedTable.getVersion(), MAJOR_UPDATE);
-    origColumns.remove(3);
-    origColumns.add(3, column3.withDataType(INT));
-    assertColumns(origColumns, updatedTable.getColumns());
+    // Change column1 data type from INT to STRING to cause major update
+    Column updatedColumn1 = getColumn("column1", STRING, null, "column1", "c1").withOrdinalPosition(1);
+    create.getColumns().set(0, updatedColumn1);
+    change = getChangeDescription(table.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(column1)));
+    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(updatedColumn1)));
+    table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
-    // Change the case of the column name and it should't update
-    updateColumn2 = getColumn("COLUMN2", INT, null).withOrdinalPosition(2).withDescription("");
-    columns = new ArrayList<>();
-    columns.add(updateColumn1);
-    columns.add(updateColumn2);
-    columns.add(updateColumn4);
-    columns.add(updateColumn3);
-    create.setColumns(columns);
-    create.setTableConstraints(List.of(constraint));
-    prevVersion = updatedTable.getVersion();
-    updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
-    TestUtils.validateUpdate(prevVersion, updatedTable.getVersion(), NO_CHANGE);
+    // Delete column4 to cause major update
+    create.getColumns().remove(2);
+    change = getChangeDescription(table.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(column4)));
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+
+    // Change the case of the column name for column2, and it shouldn't update
+    column2.setName("COLUMN2");
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   public static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
     return getColumn(name, columnDataType, null, tag);
+  }
+
+  public static Column getColumn(
+      String name, ColumnDataType columnDataType, TagLabel tag, String description, String displayName) {
+    return getColumn(name, columnDataType, null, tag).withDescription(description).withDisplayName(displayName);
   }
 
   private static Column getColumn(String name, ColumnDataType columnDataType, String dataTypeDisplay, TagLabel tag) {
@@ -1991,14 +1993,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   private static void assertColumns(List<Column> expectedColumns, List<Column> actualColumns)
       throws HttpResponseException {
-    if (expectedColumns == null && actualColumns == null) {
+    if (expectedColumns == actualColumns) {
       return;
     }
     // Sort columns by name
-    assertNotNull(expectedColumns);
     assertEquals(expectedColumns.size(), actualColumns.size());
-    for (int i = 0; i < expectedColumns.size(); i++) {
-      assertColumn(expectedColumns.get(i), actualColumns.get(i));
+
+    // Make a copy before sorting in case the lists are immutable
+    List<Column> expected = new ArrayList<>(expectedColumns);
+    List<Column> actual = new ArrayList<>(actualColumns);
+    expected.sort(Comparator.comparing(Column::getName));
+    actual.sort(Comparator.comparing(Column::getName));
+    for (int i = 0; i < expected.size(); i++) {
+      assertColumn(expected.get(i), actual.get(i));
     }
   }
 
@@ -2353,6 +2360,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     validateEntityReference(createdEntity.getDatabase());
     validateEntityReference(createdEntity.getService());
     validateTableConstraints(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
+    assertTablePartition(createRequest.getTablePartition(), createdEntity.getTablePartition());
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
@@ -2421,12 +2429,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       ColumnConstraint expectedConstraint = (ColumnConstraint) expected;
       ColumnConstraint actualConstraint = ColumnConstraint.fromValue((String) actual);
       assertEquals(expectedConstraint, actualConstraint);
+    } else if (fieldName.startsWith("columns")
+        && (fieldName.endsWith("description") || fieldName.endsWith("displayName"))) {
+      assertEquals(expected, actual);
     } else if (fieldName.endsWith("tableConstraints")) {
       @SuppressWarnings("unchecked")
       List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
       List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
       assertEquals(expectedConstraints, actualConstraints);
-    } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS) && !fieldName.endsWith("description")) {
+    } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS)) {
       @SuppressWarnings("unchecked")
       List<Column> expectedRefs = (List<Column>) expected;
       List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);

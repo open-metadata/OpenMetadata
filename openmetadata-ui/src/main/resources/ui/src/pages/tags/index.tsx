@@ -415,6 +415,7 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <Card
+        className="left-panel-container"
         data-testid="data-summary-container"
         size="small"
         style={leftPanelAntCardStyle}
