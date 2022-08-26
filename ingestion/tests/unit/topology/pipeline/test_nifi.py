@@ -161,7 +161,10 @@ MOCK_PIPELINE = Pipeline(
 
 class NifiUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    @patch("metadata.ingestion.source.pipeline.nifi.NifiClient.token", new_callable=PropertyMock)
+    @patch(
+        "metadata.ingestion.source.pipeline.nifi.NifiClient.token",
+        new_callable=PropertyMock,
+    )
     def __init__(self, methodName, nifi_token_prop, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
