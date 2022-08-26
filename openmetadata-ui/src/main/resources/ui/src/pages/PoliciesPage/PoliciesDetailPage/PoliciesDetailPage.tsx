@@ -403,6 +403,7 @@ const PoliciesDetailPage = () => {
               ) : (
                 <Space className="tw-w-full tabpane-space" direction="vertical">
                   <Button
+                    data-testid="add-rule"
                     type="primary"
                     onClick={() => history.push(getAddPolicyRulePath(fqn))}>
                     Add Rule
@@ -420,7 +421,9 @@ const PoliciesDetailPage = () => {
                                 align="baseline"
                                 className="tw-w-full tw-justify-between"
                                 size={4}>
-                                <Typography.Text className="tw-font-medium tw-text-base tw-text-grey-body">
+                                <Typography.Text
+                                  className="tw-font-medium tw-text-base tw-text-grey-body"
+                                  data-testid="rule-name">
                                   {rule.name}
                                 </Typography.Text>
                                 {getRuleActionElement(rule)}

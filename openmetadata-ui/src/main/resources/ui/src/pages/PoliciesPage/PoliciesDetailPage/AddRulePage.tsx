@@ -127,10 +127,14 @@ const AddRulePage = () => {
             onFinish={handleSubmit}>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
             <Space align="center" className="tw-w-full tw-justify-end">
-              <Button type="link" onClick={handleBack}>
+              <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
                 Cancel
               </Button>
-              <Button form="rule-form" htmlType="submit" type="primary">
+              <Button
+                data-testid="submit-btn"
+                form="rule-form"
+                htmlType="submit"
+                type="primary">
                 Submit
               </Button>
             </Space>

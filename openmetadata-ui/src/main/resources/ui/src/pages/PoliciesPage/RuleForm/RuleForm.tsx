@@ -191,6 +191,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           },
         ]}>
         <Input
+          data-testid="rule-name"
           placeholder="Rule Name"
           type="text"
           value={ruleData.name}
@@ -221,6 +222,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         <TreeSelect
           treeCheckable
           className="tw-w-full"
+          data-testid="resurces"
           placeholder="Select Resources"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
@@ -243,6 +245,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         <TreeSelect
           treeCheckable
           className="tw-w-full"
+          data-testid="operations"
           placeholder="Select Operations"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
@@ -263,6 +266,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           },
         ]}>
         <Select
+          data-testid="effect"
           placeholder="Select Rule Effect"
           value={ruleData.effect}
           onChange={(value) =>
@@ -275,6 +279,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
       <Form.Item label="Condition:" name="condition">
         <>
           <AutoComplete
+            data-testid="condition"
             options={conditionOptions}
             placeholder="Condition"
             value={ruleData.condition}

@@ -126,6 +126,7 @@ const AddPolicyPage = () => {
                 },
               ]}>
               <Input
+                data-testid="policy-name"
                 placeholder="Policy name"
                 type="text"
                 value={name}
@@ -147,10 +148,17 @@ const AddPolicyPage = () => {
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
             <Space align="center" className="tw-w-full tw-justify-end">
-              <Button type="link" onClick={handleCancel}>
+              <Button
+                data-testid="cancel-btn"
+                type="link"
+                onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button form="policy-form" htmlType="submit" type="primary">
+              <Button
+                data-testid="submit-btn"
+                form="policy-form"
+                htmlType="submit"
+                type="primary">
                 Submit
               </Button>
             </Space>

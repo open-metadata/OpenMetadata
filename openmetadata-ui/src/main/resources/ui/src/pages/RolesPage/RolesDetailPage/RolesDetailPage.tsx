@@ -90,7 +90,10 @@ const List = ({
           }
 
           return (
-            <Link className="hover:tw-underline tw-cursor-pointer" to={link}>
+            <Link
+              className="hover:tw-underline tw-cursor-pointer"
+              data-testid="entity-name"
+              to={link}>
               {getEntityName(record)}
             </Link>
           );
@@ -111,7 +114,10 @@ const List = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button type="text" onClick={() => onDelete(record)}>
+            <Button
+              data-testid="remove-action"
+              type="text"
+              onClick={() => onDelete(record)}>
               <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
             </Button>
           );
@@ -323,6 +329,7 @@ const RolesDetailPage = () => {
             <TabPane key="policies" tab="Policies">
               <Space className="tw-w-full" direction="vertical">
                 <Button
+                  data-testid="add-policy"
                   type="primary"
                   onClick={() =>
                     setAddAttribute({
