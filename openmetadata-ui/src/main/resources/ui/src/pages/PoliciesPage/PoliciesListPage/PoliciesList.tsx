@@ -46,6 +46,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
+            data-testid="policy-name"
             to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
             {getEntityName(record)}
           </Link>
@@ -69,7 +70,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
           const hasMore = listLength > LIST_CAP;
 
           return record.roles?.length ? (
-            <Space wrap size={4}>
+            <Space wrap data-testid="role-link" size={4}>
               {record.roles.slice(0, LIST_CAP).map((role) => (
                 <Link
                   key={uniqueId()}
@@ -95,7 +96,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
                   }
                   overlayClassName="tw-w-40 tw-text-center"
                   trigger="click">
-                  <Tag className="tw-ml-1">{`+${
+                  <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
                     listLength - LIST_CAP
                   } more`}</Tag>
                 </Popover>
@@ -113,7 +114,10 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button type="text" onClick={() => setSelectedPolicy(record)}>
+            <Button
+              data-testid={`delete-action-${getEntityName(record)}`}
+              type="text"
+              onClick={() => setSelectedPolicy(record)}>
               <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
             </Button>
           );

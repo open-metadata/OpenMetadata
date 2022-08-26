@@ -15,11 +15,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
+  Modal,
   Row,
   Space,
   Switch,
   Table,
   Tooltip,
+  Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
@@ -51,6 +53,7 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
+import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import UserCard from '../../pages/teams/UserCard';
 import {
   getEntityName,
@@ -75,8 +78,13 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import ListEntities from './RolesAndPoliciesList';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+interface AddAttribute {
+  type: EntityType;
+  selectedData: EntityReference[];
+}
 
 const TeamDetailsV1 = ({
   hasAccess,
@@ -125,6 +133,11 @@ const TeamDetailsV1 = ({
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+  const [selectedEntity, setEntity] = useState<{
+    attribute: 'defaultRoles' | 'policies';
+    record: EntityReference;
+  }>();
 
   /**
    * Check if current team is the owner or not
@@ -173,6 +186,12 @@ const TeamDetailsV1 = ({
       isProtected: false,
       position: 4,
       count: currentTeam?.defaultRoles?.length,
+    },
+    {
+      name: 'Policies',
+      isProtected: false,
+      position: 5,
+      count: currentTeam?.policies?.length,
     },
   ];
 
@@ -358,6 +377,52 @@ const TeamDetailsV1 = ({
     } else {
       setTable(childTeams ?? []);
     }
+  };
+
+  const handleAddAttribute = (selectedIds: string[]) => {
+    if (addAttribute) {
+      let updatedTeamData = { ...currentTeam };
+      const updatedData = selectedIds.map((id) => {
+        const existingData = addAttribute.selectedData.find(
+          (data) => data.id === id
+        );
+
+        return existingData ? existingData : { id, type: addAttribute.type };
+      });
+
+      switch (addAttribute.type) {
+        case EntityType.ROLE:
+          updatedTeamData = { ...updatedTeamData, defaultRoles: updatedData };
+
+          break;
+
+        case EntityType.POLICY:
+          updatedTeamData = { ...updatedTeamData, policies: updatedData };
+
+          break;
+
+        default:
+          break;
+      }
+      updateTeamHandler(updatedTeamData);
+    }
+  };
+
+  const handleAttributeDelete = (
+    record: EntityReference,
+    attribute: 'defaultRoles' | 'policies'
+  ) => {
+    const attributeData =
+      (currentTeam[attribute as keyof Team] as EntityReference[]) ?? [];
+    const updatedAttributeData = attributeData.filter(
+      (attrData) => attrData.id !== record.id
+    );
+
+    const updatedTeamData = {
+      ...currentTeam,
+      [attribute]: updatedAttributeData,
+    };
+    updateTeamHandler(updatedTeamData);
   };
 
   useEffect(() => {
@@ -582,38 +647,6 @@ const TeamDetailsV1 = ({
     );
   };
 
-  /**
-   * Check for team default role and return roles card
-   * @returns - roles card
-   */
-  const getDefaultRoles = () => {
-    if ((currentTeam?.defaultRoles?.length as number) === 0) {
-      return (
-        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>There are no roles assigned yet.</p>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-        data-testid="teams-card">
-        {currentTeam?.defaultRoles?.map((role, i) => {
-          const roleData = {
-            displayName: role.displayName || role.name || '',
-            fqn: role.fullyQualifiedName as string,
-            type: role.type,
-            id: role.id,
-            name: role.name,
-          };
-
-          return <UserCard isIconVisible item={roleData} key={i} />;
-        })}
-      </div>
-    );
-  };
-
   const getTeamHeading = () => {
     return (
       <div className="tw-heading tw-text-link tw-text-base tw-mb-0">
@@ -780,7 +813,54 @@ const TeamDetailsV1 = ({
 
               {currentTab === 3 && getDatasetCards()}
 
-              {currentTab === 4 && getDefaultRoles()}
+              {currentTab === 4 && (
+                <Space
+                  className="tw-w-full roles-and-policy"
+                  direction="vertical">
+                  <ButtonAntd
+                    data-testid="add-role"
+                    type="primary"
+                    onClick={() =>
+                      setAddAttribute({
+                        type: EntityType.ROLE,
+                        selectedData: currentTeam.defaultRoles || [],
+                      })
+                    }>
+                    Add Role
+                  </ButtonAntd>
+                  <ListEntities
+                    list={currentTeam.defaultRoles || []}
+                    type={EntityType.ROLE}
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'defaultRoles' })
+                    }
+                  />
+                </Space>
+              )}
+              {currentTab === 5 && (
+                <Space
+                  className="tw-w-full roles-and-policy"
+                  direction="vertical">
+                  <ButtonAntd
+                    data-testid="add-policy"
+                    type="primary"
+                    onClick={() =>
+                      setAddAttribute({
+                        type: EntityType.POLICY,
+                        selectedData: currentTeam.policies || [],
+                      })
+                    }>
+                    Add Policy
+                  </ButtonAntd>
+                  <ListEntities
+                    list={currentTeam.policies || []}
+                    type={EntityType.POLICY}
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'policies' })
+                    }
+                  />
+                </Space>
+              )}
             </div>
           </div>
         </Fragment>
@@ -814,6 +894,41 @@ const TeamDetailsV1 = ({
           onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
           onConfirm={handleRemoveUser}
         />
+      )}
+
+      {addAttribute && (
+        <AddAttributeModal
+          isOpen={!isUndefined(addAttribute)}
+          selectedKeys={addAttribute.selectedData.map((data) => data.id)}
+          title={`Add ${addAttribute.type}`}
+          type={addAttribute.type}
+          onCancel={() => setAddAttribute(undefined)}
+          onSave={(data) => handleAddAttribute(data)}
+        />
+      )}
+      {selectedEntity && (
+        <Modal
+          centered
+          okText="Confirm"
+          title={`Remove ${getEntityName(
+            selectedEntity.record
+          )} from ${getEntityName(currentTeam)}`}
+          visible={!isUndefined(selectedEntity.record)}
+          onCancel={() => setEntity(undefined)}
+          onOk={() => {
+            handleAttributeDelete(
+              selectedEntity.record,
+              selectedEntity.attribute
+            );
+            setEntity(undefined);
+          }}>
+          <Typography.Text>
+            Are you sure you want to remove the{' '}
+            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
+              currentTeam
+            )}?`}
+          </Typography.Text>
+        </Modal>
       )}
     </div>
   );
