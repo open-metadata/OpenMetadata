@@ -28,7 +28,6 @@ import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Tooltip as TooltipTippy } from 'react-tippy';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
@@ -63,9 +62,9 @@ import { hasPemission } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
-import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import Description from '../common/description/Description';
 import Ellipses from '../common/Ellipses/Ellipses';
+import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
@@ -121,8 +120,6 @@ const TeamDetailsV1 = ({
     state: boolean;
     leave: boolean;
   }>(DELETE_USER_INITIAL_STATE);
-  const [showAction, setShowAction] = useState(false);
-  const [isDelete, setIsDelete] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [table, setTable] = useState<Team[]>([]);
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
@@ -212,15 +209,15 @@ const TeamDetailsV1 = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center"
+            className="tw-w-full tw-justify-center remove-icon"
             size={8}>
             <Tooltip placement="bottom" title="Remove">
               <ButtonAntd
                 icon={
                   <SVGIcons
                     alt="Remove"
-                    className="tw-w-4"
-                    icon={Icons.DELETE}
+                    className="tw-w-4 tw-mb-2.5"
+                    icon={Icons.ICON_REMOVE}
                   />
                 }
                 type="text"
@@ -231,33 +228,7 @@ const TeamDetailsV1 = ({
         ),
       },
     ];
-  }, []);
-
-  const manageButtonContent = () => {
-    return (
-      <div
-        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
-        id="manage-button"
-        onClick={() => setIsDelete(true)}>
-        <div>
-          <SVGIcons
-            alt="Delete"
-            className="tw-w-12"
-            icon={Icons.DELETE_GRADIANT}
-          />
-        </div>
-        <div className="tw-text-left" data-testid="delete-button">
-          <p className="tw-font-medium">
-            Delete Team “{getEntityName(currentTeam)}”
-          </p>
-          <p className="tw-text-grey-muted tw-text-xs">
-            Deleting this Team {getEntityName(currentTeam)} will permanently
-            remove its metadata from OpenMetadata.
-          </p>
-        </div>
-      </div>
-    );
-  };
+  }, [deleteUserHandler]);
 
   const extraInfo: ExtraInfo = {
     key: 'Owner',
@@ -589,7 +560,7 @@ const TeamDetailsV1 = ({
     return alreadyJoined ? (
       isJoinable || hasAccess ? (
         <Button
-          className="tw-h-8 tw-px-2 tw-mb-4 tw-ml-2"
+          className="tw-h-8 tw-px-2"
           data-testid="join-teams"
           size="small"
           theme="primary"
@@ -600,7 +571,7 @@ const TeamDetailsV1 = ({
       ) : null
     ) : (
       <Button
-        className="tw-h-8 tw-rounded tw-ml-2"
+        className="tw-h-8 tw-rounded"
         data-testid="leave-team-button"
         size="small"
         theme="primary"
@@ -720,7 +691,7 @@ const TeamDetailsV1 = ({
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
             {getTeamHeading()}
-            <div className="tw-flex">
+            <Space align="center">
               {!isUndefined(currentUser) &&
                 teamActionButton(
                   !isAlreadyJoinedTeam(currentTeam.id),
@@ -729,30 +700,17 @@ const TeamDetailsV1 = ({
               <NonAdminAction
                 position="bottom"
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <Button
-                  className="tw-h-8 tw-rounded tw-mb-1 tw-ml-2 tw-flex"
-                  data-testid="manage-button"
-                  disabled={!hasAccess}
-                  size="small"
-                  theme="primary"
-                  variant="outlined"
-                  onClick={() => setIsDelete(true)}>
-                  <TooltipTippy
-                    arrow
-                    arrowSize="big"
-                    disabled={!hasAccess}
-                    html={manageButtonContent()}
-                    open={showAction}
-                    position="bottom-end"
-                    theme="light"
-                    onRequestClose={() => setShowAction(false)}>
-                    <span>
-                      <FontAwesomeIcon icon="ellipsis-vertical" />
-                    </span>
-                  </TooltipTippy>
-                </Button>
+                <ManageButton
+                  afterDeleteAction={afterDeleteAction}
+                  buttonClassName="tw-p-4"
+                  entityId={currentTeam.id}
+                  entityName={
+                    currentTeam.fullyQualifiedName || currentTeam.name
+                  }
+                  entityType="team"
+                />
               </NonAdminAction>
-            </div>
+            </Space>
           </div>
           <div className="tw-mb-3">
             <Switch
@@ -857,15 +815,6 @@ const TeamDetailsV1 = ({
           onConfirm={handleRemoveUser}
         />
       )}
-
-      <DeleteWidgetModal
-        afterDeleteAction={afterDeleteAction}
-        entityId={currentTeam.id}
-        entityName={currentTeam.fullyQualifiedName || currentTeam.name}
-        entityType="team"
-        visible={isDelete}
-        onCancel={() => setIsDelete(false)}
-      />
     </div>
   );
 };

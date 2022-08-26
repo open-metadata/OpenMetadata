@@ -12,6 +12,7 @@ import { Button } from '../../buttons/Button/Button';
 import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
+import './EntitySummaryDetails.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
@@ -151,7 +152,10 @@ const EntitySummaryDetails = ({
   }
 
   return (
-    <Space data-testid="entity-summary-details" direction="horizontal">
+    <Space
+      className="entity-summary-details"
+      data-testid="entity-summary-details"
+      direction="horizontal">
       {retVal}
       {displayVal && (
         <>
@@ -254,6 +258,7 @@ const EntitySummaryDetails = ({
                                 updateTier={updateTier}
                               />
                             }
+                            placement="bottomRight"
                             trigger={['click']}>
                             <span
                               className="tw-flex"
