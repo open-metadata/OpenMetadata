@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.settings.Settings;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
+import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EventType;
@@ -32,6 +34,8 @@ import org.openmetadata.catalog.type.FieldChange;
 
 @Slf4j
 public class FilterUtil {
+
+  private static final String TEST_CASE_RESULT = "testCaseResult";
 
   public static boolean shouldProcessRequest(ChangeEvent changeEvent, Map<String, Map<EventType, Filters>> filtersMap) {
     if (filtersMap != null && !filtersMap.isEmpty()) {
@@ -46,11 +50,33 @@ public class FilterUtil {
         if ((sf = filtersOfEntity.get(eventType)) == null) {
           return false;
         } else {
-          return sf.getFields().contains("all") || checkIfFilterContainField(sf, getUpdateField(changeEvent));
+          if (sf.getFields().contains("all")) {
+            return true;
+          } else {
+            if (entityType.equals("testCase")) {
+              return handleTestCaseFilter(changeEvent, sf);
+            } else {
+              return checkIfFilterContainField(sf, getUpdateField(changeEvent));
+            }
+          }
         }
       }
     }
     return false;
+  }
+
+  private static boolean handleTestCaseFilter(ChangeEvent changeEvent, Filters sf) {
+    List<FieldChange> fieldChanges = getAllFieldChange(changeEvent);
+    for (FieldChange fieldChange : fieldChanges) {
+      if (fieldChange.getName().equals(TEST_CASE_RESULT)) {
+        TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
+        TestCaseStatus status = testCaseResult.getTestCaseStatus();
+        if (sf.getFields().contains(TEST_CASE_RESULT + status.toString())) {
+          return true;
+        }
+      }
+    }
+    return checkIfFilterContainField(sf, getUpdateField(changeEvent));
   }
 
   public static boolean handleWithWildCardFilter(
@@ -81,13 +107,17 @@ public class FilterUtil {
         || changeEvent.getEventType() == EventType.ENTITY_SOFT_DELETED) {
       return List.of(changeEvent.getEntityType());
     }
+    return getChangedFields(getAllFieldChange(changeEvent));
+  }
+
+  public static List<FieldChange> getAllFieldChange(ChangeEvent changeEvent) {
     ChangeDescription description = changeEvent.getChangeDescription();
     List<FieldChange> allFieldChange = new ArrayList<>();
     allFieldChange.addAll(description.getFieldsAdded());
     allFieldChange.addAll(description.getFieldsUpdated());
     allFieldChange.addAll(description.getFieldsDeleted());
 
-    return getChangedFields(allFieldChange);
+    return allFieldChange;
   }
 
   public static List<String> getChangedFields(List<FieldChange> field) {
