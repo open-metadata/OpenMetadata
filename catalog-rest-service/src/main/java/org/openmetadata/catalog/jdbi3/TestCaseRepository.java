@@ -68,7 +68,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
-    return getFromEntityRef(test.getId(), Relationship.HAS, null, true);
+    return getFromEntityRef(test.getId(), Relationship.CONTAINS, TEST_SUITE, true);
   }
 
   private EntityReference getTestDefinition(TestCase test) throws IOException {
@@ -112,7 +112,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
     EntityReference tableRef = EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
-    addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.HAS);
+    addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     // Add relationship from entity to test
     addRelationship(tableRef.getId(), test.getId(), tableRef.getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test

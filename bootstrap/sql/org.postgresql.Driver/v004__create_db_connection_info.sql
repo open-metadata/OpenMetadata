@@ -69,6 +69,7 @@ ALTER TABLE webhook_entity
     ADD webhookType VARCHAR(36) GENERATED ALWAYS AS (json ->> 'webhookType') STORED NOT NULL;
 
 CREATE TABLE IF NOT EXISTS entity_extension_time_series (
+    entityId VARCHAR(36) NOT NULL,             -- Entity Id
     entityFQN VARCHAR(1024) NOT NULL,           -- Entity FQN, we can refer to tables and columns
     extension VARCHAR(256) NOT NULL,            -- Extension name same as entity.fieldName
     jsonSchema VARCHAR(256) NOT NULL,           -- Schema used for generating JSON
@@ -88,3 +89,6 @@ WHERE serviceType = 'Oracle';
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,hostPort}'
 WHERE serviceType = 'Athena';
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,username}' #- '{connection,config,password}'
+WHERE serviceType in ('Databricks');
