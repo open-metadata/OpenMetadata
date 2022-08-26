@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Empty, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -126,21 +126,27 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
   if (isUndefined(profile)) {
     return (
       <div
-        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+        className=" tw-m-2 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
         data-testid="no-profiler-placeholder-container">
-        <span>
-          Data Profiler is an optional configuration in Ingestion. Please enable
-          the data profiler by following the documentation
-        </span>
-        <Link
-          className="tw-ml-1"
-          target="_blank"
-          to={{
-            pathname:
-              'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
-          }}>
-          here.
-        </Link>
+        <Empty
+          description={
+            <p>
+              <span>
+                Data Profiler is an optional configuration in Ingestion. Please
+                enable the data profiler by following the documentation
+              </span>
+              <Link
+                className="tw-ml-1"
+                target="_blank"
+                to={{
+                  pathname:
+                    'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+                }}>
+                here.
+              </Link>
+            </p>
+          }
+        />
       </div>
     );
   }

@@ -59,6 +59,19 @@ jest.mock('antd', () => ({
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
   },
+  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
+    <div>
+      {children}
+      {overlay}
+    </div>
+  )),
+  Menu: jest.fn().mockImplementation(({ items }) => (
+    <div>
+      {items.map((item: { key: string; label: JSX.Element }) => {
+        <div key={item.key}>{item.label}</div>;
+      })}
+    </div>
+  )),
 }));
 
 const mockProps = {
