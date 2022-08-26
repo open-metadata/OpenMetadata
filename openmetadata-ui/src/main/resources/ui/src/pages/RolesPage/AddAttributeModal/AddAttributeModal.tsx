@@ -104,14 +104,15 @@ const AddAttributeModal: FC<Props> = ({
       centered
       className="ant-attribute-modal"
       closable={false}
+      data-testid="modal-container"
       okText="Submit"
       title={
-        <>
+        <span data-testid="modal-title">
           {title}{' '}
           <span className="tw-text-grey-muted tw-text-sm">
             ({selectedValues.length}/{data.length} selected)
           </span>
-        </>
+        </span>
       }
       visible={isOpen}
       width={750}
@@ -124,6 +125,7 @@ const AddAttributeModal: FC<Props> = ({
           <Row className="ant-search-box-row">
             <Col span={24}>
               <Input
+                data-testid="search-input"
                 placeholder={`Search ${type}`}
                 prefix={
                   <FontAwesomeIcon
@@ -140,6 +142,7 @@ const AddAttributeModal: FC<Props> = ({
               className={classNames({
                 selected: selectedValues.includes(option.id),
               })}
+              data-testid="policy-row"
               gutter={[16, 16]}
               key={option.id}
               onClick={() => handleValuSelect(option.id)}>
