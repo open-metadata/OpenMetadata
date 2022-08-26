@@ -16,10 +16,12 @@ import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useEffect, useState } from 'react';
-import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
+import { getPolicies, getRoles } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../../components/Loader/Loader';
 import { EntityType } from '../../../enums/entity.enum';
+import { Policy } from '../../../generated/entity/policies/policy';
+import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -50,9 +52,27 @@ const AddAttributeModal: FC<Props> = ({
   const fetchPolicies = async () => {
     setIsLoading(true);
     try {
-      const data = await getPolicies('');
+      let datalist: {
+        data: Policy[] | Role[];
+      } = {
+        data: [],
+      };
 
-      const entityReferenceData: EntityReference[] = (data.data || []).map(
+      switch (type) {
+        case EntityType.POLICY:
+          datalist = await getPolicies('', undefined, undefined, 100);
+
+          break;
+        case EntityType.ROLE:
+          datalist = await getRoles('', undefined, undefined, false, 100);
+
+          break;
+
+        default:
+          break;
+      }
+
+      const entityReferenceData: EntityReference[] = (datalist.data || []).map(
         (record) => ({
           id: record.id,
           name: record.name,

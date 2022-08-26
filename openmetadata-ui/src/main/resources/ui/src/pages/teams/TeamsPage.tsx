@@ -195,6 +195,7 @@ const TeamsPage = () => {
         'users',
         'owns',
         'defaultRoles',
+        'policies',
         'owner',
         'parents',
         'children',

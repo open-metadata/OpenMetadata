@@ -64,7 +64,7 @@ const AddRolePage = () => {
 
   const fetchPolicies = async () => {
     try {
-      const data = await getPolicies('owner,location,roles,teams');
+      const data = await getPolicies('owner,location,roles,teams', '', '', 100);
 
       setPolicies(data.data || []);
     } catch (error) {
