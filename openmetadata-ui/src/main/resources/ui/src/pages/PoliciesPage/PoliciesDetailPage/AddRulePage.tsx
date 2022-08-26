@@ -114,7 +114,9 @@ const AddRulePage = () => {
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph className="tw-text-base">
+          <Typography.Paragraph
+            className="tw-text-base"
+            data-testid="add-rule-title">
             Add New Rule
           </Typography.Paragraph>
           <Form

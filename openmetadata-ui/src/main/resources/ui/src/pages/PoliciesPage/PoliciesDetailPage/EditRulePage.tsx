@@ -130,7 +130,9 @@ const EditRulePage = () => {
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph className="tw-text-base">
+          <Typography.Paragraph
+            className="tw-text-base"
+            data-testid="edit-rule-title">
             Edit Rule {`"${ruleName}"`}
           </Typography.Paragraph>
           <Form
