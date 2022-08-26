@@ -70,7 +70,6 @@ import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
-import './TagsPage.style.less';
 
 type DeleteTagDetailsType = {
   id: string;
@@ -416,7 +415,7 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <Card
-        className="tags-page-left-panel"
+        className="left-panel-container"
         data-testid="data-summary-container"
         size="small"
         style={leftPanelAntCardStyle}
