@@ -64,7 +64,7 @@ const Services = ({
   };
 
   return (
-    <Row className="tw-py-1" data-testid="services-container">
+    <Row data-testid="services-container">
       {serviceData.length ? (
         <Fragment>
           <Col span={24}>
@@ -88,7 +88,7 @@ const Services = ({
           <Col span={24}>
             <Row data-testid="data-container" gutter={[16, 16]}>
               {serviceData.map((service, index) => (
-                <Col key={index} lg={6} md={8}>
+                <Col key={index} lg={8} xl={6}>
                   <Card size="small" style={leftPanelAntCardStyle}>
                     <div
                       className="tw-flex tw-justify-between tw-text-grey-muted"
