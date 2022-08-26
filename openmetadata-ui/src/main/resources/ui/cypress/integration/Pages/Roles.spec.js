@@ -25,8 +25,8 @@ const policies = {
 };
 
 const errormessageValidation = {
-  ifPolicyNotSelected: 'invalid name',
-  ifNameNotEntered: 'At least one policy is required in a role',
+  ifPolicyNotSelected: 'At least one policy is required!',
+  ifNameNotEntered: 'invalid name',
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
 };
 
@@ -74,14 +74,11 @@ describe('Roles page should work properly', () => {
         .should('be.visible');
     });
 
-    //Click on plusone button
-    cy.get('[data-testid="plus-more-count"]').as('plusoneButton');
-
-
+    //Validate policy
     cy.get('[data-testid="policy-link"]')
       .should('contain', policies.dataConsumerPolicy)
       .should('be.visible');
-    cy.get('[class="ant-space-item"]')
+    cy.get('[data-testid="policy-link"]')
       .should('contain', policies.dataStewardPolicy)
       .should('be.visible');
   });
