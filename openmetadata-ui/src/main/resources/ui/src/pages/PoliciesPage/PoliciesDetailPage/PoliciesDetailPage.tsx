@@ -471,16 +471,11 @@ const PoliciesDetailPage = () => {
               />
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              <Space className="tw-w-full tabpane-space" direction="vertical">
-                <Button type="primary">Add Team</Button>
-                <List
-                  list={policy.teams ?? []}
-                  type="team"
-                  onDelete={(record) =>
-                    setEntity({ record, attribute: 'teams' })
-                  }
-                />
-              </Space>
+              <List
+                list={policy.teams ?? []}
+                type="team"
+                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
+              />
             </TabPane>
           </Tabs>
         </div>
