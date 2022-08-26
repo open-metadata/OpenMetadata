@@ -13,15 +13,9 @@
 
 import { Empty } from 'antd';
 import classNames from 'classnames';
-import { isEqual, isNil, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, {
-  Fragment,
-  RefObject,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
@@ -712,15 +706,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div
                   className="tw-p-2 tw-grid tw-grid-cols-3 entity-feed-list"
                   id="tablequeries">
-                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
-                    <Fragment>
-                      <div />
-                      <TableQueries
-                        isLoading={isQueriesLoading}
-                        queries={tableQueries}
-                      />
-                      <div />
-                    </Fragment>
+                  {!isEmpty(tableQueries) || isQueriesLoading ? (
+                    <TableQueries
+                      isLoading={isQueriesLoading}
+                      queries={tableQueries}
+                    />
                   ) : (
                     <div
                       className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
