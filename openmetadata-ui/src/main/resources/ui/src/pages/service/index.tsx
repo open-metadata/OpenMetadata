@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined, startCase } from 'lodash';
@@ -45,7 +45,6 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
@@ -888,7 +887,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   return (
-    <>
+    <Row>
       {isLoading ? (
         <Loader />
       ) : isError ? (
@@ -896,7 +895,7 @@ const ServicePage: FunctionComponent = () => {
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <PageContainer>
+        <Col>
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="service-page">
@@ -1078,9 +1077,9 @@ const ServicePage: FunctionComponent = () => {
               </div>
             </div>
           </div>
-        </PageContainer>
+        </Col>
       )}
-    </>
+    </Row>
   );
 };
 

@@ -13,17 +13,17 @@
 
 import React from 'react';
 import GlobalSettingRouter from '../../router/GlobalSettingRouter';
-import PageLayout from '../containers/PageLayout';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import './GlobalSetting.less';
 import GlobalSettingLeftPanel from './GlobalSettingLeftPanel';
 
 const GlobalSetting = () => {
   return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
+    <PageLayoutV1
+      className="tw-h-full tw-px-6"
       leftPanel={<GlobalSettingLeftPanel />}>
       <GlobalSettingRouter />
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 
