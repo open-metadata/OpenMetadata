@@ -13,6 +13,10 @@
         "type": "string"
       }
     },
+    "bootstrapServers": {
+      "default": "Bootstrap servers",
+      "type": "string"
+    },
     "acks": {
       "description": "Acknowledgment",
       "default": "all",
@@ -21,6 +25,11 @@
     "retries": {
       "description": "No. of retries",
       "default": 3,
+      "type": "integer"
+    },
+    "batchSize": {
+      "description": "Batch size",
+      "default": 16384,
       "type": "integer"
     },
     "lingerMS": {
@@ -45,17 +54,9 @@
     },
     "securityProtocol": {
       "description": "Kafka security protocol config",
-      "default": "PLAINTEXT",
       "type": "string",
       "enum": ["PLAINTEXT", "SSL"],
-      "javaEnums": [
-        {
-          "name": "PLAINTEXT"
-        },
-        {
-          "name": "SSL"
-        }
-      ]
+      "default": "PLAINTEXT"
     },
     "SSLProtocol": {
       "description": "Kafka SSL protocol config",
@@ -83,6 +84,6 @@
       "type": "string"
     }
   },
-  "required": ["topics"],
+  "required": ["topics", "bootstrapServers"],
   "additionalProperties": false
 }

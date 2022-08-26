@@ -26,6 +26,7 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
+import org.openmetadata.catalog.kafka.KafkaEventConfiguration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
@@ -56,6 +57,9 @@ public class CatalogApplicationConfig extends Configuration {
 
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
+
+  @JsonProperty("kafka")
+  private KafkaEventConfiguration kafkaEventConfiguration;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
