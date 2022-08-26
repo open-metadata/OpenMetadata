@@ -228,7 +228,7 @@ const TeamDetailsV1 = ({
         ),
       },
     ];
-  }, []);
+  }, [deleteUserHandler]);
 
   const extraInfo: ExtraInfo = {
     key: 'Owner',
