@@ -42,12 +42,14 @@ from metadata.clients.connection_clients import (
     MetabaseClient,
     MlflowClientWrapper,
     ModeClient,
+    NifiClientWrapper,
     PowerBiClient,
     RedashClient,
     SalesforceClient,
     SupersetClient,
     TableauClient,
 )
+from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
 )
@@ -121,6 +123,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.fivetranConn
 )
 from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
     GlueConnection as GluePipelineConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
+    NifiConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.credentials import set_google_credentials
@@ -287,7 +292,7 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
     from delta import configure_spark_with_delta_pip
 
     builder = (
-        pyspark.sql.SparkSession.builder.appName(connection.appName)
+        pyspark.sql.SparkSession.builder.appName("random")
         .enableHiveSupport()
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
@@ -837,6 +842,29 @@ def _(connection: MlflowConnection, verbose: bool = False):
 def _(connection: MlflowClientWrapper) -> None:
     try:
         connection.client.list_registered_models()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: NifiConnection, verbose: bool = False):
+
+    return NifiClientWrapper(
+        NifiClient(
+            host_port=connection.hostPort,
+            username=connection.username,
+            password=connection.password.get_secret_value(),
+            verify=connection.verifySSL,
+        )
+    )
+
+
+@test_connection.register
+def _(connection: NifiClientWrapper) -> None:
+    try:
+        connection.client.resources
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
