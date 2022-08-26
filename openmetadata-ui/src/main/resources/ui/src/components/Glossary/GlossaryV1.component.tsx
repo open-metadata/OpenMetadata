@@ -253,7 +253,7 @@ const GlossaryV1 = ({
   const fetchLeftPanel = () => {
     return (
       <div className="tw-h-full tw-px-1" id="glossary-left-panel">
-        <div className="tw-bg-white tw-h-full tw-py-2 glossary-left-panel">
+        <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
             <h6 className="tw-heading tw-text-base">Glossary</h6>
           </div>
