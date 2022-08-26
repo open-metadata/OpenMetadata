@@ -55,7 +55,7 @@ const GlobalSettingLeftPanel = () => {
   };
 
   return (
-    <div className="tw-mx-1">
+    <div className="tw-mx-1 left-panel-container">
       <Menu
         className="global-setting-left-panel"
         items={items}

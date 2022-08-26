@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Empty } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -351,7 +352,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
     } else {
       return (
         <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-          No features data available
+          <Empty description={<p>No features data available</p>} />
         </div>
       );
     }

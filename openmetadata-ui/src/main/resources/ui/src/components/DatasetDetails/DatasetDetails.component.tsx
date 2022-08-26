@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Empty } from 'antd';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
@@ -709,7 +710,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 4 && (
                 <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
+                  className="tw-p-2 tw-grid tw-grid-cols-3 entity-feed-list"
                   id="tablequeries">
                   {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
                     <Fragment>
@@ -722,9 +723,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     </Fragment>
                   ) : (
                     <div
-                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
                       data-testid="no-queries">
-                      <span>No queries data available.</span>
+                      <Empty description={<p>No queries data available</p>} />
                     </div>
                   )}
                 </div>

@@ -49,6 +49,9 @@ jest.mock('antd', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
+  Empty: jest
+    .fn()
+    .mockImplementation(({ description }) => <div>{description}</div>),
 }));
 
 // mock internel imports
