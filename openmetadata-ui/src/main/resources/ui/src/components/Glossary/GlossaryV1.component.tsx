@@ -349,7 +349,7 @@ const GlossaryV1 = ({
               visible={showActions}
               onVisibleChange={setShowActions}>
               <Button
-                className="tw-rounded tw-flex tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-mb-1 tw-flex"
+                className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-mb-1 tw-flex"
                 data-testid="manage-button"
                 disabled={isHasAccess}
                 size="small"

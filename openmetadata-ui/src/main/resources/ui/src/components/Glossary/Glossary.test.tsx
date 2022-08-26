@@ -74,6 +74,10 @@ jest.mock('antd', () => ({
   )),
 }));
 
+jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockReturnValue(<div>Breadcrumb</div>)
+);
+
 const mockProps = {
   assetData: mockedAssetData,
   currentPage: 1,
