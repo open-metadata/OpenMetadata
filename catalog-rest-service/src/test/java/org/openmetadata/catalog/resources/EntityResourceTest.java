@@ -263,8 +263,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static TestDefinition TEST_DEFINITION3;
   public static EntityReference TEST_DEFINITION3_REFERENCE;
 
-  public static List<EntityReference> TEST_CASES_1;
-  public static List<EntityReference> TEST_CASES_2;
 
   public static List<Column> COLUMNS;
 
