@@ -1,6 +1,7 @@
 package org.openmetadata.catalog.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -210,8 +211,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
-    TestCase putResponse = putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
-    verifyTestCaseResult(putResponse.getTestCaseResult(), testCaseResult);
+    putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
 
     ResultList<TestCaseResult> testCaseResults =
         getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
@@ -223,8 +223,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withResult("tested")
             .withTestCaseStatus(TestCaseStatus.Failed)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
-    putResponse = putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult, ADMIN_AUTH_HEADERS);
-    verifyTestCaseResult(putResponse.getTestCaseResult(), newTestCaseResult);
+    putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult, ADMIN_AUTH_HEADERS);
 
     testCaseResults = getTestCaseResults(testCase.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, List.of(newTestCaseResult, testCaseResult), 2);
@@ -235,9 +234,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withResult("result")
             .withTestCaseStatus(TestCaseStatus.Success)
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"));
-    putResponse = putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult1, ADMIN_AUTH_HEADERS);
-    assertEquals(newTestCaseResult1.getTimestamp(), putResponse.getTestCaseResult().getTimestamp());
-    verifyTestCaseResult(putResponse.getTestCaseResult(), newTestCaseResult1);
+    putTestCaseResult(testCase.getFullyQualifiedName(), newTestCaseResult1, ADMIN_AUTH_HEADERS);
 
     testCase = getEntity(testCase.getId(), "testCaseResult", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
@@ -347,16 +344,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     verifyTestCases(testCaseList, expectedTestCaseList, 12);
   }
 
-  public static TestCase putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
+  public static void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult");
-    return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
+    TestUtils.put(target, data, CREATED, authHeaders);
   }
 
-  public static TestCase deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
+  public static void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("testCase/" + fqn + "/testCaseResult/" + timestamp);
-    return TestUtils.delete(target, TestCase.class, authHeaders);
+    TestUtils.delete(target, authHeaders);
   }
 
   public static ResultList<TestCaseResult> getTestCaseResults(
