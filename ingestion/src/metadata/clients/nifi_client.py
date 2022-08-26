@@ -55,7 +55,7 @@ class NifiClient:
             try:
                 res = requests.post(
                     f"{self.api_endpoint}/access/token",
-                    verify=False,
+                    verify=self.verify,
                     headers=self.content_headers,
                     data=f"username={self.username}&password={self.password}",
                 )
