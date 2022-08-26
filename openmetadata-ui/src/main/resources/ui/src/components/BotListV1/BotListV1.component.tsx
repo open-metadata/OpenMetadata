@@ -33,7 +33,7 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import Loader from '../Loader/Loader';
 import { BotListV1Props } from './BotListV1.interfaces';
 
-const BotListV1 = ({ showDeleted }: BotListV1Props) => {
+const BotListV1 = ({ showDeleted, permissions }: BotListV1Props) => {
   const [botUsers, setBotUsers] = useState<Bot[]>([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [selectedUser, setSelectedUser] = useState<Bot>();
@@ -90,8 +90,15 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
         width: 90,
         render: (_, record) => (
           <Space align="center" size={8}>
-            <Tooltip placement="bottom" title="Delete">
+            <Tooltip
+              placement="bottom"
+              title={
+                permissions.Delete
+                  ? 'Delete'
+                  : 'You do not have permissions to perform this action.'
+              }>
               <Button
+                disabled={!permissions.Delete}
                 icon={
                   <SVGIcons
                     alt="Delete"

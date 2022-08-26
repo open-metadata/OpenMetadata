@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Card, Empty } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -22,6 +22,7 @@ import React, {
   Fragment,
   HTMLAttributes,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import Select, { SingleValue } from 'react-select';
@@ -30,9 +31,11 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
+import { getPermissions } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -43,6 +46,7 @@ import { reactSingleSelectCustomStyle } from '../common/react-select-component/r
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
@@ -61,6 +65,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   updateBotsDetails,
   revokeTokenHandler,
 }) => {
+  const { permissions } = usePermissionProvider();
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
@@ -71,6 +76,11 @@ const BotDetails: FC<BotsDetailProp> = ({
     useState<boolean>(false);
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
+
+  const botPermissions = useMemo(
+    () => getPermissions(EntityType.BOT, permissions),
+    [permissions]
+  );
 
   const getJWTTokenExpiryOptions = () => {
     return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -213,6 +223,9 @@ const BotDetails: FC<BotsDetailProp> = ({
             <button
               className="tw-ml-2 focus:tw-outline-none"
               data-testid="edit-displayName"
+              disabled={
+                !(botPermissions.EditAll || botPermissions.EditDisplayName)
+              }
               onClick={() => setIsDisplayNameEdit(true)}>
               <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
             </button>
@@ -226,9 +239,11 @@ const BotDetails: FC<BotsDetailProp> = ({
     return (
       <div className="tw--ml-5">
         <Description
-          hasEditAccess
           description={botsData.description || ''}
           entityName={getEntityName(botsData as unknown as EntityReference)}
+          hasEditAccess={
+            botPermissions.EditAll || botPermissions.EditDescription
+          }
           isEdit={isDescriptionEdit}
           onCancel={() => setIsDescriptionEdit(false)}
           onDescriptionEdit={() => setIsDescriptionEdit(true)}
@@ -407,7 +422,7 @@ const BotDetails: FC<BotsDetailProp> = ({
           <h6 className="tw-mb-2 tw-self-center">
             {generateToken ? 'Generate JWT token' : 'JWT Token'}
           </h6>
-          {!generateToken ? (
+          {!generateToken && botPermissions.EditAll ? (
             <div className="tw-flex">
               <Button
                 data-testid="generate-token"
@@ -447,53 +462,59 @@ const BotDetails: FC<BotsDetailProp> = ({
   }, [botsData]);
 
   return (
-    <PageLayout
-      classes="tw-h-full tw-px-4"
-      header={
-        <TitleBreadcrumb
-          className="tw-px-6"
-          titleLinks={[
-            {
-              name: 'Bots',
-              url: getSettingPath(
-                GlobalSettingsMenuCategory.INTEGRATIONS,
-                GlobalSettingOptions.BOTS
-              ),
-            },
-            { name: botsData.name || '', url: '', activeTitle: true },
-          ]}
-        />
-      }
-      leftPanel={fetchLeftPanel()}
-      rightPanel={fetchRightPanel()}>
-      {getCenterLayout()}
-      {isRevokingToken ? (
-        <ConfirmationModal
-          bodyText="Are you sure you want to revoke access for JWT token?"
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Are you sure?"
-          onCancel={() => setIsRevokingToken(false)}
-          onConfirm={() => {
-            revokeTokenHandler();
-            setIsRevokingToken(false);
-          }}
-        />
-      ) : null}
-      {isRegeneratingToken ? (
-        <ConfirmationModal
-          bodyText="Generating a new token will revoke the existing JWT token. Are you sure you want to proceed?"
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Are you sure?"
-          onCancel={() => setIsRegeneratingToken(false)}
-          onConfirm={() => {
-            setIsRegeneratingToken(false);
-            setGenerateToken(true);
-          }}
-        />
-      ) : null}
-    </PageLayout>
+    <>
+      {botPermissions.ViewAll ? (
+        <PageLayout
+          classes="tw-h-full tw-px-4"
+          header={
+            <TitleBreadcrumb
+              className="tw-px-6"
+              titleLinks={[
+                {
+                  name: 'Bots',
+                  url: getSettingPath(
+                    GlobalSettingsMenuCategory.INTEGRATIONS,
+                    GlobalSettingOptions.BOTS
+                  ),
+                },
+                { name: botsData.name || '', url: '', activeTitle: true },
+              ]}
+            />
+          }
+          leftPanel={fetchLeftPanel()}
+          rightPanel={fetchRightPanel()}>
+          {getCenterLayout()}
+          {isRevokingToken ? (
+            <ConfirmationModal
+              bodyText="Are you sure you want to revoke access for JWT token?"
+              cancelText="Cancel"
+              confirmText="Confirm"
+              header="Are you sure?"
+              onCancel={() => setIsRevokingToken(false)}
+              onConfirm={() => {
+                revokeTokenHandler();
+                setIsRevokingToken(false);
+              }}
+            />
+          ) : null}
+          {isRegeneratingToken ? (
+            <ConfirmationModal
+              bodyText="Generating a new token will revoke the existing JWT token. Are you sure you want to proceed?"
+              cancelText="Cancel"
+              confirmText="Confirm"
+              header="Are you sure?"
+              onCancel={() => setIsRegeneratingToken(false)}
+              onConfirm={() => {
+                setIsRegeneratingToken(false);
+                setGenerateToken(true);
+              }}
+            />
+          ) : null}
+        </PageLayout>
+      ) : (
+        <Empty description="You do not permission to view this page" />
+      )}
+    </>
   );
 };
 

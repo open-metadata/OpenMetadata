@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
+import {
+  OperationPermission,
+  PermissionMap,
+} from '../components/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import {
   Access,
+  Permission,
   ResourcePermission,
 } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../generated/entity/policies/policy';
@@ -32,6 +37,42 @@ export const hasPemission = (
   );
 
   return currentPermission?.access === Access.Allow;
+};
+
+/**
+ *
+ * @param resource resource type like "bot", "table"
+ * @param permission permissionMap - {resource:permissionList}
+ * @returns OperationPermission - {Operation:true/false}
+ */
+export const getPermissions = (
+  resource: EntityType,
+  permission: PermissionMap
+): OperationPermission => {
+  const resourcePermissions = permission[resource] ?? [];
+
+  return resourcePermissions.reduce(
+    (acc: OperationPermission, curr: Permission) => {
+      return {
+        ...acc,
+        [curr.operation as Operation]: curr.access === Access.Allow,
+      };
+    },
+    {} as OperationPermission
+  );
+};
+
+/**
+ *
+ * @param permissions Take ResourcePermission list
+ * @returns PermissionMap - {resource:permissionList}
+ */
+export const getPermissionMap = (
+  permissions: ResourcePermission[]
+): PermissionMap => {
+  return permissions.reduce((acc: PermissionMap, curr: ResourcePermission) => {
+    return { ...acc, [curr.resource]: curr.permissions };
+  }, {});
 };
 
 export const LIST_CAP = 1;
