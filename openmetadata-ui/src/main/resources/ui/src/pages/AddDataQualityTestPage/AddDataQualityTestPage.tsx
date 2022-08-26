@@ -11,15 +11,36 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import { AxiosError } from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import { Table } from '../../generated/entity/data/table';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {
+  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const [table, setTable] = useState({} as Table);
+
+  const fetchTableData = async () => {
+    try {
+      const table = await getTableDetailsByFQN(entityTypeFQN, '');
+      setTable(table);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchTableData();
+  }, [entityTypeFQN]);
+
   return (
     <PageContainerV1>
       <div className="tw-self-center">
-        <AddDataQualityTestV1 />
+        <AddDataQualityTestV1 table={table} />
       </div>
     </PageContainerV1>
   );
