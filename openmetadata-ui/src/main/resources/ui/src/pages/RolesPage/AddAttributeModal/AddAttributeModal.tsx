@@ -105,7 +105,14 @@ const AddAttributeModal: FC<Props> = ({
       className="ant-attribute-modal"
       closable={false}
       okText="Submit"
-      title={title}
+      title={
+        <>
+          {title}{' '}
+          <span className="tw-text-grey-muted tw-text-sm">
+            ({selectedValues.length}/{data.length} selected)
+          </span>
+        </>
+      }
       visible={isOpen}
       width={750}
       onCancel={onCancel}

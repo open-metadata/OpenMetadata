@@ -281,28 +281,18 @@ const RolesDetailPage = () => {
               </Space>
             </TabPane>
             <TabPane key="teams" tab="Teams">
-              <Space className="tw-w-full" direction="vertical">
-                <Button type="primary">Add Team</Button>
-                <List
-                  list={role.teams ?? []}
-                  type="team"
-                  onDelete={(record) =>
-                    setEntity({ record, attribute: 'teams' })
-                  }
-                />
-              </Space>
+              <List
+                list={role.teams ?? []}
+                type="team"
+                onDelete={(record) => setEntity({ record, attribute: 'teams' })}
+              />
             </TabPane>
             <TabPane key="users" tab="Users">
-              <Space className="tw-w-full" direction="vertical">
-                <Button type="primary">Add User</Button>
-                <List
-                  list={role.users ?? []}
-                  type="user"
-                  onDelete={(record) =>
-                    setEntity({ record, attribute: 'users' })
-                  }
-                />
-              </Space>
+              <List
+                list={role.users ?? []}
+                type="user"
+                onDelete={(record) => setEntity({ record, attribute: 'users' })}
+              />
             </TabPane>
           </Tabs>
         </div>
