@@ -49,9 +49,9 @@ def table_row_count_to_be_between(
         )
         row_count_value = row_count_dict.get(Metrics.ROW_COUNT.name)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)
