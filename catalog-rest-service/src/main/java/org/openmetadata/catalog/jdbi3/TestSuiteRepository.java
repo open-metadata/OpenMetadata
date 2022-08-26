@@ -5,7 +5,6 @@ import static org.openmetadata.catalog.Entity.TEST_SUITE;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.tests.TestSuite;
@@ -32,7 +31,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) throws IOException {
     entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     entity.setPipeline(fields.contains("pipelines") ? getIngestionPipeline(entity) : null);
-    entity.setTests(fields.contains("tests") ? getTestCases(entity): null);
+    entity.setTests(fields.contains("tests") ? getTestCases(entity) : null);
     return entity;
   }
 
@@ -42,7 +41,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) throws IOException {
-    List<CollectionDAO.EntityRelationshipRecord> testCases = findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    List<CollectionDAO.EntityRelationshipRecord> testCases =
+        findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
     return EntityUtil.getEntityReferences(testCases);
   }
 

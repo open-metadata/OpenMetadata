@@ -6,16 +6,14 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
+import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
@@ -23,18 +21,11 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tests.CreateTestCase;
 import org.openmetadata.catalog.api.tests.CreateTestSuite;
 import org.openmetadata.catalog.resources.EntityResourceTest;
-import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
-import org.openmetadata.catalog.test.TestCaseParameterValue;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.TestSuite;
-import org.openmetadata.catalog.tests.type.TestCaseResult;
-import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-
-import javax.ws.rs.client.WebTarget;
 
 public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateTestSuite> {
   public TestSuiteResourceTest() {
@@ -80,13 +71,15 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite testSuite2 = createAndCheckEntity(createTestSuite2, ADMIN_AUTH_HEADERS);
 
     for (int i = 0; i < 5; i++) {
-      CreateTestCase createTestCase = testCaseResourceTest.createRequest("test_testSuite_1_" + i).withTestSuite(testSuite1.getEntityReference());
+      CreateTestCase createTestCase =
+          testCaseResourceTest.createRequest("test_testSuite_1_" + i).withTestSuite(testSuite1.getEntityReference());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
     }
 
     for (int i = 5; i < 10; i++) {
-      CreateTestCase create = testCaseResourceTest.createRequest("test_testSuite_2_" + i).withTestSuite(testSuite2.getEntityReference());
+      CreateTestCase create =
+          testCaseResourceTest.createRequest("test_testSuite_2_" + i).withTestSuite(testSuite2.getEntityReference());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
       testCases2.add(testCase.getEntityReference());
     }
@@ -94,15 +87,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     ResultList<TestSuite> actualTestSuites = getTestSuites(10, "*", ADMIN_AUTH_HEADERS);
     verifyTestSuites(actualTestSuites, List.of(createTestSuite1, createTestSuite2));
 
-    for (TestSuite testSuite: actualTestSuites.getData()) {
+    for (TestSuite testSuite : actualTestSuites.getData()) {
       if (testSuite.getName().equals(createTestSuite1.getName())) {
         verifyTestCases(testSuite.getTests(), testCases1);
       }
     }
   }
 
-  public static ResultList<TestSuite> getTestSuites(
-      Integer limit, String fields, Map<String, String> authHeaders)
+  public static ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("testSuite");
     target = limit != null ? target.queryParam("limit", limit) : target;
@@ -110,9 +102,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
   }
 
-  private void verifyTestSuites(
-      ResultList<TestSuite> actualTestSuites,
-      List<CreateTestSuite> expectedTestSuites) throws HttpResponseException {
+  private void verifyTestSuites(ResultList<TestSuite> actualTestSuites, List<CreateTestSuite> expectedTestSuites)
+      throws HttpResponseException {
     Map<String, TestSuite> testSuiteMap = new HashMap<>();
     for (TestSuite result : actualTestSuites.getData()) {
       testSuiteMap.put(result.getName(), result);
@@ -124,9 +115,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     }
   }
 
-  private void verifyTestCases(
-      List<EntityReference> actualTestCases,
-      List<EntityReference> expectedTestCases) throws HttpResponseException {
+  private void verifyTestCases(List<EntityReference> actualTestCases, List<EntityReference> expectedTestCases)
+      throws HttpResponseException {
     assertEquals(expectedTestCases.size(), actualTestCases.size());
     Map<UUID, EntityReference> testCaseMap = new HashMap<>();
     for (EntityReference result : actualTestCases) {
@@ -139,7 +129,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       assertEquals(result.getDescription(), storedTestCase.getDescription());
     }
   }
-
 
   @Override
   public CreateTestSuite createRequest(String name) {
