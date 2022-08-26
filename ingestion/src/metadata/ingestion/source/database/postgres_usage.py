@@ -26,3 +26,9 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
     """
 
     sql_stmt = POSTGRES_SQL_STATEMENT
+    filters = """
+                AND (
+                     NOT s.query ILIKE 'create table %% as select %%'
+                    OR   NOT s.query ILIKE  'insert %%'
+                )
+            """

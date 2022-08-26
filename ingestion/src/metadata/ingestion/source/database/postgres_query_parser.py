@@ -44,6 +44,8 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
     Postgres base for Usage and Lineage
     """
 
+    filters: str
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
 
@@ -70,6 +72,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             result_limit=self.config.sourceConfig.config.resultLimit,
+            filters=self.filters,
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:
@@ -183,11 +186,6 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             except Exception as err:
                 logger.error(f"Source usage processing error - {err}")
                 logger.debug(traceback.format_exc())
-
-    def next_record(self) -> Iterable[TableQuery]:
-        for table_queries in self.get_table_query():
-            if table_queries:
-                yield table_queries
 
     def get_database_name(self, data: dict) -> str:
         """

@@ -483,6 +483,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         a.state_change <  current_timestamp
         AND s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
         AND s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        {filters}
       LIMIT {result_limit}
     """
 )

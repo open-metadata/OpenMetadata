@@ -11,6 +11,10 @@
 """
 Postgres lineage module
 """
+from typing import Iterable
+
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.postgres_query_parser import (
     PostgresQueryParserSource,
@@ -22,4 +26,27 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
 
     sql_stmt = POSTGRES_SQL_STATEMENT
 
-    filters = ""  # No filtering in the queries
+    filters = """
+                AND (
+                    s.query ILIKE 'create table %% as select %%'
+                    OR s.query ILIKE 'insert %%'
+                )
+            """
+
+    def next_record(self) -> Iterable[AddLineageRequest]:
+        """
+        Based on the query logs, prepare the lineage
+        and send it to the sink
+        """
+        for table_queries in self.get_table_query():
+            for table_query in table_queries.queries:
+                lineages = get_lineage_by_query(
+                    self.metadata,
+                    query=table_query.query,
+                    service_name=table_query.serviceName,
+                    database_name=table_query.databaseName,
+                    schema_name=table_query.databaseSchema,
+                )
+
+                for lineage_request in lineages or []:
+                    yield lineage_request
