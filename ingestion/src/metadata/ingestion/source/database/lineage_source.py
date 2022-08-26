@@ -22,6 +22,7 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.connections import get_connection
 
 logger = ingestion_logger()
 
