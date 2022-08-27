@@ -130,7 +130,7 @@ const AddAnnouncementModal: FC<Props> = ({
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
-            label="Start Date (UTC):"
+            label="Start Date:"
             name="startDate"
             rules={[
               {
@@ -144,7 +144,7 @@ const AddAnnouncementModal: FC<Props> = ({
             />
           </Form.Item>
           <Form.Item
-            label="End Date (UTC):"
+            label="End Date:"
             name="endtDate"
             rules={[
               {
