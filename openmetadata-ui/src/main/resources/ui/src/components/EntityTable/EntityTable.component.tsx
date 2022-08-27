@@ -199,9 +199,7 @@ const EntityTable = ({
   ) => {
     const getUpdatedTags = (column: Column) => {
       const prevTags = column?.tags?.filter((tag) => {
-        return newColumnTags
-          .map((tag) => tag.fqn)
-          .includes(tag.tagFQN as string);
+        return newColumnTags.map((tag) => tag.fqn).includes(tag.tagFQN);
       });
 
       const newTags: Array<EntityTags> = newColumnTags
@@ -457,7 +455,7 @@ const EntityTable = ({
   ) => {
     const columnTests =
       columnTestLength && columnTestLength > 0
-        ? ((record.columnTests ?? []) as ColumnTest[])
+        ? record.columnTests ?? []
         : ([] as ColumnTest[]);
 
     const failingTests = columnTests.filter((test) =>
@@ -643,16 +641,14 @@ const EntityTable = ({
                     <Link
                       className="link-text"
                       to={getTableDetailsPath(
-                        getTableFQNFromColumnFQN(
-                          columnJoin.fullyQualifiedName as string
-                        ),
+                        getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
                         getPartialNameFromTableFQN(
-                          columnJoin.fullyQualifiedName as string,
+                          columnJoin.fullyQualifiedName,
                           [FqnPart.Column]
                         )
                       )}>
                       {getPartialNameFromTableFQN(
-                        columnJoin.fullyQualifiedName as string,
+                        columnJoin.fullyQualifiedName,
                         [FqnPart.Database, FqnPart.Table, FqnPart.Column],
                         FQN_SEPARATOR_CHAR
                       )}
