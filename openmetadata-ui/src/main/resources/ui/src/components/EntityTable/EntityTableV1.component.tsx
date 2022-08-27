@@ -401,7 +401,7 @@ const EntityTableV1 = ({
 
     return (
       <button
-        className="tw-w-8 tw-h-8 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
         data-testid="request-description"
         onClick={() =>
           hasDescription
@@ -533,6 +533,7 @@ const EntityTableV1 = ({
                                 </span>
                               </div>
                             }
+                            key="pop-over"
                             position="bottom"
                             theme="light"
                             trigger="click">
@@ -710,8 +711,10 @@ const EntityTableV1 = ({
               ) : (
                 <div
                   className={classNames(
-                    `tw-flex tw-items-center tw-justify-content`,
-                    editColumnTag?.index === index ? 'tw-flex-col' : ''
+                    `tw-flex tw-justify-content`,
+                    editColumnTag?.index === index || !isEmpty(record.tags)
+                      ? 'tw-flex-col tw-items-start'
+                      : 'tw-items-center'
                   )}
                   data-testid="tags-wrapper"
                   onClick={() => {
@@ -757,7 +760,7 @@ const EntityTableV1 = ({
                       `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
                         record
                       )}${ENTITY_LINK_SEPARATOR}tags`,
-                      Boolean(record?.name.length)
+                      Boolean(record?.name?.length)
                     )}
                     {getFieldThreadElement(
                       getColumnName(record),
@@ -797,7 +800,7 @@ const EntityTableV1 = ({
           );
       }
     },
-    [editColumnTag, isTagLoading]
+    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
   );
 
   const columns = useMemo(
@@ -821,6 +824,7 @@ const EntityTableV1 = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
+        width: 200,
         render: (
           _: Array<unknown>,
           record: ModifiedTableColumn,
@@ -834,6 +838,7 @@ const EntityTableV1 = ({
         dataIndex: 'columnTests',
         key: 'columnTests',
         accessor: 'columnTests',
+        width: 200,
         render: (
           _: Array<unknown>,
           record: ModifiedTableColumn,
@@ -858,6 +863,7 @@ const EntityTableV1 = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
+        width: 272,
         render: (
           _: Array<unknown>,
           record: ModifiedTableColumn | Column,
@@ -865,7 +871,7 @@ const EntityTableV1 = ({
         ) => renderCell(TABLE_HEADERS_V1.tags, record, index),
       },
     ],
-    [editColumnTag, isTagLoading]
+    [editColumnTag, isTagLoading, renderCell]
   );
 
   useEffect(() => {
@@ -881,6 +887,7 @@ const EntityTableV1 = ({
     <>
       <Table
         columns={columns}
+        data-testid="entity-table"
         dataSource={data}
         expandable={{
           defaultExpandedRowKeys: [],

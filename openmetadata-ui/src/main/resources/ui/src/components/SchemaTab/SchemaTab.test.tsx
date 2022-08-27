@@ -75,8 +75,8 @@ jest.mock('../SampleDataTable/SampleDataTable.component', () => {
   return jest.fn().mockReturnValue(<p>SampleDataTable</p>);
 });
 
-jest.mock('../EntityTable/EntityTable.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityTable</p>);
+jest.mock('../EntityTable/EntityTableV1.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityTableV1</p>);
 });
 
 const mockTableConstraints = [
