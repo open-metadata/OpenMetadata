@@ -36,14 +36,9 @@ logger = ingestion_logger()
 
 
 class RedshiftUsageSource(UsageSource):
-
-    SQL_STATEMENT = REDSHIFT_SQL_STATEMENT
-
     def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
         super().__init__(config, metadata_config)
-        self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
-            start_time=self.start, end_time=self.end
-        )
+        self.sql_stmt = REDSHIFT_SQL_STATEMENT
         self._extract_iter: Union[None, Iterator] = None
         self._database = "redshift"
 
