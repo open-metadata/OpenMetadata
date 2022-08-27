@@ -16,20 +16,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddPolicyPage from './AddPolicyPage';
 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({
     push: jest.fn(),
