@@ -21,7 +21,7 @@ import {
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import Searchbar from '../common/searchbar/Searchbar';
-import EntityTableV1 from '../EntityTable/EntityTableV1.component';
+import EntityTableV1 from '../EntityTable/EntityTable.component';
 
 type Props = {
   owner?: Table['owner'];

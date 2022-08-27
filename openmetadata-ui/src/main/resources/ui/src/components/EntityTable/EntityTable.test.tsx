@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +16,12 @@ import { flatten } from 'lodash';
 import { FormattedGlossaryTermData, TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Column } from '../../generated/api/data/createTable';
 import { Table } from '../../generated/entity/data/table';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
-import EntityTableV1 from './EntityTableV1.component';
+import EntityTableV1 from './EntityTable.component';
+import type { ColumnsType } from 'antd/es/table';
 
 const onEntityFieldSelect = jest.fn();
 const onThreadLinkSelect = jest.fn();
@@ -31,6 +32,15 @@ const mockTableConstraints = [
     columns: ['address_id', 'shop_id'],
   },
 ] as Table['tableConstraints'];
+
+type ColumnDataType = {
+  key: string;
+  name: string;
+  dataTypeDisplay: string;
+  columnTests: string;
+  description: string;
+  tags: string;
+};
 
 const mockEntityTableProp = {
   tableColumns: [
@@ -265,19 +275,17 @@ jest.mock('antd', () => ({
     <table data-testid="entity-table">
       <thead>
         <tr>
-          {columns.map((col: any) => (
+          {(columns as ColumnsType<ColumnDataType>).map((col) => (
             <th key={col.key}>{col.title}</th>
           ))}
         </tr>
       </thead>
       <tbody key="tbody">
-        {dataSource.map((row: any, i: number) => (
+        {dataSource.map((row: ModifiedTableColumn | Column, i: number) => (
           <tr key={i}>
-            {columns.map((col: any) => (
+            {(columns as ColumnsType<ColumnDataType>).map((col, index) => (
               <td key={col.key}>
-                {col.render
-                  ? col.render(row[col.dataIndex], col)
-                  : row[col.dataIndex]}
+                {col.render ? col.render(row, dataSource, index) : 'alt'}
               </td>
             ))}
           </tr>
@@ -286,33 +294,6 @@ jest.mock('antd', () => ({
     </table>
   )),
 }));
-
-jest.mock('./EntityTable.constant', () => {
-  return {
-    TABLE_HEADERS: [
-      {
-        Header: 'Name',
-        accessor: 'name',
-      },
-      {
-        Header: 'Type',
-        accessor: 'dataTypeDisplay',
-      },
-      {
-        Header: 'Data Quality',
-        accessor: 'columnTests',
-      },
-      {
-        Header: 'Description',
-        accessor: 'description',
-      },
-      {
-        Header: 'Tags',
-        accessor: 'tags',
-      },
-    ],
-  };
-});
 
 describe('Test EntityTable Component', () => {
   it('Initially, Table should load', async () => {
