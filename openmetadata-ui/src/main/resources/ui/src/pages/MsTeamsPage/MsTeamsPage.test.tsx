@@ -2,7 +2,7 @@ import { findByTestId, findByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
-import WebhooksPage from './MsTeamsPage.component';
+import MSTeamsPage from './MsTeamsPage.component';
 
 jest.mock('../../components/containers/PageContainerV1', () => {
   return jest
@@ -23,15 +23,15 @@ jest.mock('../../axiosAPIs/webhookAPI', () => ({
 
 describe('Test WebhooksPage component', () => {
   it('WebhooksPage component should render properly', async () => {
-    const { container } = render(<WebhooksPage />, {
+    const { container } = render(<MSTeamsPage />, {
       wrapper: MemoryRouter,
     });
 
     const PageContainerV1 = await findByTestId(container, 'PageContainerV1');
-    const WebhooksComponent = await findByText(container, /WebhooksComponent/i);
+    const MSTeamsComponent = await findByText(container, /MsTeamsComponent/i);
 
     expect(PageContainerV1).toBeInTheDocument();
-    expect(WebhooksComponent).toBeInTheDocument();
+    expect(MSTeamsComponent).toBeInTheDocument();
   });
 
   it('Should render WebhooksPage component if Api fails', async () => {
@@ -45,14 +45,14 @@ describe('Test WebhooksPage component', () => {
       })
     );
 
-    const { container } = render(<WebhooksPage />, {
+    const { container } = render(<MSTeamsPage />, {
       wrapper: MemoryRouter,
     });
 
     const PageContainerV1 = await findByTestId(container, 'PageContainerV1');
-    const WebhooksComponent = await findByText(container, /WebhooksComponent/i);
+    const MSTeamsComponent = await findByText(container, /MsTeamsComponent/i);
 
     expect(PageContainerV1).toBeInTheDocument();
-    expect(WebhooksComponent).toBeInTheDocument();
+    expect(MSTeamsComponent).toBeInTheDocument();
   });
 });

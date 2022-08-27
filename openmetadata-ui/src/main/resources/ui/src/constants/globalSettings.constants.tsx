@@ -184,5 +184,5 @@ export enum GlobalSettingOptions {
   SLACK = 'slack',
   BOTS = 'bots',
   TABLES = 'tables',
-  MSTEAMS = 'msTeams',
+  MS_TEAMS = 'msteams',
 }
