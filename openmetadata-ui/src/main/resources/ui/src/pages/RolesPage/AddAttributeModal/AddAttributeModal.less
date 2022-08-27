@@ -11,16 +11,20 @@
  *  limitations under the License.
  */
 
-import { Role } from '../generated/entity/teams/role';
-import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient from './index';
+@row-bg: #7147e81a;
 
-export const getRoles = async (arrQueryFields?: string | string[]) => {
-  const url = getURLWithQueryFields('/roles', arrQueryFields);
-
-  const response = await APIClient.get<{ data: Role[] }>(
-    `${url}${arrQueryFields ? '&' : '?'}limit=1000000`
-  );
-
-  return response.data;
-};
+.ant-attribute-modal {
+  .ant-modal-body {
+    padding: 16px 8px;
+    .ant-row {
+      padding: 16px;
+      cursor: pointer;
+    }
+    .ant-row.ant-search-box-row {
+      padding-top: 0px;
+    }
+    .ant-row.selected {
+      background-color: @row-bg;
+    }
+  }
+}

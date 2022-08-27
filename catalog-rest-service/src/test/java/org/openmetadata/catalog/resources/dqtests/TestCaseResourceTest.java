@@ -5,6 +5,9 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -37,7 +40,6 @@ import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -176,21 +178,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCase = getEntity(testCase.getId(), "entityLink,testSuite,testDefinition,owner", ADMIN_AUTH_HEADERS);
     validateCreatedEntity(testCase, create, ADMIN_AUTH_HEADERS);
     create.withTestDefinition(TEST_DEFINITION2_REFERENCE).withParameterValues(new ArrayList<>());
-    List<FieldChange> addedFields = new ArrayList<>();
-    addedFields.add(new FieldChange().withName("testDefinition").withNewValue(TEST_DEFINITION2_REFERENCE));
-    List<FieldChange> deletedFields = new ArrayList<>();
-    deletedFields.add(new FieldChange().withName("testDefinition").withOldValue(TEST_DEFINITION3_REFERENCE));
-    List<FieldChange> updatedFields = new ArrayList<>();
-    updatedFields.add(
-        new FieldChange()
-            .withName("parameterValues")
-            .withOldValue(testCase.getParameterValues())
-            .withNewValue(new ArrayList<>()));
-    ChangeDescription change =
-        getChangeDescription(testCase.getVersion())
-            .withFieldsAdded(addedFields)
-            .withFieldsDeleted(deletedFields)
-            .withFieldsUpdated(updatedFields);
+    ChangeDescription change = getChangeDescription(testCase.getVersion());
+    fieldAdded(change, "testDefinition", TEST_DEFINITION2_REFERENCE);
+    fieldDeleted(change, "testDefinition", TEST_DEFINITION3_REFERENCE);
+    fieldUpdated(change, "parameterValues", testCase.getParameterValues(), new ArrayList<>());
+
     testCase = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
     testCase = getEntity(testCase.getId(), "entityLink,testSuite,testDefinition,owner", ADMIN_AUTH_HEADERS);
     validateCreatedEntity(testCase, create, ADMIN_AUTH_HEADERS);

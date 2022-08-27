@@ -130,6 +130,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake": {"delta-spark~=2.0.0"},
     "great-expectations": {"great-expectations~=0.15.0"},
     "pinotdb": {"pinotdb~=0.3.11"},
+    "nifi": {},
 }
 dev = {
     "datamodel-code-generator==0.12.0",

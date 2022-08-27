@@ -18,6 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.ALLOW;
 import static org.openmetadata.catalog.entity.policies.accessControl.Rule.Effect.DENY;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -63,7 +66,6 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Function;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
@@ -248,7 +250,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     String origJson = JsonUtils.pojoToJson(policy);
     policy.setEnabled(false);
     ChangeDescription change = getChangeDescription(policy.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
+    fieldUpdated(change, "enabled", true, false);
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     EntityReference locationReference = location.getEntityReference();
@@ -257,7 +259,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     origJson = JsonUtils.pojoToJson(policy);
     policy.setLocation(locationReference);
     change = getChangeDescription(policy.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("location").withNewValue(locationReference));
+    fieldAdded(change, "location", locationReference);
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -271,8 +273,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     Rule updatedRule1 = accessControlRule("rule1", List.of("all"), List.of(MetadataOperation.ALL), ALLOW);
     policy.setRules(List.of(updatedRule1));
     ChangeDescription change = getChangeDescription(policy.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("rules").withOldValue(List.of(rule1)));
-    change.getFieldsAdded().add(new FieldChange().withName("rules").withNewValue(List.of(updatedRule1)));
+    fieldDeleted(change, "rules", List.of(rule1));
+    fieldAdded(change, "rules", List.of(updatedRule1));
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add a new rule
@@ -280,14 +282,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     Rule newRule = accessControlRule("newRule", List.of("all"), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW);
     policy.getRules().add(newRule);
     change = getChangeDescription(policy.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("rules").withNewValue(List.of(newRule)));
+    fieldAdded(change, "rules", List.of(newRule));
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Delete newRule1 rule
     origJson = JsonUtils.pojoToJson(policy);
     policy.setRules(List.of(newRule));
     change = getChangeDescription(policy.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("rules").withOldValue(List.of(updatedRule1)));
+    fieldDeleted(change, "rules", List.of(updatedRule1));
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
