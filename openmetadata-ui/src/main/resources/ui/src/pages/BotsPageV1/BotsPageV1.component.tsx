@@ -12,13 +12,11 @@
  */
 
 import { Button, Col, Empty, Row, Space, Switch } from 'antd';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import BotListV1 from '../../components/BotListV1/BotListV1.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { getCreateUserPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
-import { getPermissions } from '../../utils/PermissionsUtils';
 
 export const BotsPageV1 = () => {
   const { permissions } = usePermissionProvider();
@@ -33,10 +31,7 @@ export const BotsPageV1 = () => {
     setShowDeleted(checked);
   };
 
-  const botPermissions = useMemo(
-    () => getPermissions(EntityType.BOT, permissions),
-    [permissions]
-  );
+  const botPermissions = permissions.bot;
 
   return (
     <Row gutter={[16, 16]}>

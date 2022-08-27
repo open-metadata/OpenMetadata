@@ -13,7 +13,8 @@
 
 import {
   OperationPermission,
-  PermissionMap,
+  ResourceEntity,
+  UIPermission,
 } from '../components/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -23,6 +24,9 @@ import {
 } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../generated/entity/policies/policy';
 
+/**
+ * TODO: Remove this method once we have new permission structure everywhere
+ */
 export const hasPemission = (
   operation: Operation,
   entityType: EntityType,
@@ -41,17 +45,13 @@ export const hasPemission = (
 
 /**
  *
- * @param resource resource type like "bot", "table"
- * @param permission permissionMap - {resource:permissionList}
+ * @param permission ResourcePermission
  * @returns OperationPermission - {Operation:true/false}
  */
-export const getPermissions = (
-  resource: EntityType,
-  permission: PermissionMap
+export const getOperationPermissions = (
+  permission: ResourcePermission
 ): OperationPermission => {
-  const resourcePermissions = permission[resource] ?? [];
-
-  return resourcePermissions.reduce(
+  return permission.permissions.reduce(
     (acc: OperationPermission, curr: Permission) => {
       return {
         ...acc,
@@ -65,14 +65,17 @@ export const getPermissions = (
 /**
  *
  * @param permissions Take ResourcePermission list
- * @returns PermissionMap - {resource:permissionList}
+ * @returns UIPermission
  */
-export const getPermissionMap = (
+export const getUIPermission = (
   permissions: ResourcePermission[]
-): PermissionMap => {
-  return permissions.reduce((acc: PermissionMap, curr: ResourcePermission) => {
-    return { ...acc, [curr.resource]: curr.permissions };
-  }, {});
+): UIPermission => {
+  return permissions.reduce((acc: UIPermission, curr: ResourcePermission) => {
+    return {
+      ...acc,
+      [curr.resource as ResourceEntity]: getOperationPermissions(curr),
+    };
+  }, {} as UIPermission);
 };
 
 export const LIST_CAP = 1;

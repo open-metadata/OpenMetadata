@@ -24,9 +24,9 @@ import React, {
 } from 'react';
 import AppState from '../../AppState';
 import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
-import { getPermissionMap } from '../../utils/PermissionsUtils';
+import { getUIPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { PermissionMap } from './PermissionProvider.interface';
+import { UIPermission } from './PermissionProvider.interface';
 
 /**
  * Permission Context
@@ -34,8 +34,8 @@ import { PermissionMap } from './PermissionProvider.interface';
  * @returns PermissionMap
  */
 export const PermissionContext = createContext<{
-  permissions: PermissionMap;
-}>({ permissions: {} as PermissionMap });
+  permissions: UIPermission;
+}>({ permissions: {} as UIPermission });
 
 interface PermissionProviderProps {
   children: ReactNode;
@@ -47,8 +47,8 @@ interface PermissionProviderProps {
  * @returns JSX
  */
 const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
-  const [permissions, setPermissions] = useState<PermissionMap>(
-    {} as PermissionMap
+  const [permissions, setPermissions] = useState<UIPermission>(
+    {} as UIPermission
   );
 
   // Update current user details of AppState change
@@ -62,7 +62,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const fetchLoggedInUserPermissions = async () => {
     try {
       const response = await getLoggedInUserPermissions();
-      setPermissions(getPermissionMap(response.data || []));
+      setPermissions(getUIPermission(response.data || []));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

@@ -22,7 +22,6 @@ import React, {
   Fragment,
   HTMLAttributes,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import Select, { SingleValue } from 'react-select';
@@ -31,11 +30,9 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { getPermissions } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -77,10 +74,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
 
-  const botPermissions = useMemo(
-    () => getPermissions(EntityType.BOT, permissions),
-    [permissions]
-  );
+  const botPermissions = permissions.bot;
 
   const getJWTTokenExpiryOptions = () => {
     return Object.keys(JWTTokenExpiry).map((expiry) => {
