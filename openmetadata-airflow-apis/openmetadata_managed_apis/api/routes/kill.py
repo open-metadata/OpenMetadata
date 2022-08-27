@@ -11,7 +11,6 @@
 """
 Kill all not finished runs
 """
-import logging
 import traceback
 
 from airflow.api_connexion import security
@@ -22,6 +21,9 @@ from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.kill_all import kill_all
+from openmetadata_managed_apis.utils.logger import routes_logger
+
+logger = routes_logger()
 
 
 @blueprint.route("/kill", methods=["POST"])
@@ -38,8 +40,9 @@ def kill() -> Response:
         return kill_all(dag_id)
 
     except Exception as exc:
-        logging.info(f"Failed to get kill runs for '{dag_id}'")
+        logger.debug(traceback.format_exc())
+        logger.error(f"Failed to get kill runs for [{dag_id}]: {exc}")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Failed to kill runs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
+            error=f"Failed to kill runs for [{dag_id}] due to [{exc}] ",
         )

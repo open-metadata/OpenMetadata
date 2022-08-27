@@ -17,6 +17,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.catalog.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -624,6 +625,12 @@ public class TableRepository extends EntityRepository<Table> {
     if (nullOrEmpty(table.getDescription())) {
       table.setDescription(dataModel.getDescription());
     }
+
+    // Carry forward the table owner from the model to table entity, if empty
+    if (table.getOwner() == null) {
+      storeOwner(table, dataModel.getOwner());
+    }
+
     // Carry forward the column description from the model to table columns, if empty
     for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
       Column stored =
@@ -639,7 +646,9 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
-    setFields(table, Fields.EMPTY_FIELDS);
+
+    setFields(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
+
     return table;
   }
 
@@ -842,7 +851,7 @@ public class TableRepository extends EntityRepository<Table> {
    * {@code entityRelationType}) are ({@link Table#getFullyQualifiedName()}, "table") and ({@link
    * Column#getFullyQualifiedName()}, "table.columns.column").
    *
-   * <p>If for an field relation (any relation between {@code entityFQN} and a FQN from {@code joinedWithList}), after
+   * <p>If for a field relation (any relation between {@code entityFQN} and a FQN from {@code joinedWithList}), after
    * combining the existing list of {@link DailyCount} with join data from {@code joinedWithList}, there are multiple
    * {@link DailyCount} with the {@link DailyCount#getDate()}, these will <bold>NOT</bold> be merged - the value of
    * {@link JoinedWith#getJoinCount()} will override the current value.
@@ -1004,7 +1013,7 @@ public class TableRepository extends EntityRepository<Table> {
         .collect(Collectors.toList());
   }
 
-  private TableJoins getJoins(Table table) throws IOException {
+  private TableJoins getJoins(Table table) {
     String today = RestUtil.DATE_FORMAT.format(new Date());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     return new TableJoins()
@@ -1014,7 +1023,7 @@ public class TableRepository extends EntityRepository<Table> {
         .withDirectTableJoins(getDirectTableJoins(table));
   }
 
-  private List<JoinedWith> getDirectTableJoins(Table table) throws IOException {
+  private List<JoinedWith> getDirectTableJoins(Table table) {
     // Pair<toTableFQN, List<DailyCount>>
     List<Pair<String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
@@ -1036,7 +1045,7 @@ public class TableRepository extends EntityRepository<Table> {
         .collect(Collectors.toList());
   }
 
-  private List<ColumnJoin> getColumnJoins(Table table) throws IOException {
+  private List<ColumnJoin> getColumnJoins(Table table) {
     // Triple<fromRelativeColumnName, toFQN, List<DailyCount>>
     List<Triple<String, String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
@@ -1216,6 +1225,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
 
         updateColumnDescription(stored, updated);
+        updateColumnDisplayName(stored, updated);
         updateColumnDataLength(stored, updated);
         updateColumnPrecision(stored, updated);
         updateColumnScale(stored, updated);
@@ -1236,13 +1246,23 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription())) {
-        // Update description only when stored is empty to retain user authored descriptions
+      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
+        // Revert the non-empty task description if being updated by a bot
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
       String columnField = getColumnField(original, origColumn, FIELD_DESCRIPTION);
       recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
+    }
+
+    private void updateColumnDisplayName(Column origColumn, Column updatedColumn) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
+        // Revert the non-empty task description if being updated by a bot
+        updatedColumn.setDisplayName(origColumn.getDisplayName());
+        return;
+      }
+      String columnField = getColumnField(original, origColumn, FIELD_DISPLAY_NAME);
+      recordChange(columnField, origColumn.getDisplayName(), updatedColumn.getDisplayName());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {

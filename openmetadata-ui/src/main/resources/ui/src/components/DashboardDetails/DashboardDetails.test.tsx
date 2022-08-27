@@ -282,7 +282,7 @@ describe('Test DashboardDetails component', () => {
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
     const detailsTab = await findByTestId(tabs, 'Details');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
     const lineageTab = await findByTestId(tabs, 'Lineage');
 
     expect(EntityPageInfo).toBeInTheDocument();

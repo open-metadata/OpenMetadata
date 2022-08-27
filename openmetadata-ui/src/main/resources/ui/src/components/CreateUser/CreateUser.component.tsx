@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useRef, useState } from 'react';
+import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
@@ -59,6 +60,18 @@ const CreateUser = ({
     displayName: false,
     validEmail: false,
   });
+
+  const slashedBreadcrumbList = [
+    {
+      name: forceBot ? 'Bots' : 'Users',
+      url: forceBot ? getBotsPagePath() : getUsersPagePath(),
+    },
+    {
+      name: `Create ${forceBot ? 'Bot' : 'User'}`,
+      url: '',
+      activeTitle: true,
+    },
+  ];
 
   /**
    * common function to update user input in to the state
@@ -215,17 +228,7 @@ const CreateUser = ({
   return (
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={
-        <TitleBreadcrumb
-          titleLinks={[
-            {
-              name: `Create ${forceBot ? 'Bot' : 'User'}`,
-              url: '',
-              activeTitle: true,
-            },
-          ]}
-        />
-      }
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
       layout={PageLayoutType['2ColRTL']}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">

@@ -111,7 +111,7 @@ const MyData: React.FC<MyDataProps> = ({
                     title="Tasks"
                     width="16px"
                   />
-                  {pendingTaskCount} Pending tasks
+                  {pendingTaskCount} Pending task{pendingTaskCount > 1 && 's'}
                 </div>
               }
             />

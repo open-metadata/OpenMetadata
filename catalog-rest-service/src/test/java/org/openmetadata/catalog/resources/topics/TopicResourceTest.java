@@ -17,6 +17,9 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -42,7 +45,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.type.topic.SchemaType;
 import org.openmetadata.catalog.type.topic.TopicSampleData;
@@ -128,25 +130,17 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF).withNewValue(TEAM11_REF));
-    change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("replicationFactor").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1.0).withNewValue(2.0));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1.0).withNewValue(2.0));
-    change.getFieldsUpdated().add(new FieldChange().withName("schemaText").withOldValue("abc").withNewValue("bcd"));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("schemaType").withOldValue(SchemaType.Avro).withNewValue(SchemaType.JSON));
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName("cleanupPolicies").withOldValue(List.of(CleanupPolicy.COMPACT)));
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("cleanupPolicies").withNewValue(List.of(CleanupPolicy.DELETE)));
+    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldUpdated(change, "maximumMessageSize", 1, 2);
+    fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
+    fieldUpdated(change, "partitions", 1, 2);
+    fieldUpdated(change, "replicationFactor", 1, 2);
+    fieldUpdated(change, "retentionTime", 1.0, 2.0);
+    fieldUpdated(change, "retentionSize", 1.0, 2.0);
+    fieldUpdated(change, "schemaText", "abc", "bcd");
+    fieldUpdated(change, "schemaType", SchemaType.Avro, SchemaType.JSON);
+    fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
+    fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
 
     updateAndCheckEntity(createTopic, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
@@ -183,25 +177,17 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER1_REF).withNewValue(TEAM11_REF));
-    change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("replicationFactor").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1.0).withNewValue(2.0));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1.0).withNewValue(2.0));
-    change.getFieldsUpdated().add(new FieldChange().withName("schemaText").withOldValue("abc").withNewValue("bcd"));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("schemaType").withOldValue(SchemaType.Avro).withNewValue(SchemaType.JSON));
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName("cleanupPolicies").withOldValue(List.of(CleanupPolicy.COMPACT)));
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("cleanupPolicies").withNewValue(List.of(CleanupPolicy.DELETE)));
+    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldUpdated(change, "maximumMessageSize", 1, 2);
+    fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
+    fieldUpdated(change, "partitions", 1, 2);
+    fieldUpdated(change, "replicationFactor", 1, 2);
+    fieldUpdated(change, "retentionTime", 1.0, 2.0);
+    fieldUpdated(change, "retentionSize", 1.0, 2.0);
+    fieldUpdated(change, "schemaText", "abc", "bcd");
+    fieldUpdated(change, "schemaType", SchemaType.Avro, SchemaType.JSON);
+    fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
+    fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
     patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
@@ -223,6 +209,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         Arrays.asList(
             "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
             "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}");
+    topicSampleData.withMessages(messages);
     putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, putResponse.getSampleData());
     topic = getEntity(topic.getId(), "sampleData", ADMIN_AUTH_HEADERS);

@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card as AntdCard } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
@@ -475,15 +476,17 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
       <div className="tw-flex tw-gap-3">
         <div className="tw-w-9/12">
           <div className="tw-mb-4" data-testid="description-container">
-            <DescriptionV1
-              removeBlur
-              description={glossary?.description}
-              entityName={glossary?.displayName ?? glossary?.name}
-              isEdit={isDescriptionEditable}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-            />
+            <AntdCard className="glossary-card">
+              <DescriptionV1
+                removeBlur
+                description={glossary?.description}
+                entityName={glossary?.displayName ?? glossary?.name}
+                isEdit={isDescriptionEditable}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
+            </AntdCard>
           </div>
         </div>
         <div className="tw-w-3/12 tw-px-2">
