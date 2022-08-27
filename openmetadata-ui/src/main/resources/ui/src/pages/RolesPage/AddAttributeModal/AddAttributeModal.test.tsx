@@ -17,20 +17,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { POLICY_LIST_WITH_PAGING } from '../Roles.mock';
 import AddAttributeModal from './AddAttributeModal';
 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
 jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   getPolicies: jest
     .fn()
