@@ -37,7 +37,8 @@
         "ARRAY",
         "MAP",
         "SET",
-        "STRING"
+        "STRING",
+        "BOOLEAN"
       ]
     },
     "entityType": {
