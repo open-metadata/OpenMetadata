@@ -46,12 +46,6 @@ export const BotsPageV1 = () => {
     permissions
   );
 
-  const deletePermission = checkPemission(
-    Operation.Delete,
-    ResourceEntity.BOT,
-    permissions
-  );
-
   return (
     <Row gutter={[16, 16]}>
       {viewAllPermission ? (
@@ -77,15 +71,7 @@ export const BotsPageV1 = () => {
             </Space>
           </Col>
           <Col span={24}>
-            <BotListV1
-              permissions={{
-                ...permissions.bot,
-                Delete: deletePermission,
-                Create: createPermission,
-                ViewAll: viewAllPermission,
-              }}
-              showDeleted={showDeleted}
-            />
+            <BotListV1 showDeleted={showDeleted} />
           </Col>
         </>
       ) : (

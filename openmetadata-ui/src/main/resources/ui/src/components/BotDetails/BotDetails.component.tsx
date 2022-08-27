@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Empty } from 'antd';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -90,12 +90,6 @@ const BotDetails: FC<BotsDetailProp> = ({
 
   const descriptionPermission = checkPemission(
     Operation.EditDescription,
-    ResourceEntity.BOT,
-    permissions
-  );
-
-  const viewAllPermission = checkPemission(
-    Operation.ViewAll,
     ResourceEntity.BOT,
     permissions
   );
@@ -481,59 +475,53 @@ const BotDetails: FC<BotsDetailProp> = ({
   }, [botsData]);
 
   return (
-    <>
-      {viewAllPermission ? (
-        <PageLayout
-          classes="tw-h-full tw-px-4"
-          header={
-            <TitleBreadcrumb
-              className="tw-px-6"
-              titleLinks={[
-                {
-                  name: 'Bots',
-                  url: getSettingPath(
-                    GlobalSettingsMenuCategory.INTEGRATIONS,
-                    GlobalSettingOptions.BOTS
-                  ),
-                },
-                { name: botsData.name || '', url: '', activeTitle: true },
-              ]}
-            />
-          }
-          leftPanel={fetchLeftPanel()}
-          rightPanel={fetchRightPanel()}>
-          {getCenterLayout()}
-          {isRevokingToken ? (
-            <ConfirmationModal
-              bodyText="Are you sure you want to revoke access for JWT token?"
-              cancelText="Cancel"
-              confirmText="Confirm"
-              header="Are you sure?"
-              onCancel={() => setIsRevokingToken(false)}
-              onConfirm={() => {
-                revokeTokenHandler();
-                setIsRevokingToken(false);
-              }}
-            />
-          ) : null}
-          {isRegeneratingToken ? (
-            <ConfirmationModal
-              bodyText="Generating a new token will revoke the existing JWT token. Are you sure you want to proceed?"
-              cancelText="Cancel"
-              confirmText="Confirm"
-              header="Are you sure?"
-              onCancel={() => setIsRegeneratingToken(false)}
-              onConfirm={() => {
-                setIsRegeneratingToken(false);
-                setGenerateToken(true);
-              }}
-            />
-          ) : null}
-        </PageLayout>
-      ) : (
-        <Empty description="You do not permission to view this page" />
-      )}
-    </>
+    <PageLayout
+      classes="tw-h-full tw-px-4"
+      header={
+        <TitleBreadcrumb
+          className="tw-px-6"
+          titleLinks={[
+            {
+              name: 'Bots',
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.INTEGRATIONS,
+                GlobalSettingOptions.BOTS
+              ),
+            },
+            { name: botsData.name || '', url: '', activeTitle: true },
+          ]}
+        />
+      }
+      leftPanel={fetchLeftPanel()}
+      rightPanel={fetchRightPanel()}>
+      {getCenterLayout()}
+      {isRevokingToken ? (
+        <ConfirmationModal
+          bodyText="Are you sure you want to revoke access for JWT token?"
+          cancelText="Cancel"
+          confirmText="Confirm"
+          header="Are you sure?"
+          onCancel={() => setIsRevokingToken(false)}
+          onConfirm={() => {
+            revokeTokenHandler();
+            setIsRevokingToken(false);
+          }}
+        />
+      ) : null}
+      {isRegeneratingToken ? (
+        <ConfirmationModal
+          bodyText="Generating a new token will revoke the existing JWT token. Are you sure you want to proceed?"
+          cancelText="Cancel"
+          confirmText="Confirm"
+          header="Are you sure?"
+          onCancel={() => setIsRegeneratingToken(false)}
+          onConfirm={() => {
+            setIsRegeneratingToken(false);
+            setGenerateToken(true);
+          }}
+        />
+      ) : null}
+    </PageLayout>
   );
 };
 

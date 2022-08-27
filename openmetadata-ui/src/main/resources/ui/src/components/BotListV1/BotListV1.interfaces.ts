@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-
 export interface BotListV1Props {
   showDeleted: boolean;
-  permissions: OperationPermission;
 }
