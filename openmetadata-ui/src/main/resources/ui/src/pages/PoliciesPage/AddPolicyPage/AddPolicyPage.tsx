@@ -80,11 +80,12 @@ const AddPolicyPage = () => {
   };
 
   const handleSumbit = async () => {
+    const { condition, ...rest } = ruleData;
     const data: CreatePolicy = {
       name,
       description,
       policyType: PolicyType.AccessControl,
-      rules: [ruleData],
+      rules: [condition ? { ...rest, condition } : rest],
     };
 
     try {

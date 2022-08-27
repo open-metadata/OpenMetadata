@@ -98,11 +98,14 @@ const EditRulePage = () => {
     const existingRules = policy.rules;
     const updatedRules = existingRules.map((rule) => {
       if (rule.name === ruleName) {
-        return ruleData;
+        const { condition, ...rest } = ruleData;
+
+        return condition ? { ...rest, condition } : rest;
       } else {
         return rule;
       }
     });
+
     const patch = compare(policy, {
       ...policy,
       rules: updatedRules,

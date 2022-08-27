@@ -87,9 +87,10 @@ const AddRulePage = () => {
   };
 
   const handleSubmit = async () => {
+    const { condition, ...rest } = ruleData;
     const patch = compare(policy, {
       ...policy,
-      rules: [...policy.rules, ruleData],
+      rules: [...policy.rules, condition ? { ...rest, condition } : rest],
     });
     try {
       const data = await patchPolicy(patch, policy.id);
