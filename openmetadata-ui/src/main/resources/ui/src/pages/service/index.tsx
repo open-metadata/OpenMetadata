@@ -895,7 +895,7 @@ const ServicePage: FunctionComponent = () => {
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <Col>
+        <Col span={24}>
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="service-page">
@@ -905,6 +905,7 @@ const ServicePage: FunctionComponent = () => {
               style={{ width: '100%' }}>
               <TitleBreadcrumb titleLinks={slashedTableName} />
               <Button
+                data-testid="service-delete"
                 size="small"
                 theme="primary"
                 variant="outlined"
