@@ -144,6 +144,8 @@ const jsonData = {
 
     'join-team-error': 'Error while joining the team!',
     'leave-team-error': 'Error while leaving the team!',
+
+    'fetch-settings': 'Error while fetching settings',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',

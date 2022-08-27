@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Store } from 'antd/lib/form/interface';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isEqual, isNil } from 'lodash';
+import { cloneDeep, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
 import { ROUTES, TERM_ALL } from '../../constants/constants';
@@ -34,7 +34,6 @@ import { PageLayoutType } from '../../enums/layout.enum';
 import {
   CreateWebhook,
   EventFilter,
-  Filters,
 } from '../../generated/api/events/createWebhook';
 import { WebhookType } from '../../generated/entity/events/webhook';
 import {
@@ -45,6 +44,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getEventFilters } from '../../utils/WebhookUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
@@ -53,11 +53,8 @@ import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AddWebhookProps } from './AddWebhook.interface';
-import SelectComponent from './select-component';
-import {
-  EVENT_FILTERS_DEFAULT_VALUE,
-  EVENT_FILTER_FORM_INITIAL_VALUE,
-} from './WebhookConstants';
+import EventFilterSelect from './EventFilterSelect.component';
+import { EVENT_FILTER_FORM_INITIAL_VALUE } from './WebhookConstants';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -81,42 +78,6 @@ const getFormData = (eventFilters: EventFilter[]): Store => {
   });
 
   return formEventFilters;
-};
-
-const getEventFilters = (eventFilterFormData: Store): EventFilter[] => {
-  if (isEqual(eventFilterFormData, EVENT_FILTER_FORM_INITIAL_VALUE)) {
-    return [EVENT_FILTERS_DEFAULT_VALUE];
-  }
-
-  const newFilters = Object.entries(eventFilterFormData).reduce(
-    (acc, [key, value]) => {
-      if (key.includes('-tree')) {
-        return acc;
-      }
-      if (value) {
-        const selectedFilter = eventFilterFormData[`${key}-tree`] as string[];
-
-        return [
-          ...acc,
-          {
-            entityType: key,
-            filters:
-              selectedFilter[0] === TERM_ALL
-                ? EVENT_FILTERS_DEFAULT_VALUE.filters
-                : (selectedFilter.map((filter) => ({
-                    eventType: filter,
-                    fields: [TERM_ALL],
-                  })) as Filters[]),
-          },
-        ];
-      }
-
-      return acc;
-    },
-    [] as EventFilter[]
-  );
-
-  return [EVENT_FILTERS_DEFAULT_VALUE, ...newFilters];
 };
 
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
@@ -456,7 +417,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               </span>,
               'tw-mt-3'
             )}
-            <SelectComponent
+            <EventFilterSelect
               eventFilterFormData={eventFilterFormData}
               setEventFilterFormData={(data) => setEventFilterFormData(data)}
             />
