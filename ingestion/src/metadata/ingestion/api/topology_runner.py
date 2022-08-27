@@ -35,6 +35,13 @@ logger = ingestion_logger()
 C = TypeVar("C", bound=BaseModel)
 
 
+class MissingExpectedEntityAckException(Exception):
+    """
+    After running the ack to the sink, we got no
+    Entity back
+    """
+
+
 class TopologyRunnerMixin(Generic[C]):
     """
     Prepares the next_record function
@@ -185,6 +192,16 @@ class TopologyRunnerMixin(Generic[C]):
                             fields=["*"],  # Get all the available data from the Entity
                         )
                         tries -= 1
+
+                # We have ack the sink waiting for a response, but got nothing back
+                if stage.must_return and entity is None:
+                    # Safe access to Entity Request name
+                    raise MissingExpectedEntityAck(
+                        f"Missing ack back from [{stage.type_.__name__}: {getattr(entity_request, 'name')}] - "
+                        "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
+                        "for the service connection."
+                    )
+
             else:
                 yield entity
 

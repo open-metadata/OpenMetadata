@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.locations;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -187,17 +186,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
         assertEquals(service.getName(), location.getService().getName());
       }
     }
-  }
-
-  @Test
-  void put_locationNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
-    CreateLocation request =
-        createRequest(test).withService(AWS_STORAGE_SERVICE_REFERENCE).withDescription("description");
-    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-
-    // Updating description is ignored when backend already has description
-    Location location = updateLocation(request.withDescription("newDescription"), OK, ADMIN_AUTH_HEADERS);
-    assertEquals("description", location.getDescription());
   }
 
   public static Location updateLocation(CreateLocation create, Status status, Map<String, String> authHeaders)

@@ -628,6 +628,11 @@
             "type": "string"
           }
         },
+        "owner": {
+          "description": "Owner of this Model.",
+          "$ref": "../../type/entityReference.json",
+          "default": null
+        },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
           "type": "array",

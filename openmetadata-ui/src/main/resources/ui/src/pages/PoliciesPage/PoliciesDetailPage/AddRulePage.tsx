@@ -43,6 +43,7 @@ const AddRulePage = () => {
     description: '',
     resources: [],
     operations: [],
+    condition: '',
     effect: Effect.Allow,
   });
 
@@ -86,9 +87,10 @@ const AddRulePage = () => {
   };
 
   const handleSubmit = async () => {
+    const { condition, ...rest } = ruleData;
     const patch = compare(policy, {
       ...policy,
-      rules: [...policy.rules, ruleData],
+      rules: [...policy.rules, condition ? { ...rest, condition } : rest],
     });
     try {
       const data = await patchPolicy(patch, policy.id);
@@ -113,7 +115,9 @@ const AddRulePage = () => {
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph className="tw-text-base">
+          <Typography.Paragraph
+            className="tw-text-base"
+            data-testid="add-rule-title">
             Add New Rule
           </Typography.Paragraph>
           <Form
@@ -126,10 +130,14 @@ const AddRulePage = () => {
             onFinish={handleSubmit}>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
             <Space align="center" className="tw-w-full tw-justify-end">
-              <Button type="link" onClick={handleBack}>
+              <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
                 Cancel
               </Button>
-              <Button form="rule-form" htmlType="submit" type="primary">
+              <Button
+                data-testid="submit-btn"
+                form="rule-form"
+                htmlType="submit"
+                type="primary">
                 Submit
               </Button>
             </Space>

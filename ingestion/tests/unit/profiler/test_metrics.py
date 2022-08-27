@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.functions.sum import SumFn
@@ -71,7 +71,7 @@ class MetricsTest(TestCase):
             )
         ],
     )
-    sqa_profiler_interface = SQAProfilerInterface(
+    sqa_profiler_interface = SQAInterface(
         sqlite_conn, table=User, table_entity=table_entity
     )
     engine = sqa_profiler_interface.session.get_bind()
@@ -688,7 +688,7 @@ class MetricsTest(TestCase):
 
         EmptyUser.__table__.create(bind=self.engine)
 
-        sqa_profiler_interface = SQAProfilerInterface(
+        sqa_profiler_interface = SQAInterface(
             self.sqlite_conn, table=EmptyUser, table_entity=self.table_entity
         )
 

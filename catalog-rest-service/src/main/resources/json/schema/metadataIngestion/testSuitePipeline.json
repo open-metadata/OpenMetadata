@@ -4,7 +4,7 @@
   "title": "TestSuitePipeline",
   "description": "TestSuite Pipeline Configuration.",
   "definitions": {
-    "pipelineMetadataConfigType": {
+    "testSuiteConfigType": {
       "description": "Pipeline Source Config Metadata Pipeline type",
       "type": "string",
       "enum": ["TestSuite"],
@@ -14,9 +14,10 @@
   "properties": {
     "type": {
       "description": "Pipeline type",
-      "$ref": "#/definitions/pipelineMetadataConfigType",
+      "$ref": "#/definitions/testSuiteConfigType",
       "default": "TestSuite"
     }
   },
+  "required": ["type"],
   "additionalProperties": false
 }

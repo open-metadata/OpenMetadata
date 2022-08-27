@@ -59,7 +59,6 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.type.WebhookType;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -318,7 +317,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    dao.updateWebhookPublisher((Webhook) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -348,7 +349,8 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   public Webhook getWebhook(CreateWebhook create, String user) throws IOException {
     // Add filter for soft delete events if delete event type is requested
-    EntityUtil.addSoftDeleteFilter(create.getEventFilters());
+    //  TODO: What is this for??
+    // EntityUtil.addSoftDeleteFilter(create.getEventFilters());
     return copy(new Webhook(), create, user)
         .withEndpoint(create.getEndpoint())
         .withEventFilters(create.getEventFilters())

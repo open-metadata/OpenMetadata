@@ -13,6 +13,7 @@
 
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
   FunctionComponent,
@@ -106,17 +107,19 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 </Link>
               ) : (
                 <>
-                  <span
-                    className={classNames(
-                      classes,
-                      'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
-                    )}
-                    data-testid="inactive-link"
-                    style={{
-                      maxWidth,
-                    }}>
-                    {link.name}
-                  </span>
+                  <Tooltip align={{ offset: [0, 10] }} title={link.name}>
+                    <span
+                      className={classNames(
+                        classes,
+                        'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                      )}
+                      data-testid="inactive-link"
+                      style={{
+                        maxWidth,
+                      }}>
+                      {link.name}
+                    </span>
+                  </Tooltip>
                   {noLink && index < titleLinks.length - 1 && (
                     <span className="tw-px-2">
                       <FontAwesomeIcon

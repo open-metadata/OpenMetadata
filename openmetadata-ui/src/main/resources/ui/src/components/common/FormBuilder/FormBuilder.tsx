@@ -13,13 +13,16 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Form, { FormProps } from '@rjsf/core';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { getPipelineServiceHostIp } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
@@ -54,6 +57,22 @@ const FormBuilder: FunctionComponent<Props> = ({
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
   const [connectionTestingState, setConnectionTestingState] =
     useState<LoadingState>('initial');
+
+  const [hostIp, setHostIp] = useState<string>('[fetching]');
+
+  const fetchHostIp = async () => {
+    try {
+      const data = await getPipelineServiceHostIp();
+      setHostIp(data?.ip || '[unknown]');
+    } catch (error) {
+      setHostIp('[error - unknown]');
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchHostIp();
+  }, []);
 
   const handleCancel = () => {
     setLocalFormData(formatFormDataForRender(formData));
@@ -108,8 +127,20 @@ const FormBuilder: FunctionComponent<Props> = ({
 
       case 'initial':
       default:
-        return 'Test your connections before creating service';
+        return 'Test your connections before creating the service';
     }
+  };
+
+  const getPipelineServiceHostIpForm = () => {
+    return (
+      <div className="tw-flex">
+        <SVGIcons alt="info-badge" icon={Icons.ARROW_RIGHT_PRIMARY} />
+        <span className="tw-ml-2">
+          OpenMetadata will connect to your resource from the IP {hostIp}. Make
+          sure to allow inbound traffic in your network security settings.
+        </span>
+      </div>
+    );
   };
 
   return (
@@ -134,6 +165,11 @@ const FormBuilder: FunctionComponent<Props> = ({
       {isEmpty(schema) && (
         <div className="tw-text-grey-muted tw-text-center">
           No Connection Configs available.
+        </div>
+      )}
+      {!isEmpty(schema) && onTestConnection && (
+        <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
+          <div className="tw-self-center">{getPipelineServiceHostIpForm()}</div>
         </div>
       )}
       {!isEmpty(schema) && onTestConnection && (

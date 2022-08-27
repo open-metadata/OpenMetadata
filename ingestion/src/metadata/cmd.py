@@ -25,6 +25,7 @@ from metadata.cli.docker import run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
 
 logger = cli_logger()
@@ -70,6 +71,31 @@ def ingest(config: str) -> None:
     Logging is controlled via the JSON config
     """
     run_ingest(config_path=config)
+
+
+@metadata.command()
+@click.option(
+    "-c",
+    "--config",
+    type=click.Path(exists=True, dir_okay=False),
+    help="test suite Workflow config",
+    required=True,
+)
+def test(config: str) -> None:
+    """Main command for running test suites"""
+    config_file = pathlib.Path(config)
+    workflow_config = load_config_file(config_file)
+    try:
+        logger.debug(f"Using config: {workflow_config}")
+        workflow = TestSuiteWorkflow.create(workflow_config)
+    except ValidationError as err:
+        click.echo(err, err=True)
+        sys.exit(1)
+
+    workflow.execute()
+    workflow.stop()
+    ret = workflow.print_status()
+    sys.exit(ret)
 
 
 @metadata.command()
