@@ -140,6 +140,11 @@ export const GLOBAL_SETTINGS_MENU = [
         icon: <SlackIcon className="tw-w-4 side-panel-icons" />,
       },
       {
+        label: 'Ms Teams',
+        isProtected: true,
+        icon: <SlackIcon className="tw-w-4 side-panel-icons" />,
+      },
+      {
         label: 'Bots',
         isProtected: true,
         icon: <BotIcon className="tw-w-4 side-panel-icons" />,
@@ -179,4 +184,5 @@ export enum GlobalSettingOptions {
   SLACK = 'slack',
   BOTS = 'bots',
   TABLES = 'tables',
+  MSTEAMS = 'msTeams',
 }

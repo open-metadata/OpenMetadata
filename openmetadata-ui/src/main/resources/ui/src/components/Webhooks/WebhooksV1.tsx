@@ -20,6 +20,7 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import {
+  MS_TEAMS_LISTING_TEXT,
   SLACK_LISTING_TEXT,
   WEBHOOK_LISTING_TEXT,
 } from '../../constants/HelperTextUtil';
@@ -36,9 +37,21 @@ import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { WebhooksProps } from './Webhooks.interface';
 import './webhookV1.less';
 
+const LISTING_TEXT: { [key: string]: string } = {
+  msteams: MS_TEAMS_LISTING_TEXT,
+  slack: SLACK_LISTING_TEXT,
+  generic: WEBHOOK_LISTING_TEXT,
+};
+
+const BUTTON_INTEGRATION: { [key: string]: string } = {
+  msteams: 'MS Teams',
+  slack: 'Slack',
+  generic: 'Webhook',
+};
+
 const WebhooksV1: FC<WebhooksProps> = ({
   data = [],
-  webhookType,
+  webhookType = WebhookType.Generic,
   paging,
   selectedStatus = [],
   onAddWebhook,
@@ -64,11 +77,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
         data-testid="data-summary-container"
         size="small"
         style={leftPanelAntCardStyle}>
-        <div className="tw-my-2">
-          {webhookType === WebhookType.Slack
-            ? SLACK_LISTING_TEXT
-            : WEBHOOK_LISTING_TEXT}
-        </div>
+        <div className="tw-my-2">{LISTING_TEXT[webhookType]}</div>
       </Card>
     );
   }, []);
@@ -91,7 +100,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
+                Add {BUTTON_INTEGRATION[webhookType]}
               </Button>
             </NonAdminAction>
           </p>
@@ -135,7 +144,7 @@ const WebhooksV1: FC<WebhooksProps> = ({
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
+                Add {BUTTON_INTEGRATION[webhookType]}
               </Button>
             </NonAdminAction>
           )}
