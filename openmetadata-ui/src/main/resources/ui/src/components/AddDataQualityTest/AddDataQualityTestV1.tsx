@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   getDatabaseDetailsPath,
@@ -23,11 +23,13 @@ import { STEPS_FOR_ADD_TEST_CASE } from '../../constants/profiler.constant';
 import { FqnPart } from '../../enums/entity.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { TestCase } from '../../generated/tests/testCase';
 import {
   getEntityName,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import CronEditor from '../common/CronEditor/CronEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
@@ -37,11 +39,14 @@ import {
 } from './AddDataQualityTest.interface';
 import RightPanel from './components/RightPanel';
 import SelectTestSuite from './components/SelectTestSuite';
+import TableTestForm from './components/TableTestForm';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [selectedTestSuite, setSelectedTestSuite] =
     useState<SelectTestSuiteType>();
+  const [testCaseData, setTestCaseData] = useState<TestCase>();
+  const [repeatFrequency, setRepeatFrequency] = useState('');
 
   const breadcrumb = useMemo(() => {
     const { service, serviceType, fullyQualifiedName = '' } = table;
@@ -79,16 +84,47 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     ];
   }, [table]);
 
+  const handleCancelClick = () => {
+    setActiveServiceStep((pre) => pre - 1);
+  };
+
   const handleSelectTestSuite = (data: SelectTestSuiteType) => {
     setSelectedTestSuite(data);
     setActiveServiceStep(2);
   };
 
+  const handleTestCaseData = (data: TestCase) => {
+    setTestCaseData(data);
+    setActiveServiceStep(3);
+  };
+
   const RenderSelectedTab = useCallback(() => {
     if (activeServiceStep === 2) {
-      return <p>step 2</p>;
+      return (
+        <TableTestForm
+          onCancel={handleCancelClick}
+          onSubmit={handleTestCaseData}
+        />
+      );
     } else if (activeServiceStep === 3) {
-      return <p>step 3</p>;
+      return (
+        <Row gutter={[16, 32]}>
+          <Col span={24}>
+            <CronEditor
+              value={repeatFrequency}
+              onChange={(value: string) => setRepeatFrequency(value)}
+            />
+          </Col>
+          <Col span={24}>
+            <Space className="tw-w-full tw-justify-end" size={16}>
+              <Button onClick={handleCancelClick}>Back</Button>
+              <Button type="primary">Submit</Button>
+            </Space>
+          </Col>
+        </Row>
+      );
+    } else if (activeServiceStep > 3) {
+      return <p>Success</p>;
     }
 
     return <SelectTestSuite onSubmit={handleSelectTestSuite} />;

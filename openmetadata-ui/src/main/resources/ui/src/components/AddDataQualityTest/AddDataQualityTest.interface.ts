@@ -13,6 +13,8 @@
 
 import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/tests/tableTest';
+import { TestCase } from '../../generated/tests/testCase';
+import { TestDefinition } from '../../generated/tests/testDefinition';
 
 export interface AddDataQualityTestProps {
   table: Table;
@@ -22,9 +24,18 @@ export interface SelectTestSuiteProps {
   onSubmit: (data: SelectTestSuiteType) => void;
 }
 
+export interface TableTestFormProps {
+  onSubmit: (data: TestCase) => void;
+  onCancel: () => void;
+}
+
 export type SelectTestSuiteType = {
   name?: string;
   description?: string;
   data?: EntityReference;
   isNewTestSuite: boolean;
 };
+
+export interface ParameterFormProps {
+  definition: TestDefinition;
+}

@@ -12,41 +12,43 @@
  */
 
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
+import { EntityType, TestDefinition } from '../generated/tests/testDefinition';
 import { TestSuite } from '../generated/tests/testSuite';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
 
-export type ListTestCaseParams = {
+export type ListParams = {
   fields?: string;
   limit?: number;
   before?: string;
   after?: string;
+  include?: Include;
+};
+
+export type ListTestCaseParams = ListParams & {
   entityLink?: string;
   testSuiteId?: string;
   includeAllTests?: boolean;
-  include?: Include;
 };
 
-export type ListTestCaseResultsParams = {
+export type ListTestDefinitionsParams = ListParams & {
+  entityType?: EntityType;
+};
+
+export type ListTestCaseResultsParams = Omit<
+  ListParams,
+  'fields' | 'include'
+> & {
   startTs?: number;
   endTs?: number;
-  before?: string;
-  after?: string;
-  limit?: number;
-};
-
-export type ListTestSuitesParam = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
 };
 
 const testCaseUrl = '/testCase';
 const testSuiteUrl = '/testSuite';
+const testDefinitionUrl = '/testDefinition';
 
+// testCase section
 export const getListTestCase = async (params?: ListTestCaseParams) => {
   const response = await APIClient.get<{ data: TestCase[]; paging: Paging }>(
     testCaseUrl,
@@ -73,11 +75,26 @@ export const getListTestCaseResults = async (
   return response.data;
 };
 
-export const getListTestSuites = async (params?: ListTestSuitesParam) => {
+// testSuite section
+export const getListTestSuites = async (params?: ListParams) => {
   const response = await APIClient.get<{
     data: TestSuite[];
     paging: Paging;
   }>(testSuiteUrl, {
+    params,
+  });
+
+  return response.data;
+};
+
+// testDefinition Section
+export const getListTestDefinitions = async (
+  params?: ListTestDefinitionsParams
+) => {
+  const response = await APIClient.get<{
+    data: TestDefinition[];
+    paging: Paging;
+  }>(testDefinitionUrl, {
     params,
   });
 
