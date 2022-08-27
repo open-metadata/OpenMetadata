@@ -211,7 +211,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed & Tasks',
+      name: 'Activity Feeds & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -389,14 +389,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} queries` },
+    { value: `${weeklyUsageCount} Queries` },
     {
       key: 'Columns',
       value:
         tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} columns`
+          ? `${tableProfile.columnCount} Columns`
           : columns.length
-          ? `${columns.length} columns`
+          ? `${columns.length} Columns`
           : '',
     },
     {
