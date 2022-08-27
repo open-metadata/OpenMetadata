@@ -45,6 +45,31 @@ export const hasPemission = (
 
 /**
  *
+ * @param operation operation like Edit, Delete
+ * @param resourceType Resource type like "bot", "table"
+ * @param permissions UIPermission
+ * @returns boolean - true/false
+ */
+export const checkPemission = (
+  operation: Operation,
+  resourceType: ResourceEntity,
+  permissions: UIPermission
+) => {
+  const allResource = permissions.all;
+  const entityResource = permissions[resourceType];
+
+  /**
+   * If allresource is present then check for permission and return it
+   */
+  if (allResource) {
+    return allResource.All || allResource[operation];
+  }
+
+  return entityResource[operation];
+};
+
+/**
+ *
  * @param permission ResourcePermission
  * @returns OperationPermission - {Operation:true/false}
  */

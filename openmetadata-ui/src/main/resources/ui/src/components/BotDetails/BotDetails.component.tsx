@@ -30,9 +30,11 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
+import { checkPemission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -44,6 +46,7 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
@@ -74,7 +77,28 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
 
-  const botPermissions = permissions.bot;
+  const editAllPermission = checkPemission(
+    Operation.EditAll,
+    ResourceEntity.BOT,
+    permissions
+  );
+  const displayNamePermission = checkPemission(
+    Operation.EditDisplayName,
+    ResourceEntity.BOT,
+    permissions
+  );
+
+  const descriptionPermission = checkPemission(
+    Operation.EditDescription,
+    ResourceEntity.BOT,
+    permissions
+  );
+
+  const viewAllPermission = checkPemission(
+    Operation.ViewAll,
+    ResourceEntity.BOT,
+    permissions
+  );
 
   const getJWTTokenExpiryOptions = () => {
     return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -213,7 +237,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                 Add display name
               </span>
             )}
-            {(botPermissions.EditAll || botPermissions.EditDisplayName) && (
+            {(displayNamePermission || editAllPermission) && (
               <button
                 className="tw-ml-2 focus:tw-outline-none"
                 data-testid="edit-displayName"
@@ -238,9 +262,7 @@ const BotDetails: FC<BotsDetailProp> = ({
         <Description
           description={botsData.description || ''}
           entityName={getEntityName(botsData as unknown as EntityReference)}
-          hasEditAccess={
-            botPermissions.EditAll || botPermissions.EditDescription
-          }
+          hasEditAccess={descriptionPermission || editAllPermission}
           isEdit={isDescriptionEdit}
           onCancel={() => setIsDescriptionEdit(false)}
           onDescriptionEdit={() => setIsDescriptionEdit(true)}
@@ -419,7 +441,7 @@ const BotDetails: FC<BotsDetailProp> = ({
           <h6 className="tw-mb-2 tw-self-center">
             {generateToken ? 'Generate JWT token' : 'JWT Token'}
           </h6>
-          {!generateToken && botPermissions.EditAll ? (
+          {!generateToken && editAllPermission ? (
             <div className="tw-flex">
               <Button
                 data-testid="generate-token"
@@ -460,7 +482,7 @@ const BotDetails: FC<BotsDetailProp> = ({
 
   return (
     <>
-      {botPermissions.ViewAll ? (
+      {viewAllPermission ? (
         <PageLayout
           classes="tw-h-full tw-px-4"
           header={

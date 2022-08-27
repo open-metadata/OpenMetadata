@@ -84,6 +84,10 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPemission: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
     generateUserToken: jest

@@ -16,7 +16,10 @@ import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import BotListV1 from '../../components/BotListV1/BotListV1.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getCreateUserPath } from '../../constants/constants';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { checkPemission } from '../../utils/PermissionsUtils';
 
 export const BotsPageV1 = () => {
   const { permissions } = usePermissionProvider();
@@ -31,11 +34,27 @@ export const BotsPageV1 = () => {
     setShowDeleted(checked);
   };
 
-  const botPermissions = permissions.bot;
+  const viewAllPermission = checkPemission(
+    Operation.ViewAll,
+    ResourceEntity.BOT,
+    permissions
+  );
+
+  const createPermission = checkPemission(
+    Operation.Create,
+    ResourceEntity.BOT,
+    permissions
+  );
+
+  const deletePermission = checkPemission(
+    Operation.Delete,
+    ResourceEntity.BOT,
+    permissions
+  );
 
   return (
     <Row gutter={[16, 16]}>
-      {botPermissions.ViewAll ? (
+      {viewAllPermission ? (
         <>
           <Col flex={1} />
           <Col>
@@ -50,7 +69,7 @@ export const BotsPageV1 = () => {
                 <label htmlFor="switch-deleted">Show deleted</label>
               </Space>
 
-              {botPermissions.Create && (
+              {createPermission && (
                 <Button type="primary" onClick={handleAddBotClick}>
                   Add Bot
                 </Button>
@@ -58,7 +77,15 @@ export const BotsPageV1 = () => {
             </Space>
           </Col>
           <Col span={24}>
-            <BotListV1 permissions={botPermissions} showDeleted={showDeleted} />
+            <BotListV1
+              permissions={{
+                ...permissions.bot,
+                Delete: deletePermission,
+                Create: createPermission,
+                ViewAll: viewAllPermission,
+              }}
+              showDeleted={showDeleted}
+            />
           </Col>
         </>
       ) : (
