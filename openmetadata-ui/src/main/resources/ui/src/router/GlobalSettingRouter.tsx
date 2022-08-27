@@ -62,6 +62,9 @@ const SlackSettingsPage = withSuspenseFallback(
     () => import('../pages/SlackSettingsPage/SlackSettingsPage.component')
   )
 );
+const MsTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
+);
 
 const GlobalSettingRouter = () => {
   return (
@@ -162,6 +165,15 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.SLACK
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={MsTeamsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.MS_TEAMS
         )}
       />
 

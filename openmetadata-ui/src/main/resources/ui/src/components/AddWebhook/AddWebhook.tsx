@@ -25,6 +25,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import {
+  CONFIGURE_MS_TEAMS_TEXT,
   CONFIGURE_SLACK_TEXT,
   CONFIGURE_WEBHOOK_TEXT,
 } from '../../constants/HelperTextUtil';
@@ -58,6 +59,12 @@ import {
   EVENT_FILTERS_DEFAULT_VALUE,
   EVENT_FILTER_FORM_INITIAL_VALUE,
 } from './WebhookConstants';
+
+const CONFIGURE_TEXT: { [key: string]: string } = {
+  msteams: CONFIGURE_MS_TEAMS_TEXT,
+  slack: CONFIGURE_SLACK_TEXT,
+  generic: CONFIGURE_WEBHOOK_TEXT,
+};
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -329,11 +336,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     return (
       <div className="tw-px-2">
         <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
-        <div className="tw-mb-5">
-          {webhookType === WebhookType.Slack
-            ? CONFIGURE_SLACK_TEXT
-            : CONFIGURE_WEBHOOK_TEXT}
-        </div>
+        <div className="tw-mb-5">{CONFIGURE_TEXT[webhookType]}</div>
       </div>
     );
   }, [webhookType]);
