@@ -111,6 +111,7 @@ const jsonData = {
     'fetch-users-error': 'Error while fetching users!',
     'fetch-table-profiler-config-error':
       'Error while fetching table profiler config!',
+    'fetch-column-test-error': 'Error while fetching column test case!',
 
     'test-connection-error': 'Error while testing connection!',
 

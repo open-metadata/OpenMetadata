@@ -33,11 +33,12 @@ import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
-const InitialData = {
+const InitialData: Rule = {
   name: '',
   description: '',
   resources: [],
   operations: [],
+  condition: '',
   effect: Effect.Allow,
 };
 
@@ -97,11 +98,14 @@ const EditRulePage = () => {
     const existingRules = policy.rules;
     const updatedRules = existingRules.map((rule) => {
       if (rule.name === ruleName) {
-        return ruleData;
+        const { condition, ...rest } = ruleData;
+
+        return condition ? { ...rest, condition } : rest;
       } else {
         return rule;
       }
     });
+
     const patch = compare(policy, {
       ...policy,
       rules: updatedRules,
@@ -129,7 +133,9 @@ const EditRulePage = () => {
       <Col offset={5} span={14}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph className="tw-text-base">
+          <Typography.Paragraph
+            className="tw-text-base"
+            data-testid="edit-rule-title">
             Edit Rule {`"${ruleName}"`}
           </Typography.Paragraph>
           <Form
@@ -140,15 +146,20 @@ const EditRulePage = () => {
               ruleName: ruleData.name,
               resources: ruleData.resources,
               operations: ruleData.operations,
+              condition: ruleData.condition,
             }}
             layout="vertical"
             onFinish={handleSubmit}>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
             <Space align="center" className="tw-w-full tw-justify-end">
-              <Button type="link" onClick={handleBack}>
+              <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
                 Cancel
               </Button>
-              <Button form="rule-form" htmlType="submit" type="primary">
+              <Button
+                data-testid="submit-btn"
+                form="rule-form"
+                htmlType="submit"
+                type="primary">
                 Submit
               </Button>
             </Space>

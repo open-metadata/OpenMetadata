@@ -31,6 +31,7 @@ import 'react-toastify/dist/ReactToastify.min.css';
 import { AuthProvider } from './authentication/auth-provider/AuthProvider';
 import Appbar from './components/app-bar/Appbar';
 import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
+import PermissionProvider from './components/PermissionProvider/PermissionProvider';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import { toastOptions } from './constants/toast.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
@@ -56,12 +57,14 @@ const App: FunctionComponent = () => {
         <Router>
           <ErrorBoundry>
             <AuthProvider childComponentType={AppRouter}>
-              <WebSocketProvider>
-                <GlobalSearchProvider>
-                  <Appbar />
-                  <AppRouter />
-                </GlobalSearchProvider>
-              </WebSocketProvider>
+              <PermissionProvider>
+                <WebSocketProvider>
+                  <GlobalSearchProvider>
+                    <Appbar />
+                    <AppRouter />
+                  </GlobalSearchProvider>
+                </WebSocketProvider>
+              </PermissionProvider>
             </AuthProvider>
           </ErrorBoundry>
         </Router>

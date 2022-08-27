@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button,
   Collapse,
+  Dropdown,
   Empty,
+  Menu,
   Modal,
   Space,
   Table,
@@ -24,10 +27,16 @@ import {
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
+import {
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
+} from '../../../axiosAPIs/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -37,6 +46,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -111,7 +121,10 @@ const List = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button type="text" onClick={() => onDelete(record)}>
+            <Button
+              data-testid={`remove-action-${getEntityName(record)}`}
+              type="text"
+              onClick={() => onDelete(record)}>
               <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
             </Button>
           );
@@ -184,17 +197,94 @@ const PoliciesDetailPage = () => {
     }
   };
 
+  const handleRolesUpdate = async (data: EntityReference) => {
+    try {
+      const role = await getRoleByName(
+        data.fullyQualifiedName || '',
+        'policies'
+      );
+      const updatedAttributeData = (role.policies ?? []).filter(
+        (attrData) => attrData.id !== policy.id
+      );
+
+      const patch = compare(role, {
+        ...role,
+        policies: updatedAttributeData,
+      });
+
+      const response = await patchRole(patch, role.id);
+
+      if (response) {
+        const updatedRoles = (policy.roles ?? []).filter(
+          (role) => role.id !== data.id
+        );
+        setPolicy((prev) => ({ ...prev, roles: updatedRoles }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleTeamsUpdate = async (data: EntityReference) => {
+    try {
+      const team = await getTeamByName(
+        data.fullyQualifiedName || '',
+        'policies'
+      );
+      const updatedAttributeData = (team.policies ?? []).filter(
+        (attrData) => attrData.id !== policy.id
+      );
+
+      const patch = compare(team, {
+        ...team,
+        policies: updatedAttributeData,
+      });
+
+      const response = await patchTeamDetail(team.id, patch);
+
+      if (response) {
+        const updatedTeams = (policy.teams ?? []).filter(
+          (team) => team.id !== data.id
+        );
+        setPolicy((prev) => ({ ...prev, teams: updatedTeams }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const handleDelete = async (data: EntityReference, attribute: Attribute) => {
-    const attributeData =
-      (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
-    const updatedAttributeData = attributeData.filter(
-      (attrData) => attrData.id !== data.id
+    if (attribute === 'roles') {
+      handleRolesUpdate(data);
+    } else if (attribute === 'teams') {
+      handleTeamsUpdate(data);
+    } else {
+      const attributeData =
+        (policy[attribute as keyof Policy] as EntityReference[]) ?? [];
+      const updatedAttributeData = attributeData.filter(
+        (attrData) => attrData.id !== data.id
+      );
+
+      const patch = compare(policy, {
+        ...policy,
+        [attribute as keyof Policy]: updatedAttributeData,
+      });
+      try {
+        const data = await patchPolicy(patch, policy.id);
+        setPolicy(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
+  const handleRuleDelete = async (data: Rule) => {
+    const updatedRules = (policy.rules ?? []).filter(
+      (rule) => rule.name !== data.name
     );
 
-    const patch = compare(policy, {
-      ...policy,
-      [attribute as keyof Policy]: updatedAttributeData,
-    });
+    const patch = compare(policy, { ...policy, rules: updatedRules });
+
     try {
       const data = await patchPolicy(patch, policy.id);
       setPolicy(data);
@@ -202,6 +292,78 @@ const PoliciesDetailPage = () => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const getRuleActionElement = useCallback(
+    (rule: Rule) => {
+      return (
+        <Dropdown
+          overlay={
+            <Menu
+              items={[
+                {
+                  label: (
+                    <Button
+                      className="tw-p-0"
+                      data-testid="edit-rule"
+                      type="text"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        history.push(
+                          getEditPolicyRulePath(fqn, rule.name || '')
+                        );
+                      }}>
+                      <Space align="center">
+                        <SVGIcons alt="edit" icon={Icons.EDIT} />
+                        Edit
+                      </Space>
+                    </Button>
+                  ),
+                  key: 'edit-button',
+                },
+                {
+                  label: (
+                    <Button
+                      className="tw-p-0"
+                      data-testid="delete-rule"
+                      type="text"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRuleDelete(rule);
+                      }}>
+                      <Space align="center">
+                        <SVGIcons
+                          alt="delete"
+                          icon={Icons.DELETE}
+                          width="16px"
+                        />
+                        Delete
+                      </Space>
+                    </Button>
+                  ),
+                  key: 'delete-button',
+                },
+              ]}
+            />
+          }
+          placement="bottomRight"
+          trigger={['click']}>
+          <Button
+            data-testid={`manage-button-${rule.name}`}
+            size="small"
+            type="text"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}>
+            <FontAwesomeIcon
+              className="tw-text-grey-body"
+              icon="ellipsis-vertical"
+            />
+          </Button>
+        </Dropdown>
+      );
+    },
+    [policy]
+  );
 
   useEffect(() => {
     fetchPolicy();
@@ -242,13 +404,14 @@ const PoliciesDetailPage = () => {
               {isEmpty(policy.rules) ? (
                 <Empty description="No rules found" />
               ) : (
-                <Space className="tw-w-full rules-tab" direction="vertical">
+                <Space className="tw-w-full tabpane-space" direction="vertical">
                   <Button
+                    data-testid="add-rule"
                     type="primary"
                     onClick={() => history.push(getAddPolicyRulePath(fqn))}>
                     Add Rule
                   </Button>
-                  <Space className="tw-w-full" direction="vertical">
+                  <Space className="tw-w-full" direction="vertical" size={16}>
                     {policy.rules.map((rule) => (
                       <Collapse key={uniqueId()}>
                         <Panel
@@ -261,23 +424,12 @@ const PoliciesDetailPage = () => {
                                 align="baseline"
                                 className="tw-w-full tw-justify-between"
                                 size={4}>
-                                <Typography.Text className="tw-font-medium tw-text-base">
+                                <Typography.Text
+                                  className="tw-font-medium tw-text-base tw-text-grey-body"
+                                  data-testid="rule-name">
                                   {rule.name}
                                 </Typography.Text>
-                                <Button
-                                  data-testid="edit-rule"
-                                  type="text"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    history.push(
-                                      getEditPolicyRulePath(
-                                        fqn,
-                                        rule.name || ''
-                                      )
-                                    );
-                                  }}>
-                                  <SVGIcons alt="edit" icon={Icons.EDIT} />
-                                </Button>
+                                {getRuleActionElement(rule)}
                               </Space>
                               <div
                                 className="tw--ml-5"
@@ -292,7 +444,7 @@ const PoliciesDetailPage = () => {
                             </Space>
                           }
                           key={rule.name || 'rule'}>
-                          <Space direction="vertical">
+                          <Space direction="vertical" size={16}>
                             <Space
                               data-testid="resources"
                               direction="vertical"
@@ -300,8 +452,10 @@ const PoliciesDetailPage = () => {
                               <Typography.Text className="tw-text-grey-muted tw-mb-0">
                                 Resources:
                               </Typography.Text>
-                              <Typography.Text>
-                                {rule.resources?.join(', ')}
+                              <Typography.Text className="tw-text-grey-body">
+                                {rule.resources
+                                  ?.map((resource) => startCase(resource))
+                                  ?.join(', ')}
                               </Typography.Text>
                             </Space>
 
@@ -312,8 +466,19 @@ const PoliciesDetailPage = () => {
                               <Typography.Text className="tw-text-grey-muted">
                                 Operations:
                               </Typography.Text>
-                              <Typography.Text>
+                              <Typography.Text className="tw-text-grey-body">
                                 {rule.operations?.join(', ')}
+                              </Typography.Text>
+                            </Space>
+                            <Space
+                              data-testid="effect"
+                              direction="vertical"
+                              size={4}>
+                              <Typography.Text className="tw-text-grey-muted">
+                                Effect:
+                              </Typography.Text>
+                              <Typography.Text className="tw-text-grey-body">
+                                {startCase(rule.effect)}
                               </Typography.Text>
                             </Space>
                             {rule.condition && (

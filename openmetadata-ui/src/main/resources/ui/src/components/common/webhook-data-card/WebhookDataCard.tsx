@@ -53,7 +53,7 @@ const WebhookDataCard: FunctionComponent<Props> = ({
           <SVGIcons alt="webhook" icon={ICON[type]} width="16" />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-1">
             <button
-              className="tw-text-grey-body tw-font-medium"
+              className="tw-font-medium tw-text-primary hover:tw-underline tw-cursor-pointer"
               data-testid="webhook-link"
               onClick={handleLinkClick}>
               {stringToHTML(name)}

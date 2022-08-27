@@ -166,8 +166,15 @@ public final class JsonUtils {
     return OBJECT_MAPPER.convertValue(object, clz);
   }
 
+  public static <T> T convertValue(Object object, TypeReference<T> toValueTypeRef) {
+    if (object == null) {
+      return null;
+    }
+    return OBJECT_MAPPER.convertValue(object, toValueTypeRef);
+  }
+
   /** Applies the patch on original object and returns the updated object */
-  public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
+  public static JsonValue applyPatch(Object original, JsonPatch patch) {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
 
     //
@@ -269,8 +276,12 @@ public final class JsonUtils {
     JsonPatch sortedPatch = Json.createPatch(arrayBuilder.build());
 
     // Apply sortedPatch
-    JsonValue patchedJson = sortedPatch.apply(targetJson);
-    return OBJECT_MAPPER.convertValue(patchedJson, clz);
+    return sortedPatch.apply(targetJson);
+  }
+
+  public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
+    JsonValue value = applyPatch(original, patch);
+    return OBJECT_MAPPER.convertValue(value, clz);
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {

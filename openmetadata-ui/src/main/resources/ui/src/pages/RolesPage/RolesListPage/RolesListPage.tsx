@@ -71,10 +71,13 @@ const RolesListPage = () => {
   return isLoading ? (
     <Loader />
   ) : (
-    <Row className="roles-list-container" gutter={[16, 16]}>
+    <Row
+      className="roles-list-container"
+      data-testid="roles-list-container"
+      gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <Button type="primary" onClick={handleAddRole}>
+          <Button data-testid="add-role" type="primary" onClick={handleAddRole}>
             Add Role
           </Button>
         </Space>

@@ -66,6 +66,7 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodel_service",
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
+                must_return=True,
             ),
         ],
         children=["mlmodel"],

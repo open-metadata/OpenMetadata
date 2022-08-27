@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -35,7 +34,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tests.CreateTestDefinition;
@@ -53,6 +51,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 @Path("/v1/testDefinition")
@@ -87,9 +86,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
         testDefinitionFile -> {
           try {
             LOG.info("Loading test definitions from file {}", testDefinitionFile);
-            String testDefinitionJson =
-                IOUtil.toString(
-                    Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(testDefinitionFile)));
+            String testDefinitionJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), testDefinitionFile);
             testDefinitionJson = testDefinitionJson.replace("<separator>", Entity.SEPARATOR);
             TestDefinition testDefinition = JsonUtils.readValue(testDefinitionJson, TestDefinition.class);
             long now = System.currentTimeMillis();

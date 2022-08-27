@@ -23,7 +23,7 @@ import {
 } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
@@ -33,7 +33,7 @@ import { OwnerType } from '../../../enums/user.enum';
 import { TableType } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { getEntityId, getEntityName } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
@@ -80,7 +80,6 @@ const TableDataCard: FunctionComponent<Props> = ({
   databaseSchema,
 }: Props) => {
   const location = useLocation();
-  const history = useHistory();
   const getTier = () => {
     if (tier) {
       return isString(tier) ? tier : tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
@@ -93,8 +92,10 @@ const TableDataCard: FunctionComponent<Props> = ({
     {
       key: 'Owner',
       value: getEntityName(owner),
+      id: getEntityId(owner),
       avatarWidth: '16',
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+      isEntityCard: true,
     },
     { key: 'Tier', value: getTier() },
   ];
@@ -127,8 +128,6 @@ const TableDataCard: FunctionComponent<Props> = ({
   const handleLinkClick = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {
       AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
-    } else {
-      history.push(getEntityLink(indexType, fullyQualifiedName));
     }
   };
 
@@ -158,12 +157,13 @@ const TableDataCard: FunctionComponent<Props> = ({
             src={serviceTypeLogo(serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
-            <Link to={getEntityLink(indexType, fullyQualifiedName)}>
+            <Link
+              to={getEntityLink(indexType, fullyQualifiedName)}
+              onClick={handleLinkClick}>
               <button
                 className="tw-text-grey-body tw-font-semibold"
                 data-testid="table-link"
-                id={`${id}Title`}
-                onClick={handleLinkClick}>
+                id={`${id}Title`}>
                 {stringToHTML(name)}
               </button>
             </Link>

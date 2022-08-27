@@ -57,4 +57,9 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
     return null;
   }
+
+  @Override
+  public Map<String, String> getHostIp() {
+    return null;
+  }
 }

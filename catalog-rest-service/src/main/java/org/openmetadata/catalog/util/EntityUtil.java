@@ -46,14 +46,16 @@ import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.filter.EventFilter;
+import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
@@ -88,6 +90,8 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
+  public static final Comparator<Filters> compareFilters = Comparator.comparing(Filters::getEventType);
+  public static final Comparator<EventFilter> compareEventFilters = Comparator.comparing(EventFilter::getEntityType);
   public static final Comparator<MetadataOperation> compareOperation = Comparator.comparing(MetadataOperation::value);
 
   //
@@ -128,7 +132,7 @@ public final class EntityUtil {
 
   public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
       (filter1, filter2) ->
-          filter1.getEventType().equals(filter2.getEventType()) && filter1.getEntities().equals(filter2.getEntities());
+          filter1.getEntityType().equals(filter2.getEntityType()) && filter1.getFilters().equals(filter2.getFilters());
 
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
@@ -389,16 +393,14 @@ public final class EntityUtil {
     return Math.round((version + 1.0) * 10.0) / 10.0;
   }
 
-  public static void addSoftDeleteFilter(List<EventFilter> filters) {
+  public static void addSoftDeleteFilter(List<Filters> filters) {
     // Add filter for soft delete events if delete event type is requested
-    Optional<EventFilter> deleteFilter =
+    Optional<Filters> deleteFilter =
         filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
     deleteFilter.ifPresent(
         eventFilter ->
             filters.add(
-                new EventFilter()
-                    .withEventType(EventType.ENTITY_SOFT_DELETED)
-                    .withEntities(eventFilter.getEntities())));
+                new Filters().withEventType(EventType.ENTITY_SOFT_DELETED).withFields(eventFilter.getFields())));
   }
 
   public static EntityReference copy(EntityReference from, EntityReference to) {
@@ -437,5 +439,18 @@ public final class EntityUtil {
   public static String addField(String fields, String newField) {
     fields = fields == null ? "" : fields;
     return fields.isEmpty() ? newField : fields + ", " + newField;
+  }
+
+  public static void fieldAdded(ChangeDescription change, String fieldName, Object newValue) {
+    change.getFieldsAdded().add(new FieldChange().withName(fieldName).withNewValue(newValue));
+  }
+
+  public static void fieldDeleted(ChangeDescription change, String fieldName, Object oldValue) {
+    change.getFieldsDeleted().add(new FieldChange().withName(fieldName).withOldValue(oldValue));
+  }
+
+  public static void fieldUpdated(ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
+    FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
+    change.getFieldsUpdated().add(fieldChange);
   }
 }

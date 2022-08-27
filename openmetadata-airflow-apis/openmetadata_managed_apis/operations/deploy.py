@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import pkgutil
 import traceback
 from pathlib import Path
@@ -30,11 +29,14 @@ from openmetadata_managed_apis.api.utils import (
     import_path,
     scan_dags_job_background,
 )
+from openmetadata_managed_apis.utils.logger import operations_logger
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
+
+logger = operations_logger()
 
 
 class DeployDagException(Exception):
@@ -51,7 +53,7 @@ class DagDeployer:
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
 
-        logging.info(
+        logger.info(
             f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
         )
 
@@ -66,7 +68,7 @@ class DagDeployer:
         return the path for the Jinja rendering.
         """
 
-        logging.info(f"Saving file to {dag_config_file_path}")
+        logger.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
             outfile.write(self.ingestion_pipeline.json(encoder=show_secrets_encoder))
 
@@ -96,11 +98,12 @@ class DagDeployer:
         try:
             dag_file = import_path(str(dag_py_file))
         except Exception as exc:
-            logging.error(f"Failed to import dag_file {dag_py_file} due to {exc}")
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")
             raise exc
 
         if dag_file is None:
-            raise DeployDagException(f"Failed to import dag_file {dag_py_file}")
+            raise DeployDagException(f"Failed to import dag_file [{dag_py_file}]")
 
         return str(dag_py_file)
 
@@ -117,9 +120,9 @@ class DagDeployer:
         with settings.Session() as session:
             try:
                 dag_bag = get_dagbag()
-                logging.info("dagbag size {}".format(dag_bag.size()))
+                logger.info("dagbag size {}".format(dag_bag.size()))
                 found_dags = dag_bag.process_file(dag_py_file)
-                logging.info("processed dags {}".format(found_dags))
+                logger.info("processed dags {}".format(found_dags))
                 dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
                 # Sync to DB
                 dag.sync_to_db(session=session)
@@ -128,7 +131,7 @@ class DagDeployer:
                     .filter(DagModel.dag_id == self.dag_id)
                     .first()
                 )
-                logging.info("dag_model:" + str(dag_model))
+                logger.info("dag_model:" + str(dag_model))
                 # Scheduler Job to scan dags
                 scan_dags_job_background()
 
@@ -136,20 +139,17 @@ class DagDeployer:
                     {"message": f"Workflow [{self.dag_id}] has been created"}
                 )
             except Exception as exc:
-                logging.info(f"Failed to serialize the dag {exc}")
-                return ApiResponse.server_error(
-                    {
-                        "message": f"Workflow [{self.dag_id}] failed to refresh due to [{exc}] "
-                        + f"- {traceback.format_exc()}"
-                    }
-                )
+                msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
+                logger.debug(traceback.format_exc())
+                logger.error(msg)
+                return ApiResponse.server_error({f"message": msg})
 
     def deploy(self):
         """
         Run all methods to deploy the DAG
         """
         dag_config_file_path = Path(DAG_GENERATED_CONFIGS) / f"{self.dag_id}.json"
-        logging.info(f"Config file under {dag_config_file_path}")
+        logger.info(f"Config file under {dag_config_file_path}")
 
         dag_runner_config = self.store_airflow_pipeline_config(dag_config_file_path)
         dag_py_file = self.store_and_validate_dag_file(dag_runner_config)

@@ -12,23 +12,24 @@
 Register error handlers
 """
 
-import logging
-
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import MissingArgException
+from openmetadata_managed_apis.utils.logger import api_logger
 from werkzeug.exceptions import HTTPException
+
+logger = api_logger()
 
 
 @blueprint.app_errorhandler(Exception)
-def handle_any_error(e):
-    logging.exception("Wild exception")
-    if isinstance(e, HTTPException):
-        return ApiResponse.error(e.code, repr(e))
-    return ApiResponse.server_error(repr(e))
+def handle_any_error(exc):
+    logger.exception("Wild exception: {exc}")
+    if isinstance(exc, HTTPException):
+        return ApiResponse.error(exc.code, repr(exc))
+    return ApiResponse.server_error(repr(exc))
 
 
 @blueprint.app_errorhandler(MissingArgException)
-def handle_missing_arg(e):
-    logging.exception("Missing Argument Exception")
-    return ApiResponse.bad_request(repr(e))
+def handle_missing_arg(exc):
+    logger.exception(f"Missing Argument Exception: {exc}")
+    return ApiResponse.bad_request(repr(exc))

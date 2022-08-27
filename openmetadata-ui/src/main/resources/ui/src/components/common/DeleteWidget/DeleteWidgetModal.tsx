@@ -35,6 +35,7 @@ const DeleteWidgetModal = ({
   entityType,
   onCancel,
   entityId,
+  prepareType = true,
   isRecursiveDelete,
   afterDeleteAction,
 }: DeleteWidgetModalProps) => {
@@ -109,7 +110,7 @@ const DeleteWidgetModal = ({
   const handleOnEntityDeleteConfirm = () => {
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(
-      prepareEntityType(),
+      prepareType ? prepareEntityType() : entityType,
       entityId ?? '',
       Boolean(isRecursiveDelete),
       entityDeleteState.softDelete

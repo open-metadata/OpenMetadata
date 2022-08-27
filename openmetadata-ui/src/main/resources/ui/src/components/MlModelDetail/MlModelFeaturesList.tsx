@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Empty } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -157,6 +158,15 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       });
   };
 
+  const handleTagContainerClick = (feature: MlFeature) => {
+    setSelectedFeature(feature);
+    setEditTag(true);
+    // Fetch tags and terms only once
+    if (allTags.length === 0 || tagFetchFailed) {
+      fetchTagsAndGlossaryTerms();
+    }
+  };
+
   const Separator = () => {
     return <span className="tw-mx-2 tw-inline-block tw-text-gray-400">|</span>;
   };
@@ -249,14 +259,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     <div
                       className="tw-ml-1 tw-self-center"
                       data-testid="feature-tags-wrapper"
-                      onClick={() => {
-                        setSelectedFeature(feature);
-                        setEditTag(true);
-                        // Fetch tags and terms only once
-                        if (allTags.length === 0 || tagFetchFailed) {
-                          fetchTagsAndGlossaryTerms();
-                        }
-                      }}>
+                      onClick={() => handleTagContainerClick(feature)}>
                       <NonAdminAction
                         html={getHtmlForNonAdminAction(Boolean(owner))}
                         isOwner={hasEditAccess}
@@ -349,7 +352,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
     } else {
       return (
         <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-          No features data available
+          <Empty description={<p>No features data available</p>} />
         </div>
       );
     }

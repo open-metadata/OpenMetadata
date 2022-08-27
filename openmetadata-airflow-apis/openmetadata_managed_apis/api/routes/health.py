@@ -13,6 +13,8 @@ Health endpoint. Globally accessible
 """
 import traceback
 
+from openmetadata_managed_apis.utils.logger import routes_logger
+
 try:
     from importlib.metadata import version
 except ImportError:
@@ -21,6 +23,8 @@ except ImportError:
 from airflow.www.app import csrf
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
+
+logger = routes_logger()
 
 
 @blueprint.route("/health", methods=["GET"])
@@ -34,8 +38,11 @@ def health():
         return ApiResponse.success(
             {"status": "healthy", "version": version("openmetadata-ingestion")}
         )
-    except Exception as err:
+    except Exception as exc:
+        msg = f"Internal error obtaining REST status due to [{exc}] "
+        logger.debug(traceback.format_exc())
+        logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Internal error obtaining REST status - {err} - {traceback.format_exc()}",
+            error=msg,
         )

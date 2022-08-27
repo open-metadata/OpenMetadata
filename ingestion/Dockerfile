@@ -14,6 +14,17 @@ RUN wget https://curl.se/download/curl-7.84.0.tar.gz && \
 
 FROM base as airflow
 ENV AIRFLOW_VERSION=2.3.3
+
+# install odbc driver
+RUN apt-get update && \
+    apt-get install -y gnupg && \
+    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql18 && \
+    rm -rf /var/lib/apt/lists/*
+
+
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 # Add docker provider for the DockerOperator
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"

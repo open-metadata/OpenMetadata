@@ -14,6 +14,7 @@
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   IN_PAGE_SEARCH_ROUTES,
+  PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
@@ -26,6 +27,7 @@ import {
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
+  PLACEHOLDER_TAG_NAME,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
@@ -140,13 +142,6 @@ export const getExplorePathWithInitFilters = (
   return filter
     ? `${path}?${initialFilterQS}=${encodeURIComponent(filter)}`
     : path;
-};
-
-export const getServicesWithTabPath = (serviceCat: string) => {
-  let path = ROUTES.SERVICES_WITH_TAB;
-  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat);
-
-  return path;
 };
 
 export const getGlossaryPath = (fqn?: string) => {
@@ -295,10 +290,15 @@ export const getPath = (pathName: string) => {
   }
 };
 
-export const getProfilerDashboardWithFqnPath = (entityTypeFQN: string) => {
+export const getProfilerDashboardWithFqnPath = (
+  dashboardType: string,
+  entityTypeFQN: string
+) => {
   let path = ROUTES.PROFILER_DASHBOARD;
 
-  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
 
   return path;
 };
@@ -317,6 +317,16 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, fqn)
     .replace(PLACEHOLDER_RULE_NAME, ruleName);
+
+  return path;
+};
+
+export const getTagPath = (fqn?: string) => {
+  let path = ROUTES.TAGS;
+  if (fqn) {
+    path = ROUTES.TAG_DETAILS;
+    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+  }
 
   return path;
 };

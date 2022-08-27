@@ -23,25 +23,58 @@ class TestEntityLink(TestCase):
     Validate EntityLink building
     """
 
-    assert_true_tests = [
-        "<#E::table::bigquery_gcp.shopify.raw_product_catalog1>",
-        "<#E::table::bigquery_gcp.shopify.raw_product_catalog2::description>",
-        "<#E::table::bigquery_gcp.shopify.raw_product_catalog3::columns::comment>",
-        "<#E::table::bigquery_gcp.shopify.raw_product_catalog4::columns::comment::description>",
-        "<#E::database::bigquery_gcp.shopify>",
-        "<#E::database::bigquery_gcp.shopify::tags>",
-        "<#E::database::bigquery_gcp.shopify>",
-    ]
-    assert_false_tests = [
-        "<#E::charts::metabase.chart_name>",
-        "<#E::thread::full.fqn.here>",
-        "<#E::database::bigquery_gcp.shopify::tag>",
-    ]
-
     def test_split(self):
-        for tests in self.assert_true_tests:
-            self.assertEqual(entity_link.split(tests), [])
-        for tests in self.assert_false_tests:
-            self.assertRaises(
-                ParseCancellationException, lambda: entity_link.split(tests)
-            )
+        this = self
+
+        class EntityLinkTest:
+            """
+            Test helper class
+            """
+
+            def __init__(self, entitylink, split_list):
+                self.entitylink = entitylink
+                self.split_list = split_list
+
+            def validate(self, fn_resp, check_split):
+                this.assertEqual(fn_resp, check_split)
+                this.assertEqual(len(fn_resp), len(check_split))
+
+        xs = [
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw_product_catalog1>",
+                ["table", "bigquery_gcp.shopify.raw_product_catalog1"],
+            ),
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw_product_catalog2::description>",
+                ["table", "bigquery_gcp.shopify.raw_product_catalog2", "description"],
+            ),
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw_product_catalog3::columns::comment>",
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog3",
+                    "columns",
+                    "comment",
+                ],
+            ),
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw_product_catalog4::columns::comment::description>",
+                [
+                    "table",
+                    "bigquery_gcp.shopify.raw_product_catalog4",
+                    "columns",
+                    "comment",
+                    "description",
+                ],
+            ),
+            EntityLinkTest(
+                "<#E::database::bigquery_gcp.shopify>",
+                ["database", "bigquery_gcp.shopify"],
+            ),
+            EntityLinkTest(
+                "<#E::database::bigquery_gcp.shopify::tags>",
+                ["database", "bigquery_gcp.shopify", "tags"],
+            ),
+        ]
+        for x in xs:
+            x.validate(entity_link.split(x.entitylink), x.split_list)
