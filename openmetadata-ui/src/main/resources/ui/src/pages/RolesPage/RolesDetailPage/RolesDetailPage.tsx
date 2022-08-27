@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Empty, Modal, Table, Tabs, Typography } from 'antd';
+import { Button, Empty, Modal, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -20,6 +20,8 @@ import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
+import { getUserByName, updateUserDetail } from '../../../axiosAPIs/userAPI';
 import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -39,11 +41,17 @@ import {
 } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
 import './RolesDetail.less';
 
 const { TabPane } = Tabs;
 
 type Attribute = 'policies' | 'teams' | 'users';
+
+interface AddAttribute {
+  type: EntityType;
+  selectedData: EntityReference[];
+}
 
 const List = ({
   list,
@@ -82,7 +90,10 @@ const List = ({
           }
 
           return (
-            <Link className="hover:tw-underline tw-cursor-pointer" to={link}>
+            <Link
+              className="hover:tw-underline tw-cursor-pointer"
+              data-testid="entity-name"
+              to={link}>
               {getEntityName(record)}
             </Link>
           );
@@ -103,7 +114,10 @@ const List = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button type="text" onClick={() => onDelete(record)}>
+            <Button
+              data-testid={`remove-action-${getEntityName(record)}`}
+              type="text"
+              onClick={() => onDelete(record)}>
               <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
             </Button>
           );
@@ -132,6 +146,8 @@ const RolesDetailPage = () => {
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
+
+  const [addAttribute, setAddAttribute] = useState<AddAttribute>();
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -176,22 +192,102 @@ const RolesDetailPage = () => {
     }
   };
 
-  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
-    const attributeData =
-      (role[attribute as keyof Role] as EntityReference[]) ?? [];
-    const updatedAttributeData = attributeData.filter(
-      (attrData) => attrData.id !== data.id
-    );
-
-    const patch = compare(role, {
-      ...role,
-      [attribute as keyof Role]: updatedAttributeData,
-    });
+  const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const data = await patchRole(patch, role.id);
-      setRole(data);
+      const team = await getTeamByName(
+        data.fullyQualifiedName || '',
+        'defaultRoles'
+      );
+      const updatedAttributeData = (team.defaultRoles ?? []).filter(
+        (attrData) => attrData.id !== role.id
+      );
+
+      const patch = compare(team, {
+        ...team,
+        defaultRoles: updatedAttributeData,
+      });
+
+      const response = await patchTeamDetail(team.id, patch);
+
+      if (response) {
+        const updatedTeams = (role.teams ?? []).filter(
+          (team) => team.id !== data.id
+        );
+        setRole((prev) => ({ ...prev, teams: updatedTeams }));
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleUsersUpdate = async (data: EntityReference) => {
+    try {
+      const user = await getUserByName(data.fullyQualifiedName || '', 'roles');
+      const updatedAttributeData = (user.roles ?? []).filter(
+        (attrData) => attrData.id !== role.id
+      );
+
+      const patch = compare(user, {
+        ...user,
+        roles: updatedAttributeData,
+      });
+
+      const response = await updateUserDetail(user.id, patch);
+
+      if (response) {
+        const updatedUsers = (role.users ?? []).filter(
+          (user) => user.id !== data.id
+        );
+        setRole((prev) => ({ ...prev, users: updatedUsers }));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    if (attribute === 'teams') {
+      handleTeamsUpdate(data);
+    } else if (attribute === 'users') {
+      handleUsersUpdate(data);
+    } else {
+      const attributeData =
+        (role[attribute as keyof Role] as EntityReference[]) ?? [];
+      const updatedAttributeData = attributeData.filter(
+        (attrData) => attrData.id !== data.id
+      );
+
+      const patch = compare(role, {
+        ...role,
+        [attribute as keyof Role]: updatedAttributeData,
+      });
+      try {
+        const data = await patchRole(patch, role.id);
+        setRole(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
+  const handleAddAttribute = async (selectedIds: string[]) => {
+    if (addAttribute) {
+      const updatedPolicies = selectedIds.map((id) => {
+        const existingData = addAttribute.selectedData.find(
+          (data) => data.id === id
+        );
+
+        return existingData ? existingData : { id, type: addAttribute.type };
+      });
+      const patch = compare(role, { ...role, policies: updatedPolicies });
+      try {
+        const data = await patchRole(patch, role.id);
+        setRole(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setAddAttribute(undefined);
+      }
     }
   };
 
@@ -207,7 +303,7 @@ const RolesDetailPage = () => {
     <div data-testid="role-details-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       {isEmpty(role) ? (
-        <Empty description={`No roles found for ${fqn}`}>
+        <Empty data-testid="no-data" description={`No roles found for ${fqn}`}>
           <Button
             size="small"
             type="primary"
@@ -229,15 +325,28 @@ const RolesDetailPage = () => {
               onDescriptionUpdate={handleDescriptionUpdate}
             />
           </div>
-          <Tabs defaultActiveKey="policies">
+          <Tabs data-testid="tabs" defaultActiveKey="policies">
             <TabPane key="policies" tab="Policies">
-              <List
-                list={role.policies ?? []}
-                type="policy"
-                onDelete={(record) =>
-                  setEntity({ record, attribute: 'policies' })
-                }
-              />
+              <Space className="tw-w-full" direction="vertical">
+                <Button
+                  data-testid="add-policy"
+                  type="primary"
+                  onClick={() =>
+                    setAddAttribute({
+                      type: EntityType.POLICY,
+                      selectedData: role.policies || [],
+                    })
+                  }>
+                  Add Policy
+                </Button>
+                <List
+                  list={role.policies ?? []}
+                  type="policy"
+                  onDelete={(record) =>
+                    setEntity({ record, attribute: 'policies' })
+                  }
+                />
+              </Space>
             </TabPane>
             <TabPane key="teams" tab="Teams">
               <List
@@ -276,6 +385,16 @@ const RolesDetailPage = () => {
             )}?`}
           </Typography.Text>
         </Modal>
+      )}
+      {addAttribute && (
+        <AddAttributeModal
+          isOpen={!isUndefined(addAttribute)}
+          selectedKeys={addAttribute.selectedData.map((data) => data.id)}
+          title={`Add ${addAttribute.type}`}
+          type={addAttribute.type}
+          onCancel={() => setAddAttribute(undefined)}
+          onSave={(data) => handleAddAttribute(data)}
+        />
       )}
     </div>
   );

@@ -347,6 +347,8 @@ class TestSuiteWorkflow:
                 try:
                     data_test_runner = self._create_data_tests_runner(sqa_interface)
                     test_result = data_test_runner.run_and_handle(test_case)
+                    if not test_result:
+                        continue
                     if hasattr(self, "sink"):
                         self.sink.write_record(test_result)
                     logger.info(f"Successfuly ran test case {test_case.name.__root__}")

@@ -24,21 +24,32 @@ import {
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { checkPemission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Loader from '../Loader/Loader';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { BotListV1Props } from './BotListV1.interfaces';
 
 const BotListV1 = ({ showDeleted }: BotListV1Props) => {
+  const { permissions } = usePermissionProvider();
   const [botUsers, setBotUsers] = useState<Bot[]>([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [selectedUser, setSelectedUser] = useState<Bot>();
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+
+  const deletePermission = checkPemission(
+    Operation.Delete,
+    ResourceEntity.BOT,
+    permissions
+  );
 
   /**
    *
@@ -90,8 +101,15 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
         width: 90,
         render: (_, record) => (
           <Space align="center" size={8}>
-            <Tooltip placement="bottom" title="Delete">
+            <Tooltip
+              placement="bottom"
+              title={
+                deletePermission
+                  ? 'Delete'
+                  : 'You do not have permissions to perform this action.'
+              }>
               <Button
+                disabled={!deletePermission}
                 icon={
                   <SVGIcons
                     alt="Delete"

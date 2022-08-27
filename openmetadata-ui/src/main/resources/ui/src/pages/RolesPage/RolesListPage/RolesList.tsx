@@ -47,6 +47,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
+            data-testid="role-name"
             to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
             {getEntityName(record)}
           </Link>
@@ -70,7 +71,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
           const hasMore = listLength > LIST_CAP;
 
           return record.policies?.length ? (
-            <Space wrap size={4}>
+            <Space wrap data-testid="policy-link" size={4}>
               {record.policies.slice(0, LIST_CAP).map((policy) => (
                 <Link
                   key={uniqueId()}
@@ -96,7 +97,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
                   }
                   overlayClassName="tw-w-40 tw-text-center"
                   trigger="click">
-                  <Tag className="tw-ml-1">{`+${
+                  <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
                     listLength - LIST_CAP
                   } more`}</Tag>
                 </Popover>
@@ -114,7 +115,10 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button type="text" onClick={() => setSelectedRole(record)}>
+            <Button
+              data-testid={`delete-action-${getEntityName(record)}`}
+              type="text"
+              onClick={() => setSelectedRole(record)}>
               <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
             </Button>
           );
@@ -128,6 +132,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
       <Table
         className="roles-list-table"
         columns={columns}
+        data-testid="roles-list-table"
         dataSource={roles}
         pagination={false}
         size="middle"

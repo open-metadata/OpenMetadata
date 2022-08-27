@@ -381,15 +381,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             description = "Successfully updated the TestCase. ",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
       })
-  public TestCase addTestCaseResult(
+  public Response addTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    TestCase testCase = dao.addTestCaseResult(fqn, testCaseResult);
-    return addHref(uriInfo, testCase);
+    return dao.addTestCaseResult(fqn, testCaseResult).toResponse();
   }
 
   @GET
@@ -466,7 +465,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             description = "Successfully deleted the TestCaseResult",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
       })
-  public TestCase deleteTestCaseResult(
+  public Response deleteTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
@@ -475,8 +474,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           Long timestamp)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    TestCase testCase = dao.deleteTestCaseResult(fqn, timestamp);
-    return addHref(uriInfo, testCase);
+    return dao.deleteTestCaseResult(fqn, timestamp).toResponse();
   }
 
   private TestCase getTestCase(CreateTestCase create, String user) throws IOException {

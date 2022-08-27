@@ -24,7 +24,7 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { FormSubmitType } from '../../enums/form.enum';
-import { Webhook } from '../../generated/entity/events/webhook';
+import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
 import AddWebhook from './AddWebhook';
 import { AddWebhookProps } from './AddWebhook.interface';
 
@@ -376,6 +376,7 @@ describe.skip('Test AddWebhook component', () => {
           data={mockData as Webhook}
           header="Edit Webhook"
           mode={FormSubmitType.EDIT}
+          webhookType={WebhookType.Generic}
         />,
         {
           wrapper: MemoryRouter,

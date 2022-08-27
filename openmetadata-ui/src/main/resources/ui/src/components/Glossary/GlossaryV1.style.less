@@ -1,3 +1,9 @@
+@box-shadow-color: rgba(0, 0, 0, 0.06);
+@left-panel-border-color: rgb(229, 231, 235);
+@manage-button-bg-primary: #7147e8;
+@manage-dropdown-bg-primary: #d9ceee;
+@white: #ffffff;
+
 .display-name {
   .ant-typography {
     margin-bottom: 0;
@@ -16,4 +22,27 @@
   padding: 0.2rem 0.2rem;
   border-radius: 0.2rem;
   margin-right: 0.3rem;
+}
+
+.glossary-manage-button {
+  border: none;
+  background-color: @manage-dropdown-bg-primary;
+}
+
+.manage-button {
+  .ant-space-item:first-child {
+    width: 40px;
+    align-self: baseline;
+  }
+}
+
+.ant-dropdown-menu {
+  padding: 8px 0px;
+  background: @white;
+  border: 1px solid #dde3ea;
+  box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
+  border-radius: 4px;
+  .ant-dropdown-menu-item {
+    padding: 5px 16px;
+  }
 }

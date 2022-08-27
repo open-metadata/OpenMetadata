@@ -238,6 +238,12 @@ jest.mock('../../utils/TableUtils', () => ({
   getUsagePercentile: jest.fn(),
 }));
 
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Row: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+  Col: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+}));
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
