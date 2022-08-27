@@ -35,7 +35,7 @@ const stepsData = [
     step: 2,
     title: 'Start Elasticsearch Docker',
     description: 'Ensure that the Elasticsearch docker is up and running.',
-    link: 'https://docs.open-metadata.org/openmetadata/connectors',
+    link: 'https://docs.open-metadata.org/quick-start/local-deployment',
   },
   {
     step: 3,
