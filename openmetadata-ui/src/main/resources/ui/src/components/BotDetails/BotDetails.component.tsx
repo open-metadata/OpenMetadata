@@ -219,16 +219,19 @@ const BotDetails: FC<BotsDetailProp> = ({
                 Add display name
               </span>
             )}
-
-            <button
-              className="tw-ml-2 focus:tw-outline-none"
-              data-testid="edit-displayName"
-              disabled={
-                !(botPermissions.EditAll || botPermissions.EditDisplayName)
-              }
-              onClick={() => setIsDisplayNameEdit(true)}>
-              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
-            </button>
+            {(botPermissions.EditAll || botPermissions.EditDisplayName) && (
+              <button
+                className="tw-ml-2 focus:tw-outline-none"
+                data-testid="edit-displayName"
+                onClick={() => setIsDisplayNameEdit(true)}>
+                <SVGIcons
+                  alt="edit"
+                  icon="icon-edit"
+                  title="Edit"
+                  width="16px"
+                />
+              </button>
+            )}
           </Fragment>
         )}
       </div>

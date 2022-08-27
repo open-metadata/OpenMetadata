@@ -68,6 +68,55 @@ const mockProp = {
   updateBotsDetails,
 };
 
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    permissions: {
+      bot: [
+        {
+          operation: 'Create',
+          access: 'allow',
+        },
+        {
+          operation: 'Delete',
+          access: 'allow',
+        },
+        {
+          operation: 'ViewAll',
+          access: 'allow',
+        },
+        {
+          operation: 'EditAll',
+          access: 'allow',
+        },
+        {
+          operation: 'EditDescription',
+          access: 'allow',
+        },
+        {
+          operation: 'EditDisplayName',
+          access: 'allow',
+        },
+        {
+          operation: 'EditCustomFields',
+          access: 'allow',
+        },
+      ],
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  getPermissions: jest.fn().mockReturnValue({
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  }),
+}));
+
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
     generateUserToken: jest
