@@ -2560,7 +2560,7 @@ public interface CollectionDAO {
         condition =
             String.format(
                 "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
       }
 
       return listBefore(getTableName(), getNameColumn(), condition, limit, before);
@@ -2587,7 +2587,7 @@ public interface CollectionDAO {
         condition =
             String.format(
                 "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
       }
 
       return listAfter(getTableName(), getNameColumn(), condition, limit, after);
@@ -2614,7 +2614,7 @@ public interface CollectionDAO {
         condition =
             String.format(
                 "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.HAS.ordinal(), Entity.TEST_SUITE);
+                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
       }
 
       return listCount(getTableName(), getNameColumn(), condition);
