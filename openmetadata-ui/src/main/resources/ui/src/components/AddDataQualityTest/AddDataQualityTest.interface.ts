@@ -12,27 +12,39 @@
  */
 
 import { Table } from '../../generated/entity/data/table';
-import { EntityReference } from '../../generated/tests/tableTest';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestDefinition } from '../../generated/tests/testDefinition';
+import { TestSuite } from '../../generated/tests/testSuite';
 
 export interface AddDataQualityTestProps {
   table: Table;
 }
 
 export interface SelectTestSuiteProps {
+  initialValue?: SelectTestSuiteType;
   onSubmit: (data: SelectTestSuiteType) => void;
 }
 
 export interface TableTestFormProps {
+  initialValue?: TestCase;
   onSubmit: (data: TestCase) => void;
+  onCancel: (data: TestCase) => void;
+}
+
+export interface TestSuiteIngestionProps {
+  testSuite: TestSuite;
+  onCancel: () => void;
+}
+
+export interface TestSuiteSchedulerProps {
+  onSubmit: (repeatFrequency: string) => void;
   onCancel: () => void;
 }
 
 export type SelectTestSuiteType = {
   name?: string;
   description?: string;
-  data?: EntityReference;
+  data?: TestSuite;
   isNewTestSuite: boolean;
 };
 

@@ -21,14 +21,10 @@ import {
 import '../../TableProfiler/tableProfiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
-type ModifiedTestCaseParameterDefinition = TestCaseParameterDefinition & {
-  type?: string;
-};
-
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
-  const prepareForm = (data: ModifiedTestCaseParameterDefinition) => {
+  const prepareForm = (data: TestCaseParameterDefinition) => {
     let Field = <Input placeholder={`Enter ${data.displayName}`} />;
-    switch ((data.dataType as string) || data.type) {
+    switch (data.dataType) {
       case TestDataType.String:
         Field = <Input placeholder={`Enter ${data.displayName}`} />;
 
@@ -43,7 +39,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
         );
 
         break;
-      case 'BOOLEAN':
+      case TestDataType.Boolean:
         Field = <Switch />;
 
         break;

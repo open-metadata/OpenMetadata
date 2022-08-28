@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { CreateTestCase } from '../generated/api/tests/createTestCase';
+import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { EntityType, TestDefinition } from '../generated/tests/testDefinition';
 import { TestSuite } from '../generated/tests/testSuite';
@@ -75,6 +77,12 @@ export const getListTestCaseResults = async (
   return response.data;
 };
 
+export const createTestCase = async (data: CreateTestCase) => {
+  const response = await APIClient.post<TestCase>(testCaseUrl, data);
+
+  return response.data;
+};
+
 // testSuite section
 export const getListTestSuites = async (params?: ListParams) => {
   const response = await APIClient.get<{
@@ -83,6 +91,12 @@ export const getListTestSuites = async (params?: ListParams) => {
   }>(testSuiteUrl, {
     params,
   });
+
+  return response.data;
+};
+
+export const createTestSuites = async (data: CreateTestSuite) => {
+  const response = await APIClient.post<TestSuite>(testSuiteUrl, data);
 
   return response.data;
 };

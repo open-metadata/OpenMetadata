@@ -22,7 +22,11 @@ import {
   getListTestDefinitions,
 } from '../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
-import { TestCase } from '../../../generated/tests/testCase';
+import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  TestCase,
+  TestCaseParameterValue,
+} from '../../../generated/tests/testCase';
 import {
   EntityType,
   TestDefinition,
@@ -34,13 +38,17 @@ import { TableTestFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
 const TableTestForm: React.FC<TableTestFormProps> = ({
+  initialValue,
   onSubmit,
   onCancel,
 }) => {
   const { entityTypeFQN } = useParams<Record<string, string>>();
+  const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
-  const [selectedTestType, setSelectedTestType] = useState<string>();
+  const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
+    initialValue?.testDefinition?.id
+  );
   const [testCases, setTestCases] = useState<{ [key: string]: TestCase }>({});
 
   const fetchAllTestDefinitions = async () => {
@@ -49,7 +57,7 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
         limit: API_RES_MAX_SIZE,
         entityType: EntityType.Table,
       });
-      //   data.length && setSelectedTestType(data[0].id);
+
       setTestDefinitions(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -72,8 +80,9 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
   };
 
   const GenerateParamsField = useCallback(() => {
+    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
     const selectedDefinition = testDefinitions.find(
-      (definition) => definition.id === selectedTestType
+      (definition) => definition.id === testType
     );
 
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
@@ -81,13 +90,38 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
     }
 
     return;
-  }, [selectedTestType]);
+  }, [selectedTestType, initialValue, testDefinitions]);
+
+  const createTestCaseObj = (value: {
+    testName: string;
+    params: Record<string, string>;
+    testTypeId: string;
+  }) => {
+    return {
+      name: value.testName,
+      entityLink: generateEntityLink(entityTypeFQN),
+      parameterValues: Object.entries(value.params || {}).map(
+        ([key, value]) => ({
+          name: key,
+          value,
+        })
+      ) as TestCaseParameterValue[],
+      testDefinition: {
+        id: value.testTypeId,
+        type: 'testDefinition',
+      },
+      description: markdownRef.current?.getEditorContent(),
+      testSuite: {} as EntityReference,
+    };
+  };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {
-    onSubmit({
-      ...value,
-      description: markdownRef.current?.getEditorContent(),
-    });
+    onSubmit(createTestCaseObj(value));
+  };
+
+  const onBack = () => {
+    const data = form.getFieldsValue();
+    onCancel(createTestCaseObj(data));
   };
 
   useEffect(() => {
@@ -101,6 +135,18 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
 
   return (
     <Form
+      form={form}
+      initialValues={{
+        testName: initialValue?.name,
+        testTypeId: initialValue?.testDefinition?.id,
+        params: initialValue?.parameterValues?.reduce(
+          (acc, curr) => ({
+            ...acc,
+            [curr.name || '']: curr.value,
+          }),
+          {}
+        ),
+      }}
       layout="vertical"
       name="tableTestForm"
       onFinish={handleFormSubmit}
@@ -154,7 +200,7 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
 
       <Form.Item label="Description:" name="description">
         <RichTextEditor
-          initialValue=""
+          initialValue={initialValue?.description || ''}
           ref={markdownRef}
           style={{
             margin: 0,
@@ -164,9 +210,9 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
 
       <Form.Item noStyle>
         <Space className="tw-w-full tw-justify-end" size={16}>
-          <Button onClick={onCancel}>Back</Button>
+          <Button onClick={onBack}>Back</Button>
           <Button htmlType="submit" type="primary">
-            Next
+            Submit
           </Button>
         </Space>
       </Form.Item>

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Col, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
+import { createTestCase, createTestSuites } from '../../axiosAPIs/testAPI';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -21,15 +26,22 @@ import {
 } from '../../constants/constants';
 import { STEPS_FOR_ADD_TEST_CASE } from '../../constants/profiler.constant';
 import { FqnPart } from '../../enums/entity.enum';
+import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { OwnerType } from '../../enums/user.enum';
+import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
+import { TestSuite } from '../../generated/tests/testSuite';
 import {
+  getCurrentUserId,
   getEntityName,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import CronEditor from '../common/CronEditor/CronEditor';
+import { showErrorToast } from '../../utils/ToastUtils';
+import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
@@ -40,13 +52,18 @@ import {
 import RightPanel from './components/RightPanel';
 import SelectTestSuite from './components/SelectTestSuite';
 import TableTestForm from './components/TableTestForm';
+import TestSuiteIngestion from './TestSuiteIngestion';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
+  const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [selectedTestSuite, setSelectedTestSuite] =
     useState<SelectTestSuiteType>();
   const [testCaseData, setTestCaseData] = useState<TestCase>();
-  const [repeatFrequency, setRepeatFrequency] = useState('');
+  const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
+  const [testCaseRes, setTestCaseRes] = useState<TestCase>();
+  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
+  const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
     const { service, serviceType, fullyQualifiedName = '' } = table;
@@ -84,8 +101,36 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     ];
   }, [table]);
 
+  const handleViewTestSuiteClick = () => {
+    history.push(getSettingPath());
+  };
+
+  const handleAirflowStatusCheck = (): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      checkAirflowStatus()
+        .then((res) => {
+          if (res.status === 200) {
+            setIsAirflowRunning(true);
+            resolve();
+          } else {
+            setIsAirflowRunning(false);
+            reject();
+          }
+        })
+        .catch(() => {
+          setIsAirflowRunning(false);
+          reject();
+        });
+    });
+  };
+
   const handleCancelClick = () => {
     setActiveServiceStep((pre) => pre - 1);
+  };
+
+  const handleTestCaseBack = (testCase: TestCase) => {
+    setTestCaseData(testCase);
+    handleCancelClick();
   };
 
   const handleSelectTestSuite = (data: SelectTestSuiteType) => {
@@ -93,42 +138,100 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     setActiveServiceStep(2);
   };
 
-  const handleTestCaseData = (data: TestCase) => {
+  const handleFormSubmit = async (data: TestCase) => {
     setTestCaseData(data);
-    setActiveServiceStep(3);
+    if (isUndefined(selectedTestSuite)) return;
+    try {
+      const { parameterValues, testDefinition, name, entityLink, description } =
+        data;
+      const { isNewTestSuite, data: selectedSuite } = selectedTestSuite;
+      const owner = {
+        id: getCurrentUserId(),
+        type: OwnerType.USER,
+      };
+      const testCasePayload: CreateTestCase = {
+        name,
+        description,
+        entityLink,
+        parameterValues,
+        owner,
+        testDefinition,
+        testSuite: {
+          id: selectedSuite?.id || '',
+          type: 'testSuite',
+        },
+      };
+      if (isNewTestSuite) {
+        const testSuitePayload = {
+          name: selectedTestSuite.name || '',
+          description: selectedTestSuite.description || '',
+          owner,
+        };
+        const testSuiteResponse = await createTestSuites(testSuitePayload);
+        testCasePayload.testSuite.id = testSuiteResponse.id || '';
+        setTestSuiteData(testSuiteResponse);
+      }
+
+      const testCaseResponse = await createTestCase(testCasePayload);
+      setTestCaseRes(testCaseResponse);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setActiveServiceStep(3);
+    }
   };
 
   const RenderSelectedTab = useCallback(() => {
     if (activeServiceStep === 2) {
       return (
         <TableTestForm
-          onCancel={handleCancelClick}
-          onSubmit={handleTestCaseData}
+          initialValue={testCaseData}
+          onCancel={handleTestCaseBack}
+          onSubmit={handleFormSubmit}
         />
       );
-    } else if (activeServiceStep === 3) {
-      return (
-        <Row gutter={[16, 32]}>
-          <Col span={24}>
-            <CronEditor
-              value={repeatFrequency}
-              onChange={(value: string) => setRepeatFrequency(value)}
-            />
-          </Col>
-          <Col span={24}>
-            <Space className="tw-w-full tw-justify-end" size={16}>
-              <Button onClick={handleCancelClick}>Back</Button>
-              <Button type="primary">Submit</Button>
-            </Space>
-          </Col>
-        </Row>
+    } else if (activeServiceStep > 2) {
+      const successName = selectedTestSuite?.isNewTestSuite
+        ? `${testSuiteData?.name} & ${testCaseRes?.name}`
+        : testCaseRes?.name || 'Test case';
+
+      const successMessage = selectedTestSuite?.isNewTestSuite ? undefined : (
+        <span>
+          <span className="tw-mr-1 tw-font-semibold">
+            &quot;{successName}&quot;
+          </span>
+          <span>
+            has been created successfully. and will be pickup in next run.
+          </span>
+        </span>
       );
-    } else if (activeServiceStep > 3) {
-      return <p>Success</p>;
+
+      return (
+        <SuccessScreen
+          handleIngestionClick={() => setAddIngestion(true)}
+          handleViewServiceClick={handleViewTestSuiteClick}
+          isAirflowSetup={isAirflowRunning}
+          name={successName}
+          showIngestionButton={isAirflowRunning}
+          state={FormSubmitType.ADD}
+          successMessage={successMessage}
+          viewServiceText="View Test Suite"
+          onCheckAirflowStatus={handleAirflowStatusCheck}
+        />
+      );
     }
 
-    return <SelectTestSuite onSubmit={handleSelectTestSuite} />;
-  }, [activeServiceStep]);
+    return (
+      <SelectTestSuite
+        initialValue={selectedTestSuite}
+        onSubmit={handleSelectTestSuite}
+      />
+    );
+  }, [activeServiceStep, isAirflowRunning]);
+
+  useEffect(() => {
+    handleAirflowStatusCheck();
+  }, []);
 
   return (
     <PageLayout
@@ -136,18 +239,29 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       header={<TitleBreadcrumb titleLinks={breadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
       rightPanel={<RightPanel />}>
-      <Row className="tw-form-container" gutter={[16, 16]}>
-        <Col span={24}>
-          <Typography.Title level={5}>Add Table Test</Typography.Title>
-        </Col>
-        <Col span={24}>
-          <IngestionStepper
-            activeStep={activeServiceStep}
-            steps={STEPS_FOR_ADD_TEST_CASE}
-          />
-        </Col>
-        <Col span={24}>{RenderSelectedTab()}</Col>
-      </Row>
+      {addIngestion ? (
+        <TestSuiteIngestion
+          testSuite={
+            selectedTestSuite?.isNewTestSuite
+              ? (testSuiteData as TestSuite)
+              : (selectedTestSuite?.data as TestSuite)
+          }
+          onCancel={() => setAddIngestion(false)}
+        />
+      ) : (
+        <Row className="tw-form-container" gutter={[16, 16]}>
+          <Col span={24}>
+            <Typography.Title level={5}>Add Table Test</Typography.Title>
+          </Col>
+          <Col span={24}>
+            <IngestionStepper
+              activeStep={activeServiceStep}
+              steps={STEPS_FOR_ADD_TEST_CASE}
+            />
+          </Col>
+          <Col span={24}>{RenderSelectedTab()}</Col>
+        </Row>
+      )}
     </PageLayout>
   );
 };

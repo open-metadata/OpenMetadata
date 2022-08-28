@@ -41,10 +41,15 @@ import {
   SelectTestSuiteType,
 } from '../AddDataQualityTest.interface';
 
-const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({ onSubmit }) => {
+const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
+  onSubmit,
+  initialValue,
+}) => {
   const { entityTypeFQN } = useParams<Record<string, string>>();
   const history = useHistory();
-  const [isNewTestSuite, setIsNewTestSuite] = useState(false);
+  const [isNewTestSuite, setIsNewTestSuite] = useState(
+    initialValue?.isNewTestSuite ?? false
+  );
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
   const markdownRef = useRef<EditorContentRef>();
 
@@ -72,7 +77,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({ onSubmit }) => {
     const data: SelectTestSuiteType = {
       name: value.testSuiteName,
       description: getDescription(),
-      data: { id: value.testSuiteId, type: 'testSuite' },
+      data: testSuites.find((suite) => suite.id === value.testSuiteId),
       isNewTestSuite,
     };
 
@@ -86,7 +91,14 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({ onSubmit }) => {
   }, []);
 
   return (
-    <Form layout="vertical" name="selectTestSuite" onFinish={handleFormSubmit}>
+    <Form
+      initialValues={{
+        testSuiteId: initialValue?.data?.id,
+        testSuiteName: initialValue?.name,
+      }}
+      layout="vertical"
+      name="selectTestSuite"
+      onFinish={handleFormSubmit}>
       <Form.Item
         label="Test Suite:"
         name="testSuiteId"
@@ -145,7 +157,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({ onSubmit }) => {
               },
             ]}>
             <RichTextEditor
-              initialValue=""
+              initialValue={initialValue?.description || ''}
               ref={markdownRef}
               style={{
                 margin: 0,
@@ -164,7 +176,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({ onSubmit }) => {
               />
             }
             onClick={() => setIsNewTestSuite(true)}>
-            <span className="tw-text-primary">Create new test feed</span>
+            <span className="tw-text-primary">Create new test suite</span>
           </Button>
         </Row>
       )}
