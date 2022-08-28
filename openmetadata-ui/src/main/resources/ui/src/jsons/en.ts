@@ -112,6 +112,8 @@ const jsonData = {
     'fetch-table-profiler-config-error':
       'Error while fetching table profiler config!',
     'fetch-column-test-error': 'Error while fetching column test case!',
+    'fetch-test-suite-error': 'Error while fetching test suite',
+    'fetch-test-cases-error': 'Error while fetching test cases',
 
     'test-connection-error': 'Error while testing connection!',
 
@@ -144,6 +146,7 @@ const jsonData = {
 
     'join-team-error': 'Error while joining the team!',
     'leave-team-error': 'Error while leaving the team!',
+    'update-test-suite-error': 'Error while updating test suite',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',

@@ -28,6 +28,7 @@ import {
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
+  PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
@@ -327,6 +328,13 @@ export const getTagPath = (fqn?: string) => {
     path = ROUTES.TAG_DETAILS;
     path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
   }
+
+  return path;
+};
+
+export const getTestSuitePath = (testSuiteName: string) => {
+  let path = ROUTES.TEST_SUITES;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
 
   return path;
 };

@@ -95,6 +95,17 @@ export const GLOBAL_SETTINGS_MENU = [
     ],
   },
   {
+    category: 'Data Quality',
+    isProtected: false,
+    items: [
+      {
+        label: 'Test Suite',
+        isProtected: true,
+        icon: <TableIcon className="side-panel-icons" />,
+      },
+    ],
+  },
+  {
     category: 'Custom Attributes',
     isProtected: true,
     items: [
@@ -161,6 +172,7 @@ export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   SERVICES = 'services',
   CUSTOM_ATTRIBUTES = 'customAttributes',
+  DATA_QUALITY = 'dataQuality',
   INTEGRATIONS = 'integrations',
 }
 
@@ -179,4 +191,5 @@ export enum GlobalSettingOptions {
   SLACK = 'slack',
   BOTS = 'bots',
   TABLES = 'tables',
+  TEST_SUITE = 'testSuite',
 }

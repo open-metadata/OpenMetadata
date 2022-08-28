@@ -189,6 +189,12 @@ const EditRulePage = withSuspenseFallback(
   )
 );
 
+const TestSuiteDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
@@ -381,7 +387,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlobalSettingPage}
         path={ROUTES.SETTINGS_WITH_TAB_FQN}
       />
-
+      <Route exact component={TestSuiteDetailsPage} path={ROUTES.TEST_SUITES} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );
