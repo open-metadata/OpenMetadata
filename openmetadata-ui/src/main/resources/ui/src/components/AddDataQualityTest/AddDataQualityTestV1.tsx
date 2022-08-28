@@ -15,7 +15,7 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { createTestCase, createTestSuites } from '../../axiosAPIs/testAPI';
 import {
@@ -29,6 +29,7 @@ import { FqnPart } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
@@ -36,6 +37,7 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import {
   getCurrentUserId,
   getEntityName,
+  getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -43,6 +45,7 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import {
@@ -51,10 +54,12 @@ import {
 } from './AddDataQualityTest.interface';
 import RightPanel from './components/RightPanel';
 import SelectTestSuite from './components/SelectTestSuite';
-import TableTestForm from './components/TableTestForm';
+import TestCaseForm from './components/TestCaseForm';
 import TestSuiteIngestion from './TestSuiteIngestion';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
+  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [selectedTestSuite, setSelectedTestSuite] =
@@ -68,7 +73,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const breadcrumb = useMemo(() => {
     const { service, serviceType, fullyQualifiedName = '' } = table;
 
-    return [
+    const data: TitleBreadcrumbProps['titleLinks'] = [
       {
         name: service?.name || '',
         url: service
@@ -93,13 +98,31 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         name: getEntityName(table),
         url: getTableTabPath(fullyQualifiedName),
       },
-      {
+    ];
+
+    if (isColumnFqn) {
+      const colVal = [
+        {
+          name: getNameFromFQN(entityTypeFQN),
+          url: getTableTabPath(fullyQualifiedName),
+        },
+        {
+          name: 'Add Column Test',
+          url: '',
+          activeTitle: true,
+        },
+      ];
+      data.push(...colVal);
+    } else {
+      data.push({
         name: 'Add Table Test',
         url: '',
         activeTitle: true,
-      },
-    ];
-  }, [table]);
+      });
+    }
+
+    return data;
+  }, [table, entityTypeFQN, isColumnFqn]);
 
   const handleViewTestSuiteClick = () => {
     history.push(getSettingPath());
@@ -161,7 +184,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           type: 'testSuite',
         },
       };
-      if (isNewTestSuite) {
+      if (isNewTestSuite && isUndefined(testSuiteData)) {
         const testSuitePayload = {
           name: selectedTestSuite.name || '',
           description: selectedTestSuite.description || '',
@@ -170,21 +193,22 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         const testSuiteResponse = await createTestSuites(testSuitePayload);
         testCasePayload.testSuite.id = testSuiteResponse.id || '';
         setTestSuiteData(testSuiteResponse);
+      } else if (!isUndefined(testSuiteData)) {
+        testCasePayload.testSuite.id = testSuiteData.id || '';
       }
 
       const testCaseResponse = await createTestCase(testCasePayload);
+      setActiveServiceStep(3);
       setTestCaseRes(testCaseResponse);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setActiveServiceStep(3);
     }
   };
 
   const RenderSelectedTab = useCallback(() => {
     if (activeServiceStep === 2) {
       return (
-        <TableTestForm
+        <TestCaseForm
           initialValue={testCaseData}
           onCancel={handleTestCaseBack}
           onSubmit={handleFormSubmit}
@@ -227,7 +251,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         onSubmit={handleSelectTestSuite}
       />
     );
-  }, [activeServiceStep, isAirflowRunning]);
+  }, [activeServiceStep, isAirflowRunning, testCaseRes]);
 
   useEffect(() => {
     handleAirflowStatusCheck();
@@ -251,7 +275,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       ) : (
         <Row className="tw-form-container" gutter={[16, 16]}>
           <Col span={24}>
-            <Typography.Title level={5}>Add Table Test</Typography.Title>
+            <Typography.Title level={5}>{`Add ${
+              isColumnFqn ? 'Column' : 'Table'
+            } Test`}</Typography.Title>
           </Col>
           <Col span={24}>
             <IngestionStepper

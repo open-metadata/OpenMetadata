@@ -29,8 +29,10 @@ import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
-import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
-import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../../utils/RouterUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
@@ -42,7 +44,6 @@ import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnTests,
-  onAddTestClick,
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
@@ -152,18 +153,17 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
-          <Button
-            className="tw-border tw-border-primary tw-rounded tw-text-primary"
-            size="small"
-            onClick={() =>
-              onAddTestClick(
-                getCurrentDatasetTab('data-quality'),
-                'column',
-                record.name
-              )
-            }>
-            Add Test
-          </Button>
+          <Link
+            to={getAddDataQualityTableTestPath(
+              ProfilerDashboardType.COLUMN,
+              record.fullyQualifiedName || ''
+            )}>
+            <Button
+              className="tw-border tw-border-primary tw-rounded tw-text-primary"
+              size="small">
+              Add Test
+            </Button>
+          </Link>
         ),
       },
     ];

@@ -25,7 +25,7 @@ export interface SelectTestSuiteProps {
   onSubmit: (data: SelectTestSuiteType) => void;
 }
 
-export interface TableTestFormProps {
+export interface TestCaseFormProps {
   initialValue?: TestCase;
   onSubmit: (data: TestCase) => void;
   onCancel: (data: TestCase) => void;

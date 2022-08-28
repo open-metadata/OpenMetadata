@@ -31,6 +31,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
         break;
       case TestDataType.Number:
       case TestDataType.Int:
+      case TestDataType.Decimal:
+      case TestDataType.Double:
+      case TestDataType.Float:
         Field = (
           <InputNumber
             className="tw-w-full"
@@ -43,6 +46,64 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
         Field = <Switch size="small" />;
 
         break;
+      case TestDataType.Array:
+      case TestDataType.Set:
+        Field = (
+          <Input placeholder={`Enter comma(,) separated ${data.displayName}`} />
+        );
+      // Todo: need to confirm value formate for array & set type
+      // return (
+      //   <Form.List
+      //     key={data.name}
+      //     name={data.name || ''}
+      //     initialValue={[{ value: '' }]}>
+      //     {(fields, { add, remove }) => (
+      //       <Form.Item
+      //         key={data.name}
+      //         label={
+      //           <span>
+      //             <span className="tw-mr-3">{data.displayName}:</span>
+      //             <Button
+      //               icon={<PlusOutlined />}
+      //               size="small"
+      //               type="primary"
+      //               onClick={() => add()}
+      //             />
+      //           </span>
+      //         }
+      //         name={data.name}
+      //         tooltip={data.description}>
+      //         {fields.map(({ key, name, ...restField }) => (
+      //           <div className="tw-flex tw-gap-2 tw-w-full" key={key}>
+      //             <Form.Item
+      //               className="tw-w-11/12 tw-mb-4"
+      //               {...restField}
+      //               name={[name, 'value']}
+      //               rules={[
+      //                 {
+      //                   required: data.required,
+      //                   message: `${data.displayName} is required!`,
+      //                 },
+      //               ]}>
+      //               <Input placeholder={`Enter ${data.displayName}`} />
+      //             </Form.Item>
+      //             <Button
+      //               icon={
+      //                 <SVGIcons
+      //                   alt="delete"
+      //                   className="tw-w-4"
+      //                   icon={Icons.DELETE}
+      //                 />
+      //               }
+      //               type="text"
+      //               onClick={() => remove(name)}
+      //             />
+      //           </div>
+      //         ))}
+      //       </Form.Item>
+      //     )}
+      //   </Form.List>
+      // );
     }
 
     return (

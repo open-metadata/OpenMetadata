@@ -17,16 +17,22 @@ import { useParams } from 'react-router-dom';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import { ProfilerDashboardType } from '../../enums/table.enum';
 import { Table } from '../../generated/entity/data/table';
+import { getTableFQNFromColumnFQN } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {
-  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [table, setTable] = useState({} as Table);
 
   const fetchTableData = async () => {
     try {
-      const table = await getTableDetailsByFQN(entityTypeFQN, '');
+      const fqn = isColumnFqn
+        ? getTableFQNFromColumnFQN(entityTypeFQN)
+        : entityTypeFQN;
+      const table = await getTableDetailsByFQN(fqn, '');
       setTable(table);
     } catch (error) {
       showErrorToast(error as AxiosError);

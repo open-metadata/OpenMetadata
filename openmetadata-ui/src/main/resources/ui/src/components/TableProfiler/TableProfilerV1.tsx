@@ -159,7 +159,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
       data-testid="table-profiler-container">
       <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
         <Link
-          to={getAddDataQualityTableTestPath(table.fullyQualifiedName || '')}>
+          to={getAddDataQualityTableTestPath(
+            ProfilerDashboardType.TABLE,
+            table.fullyQualifiedName || ''
+          )}>
           <Button
             className="tw-rounded"
             data-testid="profiler-add-table-test-btn"

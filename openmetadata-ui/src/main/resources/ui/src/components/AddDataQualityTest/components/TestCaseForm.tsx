@@ -22,6 +22,7 @@ import {
   getListTestDefinitions,
 } from '../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
+import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   TestCase,
@@ -34,15 +35,16 @@ import {
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import { TableTestFormProps } from '../AddDataQualityTest.interface';
+import { TestCaseFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
-const TableTestForm: React.FC<TableTestFormProps> = ({
+const TestCaseForm: React.FC<TestCaseFormProps> = ({
   initialValue,
   onSubmit,
   onCancel,
 }) => {
-  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
@@ -55,7 +57,7 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
     try {
       const { data } = await getListTestDefinitions({
         limit: API_RES_MAX_SIZE,
-        entityType: EntityType.Table,
+        entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
       });
 
       setTestDefinitions(data);
@@ -68,7 +70,7 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
       const { data } = await getListTestCase({
         fields: 'testDefinition',
         limit: API_RES_MAX_SIZE,
-        entityLink: generateEntityLink(entityTypeFQN),
+        entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
       });
       const modifiedData = data.reduce((acc, curr) => {
         return { ...acc, [curr.testDefinition.fullyQualifiedName || '']: curr };
@@ -99,11 +101,11 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
   }) => {
     return {
       name: value.testName,
-      entityLink: generateEntityLink(entityTypeFQN),
+      entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
       parameterValues: Object.entries(value.params || {}).map(
         ([key, value]) => ({
           name: key,
-          value,
+          value: value,
         })
       ) as TestCaseParameterValue[],
       testDefinition: {
@@ -220,4 +222,4 @@ const TableTestForm: React.FC<TableTestFormProps> = ({
   );
 };
 
-export default TableTestForm;
+export default TestCaseForm;

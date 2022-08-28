@@ -281,7 +281,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         exact
         component={AddDataQualityTestPage}
-        path={ROUTES.ADD_TABLE_TEST_CASE}
+        path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
       <Route
         exact
