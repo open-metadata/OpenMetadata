@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestDefinition } from '../../generated/tests/testDefinition';
@@ -39,6 +40,13 @@ export interface TestSuiteIngestionProps {
 export interface TestSuiteSchedulerProps {
   onSubmit: (repeatFrequency: string) => void;
   onCancel: () => void;
+}
+
+export interface RightPanelProps {
+  data: {
+    title: string;
+    body: string | ReactNode;
+  };
 }
 
 export type SelectTestSuiteType = {

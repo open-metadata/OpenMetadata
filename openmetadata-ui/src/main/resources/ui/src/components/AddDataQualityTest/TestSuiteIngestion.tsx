@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { camelCase } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -134,7 +134,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   return (
     <Row className="tw-form-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Typography.Title level={5}>Schedule Ingestion</Typography.Title>
+        <h6 className="tw-heading tw-text-base" data-testid="header">
+          Schedule Ingestion
+        </h6>
       </Col>
 
       <Col span={24}>

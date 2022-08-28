@@ -13,17 +13,15 @@
 
 import { Row, Typography } from 'antd';
 import React from 'react';
+import { RightPanelProps } from '../AddDataQualityTest.interface';
 
-const RightPanel = () => {
+const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
   return (
     <Row>
-      <Typography.Title level={5}>Table Test</Typography.Title>
-      <Typography.Paragraph>
-        Contrary to popular belief, Lorem Ipsum is not simply random text. It
-        has roots in a piece of classical Latin literature from 45 BC, making it
-        over 2000 years old. Richard McClintock, a Latin professor at
-        Hampden-Sydney College in Virginia, looked up one of the more obscure{' '}
-      </Typography.Paragraph>
+      <h6 className="tw-heading tw-text-base" data-testid="right-panel-header">
+        {data.title}
+      </h6>
+      <Typography.Paragraph>{data.body}</Typography.Paragraph>
     </Row>
   );
 };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -55,6 +55,7 @@ import {
 import RightPanel from './components/RightPanel';
 import SelectTestSuite from './components/SelectTestSuite';
 import TestCaseForm from './components/TestCaseForm';
+import { INGESTION_DATA, TEST_FORM_DATA } from './rightPanelData';
 import TestSuiteIngestion from './TestSuiteIngestion';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
@@ -236,7 +237,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           handleViewServiceClick={handleViewTestSuiteClick}
           isAirflowSetup={isAirflowRunning}
           name={successName}
-          showIngestionButton={isAirflowRunning}
+          showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
           viewServiceText="View Test Suite"
@@ -262,7 +263,15 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={breadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
-      rightPanel={<RightPanel />}>
+      rightPanel={
+        <RightPanel
+          data={
+            addIngestion
+              ? INGESTION_DATA
+              : TEST_FORM_DATA[activeServiceStep - 1]
+          }
+        />
+      }>
       {addIngestion ? (
         <TestSuiteIngestion
           testSuite={
@@ -275,9 +284,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       ) : (
         <Row className="tw-form-container" gutter={[16, 16]}>
           <Col span={24}>
-            <Typography.Title level={5}>{`Add ${
-              isColumnFqn ? 'Column' : 'Table'
-            } Test`}</Typography.Title>
+            <h6 className="tw-heading tw-text-base" data-testid="header">
+              {`Add ${isColumnFqn ? 'Column' : 'Table'} Test`}
+            </h6>
           </Col>
           <Col span={24}>
             <IngestionStepper
