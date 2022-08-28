@@ -40,7 +40,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
 
         break;
       case TestDataType.Boolean:
-        Field = <Switch />;
+        Field = <Switch size="small" />;
 
         break;
     }

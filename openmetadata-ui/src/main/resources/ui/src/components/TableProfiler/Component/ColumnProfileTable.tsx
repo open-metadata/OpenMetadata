@@ -89,7 +89,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           return (
             <ProfilerProgressWidget
               strokeColor={PRIMERY_COLOR}
-              value={profile.nullProportion || 0}
+              value={profile?.nullProportion || 0}
             />
           );
         },
@@ -102,7 +102,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SECONDARY_COLOR}
-            value={profile.uniqueProportion || 0}
+            value={profile?.uniqueProportion || 0}
           />
         ),
       },
@@ -114,7 +114,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SUCCESS_COLOR}
-            value={profile.distinctProportion || 0}
+            value={profile?.distinctProportion || 0}
           />
         ),
       },
@@ -123,7 +123,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'profile',
         key: 'valuesCount',
         render: (profile: ColumnProfile) =>
-          formatNumberWithComma(profile.valuesCount || 0),
+          formatNumberWithComma(profile?.valuesCount || 0),
       },
       {
         title: 'Test',
