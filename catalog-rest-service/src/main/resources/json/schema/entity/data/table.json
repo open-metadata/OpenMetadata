@@ -19,7 +19,8 @@
         "SecureView",
         "MaterializedView",
         "Iceberg",
-        "Local"
+        "Local",
+        "Partitioned"
       ],
       "javaEnums": [
         {
@@ -42,6 +43,9 @@
         },
         {
           "name": "Local"
+        },
+        {
+          "name": "Partitioned"
         }
       ]
     },
@@ -150,7 +154,6 @@
           "description": "partition interval , example hourly, daily, monthly."
         }
       },
-      "required": ["columns", "intervalType", "interval"],
       "additionalProperties": false
     },
     "column": {
@@ -412,11 +415,21 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/dateTime" }, { "$ref": "../../type/basic.json#/definitions/date" }]
+          "oneOf": [
+            { "type": "number" },
+            { "type": "integer" },
+            { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/date" }
+          ]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "$ref": "../../type/basic.json#/definitions/dateTime" }, { "$ref": "../../type/basic.json#/definitions/date" }]
+          "oneOf": [
+            { "type": "number" },
+            { "type": "integer" },
+            { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/date" }
+          ]
         },
         "minLength": {
           "description": "Minimum string length in a column.",
@@ -476,20 +489,20 @@
       "description": "This schema defines the type for Table profile config include Columns.",
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.ColumnProfilerConfig",
-       "properties": {
-          "columnName": {
-            "description": "Column Name of the table to be included.",
+      "properties": {
+        "columnName": {
+          "description": "Column Name of the table to be included.",
+          "type": "string"
+        },
+        "metrics": {
+          "description": "Include only following metrics.",
+          "type": "array",
+          "items": {
             "type": "string"
           },
-          "metrics": {
-            "description": "Include only following metrics.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "default": null
-          }
-       }
+          "default": null
+        }
+      }
     },
     "tableProfilerConfig": {
       "type": "object",

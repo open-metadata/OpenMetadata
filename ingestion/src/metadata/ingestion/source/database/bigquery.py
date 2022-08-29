@@ -13,9 +13,10 @@ We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 from google import auth
+from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
@@ -30,7 +31,11 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -94,6 +99,10 @@ class BigquerySource(CommonDbSourceService):
         super().__init__(config, metadata_config)
         self.temp_credentials = None
         self.project_id = self.set_project_id()
+
+    def prepare(self):
+        self.client = Client()
+        return super().prepare()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -193,6 +202,41 @@ class BigquerySource(CommonDbSourceService):
                 logger.warning("View definition not implemented")
                 view_definition = ""
             return view_definition
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        """
+        check if the table is partitioned table and return the partition details
+        """
+        database = self.context.database.name.__root__
+        table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
+        if table.time_partitioning is not None:
+            table_partition = TablePartition(
+                interval=str(table.partitioning_type),
+                intervalType=IntervalType.TIME_UNIT.value,
+            )
+            if (
+                hasattr(table.time_partitioning, "field")
+                and table.time_partitioning.field
+            ):
+                table_partition.columns = [table.time_partitioning.field]
+            return True, table_partition
+        elif table.range_partitioning:
+            table_partition = TablePartition(
+                intervalType=IntervalType.INTEGER_RANGE.value,
+            )
+            if hasattr(table.range_partitioning, "range_") and hasattr(
+                table.range_partitioning.range_, "interval"
+            ):
+                table_partition.interval = table.range_partitioning.range_.interval
+            if (
+                hasattr(table.range_partitioning, "field")
+                and table.range_partitioning.field
+            ):
+                table_partition.columns = [table.range_partitioning.field]
+            return True, table_partition
+        return False, None
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()

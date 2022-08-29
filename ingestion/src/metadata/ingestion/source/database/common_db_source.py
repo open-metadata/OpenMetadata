@@ -29,7 +29,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -206,17 +206,6 @@ class CommonDbSourceService(
                         "Table pattern not allowed",
                     )
                     continue
-
-                if self.is_partition(
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    inspector=self.inspector,
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{table_name}",
-                        "Table is partition",
-                    )
-                    continue
                 table_name = self.standardize_table_name(schema_name, table_name)
                 yield table_name, TableType.Regular
 
@@ -261,6 +250,14 @@ class CommonDbSourceService(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> bool:
         return False
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        """
+        check if the table is partitioned table and return the partition details
+        """
+        return False, None  # By default the table will be a Regular Table
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
@@ -311,6 +308,12 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
+            is_partitioned, partiotion_details = self.get_table_partition_details(
+                table_name=table_name, schema_name=schema_name, inspector=self.inspector
+            )
+            if is_partitioned:
+                table_request.tableType = TableType.Partitioned.value
+                table_request.tablePartition = partiotion_details
 
             if table_type == TableType.View or view_definition:
                 table_view = {
