@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
+import { Row, Typography } from 'antd';
 import React from 'react';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import GlobalSetting from '../../components/GlobalSetting/GlobalSetting';
+import { RightPanelProps } from '../AddDataQualityTest.interface';
 
-const GlobalSettingPage = () => {
+const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
   return (
-    <PageContainerV1>
-      <GlobalSetting />
-    </PageContainerV1>
+    <Row>
+      <h6 className="tw-heading tw-text-base" data-testid="right-panel-header">
+        {data.title}
+      </h6>
+      <Typography.Paragraph>{data.body}</Typography.Paragraph>
+    </Row>
   );
 };
 
-export default GlobalSettingPage;
+export default RightPanel;

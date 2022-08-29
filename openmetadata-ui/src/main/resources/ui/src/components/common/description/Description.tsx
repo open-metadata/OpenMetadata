@@ -17,15 +17,11 @@ import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { EntityField } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
-import { Operation } from '../../../generated/entity/policies/accessControl/rule';
-import { useAuth } from '../../../hooks/authHooks';
 import { isTaskSupported } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import { hasPemission } from '../../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getRequestDescriptionPath,
@@ -55,9 +51,6 @@ const Description: FC<DescriptionProps> = ({
 }) => {
   const history = useHistory();
 
-  const { isAdminUser, userPermissions } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
-
   const thread = entityFieldThreads?.[0];
   const tasks = entityFieldTasks?.[0];
 
@@ -70,19 +63,6 @@ const Description: FC<DescriptionProps> = ({
   const handleUpdateDescription = () => {
     history.push(
       getUpdateDescriptionPath(entityType as string, entityFqn as string)
-    );
-  };
-
-  const checkPermission = () => {
-    return (
-      isAdminUser ||
-      Boolean(hasEditAccess) ||
-      hasPemission(
-        Operation.EditDescription,
-        entityType as EntityType,
-        userPermissions
-      ) ||
-      isAuthDisabled
     );
   };
 
@@ -180,7 +160,7 @@ const Description: FC<DescriptionProps> = ({
   const DescriptionActions = () => {
     return !isReadOnly ? (
       <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-1')}>
-        {checkPermission() && (
+        {hasEditAccess && (
           <button
             className="tw-w-7 tw-h-8 tw-flex-none focus:tw-outline-none"
             data-testid="edit-description"

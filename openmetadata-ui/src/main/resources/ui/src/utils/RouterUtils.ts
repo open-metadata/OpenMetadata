@@ -332,6 +332,19 @@ export const getTagPath = (fqn?: string) => {
   return path;
 };
 
+export const getAddDataQualityTableTestPath = (
+  dashboardType: string,
+  fqn: string
+) => {
+  let path = ROUTES.ADD_DATA_QUALITY_TEST_CASE;
+
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+
+  return path;
+};
+
 export const getTestSuitePath = (testSuiteName: string) => {
   let path = ROUTES.TEST_SUITES;
   path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);

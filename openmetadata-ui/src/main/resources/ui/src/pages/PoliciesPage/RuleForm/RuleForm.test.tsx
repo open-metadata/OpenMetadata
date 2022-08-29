@@ -16,20 +16,6 @@ import React from 'react';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import RuleForm from './RuleForm';
 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
 jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
   getPolicyFunctions: jest.fn().mockImplementation(() => Promise.resolve()),
   getPolicyResources: jest.fn().mockImplementation(() => Promise.resolve()),

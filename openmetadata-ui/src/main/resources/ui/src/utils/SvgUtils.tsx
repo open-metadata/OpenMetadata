@@ -340,6 +340,7 @@ export const Icons = {
   POLICIES: 'policies',
   INFO_SECONDARY: 'info-secondary',
   ICON_REMOVE: 'icon-remove',
+  DELETE_COLORED: 'icon-delete-colored',
   IC_EDIT_PRIMARY: 'ic-edit-primary',
 };
 

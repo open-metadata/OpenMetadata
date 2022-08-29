@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -120,15 +121,18 @@ const CustomEntityDetailV1 = () => {
   }
 
   return (
-    <div data-testid="custom-entity-container">
-      <div className="global-settings-tabs">
+    <Row
+      className="tw-my-2"
+      data-testid="custom-entity-container"
+      gutter={[16, 16]}>
+      <Col className="global-settings-tabs" span={24}>
         <TabsPane
           activeTab={activeTab}
           setActiveTab={onTabChange}
           tabs={tabs}
         />
-      </div>
-      <div className="tw-mt-4">
+      </Col>
+      <Col span={24}>
         {activeTab === 2 && (
           <div data-testid="entity-schema">
             <SchemaEditor
@@ -156,8 +160,8 @@ const CustomEntityDetailV1 = () => {
             />
           </div>
         )}
-      </div>
-    </div>
+      </Col>
+    </Row>
   );
 };
 

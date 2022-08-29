@@ -12,7 +12,7 @@
  */
 
 import { Button, Col, Row, Space, Switch } from 'antd';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { Team } from '../../generated/entity/teams/team';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
@@ -36,6 +36,15 @@ const Teams: FC<TeamsProps> = ({
   onAddTeamClick,
   onTeamExpand,
 }) => {
+  const filteredData = useMemo(
+    () =>
+      data.filter(
+        (d) =>
+          (showDeletedTeam && d.deleted) || (!showDeletedTeam && !d.deleted)
+      ),
+    [data, showDeletedTeam]
+  );
+
   return (
     <Row className="team-list-container" gutter={[16, 16]}>
       <Col span={24}>
@@ -54,7 +63,7 @@ const Teams: FC<TeamsProps> = ({
         </Space>
       </Col>
       <Col span={24}>
-        <TeamHierarchy data={data} onTeamExpand={onTeamExpand} />
+        <TeamHierarchy data={filteredData} onTeamExpand={onTeamExpand} />
       </Col>
     </Row>
   );
