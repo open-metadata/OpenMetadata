@@ -16,10 +16,8 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { useAuth } from '../../hooks/authHooks';
 import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -28,8 +26,7 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 
 const GlobalSettingLeftPanel = () => {
   const { tab, settingCategory } = useParams<{ [key: string]: string }>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+
   const { permissions } = usePermissionProvider();
 
   const viewAllPermission = checkPermission(
@@ -38,12 +35,10 @@ const GlobalSettingLeftPanel = () => {
     permissions
   );
 
-  const isHasAccess = isAdminUser || isAuthDisabled || viewAllPermission;
-
   const history = useHistory();
   const items: ItemType[] = GLOBAL_SETTINGS_MENU.filter(({ isProtected }) => {
-    if (isHasAccess) {
-      return isHasAccess;
+    if (viewAllPermission) {
+      return viewAllPermission;
     }
 
     return !isProtected;
@@ -55,7 +50,7 @@ const GlobalSettingLeftPanel = () => {
       '',
       items,
       'group',
-      isHasAccess
+      viewAllPermission
     );
   });
 
