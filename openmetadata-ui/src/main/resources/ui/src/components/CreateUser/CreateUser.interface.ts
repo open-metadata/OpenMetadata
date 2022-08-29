@@ -16,7 +16,6 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 
 export interface CreateUserProps {
-  allowAccess: boolean;
   saveState?: LoadingState;
   roles: Array<Role>;
   onSave: (data: CreateUser) => void;

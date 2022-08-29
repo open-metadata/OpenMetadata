@@ -11,22 +11,19 @@
  *  limitations under the License.
  */
 
-@import '~antd/dist/antd.less';
+import { Row, Typography } from 'antd';
+import React from 'react';
+import { RightPanelProps } from '../AddDataQualityTest.interface';
 
-@primary-color: #7147e8;
-@link-color: #7147e8;
-@success-color: #008376;
-@warning-color: #ffc34e;
-@error-color: #ff4c3b;
-@info-color: #1890ff;
-@text-color: #000000;
-@font-size-base: 14px;
-@border-radius-base: 2px;
-@box-shadow-base: 0 3px 6px -4px rgba(0, 0, 0, 0.12),
-  0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
-@table-header-bg: #fff;
-@border-radius-base: 4px;
+const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
+  return (
+    <Row>
+      <h6 className="tw-heading tw-text-base" data-testid="right-panel-header">
+        {data.title}
+      </h6>
+      <Typography.Paragraph>{data.body}</Typography.Paragraph>
+    </Row>
+  );
+};
 
-@import url('./components/table.less');
-@import url('./components/toggle-switch.less');
-@import url('./components/button.less');
+export default RightPanel;

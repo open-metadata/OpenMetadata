@@ -29,8 +29,10 @@ import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
-import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
-import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../../utils/RouterUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
@@ -42,7 +44,6 @@ import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnTests,
-  onAddTestClick,
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
@@ -89,7 +90,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           return (
             <ProfilerProgressWidget
               strokeColor={PRIMERY_COLOR}
-              value={profile.nullProportion || 0}
+              value={profile?.nullProportion || 0}
             />
           );
         },
@@ -102,7 +103,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SECONDARY_COLOR}
-            value={profile.uniqueProportion || 0}
+            value={profile?.uniqueProportion || 0}
           />
         ),
       },
@@ -114,7 +115,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SUCCESS_COLOR}
-            value={profile.distinctProportion || 0}
+            value={profile?.distinctProportion || 0}
           />
         ),
       },
@@ -123,7 +124,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'profile',
         key: 'valuesCount',
         render: (profile: ColumnProfile) =>
-          formatNumberWithComma(profile.valuesCount || 0),
+          formatNumberWithComma(profile?.valuesCount || 0),
       },
       {
         title: 'Test',
@@ -152,18 +153,17 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
-          <Button
-            className="tw-border tw-border-primary tw-rounded tw-text-primary"
-            size="small"
-            onClick={() =>
-              onAddTestClick(
-                getCurrentDatasetTab('data-quality'),
-                'column',
-                record.name
-              )
-            }>
-            Add Test
-          </Button>
+          <Link
+            to={getAddDataQualityTableTestPath(
+              ProfilerDashboardType.COLUMN,
+              record.fullyQualifiedName || ''
+            )}>
+            <Button
+              className="tw-border tw-border-primary tw-rounded tw-text-primary"
+              size="small">
+              Add Test
+            </Button>
+          </Link>
         ),
       },
     ];

@@ -11,18 +11,24 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space, Table, Tag } from 'antd';
+import { Button, Popover, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isUndefined, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
-import { Policy } from '../../../generated/entity/policies/policy';
+import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { LIST_CAP } from '../../../utils/PermissionsUtils';
+import { checkPermission, LIST_CAP } from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -36,6 +42,23 @@ interface PolicyListProps {
 
 const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
+
+  const { permissions } = usePermissionProvider();
+
+  const deletePolicyPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Delete, ResourceEntity.POLICY, permissions)
+    );
+  }, [permissions]);
+
+  const viewRolePermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.ViewAll, ResourceEntity.ROLE, permissions)
+    );
+  }, [permissions]);
+
   const columns: ColumnsType<Policy> = useMemo(() => {
     return [
       {
@@ -71,27 +94,39 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
 
           return record.roles?.length ? (
             <Space wrap data-testid="role-link" size={4}>
-              {record.roles.slice(0, LIST_CAP).map((role) => (
-                <Link
-                  key={uniqueId()}
-                  to={getRoleWithFqnPath(role.fullyQualifiedName || '')}>
-                  {getEntityName(role)}
-                </Link>
-              ))}
+              {record.roles.slice(0, LIST_CAP).map((role) =>
+                viewRolePermission ? (
+                  <Link
+                    key={uniqueId()}
+                    to={getRoleWithFqnPath(role.fullyQualifiedName || '')}>
+                    {getEntityName(role)}
+                  </Link>
+                ) : (
+                  <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                    {getEntityName(role)}
+                  </Tooltip>
+                )
+              )}
               {hasMore && (
                 <Popover
                   className="tw-cursor-pointer"
                   content={
                     <Space wrap size={4}>
-                      {record.roles.slice(LIST_CAP).map((role) => (
-                        <Link
-                          key={uniqueId()}
-                          to={getRoleWithFqnPath(
-                            role.fullyQualifiedName || ''
-                          )}>
-                          {getEntityName(role)}
-                        </Link>
-                      ))}
+                      {record.roles.slice(LIST_CAP).map((role) =>
+                        viewRolePermission ? (
+                          <Link
+                            key={uniqueId()}
+                            to={getRoleWithFqnPath(
+                              role.fullyQualifiedName || ''
+                            )}>
+                            {getEntityName(role)}
+                          </Link>
+                        ) : (
+                          <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                            {getEntityName(role)}
+                          </Tooltip>
+                        )
+                      )}
                     </Space>
                   }
                   overlayClassName="tw-w-40 tw-text-center"
@@ -114,12 +149,19 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button
-              data-testid={`delete-action-${getEntityName(record)}`}
-              type="text"
-              onClick={() => setSelectedPolicy(record)}>
-              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
-            </Button>
+            <Tooltip
+              placement="left"
+              title={
+                deletePolicyPermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                data-testid={`delete-action-${getEntityName(record)}`}
+                disabled={!deletePolicyPermission}
+                type="text"
+                onClick={() => setSelectedPolicy(record)}>
+                <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+              </Button>
+            </Tooltip>
           );
         },
       },
@@ -135,7 +177,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         pagination={false}
         size="middle"
       />
-      {selectedPolicy && (
+      {selectedPolicy && deletePolicyPermission && (
         <DeleteWidgetModal
           afterDeleteAction={fetchPolicies}
           allowSoftDelete={false}

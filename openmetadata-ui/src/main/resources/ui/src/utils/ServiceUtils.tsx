@@ -22,6 +22,7 @@ import {
 } from 'Models';
 import React from 'react';
 import { getEntityCount } from '../axiosAPIs/miscAPI';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { GlobalSettingOptions } from '../constants/globalSettings.constants';
 import {
   addLineageIngestionGuide,
@@ -742,4 +743,32 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
 
   return GlobalSettingOptions.DATABASES;
+};
+
+export const getResourceEntityFromServiceCategory = (
+  category: string | ServiceCategory
+) => {
+  switch (category) {
+    case 'dashboards':
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return ResourceEntity.DASHBOARD_SERVICE;
+
+    case 'databases':
+    case ServiceCategory.DATABASE_SERVICES:
+      return ResourceEntity.DATABASE_SERVICE;
+
+    case 'mlModels':
+    case ServiceCategory.ML_MODAL_SERVICES:
+      return ResourceEntity.ML_MODEL_SERVICE;
+
+    case 'messaging':
+    case ServiceCategory.MESSAGING_SERVICES:
+      return ResourceEntity.MESSAGING_SERVICE;
+
+    case 'pipelines':
+    case ServiceCategory.PIPELINE_SERVICES:
+      return ResourceEntity.PIPELINE_SERVICE;
+  }
+
+  return ResourceEntity.DATABASE_SERVICE;
 };
