@@ -210,17 +210,13 @@ metadata:
   name: my-permission-pod
 spec:
   containers:
-  - image: busybox
+  - image: nginx
     name: my-permission-pod
     volumeMounts:
     - name: airflow-dags
       mountPath: /airflow-dags
     - name: airflow-logs
       mountPath: /airflow-logs
-    command:
-    - "chown -R 50000 /airflow-dags /airflow-logs"
-    # if needed
-    - "chmod -R a+rwx /airflow-dags"
   volumes:
   - name: airflow-logs
     persistentVolumeClaim:
@@ -242,6 +238,14 @@ Run the below command to create the pod and fix the permissions
 
 ```commandline
 kubectl create -f permissions_pod.yml
+```
+
+Once the permissions pod is up and running, execute the below commands within the container.
+
+```commandline
+kubectl exec --tty my-permission-pod --container my-permission-pod -- chown -R 50000 /airflow-dags /airflow-log
+# If needed
+kubectl exec --tty my-permission-pod --container my-permission-pod -- chmod -R a+rwx /airflow-dags
 ```
 
 ## Create OpenMetadata dependencies Values
