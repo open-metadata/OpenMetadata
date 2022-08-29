@@ -10,8 +10,15 @@
 #  limitations under the License.
 import traceback
 from collections import namedtuple
-from typing import Iterable
+from typing import Iterable, Tuple
 
+from sqlalchemy import sql
+from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql import sqltypes
+
+from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
@@ -25,10 +32,36 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import (
+    POSTGRES_GET_TABLE_NAMES,
+    POSTGRES_PARTITION_DETAILS,
+)
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 logger = ingestion_logger()
+
+
+INTERVAL_TYPE_MAP = {
+    "list": IntervalType.COLUMN_VALUE.value,
+    "hash": IntervalType.COLUMN_VALUE.value,
+    "range": IntervalType.TIME_UNIT.value,
+}
+
+
+@reflection.cache
+def get_table_names(self, connection, schema=None, **kw):
+    """
+    Overwriting get_table_names method of dialect to filter partitioned tables
+    """
+    result = connection.execute(
+        sql.text(POSTGRES_GET_TABLE_NAMES).columns(relname=sqltypes.Unicode),
+        dict(schema=schema if schema is not None else self.default_schema_name),
+    )
+    return [name for name, in result]
+
+
+PGDialect.get_table_names = get_table_names
 
 
 class PostgresSource(CommonDbSourceService):
@@ -74,21 +107,23 @@ class PostgresSource(CommonDbSourceService):
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
-    def is_partition(self, table_name: str, schema_name: str, inspector) -> bool:
-        cur = self.pgconn.cursor()
-        cur.execute(
-            """
-                SELECT relispartition as is_partition
-                FROM   pg_catalog.pg_class c
-                JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-                WHERE  c.relname = %s
-                  AND  n.nspname = %s
-            """,
-            (table_name, schema_name),
-        )
-        obj = cur.fetchone()
-        is_partition = obj[0] if obj else False
-        return is_partition
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        result = self.engine.execute(
+            POSTGRES_PARTITION_DETAILS.format(
+                table_name=table_name, schema_name=schema_name
+            )
+        ).all()
+        if result:
+            partition_details = TablePartition(
+                intervalType=INTERVAL_TYPE_MAP.get(
+                    result[0].partition_strategy, IntervalType.COLUMN_VALUE.value
+                ),
+                columns=[row.column_name for row in result if row.column_name],
+            )
+            return True, partition_details
+        return False, None
 
     def type_of_column_name(self, sa_type, table_name: str, column_name: str):
         cur = self.pgconn.cursor()
