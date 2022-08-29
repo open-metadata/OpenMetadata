@@ -18,8 +18,9 @@ import BotListV1 from '../../components/BotListV1/BotListV1.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getCreateUserPath } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { checkPemission } from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 
 export const BotsPageV1 = () => {
   const { permissions } = usePermissionProvider();
@@ -34,13 +35,13 @@ export const BotsPageV1 = () => {
     setShowDeleted(checked);
   };
 
-  const viewAllPermission = checkPemission(
+  const viewAllPermission = checkPermission(
     Operation.ViewAll,
     ResourceEntity.BOT,
     permissions
   );
 
-  const createPermission = checkPemission(
+  const createPermission = checkPermission(
     Operation.Create,
     ResourceEntity.BOT,
     permissions
@@ -75,7 +76,7 @@ export const BotsPageV1 = () => {
           </Col>
         </>
       ) : (
-        <Empty description="You do not have permission to view data" />
+        <Empty description={NO_PERMISSION_TO_VIEW} />
       )}
     </Row>
   );

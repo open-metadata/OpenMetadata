@@ -11,20 +11,26 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getRoles } from '../../../axiosAPIs/rolesAPIV1';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   ROUTES,
 } from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RolesList from './RolesList';
 import './RolesList.less';
@@ -36,6 +42,15 @@ const RolesListPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>();
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+
+  const { permissions } = usePermissionProvider();
+
+  const addRolePermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.ROLE, permissions)
+    );
+  }, [permissions]);
 
   const fetchRoles = async (paging?: Paging) => {
     setIsLoading(true);
@@ -77,9 +92,17 @@ const RolesListPage = () => {
       gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <Button data-testid="add-role" type="primary" onClick={handleAddRole}>
-            Add Role
-          </Button>
+          <Tooltip
+            placement="left"
+            title={addRolePermission ? 'Add Role' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              data-testid="add-role"
+              disabled={!addRolePermission}
+              type="primary"
+              onClick={handleAddRole}>
+              Add Role
+            </Button>
+          </Tooltip>
         </Space>
       </Col>
       <Col span={24}>

@@ -887,7 +887,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   return (
-    <Row>
+    <Row className="tw-my-4" gutter={[16, 16]}>
       {isLoading ? (
         <Loader />
       ) : isError ? (

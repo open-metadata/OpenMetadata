@@ -25,6 +25,7 @@ import {
 import { Operation } from '../generated/entity/policies/policy';
 
 /**
+ * @deprecated
  * TODO: Remove this method once we have new permission structure everywhere
  */
 export const hasPemission = (
@@ -50,7 +51,7 @@ export const hasPemission = (
  * @param permissions UIPermission
  * @returns boolean - true/false
  */
-export const checkPemission = (
+export const checkPermission = (
   operation: Operation,
   resourceType: ResourceEntity,
   permissions: UIPermission
@@ -65,7 +66,7 @@ export const checkPemission = (
     return allResource.All || allResource[operation];
   }
 
-  return entityResource[operation];
+  return entityResource && entityResource[operation];
 };
 
 /**
