@@ -331,8 +331,12 @@ def parse_workflow_config_gracefully(
         return workflow_config
 
     except ValidationError as e:
-        if e.model.__name__ == OpenMetadataWorkflowConfig.__name__:
-            logger.error(e)
+        error_dict = e.errors()[0]
+        if (
+            error_dict["type"] == "value_error.extra"
+            and error_dict["loc"][0] in OpenMetadataWorkflowConfig.__fields__
+        ):
+            logger.error(f"Extra value {error_dict['loc'][-1]} not permitted : ", e)
             exit()
         parse_workflow_source(config_dict)
         parse_server_config(config_dict)
