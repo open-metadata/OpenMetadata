@@ -19,7 +19,6 @@ import { usePermissionProvider } from '../components/PermissionProvider/Permissi
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { Operation } from '../generated/entity/policies/policy';
-import AddDataQualityTestPage from '../pages/AddDataQualityTestPage/AddDataQualityTestPage';
 import { checkPermission } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -31,6 +30,18 @@ const GlobalSettingPage = withSuspenseFallback(
 const ProfilerDashboardPage = withSuspenseFallback(
   React.lazy(
     () => import('../pages/ProfilerDashboardPage/ProfilerDashboardPage')
+  )
+);
+
+const TestSuiteDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
+  )
+);
+
+const AddDataQualityTestPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/AddDataQualityTestPage/AddDataQualityTestPage')
   )
 );
 
@@ -189,12 +200,6 @@ const AddRulePage = withSuspenseFallback(
 const EditRulePage = withSuspenseFallback(
   React.lazy(
     () => import('../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
-  )
-);
-
-const TestSuiteDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
   )
 );
 
