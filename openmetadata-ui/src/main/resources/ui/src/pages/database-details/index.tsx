@@ -158,7 +158,7 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feeds',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',

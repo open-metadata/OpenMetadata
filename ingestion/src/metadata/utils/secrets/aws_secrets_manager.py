@@ -12,6 +12,7 @@
 """
 Secrets manager implementation using AWS Secrets Manager
 """
+import traceback
 from typing import Optional
 
 from botocore.exceptions import ClientError
@@ -41,15 +42,16 @@ class AWSSecretsManager(AWSBasedSecretsManager):
                  it throws a `ValueError` exception.
         """
         if name is None:
-            raise ValueError
+            raise ValueError("[name] argument is None")
 
         try:
             kwargs = {"SecretId": name}
             response = self.client.get_secret_value(**kwargs)
             logger.debug("Got value for secret %s.", name)
-        except ClientError:
-            logger.exception("Couldn't get value for secret %s.", name)
-            raise
+        except ClientError as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Couldn't get value for secret [{name}]: {err}")
+            raise err
         else:
             if "SecretString" in response:
                 return (

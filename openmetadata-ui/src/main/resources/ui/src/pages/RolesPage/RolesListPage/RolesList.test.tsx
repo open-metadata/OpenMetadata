@@ -16,20 +16,6 @@ import React from 'react';
 import { ROLES_LIST } from '../Roles.mock';
 import RolesList from './RolesList';
 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, to, ...res }) => (
     <a href={to} {...res}>

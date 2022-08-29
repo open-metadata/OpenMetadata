@@ -16,6 +16,8 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.validateTagLabel;
@@ -37,7 +39,6 @@ import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -97,21 +98,21 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF));
     ChangeDescription change = getChangeDescription(glossary.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER1_REF)));
+    fieldAdded(change, "reviewers", List.of(USER1_REF));
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Add another reviewer USER2 in PATCH request
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF, USER2_REF));
     change = getChangeDescription(glossary.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER2_REF)));
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Remove a reviewer USER1 in PATCH request
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER2_REF));
     change = getChangeDescription(glossary.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER1_REF)));
+    fieldDeleted(change, "reviewers", List.of(USER1_REF));
     patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 

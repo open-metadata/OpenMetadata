@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+import traceback
 from typing import Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
@@ -89,12 +90,14 @@ class ESMixin(Generic[T]):
             if entity_list:
                 return entity_list
 
-        except KeyError:
+        except KeyError as err:
+            logger.debug(traceback.format_exc())
             logger.warning(
-                f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}"
+                f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}"
             )
-        except Exception as err:
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
             logger.warning(
-                f"Elasticsearch search failed for query: {query_string} - {err}"
+                f"Elasticsearch search failed for query [{query_string}]: {exc}"
             )
         return None

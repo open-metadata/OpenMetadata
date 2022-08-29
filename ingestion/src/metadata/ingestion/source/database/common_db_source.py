@@ -177,8 +177,11 @@ class CommonDbSourceService(
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         # Catch any exception without breaking the ingestion
-        except Exception as err:  # pylint: disable=broad-except
-            logger.warning(f"Table Description Error : {str(err)}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
+            )
         else:
             description = table_info["text"]
         return description
@@ -244,13 +247,14 @@ class CommonDbSourceService(
                 return view_definition
 
             except NotImplementedError:
-                logger.error("View definition not implemented")
+                logger.warning("View definition not implemented")
                 return ""
 
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(err)
-                logger.error(f"Failed to fetch view definition for {table_name}")
+                logger.warning(
+                    f"Failed to fetch view definition for {table_name}: {exc}"
+                )
                 return ""
 
     def is_partition(
@@ -320,9 +324,9 @@ class CommonDbSourceService(
             yield table_request
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -381,10 +385,11 @@ class CommonDbSourceService(
                         schema_name=schema_name,
                         query=view_definition,
                     ) or []
-            except Exception:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(f"Query : {view_definition}")
-                logger.warning("Could not parse query: Ingesting lineage failed")
+                logger.warning(
+                    f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
+                )
 
     def test_connection(self) -> None:
         """

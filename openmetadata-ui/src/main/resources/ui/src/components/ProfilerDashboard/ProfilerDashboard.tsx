@@ -193,7 +193,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       {
         value: `${
           table.usageSummary?.weeklyStats?.count.toLocaleString() || '--'
-        } queries`,
+        } Queries`,
       },
     ];
   }, [table]);

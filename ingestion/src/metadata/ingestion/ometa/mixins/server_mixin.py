@@ -59,7 +59,7 @@ class OMetaServerMixin:
             return re.match(r"\d+.\d+.\d+", raw_version).group(0)
         except AttributeError as err:
             raise VersionParsingException(
-                f"Can't extract version from {raw_version} - {err}"
+                f"Can't extract version from {raw_version}: {err}"
             )
 
     def get_server_version(self) -> str:

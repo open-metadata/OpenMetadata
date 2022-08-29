@@ -84,14 +84,14 @@ class LineageSource(QueryParserSource, ABC):
                             serviceName=self.config.serviceName,
                             databaseSchema=self.get_schema_name(query_dict),
                         )
-                    except Exception as err:
-                        logger.error(
-                            f"Error processing query_dict {query_dict} - {err}"
-                        )
+                    except Exception as exc:
                         logger.debug(traceback.format_exc())
-            except Exception as err:
-                logger.error(f"Source usage processing error - {err}")
+                        logger.warning(
+                            f"Error processing query_dict {query_dict}: {exc}"
+                        )
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
+                logger.error(f"Source usage processing error: {exc}")
 
     def next_record(self) -> Iterable[AddLineageRequest]:
         """

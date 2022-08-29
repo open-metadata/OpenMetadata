@@ -187,15 +187,11 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
   cy.wait(1000);
 
-  cy.get('[data-testid="manage-button"]')
+  cy.get('[data-testid="service-delete"]')
     .should('exist')
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="delete-button"] > .tw-font-medium')
-    .should('exist')
-    .should('be.visible')
-    .click();
 
   //Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
@@ -375,7 +371,7 @@ export const addNewTagToEntity = (entity, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
     .contains('Tags')
     .should('be.visible')
     .click();
@@ -390,7 +386,7 @@ export const addNewTagToEntity = (entity, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
     .scrollIntoView()
     .contains(term)
     .should('exist');

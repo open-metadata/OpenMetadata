@@ -327,9 +327,9 @@ class AirflowSource(PipelineServiceSource):
         inlets = task.get_inlet_defs()
         try:
             return self.parse_xlets(inlets)
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warn(f"Error trying to parse inlets - {err}")
+            logger.warning(f"Error trying to parse inlets: {exc}")
             return None
 
     def get_outlets(self, task: BaseOperator) -> Optional[List[str]]:
@@ -341,9 +341,9 @@ class AirflowSource(PipelineServiceSource):
         outlets = task.get_outlet_defs()
         try:
             return self.parse_xlets(outlets)
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warn(f"Error trying to parse outlets - {err}")
+            logger.warning(f"Error trying to parse outlets: {exc}")
             return None
 
     def yield_pipeline_lineage_details(
@@ -373,7 +373,7 @@ class AirflowSource(PipelineServiceSource):
                         )
                     )
                 else:
-                    logger.warn(
+                    logger.warning(
                         f"Could not find Table [{table_fqn}] from "
                         f"[{self.context.pipeline.fullyQualifiedName.__root__}] inlets"
                     )
@@ -392,7 +392,7 @@ class AirflowSource(PipelineServiceSource):
                         )
                     )
                 else:
-                    logger.warn(
+                    logger.warning(
                         f"Could not find Table [{table_fqn}] from "
                         f"[{self.context.pipeline.fullyQualifiedName.__root__}] outlets"
                     )

@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.dqtests.TestSuiteResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
@@ -19,7 +21,11 @@ import org.openmetadata.catalog.test.TestCaseParameterValue;
 import org.openmetadata.catalog.tests.TestCase;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -68,7 +74,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
-    return getFromEntityRef(test.getId(), Relationship.HAS, null, true);
+    return getFromEntityRef(test.getId(), Relationship.CONTAINS, TEST_SUITE, true);
   }
 
   private EntityReference getTestDefinition(TestCase test) throws IOException {
@@ -112,7 +118,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
     EntityReference tableRef = EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
-    addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.HAS);
+    addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     // Add relationship from entity to test
     addRelationship(tableRef.getId(), test.getId(), tableRef.getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
@@ -123,7 +129,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public TestCase addTestCaseResult(String fqn, TestCaseResult testCaseResult) throws IOException {
+  public RestUtil.PutResponse<?> addTestCaseResult(String fqn, TestCaseResult testCaseResult) throws IOException {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
@@ -152,11 +158,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               JsonUtils.pojoToJson(testCaseResult));
       setFields(testCase, EntityUtil.Fields.EMPTY_FIELDS);
     }
-    return testCase.withTestCaseResult(testCaseResult);
+
+    ChangeDescription change =
+        addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
+    ChangeEvent changeEvent = getChangeEvent(testCase, change, entityType, testCase.getVersion());
+
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
-  public TestCase deleteTestCaseResult(String fqn, Long timestamp) throws IOException {
+  public RestUtil.PutResponse<?> deleteTestCaseResult(String fqn, Long timestamp) throws IOException {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
     TestCaseResult storedTestCaseResult =
@@ -168,10 +179,42 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (storedTestCaseResult != null) {
       daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       testCase.setTestCaseResult(storedTestCaseResult);
-      return testCase;
+      ChangeDescription change = deleteTestCaseChangeDescription(testCase.getVersion(), storedTestCaseResult);
+      ChangeEvent changeEvent = getChangeEvent(testCase, change, entityType, testCase.getVersion());
+      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
         String.format("Failed to find testCase result for %s at %s", testCase.getName(), timestamp));
+  }
+
+  private ChangeDescription addTestCaseChangeDescription(Double version, Object newValue, Object oldValue) {
+    FieldChange fieldChange =
+        new FieldChange().withName("testCaseResult").withNewValue(newValue).withOldValue(oldValue);
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
+    change.getFieldsUpdated().add(fieldChange);
+    return change;
+  }
+
+  private ChangeDescription deleteTestCaseChangeDescription(Double version, Object oldValue) {
+    FieldChange fieldChange = new FieldChange().withName("testCaseResult").withOldValue(oldValue);
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
+    change.getFieldsDeleted().add(fieldChange);
+    return change;
+  }
+
+  private ChangeEvent getChangeEvent(
+      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+    return new ChangeEvent()
+        .withEntity(updated)
+        .withChangeDescription(change)
+        .withEventType(EventType.ENTITY_UPDATED)
+        .withEntityType(entityType)
+        .withEntityId(updated.getId())
+        .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+        .withUserName(updated.getUpdatedBy())
+        .withTimestamp(System.currentTimeMillis())
+        .withCurrentVersion(updated.getVersion())
+        .withPreviousVersion(prevVersion);
   }
 
   private TestCaseResult getTestCaseResult(TestCase testCase) throws IOException {
