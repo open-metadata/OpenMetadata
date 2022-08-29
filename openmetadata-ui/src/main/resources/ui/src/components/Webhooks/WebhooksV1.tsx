@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Select, Space, Tooltip } from 'antd';
+import { Col, Row, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
-import {
-  PAGE_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
 import {
   MS_TEAMS_LISTING_TEXT,
   NO_PERMISSION_FOR_ACTION,
@@ -32,6 +28,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
+import CardV1 from '../common/Card/CardV1';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
@@ -85,12 +82,9 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
 
   const rightPanel = useMemo(() => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        size="small"
-        style={leftPanelAntCardStyle}>
-        <div className="tw-my-2">{LISTING_TEXT[webhookType]}</div>
-      </Card>
+      <div style={leftPanelAntCardStyle}>
+        <CardV1 description={LISTING_TEXT[webhookType]} id="data" />
+      </div>
     );
   }, []);
 

@@ -58,6 +58,7 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import CardV1 from '../common/Card/CardV1';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
@@ -381,8 +382,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
-        <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
-        <div className="tw-mb-5">{CONFIGURE_TEXT[webhookType]}</div>
+        <CardV1
+          description={CONFIGURE_TEXT[webhookType]}
+          heading="Configure Webhooks"
+          id="webhook"
+        />
       </div>
     );
   }, [webhookType]);

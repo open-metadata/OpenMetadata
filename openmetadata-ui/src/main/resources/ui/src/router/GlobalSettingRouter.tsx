@@ -217,7 +217,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={MsTeamsPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.ViewAll,
           ResourceEntity.WEBHOOK,
           permissions
