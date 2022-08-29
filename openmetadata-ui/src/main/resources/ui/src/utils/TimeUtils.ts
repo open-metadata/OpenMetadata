@@ -130,10 +130,17 @@ export const getLocaleDate = (timeStamp: number): string => {
 };
 
 export const getTimeZone = (): string => {
-  const date = new Date();
-  const timeZone = date.toString().match(/\(([^)]+)\)$/);
-  const timeZoneString = timeZone ? timeZone[1] : '';
-  const abbreviation = timeZoneString.match(/\b[A-Z]+/g)?.join('') || '';
+  // Getting local time zone
+  const timeZoneToString = new Date()
+    .toLocaleDateString('en-US', {
+      day: '2-digit',
+      timeZoneName: 'long',
+    })
+    .slice(4);
+
+  // Line below finds out the abbrevation for time zone
+  // e.g. India Standard Time --> IST
+  const abbreviation = timeZoneToString.match(/\b[A-Z]+/g)?.join('') || '';
 
   return abbreviation;
 };
