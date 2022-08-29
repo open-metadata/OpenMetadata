@@ -214,7 +214,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddIngestionPage}
         hasPermission={checkPermission(
           Operation.Create,
-          ResourceEntity.INGESTIONPIPELINE,
+          ResourceEntity.INGESTION_PIPELINE,
           permissions
         )}
         path={ROUTES.ADD_INGESTION}
@@ -224,7 +224,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditIngestionPage}
         hasPermission={checkPermission(
           Operation.EditAll,
-          ResourceEntity.INGESTIONPIPELINE,
+          ResourceEntity.INGESTION_PIPELINE,
           permissions
         )}
         path={ROUTES.EDIT_INGESTION}
@@ -316,7 +316,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddGlossaryTermPage}
         hasPermission={checkPermission(
           Operation.Create,
-          ResourceEntity.GLOSSARYTERM,
+          ResourceEntity.GLOSSARY_TERM,
           permissions
         )}
         path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
@@ -326,7 +326,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddGlossaryTermPage}
         hasPermission={checkPermission(
           Operation.Create,
-          ResourceEntity.GLOSSARYTERM,
+          ResourceEntity.GLOSSARY_TERM,
           permissions
         )}
         path={ROUTES.ADD_GLOSSARY_TERMS}

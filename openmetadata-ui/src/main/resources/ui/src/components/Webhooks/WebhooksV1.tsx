@@ -24,7 +24,6 @@ import {
 import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { Operation } from '../../generated/entity/policies/policy';
-import { useAuth } from '../../hooks/authHooks';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
@@ -48,7 +47,6 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   onStatusFilter,
   currentPage,
 }) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
   const [filteredData, setFilteredData] = useState<Array<Webhook>>(data);
 
   const { permissions } = usePermissionProvider();
