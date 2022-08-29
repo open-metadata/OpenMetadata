@@ -173,9 +173,11 @@ class ModeSource(DashboardServiceSource):
                                 )
                             )
                             yield lineage
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -225,10 +227,10 @@ class ModeSource(DashboardServiceSource):
                         ),
                     )
                     self.status.scanned(chart_name)
-                except Exception as err:  # pylint: disable=broad-except
+                except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
                     self.status.failure(
                         chart_name if chart_name else "",
-                        repr(err),
+                        repr(exc),
                     )

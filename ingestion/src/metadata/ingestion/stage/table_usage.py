@@ -97,8 +97,8 @@ class TableUsageStage(Stage[QueryParserData]):
                         )
 
                 except Exception as exc:
-                    logger.error("Error in staging record - {}".format(exc))
-                    logger.error(traceback.format_exc())
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Error in staging record: {exc}")
                 self.table_usage[(table, record.date)] = table_usage_count
                 logger.info(f"Successfully record staged for {table}")
         self.dump_data_to_file()

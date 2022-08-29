@@ -24,18 +24,27 @@ import React, {
 } from 'react';
 import AppState from '../../AppState';
 import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
-import { getUIPermission } from '../../utils/PermissionsUtils';
+import { getEntityPermissionById } from '../../axiosAPIs/rolesAPIV1';
+import {
+  getOperationPermissions,
+  getUIPermission,
+} from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { UIPermission } from './PermissionProvider.interface';
+import {
+  EntityPermissionMap,
+  PermissionContextType,
+  ResourceEntity,
+  UIPermission,
+} from './PermissionProvider.interface';
 
 /**
  * Permission Context
  * Returns ResourcePermission List for loggedIn User
  * @returns PermissionMap
  */
-export const PermissionContext = createContext<{
-  permissions: UIPermission;
-}>({ permissions: {} as UIPermission });
+export const PermissionContext = createContext<PermissionContextType>(
+  {} as PermissionContextType
+);
 
 interface PermissionProviderProps {
   children: ReactNode;
@@ -50,6 +59,9 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
+
+  const [entitiesPermission, setEntitiesPermission] =
+    useState<EntityPermissionMap>({} as EntityPermissionMap);
 
   // Update current user details of AppState change
   const currentUser = useMemo(() => {
@@ -68,6 +80,29 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   };
 
+  const fetchEntityPermission = async (
+    resource: ResourceEntity,
+    entityId: string
+  ) => {
+    try {
+      const entityPermission = entitiesPermission[entityId];
+      if (entityPermission) {
+        return entityPermission;
+      } else {
+        const response = await getEntityPermissionById(resource, entityId);
+        const operationPermission = getOperationPermissions(response);
+        setEntitiesPermission((prev) => ({
+          ...prev,
+          [entityId]: operationPermission,
+        }));
+
+        return operationPermission;
+      }
+    } catch (error) {
+      return error as AxiosError;
+    }
+  };
+
   useEffect(() => {
     /**
      * Only fetch permission if user is logged In
@@ -78,7 +113,11 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   }, [currentUser]);
 
   return (
-    <PermissionContext.Provider value={{ permissions }}>
+    <PermissionContext.Provider
+      value={{
+        permissions,
+        getEntityPermission: fetchEntityPermission,
+      }}>
       {children}
     </PermissionContext.Provider>
   );

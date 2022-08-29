@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import traceback
 from collections import namedtuple
 from typing import Iterable
 
@@ -68,9 +68,10 @@ class PostgresSource(CommonDbSourceService):
                 try:
                     self.set_inspector(database_name=new_database)
                     yield new_database
-                except Exception as err:
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error trying to connect to database {new_database} - {err}"
+                        f"Error trying to connect to database {new_database}: {exc}"
                     )
 
     def is_partition(self, table_name: str, schema_name: str, inspector) -> bool:

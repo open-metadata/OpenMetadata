@@ -120,10 +120,9 @@ class QueryParserProcessor(Processor):
                     parsed_sql = parse_sql_statement(record)
                     if parsed_sql:
                         data.append(parsed_sql)
-                except Exception as err:
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.debug(record.query)
-                    logger.error(err)
+                    logger.warning(f"Error processing query [{record.query}]: {exc}")
             return QueryParserData(parsedData=data)
 
     def close(self):

@@ -11,7 +11,7 @@
 """
 Lineage Parser configuration
 """
-
+import traceback
 from collections import defaultdict
 from logging.config import DictConfigurator
 from typing import Dict, List, Optional, Tuple
@@ -51,9 +51,10 @@ def get_involved_tables_from_parser(parser: LineageRunner) -> List[models.Table]
             .union(set(parser.intermediate_tables))
             .union(set(parser.target_tables))
         )
-    except SQLLineageException:
-        logger.debug(
-            f"Cannot extract source table information from query: {parser._sql}"  # pylint: disable=protected-access
+    except SQLLineageException as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Cannot extract source table information from query [{parser._sql}]: {exc}"  # pylint: disable=protected-access
         )
 
 
@@ -214,7 +215,7 @@ def stateful_add_joins_from_statement(
         )
 
         if not table_left or not table_right:
-            logger.warn(f"Cannot find ingredients from {comparison}")
+            logger.warning(f"Cannot find ingredients from {comparison}")
             continue
 
         left_table_column = TableColumn(table=table_left, column=column_left)

@@ -34,7 +34,7 @@ import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { checkPemission } from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -77,18 +77,18 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
 
-  const editAllPermission = checkPemission(
+  const editAllPermission = checkPermission(
     Operation.EditAll,
     ResourceEntity.BOT,
     permissions
   );
-  const displayNamePermission = checkPemission(
+  const displayNamePermission = checkPermission(
     Operation.EditDisplayName,
     ResourceEntity.BOT,
     permissions
   );
 
-  const descriptionPermission = checkPemission(
+  const descriptionPermission = checkPermission(
     Operation.EditDescription,
     ResourceEntity.BOT,
     permissions

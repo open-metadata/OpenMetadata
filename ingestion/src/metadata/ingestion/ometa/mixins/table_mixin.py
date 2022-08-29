@@ -79,23 +79,24 @@ class OMetaTableMixin:
                 f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
                 data=sample_data.json(),
             )
-        except Exception as err:
-            logger.error(
-                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__} - {err}"
-            )
+        except Exception as exc:
             logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT sample data for {table.fullyQualifiedName.__root__}: {exc}"
+            )
 
         if resp:
             try:
                 return TableData(**resp["sampleData"])
             except UnicodeError as err:
-                logger.error(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__} - {err}"
-                )
                 logger.debug(traceback.format_exc())
-            except Exception as err:
-                logger.error(
-                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__} - {err}"
+                logger.warning(
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__}: {err}"
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
                 )
 
     def ingest_profile_data(
