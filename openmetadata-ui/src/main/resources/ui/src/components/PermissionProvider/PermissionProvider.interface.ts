@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 
 export type UIPermission = {
@@ -57,4 +58,16 @@ export enum ResourceEntity {
   TYPE = 'type',
   USER = 'user',
   WEBHOOK = 'webhook',
+}
+
+export interface PermissionContextType {
+  permissions: UIPermission;
+  getEntityPermission: (
+    resource: ResourceEntity,
+    entityId: string
+  ) => Promise<OperationPermission | AxiosError>;
+}
+
+export interface EntityPermissionMap {
+  [key: string]: OperationPermission;
 }
