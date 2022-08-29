@@ -217,6 +217,11 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={MsTeamsPage}
+        hasPermission={checkPemission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.MS_TEAMS
