@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -49,7 +48,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
@@ -69,6 +67,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Path("/v1/roles")
 @Api(value = "Roles collection", tags = "Roles collection")
@@ -97,8 +96,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     jsonFiles.forEach(
         jsonFile -> {
           try {
-            String roleJson =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonFile)));
+            String roleJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonFile);
             Role role = JsonUtils.readValue(roleJson, entityClass);
             List<EntityReference> policies = role.getPolicies();
             for (EntityReference policy : policies) {

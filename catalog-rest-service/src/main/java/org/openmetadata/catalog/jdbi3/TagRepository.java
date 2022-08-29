@@ -35,7 +35,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class TagRepository extends EntityRepository<Tag> {
   public TagRepository(CollectionDAO dao) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
-    allowEdits = true;
   }
 
   /**

@@ -213,6 +213,11 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
+  () => jest.fn().mockReturnValue(<p>EntitySummaryDetails</p>)
+);
+
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
   return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
 });
@@ -231,6 +236,12 @@ jest.mock('antd', () => ({
 jest.mock('../../utils/TableUtils', () => ({
   getEntityLink: jest.fn(),
   getUsagePercentile: jest.fn(),
+}));
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Row: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+  Col: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({

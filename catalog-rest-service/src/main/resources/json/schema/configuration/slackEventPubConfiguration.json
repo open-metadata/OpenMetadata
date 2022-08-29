@@ -23,8 +23,7 @@
       "type": "array",
       "items": {
         "$ref": "../type/changeEvent.json#/definitions/eventFilter"
-      },
-      "default": null
+      }
     },
     "batchSize": {
       "description": "Batch Size",

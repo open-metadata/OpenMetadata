@@ -61,9 +61,9 @@ def column_value_min_to_be_between(
         )
         min_value_res = min_value_dict.get(Metrics.MIN.name)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

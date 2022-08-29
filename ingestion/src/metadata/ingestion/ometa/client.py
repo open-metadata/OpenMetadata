@@ -13,6 +13,7 @@ Python API REST wrapper and helpers
 """
 import datetime
 import time
+import traceback
 from typing import Callable, List, Optional
 
 import requests
@@ -208,8 +209,11 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
-        except Exception as err:
-            print(err)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unexpected error calling [{url}] with method [{method}]: {exc}"
+            )
         if resp.text != "":
             return resp.json()
         return None

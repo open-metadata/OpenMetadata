@@ -31,6 +31,7 @@ type SuccessScreenProps = {
   showDeployButton?: boolean;
   state: FormSubmitType;
   isAirflowSetup: boolean;
+  viewServiceText?: string;
   handleIngestionClick?: () => void;
   handleViewServiceClick: () => void;
   handleDeployClick?: () => void;
@@ -47,6 +48,7 @@ const SuccessScreen = ({
   handleViewServiceClick,
   handleDeployClick,
   successMessage,
+  viewServiceText,
   onCheckAirflowStatus,
 }: SuccessScreenProps) => {
   const [airflowCheckState, setAirflowCheckState] =
@@ -182,7 +184,7 @@ const SuccessScreen = ({
           theme="primary"
           variant="outlined"
           onClick={handleViewServiceClick}>
-          <span>View Service</span>
+          <span>{viewServiceText ?? 'View Service'}</span>
         </Button>
 
         {showIngestionButton && (

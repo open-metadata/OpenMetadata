@@ -59,7 +59,7 @@ public final class ChangeEventParser {
 
   private ChangeEventParser() {}
 
-  private enum CHANGE_TYPE {
+  public enum CHANGE_TYPE {
     UPDATE,
     ADD,
     DELETE
@@ -141,7 +141,7 @@ public final class ChangeEventParser {
     return messages;
   }
 
-  private static String getFieldValue(Object fieldValue) {
+  public static String getFieldValue(Object fieldValue) {
     if (fieldValue == null || fieldValue.toString().isEmpty()) {
       return StringUtils.EMPTY;
     }
@@ -233,7 +233,7 @@ public final class ChangeEventParser {
     return messages;
   }
 
-  private static EntityLink getEntityLink(String fieldName, EntityInterface entity) {
+  public static EntityLink getEntityLink(String fieldName, EntityInterface entity) {
     EntityReference entityReference = entity.getEntityReference();
     String entityType = entityReference.getType();
     String entityFQN = entityReference.getFullyQualifiedName();

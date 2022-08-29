@@ -13,6 +13,7 @@
 
 import { Button, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -20,38 +21,36 @@ import {
   SECONDARY_COLOR,
   SUCCESS_COLOR,
 } from '../../../constants/constants';
+import {
+  DEFAULT_TEST_VALUE,
+  INITIAL_TEST_RESULT_SUMMARY,
+} from '../../../constants/profiler.constant';
+import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
-import { TestCaseStatus } from '../../../generated/tests/tableTest';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
-import { getCurrentDatasetTab } from '../../../utils/DatasetDetailsUtils';
-import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
+import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../../utils/RouterUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
-import { ColumnProfileTableProps } from '../TableProfiler.interface';
+import {
+  ColumnProfileTableProps,
+  columnTestResultType,
+} from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
-  onAddTestClick,
+  columnTests,
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<Column[]>(columns);
-  // TODO:- Once column level test filter is implemented in test case API, remove this hardcoded value
-  const testDetails = [
-    {
-      value: 0,
-      type: TestCaseStatus.Success,
-    },
-    {
-      value: 0,
-      type: TestCaseStatus.Aborted,
-    },
-    {
-      value: 0,
-      type: TestCaseStatus.Failed,
-    },
-  ];
+  const [columnTestSummary, setColumnTestSummary] =
+    useState<columnTestResultType>();
+
   const tableColumn: ColumnsType<Column> = useMemo(() => {
     return [
       {
@@ -62,6 +61,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           return (
             <Link
               to={getProfilerDashboardWithFqnPath(
+                ProfilerDashboardType.COLUMN,
                 record.fullyQualifiedName || ''
               )}>
               {name}
@@ -90,7 +90,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           return (
             <ProfilerProgressWidget
               strokeColor={PRIMERY_COLOR}
-              value={profile.nullProportion || 0}
+              value={profile?.nullProportion || 0}
             />
           );
         },
@@ -103,7 +103,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SECONDARY_COLOR}
-            value={profile.uniqueProportion || 0}
+            value={profile?.uniqueProportion || 0}
           />
         ),
       },
@@ -115,7 +115,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
             strokeColor={SUCCESS_COLOR}
-            value={profile.distinctProportion || 0}
+            value={profile?.distinctProportion || 0}
           />
         ),
       },
@@ -124,16 +124,24 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'profile',
         key: 'valuesCount',
         render: (profile: ColumnProfile) =>
-          formatNumberWithComma(profile.valuesCount || 0),
+          formatNumberWithComma(profile?.valuesCount || 0),
       },
       {
         title: 'Test',
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
-        render: () => {
+        render: (_, record) => {
+          const summary = columnTestSummary?.[record.fullyQualifiedName || ''];
+          const currentResult = summary
+            ? Object.entries(summary).map(([key, value]) => ({
+                value,
+                type: key,
+              }))
+            : DEFAULT_TEST_VALUE;
+
           return (
             <Space size={16}>
-              {testDetails.map((test, i) => (
+              {currentResult.map((test, i) => (
                 <TestIndicator key={i} type={test.type} value={test.value} />
               ))}
             </Space>
@@ -145,22 +153,21 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
-          <Button
-            className="tw-border tw-border-primary tw-rounded tw-text-primary"
-            size="small"
-            onClick={() =>
-              onAddTestClick(
-                getCurrentDatasetTab('data-quality'),
-                'column',
-                record.name
-              )
-            }>
-            Add Test
-          </Button>
+          <Link
+            to={getAddDataQualityTableTestPath(
+              ProfilerDashboardType.COLUMN,
+              record.fullyQualifiedName || ''
+            )}>
+            <Button
+              className="tw-border tw-border-primary tw-rounded tw-text-primary"
+              size="small">
+              Add Test
+            </Button>
+          </Link>
         ),
       },
     ];
-  }, [columns]);
+  }, [columns, columnTestSummary]);
 
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
@@ -174,6 +181,21 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   useEffect(() => {
     setData(columns);
   }, [columns]);
+
+  useEffect(() => {
+    if (columnTests.length) {
+      const colResult = columnTests.reduce((acc, curr) => {
+        const fqn = curr.entityFQN || '';
+        if (isUndefined(acc[fqn])) {
+          acc[fqn] = { ...INITIAL_TEST_RESULT_SUMMARY };
+        }
+        updateTestResults(acc[fqn], curr.testCaseResult?.testCaseStatus || '');
+
+        return acc;
+      }, {} as columnTestResultType);
+      setColumnTestSummary(colResult);
+    }
+  }, [columnTests]);
 
   return (
     <div data-testid="column-profile-table-container">

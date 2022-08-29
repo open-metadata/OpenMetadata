@@ -61,9 +61,9 @@ def column_value_stddev_to_be_between(
         )
         stddev_value_res = stddev_value_dict.get(Metrics.STDDEV.name)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

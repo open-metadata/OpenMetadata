@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { ColumnProfilerConfig } from '../generated/entity/data/table';
+import { TestCaseStatus } from '../generated/tests/tableTest';
 import { JSON_TAB_SIZE } from './constants';
 
 export const excludedMetrics = [
@@ -62,6 +64,8 @@ export const PROFILER_FILTER_RANGE = {
   last30days: { days: 30, title: 'Last 30 days' },
   last60days: { days: 60, title: 'Last 60 days' },
 };
+
+export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
 
 export const DEFAULT_CHART_COLLECTION_VALUE = {
   distinctCount: { data: [], color: '#1890FF' },
@@ -161,6 +165,27 @@ export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
   },
 ];
 
+export const INITIAL_TEST_RESULT_SUMMARY = {
+  success: 0,
+  aborted: 0,
+  failed: 0,
+};
+
+export const DEFAULT_TEST_VALUE = [
+  {
+    value: 0,
+    type: TestCaseStatus.Success,
+  },
+  {
+    value: 0,
+    type: TestCaseStatus.Aborted,
+  },
+  {
+    value: 0,
+    type: TestCaseStatus.Failed,
+  },
+];
+
 export const codeMirrorOption = {
   tabSize: JSON_TAB_SIZE,
   indentUnit: JSON_TAB_SIZE,
@@ -176,3 +201,9 @@ export const codeMirrorOption = {
     name: CSMode.SQL,
   },
 };
+
+export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
+  { name: 'Select/Add Test Suite', step: 1 },
+  { name: 'Configure Test Case', step: 2 },
+  //   { name: 'Schedule Interval', step: 3 },
+];

@@ -42,7 +42,7 @@ jest.mock('../../components/tags-container/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
 
-jest.mock('../../components/common/description/DescriptionV1', () => {
+jest.mock('../common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
 });
 
@@ -57,6 +57,47 @@ jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
+
+jest.mock('antd', () => ({
+  Card: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Col: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Row: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Divider: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Typography: {
+    Text: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  },
+  Space: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Input: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+}));
 
 const mockProps = {
   assetData: mockedAssetData,

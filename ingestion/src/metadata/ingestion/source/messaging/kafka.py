@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import concurrent.futures
-import sys
 import traceback
 from typing import Any, Iterable, Optional
 
@@ -151,8 +150,10 @@ class KafkaSource(MessagingServiceSource):
                 topic + "-value"
             )
             schema = registered_schema.schema
-        except Exception as e:
-            self.status.warning(topic, f"failed to get schema: {e} for topic {topic}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to get schema for topic [{topic}]: {exc}")
+            self.status.warning(topic, f"failed to get schema: {exc} for topic {topic}")
 
         return schema
 
@@ -164,12 +165,11 @@ class KafkaSource(MessagingServiceSource):
                 f"Kafka consumer polling for sample messages in topic {topic_name.__root__}"
             )
             messages = self.consumer_client.consume(num_messages=10, timeout=10)
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch sample data from topic {topic_name.__root__}"
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to fetch sample data from topic {topic_name.__root__}: {exc}"
             )
-            logger.error(traceback.format_exc())
-            logger.error(sys.exc_info()[2])
         else:
             if messages:
                 for message in messages:

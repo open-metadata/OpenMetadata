@@ -13,6 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Dropdown, Menu, Space } from 'antd';
+import classNames from 'classnames';
 import React, { FC, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -22,6 +23,8 @@ import './ManageButton.less';
 
 interface Props {
   allowSoftDelete?: boolean;
+  afterDeleteAction?: () => void;
+  buttonClassName?: string;
   entityName: string;
   entityId?: string;
   entityType?: string;
@@ -33,6 +36,8 @@ interface Props {
 
 const ManageButton: FC<Props> = ({
   allowSoftDelete,
+  afterDeleteAction,
+  buttonClassName,
   deleteMessage,
   entityName,
   entityType,
@@ -116,7 +121,10 @@ const ManageButton: FC<Props> = ({
         visible={showActions}
         onVisibleChange={setShowActions}>
         <Button
-          className="tw-rounded tw-flex tw-justify-center tw-w-6 manage-dropdown-button"
+          className={classNames(
+            'tw-rounded tw-flex tw-justify-center tw-w-6 manage-dropdown-button',
+            buttonClassName
+          )}
           data-testid="manage-button"
           size="small"
           type="default"
@@ -129,6 +137,7 @@ const ManageButton: FC<Props> = ({
       </Dropdown>
       {isDelete && (
         <DeleteWidgetModal
+          afterDeleteAction={afterDeleteAction}
           allowSoftDelete={allowSoftDelete}
           deleteMessage={deleteMessage}
           entityId={entityId || ''}

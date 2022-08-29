@@ -13,6 +13,8 @@
 
 package org.openmetadata.common.utils;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +31,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
@@ -39,6 +42,7 @@ import java.util.zip.ZipFile;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 
 @Slf4j
 public final class CommonUtil {
@@ -173,5 +177,9 @@ public final class CommonUtil {
 
   public static boolean nullOrEmpty(List<?> list) {
     return list == null || list.isEmpty();
+  }
+
+  public static String getResourceAsStream(ClassLoader loader, String file) throws IOException {
+    return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
   }
 }

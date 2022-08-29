@@ -177,7 +177,7 @@ describe('Test TopicDetails component', () => {
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
     const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
     const configTab = await findByTestId(tabs, 'Config');
 
     expect(EntityPageInfo).toBeInTheDocument();

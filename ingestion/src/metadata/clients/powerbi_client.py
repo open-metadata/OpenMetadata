@@ -60,9 +60,6 @@ class PowerBiApiClient:
             )
 
         if not auth_response.get("access_token"):
-            logger.error(
-                "Failed to generate the PowerBi access token. Please check provided config"
-            )
             raise InvalidSourceException(
                 "Failed to generate the PowerBi access token. Please check provided config"
             )
@@ -84,9 +81,9 @@ class PowerBiApiClient:
         try:
             response = self.client.get(f"/myorg/admin/dashboards/{dashboard_id}/tiles")
             return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching charts: {exc}")
 
     def fetch_dashboards(self) -> dict:
         """Get dashboards method
@@ -97,9 +94,9 @@ class PowerBiApiClient:
         try:
             response = self.client.get(f"/myorg/admin/dashboards")
             return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching dashboards: {exc}")
 
     def fetch_datasets(self) -> dict:
         """Get datasets method
@@ -110,9 +107,9 @@ class PowerBiApiClient:
         try:
             response = self.client.get(f"/myorg/admin/datasets")
             return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching datasets: {exc}")
 
     def fetch_data_sources(self, dataset_id: str) -> dict:
         """Get dataset by id method
@@ -126,6 +123,6 @@ class PowerBiApiClient:
                 f"/myorg/admin/datasets/{dataset_id}/datasources"
             )
             return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching data sources: {exc}")

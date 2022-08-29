@@ -11,19 +11,26 @@
  *  limitations under the License.
  */
 
+import { Col, Empty, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { ServiceCategory } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getServices } from '../../axiosAPIs/serviceAPI';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import Services from '../../components/Services/Services';
 import { pagingObject } from '../../constants/constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SERVICE_CATEGORY } from '../../constants/services.const';
 import { ServiceCategory as Category } from '../../enums/service.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
+import { checkPermission } from '../../utils/PermissionsUtils';
+import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ServicesPage = () => {
@@ -36,6 +43,19 @@ const ServicesPage = () => {
     Category.DATABASE_SERVICES
   );
   const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const { permissions } = usePermissionProvider();
+
+  const viewAllPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.ViewAll,
+        getResourceEntityFromServiceCategory(tab),
+        permissions
+      )
+    );
+  }, [permissions]);
 
   const getServiceDetails = async (type: string) => {
     setIsLoading(true);
@@ -78,7 +98,7 @@ const ServicesPage = () => {
     return <Loader />;
   }
 
-  return (
+  return viewAllPermission ? (
     <Services
       currentPage={currentPage}
       paging={paging}
@@ -86,6 +106,12 @@ const ServicesPage = () => {
       serviceName={serviceName}
       onPageChange={handlePageChange}
     />
+  ) : (
+    <Row>
+      <Col span={24}>
+        <Empty description={NO_PERMISSION_TO_VIEW} />
+      </Col>
+    </Row>
   );
 };
 

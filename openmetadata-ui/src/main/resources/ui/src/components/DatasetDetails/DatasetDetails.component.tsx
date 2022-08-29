@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
+import { Col, Empty, Row } from 'antd';
 import classNames from 'classnames';
-import { isEqual, isNil, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, {
-  Fragment,
-  RefObject,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
@@ -42,6 +37,7 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityId,
   getEntityName,
   getEntityPlaceHolder,
   getPartialNameFromTableFQN,
@@ -215,7 +211,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed & Tasks',
+      name: 'Activity Feeds & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -381,6 +377,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         getEntityName(owner),
         owner?.deleted
       ),
+      id: getEntityId(owner),
+      isEntityDetails: true,
       isLink: owner?.type === 'team',
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
@@ -391,14 +389,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} queries` },
+    { value: `${weeklyUsageCount} Queries` },
     {
       key: 'Columns',
       value:
         tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} columns`
+          ? `${tableProfile.columnCount} Columns`
           : columns.length
-          ? `${columns.length} columns`
+          ? `${columns.length} Columns`
           : '',
     },
     {
@@ -705,26 +703,24 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
               )}
               {activeTab === 4 && (
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
-                  id="tablequeries">
-                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
-                    <Fragment>
-                      <div />
+                <Row className="tw-p-2" id="tablequeries">
+                  {!isEmpty(tableQueries) || isQueriesLoading ? (
+                    <Col offset={3} span={18}>
                       <TableQueries
                         isLoading={isQueriesLoading}
                         queries={tableQueries}
                       />
-                      <div />
-                    </Fragment>
+                    </Col>
                   ) : (
-                    <div
-                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
-                      data-testid="no-queries">
-                      <span>No queries data available.</span>
-                    </div>
+                    <Col
+                      className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      span={24}>
+                      <div data-testid="no-queries">
+                        <Empty description={<p>No queries data available</p>} />
+                      </div>
+                    </Col>
                   )}
-                </div>
+                </Row>
               )}
               {activeTab === 5 && (
                 <TableProfilerV1

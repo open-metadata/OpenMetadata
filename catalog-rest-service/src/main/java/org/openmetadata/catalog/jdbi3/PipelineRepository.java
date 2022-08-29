@@ -311,8 +311,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     private void updateTaskDescription(Task origTask, Task updatedTask) throws JsonProcessingException {
-      if (operation.isPut() && !nullOrEmpty(origTask.getDescription())) {
-        // Update description only when stored is empty to retain user authored descriptions
+      if (operation.isPut() && !nullOrEmpty(origTask.getDescription()) && updatedByBot()) {
+        // Revert the non-empty task description if being updated by a bot
         updatedTask.setDescription(origTask.getDescription());
         return;
       }

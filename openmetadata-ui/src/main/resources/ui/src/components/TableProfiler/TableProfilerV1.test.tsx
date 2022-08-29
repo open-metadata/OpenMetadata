@@ -20,8 +20,7 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { MOCK_TABLE } from '../../mocks/TableData.mock';
-import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
+import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
 import TableProfilerV1 from './TableProfilerV1';
@@ -49,6 +48,9 @@ jest.mock('antd', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
+  Empty: jest
+    .fn()
+    .mockImplementation(({ description }) => <div>{description}</div>),
 }));
 
 // mock internel imports
@@ -67,7 +69,12 @@ jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   formTwoDigitNmber: jest.fn(),
 }));
-const mockGetCurrentDatasetTab = getCurrentDatasetTab as jest.Mock;
+
+jest.mock('../../axiosAPIs/testAPI', () => ({
+  getListTestCase: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(TEST_CASE)),
+}));
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
@@ -118,19 +125,9 @@ describe('Test TableProfiler component', () => {
     );
 
     expect(addTableTest).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(addTableTest);
-    });
-
-    expect(mockProps.onAddTestClick).toHaveBeenCalledTimes(1);
-    expect(mockGetCurrentDatasetTab).toHaveBeenCalledTimes(1);
   });
 
   it('CTA: Setting button should work properly', async () => {
-    const setSettingModalVisible = jest.fn();
-    const handleClick = jest.spyOn(React, 'useState');
-    handleClick.mockImplementation(() => [false, setSettingModalVisible]);
     render(<TableProfilerV1 {...mockProps} />);
 
     const settingBtn = await screen.findByTestId('profiler-setting-btn');
@@ -141,6 +138,8 @@ describe('Test TableProfiler component', () => {
       fireEvent.click(settingBtn);
     });
 
-    expect(setSettingModalVisible).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText('ProfilerSettingsModal.component')
+    ).toBeInTheDocument();
   });
 });

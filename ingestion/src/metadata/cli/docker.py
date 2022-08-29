@@ -191,14 +191,15 @@ def run_docker(
                 docker_compose_file_path.unlink()
 
     except MemoryError:
+        logger.debug(traceback.format_exc())
         click.secho(
             f"Please Allocate More memory to Docker.\nRecommended: 6GB\nCurrent: "
             f"{round(float(dict(docker_info).get('mem_total')) / calc_gb)}",
             fg="red",
         )
-    except Exception as err:
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        click.secho(str(err), fg="red")
+        click.secho(str(exc), fg="red")
 
 
 def reset_db_om(docker):
@@ -264,7 +265,8 @@ def run_sample_data() -> None:
             elif time.time() > timeout:
                 raise TimeoutError("Ingestion container timed out")
         except TimeoutError as err:
-            print(err)
+            logger.debug(traceback.format_exc())
+            sys.stdout.write(str(err))
             sys.exit(1)
         except Exception:
             sys.stdout.write(".")

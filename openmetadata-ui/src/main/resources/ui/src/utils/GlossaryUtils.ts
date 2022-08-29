@@ -35,7 +35,7 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
-import { getNameFromFQN } from './CommonUtils';
+import { getEntityName } from './CommonUtils';
 
 export interface GlossaryTermTreeNode {
   children?: GlossaryTermTreeNode[];
@@ -104,7 +104,7 @@ export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
     return d.children?.length
       ? {
           key: (d as GlossaryTerm)?.fullyQualifiedName || d.name,
-          title: getNameFromFQN(d.name),
+          title: getEntityName(d),
           children: generateTreeData(d.children as ModifiedGlossaryData[]),
           data: d,
           icon: ({ selected }) =>
@@ -112,7 +112,7 @@ export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
         }
       : {
           key: (d as GlossaryTerm)?.fullyQualifiedName || d.name,
-          title: getNameFromFQN(d.name),
+          title: getEntityName(d),
           data: d,
           icon: ({ selected }) =>
             FileIcon(selected ? PRIMERY_COLOR : TEXT_BODY_COLOR),

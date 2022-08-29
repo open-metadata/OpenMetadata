@@ -40,7 +40,6 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   public TagCategoryRepository(CollectionDAO dao, TagRepository tagRepository) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG_CATEGORY, TagCategory.class, dao.tagCategoryDAO(), dao, "", "");
-    allowEdits = true;
     this.tagRepository = tagRepository;
   }
 
@@ -63,7 +62,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   }
 
   // Populate TagCategory with children details
-  private TagCategory populateCategoryTags(TagCategory category, Fields fields) throws IOException {
+  private void populateCategoryTags(TagCategory category, Fields fields) throws IOException {
     // Get tags under that match category prefix
     ListFilter listFilter = new ListFilter(Include.ALL).addQueryParam("parent", category.getName());
     List<String> groupJsons = daoCollection.tagDAO().listAfter(listFilter, 10000, "");
@@ -73,7 +72,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
       Tag tag = tagRepository.setFields(JsonUtils.readValue(json, Tag.class), fields);
       tagList.add(tagRepository.populateChildrenTags(tag, fields));
     }
-    return category.withChildren(tagList.isEmpty() ? null : tagList);
+    category.withChildren(tagList.isEmpty() ? null : tagList);
   }
 
   @Override

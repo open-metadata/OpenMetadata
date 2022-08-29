@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useRef, useState } from 'react';
+import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
@@ -35,7 +36,6 @@ import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
 
 const CreateUser = ({
-  allowAccess,
   roles,
   saveState = 'initial',
   onCancel,
@@ -60,6 +60,18 @@ const CreateUser = ({
     validEmail: false,
   });
 
+  const slashedBreadcrumbList = [
+    {
+      name: forceBot ? 'Bots' : 'Users',
+      url: forceBot ? getBotsPagePath() : getUsersPagePath(),
+    },
+    {
+      name: `Create ${forceBot ? 'Bot' : 'User'}`,
+      url: '',
+      activeTitle: true,
+    },
+  ];
+
   /**
    * common function to update user input in to the state
    * @param event change event for input/selection field
@@ -68,10 +80,6 @@ const CreateUser = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    if (!allowAccess) {
-      return;
-    }
-
     const value = event.target.value;
     const eleName = event.target.name;
 
@@ -175,7 +183,7 @@ const CreateUser = ({
    * @returns Button
    */
   const getSaveButton = () => {
-    return allowAccess ? (
+    return (
       <>
         {saveState === 'waiting' ? (
           <Button
@@ -197,9 +205,7 @@ const CreateUser = ({
           </Button>
         ) : (
           <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
+            className={classNames('tw-w-16 tw-h-10')}
             data-testid="save-user"
             size="regular"
             theme="primary"
@@ -209,23 +215,13 @@ const CreateUser = ({
           </Button>
         )}
       </>
-    ) : null;
+    );
   };
 
   return (
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={
-        <TitleBreadcrumb
-          titleLinks={[
-            {
-              name: `Create ${forceBot ? 'Bot' : 'User'}`,
-              url: '',
-              activeTitle: true,
-            },
-          ]}
-        />
-      }
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
       layout={PageLayoutType['2ColRTL']}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">
@@ -307,10 +303,8 @@ const CreateUser = ({
                   className={classNames('toggle-switch', { open: isAdmin })}
                   data-testid="admin"
                   onClick={() => {
-                    if (allowAccess) {
-                      setIsAdmin((prev) => !prev);
-                      setIsBot(false);
-                    }
+                    setIsAdmin((prev) => !prev);
+                    setIsBot(false);
                   }}>
                   <div className="switch" />
                 </div>
@@ -321,10 +315,8 @@ const CreateUser = ({
                   className={classNames('toggle-switch', { open: isBot })}
                   data-testid="bot"
                   onClick={() => {
-                    if (allowAccess) {
-                      setIsBot((prev) => !prev);
-                      setIsAdmin(false);
-                    }
+                    setIsBot((prev) => !prev);
+                    setIsAdmin(false);
                   }}>
                   <div className="switch" />
                 </div>
