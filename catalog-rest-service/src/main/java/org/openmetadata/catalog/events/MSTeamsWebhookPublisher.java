@@ -17,18 +17,18 @@ import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.ChangeEventParser;
 
 @Slf4j
-public class TeamWebhookEventPublisher extends WebhookPublisher {
+public class MSTeamsWebhookPublisher extends WebhookPublisher {
   private final Invocation.Builder target;
   private final Client client;
 
-  public TeamWebhookEventPublisher(Webhook webhook, CollectionDAO dao) {
+  public MSTeamsWebhookPublisher(Webhook webhook, CollectionDAO dao) {
     super(webhook, dao);
-    String slackWebhookURL = webhook.getEndpoint().toString();
+    String msTeamsWebhookURL = webhook.getEndpoint().toString();
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-    clientBuilder.connectTimeout(10, TimeUnit.SECONDS);
-    clientBuilder.readTimeout(12, TimeUnit.SECONDS);
+    clientBuilder.connectTimeout(webhook.getTimeout(), TimeUnit.SECONDS);
+    clientBuilder.readTimeout(webhook.getReadTimeout(), TimeUnit.SECONDS);
     client = clientBuilder.build();
-    target = client.target(slackWebhookURL).request();
+    target = client.target(msTeamsWebhookURL).request();
   }
 
   @Override

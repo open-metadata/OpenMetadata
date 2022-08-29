@@ -68,7 +68,34 @@ public final class ChangeEventParser {
 
   public enum PUBLISH_TO {
     FEED,
-    SLACK
+    SLACK,
+    TEAMS
+  }
+
+  public static String getBold(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return FEED_BOLD;
+      case SLACK:
+        return SLACK_BOLD;
+      default:
+        return FEED_BOLD;
+    }
+  }
+
+  public static String getLineBreak(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return FEED_LINE_BREAK;
+      case SLACK:
+        return SLACK_LINE_BREAK;
+      default:
+        return FEED_LINE_BREAK;
+    }
   }
 
   public static String getEntityUrl(ChangeEvent event) {
@@ -301,16 +328,9 @@ public final class ChangeEventParser {
         String fieldValue = getFieldValue(newFieldValue);
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
           message =
-              String.format(
-                  ("Followed " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + " `%s`"),
-                  link.getEntityType(),
-                  link.getEntityFQN());
+              String.format(("Followed " + getBold(publishTo) + " `%s`"), link.getEntityType(), link.getEntityFQN());
         } else if (fieldValue != null && !fieldValue.isEmpty()) {
-          message =
-              String.format(
-                  ("Added " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + ": `%s`"),
-                  updatedField,
-                  fieldValue);
+          message = String.format(("Added " + getBold(publishTo) + ": `%s`"), updatedField, fieldValue);
         }
         break;
       case UPDATE:
@@ -320,7 +340,7 @@ public final class ChangeEventParser {
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
           message = String.format("Unfollowed %s `%s`", link.getEntityType(), link.getEntityFQN());
         } else {
-          message = String.format(("Deleted " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD)), updatedField);
+          message = String.format(("Deleted " + getBold(publishTo)), updatedField);
         }
         break;
       default:
@@ -336,7 +356,7 @@ public final class ChangeEventParser {
     if (nullOrEmpty(diff)) {
       return StringUtils.EMPTY;
     } else {
-      String field = String.format("Updated %s: %s", (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD), diff);
+      String field = String.format("Updated %s: %s", getBold(publishTo), diff);
       return String.format(field, updatedField);
     }
   }
@@ -353,17 +373,12 @@ public final class ChangeEventParser {
                 "%s: %s", key, getPlaintextDiff(publishTo, oldJson.get(key).toString(), newJson.get(key).toString())));
       }
     }
-    String updates = String.join((publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK), labels);
+    String updates = String.join(getLineBreak(publishTo), labels);
     // Include name of the field if the json contains "name" key
     if (newJson.containsKey("name")) {
       updatedField = String.format("%s.%s", updatedField, newJson.getString("name"));
     }
-    String format =
-        String.format(
-            "Updated %s:%s%s",
-            publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD,
-            publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK,
-            updates);
+    String format = String.format("Updated %s:%s%s", getBold(publishTo), getLineBreak(publishTo), updates);
     return String.format(format, updatedField);
   }
 
@@ -374,9 +389,7 @@ public final class ChangeEventParser {
     }
 
     if (oldValue == null || oldValue.toString().isEmpty()) {
-      String format =
-          String.format(
-              "Updated %s to %s", publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD, getFieldValue(newValue));
+      String format = String.format("Updated %s to %s", getBold(publishTo), getFieldValue(newValue));
       return String.format(format, updatedField);
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
       return getPlainTextUpdateMessage(publishTo, updatedField, getFieldValue(oldValue), getFieldValue(newValue));
