@@ -104,11 +104,17 @@ kubectl create -f nfs-cluster-ip-service.yml
 ```
 
 We create a CluserIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
-Now your nfs server pods are accessible either at the IP (note yours from the service output) or via its name nfs-server.default.svc.cluster.local. By default every service is addressable via name `<service-name>.<namespace>.svc.cluster.local`.
 
 </Collapse>
 
 ### Provision NFS backed PV and PVC for Airflow DAGs and Airflow Logs
+
+Update `<NFS_SERVER_CLUSTER_IP>` with the NFS Service Cluster IP Address for below code snippets.
+You can get the clusterIP using the following command
+
+```commandline
+kubectl get service nfs-server -o jsonpath='{.spec.clusterIP}'
+```
 
 <Collapse title="Code Samples for PV and PVC for Airflow DAGs">
 
@@ -124,7 +130,7 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    server: nfs-server.default.svc.cluster.local
+    server: <NFS_SERVER_CLUSTER_IP>
     path: "/"
 
 ---
@@ -167,7 +173,7 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    server: nfs-server.default.svc.cluster.local
+    server: <NFS_SERVER_CLUSTER_IP>
     path: "/"
 
 ---
