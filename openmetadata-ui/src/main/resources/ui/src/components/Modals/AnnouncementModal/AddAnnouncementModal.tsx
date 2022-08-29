@@ -26,7 +26,7 @@ import {
   validateMessages,
 } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import { getUTCDateTime } from '../../../utils/TimeUtils';
+import { getTimeZone, getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import './AnnouncementModal.less';
@@ -130,7 +130,7 @@ const AddAnnouncementModal: FC<Props> = ({
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
-            label="Start Date (UTC):"
+            label={`Start Date: (${getTimeZone()})`}
             name="startDate"
             rules={[
               {
@@ -144,7 +144,7 @@ const AddAnnouncementModal: FC<Props> = ({
             />
           </Form.Item>
           <Form.Item
-            label="End Date (UTC):"
+            label={`End Date: (${getTimeZone()})`}
             name="endtDate"
             rules={[
               {
