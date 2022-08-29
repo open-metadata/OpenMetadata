@@ -11,20 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Loader from '../../../components/Loader/Loader';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   ROUTES,
 } from '../../../constants/constants';
-import { Policy } from '../../../generated/entity/policies/policy';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PoliciesList from './PoliciesList';
 import './PoliciesList.less';
@@ -35,6 +40,15 @@ const PoliciesListPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>();
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+
+  const { permissions } = usePermissionProvider();
+
+  const addPolicyPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.POLICY, permissions)
+    );
+  }, [permissions]);
 
   const fetchPolicies = async (paging?: Paging) => {
     setIsLoading(true);
@@ -73,12 +87,19 @@ const PoliciesListPage = () => {
     <Row className="policies-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
-          <Button
-            data-testid="add-policy"
-            type="primary"
-            onClick={handleAddPolicy}>
-            Add Policy
-          </Button>
+          <Tooltip
+            placement="left"
+            title={
+              addPolicyPermission ? 'Add Policy' : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              data-testid="add-policy"
+              disabled={!addPolicyPermission}
+              type="primary"
+              onClick={handleAddPolicy}>
+              Add Policy
+            </Button>
+          </Tooltip>
         </Space>
       </Col>
       <Col span={24}>

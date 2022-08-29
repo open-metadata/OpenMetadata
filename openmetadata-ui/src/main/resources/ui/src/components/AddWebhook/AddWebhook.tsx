@@ -13,12 +13,19 @@
 
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import { Store } from 'antd/lib/form/interface';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isEqual, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isEqual, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ROUTES, TERM_ALL } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -27,6 +34,7 @@ import {
 import {
   CONFIGURE_SLACK_TEXT,
   CONFIGURE_WEBHOOK_TEXT,
+  NO_PERMISSION_FOR_ACTION,
 } from '../../constants/HelperTextUtil';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
@@ -37,12 +45,14 @@ import {
   Filters,
 } from '../../generated/api/events/createWebhook';
 import { WebhookType } from '../../generated/entity/events/webhook';
+import { Operation } from '../../generated/entity/policies/policy';
 import {
   errorMsg,
   getSeparator,
   isValidUrl,
   requiredField,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
@@ -52,6 +62,8 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { AddWebhookProps } from './AddWebhook.interface';
 import SelectComponent from './select-component';
 import {
@@ -163,6 +175,29 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
+  const { permissions } = usePermissionProvider();
+
+  const editWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.EditAll, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const addWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const deleteWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Delete, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
   const handleDelete = () => {
     if (data) {
       onDelete && onDelete(data.id);
@@ -259,7 +294,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const getDeleteButton = () => {
-    return allowAccess ? (
+    return (
       <>
         {deleteState === 'waiting' ? (
           <Button
@@ -271,24 +306,32 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             <Loader size="small" type="default" />
           </Button>
         ) : (
-          <Button
-            className={classNames({
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="delete-webhook"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={() => setIsDelete(true)}>
-            Delete
-          </Button>
+          <Tooltip
+            placement="left"
+            title={
+              deleteWebhookPermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              data-testid="delete-webhook"
+              disabled={!deleteWebhookPermission}
+              size="regular"
+              theme="primary"
+              variant="text"
+              onClick={() => setIsDelete(true)}>
+              Delete
+            </Button>
+          </Tooltip>
         )}
       </>
-    ) : null;
+    );
   };
 
   const getSaveButton = () => {
-    return allowAccess ? (
+    const savePermission =
+      (mode === 'add' && addWebhookPermission) ||
+      (mode === 'edit' && editWebhookPermission);
+
+    return (
       <>
         {saveState === 'waiting' ? (
           <Button
@@ -309,20 +352,23 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-webhook"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
+          <Tooltip
+            placement="left"
+            title={savePermission ? 'Save' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className={classNames('tw-w-16 tw-h-10')}
+              data-testid="save-webhook"
+              disabled={!savePermission}
+              size="regular"
+              theme="primary"
+              variant="contained"
+              onClick={handleSave}>
+              Save
+            </Button>
+          </Tooltip>
         )}
       </>
-    ) : null;
+    );
   };
 
   const fetchRightPanel = useCallback(() => {
@@ -631,7 +677,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 </div>
               )}
             </Field>
-            {data && isDelete && (
+            {data && isDelete && deleteWebhookPermission && (
               <ConfirmationModal
                 bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
                 cancelText="Cancel"

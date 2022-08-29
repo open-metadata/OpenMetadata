@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import AppState from '../AppState';
 import {
   OperationPermission,
   ResourceEntity,
@@ -25,6 +26,7 @@ import {
 import { Operation } from '../generated/entity/policies/policy';
 
 /**
+ * @deprecated
  * TODO: Remove this method once we have new permission structure everywhere
  */
 export const hasPemission = (
@@ -50,22 +52,26 @@ export const hasPemission = (
  * @param permissions UIPermission
  * @returns boolean - true/false
  */
-export const checkPemission = (
+export const checkPermission = (
   operation: Operation,
   resourceType: ResourceEntity,
   permissions: UIPermission
 ) => {
-  const allResource = permissions.all;
-  const entityResource = permissions[resourceType];
+  const isAuthDisabled = AppState.authDisabled;
+  const allResource = permissions?.all;
+  const entityResource = permissions?.[resourceType];
+  let hasPemission = isAuthDisabled;
 
   /**
    * If allresource is present then check for permission and return it
    */
-  if (allResource) {
-    return allResource.All || allResource[operation];
+  if (allResource && !hasPemission) {
+    hasPemission = allResource.All || allResource[operation];
   }
 
-  return entityResource[operation];
+  hasPemission = hasPemission || (entityResource && entityResource[operation]);
+
+  return hasPemission;
 };
 
 /**
