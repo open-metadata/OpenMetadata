@@ -16,8 +16,10 @@ Add a function for each type from PipelineType
 from openmetadata_managed_apis.workflows.ingestion.lineage import build_lineage_dag
 from openmetadata_managed_apis.workflows.ingestion.metadata import build_metadata_dag
 from openmetadata_managed_apis.workflows.ingestion.profiler import build_profiler_dag
+from openmetadata_managed_apis.workflows.ingestion.test_suite import (
+    build_test_suite_dag,
+)
 from openmetadata_managed_apis.workflows.ingestion.usage import build_usage_dag
-from openmetadata_managed_apis.workflows.ingestion.test_suite import build_test_suite_dag
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
