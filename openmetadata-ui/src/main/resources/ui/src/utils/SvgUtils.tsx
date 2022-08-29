@@ -997,7 +997,7 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.MSTEAMS_GREY:
       IconComponent = IconMSTeamsGrey;
-      
+
       break;
     case Icons.DELETE_COLORED:
       IconComponent = IconDeleteColored;
