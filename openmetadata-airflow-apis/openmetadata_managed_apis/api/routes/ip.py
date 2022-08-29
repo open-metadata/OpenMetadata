@@ -15,10 +15,9 @@ import traceback
 from typing import Optional
 
 import requests
+from openmetadata_managed_apis.utils.logger import routes_logger
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
-
-from openmetadata_managed_apis.utils.logger import routes_logger
 
 try:
     from importlib.metadata import version
