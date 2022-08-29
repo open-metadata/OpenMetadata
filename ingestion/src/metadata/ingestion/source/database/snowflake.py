@@ -9,16 +9,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import traceback
-from typing import Iterable
+from typing import Iterable, Tuple
 
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -37,6 +39,7 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
+    SNOWFLAKE_GET_CLUSTER_KEY,
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
@@ -170,6 +173,21 @@ class SnowflakeSource(CommonDbSourceService):
                     logger.warning(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        result = self.engine.execute(
+            SNOWFLAKE_GET_CLUSTER_KEY.format(
+                table_name=table_name, schema_name=schema_name
+            )
+        ).all()
+        if result and result[0].CLUSTERING_KEY:
+            partition_details = TablePartition(
+                columns=[], intervalType=IntervalType.COLUMN_VALUE
+            )
+            return True, partition_details
+        return False, None
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
 
