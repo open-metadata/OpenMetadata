@@ -11,7 +11,6 @@
 
 import json
 import ssl
-import sys
 import traceback
 from datetime import datetime
 from typing import List, Optional
@@ -355,10 +354,9 @@ class ElasticsearchSink(Sink[Entity]):
                     )
                     self.status.records_written(tag_doc.name)
 
-        except Exception as e:
-            logger.error(f"Failed to index entity {record} due to {e}")
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(sys.exc_info()[2])
+            logger.error(f"Failed to index entity {record}: {exc}")
 
     def _create_table_es_doc(self, table: Table):
         table_fqn = table.fullyQualifiedName.__root__

@@ -26,14 +26,18 @@ import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { getUserPath } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { getEntityName } from '../../../utils/CommonUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getSettingPath,
@@ -139,6 +143,7 @@ const List = ({
 
 const RolesDetailPage = () => {
   const history = useHistory();
+  const { permissions } = usePermissionProvider();
   const { fqn } = useParams<{ fqn: string }>();
 
   const [role, setRole] = useState<Role>({} as Role);
@@ -153,6 +158,17 @@ const RolesDetailPage = () => {
     GlobalSettingsMenuCategory.ACCESS,
     GlobalSettingOptions.ROLES
   );
+
+  const editDescriptionPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.EditDescription,
+        ResourceEntity.ROLE,
+        permissions
+      )
+    );
+  }, [permissions]);
 
   const breadcrumb = useMemo(
     () => [
@@ -319,6 +335,7 @@ const RolesDetailPage = () => {
               entityFqn={role.fullyQualifiedName}
               entityName={getEntityName(role)}
               entityType={EntityType.ROLE}
+              hasEditAccess={editDescriptionPermission}
               isEdit={editDescription}
               onCancel={() => setEditDescription(false)}
               onDescriptionEdit={() => setEditDescription(true)}

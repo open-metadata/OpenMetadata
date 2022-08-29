@@ -13,9 +13,11 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { CreatePolicy } from '../generated/api/policies/createPolicy';
 import { CreateRole } from '../generated/api/teams/createRole';
 import { ResourceDescriptor } from '../generated/entity/policies/accessControl/resourceDescriptor';
+import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Policy } from '../generated/entity/policies/policy';
 import { Role } from '../generated/entity/teams/role';
 import { Function } from '../generated/type/function';
@@ -153,4 +155,15 @@ export const validateRuleCondition = async (condition: string) => {
    * Returning directly response because we will need status code as well
    */
   return response;
+};
+
+export const getEntityPermissionById = async (
+  resource: ResourceEntity,
+  entityId: string
+) => {
+  const response = await APIClient.get<ResourcePermission>(
+    `/permissions/${resource}/${entityId}`
+  );
+
+  return response.data;
 };

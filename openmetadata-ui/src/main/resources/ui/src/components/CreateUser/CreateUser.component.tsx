@@ -36,7 +36,6 @@ import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
 
 const CreateUser = ({
-  allowAccess,
   roles,
   saveState = 'initial',
   onCancel,
@@ -81,10 +80,6 @@ const CreateUser = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    if (!allowAccess) {
-      return;
-    }
-
     const value = event.target.value;
     const eleName = event.target.name;
 
@@ -188,7 +183,7 @@ const CreateUser = ({
    * @returns Button
    */
   const getSaveButton = () => {
-    return allowAccess ? (
+    return (
       <>
         {saveState === 'waiting' ? (
           <Button
@@ -210,9 +205,7 @@ const CreateUser = ({
           </Button>
         ) : (
           <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
+            className={classNames('tw-w-16 tw-h-10')}
             data-testid="save-user"
             size="regular"
             theme="primary"
@@ -222,7 +215,7 @@ const CreateUser = ({
           </Button>
         )}
       </>
-    ) : null;
+    );
   };
 
   return (
@@ -310,10 +303,8 @@ const CreateUser = ({
                   className={classNames('toggle-switch', { open: isAdmin })}
                   data-testid="admin"
                   onClick={() => {
-                    if (allowAccess) {
-                      setIsAdmin((prev) => !prev);
-                      setIsBot(false);
-                    }
+                    setIsAdmin((prev) => !prev);
+                    setIsBot(false);
                   }}>
                   <div className="switch" />
                 </div>
@@ -324,10 +315,8 @@ const CreateUser = ({
                   className={classNames('toggle-switch', { open: isBot })}
                   data-testid="bot"
                   onClick={() => {
-                    if (allowAccess) {
-                      setIsBot((prev) => !prev);
-                      setIsAdmin(false);
-                    }
+                    setIsBot((prev) => !prev);
+                    setIsAdmin(false);
                   }}>
                   <div className="switch" />
                 </div>

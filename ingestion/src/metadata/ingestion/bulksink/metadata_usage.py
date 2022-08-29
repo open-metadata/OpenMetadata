@@ -126,16 +126,18 @@ class MetadataUsageBulkSink(BulkSink):
                     )
                 )
             except ValidationError as err:
-                logger.error(
-                    f"Cannot construct UsageRequest from {value_dict['table_entity']} - {err}"
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Cannot construct UsageRequest from {value_dict['table_entity']}: {err}"
                 )
-            except Exception as err:
-                self.status.failures.append(table_usage_request)
-                logger.error(
-                    "Failed to update usage for {} {}".format(
-                        value_dict["table_entity"].fullyQualifiedName.__root__, err
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Failed to update usage for {} :{}".format(
+                        value_dict["table_entity"].fullyQualifiedName.__root__, exc
                     )
                 )
+                self.status.failures.append(table_usage_request)
                 self.status.failures.append(
                     "Table: {}".format(
                         value_dict["table_entity"].fullyQualifiedName.__root__
@@ -173,11 +175,11 @@ class MetadataUsageBulkSink(BulkSink):
                         database_schema=table_usage.databaseSchema,
                         table_name=table_usage.table,
                     )
-                except Exception as err:
-                    logger.error(
-                        f"Cannot get table entities from query table {table_usage.table} - {err}"
-                    )
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Cannot get table entities from query table {table_usage.table}: {exc}"
+                    )
 
                 if not table_entities:
                     logger.warning(
@@ -207,17 +209,18 @@ class MetadataUsageBulkSink(BulkSink):
                                     table_entity, table_join_request
                                 )
                         except APIError as err:
-                            self.status.failures.append(table_join_request)
-                            logger.error(
-                                "Failed to update query join for {}, {}".format(
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                "Failed to update query join for {}: {}".format(
                                     table_usage.table, err
                                 )
                             )
-                        except Exception as err:
-                            logger.error(
-                                f"Error getting usage and join information for {table_entity.name.__root__} - {err}"
-                            )
+                            self.status.failures.append(table_join_request)
+                        except Exception as exc:
                             logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Error getting usage and join information for {table_entity.name.__root__}: {exc}"
+                            )
                     else:
                         logger.warning(
                             f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
@@ -228,8 +231,9 @@ class MetadataUsageBulkSink(BulkSink):
         try:
             self.metadata.compute_percentile(Table, self.today)
             self.metadata.compute_percentile(Database, self.today)
-        except APIError:
-            logger.error("Failed to publish compute.percentile")
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to publish compute.percentile: {err}")
 
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount

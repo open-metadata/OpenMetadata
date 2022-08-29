@@ -240,9 +240,9 @@ class DatalakeSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -261,9 +261,11 @@ class DatalakeSource(DatabaseServiceSource):
             if key.endswith(".parquet"):
                 return read_parquet_from_gcs(key, bucket_name)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Unexpected exception to get GCS files from [{bucket_name}]: {exc}"
+            )
 
     def get_s3_files(self, key, bucket_name):
         try:
@@ -279,9 +281,11 @@ class DatalakeSource(DatabaseServiceSource):
             if key.endswith(".parquet"):
                 return read_parquet_from_s3(self.client, key, bucket_name)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Unexpected exception to get S3 files from [{bucket_name}]: {exc}"
+            )
 
     def fetch_sample_data(self, df, table: str) -> Optional[TableData]:
         try:
@@ -294,9 +298,9 @@ class DatalakeSource(DatabaseServiceSource):
 
             return TableData(columns=cols, rows=table_rows)
         # Catch any errors and continue the ingestion
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to generate sample data for {table} - {err}")
+            logger.warning(f"Failed to fetch sample data for {table}: {exc}")
         return None
 
     def get_columns(self, df):
@@ -318,9 +322,11 @@ class DatalakeSource(DatabaseServiceSource):
                     parsed_string["name"] = column[:64]
                     parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                     yield Column(**parsed_string)
-                except Exception as err:
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(
+                        f"Unexpected exception parsing column [{column}]: {exc}"
+                    )
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []

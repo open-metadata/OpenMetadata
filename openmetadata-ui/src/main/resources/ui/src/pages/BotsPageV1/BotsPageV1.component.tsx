@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Empty, Row, Space, Switch } from 'antd';
+import { Button, Col, Row, Space, Switch } from 'antd';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import BotListV1 from '../../components/BotListV1/BotListV1.component';
@@ -19,7 +19,7 @@ import { usePermissionProvider } from '../../components/PermissionProvider/Permi
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getCreateUserPath } from '../../constants/constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { checkPemission } from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 
 export const BotsPageV1 = () => {
   const { permissions } = usePermissionProvider();
@@ -34,13 +34,7 @@ export const BotsPageV1 = () => {
     setShowDeleted(checked);
   };
 
-  const viewAllPermission = checkPemission(
-    Operation.ViewAll,
-    ResourceEntity.BOT,
-    permissions
-  );
-
-  const createPermission = checkPemission(
+  const createPermission = checkPermission(
     Operation.Create,
     ResourceEntity.BOT,
     permissions
@@ -48,35 +42,29 @@ export const BotsPageV1 = () => {
 
   return (
     <Row gutter={[16, 16]}>
-      {viewAllPermission ? (
-        <>
-          <Col flex={1} />
-          <Col>
-            <Space size={16}>
-              <Space align="end" size={5}>
-                <Switch
-                  checked={showDeleted}
-                  id="switch-deleted"
-                  size="small"
-                  onClick={handleShowDeleted}
-                />
-                <label htmlFor="switch-deleted">Show deleted</label>
-              </Space>
+      <Col flex={1} />
+      <Col>
+        <Space size={16}>
+          <Space align="end" size={5}>
+            <Switch
+              checked={showDeleted}
+              id="switch-deleted"
+              size="small"
+              onClick={handleShowDeleted}
+            />
+            <label htmlFor="switch-deleted">Show deleted</label>
+          </Space>
 
-              {createPermission && (
-                <Button type="primary" onClick={handleAddBotClick}>
-                  Add Bot
-                </Button>
-              )}
-            </Space>
-          </Col>
-          <Col span={24}>
-            <BotListV1 showDeleted={showDeleted} />
-          </Col>
-        </>
-      ) : (
-        <Empty description="You do not have permission to view data" />
-      )}
+          {createPermission && (
+            <Button type="primary" onClick={handleAddBotClick}>
+              Add Bot
+            </Button>
+          )}
+        </Space>
+      </Col>
+      <Col span={24}>
+        <BotListV1 showDeleted={showDeleted} />
+      </Col>
     </Row>
   );
 };

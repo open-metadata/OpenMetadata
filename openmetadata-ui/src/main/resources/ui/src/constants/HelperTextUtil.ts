@@ -36,3 +36,8 @@ export const ADD_POLICY_TEXT = `
 Policies are assigned to Teams. In OpenMetadata, a Policy is a collection of Rules, which define access based on certain conditions. We support rich SpEL (Spring Expression Language) based conditions. All the operations supported by an Entity are published. Use these fine grained operations to define the conditional Rules for each Policy.
 Create well-defined policies based on conditional rules to build rich access control roles.
         `;
+
+export const NO_PERMISSION_FOR_ACTION =
+  'You do not have permissions to perform this action.';
+
+export const NO_PERMISSION_TO_VIEW = 'You do not have permission to view data';
