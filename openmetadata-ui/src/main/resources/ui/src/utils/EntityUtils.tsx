@@ -14,6 +14,7 @@
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
+import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -41,15 +42,12 @@ import { getTableTags } from './TagsUtils';
 
 export const getEntityTags = (
   type: string,
-  entityDetail: Partial<Table> &
-    Partial<Pipeline> &
-    Partial<Dashboard> &
-    Partial<Topic>
+  entityDetail: Table | Pipeline | Dashboard | Topic
 ): Array<TagLabel | undefined> => {
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
-        ...getTableTags(entityDetail.columns || []),
+        ...getTableTags((entityDetail as Table).columns || []),
         ...(entityDetail.tags || []),
       ];
 
@@ -69,10 +67,7 @@ export const getEntityTags = (
 
 export const getEntityOverview = (
   type: string,
-  entityDetail: Partial<Table> &
-    Partial<Pipeline> &
-    Partial<Dashboard> &
-    Partial<Topic>,
+  entityDetail: EntityData,
   serviceType: string
 ): Array<{
   name: string;
@@ -83,8 +78,8 @@ export const getEntityOverview = (
 }> => {
   switch (type) {
     case EntityType.TABLE: {
-      const { fullyQualifiedName, owner, tags, usageSummary, tableProfile } =
-        entityDetail;
+      const { fullyQualifiedName, owner, tags, usageSummary, profile } =
+        entityDetail as Table;
       const [service, database] = getPartialNameFromTableFQN(
         fullyQualifiedName ?? '',
         [FqnPart.Service, FqnPart.Database],
@@ -141,24 +136,21 @@ export const getEntityOverview = (
         },
         {
           name: 'Columns',
-          value:
-            tableProfile && tableProfile[0]?.columnCount
-              ? tableProfile[0].columnCount
-              : '--',
+          value: profile && profile?.columnCount ? profile.columnCount : '--',
           isLink: false,
         },
         {
           name: 'Rows',
-          value: tableProfile ? (
+          value: profile ? (
             <TableProfilerGraph
               className="tw--mt-5"
               data={
-                tableProfile
-                  ?.map((d) => ({
-                    date: d.profileDate,
-                    value: d.rowCount ?? 0,
-                  }))
-                  .reverse() as Array<{
+                [
+                  {
+                    date: new Date(profile?.timestamp || 0),
+                    value: profile.rowCount ?? 0,
+                  },
+                ] as Array<{
                   date: Date;
                   value: number;
                 }>
@@ -178,7 +170,7 @@ export const getEntityOverview = (
 
     case EntityType.PIPELINE: {
       const { owner, tags, pipelineUrl, service, fullyQualifiedName } =
-        entityDetail;
+        entityDetail as Pipeline;
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -221,7 +213,7 @@ export const getEntityOverview = (
         service,
         fullyQualifiedName,
         displayName,
-      } = entityDetail;
+      } = entityDetail as Dashboard;
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [

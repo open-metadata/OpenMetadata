@@ -12,7 +12,6 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel
@@ -71,6 +70,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt_source import DBTMixin
 from metadata.utils import fqn
 from metadata.utils.dbt_config import get_dbt_details
+from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -111,6 +111,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_service",
                 processor="yield_create_request_database_service",
                 overwrite=False,
+                must_return=True,
             ),
             NodeStage(
                 type_=StorageService,
@@ -120,7 +121,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process="create_dbt_lineage",
+        post_process=["create_dbt_lineage", "yield_view_lineage"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -133,7 +134,7 @@ class DatabaseServiceTopology(ServiceTopology):
             )
         ],
         children=["databaseSchema"],
-        post_process="mark_tables_as_deleted",
+        post_process=["mark_tables_as_deleted"],
     )
     databaseSchema = TopologyNode(
         producer="get_database_schema_names",
@@ -172,13 +173,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
             NodeStage(
-                type_=AddLineageRequest,
-                context="view_lineage",
-                processor="yield_view_lineage",
-                ack_sink=False,
-                nullable=True,
-            ),
-            NodeStage(
                 type_=DataModelLink,
                 processor="yield_datamodel",
                 ack_sink=False,
@@ -193,16 +187,15 @@ class DatabaseServiceTopology(ServiceTopology):
     )
 
 
-@dataclass
 class SQLSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
     """
 
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
+    filtered: List[str] = list()
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
@@ -317,9 +310,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             yield from self.yield_tag(schema_name) or []
 
     @abstractmethod
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         """
         From topology.
         Parses view definition to get lineage information
@@ -346,6 +337,12 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         Also, update the self.inspector value to the current db.
         """
         return
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        """
+        fetch all schema names without any filtering.
+        """
+        yield from self.get_database_schema_names()
 
     def yield_datamodel(
         self, table_name_and_type: Tuple[str, TableType]
@@ -450,12 +447,12 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def delete_database_tables(self, database_fqn: str) -> Iterable[DeleteTable]:
+    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteTable]:
         """
         Returns Deleted tables
         """
         database_state = self.metadata.list_all_entities(
-            entity=Table, params={"database": database_fqn}
+            entity=Table, params={"database": schema_fqn}
         )
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
@@ -469,10 +466,18 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            databse_fqn = fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.config.serviceName,
-                database_name=self.context.database.name.__root__,
+            schema_names_list = (
+                self.get_database_schema_names()
+                if self.source_config.markDeletedTablesFromFilterOnly
+                else self.get_raw_database_schema_names()
             )
-            yield from self.delete_database_tables(databse_fqn)
+            for schema_name in schema_names_list:
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.serviceName,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                )
+
+                yield from self.delete_schema_tables(schema_fqn)

@@ -16,6 +16,7 @@ import {
   faChevronRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Empty, Space } from 'antd';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, {
@@ -25,6 +26,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Link } from 'react-router-dom';
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
@@ -112,10 +114,12 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                       className="tableHead-cell"
                       data-testid="column-name"
                       key={column.name}>
-                      {column.name}
-                      <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
-                        ({lowerCase(column.dataType)})
-                      </span>
+                      <Space direction="vertical" size={0}>
+                        <span>{column.name}</span>
+                        <span className="tw-text-grey-muted">
+                          ({lowerCase(column.dataType)})
+                        </span>
+                      </Space>
                     </th>
                   );
                 })}
@@ -148,7 +152,26 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
           </table>
         ) : (
           <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-            No sample data available
+            <Empty
+              description={
+                <>
+                  <p>No sample data available</p>
+                  <p className="tw-mt-2">
+                    To view Sample Data, run the Profiler Ingestion. Please
+                    refer to this doc to schedule the{' '}
+                    <Link
+                      className="tw-ml-1"
+                      target="_blank"
+                      to={{
+                        pathname:
+                          'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+                      }}>
+                      Profiler Ingestion
+                    </Link>
+                  </p>
+                </>
+              }
+            />
           </div>
         )}
       </div>

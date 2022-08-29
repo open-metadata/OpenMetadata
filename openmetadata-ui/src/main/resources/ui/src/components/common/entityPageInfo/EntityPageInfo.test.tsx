@@ -240,14 +240,6 @@ jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
     );
 });
 
-jest.mock('../DeleteWidget/DeleteWidgetModal', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <p data-testid="delete-entity">DeleteWidgetModal component</p>
-    );
-});
-
 jest.mock('../../tags/tags', () => {
   return jest.fn().mockReturnValue(<p data-testid="tier-tag">Tag</p>);
 });
@@ -262,6 +254,24 @@ jest.mock('./FollowersModal', () => {
 
 jest.mock('../title-breadcrumb/title-breadcrumb.component', () => {
   return jest.fn().mockReturnValue(<p>TitleBreadCrumb</p>);
+});
+
+jest.mock('./AnnouncementCard/AnnouncementCard', () => {
+  return jest.fn().mockReturnValue(<div>AnnouncementCard</div>);
+});
+
+jest.mock('./AnnouncementDrawer/AnnouncementDrawer', () => {
+  return jest.fn().mockReturnValue(<div>AnnouncementDrawer</div>);
+});
+
+jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+  getActiveAnnouncement: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('./ManageButton/ManageButton', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<button data-testid="manage-button">ManageButton</button>);
 });
 
 describe('Test EntityPageInfo component', () => {
@@ -323,6 +333,13 @@ describe('Test EntityPageInfo component', () => {
     const extraInfo = await findByTestId(entityPageInfoContainer, 'extrainfo');
 
     expect(extraInfo).toBeInTheDocument();
+
+    const manageButton = await findByTestId(
+      entityPageInfoContainer,
+      'manage-button'
+    );
+
+    expect(manageButton).toBeInTheDocument();
   });
 
   it('Should call version handler on version button click', async () => {
@@ -626,17 +643,4 @@ describe('Test EntityPageInfo component', () => {
     expect(tag1).not.toBeInTheDocument();
     expect(glossaryTerm1).not.toBeInTheDocument();
   });
-});
-
-it('Should render delete widget modal', async () => {
-  const { getByTestId } = render(
-    <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-    {
-      wrapper: MemoryRouter,
-    }
-  );
-  const tagWrapper = getByTestId('delete-entity');
-  fireEvent.click(tagWrapper);
-
-  expect(tagWrapper).toBeInTheDocument();
 });

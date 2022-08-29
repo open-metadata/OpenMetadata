@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+clusterName: openmetadata
+
 swagger:
   resourcePackage: org.openmetadata.catalog.webservice.resources
 
@@ -169,6 +171,4 @@ airflowConfiguration:
   authProvider: "no-auth"
 
 slackChat:
-  apiToken: "token"
-  botName: "bot"
-  channels: ["support"]
+  slackUrl: "http://localhost:8080"

@@ -50,12 +50,13 @@ jobs:
         # stop relying on apt cache of GitHub runners
         sudo apt-get update
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        librdkafka-dev unixodbc-dev libevent-dev antlr4
+        librdkafka-dev unixodbc-dev libevent-dev
 
     - name: Generate models
       run: |
         python3 -m venv env
         source env/bin/activate
+        sudo make install_antlr_cli
         make install_dev generate
 
     - name: Install open-metadata dependencies
@@ -76,7 +77,7 @@ jobs:
         make coverage_apis
         rm pom.xml
         # fix coverage xml report for github
-        sed -i 's/src\/openmetadata/\/github\/workspace\/openmetadata-airflow-apis\/src\/openmetadata/g' openmetadata-airflow-apis/ci-coverage.xml
+        sed -i 's/openmetadata_managed_apis/\/github\/workspace\/openmetadata-airflow-apis\/openmetadata_managed_apis/g' openmetadata-airflow-apis/ci-coverage.xml
 
     - name: Push Results in PR to Sonar
       uses: sonarsource/sonarcloud-github-action@master

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { Col, Row, Space } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined, startCase } from 'lodash';
-import { ExtraInfo } from 'Models';
+import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -34,6 +35,7 @@ import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import Description from '../../components/common/description/Description';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -43,10 +45,8 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
-import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
@@ -55,7 +55,7 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -64,37 +64,35 @@ import { Database } from '../../generated/entity/data/database';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
+import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
-  getEntityDeleteMessage,
   getEntityMissingError,
   getEntityName,
-  hasEditAccess,
   isEven,
-  pluralize,
 } from '../../utils/CommonUtils';
-import {
-  getEditConnectionPath,
-  getServicesWithTabPath,
-} from '../../utils/RouterUtils';
+import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
+  getDeleteEntityMessage,
   getServiceCategoryFromType,
+  getServiceRouteFromServiceType,
   servicePageTabs,
   serviceTypeLogo,
   setServiceSchemaCount,
   setServiceTableCount,
 } from '../../utils/ServiceUtils';
+import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-type Data = Database & Topic & Dashboard;
+export type ServicePageData = Database | Topic | Dashboard;
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory, tab } =
@@ -102,17 +100,17 @@ const ServicePage: FunctionComponent = () => {
   const history = useHistory();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const [serviceName, setServiceName] = useState(
-    serviceCategory || getServiceCategoryFromType(serviceType)
+  const [serviceName, setServiceName] = useState<ServiceTypes>(
+    (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
   );
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [serviceDetails, setServiceDetails] = useState<ServiceDataObj>();
-  const [data, setData] = useState<Array<Data>>([]);
-  const [isLoading, setIsloading] = useState(true);
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>();
+  const [data, setData] = useState<Array<ServicePageData>>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState(getCurrentServiceTab(tab));
@@ -129,6 +127,8 @@ const ServicePage: FunctionComponent = () => {
 
   const [schemaCount, setSchemaCount] = useState<number>(0);
   const [tableCount, setTableCount] = useState<number>(0);
+
+  const [deleteWidgetVisible, setDeleteWidgetVisible] = useState(false);
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -184,17 +184,6 @@ const ServicePage: FunctionComponent = () => {
       isHidden: !isAdminUser && !isAuthDisabled,
       position: 3,
     },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: false,
-      position: 4,
-    },
   ];
 
   const extraInfo: Array<ExtraInfo> = [
@@ -236,8 +225,8 @@ const ServicePage: FunctionComponent = () => {
   const getAirflowEndpoint = () => {
     fetchAirflowConfig()
       .then((res) => {
-        if (res.data?.apiEndpoint) {
-          setAirflowEndpoint(res.data.apiEndpoint);
+        if (res.apiEndpoint) {
+          setAirflowEndpoint(res.apiEndpoint);
         } else {
           setAirflowEndpoint('');
 
@@ -253,12 +242,12 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getAllIngestionWorkflows = (paging?: string) => {
-    setIsloading(true);
+    setIsLoading(true);
     getIngestionPipelines(['owner', 'pipelineStatuses'], serviceFQN, paging)
       .then((res) => {
-        if (res.data.data) {
-          setIngestions(res.data.data);
-          setIngestionPaging(res.data.paging);
+        if (res.data) {
+          setIngestions(res.data);
+          setIngestionPaging(res.paging);
         } else {
           setIngestionPaging({} as Paging);
           showErrorToast(
@@ -273,7 +262,7 @@ const ServicePage: FunctionComponent = () => {
         );
       })
       .finally(() => {
-        setIsloading(false);
+        setIsLoading(false);
         if (!airflowEndpoint) {
           getAirflowEndpoint();
         }
@@ -304,19 +293,19 @@ const ServicePage: FunctionComponent = () => {
           );
           reject();
         })
-        .finally(() => setIsloading(false));
+        .finally(() => setIsLoading(false));
     });
   };
 
   const deployIngestion = (id: string) => {
     return new Promise<void>((resolve, reject) => {
       return deployIngestionPipelineById(id)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           if (res.data) {
             resolve();
             setTimeout(() => {
               getAllIngestionWorkflows();
-              setIsloading(false);
+              setIsLoading(false);
             }, 500);
           } else {
             throw jsonData['api-error-messages']['update-ingestion-error'];
@@ -334,7 +323,7 @@ const ServicePage: FunctionComponent = () => {
 
   const handleEnableDisableIngestion = (id: string) => {
     enableDisableIngestionPipelineById(id)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
           getAllIngestionWorkflows();
         } else {
@@ -366,108 +355,108 @@ const ServicePage: FunctionComponent = () => {
           );
           reject();
         });
-    }).finally(() => setIsloading(false));
+    }).finally(() => setIsLoading(false));
   };
 
   const fetchDatabases = (paging?: string) => {
-    setIsloading(true);
-    getDatabases(serviceFQN, paging, ['owner', 'usageSummary'])
-      .then((res: AxiosResponse) => {
-        if (res.data.data) {
-          setData(res.data.data);
-          setServiceSchemaCount(res.data.data, setSchemaCount);
-          setServiceTableCount(res.data.data, setTableCount);
-          setPaging(res.data.paging);
-          setInstanceCount(res.data.paging.total);
-          setIsloading(false);
+    setIsLoading(true);
+    getDatabases(serviceFQN, ['owner', 'usageSummary'], paging)
+      .then((res) => {
+        if (res) {
+          setData(res.data as Database[]);
+          setServiceSchemaCount(res.data, setSchemaCount);
+          setServiceTableCount(res.data, setTableCount);
+          setPaging(res.paging);
+          setInstanceCount(res.paging.total);
+          setIsLoading(false);
         } else {
           setData([]);
           setPaging(pagingObject);
-          setIsloading(false);
+          setIsLoading(false);
         }
       })
       .catch(() => {
-        setIsloading(false);
+        setIsLoading(false);
       });
   };
 
   const fetchTopics = (paging?: string) => {
-    setIsloading(true);
-    getTopics(serviceFQN, paging, ['owner', 'tags'])
-      .then((res: AxiosResponse) => {
-        if (res.data.data) {
-          setData(res.data.data);
-          setPaging(res.data.paging);
-          setInstanceCount(res.data.paging.total);
-          setIsloading(false);
+    setIsLoading(true);
+    getTopics(serviceFQN, ['owner', 'tags'], paging)
+      .then((res) => {
+        if (res.data) {
+          setData(res.data);
+          setPaging(res.paging);
+          setInstanceCount(res.paging.total);
+          setIsLoading(false);
         } else {
           setData([]);
           setPaging(pagingObject);
-          setIsloading(false);
+          setIsLoading(false);
         }
       })
       .catch(() => {
-        setIsloading(false);
+        setIsLoading(false);
       });
   };
 
   const fetchDashboards = (paging?: string) => {
-    setIsloading(true);
-    getDashboards(serviceFQN, paging, ['owner', 'usageSummary', 'tags'])
-      .then((res: AxiosResponse) => {
-        if (res.data.data) {
-          setData(res.data.data);
-          setPaging(res.data.paging);
-          setInstanceCount(res.data.paging.total);
-          setIsloading(false);
+    setIsLoading(true);
+    getDashboards(serviceFQN, ['owner', 'usageSummary', 'tags'], paging)
+      .then((res) => {
+        if (res.data) {
+          setData(res.data);
+          setPaging(res.paging);
+          setInstanceCount(res.paging.total);
+          setIsLoading(false);
         } else {
           setData([]);
           setPaging(pagingObject);
-          setIsloading(false);
+          setIsLoading(false);
         }
       })
       .catch(() => {
-        setIsloading(false);
+        setIsLoading(false);
       });
   };
 
   const fetchPipeLines = (paging?: string) => {
-    setIsloading(true);
-    getPipelines(serviceFQN, paging, ['owner', 'tags'])
-      .then((res: AxiosResponse) => {
-        if (res.data.data) {
-          setData(res.data.data);
-          setPaging(res.data.paging);
-          setInstanceCount(res.data.paging.total);
-          setIsloading(false);
+    setIsLoading(true);
+    getPipelines(serviceFQN, ['owner', 'tags'], paging)
+      .then((res) => {
+        if (res.data) {
+          setData(res.data);
+          setPaging(res.paging);
+          setInstanceCount(res.paging.total);
+          setIsLoading(false);
         } else {
           setData([]);
           setPaging(pagingObject);
-          setIsloading(false);
+          setIsLoading(false);
         }
       })
       .catch(() => {
-        setIsloading(false);
+        setIsLoading(false);
       });
   };
 
   const fetchMlModal = (paging = '') => {
-    setIsloading(true);
+    setIsLoading(true);
     getMlmodels(serviceFQN, paging, ['owner', 'tags'])
-      .then((res: AxiosResponse) => {
-        if (res.data.data) {
-          setData(res.data.data);
-          setPaging(res.data.paging);
-          setInstanceCount(res.data.paging.total);
-          setIsloading(false);
+      .then((res) => {
+        if (res.data) {
+          setData(res.data);
+          setPaging(res.paging);
+          setInstanceCount(res.paging.total);
+          setIsLoading(false);
         } else {
           setData([]);
           setPaging(pagingObject);
-          setIsloading(false);
+          setIsLoading(false);
         }
       })
       .catch(() => {
-        setIsloading(false);
+        setIsLoading(false);
       });
   };
 
@@ -686,62 +675,34 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getDeleteEntityMessage = () => {
-    const service = serviceName?.slice(0, -1);
-
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          `${pluralize(instanceCount, 'Database')}, ${pluralize(
-            schemaCount,
-            'Schema'
-          )} and ${pluralize(tableCount, 'Table')}`
-        );
-
-      case ServiceCategory.MESSAGING_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          pluralize(instanceCount, 'Topic')
-        );
-
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          pluralize(instanceCount, 'Dashboard')
-        );
-
-      case ServiceCategory.PIPELINE_SERVICES:
-        return getEntityDeleteMessage(
-          service || 'Service',
-          pluralize(instanceCount, 'Pipeline')
-        );
-
-      default:
-        return;
-    }
-  };
-
   useEffect(() => {
-    setServiceName(serviceCategory || getServiceCategoryFromType(serviceType));
+    setServiceName(
+      (serviceCategory as ServiceTypes) ||
+        getServiceCategoryFromType(serviceType)
+    );
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    setIsloading(true);
-    getServiceByFQN(serviceName, serviceFQN, ['owner'])
-      .then((resService: AxiosResponse) => {
-        if (resService.data) {
-          const { description, serviceType } = resService.data;
-          setServiceDetails(resService.data);
-          setConnectionDetails(resService.data?.connection?.config);
-          setDescription(description);
+    setIsLoading(true);
+    getServiceByFQN(serviceName, serviceFQN, 'owner')
+      .then((resService) => {
+        if (resService) {
+          const { description, serviceType } = resService;
+          setServiceDetails(resService);
+          setConnectionDetails(
+            resService.connection?.config as DashboardConnection
+          );
+          setDescription(description ?? '');
           setSlashedTableName([
             {
               name: startCase(serviceName || ''),
-              url: getServicesWithTabPath(serviceName || ''),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(serviceName)
+              ),
             },
             {
-              name: getEntityName(resService.data),
+              name: getEntityName(resService),
               url: '',
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               activeTitle: true,
@@ -762,7 +723,7 @@ const ServicePage: FunctionComponent = () => {
           );
         }
       })
-      .finally(() => setIsloading(false));
+      .finally(() => setIsLoading(false));
   }, [serviceFQN, serviceName]);
 
   useEffect(() => {
@@ -797,12 +758,13 @@ const ServicePage: FunctionComponent = () => {
         serviceType: serviceDetails.serviceType,
         description: updatedHTML,
         owner: serviceDetails.owner,
-      };
+        // TODO: Fix type issue below
+      } as unknown as ServiceOption;
 
       updateService(serviceName, id, updatedServiceDetails)
-        .then((res: AxiosResponse) => {
+        .then((res) => {
           setDescription(updatedHTML);
-          setServiceDetails(res.data);
+          setServiceDetails(res);
         })
         .catch((error: AxiosError) => {
           showErrorToast(
@@ -816,20 +778,21 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
+  const handleUpdateOwner = (owner: ServicesType['owner']) => {
     const updatedData = {
       connection: serviceDetails?.connection,
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
       owner,
       description: serviceDetails?.description,
-    };
+      // TODO: fix type issues below
+    } as unknown as ServiceOption;
 
     return new Promise<void>((resolve, reject) => {
-      updateService(serviceName, serviceDetails?.id, updatedData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setServiceDetails(res.data);
+      updateService(serviceName, serviceDetails?.id ?? '', updatedData)
+        .then((res) => {
+          if (res) {
+            setServiceDetails(res);
 
             return resolve();
           } else {
@@ -894,7 +857,7 @@ const ServicePage: FunctionComponent = () => {
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as ServiceDataObj}
+            serviceDetails={serviceDetails as ServicesType}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}
@@ -919,8 +882,12 @@ const ServicePage: FunctionComponent = () => {
     goToEditConnection();
   };
 
+  const handleDelete = () => {
+    setDeleteWidgetVisible(true);
+  };
+
   return (
-    <>
+    <Row className="tw-my-4" gutter={[16, 16]}>
       {isLoading ? (
         <Loader />
       ) : isError ? (
@@ -928,13 +895,47 @@ const ServicePage: FunctionComponent = () => {
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <PageContainer>
+        <Col span={24}>
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="service-page">
-            <TitleBreadcrumb titleLinks={slashedTableName} />
+            <Space
+              align="center"
+              className="tw-justify-between"
+              style={{ width: '100%' }}>
+              <TitleBreadcrumb titleLinks={slashedTableName} />
+              <Button
+                data-testid="service-delete"
+                size="small"
+                theme="primary"
+                variant="outlined"
+                onClick={handleDelete}>
+                <IcDeleteColored
+                  className="tw-mr-1.5"
+                  height={14}
+                  viewBox="0 0 24 24"
+                  width={14}
+                />
+                Delete
+              </Button>
+              <DeleteWidgetModal
+                isRecursiveDelete
+                allowSoftDelete={false}
+                deleteMessage={getDeleteEntityMessage(
+                  serviceName || '',
+                  instanceCount,
+                  schemaCount,
+                  tableCount
+                )}
+                entityId={serviceDetails?.id}
+                entityName={serviceDetails?.name || ''}
+                entityType={serviceName?.slice(0, -1)}
+                visible={deleteWidgetVisible}
+                onCancel={() => setDeleteWidgetVisible(false)}
+              />
+            </Space>
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
               {extraInfo.map((info, index) => (
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
@@ -952,10 +953,9 @@ const ServicePage: FunctionComponent = () => {
             </div>
 
             <div
-              className="tw-my-2 tw-ml-2"
+              className="tw-my-2 tw--ml-5"
               data-testid="description-container">
               <Description
-                blurWithBodyBG
                 description={description || ''}
                 entityFqn={serviceFQN}
                 entityName={serviceFQN}
@@ -1021,7 +1021,7 @@ const ServicePage: FunctionComponent = () => {
                                 <td className="tableBody-cell">
                                   <p>{dataObj?.owner?.name || '--'}</p>
                                 </td>
-                                {getOptionalTableCells(dataObj)}
+                                {getOptionalTableCells(dataObj as Database)}
                               </tr>
                             ))
                           ) : (
@@ -1075,33 +1075,12 @@ const ServicePage: FunctionComponent = () => {
                     />
                   </>
                 )}
-
-                {activeTab === 4 && (
-                  <div className="tw-bg-white tw-h-full tw-pt-4 tw-pb-6">
-                    <ManageTabComponent
-                      allowDelete
-                      hideTier
-                      isRecursiveDelete
-                      currentUser={serviceDetails?.owner}
-                      deletEntityMessage={getDeleteEntityMessage()}
-                      entityId={serviceDetails?.id}
-                      entityName={serviceDetails?.name}
-                      entityType={serviceCategory.slice(0, -1)}
-                      hasEditAccess={hasEditAccess(
-                        serviceDetails?.owner?.type || '',
-                        serviceDetails?.owner?.id || ''
-                      )}
-                      manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.SERVICE}
-                      onSave={handleUpdateOwner}
-                    />
-                  </div>
-                )}
               </div>
             </div>
           </div>
-        </PageContainer>
+        </Col>
       )}
-    </>
+    </Row>
   );
 };
 

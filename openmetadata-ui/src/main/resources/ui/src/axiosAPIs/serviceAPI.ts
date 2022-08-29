@@ -13,19 +13,24 @@
 
 import { AxiosResponse } from 'axios';
 import { isNil } from 'lodash';
-import { ServiceOption } from 'Models';
-import { ConfigData } from '../interface/service.interface';
+import { ServiceData, ServiceOption, ServicesData } from 'Models';
+import {
+  ConfigData,
+  ServiceResponse,
+  ServicesType,
+} from '../interface/service.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getServiceDetails: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get('/services/');
+export const getServiceDetails = async (): Promise<
+  AxiosResponse<ServiceData[]>
+> => {
+  const response = await APIClient.get('/services/');
+
+  return response.data;
 };
 
-export const getServices: Function = (
-  serviceName: string,
-  limit?: number
-): Promise<AxiosResponse> => {
+export const getServices = async (serviceName: string, limit?: number) => {
   let url = `/services/${serviceName}`;
   const searchParams = new URLSearchParams();
 
@@ -36,42 +41,57 @@ export const getServices: Function = (
   const strSearchParams = searchParams.toString();
   url += strSearchParams ? `?${strSearchParams}` : '';
 
-  return APIClient.get(url);
+  const response = await APIClient.get<ServiceResponse>(url);
+
+  return response.data;
 };
 
-export const getServiceById: Function = (
-  serviceName: string,
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/${serviceName}/${id}`);
+export const getServiceById = async (serviceName: string, id: string) => {
+  const response = await APIClient.get<ServicesData>(
+    `/services/${serviceName}/${id}`
+  );
+
+  return response.data;
 };
 
-export const getServiceByFQN: Function = (
+export const getServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields = ''
-): Promise<AxiosResponse> => {
+  arrQueryFields: string | string[] = ''
+) => {
   const url = getURLWithQueryFields(
     `/services/${serviceCat}/name/${fqn}`,
     arrQueryFields
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<ServicesType>(url);
+
+  return response.data;
 };
 
-export const postService: Function = (
+export const postService = async (
   serviceCat: string,
   options: ServiceOption
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/services/${serviceCat}`, options);
+) => {
+  const response = await APIClient.post<
+    ServiceOption,
+    AxiosResponse<ServiceData>
+  >(`/services/${serviceCat}`, options);
+
+  return response.data;
 };
 
-export const updateService: Function = (
+export const updateService = async (
   serviceCat: string,
   _id: string,
   options: ServiceOption
-): Promise<AxiosResponse> => {
-  return APIClient.put(`/services/${serviceCat}`, options);
+) => {
+  const response = await APIClient.put<
+    ServiceOption,
+    AxiosResponse<ServicesType>
+  >(`/services/${serviceCat}`, options);
+
+  return response.data;
 };
 
 export const deleteService: Function = (

@@ -30,11 +30,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import search_table_entities
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
@@ -112,7 +112,7 @@ class RedashSource(DashboardServiceSource):
         self.status.scanned(dashboard_details["name"])
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict
+        self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -133,7 +133,7 @@ class RedashSource(DashboardServiceSource):
                 table_entities = search_table_entities(
                     metadata=self.metadata,
                     database=None,
-                    service_name=self.source_config.dbServiceName,
+                    service_name=db_service_name,
                     database_schema=database_schema,
                     table=table_name,
                 )

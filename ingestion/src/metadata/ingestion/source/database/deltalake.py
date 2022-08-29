@@ -29,11 +29,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
-from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -205,8 +205,9 @@ class DeltalakeSource(DatabaseServiceSource):
                     self.context.table_description = table.description
                     yield table_name, TableType.View
 
-            except Exception as err:
-                logger.error(err)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception for table [{table}]: {exc}")
                 self.status.warnings.append(
                     "{}.{}".format(self.config.serviceName, table.name)
                 )
@@ -244,9 +245,9 @@ class DeltalakeSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -260,8 +261,11 @@ class DeltalakeSource(DatabaseServiceSource):
     def _fetch_view_schema(self, view_name: str) -> Optional[Dict]:
         try:
             describe_output = self.spark.sql(f"describe extended {view_name}").collect()
-        except Exception as e:
-            logger.error(e)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unexpected exception to fetch view schema [{view_name}]: {exc}"
+            )
             return None
         view_detail = {}
         col_details = False
@@ -335,8 +339,11 @@ class DeltalakeSource(DatabaseServiceSource):
             raw_columns = self.spark.sql(f"describe {table_name}").collect()
             for field in self.spark.table(f"{table_name}").schema:
                 field_dict[field.name] = field
-        except (AnalysisException, ParseException) as e:
-            logger.error(e)
+        except (AnalysisException, ParseException) as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unexpected exception getting columns for [{table_name}]: {exc}"
+            )
             return []
         parsed_columns: [Column] = []
         partition_cols = False
@@ -351,10 +358,8 @@ class DeltalakeSource(DatabaseServiceSource):
 
         return parsed_columns
 
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        pass
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass

@@ -37,13 +37,13 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
     TableLocationLink,
 )
 from metadata.utils import fqn
-from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -120,9 +120,11 @@ class GlueSource(DatabaseServiceSource):
                     if schema["CatalogId"] in database_names:
                         continue
                     database_names.append(schema["CatalogId"])
-                except Exception as err:
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(
+                        f"Unexpected exception to get database name [{schema}]: {exc}"
+                    )
                     self.status.failures.append(
                         "{}.{}".format(self.config.serviceName, schema["CatalogId"])
                     )
@@ -155,9 +157,11 @@ class GlueSource(DatabaseServiceSource):
                         self.status.filter(schema["Name"], "Schema pattern not allowed")
                         continue
                     yield schema["Name"]
-                except Exception as err:
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(
+                        f"Unexpected exception to get database schema [{schema}]: {exc}"
+                    )
                     self.status.failures.append(
                         "{}.{}".format(self.config.serviceName, schema["Name"])
                     )
@@ -222,11 +226,11 @@ class GlueSource(DatabaseServiceSource):
                 table_name = self.standardize_table_name(schema_name, table_name)
                 self.context.table_data = table
                 yield table_name, table_type
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Unexpected exception to get table [{table}]: {exc}")
                 self.status.failures.append(
-                    "{}.{}".format(self.config.serviceName, table_name)
+                    "{}.{}".format(self.config.serviceName, table.get("Name"))
                 )
 
     def yield_table(
@@ -255,9 +259,9 @@ class GlueSource(DatabaseServiceSource):
             )
             yield table_request
             self.register_record(table_request=table_request)
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -285,9 +289,11 @@ class GlueSource(DatabaseServiceSource):
                 ),
             )
             yield location_request
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(
+                f"Unexpected exception to yield location for table [{table_name}]: {exc}"
+            )
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -341,10 +347,8 @@ class GlueSource(DatabaseServiceSource):
     def standardize_table_name(self, schema: str, table: str) -> str:
         return table[:128]
 
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        pass
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass

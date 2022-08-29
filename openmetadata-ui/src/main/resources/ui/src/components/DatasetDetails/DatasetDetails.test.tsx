@@ -48,6 +48,12 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
+jest.mock('antd', () => ({
+  Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -125,7 +131,7 @@ const DatasetDetailsProps = {
   settingsUpdateHandler: jest.fn(),
   slashedTableName: [],
   tableDetails: {} as Table,
-  tableProfile: [],
+  tableProfile: {} as Table['profile'],
   tableTags: [],
   tableType: TableType.Regular,
   tier: {} as TagLabel,
@@ -166,15 +172,12 @@ const DatasetDetailsProps = {
   handleExtentionUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
 };
-jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
-});
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
 
-jest.mock('../TableProfiler/TableProfiler.component', () => {
+jest.mock('../TableProfiler/TableProfilerV1', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="TableProfiler">TableProfiler</p>);
@@ -212,6 +215,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('xyz'),
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
+  getEntityId: jest.fn().mockReturnValue('id-entity-test'),
 }));
 
 const mockObserve = jest.fn();
@@ -233,13 +237,12 @@ describe('Test MyDataDetailsPage page', () => {
     const description = await findByText(container, /Description/i);
     const tabs = await findByTestId(container, 'tabs');
     const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
     const sampleDataTab = await findByTestId(tabs, 'Sample Data');
     const queriesTab = await findByTestId(tabs, 'Queries');
     const profilerTab = await findByTestId(tabs, 'Profiler');
     const dataQualityTab = await findByTestId(tabs, 'Data Quality');
     const lineageTab = await findByTestId(tabs, 'Lineage');
-    const manageTab = await findByTestId(tabs, 'Manage');
     const dbtTab = queryByTestId(tabs, 'DBT');
 
     expect(relatedTables).toBeInTheDocument();
@@ -253,7 +256,6 @@ describe('Test MyDataDetailsPage page', () => {
     expect(profilerTab).toBeInTheDocument();
     expect(dataQualityTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
-    expect(manageTab).toBeInTheDocument();
     expect(dbtTab).not.toBeInTheDocument();
   });
 
@@ -336,18 +338,6 @@ describe('Test MyDataDetailsPage page', () => {
     const lineage = await findByTestId(container, 'lineage');
 
     expect(lineage).toBeInTheDocument();
-  });
-
-  it('Check if active tab is manage', async () => {
-    const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={10} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const manage = await findByTestId(container, 'manage');
-
-    expect(manage).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {

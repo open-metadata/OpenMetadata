@@ -104,6 +104,12 @@ mlruns/
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.tokens
+.antlr
 
 # SQLAlchemy tests
 file:cachedb
+
+# Snyk report
+security-report
+.dccache
+scan-requirements.txt

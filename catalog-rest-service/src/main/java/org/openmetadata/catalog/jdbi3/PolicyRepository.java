@@ -17,19 +17,27 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.POLICY;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
+import static org.openmetadata.catalog.util.EntityUtil.ruleMatch;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.security.policyevaluator.CompiledRule;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -63,7 +71,21 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public Policy setFields(Policy policy, Fields fields) throws IOException {
     policy.setOwner(fields.contains(FIELD_OWNER) ? getOwner(policy) : null);
     policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
+    policy.setTeams(fields.contains("teams") ? getTeams(policy) : null);
+    policy.setRoles(fields.contains("roles") ? getRoles(policy) : null);
     return policy;
+  }
+
+  /* Get all the teams that use this policy */
+  private List<EntityReference> getTeams(Policy policy) throws IOException {
+    List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
+    return EntityUtil.populateEntityReferences(records, Entity.TEAM);
+  }
+
+  /* Get all the roles that use this policy */
+  private List<EntityReference> getRoles(Policy policy) throws IOException {
+    List<EntityRelationshipRecord> records = findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
+    return EntityUtil.populateEntityReferences(records, Entity.ROLE);
   }
 
   /** Generate EntityReference for a given Policy's Location. * */
@@ -85,8 +107,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     setFullyQualifiedName(policy);
     validateRules(policy);
     policy.setLocation(getLocationReference(policy));
-    // Check if owner is valid and set the relationship
-    populateOwner(policy.getOwner());
   }
 
   @Override
@@ -122,7 +142,20 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
       return;
     }
-    EntityUtil.resolveRules(policy.getRules()); // Resolve rules performs JSON schema constraint based validation
+
+    // Resolve JSON blobs into Rule object and perform schema based validation
+    List<Rule> rules = EntityUtil.resolveRules(policy.getRules());
+    if (listOrEmpty(rules).isEmpty()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_RULES_IN_POLICY);
+    }
+
+    // Validate all the expressions in the rule
+    for (Rule rule : rules) {
+      CompiledRule.validateExpression(rule.getCondition(), Boolean.class);
+      rule.getResources().sort(String.CASE_INSENSITIVE_ORDER);
+      rule.getOperations().sort(Comparator.comparing(MetadataOperation::value));
+    }
+    rules.sort(Comparator.comparing(Rule::getName));
   }
 
   public List<Policy> getAccessControlPolicies() throws IOException {
@@ -160,21 +193,15 @@ public class PolicyRepository extends EntityRepository<Policy> {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(POLICY, "policyType"));
       }
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
-      recordChange("rules", original.getRules(), updated.getRules());
       updateLocation(original, updated);
+      updateRules(original.getRules(), updated.getRules());
     }
 
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
       // remove original Policy --> Location relationship if exists.
       if (origPolicy.getLocation() != null && origPolicy.getLocation().getId() != null) {
-        daoCollection
-            .relationshipDAO()
-            .delete(
-                origPolicy.getId().toString(),
-                POLICY,
-                origPolicy.getLocation().getId().toString(),
-                Entity.LOCATION,
-                Relationship.APPLIED_TO.ordinal());
+        deleteRelationship(
+            origPolicy.getId(), POLICY, origPolicy.getLocation().getId(), Entity.LOCATION, Relationship.APPLIED_TO);
       }
       // insert updated Policy --> Location relationship.
       if (updatedPolicy.getLocation() != null && updatedPolicy.getLocation().getId() != null) {
@@ -186,6 +213,14 @@ public class PolicyRepository extends EntityRepository<Policy> {
             Relationship.APPLIED_TO);
       }
       recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
+    }
+
+    private void updateRules(List<Object> origRules, List<Object> updatedRules) throws IOException {
+      // Record change description
+      List<Rule> deletedRules = new ArrayList<>();
+      List<Rule> addedRules = new ArrayList<>();
+      recordListChange(
+          "rules", resolveRules(origRules), resolveRules(updatedRules), addedRules, deletedRules, ruleMatch);
     }
   }
 }

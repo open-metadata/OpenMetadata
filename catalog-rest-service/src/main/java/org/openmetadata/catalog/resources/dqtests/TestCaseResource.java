@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -40,8 +41,10 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TestCaseRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.tests.TestCase;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
@@ -56,7 +59,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/testCase";
 
-  static final String FIELDS = "owner,testSuite,entity,testDefinition";
+  static final String FIELDS = "owner,testSuite,entityLink,testDefinition";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -64,7 +67,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     Entity.withHref(uriInfo, test.getOwner());
     Entity.withHref(uriInfo, test.getTestSuite());
     Entity.withHref(uriInfo, test.getTestDefinition());
-    Entity.withHref(uriInfo, test.getEntity());
     return test;
   }
 
@@ -80,6 +82,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
 
     public TestCaseList(List<TestCase> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class TestCaseResultList extends ResultList<TestCaseResult> {
+    @SuppressWarnings("unused")
+    public TestCaseResultList() {
+      /* Required for serde */
+    }
+
+    public TestCaseResultList(List<TestCaseResult> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -122,15 +135,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Returns list of tests after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(description = "Returns list of tests filtered by the entity id", schema = @Schema(type = "string"))
-          @QueryParam("entityId")
-          String entityId,
-      @Parameter(description = "Returns list of tests filtered by the entity FQN", schema = @Schema(type = "string"))
-          @QueryParam("entityFqn")
-          String entityFqn,
+      @Parameter(
+              description = "Return list of tests by entity link",
+              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
+          @QueryParam("entityLink")
+          String entityLink,
       @Parameter(description = "Returns list of tests filtered by the testSuite id", schema = @Schema(type = "string"))
           @QueryParam("testSuiteId")
           String testSuiteId,
+      @Parameter(description = "Include all the tests at the entity level", schema = @Schema(type = "boolean"))
+          @QueryParam("includeAllTests")
+          @DefaultValue("false")
+          Boolean includeAllTests,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -140,9 +156,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     ListFilter filter =
         new ListFilter(include)
-            .addQueryParam("entityId", entityId)
-            .addQueryParam("entityFqn", entityFqn)
-            .addQueryParam("testSuiteId", testSuiteId);
+            .addQueryParam("testSuiteId", testSuiteId)
+            .addQueryParam("includeAllTests", includeAllTests.toString());
+    if (entityLink != null) {
+      MessageParser.EntityLink entityLinkParsed = MessageParser.EntityLink.parse(entityLink);
+      filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -182,7 +201,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       })
   public TestCase get(
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -251,7 +270,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public TestCase getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Test Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Test version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -293,7 +312,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -344,18 +363,129 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private TestCase getTestCase(CreateTestCase create, String user) {
+  @PUT
+  @Path("/{fqn}/testCaseResult")
+  @Operation(
+      operationId = "addTestCaseResult",
+      summary = "Add test case result data",
+      tags = "TestCases",
+      description = "Add test case result data to the testCase.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the TestCase. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+      })
+  public Response addTestCaseResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Valid TestCaseResult testCaseResult)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    return dao.addTestCaseResult(fqn, testCaseResult).toResponse();
+  }
+
+  @GET
+  @Path("/{fqn}/testCaseResult")
+  @Operation(
+      operationId = "listTestCaseResults",
+      summary = "List of testCase results",
+      tags = "TestCases",
+      description =
+          "Get a list of all the test case results for the given testCase id, optionally filtered by  `startTs` and `endTs` of the profile. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of testCase results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseResource.TestCaseResultList.class)))
+      })
+  public ResultList<TestCaseResult> listTestCaseResults(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(
+              description = "Filter testCase results after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter testCase results before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number of testCase results returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of testCase results before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of testCase results after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+
+    ListFilter filter =
+        new ListFilter(Include.ALL)
+            .addQueryParam("entityFQN", fqn)
+            .addQueryParam("extension", TestCaseRepository.TESTCASE_RESULT_EXTENSION);
+
+    if (startTs != null) {
+      filter.addQueryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("endTs", String.valueOf(endTs));
+    }
+    return dao.getTestCaseResults(filter, before, after, limitParam);
+  }
+
+  @DELETE
+  @Path("/{fqn}/testCaseResult/{timestamp}")
+  @Operation(
+      operationId = "DeleteTestCaseResult",
+      summary = "Delete testCase result.",
+      tags = "tables",
+      description = "Delete testCase result for a testCase.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the TestCaseResult",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class)))
+      })
+  public Response deleteTestCaseResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
+          @PathParam("timestamp")
+          Long timestamp)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    return dao.deleteTestCaseResult(fqn, timestamp).toResponse();
+  }
+
+  private TestCase getTestCase(CreateTestCase create, String user) throws IOException {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(create.getEntityLink());
     return copy(new TestCase(), create, user)
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withParameterValues(create.getParameterValues())
-        .withEntity(create.getEntity())
+        .withEntityLink(create.getEntityLink())
+        .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
         .withTestSuite(create.getTestSuite())
         .withTestDefinition(create.getTestDefinition());
   }

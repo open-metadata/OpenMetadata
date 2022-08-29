@@ -14,6 +14,11 @@
     }
   },
   "properties": {
+    "clusterName": {
+      "description": "Cluster name to differentiate OpenMetadata Server instance",
+      "type": "string",
+      "default": "openmetadata"
+    },
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/openmetadataType",
@@ -39,6 +44,7 @@
       "default": "no-auth"
     },
     "securityConfig": {
+      "mask": true,
       "description": "OpenMetadata Client security configuration.",
       "oneOf": [
         {
@@ -62,10 +68,7 @@
       ]
     },
     "secretsManagerProvider": {
-      "description": "OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager providers as the ones configured on the OpenMetadata server.",
-      "type": "string",
-      "enum": ["local", "aws"],
-      "default": "local"
+      "$ref": "./secretsManagerProvider.json"
     },
     "secretsManagerCredentials": {
       "description": "OpenMetadata Secrets Manager Client credentials",

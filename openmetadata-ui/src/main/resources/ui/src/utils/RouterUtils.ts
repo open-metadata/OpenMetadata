@@ -14,18 +14,27 @@
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   IN_PAGE_SEARCH_ROUTES,
+  PLACEHOLDER_DASHBOARD_TYPE,
+  PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
+  PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
   PLACEHOLDER_ROUTE_SEARCHQUERY,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
+  PLACEHOLDER_TAG_NAME,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/globalSettings.constants';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -135,13 +144,6 @@ export const getExplorePathWithInitFilters = (
     : path;
 };
 
-export const getServicesWithTabPath = (serviceCat: string) => {
-  let path = ROUTES.SERVICES_WITH_TAB;
-  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat);
-
-  return path;
-};
-
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
@@ -194,8 +196,17 @@ export const getAddGlossaryTermsPath = (
   return path;
 };
 
-export const getSettingPath = (category?: string, tab?: string) => {
-  let path = tab && category ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
+export const getSettingPath = (
+  category?: string,
+  tab?: string,
+  withFqn = false
+) => {
+  let path = '';
+  if (withFqn) {
+    path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  } else {
+    path = tab && category ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
+  }
 
   if (tab && category) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -211,6 +222,124 @@ export const getSettingCategoryPath = (category: string) => {
   if (category) {
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
+
+  return path;
+};
+
+export const getTeamsWithFqnPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getRoleWithFqnPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.ACCESS)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.ROLES)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getPolicyWithFqnPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.ACCESS)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.POLICIES)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getPath = (pathName: string) => {
+  switch (pathName) {
+    case GlobalSettingOptions.TEAMS:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.TEAMS
+      );
+
+    case GlobalSettingOptions.USERS:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.USERS
+      );
+
+    case GlobalSettingOptions.ROLES:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.ROLES
+      );
+
+    case GlobalSettingOptions.POLICIES:
+      return getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.POLICIES
+      );
+
+    default:
+      return getSettingPath();
+  }
+};
+
+export const getProfilerDashboardWithFqnPath = (
+  dashboardType: string,
+  entityTypeFQN: string
+) => {
+  let path = ROUTES.PROFILER_DASHBOARD;
+
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getAddPolicyRulePath = (fqn: string) => {
+  let path = ROUTES.ADD_POLICY_RULE;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
+  let path = ROUTES.EDIT_POLICY_RULE;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_RULE_NAME, ruleName);
+
+  return path;
+};
+
+export const getTagPath = (fqn?: string) => {
+  let path = ROUTES.TAGS;
+  if (fqn) {
+    path = ROUTES.TAG_DETAILS;
+    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+  }
+
+  return path;
+};
+
+export const getAddDataQualityTableTestPath = (
+  dashboardType: string,
+  fqn: string
+) => {
+  let path = ROUTES.ADD_DATA_QUALITY_TEST_CASE;
+
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
 
   return path;
 };

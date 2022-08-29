@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
@@ -31,8 +31,8 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
 
   const fetchTypeDetail = () => {
     getTypeByFQN(entityType)
-      .then((res: AxiosResponse) => {
-        setEntityTypeDetail(res.data);
+      .then((res) => {
+        setEntityTypeDetail(res);
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };

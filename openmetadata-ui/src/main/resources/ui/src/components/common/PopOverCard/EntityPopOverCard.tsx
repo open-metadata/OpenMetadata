@@ -12,7 +12,7 @@
  */
 
 import { Popover } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useMemo, useState } from 'react';
@@ -46,13 +46,14 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
-export type EntityData = Table &
-  Topic &
-  Dashboard &
-  Pipeline &
-  Mlmodel &
-  Database &
-  DatabaseSchema;
+export type EntityData =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Database
+  | DatabaseSchema;
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
@@ -63,16 +64,17 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
 
   const entityTier = useMemo(() => {
-    const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
+    const tierFQN = getTierTags((entityData as Table).tags || [])?.tagFQN;
 
     return tierFQN?.split(FQN_SEPARATOR_CHAR)[1];
-  }, [entityData.tags]);
+  }, [(entityData as Table).tags]);
 
   const entityTags = useMemo(() => {
-    const tags: EntityTags[] = getTagsWithoutTier(entityData.tags || []) || [];
+    const tags: EntityTags[] =
+      getTagsWithoutTier((entityData as Table).tags || []) || [];
 
     return tags.map((tag) => `#${tag.tagFQN}`);
-  }, [entityData.tags]);
+  }, [(entityData as Table).tags]);
 
   const getData = () => {
     const setEntityDetails = (entityDetail: EntityData) => {
@@ -81,80 +83,50 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
 
     const fields = 'tags,owner';
 
+    let promise: Promise<EntityData> | null = null;
+
     switch (entityType) {
       case EntityType.TABLE:
-        getTableDetailsByFQN(entityFQN, fields)
-          .then((res: AxiosResponse) => {
-            setEntityDetails(res.data);
-
-            setEntityData(res.data);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        promise = getTableDetailsByFQN(entityFQN, fields);
 
         break;
       case EntityType.TOPIC:
-        getTopicByFqn(entityFQN, fields)
-          .then((res: AxiosResponse) => {
-            setEntityDetails(res.data);
-
-            setEntityData(res.data);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        promise = getTopicByFqn(entityFQN, fields);
 
         break;
       case EntityType.DASHBOARD:
-        getDashboardByFqn(entityFQN, fields)
-          .then((res: AxiosResponse) => {
-            setEntityDetails(res.data);
-
-            setEntityData(res.data);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        promise = getDashboardByFqn(entityFQN, fields);
 
         break;
       case EntityType.PIPELINE:
-        getPipelineByFqn(entityFQN, fields)
-          .then((res: AxiosResponse) => {
-            setEntityDetails(res.data);
-
-            setEntityData(res.data);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        promise = getPipelineByFqn(entityFQN, fields);
 
         break;
       case EntityType.MLMODEL:
-        getMlModelByFQN(entityFQN, fields)
-          .then((res: AxiosResponse) => {
-            setEntityDetails(res.data);
-
-            setEntityData(res.data);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        promise = getMlModelByFQN(entityFQN, fields);
 
         break;
       case EntityType.DATABASE:
-        getDatabaseDetailsByFQN(entityFQN, 'owner')
-          .then((res: AxiosResponse) => {
-            setEntityDetails(res.data);
-
-            setEntityData(res.data);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        promise = getDatabaseDetailsByFQN(entityFQN, 'owner');
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        getDatabaseSchemaDetailsByFQN(entityFQN, 'owner')
-          .then((res: AxiosResponse) => {
-            setEntityDetails(res.data);
-
-            setEntityData(res.data);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        promise = getDatabaseSchemaDetailsByFQN(entityFQN, 'owner');
 
         break;
 
       default:
         break;
+    }
+
+    if (promise) {
+      promise
+        .then((res) => {
+          setEntityDetails(res);
+
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
     }
   };
 
@@ -233,7 +205,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
           )}
         </div>
 
-        {entityData.tags ? (
+        {entityTags.length ? (
           <div
             className="tw-mt-2 tw-flex tw-flex-wrap tw-gap-1"
             data-testid="tags">

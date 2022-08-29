@@ -16,6 +16,11 @@ import { isUndefined } from 'lodash';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
+import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
+import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
+import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
+import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
@@ -55,24 +60,33 @@ export const getOwnershipCount: Function = (
   );
 };
 
-export const fetchAuthenticationConfig: Function =
-  (): Promise<AxiosResponse> => {
-    return APIClient.get('/config/auth');
-  };
+export const fetchAuthenticationConfig = async () => {
+  const response = await APIClient.get<AuthenticationConfiguration>(
+    '/config/auth'
+  );
 
-export const fetchSandboxConfig = (): Promise<AxiosResponse> => {
-  return APIClient.get('/config/sandbox');
+  return response.data;
+};
+
+export const fetchSandboxConfig = async () => {
+  const response = await APIClient.get<{ sandboxModeEnabled: boolean }>(
+    '/config/sandbox'
+  );
+
+  return response.data;
 };
 
 export const fetchSlackConfig = (): Promise<AxiosResponse> => {
   return APIClient.get('/config/slackChat');
 };
 
-export const fetchAirflowConfig = (): Promise<AxiosResponse> => {
-  return APIClient.get('/config/airflow');
+export const fetchAirflowConfig = async () => {
+  const response = await APIClient.get<AirflowConfiguration>('/config/airflow');
+
+  return response.data;
 };
 
-export const getSuggestions: Function = (
+export const getSuggestions = (
   queryString: string,
   searchIndex?: string
 ): Promise<AxiosResponse> => {
@@ -86,8 +100,10 @@ export const getSuggestions: Function = (
   return APIClient.get(`/search/suggest`, { params });
 };
 
-export const getVersion: Function = () => {
-  return APIClient.get('/version');
+export const getVersion = async () => {
+  const response = await APIClient.get<{ version: string }>('/version');
+
+  return response.data;
 };
 
 export const addLineage: Function = (data: Edge): Promise<AxiosResponse> => {
@@ -105,10 +121,17 @@ export const deleteLineageEdge: Function = (
   );
 };
 
-export const getLoggedInUserPermissions: Function =
-  (): Promise<AxiosResponse> => {
-    return APIClient.get('/permissions');
+export const getLoggedInUserPermissions = async () => {
+  const params = {
+    limit: 100,
   };
+  const response = await APIClient.get<{
+    data: ResourcePermission[];
+    paging: Paging;
+  }>('/permissions', { params });
+
+  return response.data;
+};
 
 export const getInitialEntity = (
   index: SearchIndex,
@@ -125,17 +148,21 @@ export const getInitialEntity = (
   });
 };
 
-export const getSuggestedUsers = (term: string): Promise<AxiosResponse> => {
+export const getSuggestedUsers = (
+  term: string
+  // TODO: improve types below
+): Promise<AxiosResponse<unknown>> => {
   return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.USER}`);
 };
 
-export const getSuggestedTeams = (term: string): Promise<AxiosResponse> => {
+export const getSuggestedTeams = (
+  term: string
+  // TODO: improve types below
+): Promise<AxiosResponse<unknown>> => {
   return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.TEAM}`);
 };
 
-export const getUserSuggestions: Function = (
-  term: string
-): Promise<AxiosResponse> => {
+export const getUserSuggestions = (term: string): Promise<AxiosResponse> => {
   const params = {
     q: term,
     index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
@@ -148,18 +175,22 @@ export const getTeamsByQuery = async (params: {
   q: string;
   from?: number;
   size?: number;
-  isJoinable?: boolean;
 }) => {
   const response = await APIClient.get(`/search/query`, {
-    params: { index: SearchIndex.TEAM, ...params },
+    params: {
+      index: SearchIndex.TEAM,
+      ...params,
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      sort_field: 'name.keyword',
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      sort_order: 'asc',
+    },
   });
 
   return response.data;
 };
 
-export const getTagSuggestions: Function = (
-  term: string
-): Promise<AxiosResponse> => {
+export const getTagSuggestions = (term: string): Promise<AxiosResponse> => {
   const params = {
     q: term,
     index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
@@ -200,12 +231,12 @@ export const getSearchedUsersAndTeams = (
   );
 };
 
-export const deleteEntity: Function = (
+export const deleteEntity = async (
   entityType: string,
   entityId: string,
   isRecursive: boolean,
   isSoftDelete = false
-): Promise<AxiosResponse> => {
+) => {
   let path = '';
 
   if (isSoftDelete) {
@@ -235,11 +266,19 @@ export const getAdvancedFieldOptions = (
   return APIClient.get(`/search/suggest`, { params });
 };
 
-export const getEntityCount = (
+export const getEntityCount = async (
   path: string,
   database?: string
-): Promise<AxiosResponse> => {
+): Promise<AxiosResponse<{ paging: Paging }>> => {
   const params = { database, limit: 0 };
 
-  return APIClient.get(`/${path}`, { params });
+  const response = await APIClient.get(`/${path}`, { params });
+
+  return response.data;
+};
+
+export const getAllEntityCount = async () => {
+  const response = await APIClient.get<EntitiesCount>('/util/entities/count');
+
+  return response.data;
 };

@@ -24,8 +24,12 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +82,8 @@ public final class TestUtils {
 
   public static final String ADMIN_USER_NAME = "admin";
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
+  public static final String BOT_USER_NAME = "bot";
+  public static final Map<String, String> BOT_AUTH_HEADERS = authHeaders(BOT_USER_NAME + "@open-metadata.org");
   public static final String TEST_USER_NAME = "test";
   public static final Map<String, String> TEST_AUTH_HEADERS = authHeaders(TEST_USER_NAME + "@open-metadata.org");
 
@@ -268,6 +274,11 @@ public final class TestUtils {
     Response response =
         SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
+  }
+
+  public static void get(WebTarget target, Map<String, String> headers) throws HttpResponseException {
+    final Response response = SecurityUtil.addHeaders(target, headers).get();
+    readResponse(response, Status.NO_CONTENT.getStatusCode());
   }
 
   public static <T> T get(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
@@ -476,5 +487,11 @@ public final class TestUtils {
       prev = next;
     }
     return true;
+  }
+
+  public static Long dateToTimestamp(String dateStr) throws ParseException {
+    DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+    Date date = formatter.parse(dateStr);
+    return date.getTime();
   }
 }

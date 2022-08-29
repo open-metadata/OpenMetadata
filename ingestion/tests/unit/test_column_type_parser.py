@@ -1,7 +1,7 @@
 import os
 from unittest import TestCase
 
-from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 
 COLUMN_TYPE_PARSE = [
     "array<string>",
@@ -31,8 +31,8 @@ import json
 try:
     with open(os.path.join(root, "resources/expected_output_column_parser.json")) as f:
         EXPECTED_OUTPUT = json.loads(f.read())["data"]
-except Exception as err:
-    print(err)
+except Exception as exc:
+    print(exc)
 
 
 class ColumnTypeParseTest(TestCase):

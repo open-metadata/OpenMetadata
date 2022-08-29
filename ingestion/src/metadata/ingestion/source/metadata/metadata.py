@@ -9,8 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Metadata source module"""
-
-from dataclasses import dataclass, field
+import traceback
 from typing import Iterable, List
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -41,12 +40,11 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-@dataclass
 class MetadataSourceStatus(SourceStatus):
 
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
 
     def scanned_entity(self, entity_class_name: str, entity_name: str) -> None:
         self.success.append(entity_name)
@@ -74,6 +72,7 @@ class MetadataSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        self.service_connection = config.serviceConnection.__root__.config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
         self.tables = None
@@ -194,9 +193,11 @@ class MetadataSource(Source[Entity]):
                     break
                 after = entities_list.after
 
-        except Exception as err:
-            logger.debug(err)
-            logger.error(f"Fetching entities failed for {entity_class.__name__}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Fetching entities failed for [{entity_class.__name__}]: {exc}"
+            )
 
     def get_status(self) -> SourceStatus:
         return self.status

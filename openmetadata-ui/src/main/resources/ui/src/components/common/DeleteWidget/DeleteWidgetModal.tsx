@@ -12,7 +12,7 @@
  */
 
 import { Modal, Radio, RadioChangeEvent } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -27,13 +27,15 @@ import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
-const DeleteWidgetV1 = ({
+const DeleteWidgetModal = ({
   allowSoftDelete = true,
   visible,
+  deleteMessage,
   entityName,
   entityType,
   onCancel,
   entityId,
+  prepareType = true,
   isRecursiveDelete,
   afterDeleteAction,
 }: DeleteWidgetModalProps) => {
@@ -61,7 +63,7 @@ const DeleteWidgetV1 = ({
     },
     {
       title: `Permanently Delete ${entityType} “${entityName}”`,
-      description: prepareDeleteMessage(),
+      description: deleteMessage || prepareDeleteMessage(),
       type: DeleteType.HARD_DELETE,
       isAllowd: true,
     },
@@ -94,6 +96,8 @@ const DeleteWidgetV1 = ({
       return `services/${entityType}s`;
     } else if (entityType === EntityType.GLOSSARY) {
       return `glossaries`;
+    } else if (entityType === EntityType.POLICY) {
+      return 'policies';
     } else {
       return `${entityType}s`;
     }
@@ -106,12 +110,12 @@ const DeleteWidgetV1 = ({
   const handleOnEntityDeleteConfirm = () => {
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(
-      prepareEntityType(),
-      entityId,
-      isRecursiveDelete,
+      prepareType ? prepareEntityType() : entityType,
+      entityId ?? '',
+      Boolean(isRecursiveDelete),
       entityDeleteState.softDelete
     )
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.status === 200) {
           setTimeout(() => {
             handleOnEntityDeleteCancel();
@@ -222,7 +226,9 @@ const DeleteWidgetV1 = ({
                 data-testid={option.type}
                 key={option.type}
                 value={option.type}>
-                <p className="tw-text-sm tw-mb-1 tw-font-medium">
+                <p
+                  className="tw-text-sm tw-mb-1 tw-font-medium"
+                  data-testid={`${option.type}-option`}>
                   {option.title}
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs tw-mb-2">
@@ -252,4 +258,4 @@ const DeleteWidgetV1 = ({
   );
 };
 
-export default DeleteWidgetV1;
+export default DeleteWidgetModal;

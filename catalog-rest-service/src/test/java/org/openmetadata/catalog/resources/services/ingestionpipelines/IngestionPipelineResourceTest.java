@@ -16,8 +16,10 @@ package org.openmetadata.catalog.resources.services.ingestionpipelines;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -63,7 +65,6 @@ import org.openmetadata.catalog.services.connections.database.ConnectionArgument
 import org.openmetadata.catalog.services.connections.database.ConnectionOptions;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -150,6 +151,18 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSourceConfig(), updated.getSourceConfig());
+  }
+
+  @Override
+  protected void compareChangeEventsEntities(
+      IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders) {
+    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertReference(expected.getService(), updated.getService());
+    if (Entity.DATABASE_SERVICE.equals(updated.getService().getType())) {
+      assertNull(
+          JsonUtils.convertValue(updated.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class)
+              .getDbtConfigSource());
+    }
   }
 
   @Override
@@ -442,7 +455,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE))
-            .withOwner(USER_OWNER1);
+            .withOwner(USER1_REF);
     IngestionPipeline ingestionPipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update pipeline attributes
@@ -576,10 +589,10 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
     // Add description and tasks
     ChangeDescription change = getChangeDescription(ingestion.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
-    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
+    fieldAdded(change, "description", "newDescription");
+    fieldAdded(change, FIELD_OWNER, USER1_REF);
     updateAndCheckEntity(
-        request.withDescription("newDescription").withOwner(USER_OWNER1), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+        request.withDescription("newDescription").withOwner(USER1_REF), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   private IngestionPipeline updateIngestionPipeline(

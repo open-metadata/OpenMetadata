@@ -1,12 +1,29 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.catalog.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.AUTH_0;
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.AZURE;
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.CUSTOM_OIDC;
@@ -16,25 +33,33 @@ import static org.openmetadata.catalog.services.connections.metadata.OpenMetadat
 import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider.OPENMETADATA;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
-import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.catalog.entity.services.ServiceType;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.fixtures.ConfigurationFixtures;
+import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.catalog.services.connections.mlModel.SklearnConnection;
-import org.openmetadata.catalog.type.MlModelConnection;
+import org.openmetadata.catalog.type.EntityReference;
 
 @ExtendWith(MockitoExtension.class)
 public class LocalSecretsManagerTest {
@@ -43,17 +68,21 @@ public class LocalSecretsManagerTest {
   private static final boolean DECRYPT = false;
   private static final String ENCRYPTED_VALUE = "fernet:abcdef";
   private static final String DECRYPTED_VALUE = "123456";
+  private static LocalSecretsManager secretsManager;
 
-  @Mock private Fernet fernet;
-
-  private LocalSecretsManager secretsManager;
-
-  @BeforeEach
-  void setUp() {
-    secretsManager = LocalSecretsManager.getInstance();
+  @BeforeAll
+  static void setUp() {
+    secretsManager = LocalSecretsManager.getInstance("openmetadata");
+    Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
     secretsManager.setFernet(fernet);
+  }
+
+  @AfterAll
+  static void teardown() {
+    // At the end of the test, remove mocked fernet instance so other tests run fine
+    secretsManager.setFernet(Fernet.getInstance());
   }
 
   @Test
@@ -69,6 +98,17 @@ public class LocalSecretsManagerTest {
   @Test
   void testDecryptDatabaseServiceConnectionConfig() {
     testEncryptDecryptServiceConnection(ENCRYPTED_VALUE, DECRYPTED_VALUE, DECRYPT);
+  }
+
+  @Test
+  void testEncryptTestServiceConnection() {
+    TestServiceConnection testServiceConnection =
+        new TestServiceConnection()
+            .withConnection(new MysqlConnection())
+            .withConnectionType(TestServiceConnection.ConnectionType.Database)
+            .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider());
+    Object actualServiceConnection = secretsManager.storeTestConnectionObject(testServiceConnection);
+    assertEquals(testServiceConnection.getConnection(), actualServiceConnection);
   }
 
   @Test
@@ -106,7 +146,43 @@ public class LocalSecretsManagerTest {
 
   @Test
   void testReturnsExpectedSecretManagerProvider() {
-    assertEquals(OpenMetadataServerConnection.SecretsManagerProvider.LOCAL, secretsManager.getSecretsManagerProvider());
+    assertEquals(SecretsManagerProvider.LOCAL, secretsManager.getSecretsManagerProvider());
+  }
+
+  @ParameterizedTest
+  @MethodSource(
+      "org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceUnitTestParams#params")
+  public void testEncryptAndDecryptDbtConfigSource(
+      Object config,
+      EntityReference service,
+      Class<? extends EntityInterface> serviceClass,
+      PipelineType pipelineType,
+      boolean mustBeEncrypted) {
+    SourceConfig sourceConfigMock = mock(SourceConfig.class);
+    IngestionPipeline mockedIngestionPipeline = mock(IngestionPipeline.class);
+
+    when(mockedIngestionPipeline.getService()).thenReturn(service);
+    lenient().when(mockedIngestionPipeline.getPipelineType()).thenReturn(pipelineType);
+
+    if (mustBeEncrypted) {
+      when(mockedIngestionPipeline.getSourceConfig()).thenReturn(sourceConfigMock);
+      when(sourceConfigMock.getConfig()).thenReturn(config);
+    }
+
+    secretsManager.encryptOrDecryptDbtConfigSource(mockedIngestionPipeline, true);
+
+    secretsManager.encryptOrDecryptDbtConfigSource(mockedIngestionPipeline, false);
+
+    if (!mustBeEncrypted) {
+      verify(mockedIngestionPipeline, never()).setSourceConfig(any());
+      verify(sourceConfigMock, never()).setConfig(any());
+    } else {
+      ArgumentCaptor<Object> configCaptor = ArgumentCaptor.forClass(Object.class);
+      verify(mockedIngestionPipeline, times(4)).getSourceConfig();
+      verify(sourceConfigMock, times(2)).setConfig(configCaptor.capture());
+      assertEquals(configCaptor.getAllValues().get(0), config);
+      assertEquals(configCaptor.getAllValues().get(1), config);
+    }
   }
 
   @ParameterizedTest
@@ -119,31 +195,29 @@ public class LocalSecretsManagerTest {
   }
 
   private void testEncryptDecryptServiceConnectionWithoutPassword(boolean decrypt) {
-    MlModelConnection mlModelConnection = new MlModelConnection();
     SklearnConnection sklearnConnection = new SklearnConnection();
-    mlModelConnection.setConfig(sklearnConnection);
     CreateMlModelService.MlModelServiceType databaseServiceType = CreateMlModelService.MlModelServiceType.Sklearn;
     String connectionName = "test";
 
-    secretsManager.encryptOrDecryptServiceConnection(
-        mlModelConnection, databaseServiceType.value(), connectionName, decrypt);
+    Object actualConfig =
+        secretsManager.encryptOrDecryptServiceConnectionConfig(
+            sklearnConnection, databaseServiceType.value(), connectionName, ServiceType.ML_MODEL, decrypt);
 
-    assertNotSame(sklearnConnection, mlModelConnection.getConfig());
+    assertNotSame(sklearnConnection, actualConfig);
   }
 
   private void testEncryptDecryptServiceConnection(String encryptedValue, String decryptedValue, boolean decrypt) {
-    DatabaseConnection databaseConnection = new DatabaseConnection();
     MysqlConnection mysqlConnection = new MysqlConnection();
     mysqlConnection.setPassword(encryptedValue);
-    databaseConnection.setConfig(mysqlConnection);
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
-    secretsManager.encryptOrDecryptServiceConnection(
-        databaseConnection, databaseServiceType.value(), connectionName, decrypt);
+    Object actualConfig =
+        secretsManager.encryptOrDecryptServiceConnectionConfig(
+            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
 
-    assertEquals(decryptedValue, ((MysqlConnection) databaseConnection.getConfig()).getPassword());
-    assertNotSame(mysqlConnection, databaseConnection.getConfig());
+    assertEquals(decryptedValue, ((MysqlConnection) actualConfig).getPassword());
+    assertNotSame(mysqlConnection, actualConfig);
   }
 
   private static Stream<Arguments> testDecryptAuthProviderConfigParams() {

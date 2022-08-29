@@ -17,20 +17,40 @@ import { camelCase } from 'lodash';
 import React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 
 const GlobalSettingLeftPanel = () => {
   const { tab, settingCategory } = useParams<{ [key: string]: string }>();
 
+  const { permissions } = usePermissionProvider();
+
+  const viewAllPermission = checkPermission(
+    Operation.ViewAll,
+    ResourceEntity.ALL,
+    permissions
+  );
+
   const history = useHistory();
-  const items: ItemType[] = GLOBAL_SETTINGS_MENU.map(({ category, items }) => {
+  const items: ItemType[] = GLOBAL_SETTINGS_MENU.filter(({ isProtected }) => {
+    if (viewAllPermission) {
+      return viewAllPermission;
+    }
+
+    return !isProtected;
+  }).map(({ category, items }) => {
     return getGlobalSettingMenus(
       category,
       camelCase(category),
       '',
+      '',
       items,
-      'group'
+      'group',
+      viewAllPermission
     );
   });
 

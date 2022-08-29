@@ -54,6 +54,7 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.resources.dqtests.TestCaseResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -89,6 +90,17 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     }
 
     public PipelineList(List<Pipeline> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class PipelineStatusList extends ResultList<PipelineStatus> {
+    @SuppressWarnings("unused")
+    public PipelineStatusList() {
+      /* Required for serde */
+    }
+
+    public PipelineStatusList(List<PipelineStatus> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -185,7 +197,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -253,7 +265,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Pipeline version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -295,7 +307,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -330,7 +342,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @PUT
-  @Path("/{id}/status")
+  @Path("/{fqn}/status")
   @Operation(
       operationId = "addStatusData",
       summary = "Add status data",
@@ -346,11 +358,99 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
     authorizer.authorizeAdmin(securityContext, true);
-    Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
+    Pipeline pipeline = dao.addPipelineStatus(fqn, pipelineStatus);
+    return addHref(uriInfo, pipeline);
+  }
+
+  @GET
+  @Path("/{fqn}/status")
+  @Operation(
+      operationId = "listPipelineStatuses",
+      summary = "List pipeline status",
+      tags = "pipelines",
+      description =
+          "Get a list of pipeline status."
+              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline statuses.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
+      })
+  public ResultList<PipelineStatus> list(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "FQN of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(
+              description = "Filter pipeline statues after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter pipeline statues before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number of pipeline statues returned. (1 to 1000000, default = " + "10) ")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of pipeline statues before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of pipeline statues after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    RestUtil.validateCursors(before, after);
+
+    ListFilter filter =
+        new ListFilter(Include.ALL)
+            .addQueryParam("entityFQN", fqn)
+            .addQueryParam("extension", PipelineRepository.PIPELINE_STATUS_EXTENSION);
+
+    if (startTs != null) {
+      filter.addQueryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("endTs", String.valueOf(endTs));
+    }
+    return dao.getPipelineStatuses(filter, before, after, limitParam);
+  }
+
+  @DELETE
+  @Path("/{fqn}/status/{timestamp}")
+  @Operation(
+      operationId = "DeletePipelineStatus",
+      summary = "Delete pipeline status.",
+      tags = "pipelines",
+      description = "Delete pipeline status for a pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the PipelineStatus",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class)))
+      })
+  public Pipeline deletePipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Timestamp of the pipeline status", schema = @Schema(type = "long"))
+          @PathParam("timestamp")
+          Long timestamp)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext, true);
+    Pipeline pipeline = dao.deletePipelineStatus(fqn, timestamp);
     return addHref(uriInfo, pipeline);
   }
 
@@ -371,12 +471,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
-          String userId)
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -395,14 +493,12 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId)
+          UUID userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -423,12 +519,12 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private Pipeline getPipeline(CreatePipeline create, String user) {
+  private Pipeline getPipeline(CreatePipeline create, String user) throws IOException {
     return copy(new Pipeline(), create, user)
         .withService(create.getService())
         .withTasks(create.getTasks())

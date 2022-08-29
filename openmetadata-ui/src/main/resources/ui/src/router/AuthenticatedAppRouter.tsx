@@ -15,13 +15,32 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
-import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
+import { usePermissionProvider } from '../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
-import { isAllowedHost } from '../utils/CommonUtils';
+import { Operation } from '../generated/entity/policies/policy';
+import AddDataQualityTestPage from '../pages/AddDataQualityTestPage/AddDataQualityTestPage';
+import { checkPermission } from '../utils/PermissionsUtils';
+import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
   React.lazy(() => import('../pages/GlobalSettingPage/GlobalSettingPage'))
+);
+
+const ProfilerDashboardPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/ProfilerDashboardPage/ProfilerDashboardPage')
+  )
+);
+
+const AddCustomProperty = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty'
+      )
+  )
 );
 
 const MyDataPage = withSuspenseFallback(
@@ -33,15 +52,11 @@ const PipelineDetailsPage = withSuspenseFallback(
     () => import('../pages/PipelineDetails/PipelineDetailsPage.component')
   )
 );
-
-const RolesPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/RolesPage/RolesPage.component'))
+const BotDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/BotDetailsPage/BotDetailsPage'))
 );
 const ServicePage = withSuspenseFallback(
   React.lazy(() => import('../pages/service'))
-);
-const ServicesPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/services'))
 );
 const SignupPage = withSuspenseFallback(
   React.lazy(() => import('../pages/signup'))
@@ -52,11 +67,6 @@ const SwaggerPage = withSuspenseFallback(
 const TagsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/tags'))
 );
-const TeamsAndUsersPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../pages/TeamsAndUsersPage/TeamsAndUsersPage.component')
-  )
-);
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/TopicDetails/TopicDetailsPage.component'))
 );
@@ -65,12 +75,6 @@ const TourPageComponent = withSuspenseFallback(
 );
 const UserPage = withSuspenseFallback(
   React.lazy(() => import('../pages/UserPage/UserPage.component'))
-);
-const WebhooksPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/WebhooksPage/WebhooksPage.component'))
-);
-const AdminProtectedRoute = withSuspenseFallback(
-  React.lazy(() => import('./AdminProtectedRoute'))
 );
 
 const AddGlossaryPage = withSuspenseFallback(
@@ -98,12 +102,7 @@ const EditConnectionFormPage = withSuspenseFallback(
 const AddWebhookPage = withSuspenseFallback(
   React.lazy(() => import('../pages/AddWebhookPage/AddWebhookPage.component'))
 );
-const BotsListPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/BotsListpage/BotsListpage.component'))
-);
-const BotsPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/BotsPage/BotsPage.component'))
-);
+
 const CreateUserPage = withSuspenseFallback(
   React.lazy(() => import('../pages/CreateUserPage/CreateUserPage.component'))
 );
@@ -149,10 +148,6 @@ const MlModelPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MlModelPage/MlModelPage.component'))
 );
 
-const CustomPropertiesPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/CustomPropertiesPage/CustomPropertiesPage'))
-);
-
 const RequestDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -179,7 +174,27 @@ const TaskDetailPage = withSuspenseFallback(
   React.lazy(() => import('../pages/TasksPage/TaskDetailPage/TaskDetailPage'))
 );
 
+const AddRolePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/RolesPage/AddRolePage/AddRolePage'))
+);
+const AddPolicyPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/PoliciesPage/AddPolicyPage/AddPolicyPage'))
+);
+
+const AddRulePage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
+  )
+);
+const EditRulePage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
+  const { permissions } = usePermissionProvider();
+
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
@@ -189,32 +204,30 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
         exact
-        component={TeamsAndUsersPage}
-        path={ROUTES.TEAMS_AND_USERS}
-      />
-      <Route
-        exact
-        component={TeamsAndUsersPage}
-        path={ROUTES.TEAMS_AND_USERS_DETAILS}
-      />
-      <Route
-        exact
         component={EditConnectionFormPage}
         path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
-      <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
-      <Route exact component={ServicesPage} path={ROUTES.SERVICES_WITH_TAB} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <AdminProtectedRoute
         exact
         component={AddIngestionPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.INGESTION_PIPELINE,
+          permissions
+        )}
         path={ROUTES.ADD_INGESTION}
       />
       <AdminProtectedRoute
         exact
         component={EditIngestionPage}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.INGESTION_PIPELINE,
+          permissions
+        )}
         path={ROUTES.EDIT_INGESTION}
       />
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
@@ -222,6 +235,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       </Route>
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
+      <Route exact component={TagsPage} path={ROUTES.TAG_DETAILS} />
       <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route
         exact
@@ -271,7 +285,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
-      <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
       <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
@@ -281,63 +294,115 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
       <Route
         exact
+        component={AddDataQualityTestPage}
+        path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
+      />
+      <Route
+        exact
+        component={ProfilerDashboardPage}
+        path={ROUTES.PROFILER_DASHBOARD}
+      />
+      <Route
+        exact
         component={MlModelPage}
         path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
       />
       <AdminProtectedRoute
         exact
         component={AddGlossaryPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.GLOSSARY,
+          permissions
+        )}
         path={ROUTES.ADD_GLOSSARY}
       />
       <AdminProtectedRoute
         exact
         component={AddGlossaryTermPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.GLOSSARY_TERM,
+          permissions
+        )}
         path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
       />
       <AdminProtectedRoute
         exact
         component={AddGlossaryTermPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.GLOSSARY_TERM,
+          permissions
+        )}
         path={ROUTES.ADD_GLOSSARY_TERMS}
       />
       <AdminProtectedRoute
         exact
         component={AddWebhookPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
+        path={ROUTES.ADD_WEBHOOK_WITH_TYPE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddWebhookPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
         path={ROUTES.ADD_WEBHOOK}
       />
-      <AdminProtectedRoute exact component={RolesPage} path={ROUTES.ROLES} />
+
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.USER,
+          permissions
+        )}
         path={ROUTES.CREATE_USER}
       />
-      <AdminProtectedRoute exact component={BotsListPage} path={ROUTES.BOTS} />
       <AdminProtectedRoute
         exact
-        component={BotsPage}
+        component={CreateUserPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.BOT,
+          permissions
+        )}
+        path={ROUTES.CREATE_USER_WITH_BOT}
+      />
+      <AdminProtectedRoute
+        exact
+        component={BotDetailsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.BOT,
+          permissions
+        )}
         path={ROUTES.BOTS_PROFILE}
       />
       <AdminProtectedRoute
         exact
-        component={CustomPropertiesPage}
-        path={ROUTES.CUSTOM_PROPERTIES}
-      />
-      <AdminProtectedRoute
-        exact
-        component={CustomPropertiesPage}
-        path={ROUTES.CUSTOM_ENTITY_DETAIL}
-      />
-      <AdminProtectedRoute
-        exact
         component={AddCustomProperty}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.TYPE,
+          permissions
+        )}
         path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
-
       <Route
         exact
         component={RequestDescriptionPage}
         path={ROUTES.REQUEST_DESCRIPTION}
       />
-
       <Route
         exact
         component={UpdateDescriptionPage}
@@ -348,15 +413,59 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
 
-      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+      {/* keep these route above the setting route always */}
+      <AdminProtectedRoute
+        exact
+        component={AddRolePage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.ROLE,
+          permissions
+        )}
+        path={ROUTES.ADD_ROLE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddPolicyPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.POLICY,
+          permissions
+        )}
+        path={ROUTES.ADD_POLICY}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddRulePage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.POLICY,
+          permissions
+        )}
+        path={ROUTES.ADD_POLICY_RULE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditRulePage}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
+        path={ROUTES.EDIT_POLICY_RULE}
+      />
+
+      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
       <Route
         exact
         component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB}>
-        {!isAllowedHost() && <Redirect to={ROUTES.NOT_FOUND} />}
-      </Route>
+        path={ROUTES.SETTINGS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={GlobalSettingPage}
+        path={ROUTES.SETTINGS_WITH_TAB_FQN}
+      />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

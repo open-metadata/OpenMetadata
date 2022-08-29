@@ -13,8 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.POLICIES;
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.EntityReference;
@@ -37,12 +41,12 @@ import org.openmetadata.catalog.util.ResultList;
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
   public RoleRepository(CollectionDAO dao) {
-    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, "policies", "policies");
+    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, POLICIES, POLICIES);
   }
 
   @Override
   public Role setFields(Role role, Fields fields) throws IOException {
-    role.setPolicies(fields.contains("policies") ? getPolicies(role) : null);
+    role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : null);
     role.setTeams(fields.contains("teams") ? getTeams(role) : null);
     role.setUsers(fields.contains("users") ? getUsers(role) : null);
     return role;
@@ -76,6 +80,9 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   public void prepare(Role role) throws IOException {
     setFullyQualifiedName(role);
+    if (listOrEmpty(role.getPolicies()).isEmpty()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
+    }
     EntityUtil.populateEntityReferences(role.getPolicies());
   }
 
@@ -134,47 +141,25 @@ public class RoleRepository extends EntityRepository<Role> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateDefault(original, updated);
+      updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 
-    private void updateDefault(Role origRole, Role updatedRole) throws IOException {
-      long startTime = System.nanoTime();
-      if (Boolean.FALSE.equals(origRole.getDefaultRole()) && Boolean.TRUE.equals(updatedRole.getDefaultRole())) {
-        setDefaultToTrue(updatedRole);
-      }
-      if (Boolean.TRUE.equals(origRole.getDefaultRole()) && Boolean.FALSE.equals(updatedRole.getDefaultRole())) {
-        setDefaultToFalse(updatedRole);
-      }
-      recordChange("default", origRole.getDefaultRole(), updatedRole.getDefaultRole());
-      LOG.debug(
-          "Took {} ns to update {} role field default from {} to {}",
-          System.nanoTime() - startTime,
-          updatedRole.getName(),
-          origRole.getDefaultRole(),
-          updatedRole.getDefaultRole());
-    }
+    private void updatePolicies(List<EntityReference> origPolicies, List<EntityReference> updatedPolicies)
+        throws JsonProcessingException {
+      // Record change description
+      List<EntityReference> deletedPolicies = new ArrayList<>();
+      List<EntityReference> addedPolicies = new ArrayList<>();
+      boolean changed =
+          recordListChange(
+              "policies", origPolicies, updatedPolicies, addedPolicies, deletedPolicies, entityReferenceMatch);
 
-    private void setDefaultToTrue(Role role) throws IOException {
-      List<Role> defaultRoles = getDefaultRoles(null, Fields.EMPTY_FIELDS);
-      EntityRepository<Role> roleRepository = Entity.getEntityRepository(Entity.ROLE);
-      // Set default=FALSE for all existing default roles.
-      for (Role defaultRole : defaultRoles) {
-        if (defaultRole.getId().equals(role.getId())) {
-          // Skip the current role which is being set with default=TRUE.
-          continue;
-        }
-        Role origDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), Fields.EMPTY_FIELDS);
-        Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), Fields.EMPTY_FIELDS);
-        updatedDefaultRole = updatedDefaultRole.withDefaultRole(false);
-        new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
-      }
-    }
+      if (changed) {
+        // Remove all the Role to policy relationships
+        deleteFrom(original.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
 
-    private void setDefaultToFalse(Role role) {
-      LOG.info("Deleting 'user --- has ---> role' relationship for {} role", role.getName());
-      daoCollection
-          .relationshipDAO()
-          .deleteTo(role.getId().toString(), Entity.ROLE, Relationship.HAS.ordinal(), Entity.USER);
+        // Add Role to policy relationships back based on Updated entity
+        storeRelationships(updated);
+      }
     }
   }
 }

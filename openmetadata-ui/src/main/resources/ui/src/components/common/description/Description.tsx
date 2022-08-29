@@ -17,12 +17,9 @@ import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { EntityField } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
-import { Operation } from '../../../generated/entity/policies/accessControl/rule';
-import { useAuth } from '../../../hooks/authHooks';
 import { isTaskSupported } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -42,7 +39,6 @@ const Description: FC<DescriptionProps> = ({
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
-  blurWithBodyBG = false,
   removeBlur = false,
   entityName,
   entityFieldThreads,
@@ -53,9 +49,6 @@ const Description: FC<DescriptionProps> = ({
   entityFieldTasks,
 }) => {
   const history = useHistory();
-
-  const { isAdminUser, userPermissions } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const thread = entityFieldThreads?.[0];
   const tasks = entityFieldTasks?.[0];
@@ -69,15 +62,6 @@ const Description: FC<DescriptionProps> = ({
   const handleUpdateDescription = () => {
     history.push(
       getUpdateDescriptionPath(entityType as string, entityFqn as string)
-    );
-  };
-
-  const checkPermission = () => {
-    return (
-      isAdminUser ||
-      Boolean(hasEditAccess) ||
-      userPermissions[Operation.EditDescription] ||
-      isAuthDisabled
     );
   };
 
@@ -174,8 +158,8 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-0.5')}>
-        {checkPermission() && (
+      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-1')}>
+        {hasEditAccess && (
           <button
             className="tw-w-7 tw-h-8 tw-flex-none focus:tw-outline-none"
             data-testid="edit-description"
@@ -206,14 +190,9 @@ const Description: FC<DescriptionProps> = ({
             id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
-                blurClasses={
-                  blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
-                }
                 className="tw-pl-2"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
-                maxHtClass="tw-max-h-36"
-                maxLen={800}
               />
             ) : (
               <span className="tw-no-description tw-p-2">No description </span>

@@ -6,23 +6,11 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.slackChat.SlackChatConfiguration",
   "properties": {
-    "apiToken": {
-      "description": "Api Token",
+    "slackUrl": {
+      "description": "The URL of the slack channel to redirect the users to on click of the chat icon",
       "type": "string"
-    },
-    "botName": {
-      "description": "Bot Name",
-      "type": "string"
-    },
-    "channels": {
-      "description": "Slack Chat Channels",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "default": null
     }
   },
-  "required": ["apiToken", "botName", "channels"],
+  "required": ["slackUrl"],
   "additionalProperties": false
 }

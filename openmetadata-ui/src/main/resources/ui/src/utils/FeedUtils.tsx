@@ -13,7 +13,7 @@
 
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEqual } from 'lodash';
 import {
@@ -22,9 +22,11 @@ import {
   EntityThreadField,
 } from 'Models';
 import React from 'react';
+import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import {
   deletePostById,
+  deleteThread,
   getFeedById,
   updatePost,
   updateThread,
@@ -46,7 +48,8 @@ import {
 } from '../constants/feed.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Post, Thread, ThreadType } from '../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import jsonData from '../jsons/en';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -166,7 +169,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
     let atValues = [];
     if (!searchTerm) {
       const data = await getInitialEntity(SearchIndex.USER);
-      const hits = data.data.hits.hits;
+      // TODO: fix below type issues
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hits = (data as any).data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
         const entityType = hit._source.entityType;
@@ -184,7 +189,8 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         };
       });
     } else {
-      const data = await getUserSuggestions(searchTerm);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await getUserSuggestions(searchTerm);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
@@ -208,7 +214,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   } else {
     let hashValues = [];
     if (!searchTerm) {
-      const data = await getInitialEntity(SearchIndex.TABLE);
+      // TODO: fix below type issues
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await getInitialEntity(SearchIndex.TABLE);
       const hits = data.data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
@@ -224,7 +232,8 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         };
       });
     } else {
-      const data = await getSuggestions(searchTerm);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await getSuggestions(searchTerm);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
@@ -311,10 +320,10 @@ export const getFrontEndFormat = (message: string) => {
   return updatedMessage;
 };
 
-export const deletePost = (threadId: string, postId: string) => {
-  return new Promise<Post>((resolve, reject) => {
-    deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
+export const getUpdatedThread = (id: string) => {
+  return new Promise<Thread>((resolve, reject) => {
+    getFeedById(id)
+      .then((res) => {
         if (res.status === 200) {
           resolve(res.data);
         } else {
@@ -327,20 +336,58 @@ export const deletePost = (threadId: string, postId: string) => {
   });
 };
 
-export const getUpdatedThread = (id: string) => {
-  return new Promise<Thread>((resolve, reject) => {
-    getFeedById(id)
-      .then((res: AxiosResponse) => {
-        if (res.status === 200) {
-          resolve(res.data);
-        } else {
-          reject(res.data);
-        }
-      })
-      .catch((error: AxiosError) => {
-        reject(error);
-      });
-  });
+/**
+ *
+ * @param threadId thread to be deleted
+ * @param postId post to be deleted
+ * @param isThread boolean, if true delete the thread else post
+ * @param callback optional callback function to get the updated threads
+ */
+export const deletePost = async (
+  threadId: string,
+  postId: string,
+  isThread: boolean,
+  callback?: (value: React.SetStateAction<Thread[]>) => void
+) => {
+  /**
+   * Delete the thread if isThread is true
+   */
+  if (isThread) {
+    try {
+      const data = await deleteThread(threadId);
+      callback &&
+        callback((prev) => prev.filter((thread) => thread.id !== data.id));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  } else {
+    try {
+      const deletResponse = await deletePostById(threadId, postId);
+      // get updated thread only if delete response and callback is present
+      if (deletResponse && callback) {
+        const data = await getUpdatedThread(threadId);
+        callback((pre) => {
+          return pre.map((thread) => {
+            if (thread.id === data.id) {
+              return {
+                ...thread,
+                posts: data.posts && data.posts.slice(-3),
+                postsCount: data.postsCount,
+              };
+            } else {
+              return thread;
+            }
+          });
+        });
+      } else {
+        throw jsonData['api-error-messages'][
+          'fetch-updated-conversation-error'
+        ];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }
 };
 
 /**
@@ -381,11 +428,16 @@ export const updateThreadData = (
 ) => {
   if (isThread) {
     updateThread(threadId, data)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         callback((prevData) => {
           return prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
-              return { ...thread, reactions: res.data.reactions };
+              return {
+                ...thread,
+                reactions: res.reactions,
+                message: res.message,
+                announcement: res?.announcement,
+              };
             } else {
               return thread;
             }
@@ -397,13 +449,17 @@ export const updateThreadData = (
       });
   } else {
     updatePost(threadId, postId, data)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         callback((prevData) => {
           return prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
               const updatedPosts = (thread.posts || []).map((post) => {
                 if (isEqual(postId, post.id)) {
-                  return { ...post, reactions: res.data.reactions };
+                  return {
+                    ...post,
+                    reactions: res.reactions,
+                    message: res.message,
+                  };
                 } else {
                   return post;
                 }
@@ -485,4 +541,22 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
   }
 
   return displayName;
+};
+
+export const MarkdownToHTMLConverter = new Showdown.Converter({
+  strikethrough: true,
+});
+
+export const getFeedPanelHeaderText = (
+  threadType: ThreadType = ThreadType.Conversation
+) => {
+  switch (threadType) {
+    case ThreadType.Announcement:
+      return 'Announcement';
+    case ThreadType.Task:
+      return 'Task';
+    case ThreadType.Conversation:
+    default:
+      return 'Conversation';
+  }
 };

@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "profiler"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite"]
     },
     "pipelineStatus": {
       "type": "object",
@@ -28,11 +28,15 @@
         },
         "startDate": {
           "description": "startDate of the pipeline run for this particular execution.",
-          "type": "string"
+          "$ref": "../../../type/basic.json#/definitions/timestamp"
+        },
+        "timestamp": {
+          "description": "executionDate of the pipeline run for this particular execution.",
+          "$ref": "../../../type/basic.json#/definitions/timestamp"
         },
         "endDate": {
           "description": "endDate of the pipeline run for this particular execution.",
-          "type": "string"
+          "$ref": "../../../type/basic.json#/definitions/timestamp"
         }
       },
       "additionalProperties": false

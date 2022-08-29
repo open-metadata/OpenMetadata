@@ -22,6 +22,7 @@ authenticationConfiguration:
 Then, 
 - Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
 - Update the `principalDomain` to your company domain name.
+- update the `botPrincipals`, add the Ingestion Client ID for the Service application. This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
 
 ```yaml
 authorizerConfiguration:
@@ -33,6 +34,7 @@ authorizerConfiguration:
     - "user2"
   botPrincipals:
     - "ingestion-bot"
+    - "<service_application_client_id>"
   principalDomain: "open-metadata.org"
 ```
 
@@ -44,7 +46,7 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: azure
+  authProvider: okta
   authConfig:
     okta:
       clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}

@@ -16,16 +16,21 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
+import traceback
 from copy import deepcopy
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import click
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_processor, get_sink
+from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    Table,
+    TableProfile,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -37,20 +42,26 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.processor import Processor
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
-from metadata.orm_profiler.interfaces.interface_protocol import InterfaceProtocol
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.orm_profiler.api.models import (
+    ProfilerProcessorConfig,
+    TableConfig,
+    TablePartitionConfig,
+)
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiler.core import Profiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
-from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_fqn
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -62,7 +73,6 @@ class ProfilerWorkflow:
     """
 
     config: OpenMetadataWorkflowConfig
-    processor: Processor
     sink: Sink
     metadata: OpenMetadata
 
@@ -71,22 +81,20 @@ class ProfilerWorkflow:
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
+        self.profiler_config = ProfilerProcessorConfig.parse_obj(
+            self.config.processor.dict().get("config")
+        )
 
-        # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
 
         self._retrieve_service_connection_if_needed()
-
-        # Prepare the connection to the source service
-        # We don't need the whole Source class, as it is the OM Server
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = (
             self.config.source.sourceConfig.config
         )
         self.source_status = SQLSourceStatus()
-
-        self.processor = None
+        self.status = ProcessorStatus()
 
         if self.config.sink:
             self.sink = get_sink(
@@ -109,11 +117,155 @@ class ProfilerWorkflow:
         Parse a JSON (dict) and create the workflow
         """
         try:
-            config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
+            config = parse_workflow_config_gracefully(config_dict)
             return cls(config)
         except ValidationError as err:
-            logger.error("Error trying to parse the Profiler Workflow configuration")
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to parse the Profiler Workflow configuration: {err}"
+            )
             raise err
+
+    def get_config_for_entity(self, entity: Table) -> Optional[TableConfig]:
+        """Get config for a specific entity
+
+        Args:
+            entity: table entity
+        """
+
+        if not self.profiler_config.tableConfig:
+            return None
+        return next(
+            (
+                table_config
+                for table_config in self.profiler_config.tableConfig
+                if table_config.fullyQualifiedName.__root__
+                == entity.fullyQualifiedName.__root__
+            ),
+            None,
+        )
+
+    def get_include_columns(self, entity) -> Optional[List[ColumnProfilerConfig]]:
+        """get included columns"""
+        entity_config: TableConfig = self.get_config_for_entity(entity)
+        if entity_config and entity_config.columnConfig:
+            return entity_config.columnConfig.includeColumns
+
+        if entity.tableProfilerConfig:
+            return entity.tableProfilerConfig.includeColumns
+
+        return None
+
+    def get_exclude_columns(self, entity) -> Optional[List[str]]:
+        """get included columns"""
+        entity_config: TableConfig = self.get_config_for_entity(entity)
+        if entity_config and entity_config.columnConfig:
+            return entity_config.columnConfig.excludeColumns
+
+        if entity.tableProfilerConfig:
+            return entity.tableProfilerConfig.excludeColumns
+
+        return None
+
+    def get_profile_sample(self, entity: Table) -> Optional[float]:
+        """Get profile sample
+
+        Args:
+            entity: table entity
+        """
+        entity_config: TableConfig = self.get_config_for_entity(entity)
+        if entity_config:
+            return entity_config.profileSample
+
+        if entity.tableProfilerConfig:
+            return entity.tableProfilerConfig.profileSample
+
+        if self.source_config.profileSample:
+            return self.source_config.profileSample
+
+        return None
+
+    def get_profile_query(self, entity: Table) -> Optional[float]:
+        """Get profile sample
+
+        Args:
+            entity: table entity
+        """
+        entity_config: TableConfig = self.get_config_for_entity(entity)
+        if entity_config:
+            return entity_config.profileQuery
+
+        if entity.tableProfilerConfig:
+            return entity.tableProfilerConfig.profileQuery
+
+        return None
+
+    def get_partition_details(self, entity: Table) -> Optional[TablePartitionConfig]:
+        """Get partition details
+
+        Args:
+            entity: table entity
+        """
+        entity_config: TableConfig = self.get_config_for_entity(entity)
+        if entity_config:
+            return entity_config.partitionConfig
+
+        return None
+
+    def create_profiler_interface(self, service_connection_config, table_entity: Table):
+        """Creates a profiler interface object"""
+        return SQAInterface(
+            service_connection_config,
+            metadata_config=self.metadata_config,
+            thread_count=self.source_config.threadCount,
+            table_entity=table_entity,
+            profile_sample=self.get_profile_sample(table_entity)
+            if not self.get_profile_query(table_entity)
+            else None,
+            profile_query=self.get_profile_query(table_entity)
+            if not self.get_profile_sample(table_entity)
+            else None,
+            partition_config=self.get_partition_details(table_entity)
+            if not self.get_profile_query(table_entity)
+            else None,
+        )
+
+    def create_profiler_obj(
+        self, table_entity: Table, profiler_interface: SQAInterface
+    ):
+        """Profile a single entity"""
+        if not self.profiler_config.profiler:
+            self.profiler_obj = DefaultProfiler(
+                profiler_interface=profiler_interface,
+                include_columns=self.get_include_columns(table_entity),
+                exclude_columns=self.get_exclude_columns(table_entity),
+            )
+        else:
+            metrics = (
+                [Metrics.get(name) for name in self.profiler_config.profiler.metrics]
+                if self.profiler_config.profiler.metrics
+                else get_default_metrics(profiler_interface.table)
+            )
+
+            self.profiler_obj = Profiler(
+                *metrics,
+                profiler_interface=profiler_interface,
+                include_columns=self.get_include_columns(table_entity),
+                exclude_columns=self.get_exclude_columns(table_entity),
+            )
+
+    def filter_databases(self, database: Database) -> Optional[Database]:
+        """Returns filtered database entities"""
+        if filter_by_database(
+            self.source_config.databaseFilterPattern,
+            database.name.__root__,
+        ):
+            self.source_status.filter(
+                database.name.__root__, "Database pattern not allowed"
+            )
+            return None
+        else:
+            return database
 
     def filter_entities(self, tables: List[Table]) -> Iterable[Table]:
         """
@@ -123,48 +275,45 @@ class ProfilerWorkflow:
         We will update the status on the SQLSource Status.
         """
         for table in tables:
+            try:
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    table.databaseSchema.name,
+                ):
+                    self.source_status.filter(
+                        table.databaseSchema.fullyQualifiedName,
+                        "Schema pattern not allowed",
+                    )
+                    continue
+                if filter_by_table(
+                    self.source_config.tableFilterPattern,
+                    table.name.__root__,
+                ):
+                    self.source_status.filter(
+                        table.fullyQualifiedName.__root__, "Table pattern not allowed"
+                    )
+                    continue
 
-            if filter_by_fqn(
-                fqn_filter_pattern=self.source_config.fqnFilterPattern,
-                fqn=table.fullyQualifiedName.__root__,
-            ):
-                self.source_status.filter(
-                    table.fullyQualifiedName.__root__, "Schema pattern not allowed"
+                self.source_status.scanned(table.fullyQualifiedName.__root__)
+                yield table
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error filtering entities for table [{table}]: {exc}"
                 )
-                continue
-
-            self.source_status.scanned(table.fullyQualifiedName.__root__)
-            yield table
-
-    def create_processor(self, service_connection_config):
-        self.processor_interface: InterfaceProtocol = SQAProfilerInterface(
-            service_connection_config,
-            thread_count=self.source_config.threadCount,
-        )
-        self.processor = get_processor(
-            processor_type=self.config.processor.type,  # orm-profiler
-            processor_config=self.config.processor or ProfilerProcessorConfig(),
-            metadata_config=self.metadata_config,
-            _from="orm_profiler",
-            processor_interface=self.processor_interface,
-            workflow_profile_sample=self.source_config.profileSample,
-        )
-
-    def create_engine_for_session(self, service_connection_config):
-        """Create SQLAlchemy engine to use with a session object"""
-        engine = get_connection(service_connection_config)
-        test_connection(engine)
-
-        return engine
+                self.source_status.filter(table.fullyQualifiedName.__root__, f"{exc}")
 
     def get_database_entities(self):
         """List all databases in service"""
 
-        for database in self.metadata.list_all_entities(
-            entity=Database,
-            params={"service": self.config.source.serviceName},
-        ):
-            yield database
+        return [
+            self.filter_databases(database)
+            for database in self.metadata.list_all_entities(
+                entity=Database,
+                params={"service": self.config.source.serviceName},
+            )
+            if self.filter_databases(database)
+        ]
 
     def get_table_entities(self, database):
         """
@@ -184,9 +333,7 @@ class ProfilerWorkflow:
         all_tables = self.metadata.list_all_entities(
             entity=Table,
             fields=[
-                "tableProfile",
-                "profileSample",
-                "profileQuery",
+                "tableProfilerConfig",
                 "tests",
             ],
             params={
@@ -202,38 +349,62 @@ class ProfilerWorkflow:
 
         yield from self.filter_entities(all_tables)
 
+    def copy_service_config(self, database) -> None:
+        copy_service_connection_config = deepcopy(
+            self.config.source.serviceConnection.__root__.config
+        )
+        if hasattr(
+            self.config.source.serviceConnection.__root__.config,
+            "supportsDatabase",
+        ):
+            if hasattr(
+                self.config.source.serviceConnection.__root__.config, "database"
+            ):
+                copy_service_connection_config.database = database.name.__root__
+            if hasattr(self.config.source.serviceConnection.__root__.config, "catalog"):
+                copy_service_connection_config.catalog = database.name.__root__
+
+        return copy_service_connection_config
+
     def execute(self):
         """
         Run the profiling and tests
         """
-        copy_service_connection_config = deepcopy(
-            self.config.source.serviceConnection.__root__.config
-        )
-        for database in self.get_database_entities():
-            if hasattr(
-                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
-            ):
-                if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "database"
-                ):
-                    copy_service_connection_config.database = database.name.__root__
-                if hasattr(
-                    self.config.source.serviceConnection.__root__.config, "catalog"
-                ):
-                    copy_service_connection_config.catalog = database.name.__root__
 
-            self.create_processor(copy_service_connection_config)
+        databases = self.get_database_entities()
 
-            for entity in self.get_table_entities(database=database):
-                profile_and_tests: ProfilerResponse = self.processor.process(
-                    record=entity,
-                    generate_sample_data=self.source_config.generateSampleData,
+        if not databases:
+            raise ValueError(
+                "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
+                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes}\n\t- excludes: {self.source_config.databaseFilterPattern.excludes}"
+            )
+
+        for database in databases:
+            copied_service_config = self.copy_service_config(database)
+            try:
+                for entity in self.get_table_entities(database=database):
+                    try:
+                        profiler_interface = self.create_profiler_interface(
+                            copied_service_config, entity
+                        )
+                        self.create_profiler_obj(entity, profiler_interface)
+                        profile: TableProfile = self.profiler_obj.process(
+                            self.source_config.generateSampleData
+                        )
+                        profiler_interface.close()
+                        if hasattr(self, "sink"):
+                            self.sink.write_record(profile)
+                        self.status.processed(entity.fullyQualifiedName.__root__)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Unexpected exception processing entity [{entity}]: {exc}"
+                        )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Unexpected exception executing in database [{database}]: {exc}"
                 )
-
-                if hasattr(self, "sink"):
-                    self.sink.write_record(profile_and_tests)
-
-            self.processor_interface.session.close()
 
     def print_status(self) -> int:
         """
@@ -244,7 +415,7 @@ class ProfilerWorkflow:
         click.secho("Source Status:", bold=True)
         click.echo(self.source_status.as_string())
         click.secho("Processor Status:", bold=True)
-        click.echo(self.processor.get_status().as_string())
+        click.echo(self.status.as_string())
         if hasattr(self, "sink"):
             click.secho("Sink Status:", bold=True)
             click.echo(self.sink.get_status().as_string())
@@ -252,14 +423,14 @@ class ProfilerWorkflow:
 
         if (
             self.source_status.failures
-            or self.processor.get_status().failures
+            or self.status.failures
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
             click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
         if (
             self.source_status.warnings
-            or self.processor.get_status().failures
+            or self.status.failures
             or (hasattr(self, "sink") and self.sink.get_status().warnings)
         ):
             click.secho("Workflow finished with warnings", fg="yellow", bold=True)
@@ -276,10 +447,8 @@ class ProfilerWorkflow:
         as we are just picking up data from OM.
         """
 
-        if self.processor.get_status().failures:
-            raise WorkflowExecutionError(
-                "Processor reported errors", self.processor.get_status()
-            )
+        if self.status.failures:
+            raise WorkflowExecutionError("Processor reported errors", self.status)
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
 
@@ -288,10 +457,8 @@ class ProfilerWorkflow:
                 raise WorkflowExecutionError(
                     "Source reported warnings", self.source_status
                 )
-            if self.processor.get_status().warnings:
-                raise WorkflowExecutionError(
-                    "Processor reported warnings", self.processor.get_status()
-                )
+            if self.status.warnings:
+                raise WorkflowExecutionError("Processor reported warnings", self.status)
             if hasattr(self, "sink") and self.sink.get_status().warnings:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()
@@ -308,7 +475,6 @@ class ProfilerWorkflow:
         Close all connections
         """
         self.metadata.close()
-        self.processor.close()
 
     def _retrieve_service_connection_if_needed(self) -> None:
         """

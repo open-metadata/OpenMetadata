@@ -17,6 +17,7 @@ import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
 import io.dropwizard.jdbi3.JdbiFactory;
@@ -73,6 +74,7 @@ import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.search.SearchResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.secrets.SecretsManagerFactory;
+import org.openmetadata.catalog.secrets.SecretsManagerMigrationService;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
@@ -92,28 +94,12 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
-    final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
-    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
-
+    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(catalogConfig.getSecretsManagerConfiguration());
+        SecretsManagerFactory.createSecretsManager(
+            catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     secretsManager.encryptAirflowConnection(catalogConfig.getAirflowConfiguration());
-
-    SqlLogger sqlLogger =
-        new SqlLogger() {
-          @Override
-          public void logAfterExecution(StatementContext context) {
-            LOG.debug(
-                "sql {}, parameters {}, timeTaken {} ms",
-                context.getRenderedSql(),
-                context.getBinding(),
-                context.getElapsedTime(ChronoUnit.MILLIS));
-          }
-        };
-    if (LOG.isDebugEnabled()) {
-      jdbi.setSqlLogger(sqlLogger);
-    }
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -157,6 +143,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // Register Event publishers
     registerEventPublisher(catalogConfig);
 
+    // Check if migration is need from local secret manager to configured one and migrate
+    new SecretsManagerMigrationService(secretsManager, catalogConfig.getClusterName())
+        .migrateServicesToSecretManagerIfNeeded();
+
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
@@ -164,6 +154,30 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
     intializeWebsockets(catalogConfig, environment);
+  }
+
+  private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
+    Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
+    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
+
+    SqlLogger sqlLogger =
+        new SqlLogger() {
+          @Override
+          public void logAfterExecution(StatementContext context) {
+            LOG.debug(
+                "sql {}, parameters {}, timeTaken {} ms",
+                context.getRenderedSql(),
+                context.getBinding(),
+                context.getElapsedTime(ChronoUnit.MILLIS));
+          }
+        };
+    if (LOG.isDebugEnabled()) {
+      jdbi.setSqlLogger(sqlLogger);
+    }
+    // Set the Database type for choosing correct queries from annotations
+    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+
+    return jdbi;
   }
 
   @SneakyThrows
@@ -205,7 +219,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
           "There are pending migrations to be run on the database."
               + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
               + " You can find more information on upgrading OpenMetadata at"
-              + " https://docs.open-metadata.org/install/upgrade-openmetadata");
+              + " https://docs.open-metadata.org/deployment/upgrade");
     }
   }
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Badge, Button, List, Tabs, Typography } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AppState from '../../AppState';
@@ -86,8 +86,8 @@ const NotificationBox = ({
   ) => {
     setIsLoading(true);
     getFeedsWithFilter(currentUser?.id, feedFilter, undefined, threadType)
-      .then((res: AxiosResponse) => {
-        setNotifications(res.data.data);
+      .then((res) => {
+        setNotifications(res.data);
       })
       .catch((err: AxiosError) => {
         showErrorToast(

@@ -16,17 +16,23 @@ import json
 import uuid
 from unittest import TestCase
 
-from openmetadata_managed_apis.api.utils import clean_dag_id
+from openmetadata_managed_apis.workflows.ingestion.lineage import (
+    build_lineage_workflow_config,
+)
 from openmetadata_managed_apis.workflows.ingestion.metadata import (
     build_metadata_workflow_config,
 )
 from openmetadata_managed_apis.workflows.ingestion.profiler import (
     build_profiler_workflow_config,
 )
+from openmetadata_managed_apis.workflows.ingestion.test_suite import (
+    build_test_suite_workflow_config,
+)
 from openmetadata_managed_apis.workflows.ingestion.usage import (
     build_usage_workflow_config,
 )
 
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -42,18 +48,26 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
     DatabaseServiceQueryUsagePipeline,
+)
+from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    TestSuitePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 
 class OMetaServiceTest(TestCase):
@@ -83,7 +97,6 @@ class OMetaServiceTest(TestCase):
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
-    # TODO update to "snowflake-usage" after https://github.com/open-metadata/OpenMetadata/issues/4469
     usage_data = {
         "type": "snowflake",
         "serviceName": "local_snowflake",
@@ -96,7 +109,22 @@ class OMetaServiceTest(TestCase):
                 "account": "account",
             }
         },
-        "sourceConfig": {"config": {"queryLogDuration": 10}},
+        "sourceConfig": {"config": {"type": "DatabaseUsage", "queryLogDuration": 10}},
+    }
+
+    lineage_data = {
+        "type": "snowflake",
+        "serviceName": "local_snowflake",
+        "serviceConnection": {
+            "config": {
+                "type": "Snowflake",
+                "username": "openmetadata_user",
+                "password": "random",
+                "warehouse": "warehouse",
+                "account": "account",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseLineage", "queryLogDuration": 10}},
     }
 
     workflow_source = WorkflowSource(**data)
@@ -118,6 +146,13 @@ class OMetaServiceTest(TestCase):
             config=cls.usage_workflow_source,
         )
 
+        cls.test_suite: TestSuite = cls.metadata.create_or_update(
+            CreateTestSuiteRequest(
+                name="airflow_workflow_test_suite",
+                description="This is a test suite airflow worflow",
+            )
+        )
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -126,6 +161,13 @@ class OMetaServiceTest(TestCase):
         cls.metadata.delete(
             entity=DatabaseService,
             entity_id=cls.service.id,
+            recursive=True,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=TestSuite,
+            entity_id=cls.test_suite.id,
             recursive=True,
             hard_delete=True,
         )
@@ -188,6 +230,36 @@ class OMetaServiceTest(TestCase):
 
         Workflow.create(config)
 
+    def test_lineage_workflow(self):
+        """
+        Validate that the ingestionPipeline can be parsed
+        and properly load a lineage Workflow
+        """
+
+        ingestion_pipeline = IngestionPipeline(
+            id=uuid.uuid4(),
+            name="test_lineage_workflow",
+            pipelineType=PipelineType.lineage,
+            fullyQualifiedName="local_snowflake.test_lineage_workflow",
+            sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
+            openMetadataServerConnection=self.server_config,
+            airflowConfig=AirflowConfig(
+                startDate="2022-06-10T15:06:47+00:00",
+            ),
+            service=EntityReference(
+                id=self.usage_service.id,
+                type="databaseService",
+                name=self.usage_service.name.__root__,
+            ),
+        )
+
+        workflow_config = build_lineage_workflow_config(ingestion_pipeline)
+        self.assertIn("lineage", workflow_config.source.type)
+
+        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+        Workflow.create(config)
+
     def test_profiler_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
@@ -215,3 +287,31 @@ class OMetaServiceTest(TestCase):
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
         ProfilerWorkflow.create(config)
+
+    def test_test_suite_workflow(self):
+        """
+        Validate that the ingestionPipeline can be parsed
+        and properly load a Profiler Workflow
+        """
+
+        ingestion_pipeline = IngestionPipeline(
+            id=uuid.uuid4(),
+            name="test_test_suite_workflow",
+            pipelineType=PipelineType.TestSuite,
+            fullyQualifiedName="local_mysql.test_test_suite_workflow",
+            sourceConfig=SourceConfig(config=TestSuitePipeline(type="TestSuite")),
+            openMetadataServerConnection=self.server_config,
+            airflowConfig=AirflowConfig(
+                startDate="2022-06-10T15:06:47+00:00",
+            ),
+            service=EntityReference(
+                id=self.test_suite.id,
+                type="testSuite",
+                name=self.test_suite.name.__root__,
+            ),
+        )
+
+        workflow_config = build_test_suite_workflow_config(ingestion_pipeline)
+        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+        TestSuiteWorkflow.create(config)

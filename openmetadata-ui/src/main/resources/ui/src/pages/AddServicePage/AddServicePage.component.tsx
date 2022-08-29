@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
+import { ServiceOption, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -30,12 +31,14 @@ import {
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
@@ -74,10 +77,11 @@ const AddServicePage = () => {
 
   const onAddServiceSave = (data: DataObj) => {
     return new Promise<void>((resolve, reject) => {
-      postService(serviceCategory, data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setNewServiceData(res.data);
+      postService(serviceCategory, data as ServiceOption)
+        .then((res) => {
+          if (res) {
+            // TODO: Fix types conflicts below
+            setNewServiceData(res as unknown as DataObj);
             resolve();
           } else {
             showErrorToast(
@@ -125,10 +129,10 @@ const AddServicePage = () => {
 
     return new Promise<void>((resolve, reject) => {
       return addIngestionPipeline(data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setIngestionId(res.data.id);
-            onIngestionDeploy(res.data.id).finally(() => resolve());
+        .then((res) => {
+          if (res) {
+            setIngestionId(res.id ?? '');
+            onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
               jsonData['api-error-messages']['create-ingestion-error']
@@ -138,8 +142,8 @@ const AddServicePage = () => {
         })
         .catch((err: AxiosError) => {
           getIngestionPipelineByFqn(`${newServiceData?.name}.${data.name}`)
-            .then((res: AxiosResponse) => {
-              if (res.data) {
+            .then((res) => {
+              if (res) {
                 resolve();
                 showErrorToast(
                   err,
@@ -166,7 +170,10 @@ const AddServicePage = () => {
     setSlashedBreadcrumb([
       {
         name: startCase(serviceCategory),
-        url: getServicesWithTabPath(serviceCategory),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.SERVICES,
+          getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+        ),
       },
       {
         name: addIngestion ? 'Add New Ingestion' : 'Add New Service',

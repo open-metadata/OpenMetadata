@@ -16,7 +16,9 @@ import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
@@ -32,6 +34,7 @@ const Tags: FunctionComponent<TagProps> = ({
   isRemovable = true,
   showOnlyName = false,
 }: TagProps) => {
+  const history = useHistory();
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
   const textBaseStyle = tagStyles.text.base;
@@ -42,7 +45,7 @@ const Tags: FunctionComponent<TagProps> = ({
     return tag.startsWith('#') ? tag.slice(1) : tag;
   };
 
-  const getTag = (tag: string, startWith = '') => {
+  const getTag = (tag: string, startWith = '', source?: string) => {
     const startIcon =
       startWith === '+ ' ? (
         <SVGIcons
@@ -60,7 +63,14 @@ const Tags: FunctionComponent<TagProps> = ({
     return (
       <span
         className={classNames(baseStyle, layoutStyles, className)}
-        data-testid="tags">
+        data-testid="tags"
+        onClick={() => {
+          if (source) {
+            source === 'Glossary'
+              ? history.push(`${ROUTES.GLOSSARY}/${tag}`)
+              : history.push(`${ROUTES.TAGS}/${tag.split('.')[0]}`);
+          }
+        }}>
         <span
           className={classNames(
             textBaseStyle,
@@ -68,7 +78,7 @@ const Tags: FunctionComponent<TagProps> = ({
             textEditStyles,
             'tw-flex tw-items-center'
           )}
-          title={tag}>
+          data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}>
           {startIcon}
           <span>{tagName}</span>
         </span>
@@ -93,30 +103,25 @@ const Tags: FunctionComponent<TagProps> = ({
       {isString(tag) ? (
         getTag(tag, startWith)
       ) : (
-        <>
-          {!editable && tag.description ? (
-            <Tooltip
-              placement="bottomLeft"
-              title={
-                <div className="tw-text-left tw-p-1">
-                  {tag.description && (
-                    <div className="tw-mb-2">
-                      <RichTextEditorPreviewer
-                        enableSeeMoreVariant={false}
-                        markdown={tag.description}
-                        textVariant="white"
-                      />
-                    </div>
-                  )}
+        <Tooltip
+          className="tw-cursor-pointer"
+          placement="bottomLeft"
+          title={
+            <div className="tw-text-left tw-p-1">
+              {tag.description && (
+                <div className="tw-mb-2">
+                  <RichTextEditorPreviewer
+                    enableSeeMoreVariant={false}
+                    markdown={`**${tag.tagFQN}**\n${tag.description}`}
+                    textVariant="white"
+                  />
                 </div>
-              }
-              trigger="hover">
-              {getTag(tag.tagFQN, startWith)}
-            </Tooltip>
-          ) : (
-            getTag(tag.tagFQN, startWith)
-          )}
-        </>
+              )}
+            </div>
+          }
+          trigger="hover">
+          {getTag(tag.tagFQN, startWith, tag.source)}
+        </Tooltip>
       )}
     </>
   );

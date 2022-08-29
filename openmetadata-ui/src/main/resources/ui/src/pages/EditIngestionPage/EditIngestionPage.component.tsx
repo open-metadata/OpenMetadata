@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { capitalize, startCase } from 'lodash';
+import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -35,6 +36,7 @@ import {
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -47,9 +49,10 @@ import {
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceIngestionStepGuide,
+  getServiceRouteFromServiceType,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -80,9 +83,10 @@ const EditIngestionPage = () => {
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
       getServiceByFQN(serviceCategory, serviceFQN)
-        .then((resService: AxiosResponse) => {
-          if (resService.data) {
-            setServiceData(resService.data);
+        .then((resService) => {
+          if (resService) {
+            // TODO: fix type issue below
+            setServiceData(resService as DataObj);
             resolve();
           } else {
             showErrorToast(
@@ -107,9 +111,9 @@ const EditIngestionPage = () => {
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
       getIngestionPipelineByFqn(ingestionFQN, ['pipelineStatuses'])
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setIngestionData(res.data);
+        .then((res) => {
+          if (res) {
+            setIngestionData(res);
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -187,8 +191,8 @@ const EditIngestionPage = () => {
 
     return new Promise<void>((resolve, reject) => {
       return updateIngestionPipeline(updateData as CreateIngestionPipeline)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             onIngestionDeploy();
             resolve();
           } else {
@@ -251,7 +255,10 @@ const EditIngestionPage = () => {
     setSlashedBreadcrumb([
       {
         name: startCase(serviceCategory),
-        url: getServicesWithTabPath(serviceCategory),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.SERVICES,
+          getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+        ),
       },
       {
         name: serviceData?.name || '',

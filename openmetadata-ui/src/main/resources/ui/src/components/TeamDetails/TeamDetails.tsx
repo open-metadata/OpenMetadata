@@ -27,6 +27,7 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
 import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team } from '../../generated/entity/teams/team';
@@ -40,6 +41,7 @@ import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -131,7 +133,7 @@ const TeamDetails = ({
       isHidden: !(
         hasAccess ||
         isOwner() ||
-        userPermissions[Operation.EditOwner]
+        hasPemission(Operation.EditOwner, EntityType.TEAM, userPermissions)
       ),
       position: 4,
     },
@@ -343,7 +345,13 @@ const TeamDetails = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(userPermissions[Operation.EditUsers]) ? (
+                {isActionAllowed(
+                  hasPemission(
+                    Operation.EditUsers,
+                    EntityType.TEAM,
+                    userPermissions
+                  )
+                ) ? (
                   <>
                     <p>Would like to start adding some?</p>
                     <Button
@@ -580,7 +588,7 @@ const TeamDetails = ({
     <div
       className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
       data-testid="team-details-container">
-      {teams.length && !isEmpty(currentTeam) ? (
+      {teams && teams.length && !isEmpty(currentTeam) ? (
         <Fragment>
           <div
             className="tw-flex tw-justify-between tw-items-center"
@@ -599,7 +607,6 @@ const TeamDetails = ({
           </div>
           <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
             <Description
-              blurWithBodyBG
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
               hasEditAccess={isOwner()}

@@ -16,10 +16,11 @@ package org.openmetadata.catalog.jdbi3;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 
-public class DatabaseServiceRepository extends ServiceRepository<DatabaseService, DatabaseConnection> {
+public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
   public DatabaseServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
         DatabaseServiceResource.COLLECTION_PATH,
@@ -27,11 +28,7 @@ public class DatabaseServiceRepository extends ServiceRepository<DatabaseService
         dao,
         dao.dbServiceDAO(),
         secretsManager,
-        DatabaseConnection.class);
-  }
-
-  @Override
-  protected String getServiceType(DatabaseService databaseService) {
-    return databaseService.getServiceType().value();
+        DatabaseConnection.class,
+        ServiceType.DATABASE);
   }
 }

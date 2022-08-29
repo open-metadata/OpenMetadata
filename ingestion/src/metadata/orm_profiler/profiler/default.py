@@ -12,17 +12,15 @@
 """
 Default simple profiler to use
 """
-from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
 
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.core import Metric, add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
-from metadata.utils.constants import TEN_MIN
 
 
 def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
@@ -60,26 +58,16 @@ class DefaultProfiler(Profiler):
 
     def __init__(
         self,
-        profiler_interface: SQAProfilerInterface,
-        table: DeclarativeMeta,
-        ignore_cols: Optional[List[str]] = None,
-        profile_date: datetime = datetime.now(),
-        profile_sample: Optional[float] = None,
-        timeout_seconds: Optional[int] = TEN_MIN,
-        partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
+        profiler_interface: SQAInterface,
+        include_columns: List[Optional[ColumnProfilerConfig]] = None,
+        exclude_columns: List[Optional[str]] = None,
     ):
 
-        _metrics = get_default_metrics(table)
+        _metrics = get_default_metrics(profiler_interface.table)
 
         super().__init__(
             *_metrics,
             profiler_interface=profiler_interface,
-            table=table,
-            ignore_cols=ignore_cols,
-            profile_date=profile_date,
-            profile_sample=profile_sample,
-            timeout_seconds=timeout_seconds,
-            partition_details=partition_details,
-            profile_sample_query=profile_sample_query,
+            include_columns=include_columns,
+            exclude_columns=exclude_columns,
         )

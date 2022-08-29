@@ -22,7 +22,7 @@ export const dashboardDetailsTabs = [
     path: 'details',
   },
   {
-    name: 'Activity Feed & Tasks',
+    name: 'Activity Feeds & Tasks',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
@@ -34,10 +34,6 @@ export const dashboardDetailsTabs = [
   {
     name: 'Custom Properties',
     path: 'custom_properties',
-  },
-  {
-    name: 'Manage',
-    path: 'manage',
   },
 ];
 
@@ -56,11 +52,6 @@ export const getCurrentDashboardTab = (tab: string) => {
 
     case 'custom_properties':
       currentTab = 4;
-
-      break;
-
-    case 'manage':
-      currentTab = 5;
 
       break;
 

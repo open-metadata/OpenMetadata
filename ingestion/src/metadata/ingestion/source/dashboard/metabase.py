@@ -41,14 +41,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import search_table_entities
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
@@ -168,20 +167,20 @@ class MetabaseSource(DashboardServiceSource):
                     ),
                 )
                 self.status.scanned(chart_details["name"])
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(repr(err))
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
+                logger.warning(f"Error creating chart [{chart}]: {exc}")
                 continue
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict
+        self, dashboard_details: dict, db_service_name
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 
         Args:
             dashboard_details
         """
-        if not self.source_config.dbServiceName:
+        if not db_service_name:
             return
         chart_list, dashboard_name = (
             dashboard_details["ordered_cards"],
@@ -216,8 +215,8 @@ class MetabaseSource(DashboardServiceSource):
                         )
                         from_entities = search_table_entities(
                             metadata=self.metadata,
-                            database=database["details"]["dbname"],
-                            service_name=self.source_config.dbServiceName,
+                            database=database["details"]["db"],
+                            service_name=db_service_name,
                             database_schema=database_schema_name,
                             table=table,
                         )
@@ -257,8 +256,8 @@ class MetabaseSource(DashboardServiceSource):
                         from_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name=self.source_config.dbServiceName,
-                            database_name=table["db"]["details"]["dbname"],
+                            service_name=db_service_name,
+                            database_name=table["db"]["details"]["db"],
                             schema_name=table.get("schema"),
                             table_name=table.get("display_name"),
                         )
@@ -288,9 +287,9 @@ class MetabaseSource(DashboardServiceSource):
                                 )
                             )
                             yield lineage
-            except Exception as err:  # pylint: disable=broad-except,unused-variable
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.error(f"Error creating chart [{chart}]: {exc}")
 
     def req_get(self, path):
         """Send get request method

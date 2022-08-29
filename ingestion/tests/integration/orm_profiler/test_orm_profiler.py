@@ -23,7 +23,6 @@ import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -162,7 +161,7 @@ class ProfilerWorkflowTest(TestCase):
         workflow_config["source"]["sourceConfig"]["config"].update(
             {
                 "type": "Profiler",
-                "fqnFilterPattern": {"includes": ["test_sqlite.main.main.users"]},
+                "tableFilterPattern": {"includes": ["users"]},
             }
         )
         workflow_config["processor"] = {
@@ -173,37 +172,12 @@ class ProfilerWorkflowTest(TestCase):
                     "timeout_seconds": 60,
                     "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
                 },
-                "test_suite": {
-                    "name": "My Test Suite",
-                    "tests": [
-                        {
-                            "table": "test_sqlite.main.main.users",  # FQDN
-                            "profile_sample": 75,
-                            "table_tests": [
-                                {
-                                    "testCase": {
-                                        "config": {
-                                            "value": 100,
-                                        },
-                                        "tableTestType": "tableRowCountToEqual",
-                                    },
-                                },
-                            ],
-                            "column_tests": [
-                                {
-                                    "columnName": "age",
-                                    "testCase": {
-                                        "config": {
-                                            "minValue": 0,
-                                            "maxValue": 99,
-                                        },
-                                        "columnTestType": "columnValuesToBeBetween",
-                                    },
-                                }
-                            ],
-                        },
-                    ],
-                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "profileSample": 75,
+                    }
+                ],
             },
         }
 
@@ -212,18 +186,14 @@ class ProfilerWorkflowTest(TestCase):
         status = profiler_workflow.print_status()
         profiler_workflow.stop()
 
-        assert (
-            status == 1
-        )  # We have a test error, so we get a failure with exit status 1
+        assert status == 0
 
-        # The profileSample should have been updated
         table = self.metadata.get_by_name(
-            entity=Table, fqn="test_sqlite.main.main.users", fields=["profileSample"]
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig", "profile"],
         )
-        assert table.profileSample == 75.0
-
-        with pytest.raises(WorkflowExecutionError):
-            profiler_workflow.raise_from_status()
+        assert table.profile.profileSample == 75.0
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""
@@ -232,7 +202,7 @@ class ProfilerWorkflowTest(TestCase):
             {
                 "type": "Profiler",
                 "profileSample": 50,
-                "fqnFilterPattern": {"includes": ["test_sqlite.main.main.new_users"]},
+                "tableFilterPattern": {"includes": ["new_users"]},
             }
         )
         workflow_config["processor"] = {"type": "orm-profiler", "config": {}}
@@ -245,6 +215,8 @@ class ProfilerWorkflowTest(TestCase):
         table = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.main.main.new_users",
-            fields=["profileSample"],
+            fields=["tableProfilerConfig"],
         )
-        assert table.profileSample == 50
+        # setting sampleProfile from config has been temporarly removed
+        # up until we split tests and profiling
+        assert table.tableProfilerConfig is None

@@ -24,11 +24,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
-from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -150,10 +150,9 @@ class DynamodbSource(DatabaseServiceSource):
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                 yield Column(**parsed_string)
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -182,17 +181,15 @@ class DynamodbSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
 
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        pass
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass

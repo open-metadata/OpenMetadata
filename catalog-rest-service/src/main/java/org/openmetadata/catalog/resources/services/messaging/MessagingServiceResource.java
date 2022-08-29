@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -45,6 +46,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
@@ -78,7 +80,12 @@ public class MessagingServiceResource
   }
 
   public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(MessagingService.class, new MessagingServiceRepository(dao, secretsManager), authorizer, secretsManager);
+    super(
+        MessagingService.class,
+        new MessagingServiceRepository(dao, secretsManager),
+        authorizer,
+        secretsManager,
+        ServiceType.MESSAGING);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
@@ -156,7 +163,7 @@ public class MessagingServiceResource
   public MessagingService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -263,7 +270,7 @@ public class MessagingServiceResource
   public MessagingService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "messaging service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -314,8 +321,7 @@ public class MessagingServiceResource
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
-          String id,
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
@@ -346,13 +352,12 @@ public class MessagingServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private MessagingService getService(CreateMessagingService create, String user) {
+  private MessagingService getService(CreateMessagingService create, String user) throws IOException {
     return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
         .withServiceType(create.getServiceType());

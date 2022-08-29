@@ -15,7 +15,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 
 You can check the latest release [here](/overview/releases).
 
-## 0.12.0 Release - Aug 17th, 2022
+## 0.12.0 Release - Sept 7th, 2022
 
 <TileContainer>
   <Tile
@@ -85,20 +85,12 @@ You can check the latest release [here](/overview/releases).
     bordercolor="blue-70"
   >
     <li>Fivetran</li>
-    <li>Sagemaker</li>
-    <li>Mode</li>
     <li>Redpanda</li>
-    <li>Prefect</li>
+    <li>Dagster</li>
   </Tile>
-    <Tile
-    title="ML Features"
-    text="With the addition of the SageMaker connector"
-    background="blue-70"
-    bordercolor="blue-70"
-  />
 </TileContainer>
 
-## 0.13.0 Release - Sept 28th, 2022
+## 0.13.0 Release - Oct 12th, 2022
 
 <TileContainer>
   <Tile
@@ -144,12 +136,10 @@ You can check the latest release [here](/overview/releases).
     background="green-70"
     bordercolor="green-70"
   >
-    <li>Qwik</li>
     <li>DataStudio</li>
     <li>Trino Usage</li>
     <li>LookML</li>
-    <li>Dagster</li>
-    <li>One click migration from Amundsen and Atlas.</li>
+    <li>Sagemaker</li>
   </Tile>
   <Tile
     title="Data Quality"
@@ -158,7 +148,7 @@ You can check the latest release [here](/overview/releases).
     bordercolor="yellow-70"
     link="https://github.com/open-metadata/OpenMetadata/issues/4652"
   >
-    <li>Custom SQL improvements, Allow users to validate the sql and run</li>
+    <li>Complex types</li>
     <li>Improvements to data profiler metrics</li>
     <li>Performance improvements to data quality</li>
   </Tile>
@@ -179,13 +169,16 @@ You can check the latest release [here](/overview/releases).
   />
   <Tile
     title="Lineage"
-    text="Support Spark Lineage"
+    text=""
     background="green-70"
     bordercolor="green-70"
-  />
+  >
+    <li>Spark Lineage</li>
+    <li>Connector Lineage improvements</li>
+  </Tile>
 </TileContainer>
 
-## 0.14.0 Release - Nov 9th, 2022
+## 0.14.0 Release - Nov 16th, 2022
 
 <TileContainer>
   <Tile
@@ -232,6 +225,15 @@ You can check the latest release [here](/overview/releases).
     <li>Kafka Connect</li>
     <li>Microstrategy</li>
     <li>Custom service integration - Users can integrate with their own service type</li>
+  </Tile>
+  <Tile
+    title="Data Quality"
+    text=""
+    background="purple-70"
+    bordercolor="purple-70"
+    link=""
+  >
+    <li>Custom SQL improvements, Allow users to validate the sql and run</li>
   </Tile>
 </TileContainer>
 

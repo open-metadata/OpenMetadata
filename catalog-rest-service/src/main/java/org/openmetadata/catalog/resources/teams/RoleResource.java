@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -49,7 +48,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
@@ -69,6 +67,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Path("/v1/roles")
 @Api(value = "Roles collection", tags = "Roles collection")
@@ -97,8 +96,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     jsonFiles.forEach(
         jsonFile -> {
           try {
-            String roleJson =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonFile)));
+            String roleJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonFile);
             Role role = JsonUtils.readValue(roleJson, entityClass);
             List<EntityReference> policies = role.getPolicies();
             for (EntityReference policy : policies) {
@@ -224,7 +222,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Role get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -293,7 +291,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Role getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Role Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Role Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Role version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -341,7 +339,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, role, true);
-    RoleCache.invalidateRole(role.getId());
+    RoleCache.getInstance().invalidateRole(role.getId());
     return response;
   }
 
@@ -357,7 +355,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -370,7 +368,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     Role role = (Role) response.getEntity();
-    RoleCache.invalidateRole(role.getId());
+    RoleCache.getInstance().invalidateRole(role.getId());
     return response;
   }
 
@@ -392,16 +390,16 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @PathParam("id") String id)
+      @PathParam("id") UUID id)
       throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
     Response response = delete(uriInfo, securityContext, id, true, hardDelete, true);
-    RoleCache.invalidateRole(UUID.fromString(id));
+    RoleCache.getInstance().invalidateRole(id);
     return response;
   }
 
-  private Role getRole(CreateRole create, String user) {
+  private Role getRole(CreateRole create, String user) throws IOException {
     if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }

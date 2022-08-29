@@ -34,6 +34,7 @@ import org.openmetadata.catalog.util.PipelineServiceClient;
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
   private static final String API_ENDPOINT = "api/v1/openmetadata";
+  private static final String DAG_ID = "dag_id";
 
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     super(
@@ -84,7 +85,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerEndPoint = "%s/%s/trigger";
       String triggerUrl = String.format(triggerEndPoint, serviceURL, API_ENDPOINT);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("dag_id", pipelineName);
+      requestPayload.put(DAG_ID, pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response.body();
@@ -104,7 +105,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String toggleEndPoint;
       String toggleUrl;
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("dag_id", ingestionPipeline.getName());
+      requestPayload.put(DAG_ID, ingestionPipeline.getName());
       // If the pipeline is currently enabled, disable it
       if (ingestionPipeline.getEnabled().equals(Boolean.TRUE)) {
         toggleEndPoint = "%s/%s/disable";
@@ -164,12 +165,28 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> getServiceStatus() {
+  public Response getServiceStatus() {
     HttpResponse<String> response;
     try {
       response = getRequestNoAuthForJsonContent("%s/%s/health", serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
-        return response;
+        JSONObject responseJSON = new JSONObject(response.body());
+        String ingestionVersion = responseJSON.getString("version");
+
+        if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
+          Map<String, String> status = Map.of("status", "healthy");
+          return Response.status(200, status.toString()).build();
+        } else {
+          Map<String, String> status =
+              Map.of(
+                  "status",
+                  "unhealthy",
+                  "reason",
+                  String.format(
+                      "Got Ingestion Version %s and Server Version %s. They should match.",
+                      ingestionVersion, SERVER_VERSION));
+          return Response.status(500, status.toString()).build();
+        }
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
@@ -201,7 +218,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String killEndPoint = "%s/%s/kill";
       String killUrl = String.format(killEndPoint, serviceURL, API_ENDPOINT);
       JSONObject requestPayload = new JSONObject();
-      requestPayload.put("dag_id", ingestionPipeline.getName());
+      requestPayload.put(DAG_ID, ingestionPipeline.getName());
       response = post(killUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return response;
@@ -211,6 +228,21 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
     throw new PipelineServiceClientException(
         String.format("Failed to kill running workflows due to %s", response.body()));
+  }
+
+  @Override
+  public Map<String, String> getHostIp() {
+    HttpResponse<String> response;
+    try {
+      response = getRequestAuthenticatedForJsonContent("%s/%s/ip", serviceURL, API_ENDPOINT);
+      if (response.statusCode() == 200) {
+        return JsonUtils.readValue(response.body(), new TypeReference<>() {});
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());
+    }
+    throw new PipelineServiceClientException(
+        String.format("Failed to get Pipeline Service host IP due to %s", response.body()));
   }
 
   @Override

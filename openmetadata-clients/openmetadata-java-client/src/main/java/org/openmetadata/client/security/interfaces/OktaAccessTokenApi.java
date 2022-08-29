@@ -13,9 +13,12 @@
 
 package org.openmetadata.client.security.interfaces;
 
-import feign.*;
-import io.swagger.client.ApiClient;
+import feign.Headers;
+import feign.Param;
+import feign.QueryMap;
+import feign.RequestLine;
 import java.util.Map;
+import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.model.AccessTokenResponse;
 
 public interface OktaAccessTokenApi extends ApiClient.Api {

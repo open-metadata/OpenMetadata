@@ -15,6 +15,9 @@ package org.openmetadata.catalog.resources;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -90,14 +93,11 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
   @Test
   void testEntityReferenceFormat() throws JsonProcessingException {
-    ChangeDescription changeDescription = new ChangeDescription();
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.0);
     // Simulate adding owner to a table
     EntityReference entityReference = new EntityReference();
     entityReference.withId(UUID.randomUUID()).withName("user1").withDisplayName("User One");
-    FieldChange addOwner = new FieldChange();
-    addOwner.withName(FIELD_OWNER).withNewValue(JsonUtils.pojoToJson(entityReference));
-
-    changeDescription.withFieldsAdded(List.of(addOwner)).withPreviousVersion(1.0);
+    fieldAdded(changeDescription, FIELD_OWNER, JsonUtils.pojoToJson(entityReference));
 
     Map<EntityLink, String> messages =
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
@@ -108,12 +108,9 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
   @Test
   void testUpdateOfString() {
-    ChangeDescription changeDescription = new ChangeDescription();
     // Simulate a change of description in table
-    FieldChange updateDescription = new FieldChange();
-    updateDescription.withName("description").withNewValue("new description").withOldValue("old description");
-
-    changeDescription.withFieldsUpdated(List.of(updateDescription)).withPreviousVersion(1.0);
+    ChangeDescription changeDescription = new ChangeDescription();
+    fieldUpdated(changeDescription, "description", "old description", "new description");
 
     Map<EntityLink, String> messages =
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
@@ -125,15 +122,9 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         messages.values().iterator().next());
 
     // test if it updates correctly with one add and one delete change
-    changeDescription = new ChangeDescription();
-    FieldChange addDescription = new FieldChange();
-    FieldChange deleteDescription = new FieldChange();
-    addDescription.withName("description").withNewValue("new description");
-    deleteDescription.withName("description").withOldValue("old description");
-    changeDescription
-        .withFieldsAdded(List.of(addDescription))
-        .withFieldsDeleted(List.of(deleteDescription))
-        .withPreviousVersion(1.0);
+    changeDescription = new ChangeDescription().withPreviousVersion(1.0);
+    fieldAdded(changeDescription, "description", "new description");
+    fieldDeleted(changeDescription, "description", "old description");
 
     // now test if both the type of updates give the same message
     Map<EntityLink, String> updatedMessages =
@@ -148,10 +139,7 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
   void testUpdateOfStringSlack() {
     ChangeDescription changeDescription = new ChangeDescription();
     // Simulate a change of description in table
-    FieldChange updateDescription = new FieldChange();
-    updateDescription.withName("description").withNewValue("new description").withOldValue("old description");
-
-    changeDescription.withFieldsUpdated(List.of(updateDescription)).withPreviousVersion(1.0);
+    fieldUpdated(changeDescription, "description", "old description", "new description");
 
     Map<EntityLink, String> messages =
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
@@ -160,15 +148,9 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
     assertEquals("Updated *description* : ~old~ *new*  description", messages.values().iterator().next());
 
     // test if it updates correctly with one add and one delete change
-    changeDescription = new ChangeDescription();
-    FieldChange addDescription = new FieldChange();
-    FieldChange deleteDescription = new FieldChange();
-    addDescription.withName("description").withNewValue("new description");
-    deleteDescription.withName("description").withOldValue("old description");
-    changeDescription
-        .withFieldsAdded(List.of(addDescription))
-        .withFieldsDeleted(List.of(deleteDescription))
-        .withPreviousVersion(1.0);
+    changeDescription = new ChangeDescription().withPreviousVersion(1.0);
+    fieldAdded(changeDescription, "description", "new description");
+    fieldDeleted(changeDescription, "description", "old description");
 
     // now test if both the type of updates give the same message
     Map<EntityLink, String> updatedMessages =
@@ -181,24 +163,17 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
   @Test
   void testMajorSchemaChange() {
-    ChangeDescription changeDescription = new ChangeDescription();
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.3);
     // Simulate a change of column name in table
-    FieldChange addColumn = new FieldChange();
-    addColumn
-        .withName("columns")
-        .withNewValue(
-            "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+    fieldAdded(
+        changeDescription,
+        "columns",
+        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
 
-    FieldChange deleteColumn = new FieldChange();
-    deleteColumn
-        .withName("columns")
-        .withOldValue(
-            "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
-
-    changeDescription
-        .withFieldsAdded(List.of(addColumn))
-        .withFieldsDeleted(List.of(deleteColumn))
-        .withPreviousVersion(1.3);
+    fieldDeleted(
+        changeDescription,
+        "columns",
+        "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
 
     Map<EntityLink, String> messages =
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
@@ -209,15 +184,15 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
-    addColumn.withNewValue(
+    changeDescription = new ChangeDescription().withPreviousVersion(1.3);
+    fieldAdded(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
-    deleteColumn.withOldValue(
+    fieldDeleted(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]");
-
-    changeDescription
-        .withFieldsAdded(List.of(addColumn))
-        .withFieldsDeleted(List.of(deleteColumn))
-        .withPreviousVersion(1.3);
 
     messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
@@ -227,15 +202,15 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         messages.values().iterator().next());
 
     // Simulate multiple changes to columns
-    addColumn.withNewValue(
+    changeDescription = new ChangeDescription().withPreviousVersion(1.4);
+    fieldAdded(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"},{\"name\":\"newColumn\",\"displayName\":\"newColumn\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.newColumn\"}]");
-    deleteColumn.withOldValue(
+    fieldDeleted(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]");
-
-    changeDescription
-        .withFieldsAdded(List.of(addColumn))
-        .withFieldsDeleted(List.of(deleteColumn))
-        .withPreviousVersion(1.4);
 
     messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
@@ -247,24 +222,17 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
   @Test
   void testMajorSchemaChangeSlack() {
-    ChangeDescription changeDescription = new ChangeDescription();
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.3);
     // Simulate a change of column name in table
-    FieldChange addColumn = new FieldChange();
-    addColumn
-        .withName("columns")
-        .withNewValue(
-            "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+    fieldAdded(
+        changeDescription,
+        "columns",
+        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
 
-    FieldChange deleteColumn = new FieldChange();
-    deleteColumn
-        .withName("columns")
-        .withOldValue(
-            "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
-
-    changeDescription
-        .withFieldsAdded(List.of(addColumn))
-        .withFieldsDeleted(List.of(deleteColumn))
-        .withPreviousVersion(1.3);
+    fieldDeleted(
+        changeDescription,
+        "columns",
+        "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
 
     Map<EntityLink, String> messages =
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
@@ -278,15 +246,15 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
-    addColumn.withNewValue(
+    changeDescription = new ChangeDescription().withPreviousVersion(1.3);
+    fieldAdded(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
-    deleteColumn.withOldValue(
+    fieldDeleted(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]");
-
-    changeDescription
-        .withFieldsAdded(List.of(addColumn))
-        .withFieldsDeleted(List.of(deleteColumn))
-        .withPreviousVersion(1.3);
 
     messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
@@ -298,15 +266,15 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         messages.values().iterator().next());
 
     // Simulate multiple changes to columns
-    addColumn.withNewValue(
+    changeDescription = new ChangeDescription().withPreviousVersion(1.4);
+    fieldAdded(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"},{\"name\":\"newColumn\",\"displayName\":\"newColumn\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.newColumn\"}]");
-    deleteColumn.withOldValue(
+    fieldDeleted(
+        changeDescription,
+        "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]");
-
-    changeDescription
-        .withFieldsAdded(List.of(addColumn))
-        .withFieldsDeleted(List.of(deleteColumn))
-        .withPreviousVersion(1.4);
 
     messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());

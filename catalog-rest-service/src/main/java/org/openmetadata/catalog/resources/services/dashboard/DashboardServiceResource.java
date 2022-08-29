@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -45,6 +46,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -77,7 +79,12 @@ public class DashboardServiceResource
   }
 
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(DashboardService.class, new DashboardServiceRepository(dao, secretsManager), authorizer, secretsManager);
+    super(
+        DashboardService.class,
+        new DashboardServiceRepository(dao, secretsManager),
+        authorizer,
+        secretsManager,
+        ServiceType.DASHBOARD);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -131,7 +138,7 @@ public class DashboardServiceResource
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<DashboardService> dashboardServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
   }
 
@@ -153,7 +160,7 @@ public class DashboardServiceResource
   public DashboardService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -260,7 +267,7 @@ public class DashboardServiceResource
   public DashboardService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "dashboard service Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "dashboard service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -340,13 +347,12 @@ public class DashboardServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private DashboardService getService(CreateDashboardService create, String user) {
+  private DashboardService getService(CreateDashboardService create, String user) throws IOException {
     return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

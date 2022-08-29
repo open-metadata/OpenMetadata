@@ -13,7 +13,6 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
@@ -61,6 +60,7 @@ class MessagingServiceTopology(ServiceTopology):
                 context="messaging_service",
                 processor="yield_create_request_messaging_service",
                 overwrite=False,
+                must_return=True,
             )
         ],
         children=["topic"],
@@ -78,14 +78,13 @@ class MessagingServiceTopology(ServiceTopology):
     )
 
 
-@dataclass
 class MessagingSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
     """
 
-    topics_scanned: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    topics_scanned: List[str] = list()
+    filtered: List[str] = list()
 
     def topic_scanned(self, topic: str) -> None:
         self.topics_scanned.append(topic)

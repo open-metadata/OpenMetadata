@@ -9,13 +9,7 @@ In this page, you will learn how to use the `metadata` CLI to run a one-ingestio
 
 <Requirements />
 
-## Python requirements 
-
-To run the Amundsen ingestion, you will need to install:
-
-```commandline
-pip3 install "openmetadata-ingestion[amundsen]"
-```
+<PythonMod connector="Amundsen" module="amundsen" />
 
 Make sure you are running openmetadata-ingestion version 0.10.2 or above.
 

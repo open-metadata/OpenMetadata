@@ -32,6 +32,10 @@ export const leftPanelAntCardStyle = {
   marginLeft: '4px',
 };
 
+/**
+ *
+ * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/containers/PageLayoutV1.tsx PageLayoutV1}
+ */
 const PageLayout: FC<PageLayoutProp> = ({
   leftPanel,
   header,
@@ -43,11 +47,8 @@ const PageLayout: FC<PageLayoutProp> = ({
   const getLeftPanel = () => {
     return (
       leftPanel && (
-        <div>
-          <div className="tw-py-1" id="left-panel">
-            {leftPanel}
-          </div>
-          <div />
+        <div className="tw-py-1" id="left-panel">
+          {leftPanel}
         </div>
       )
     );
@@ -56,11 +57,8 @@ const PageLayout: FC<PageLayoutProp> = ({
   const getRightPanel = () => {
     return (
       rightPanel && (
-        <div>
-          <div className="tw-py-1" id="right-panel">
-            {rightPanel}
-          </div>
-          <div />
+        <div className="tw-py-1" id="right-panel">
+          {rightPanel}
         </div>
       )
     );
@@ -89,7 +87,9 @@ const PageLayout: FC<PageLayoutProp> = ({
             }
           )}>
           {getLeftPanel()}
-          <div id="center">{children}</div>
+          <div className={leftPanel || rightPanel ? 'tw-py-1' : ''} id="center">
+            {children}
+          </div>
           {getRightPanel()}
         </div>
       </Fragment>

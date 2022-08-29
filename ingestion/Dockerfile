@@ -1,7 +1,7 @@
 FROM python:3.9-slim as base
 ENV AIRFLOW_HOME=/airflow
 RUN apt-get update && \
-    apt-get install -y gcc libsasl2-modules libsasl2-dev build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget openssl --no-install-recommends && \
+    apt-get install -y gcc libsasl2-modules libxml2 libsasl2-dev build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget openssl --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Manually fix security vulnerability from curl
@@ -14,6 +14,17 @@ RUN wget https://curl.se/download/curl-7.84.0.tar.gz && \
 
 FROM base as airflow
 ENV AIRFLOW_VERSION=2.3.3
+
+# install odbc driver
+RUN apt-get update && \
+    apt-get install -y gnupg && \
+    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql18 && \
+    rm -rf /var/lib/apt/lists/*
+
+
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 # Add docker provider for the DockerOperator
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
@@ -25,13 +36,12 @@ COPY openmetadata-airflow-apis /openmetadata-airflow-apis
 
 RUN pip install "."
 
-
 FROM apis as ingestion
 WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg

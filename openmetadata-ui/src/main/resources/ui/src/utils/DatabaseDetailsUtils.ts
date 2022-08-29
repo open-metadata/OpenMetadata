@@ -6,13 +6,9 @@ export const databaseDetailsTabs = [
     path: 'schemas',
   },
   {
-    name: 'Activity Feed',
+    name: 'Activity Feeds',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
-    name: 'Manage',
-    path: 'manage',
   },
 ];
 
@@ -21,10 +17,6 @@ export const getCurrentDatabaseDetailsTab = (tab: string) => {
   switch (tab) {
     case 'activity_feed':
       currentTab = 2;
-
-      break;
-    case 'manage':
-      currentTab = 3;
 
       break;
 

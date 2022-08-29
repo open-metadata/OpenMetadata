@@ -13,7 +13,6 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Any, Iterable, List, Optional
 
 from pydantic import BaseModel
@@ -81,6 +80,7 @@ class DashboardServiceTopology(ServiceTopology):
                 context="dashboard_service",
                 processor="yield_create_request_dashboard_service",
                 overwrite=False,
+                must_return=True,
             ),
             NodeStage(
                 type_=OMetaTagAndCategory,
@@ -136,7 +136,6 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
-@dataclass
 class DashboardSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
@@ -167,7 +166,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_dashboard_lineage_details(
-        self, dashboard_details: Any
+        self, dashboard_details: Any, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -205,8 +204,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Yields lineage if config is enabled
         """
-        if self.source_config.dbServiceName:
-            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
+        for db_service_name in self.source_config.dbServiceNames or []:
+            yield from self.yield_dashboard_lineage_details(
+                dashboard_details, db_service_name
+            ) or []
 
     def yield_tag(self, *args, **kwargs) -> Optional[Iterable[OMetaTagAndCategory]]:
         """
@@ -278,11 +279,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
             try:
                 dashboard_details = self.get_dashboard_details(dashboard)
-            except Exception as err:
-                logger.error(
-                    f"Cannot extract dashboard details from {dashboard} - {err}"
-                )
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Cannot extract dashboard details from {dashboard}: {exc}"
+                )
                 continue
 
             if filter_by_dashboard(

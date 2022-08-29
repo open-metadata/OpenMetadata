@@ -12,21 +12,24 @@
  */
 
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { WebhookType } from '../generated/api/events/createWebhook';
+import { getSettingPath } from '../utils/RouterUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from './globalSettings.constants';
 
 export const PRIMERY_COLOR = '#7147E8';
+export const SECONDARY_COLOR = '#B02AAC';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
+export const SUCCESS_COLOR = '#008376';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
-export const SUPPORTED_DOMAIN_TYPES = [
-  'localhost:3000',
-  'localhost:8585',
-  'sandbox-beta.open-metadata.org',
-];
 
 export const FOLLOWERS_VIEW_CAP = 20;
-export const INITIAL_PAGIN_VALUE = 1;
+export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 12;
@@ -45,6 +48,7 @@ export const oidcTokenKey = 'oidcIdToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
+export const TERM_ALL = 'all';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
@@ -71,6 +75,7 @@ export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
+export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLAEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
@@ -83,7 +88,12 @@ export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
+export const PLACEHOLDER_TAG_NAME = ':tagCategoryName';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
+export const PLACEHOLDER_USER_BOT = ':bot';
+export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
+export const PLACEHOLDER_RULE_NAME = ':ruleName';
+export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -158,10 +168,9 @@ export const ROUTES = {
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
-  TEAMS_AND_USERS: '/teams-and-users',
-  TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
   SETTINGS: `/settings`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
+  SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
@@ -169,7 +178,6 @@ export const ROUTES = {
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   EDIT_SERVICE_CONNECTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}/edit-connection`,
-  SERVICES: '/services',
   SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
   ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   EDIT_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
@@ -177,6 +185,7 @@ export const ROUTES = {
   SCORECARD: '/scorecard',
   SWAGGER: '/docs',
   TAGS: '/tags',
+  TAG_DETAILS: `/tags/${PLACEHOLDER_TAG_NAME}`,
   SIGNUP: '/signup',
   SIGNIN: '/signin',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
@@ -194,11 +203,12 @@ export const ROUTES = {
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
+  CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
   USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   ROLES: '/roles',
-  WEBHOOKS: '/webhooks',
-  ADD_WEBHOOK: '/add-webhook',
+  ADD_WEBHOOK: '/add-webhook/',
+  ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/add-glossary',
@@ -206,13 +216,13 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
-  BOTS: `/bots`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
   MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
   MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+  PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
@@ -222,6 +232,10 @@ export const ROUTES = {
   TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
 
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
+  ADD_ROLE: '/settings/access/roles/add-role',
+  ADD_POLICY: '/settings/access/policies/add-policy',
+  ADD_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/add-rule`,
+  EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -315,6 +329,15 @@ export const getDatabaseSchemaDetailsPath = (
   return path;
 };
 
+export const getAddWebhookPath = (webhookType?: WebhookType) => {
+  let path = webhookType ? ROUTES.ADD_WEBHOOK_WITH_TYPE : ROUTES.ADD_WEBHOOK;
+  if (webhookType) {
+    path = path.replace(PLACEHOLDER_WEBHOOK_TYPE, webhookType);
+  }
+
+  return path;
+};
+
 export const getTopicDetailsPath = (topicFQN: string, tab?: string) => {
   let path = tab ? ROUTES.TOPIC_DETAILS_WITH_TAB : ROUTES.TOPIC_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN);
@@ -349,10 +372,17 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
 };
 
 export const getTeamAndUserDetailsPath = (name?: string) => {
-  let path = ROUTES.TEAMS_AND_USERS;
+  let path = getSettingPath(
+    GlobalSettingsMenuCategory.MEMBERS,
+    GlobalSettingOptions.TEAMS
+  );
   if (name) {
-    path = ROUTES.TEAMS_AND_USERS_DETAILS;
-    path = path.replace(PLACEHOLDER_ROUTE_TEAM_AND_USER, name);
+    path = getSettingPath(
+      GlobalSettingsMenuCategory.MEMBERS,
+      GlobalSettingOptions.TEAMS,
+      true
+    );
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, name);
   }
 
   return path;
@@ -405,6 +435,24 @@ export const getCustomEntityPath = (entityTypeFQN: string) => {
   return path;
 };
 
+export const getCreateUserPath = (bot: boolean) => {
+  let path = bot ? ROUTES.CREATE_USER_WITH_BOT : ROUTES.CREATE_USER;
+
+  if (bot) {
+    path = path.replace(PLACEHOLDER_USER_BOT, 'bot');
+  }
+
+  return path;
+};
+
+export const getUsersPagePath = () => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/users`;
+};
+
+export const getBotsPagePath = () => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.INTEGRATIONS}/bots`;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -414,26 +462,6 @@ export const navLinkDevelop = [
   { name: 'Reports', to: '/reports', disabled: false },
   { name: 'SQL Builder', to: '/sql-builder', disabled: false },
   { name: 'Workflows', to: '/workflows', disabled: false },
-];
-
-export const navLinkSettings = [
-  { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
-  {
-    name: 'Custom Properties',
-    to: '/custom-properties',
-    disabled: false,
-    isAdminOnly: true,
-  },
-  { name: 'Glossaries', to: '/glossary', disabled: false },
-  { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
-  { name: 'Services', to: '/services', disabled: false },
-  { name: 'Tags', to: '/tags', disabled: false },
-  {
-    name: 'Teams & Users',
-    to: ROUTES.TEAMS_AND_USERS,
-    disabled: false,
-  },
-  { name: 'Webhooks', to: '/webhooks', disabled: false, isAdminOnly: true },
 ];
 
 export const TITLE_FOR_NON_OWNER_ACTION =

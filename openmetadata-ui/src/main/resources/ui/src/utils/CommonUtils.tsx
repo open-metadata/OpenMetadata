@@ -12,11 +12,12 @@
  */
 
 import { Popover } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isNil, isNull, isUndefined } from 'lodash';
 import {
   EntityFieldThreadCount,
+  ExtraInfo,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -32,7 +33,6 @@ import {
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
-  SUPPORTED_DOMAIN_TYPES,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import {
@@ -41,10 +41,19 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { Database } from '../generated/entity/data/database';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Pipeline } from '../generated/entity/data/pipeline';
+import { Table } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
+import { Policy } from '../generated/entity/policies/policy';
+import { Role } from '../generated/entity/teams/role';
+import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
-import { DataService } from '../interface/service.interface';
+import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -145,14 +154,9 @@ export const getPartialNameFromTableFQN = (
 };
 
 export const getCurrentUserId = (): string => {
-  // TODO: Replace below with USERID from Logged-in data
-  const { id: userId } = !isEmpty(AppState.userDetails)
-    ? AppState.userDetails
-    : AppState.users?.length
-    ? AppState.users[0]
-    : { id: undefined };
+  const currentUser = AppState.getCurrentUserDetails();
 
-  return userId as string;
+  return currentUser?.id || '';
 };
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {
@@ -614,10 +618,37 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @returns - entity name
  */
 export const getEntityName = (
-  entity?: EntityReference | DataService | User
+  entity?:
+    | EntityReference
+    | ServicesType
+    | User
+    | Topic
+    | Database
+    | Dashboard
+    | Table
+    | Pipeline
+    | Team
+    | Policy
+    | Role
+    | GlossaryTerm
 ) => {
   return entity?.displayName || entity?.name || '';
 };
+
+export const getEntityId = (
+  entity?:
+    | EntityReference
+    | ServicesType
+    | User
+    | Topic
+    | Database
+    | Dashboard
+    | Table
+    | Pipeline
+    | Team
+    | Policy
+    | Role
+) => entity?.id || '';
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
@@ -661,9 +692,9 @@ export const getFeedCounts = (
     getEntityFeedLink(entityType, entityFQN),
     ThreadType.Conversation
   )
-    .then((res: AxiosResponse) => {
-      if (res.data) {
-        conversationCallback(res.data.counts);
+    .then((res) => {
+      if (res) {
+        conversationCallback(res.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
       }
@@ -681,9 +712,9 @@ export const getFeedCounts = (
     ThreadType.Task,
     ThreadTaskStatus.Open
   )
-    .then((res: AxiosResponse) => {
-      if (res.data) {
-        taskCallback(res.data.counts);
+    .then((res) => {
+      if (res) {
+        taskCallback(res.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
       }
@@ -697,9 +728,9 @@ export const getFeedCounts = (
 
   // To get all thread count (task + conversation)
   getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res: AxiosResponse) => {
-      if (res.data) {
-        entityCallback(res.data.totalCount);
+    .then((res) => {
+      if (res) {
+        entityCallback(res.totalCount);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
       }
@@ -719,10 +750,6 @@ export const getFeedCounts = (
  */
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
-
-export const isAllowedHost = () => {
-  return SUPPORTED_DOMAIN_TYPES.includes(window.location.host);
-};
 
 /**
  * Utility function to show pagination
@@ -760,4 +787,39 @@ export const getTeamsText = (teams: EntityReference[]) => {
   ) : (
     `${getEntityName(teams[0])}`
   );
+};
+
+export const formatNumberWithComma = (number: number) => {
+  return new Intl.NumberFormat('en-IN', { maximumSignificantDigits: 3 }).format(
+    number
+  );
+};
+
+export const formTwoDigitNmber = (number: number) => {
+  return number.toLocaleString('en-US', {
+    minimumIntegerDigits: 2,
+    useGrouping: false,
+  });
+};
+
+export const getTeamsUser = (
+  data?: ExtraInfo
+): Record<string, string | undefined> | undefined => {
+  if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
+    const currentUser = AppState.getCurrentUserDetails();
+    const teams = currentUser?.teams;
+
+    const dataFound = teams?.find((team) => {
+      return data.id === team.id;
+    });
+
+    if (dataFound) {
+      return {
+        ownerName: currentUser?.displayName as string,
+        id: currentUser?.id as string,
+      };
+    }
+  }
+
+  return;
 };

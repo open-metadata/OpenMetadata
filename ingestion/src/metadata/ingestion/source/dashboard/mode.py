@@ -14,6 +14,7 @@ import traceback
 from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
+from metadata.clients import mode_client
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -33,11 +34,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn, mode_client
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import search_table_entities
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
@@ -115,7 +116,7 @@ class ModeSource(DashboardServiceSource):
         )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict
+        self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 
@@ -146,7 +147,7 @@ class ModeSource(DashboardServiceSource):
                     from_entities = search_table_entities(
                         metadata=self.metadata,
                         database=data_source.get(mode_client.DATABASE),
-                        service_name=self.source_config.dbServiceName,
+                        service_name=db_service_name,
                         database_schema=database_schema_name,
                         table=table,
                     )
@@ -172,9 +173,11 @@ class ModeSource(DashboardServiceSource):
                                 )
                             )
                             yield lineage
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -224,10 +227,10 @@ class ModeSource(DashboardServiceSource):
                         ),
                     )
                     self.status.scanned(chart_name)
-                except Exception as err:  # pylint: disable=broad-except
+                except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
                     self.status.failure(
                         chart_name if chart_name else "",
-                        repr(err),
+                        repr(exc),
                     )

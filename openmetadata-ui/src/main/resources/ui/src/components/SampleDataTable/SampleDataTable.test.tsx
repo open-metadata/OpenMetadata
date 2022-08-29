@@ -37,6 +37,10 @@ const mockSampleData = {
   ],
 };
 
+jest.mock('react-router-dom', () => ({
+  Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
+}));
+
 describe('Test SampleDataTable Component', () => {
   it('Renders all the data that was sent to the component', () => {
     const { container } = render(

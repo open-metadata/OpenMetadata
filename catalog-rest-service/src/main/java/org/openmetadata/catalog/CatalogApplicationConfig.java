@@ -18,7 +18,6 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
@@ -32,7 +31,6 @@ import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
-import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 import org.openmetadata.catalog.validators.AirflowConfigValidation;
 
@@ -68,9 +66,6 @@ public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("airflowConfiguration")
   private AirflowConfiguration airflowConfiguration;
 
-  @JsonProperty("slackEventPublishers")
-  private List<SlackPublisherConfiguration> slackEventPublishers;
-
   @JsonProperty("migrationConfiguration")
   @NotNull
   private MigrationConfiguration migrationConfiguration;
@@ -91,6 +86,9 @@ public class CatalogApplicationConfig extends Configuration {
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
+
+  @JsonProperty("clusterName")
+  private String clusterName;
 
   @Override
   public String toString() {

@@ -16,6 +16,7 @@ import org.openmetadata.catalog.api.tests.CreateTestDefinition;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.tests.TestPlatform;
+import org.openmetadata.catalog.type.TestDefinitionEntityType;
 
 public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
   public TestDefinitionResourceTest() {
@@ -64,6 +65,7 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
     return new CreateTestDefinition()
         .withName(name)
         .withDescription(name)
+        .withEntityType(TestDefinitionEntityType.COLUMN)
         .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
   }
 

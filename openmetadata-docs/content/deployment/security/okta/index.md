@@ -38,8 +38,8 @@ This document will explain how to create an Okta app and configure it for OAuth.
     * **Refresh Token** - For the refresh token behavior, it is recommended to select the option to 'Rotate token after every use'.
     * **Implicit (hybrid)** - Select the options to allow ID Token and Access Token with implicit grant type.
   * Enter the **Sign-in redirect URIs**
-    * http://localhost:8585/signin
-    * http://localhost:8585
+    * http://localhost:8585/callback
+    * http://localhost:8585/silent-callback
   * Enter the **Sign-out redirect URIs**
   * Enter the **Base URIs**
   * Select the required option for **Controlled access**
@@ -245,6 +245,16 @@ workflowConfig:
       orgURL: "{ISSUER_URL}/v1/token"
       privateKey: "{public/private keypair}"
       email: "{email}"
-      scopes:
-      - token
+      scopes: []
 ```
+
+<InlineCalloutContainer>
+  <InlineCallout
+    color="violet-70"
+    icon="storage"
+    bold="Troubleshoot Okta Ingestion"
+    href="/deployment/security/okta/troubleshoot"
+  >
+    Troubleshoot the error faced with okta sso ingestion.
+  </InlineCallout>
+</InlineCalloutContainer>

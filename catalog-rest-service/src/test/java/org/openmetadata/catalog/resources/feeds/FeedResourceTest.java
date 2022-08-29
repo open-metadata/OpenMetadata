@@ -25,8 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.announcementInvalidStartTime;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.announcementOverlap;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
@@ -140,16 +142,16 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
 
     UserResourceTest userResourceTest = new UserResourceTest();
-    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
+    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 4), TEST_AUTH_HEADERS);
 
     CreateTable createTable = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable.withOwner(TableResourceTest.USER_OWNER1);
+    createTable.withOwner(TableResourceTest.USER1_REF);
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
         teamResourceTest
-            .createRequest(test, 2)
+            .createRequest(test, 4)
             .withDisplayName("Team2")
             .withDescription("Team2 description")
             .withUsers(List.of(USER2.getId()));
@@ -309,6 +311,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     }
 
     // Test the /api/v1/feed/count API
+    assertEquals(userThreadCount, listThreads(USER_LINK, null, userAuthHeaders).getPaging().getTotal());
     assertEquals(userThreadCount, listThreadsCount(USER_LINK, userAuthHeaders).getTotalCount());
     assertEquals(tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, userAuthHeaders));
     assertEquals(tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, userAuthHeaders));
@@ -426,8 +429,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
     AnnouncementDetails announcementDetails =
         new AnnouncementDetails()
             .withDescription("First announcement")
-            .withStartTime(now.plusDays(1L).toEpochSecond(ZoneOffset.UTC))
-            .withEndTime(now.plusDays(2L).toEpochSecond(ZoneOffset.UTC));
+            .withStartTime(now.plusDays(10L).toEpochSecond(ZoneOffset.UTC))
+            .withEndTime(now.plusDays(11L).toEpochSecond(ZoneOffset.UTC));
     CreateThread create =
         create()
             .withMessage("Announcement One")
@@ -436,6 +439,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
     createAndCheck(create, userAuthHeaders);
 
+    announcementDetails
+        .withStartTime(now.plusDays(12L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(13L).toEpochSecond(ZoneOffset.UTC));
     create =
         create()
             .withMessage("Announcement Two")
@@ -445,8 +451,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // create one expired announcement
     announcementDetails
-        .withStartTime(now.minusDays(3L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.minusMinutes(1L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.minusDays(30L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.minusDays(20L).toEpochSecond(ZoneOffset.UTC));
     create =
         create()
             .withMessage("Announcement Three")
@@ -457,8 +463,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // create one active announcement
     announcementDetails
         .withDescription("Active Announcement")
-        .withStartTime(now.minusDays(2L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(5L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.minusDays(1L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(1L).toEpochSecond(ZoneOffset.UTC));
     create =
         create()
             .withMessage("Announcement Four")
@@ -495,6 +501,65 @@ public class FeedResourceTest extends CatalogApplicationTest {
     announcements = listAnnouncements(create.getAbout(), null, false, ADMIN_AUTH_HEADERS);
     assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
     assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+  }
+
+  @Test
+  void post_invalidAnnouncement_400() throws IOException {
+    // create two announcements with same start time in the future
+    LocalDateTime now = LocalDateTime.now();
+    AnnouncementDetails announcementDetails =
+        new AnnouncementDetails()
+            .withDescription("First announcement")
+            .withStartTime(now.plusDays(3L).toEpochSecond(ZoneOffset.UTC))
+            .withEndTime(now.plusDays(5L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create =
+        create()
+            .withMessage("Announcement One")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+
+    CreateThread create2 =
+        create()
+            .withMessage("Announcement Two")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+
+    // create announcement with same start and end time
+    assertResponse(() -> createThread(create2, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+
+    // create announcement with start time > end time
+    announcementDetails
+        .withStartTime(now.plusDays(3L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(2L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create3 = create2.withAnnouncementDetails(announcementDetails);
+    assertResponse(() -> createThread(create3, userAuthHeaders), BAD_REQUEST, announcementInvalidStartTime());
+
+    // create announcement with overlaps
+    announcementDetails
+        .withStartTime(now.plusDays(2L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(6L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create4 = create2.withAnnouncementDetails(announcementDetails);
+    assertResponse(() -> createThread(create4, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+
+    announcementDetails
+        .withStartTime(now.plusDays(3L).plusHours(2L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(4L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create5 = create2.withAnnouncementDetails(announcementDetails);
+    assertResponse(() -> createThread(create5, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+
+    announcementDetails
+        .withStartTime(now.plusDays(2L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(4L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create6 = create2.withAnnouncementDetails(announcementDetails);
+    assertResponse(() -> createThread(create6, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+
+    announcementDetails
+        .withStartTime(now.plusDays(4L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(6L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create7 = create2.withAnnouncementDetails(announcementDetails);
+    assertResponse(() -> createThread(create7, userAuthHeaders), BAD_REQUEST, announcementOverlap());
   }
 
   @Test
@@ -846,6 +911,133 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void patch_announcement_200() throws IOException {
+    LocalDateTime now = LocalDateTime.now();
+    AnnouncementDetails announcementDetails =
+        new AnnouncementDetails()
+            .withDescription("First announcement")
+            .withStartTime(now.plusDays(5L).toEpochSecond(ZoneOffset.UTC))
+            .withEndTime(now.plusDays(6L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create =
+        create()
+            .withMessage("Announcement One")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    Thread thread = createAndCheck(create, userAuthHeaders);
+
+    String originalJson = JsonUtils.pojoToJson(thread);
+
+    long startTs = now.plusDays(6L).toEpochSecond(ZoneOffset.UTC);
+    long endTs = now.plusDays(7L).toEpochSecond(ZoneOffset.UTC);
+    announcementDetails.withStartTime(startTs).withEndTime(endTs);
+    Thread updated = thread.withAnnouncement(announcementDetails);
+
+    Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
+
+    assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
+    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
+    assertEquals(startTs, patched.getAnnouncement().getStartTime());
+    assertEquals(endTs, patched.getAnnouncement().getEndTime());
+
+    Thread thread1 = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(startTs, thread1.getAnnouncement().getStartTime());
+    assertEquals(endTs, thread1.getAnnouncement().getEndTime());
+
+    // patch description
+    originalJson = JsonUtils.pojoToJson(thread1);
+    AnnouncementDetails announcementDetails1 = thread1.getAnnouncement().withDescription("New Description");
+    updated = thread1.withAnnouncement(announcementDetails1);
+    patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
+    assertEquals("New Description", patched.getAnnouncement().getDescription());
+
+    Thread thread2 = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("New Description", thread2.getAnnouncement().getDescription());
+  }
+
+  @Test
+  void patch_invalidAnnouncement_400() throws IOException {
+    LocalDateTime now = LocalDateTime.now();
+    AnnouncementDetails announcementDetails =
+        new AnnouncementDetails()
+            .withDescription("First announcement")
+            .withStartTime(now.plusDays(53L).toEpochSecond(ZoneOffset.UTC))
+            .withEndTime(now.plusDays(55L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create =
+        create()
+            .withMessage("Announcement One")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    Thread thread1 = createAndCheck(create, userAuthHeaders);
+
+    announcementDetails
+        .withStartTime(now.plusDays(57L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(59L).toEpochSecond(ZoneOffset.UTC));
+    CreateThread create2 =
+        create()
+            .withMessage("Announcement Two")
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails);
+    Thread thread2 = createAndCheck(create, userAuthHeaders);
+
+    String originalJson = JsonUtils.pojoToJson(thread2);
+
+    // patch announcement2 with same start and end time as announcement1
+    Thread updated = thread2.withAnnouncement(thread1.getAnnouncement());
+
+    assertResponse(
+        () -> patchThread(thread2.getId(), originalJson, updated, userAuthHeaders), BAD_REQUEST, announcementOverlap());
+
+    // create announcement with start time > end time
+    announcementDetails
+        .withStartTime(now.plusDays(58L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(57L).toEpochSecond(ZoneOffset.UTC));
+    Thread updated2 = thread2.withAnnouncement(announcementDetails);
+    assertResponse(
+        () -> patchThread(thread2.getId(), originalJson, updated2, userAuthHeaders),
+        BAD_REQUEST,
+        announcementInvalidStartTime());
+
+    // create announcement with overlaps
+    announcementDetails
+        .withStartTime(now.plusDays(52L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
+    Thread updated3 = thread2.withAnnouncement(announcementDetails);
+    assertResponse(
+        () -> patchThread(thread2.getId(), originalJson, updated3, userAuthHeaders),
+        BAD_REQUEST,
+        announcementOverlap());
+
+    announcementDetails
+        .withStartTime(now.plusDays(53L).plusHours(2L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
+    Thread updated4 = thread2.withAnnouncement(announcementDetails);
+    assertResponse(
+        () -> patchThread(thread2.getId(), originalJson, updated4, userAuthHeaders),
+        BAD_REQUEST,
+        announcementOverlap());
+
+    announcementDetails
+        .withStartTime(now.plusDays(52L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
+    Thread updated5 = thread2.withAnnouncement(announcementDetails);
+    assertResponse(
+        () -> patchThread(thread2.getId(), originalJson, updated5, userAuthHeaders),
+        BAD_REQUEST,
+        announcementOverlap());
+
+    announcementDetails
+        .withStartTime(now.plusDays(54L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
+        .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
+    Thread updated6 = thread2.withAnnouncement(announcementDetails);
+    assertResponse(
+        () -> patchThread(thread2.getId(), originalJson, updated6, userAuthHeaders),
+        BAD_REQUEST,
+        announcementOverlap());
+  }
+
+  @Test
   void patch_thread_not_allowed_fields() throws IOException {
     // create a thread
     CreateThread create = create().withMessage("message");
@@ -1035,6 +1227,15 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void delete_thread_404() {
+    // Test with an invalid thread id
+    assertResponse(
+        () -> deleteThread(NON_EXISTENT_ENTITY, AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
+  }
+
+  @Test
   void delete_post_200() throws HttpResponseException {
     // Create a thread and add a post
     Thread thread = createAndCheck(create(), AUTH_HEADERS);
@@ -1057,6 +1258,20 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void delete_thread_200() throws HttpResponseException {
+    // Create a thread
+    Thread thread = createAndCheck(create(), AUTH_HEADERS);
+    assertNotNull(thread);
+
+    // delete the thread
+    Thread deletedThread = deleteThread(thread.getId(), AUTH_HEADERS);
+    assertEquals(thread.getId(), deletedThread.getId());
+
+    // Check if thread is not found
+    assertResponse(() -> getThread(thread.getId(), AUTH_HEADERS), NOT_FOUND, entityNotFound("Thread", thread.getId()));
+  }
+
+  @Test
   void delete_post_unauthorized_403() throws HttpResponseException {
     // Create a thread and add a post as admin user
     Thread thread = createAndCheck(create(), ADMIN_AUTH_HEADERS);
@@ -1072,7 +1287,23 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> deletePost(threadId, postId, AUTH_HEADERS),
         FORBIDDEN,
-        noPermission(USER.getName(), MetadataOperation.DELETE.value()));
+        permissionNotAllowed(USER.getName(), List.of(MetadataOperation.DELETE)));
+  }
+
+  @Test
+  void delete_thread_unauthorized_403() throws HttpResponseException {
+    // Create a thread as admin user
+    CreateThread create = create();
+    Thread thread = createAndCheck(create.withFrom(ADMIN_USER_NAME), ADMIN_AUTH_HEADERS);
+    assertNotNull(thread);
+
+    // delete the thread using a different user who is not an admin
+    // Here thread author is ADMIN, and we try to delete as USER
+    UUID threadId = thread.getId();
+    assertResponse(
+        () -> deleteThread(threadId, AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(USER.getName(), List.of(MetadataOperation.DELETE)));
   }
 
   @Test
@@ -1159,6 +1390,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static Thread addPost(UUID threadId, CreatePost post, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getResource("feed/" + threadId + "/posts"), post, Thread.class, authHeaders);
+  }
+
+  public static Thread deleteThread(UUID threadId, Map<String, String> authHeaders) throws HttpResponseException {
+    return TestUtils.delete(getResource("feed/" + threadId), Thread.class, authHeaders);
   }
 
   public static Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders)
@@ -1282,7 +1517,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
-    TestUtils.put(target, userId.toString(), OK, authHeaders);
+    TestUtils.put(target, userId, OK, authHeaders);
   }
 
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)

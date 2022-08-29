@@ -14,30 +14,39 @@ Test SQA Interface
 """
 
 import os
+from datetime import datetime, timezone
 from unittest import TestCase
+from uuid import uuid4
 
 from pytest import raises
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    ColumnProfile,
+    DataType,
+    Table,
+    TableProfile,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.interfaces.sqa_interface import SQAInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
 )
-from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.profiler.default import get_default_metrics
-from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.orm_profiler.profiler.sampler import Sampler
 
 
 class User(declarative_base()):
@@ -50,38 +59,32 @@ class User(declarative_base()):
     age = Column(Integer)
 
 
-class SQAProfilerInterfaceTest(TestCase):
+class SQAInterfaceTest(TestCase):
     def setUp(self) -> None:
+        table_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName(__root__="id"),
+                    dataType=DataType.INT,
+                )
+            ],
+        )
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        self.sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+        self.sqa_profiler_interface = SQAInterface(
+            sqlite_conn, table=User, table_entity=table_entity
+        )
         self.table = User
 
     def test_init_interface(self):
         """Test we can instantiate our interface object correctly"""
 
-        assert self.sqa_profiler_interface._sampler == None
-        assert self.sqa_profiler_interface._runner == None
+        assert self.sqa_profiler_interface._sampler != None
+        assert self.sqa_profiler_interface._runner != None
         assert isinstance(self.sqa_profiler_interface.session, Session)
-
-    def test_create_sampler(self):
-        """Test we can create our sampler correctly"""
-        self.sqa_profiler_interface.create_sampler(
-            self.table,
-        )
-
-        assert isinstance(self.sqa_profiler_interface.sampler, Sampler)
-
-    def test_create_runner(self):
-        """Test we can create our sampler correctly"""
-
-        with raises(RuntimeError):
-            self.sqa_profiler_interface.create_runner(self.table)
-
-        self.sqa_profiler_interface.create_sampler(self.table)
-        self.sqa_profiler_interface.create_runner(self.table)
-        assert isinstance(self.sqa_profiler_interface.runner, QueryRunner)
 
     def test_private_attributes(self):
         with raises(AttributeError):
@@ -93,14 +96,26 @@ class SQAProfilerInterfaceTest(TestCase):
         self.sqa_profiler_interface._sampler = None
 
 
-class SQAProfilerInterfaceTestMultiThread(TestCase):
+class SQAInterfaceTestMultiThread(TestCase):
 
+    table_entity = Table(
+        id=uuid4(),
+        name="user",
+        columns=[
+            EntityColumn(
+                name=ColumnName(__root__="id"),
+                dataType=DataType.INT,
+            )
+        ],
+    )
     db_path = os.path.join(os.path.dirname(__file__), "test.db")
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    sqa_profiler_interface = SQAInterface(
+        sqlite_conn, table=User, table_entity=table_entity
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -137,8 +152,8 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
     def test_init_interface(self):
         """Test we can instantiate our interface object correctly"""
 
-        assert self.sqa_profiler_interface._sampler == None
-        assert self.sqa_profiler_interface._runner == None
+        assert self.sqa_profiler_interface._sampler != None
+        assert self.sqa_profiler_interface._runner != None
         assert isinstance(self.sqa_profiler_interface.session, Session)
 
     def test_get_all_metrics(self):
@@ -148,9 +163,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                 MetricTypes.Table,
                 None,
                 self.table,
-                None,
-                None,
-                None,
             )
         ]
         column_metrics = []
@@ -167,9 +179,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                     MetricTypes.Static,
                     col,
                     self.table,
-                    None,
-                    None,
-                    None,
                 )
             )
             for query_metric in self.query_metrics:
@@ -179,9 +188,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                         MetricTypes.Query,
                         col,
                         self.table,
-                        None,
-                        None,
-                        None,
                     )
                 )
             for window_metric in self.window_metrics:
@@ -191,9 +197,6 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
                         MetricTypes.Window,
                         col,
                         self.table,
-                        None,
-                        None,
-                        None,
                     )
                 )
 
@@ -210,22 +213,24 @@ class SQAProfilerInterfaceTestMultiThread(TestCase):
         ]
 
         table_profile = TableProfile(
-            profileDate="2022-07-26",
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            columnNames=profile_results["table"].get(ColumnNames.name(), "").split(","),
-            columnProfile=column_profile,
-            profileQuery=None,
-            profileSample=None,
+            timestamp=datetime.now(tz=timezone.utc).timestamp(),
         )
 
-        assert table_profile.columnCount == 6
-        assert table_profile.rowCount == 2
+        profile_request = CreateTableProfileRequest(
+            tableProfile=table_profile, columnProfile=column_profile
+        )
+
+        assert profile_request.tableProfile.columnCount == 6
+        assert profile_request.tableProfile.rowCount == 2
         name_column_profile = [
-            profile for profile in table_profile.columnProfile if profile.name == "name"
+            profile
+            for profile in profile_request.columnProfile
+            if profile.name == "name"
         ][0]
         id_column_profile = [
-            profile for profile in table_profile.columnProfile if profile.name == "id"
+            profile for profile in profile_request.columnProfile if profile.name == "id"
         ][0]
         assert name_column_profile.nullCount == 0
         assert id_column_profile.median == 1.5

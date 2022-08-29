@@ -12,8 +12,14 @@
 Module containing the logic to test a connection
 from a WorkflowSource
 """
+import traceback
+
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import operations_logger
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
 
 from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
     TestServiceConnectionRequest,
@@ -23,6 +29,9 @@ from metadata.utils.connections import (
     get_connection,
     test_connection,
 )
+from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
+
+logger = operations_logger()
 
 
 def test_source_connection(
@@ -30,18 +39,34 @@ def test_source_connection(
 ) -> Response:
     """
     Create the engine and test the connection
-    :param workflow_source: Source to test
+    :param test_service_connection: Service connection to test
     :return: None or exception
     """
+    secrets_manager = get_secrets_manager(
+        test_service_connection.secretsManagerProvider,
+        test_service_connection.clusterName,
+        build_secrets_manager_credentials(
+            test_service_connection.secretsManagerProvider
+        ),
+    )
+    test_service_connection.connection = (
+        secrets_manager.retrieve_temp_service_test_connection(
+            test_service_connection.connection,
+            test_service_connection.connectionType.value,
+        )
+    )
     connection = get_connection(test_service_connection.connection.config)
 
     try:
         test_connection(connection)
 
-    except SourceConnectionException as err:
+    except SourceConnectionException as exc:
+        msg = f"Connection error from [{connection}]: {exc}"
+        logger.debug(traceback.format_exc())
+        logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Connection error from {connection} - {err}",
+            error=msg,
         )
 
     return ApiResponse.success({"message": f"Connection with {connection} successful!"})

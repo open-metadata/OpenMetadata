@@ -66,6 +66,15 @@ You can modify any configuration and deploy by passing your own `values.yaml`.
 
 </Note>
 
+<Tip>
+
+Make sure that, when using your own `values.yaml`, you are not overwriting elements such as the `image` of the containers.
+This would prevent your new deployment to use the latest containers when running the upgrade.
+
+If you are running into any issues, double-check what are the default values of the helm revision.
+
+</Tip>
+
 ## Upgrade OpenMetdata
 
 We upgrade OpenMetadata with the below command:

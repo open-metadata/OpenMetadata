@@ -12,6 +12,7 @@
 Mixin to be used by service sources to dynamically
 generate the next_record based on their topology.
 """
+import traceback
 from typing import Any, Generic, Iterable, List, TypeVar
 
 from pydantic import BaseModel
@@ -33,6 +34,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 C = TypeVar("C", bound=BaseModel)
+
+
+class MissingExpectedEntityAckException(Exception):
+    """
+    After running the ack to the sink, we got no
+    Entity back
+    """
 
 
 class TopologyRunnerMixin(Generic[C]):
@@ -67,7 +75,7 @@ class TopologyRunnerMixin(Generic[C]):
             for element in node_producer() or []:
 
                 for stage in node.stages:
-                    logger.debug(f"Processing stage {stage}")
+                    logger.debug(f"Processing stage: {stage}")
 
                     stage_fn = getattr(self, stage.processor)
                     for entity_request in stage_fn(element) or []:
@@ -77,8 +85,11 @@ class TopologyRunnerMixin(Generic[C]):
                             yield from self.sink_request(
                                 stage=stage, entity_request=entity_request
                             )
-                        except ValueError:
-                            logger.error("Value unexpectedly None")
+                        except ValueError as err:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Unexpected value error when processing stage: [{stage}]: {err}"
+                            )
 
                 # processing for all stages completed now cleaning the cache if applicable
                 for stage in node.stages:
@@ -90,9 +101,10 @@ class TopologyRunnerMixin(Generic[C]):
 
             if node.post_process:
                 logger.debug(f"Post processing node {node}")
-                node_post_process = getattr(self, node.post_process)
-                for entity_request in node_post_process():
-                    yield entity_request
+                for process in node.post_process:
+                    node_post_process = getattr(self, process)
+                    for entity_request in node_post_process():
+                        yield entity_request
 
     def next_record(self) -> Iterable[Entity]:
         """
@@ -184,6 +196,16 @@ class TopologyRunnerMixin(Generic[C]):
                             fields=["*"],  # Get all the available data from the Entity
                         )
                         tries -= 1
+
+                # We have ack the sink waiting for a response, but got nothing back
+                if stage.must_return and entity is None:
+                    # Safe access to Entity Request name
+                    raise MissingExpectedEntityAck(
+                        f"Missing ack back from [{stage.type_.__name__}: {getattr(entity_request, 'name')}] - "
+                        "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
+                        "for the service connection."
+                    )
+
             else:
                 yield entity
 

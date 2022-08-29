@@ -18,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -39,7 +40,6 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   public TagCategoryRepository(CollectionDAO dao, TagRepository tagRepository) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG_CATEGORY, TagCategory.class, dao.tagCategoryDAO(), dao, "", "");
-    allowEdits = true;
     this.tagRepository = tagRepository;
   }
 
@@ -62,7 +62,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   }
 
   // Populate TagCategory with children details
-  private TagCategory populateCategoryTags(TagCategory category, Fields fields) throws IOException {
+  private void populateCategoryTags(TagCategory category, Fields fields) throws IOException {
     // Get tags under that match category prefix
     ListFilter listFilter = new ListFilter(Include.ALL).addQueryParam("parent", category.getName());
     List<String> groupJsons = daoCollection.tagDAO().listAfter(listFilter, 10000, "");
@@ -72,7 +72,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
       Tag tag = tagRepository.setFields(JsonUtils.readValue(json, Tag.class), fields);
       tagList.add(tagRepository.populateChildrenTags(tag, fields));
     }
-    return category.withChildren(tagList.isEmpty() ? null : tagList);
+    category.withChildren(tagList.isEmpty() ? null : tagList);
   }
 
   @Override
@@ -107,9 +107,9 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   }
 
   @Transaction
-  public TagCategory delete(UriInfo uriInfo, String id) throws IOException {
+  public TagCategory delete(UriInfo uriInfo, UUID id) throws IOException {
     TagCategory category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
-    dao.delete(id);
+    dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), category.getName());
     daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(TagSource.TAG.ordinal(), category.getName());

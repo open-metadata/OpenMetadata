@@ -126,6 +126,7 @@ class SalesforceSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.database_schema.name.__root__
+        table_name = ""
         try:
             if self.service_connection.sobjectName:
                 table_name = self.standardize_table_name(
@@ -145,9 +146,11 @@ class SalesforceSource(DatabaseServiceSource):
                         continue
                     table_name = self.standardize_table_name(schema_name, table_name)
                     yield table_name, TableType.Regular
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(
+                f"Unexpected exception for schema name [{schema_name}]: {exc}"
+            )
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -182,9 +185,9 @@ class SalesforceSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception for table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -219,10 +222,8 @@ class SalesforceSource(DatabaseServiceSource):
             return "INT"
         return "VARCHAR"
 
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        pass
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        yield from []
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass

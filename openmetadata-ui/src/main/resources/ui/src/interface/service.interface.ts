@@ -11,12 +11,25 @@
  *  limitations under the License.
  */
 
-import { DynamicObj, Paging } from 'Models';
-import { DashboardService } from '../generated/entity/services/dashboardService';
+import { DynamicObj } from 'Models';
+import {
+  DashboardConnection,
+  DashboardService,
+} from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
-import { MessagingService } from '../generated/entity/services/messagingService';
-import { MlmodelService } from '../generated/entity/services/mlmodelService';
-import { PipelineService } from '../generated/entity/services/pipelineService';
+import {
+  MessagingConnection,
+  MessagingService,
+} from '../generated/entity/services/messagingService';
+import {
+  MlModelConnection,
+  MlmodelService,
+} from '../generated/entity/services/mlmodelService';
+import {
+  PipelineConnection,
+  PipelineService,
+} from '../generated/entity/services/pipelineService';
+import { Paging } from '../generated/type/paging';
 
 export interface IngestionSchedule {
   repeatFrequency: string;
@@ -58,13 +71,7 @@ export interface EditObj {
   id?: string;
 }
 
-export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
-  Partial<MessagingService> &
-  Partial<DashboardService> &
-  Partial<PipelineService> &
-  Partial<MlmodelService>;
-
-export type DataService =
+export type ServicesType =
   | DatabaseService
   | MessagingService
   | DashboardService
@@ -72,12 +79,13 @@ export type DataService =
   | MlmodelService;
 
 export interface ServiceResponse {
-  data: Array<ServiceDataObj>;
+  data: Array<ServicesType>;
   paging: Paging;
 }
 
-export type ConfigData = Partial<DatabaseService['connection']> &
-  Partial<MessagingService['connection']> &
-  Partial<DashboardService['connection']> &
-  Partial<PipelineService['connection']> &
-  Partial<MlmodelService['connection']>;
+export type ConfigData =
+  | DatabaseConnection
+  | MessagingConnection
+  | DashboardConnection
+  | PipelineConnection
+  | MlModelConnection;

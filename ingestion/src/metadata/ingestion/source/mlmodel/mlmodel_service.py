@@ -12,7 +12,6 @@
 Base class for ingesting mlmodel services
 """
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
@@ -67,6 +66,7 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodel_service",
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
+                must_return=True,
             ),
         ],
         children=["mlmodel"],
@@ -84,15 +84,14 @@ class MlModelServiceTopology(ServiceTopology):
     )
 
 
-@dataclass
 class MlModelSourceStatus(SourceStatus):
     """
     ML Model specific Status
     """
 
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
 
     def scanned(self, record: str) -> None:
         """

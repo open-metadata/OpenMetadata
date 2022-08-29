@@ -11,7 +11,7 @@ calls.
 
 However, metadata ingestion or any other services which use OpenMetadata APIs to create entities or update them
 requires a token as well to authenticate. Typically, SSO offers service accounts for this very reason. OpenMetadata
-supports service accounts that the SSO provider supports. Please read the [docs]((/deployment/security)) to enable them.
+supports service accounts that the SSO provider supports. Please read the [docs](/deployment/security) to enable them.
 
 In some cases, either creating a service account is not feasible, or the SSO provider itself doesn't support the service account. To address
 this gap, we shipped JWT token generation and authentication within OpenMetadata.

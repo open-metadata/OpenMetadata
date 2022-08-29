@@ -36,11 +36,6 @@
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
     },
-    "hostPort": {
-      "title": "Host and Port",
-      "description": "Host and port of the Athena service.",
-      "type": "string"
-    },
     "s3StagingDir": {
       "title": "S3 Staging Directory",
       "description": "S3 Staging Directory.",

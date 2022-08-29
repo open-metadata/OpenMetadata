@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
+import { SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Redshift';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 
 describe('RedShift Ingestion', () => {
   it('add and ingest data', () => {
-    goToAddNewServicePage();
+    goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root_username').type(Cypress.env('redshiftUsername'));
       cy.get('#root_password')
@@ -44,11 +45,15 @@ describe('RedShift Ingestion', () => {
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName,
+      serviceName
     );
   });
 
+  it('Edit and validate owner', () => {
+    editOwnerforCreatedService(SERVICE_TYPE.Database, serviceName);
+  });
+
   it('delete created service', () => {
-    deleteCreatedService('Database', serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
   });
 });

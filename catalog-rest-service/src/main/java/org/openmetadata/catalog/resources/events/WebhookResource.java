@@ -58,7 +58,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.type.WebhookType;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -69,7 +69,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "webhook")
 public class WebhookResource extends EntityResource<Webhook, WebhookRepository> {
   public static final String COLLECTION_PATH = "v1/webhook/";
-  private WebhookDAO webhookDAO;
+  private final WebhookDAO webhookDAO;
 
   @Override
   public Webhook addHref(UriInfo uriInfo, Webhook entity) {
@@ -161,7 +161,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Webhook get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -240,7 +240,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Webhook getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "webhook version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -306,7 +306,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -317,7 +317,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    dao.updateWebhookPublisher((Webhook) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -338,16 +340,17 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response deleteWebhook(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, false, true, false);
-    dao.deleteWebhookPublisher(UUID.fromString(id));
+    dao.deleteWebhookPublisher(id);
     return response;
   }
 
-  public Webhook getWebhook(CreateWebhook create, String user) {
+  public Webhook getWebhook(CreateWebhook create, String user) throws IOException {
     // Add filter for soft delete events if delete event type is requested
-    EntityUtil.addSoftDeleteFilter(create.getEventFilters());
+    //  TODO: What is this for??
+    // EntityUtil.addSoftDeleteFilter(create.getEventFilters());
     return copy(new Webhook(), create, user)
         .withEndpoint(create.getEndpoint())
         .withEventFilters(create.getEventFilters())
@@ -355,7 +358,8 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
         .withSecretKey(create.getSecretKey())
+        .withKafkaProperties(create.getKafkaProperties())
         .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED)
-        .withWebhookType(Webhook.WebhookType.fromValue(create.getWebhookType().value()));
+        .withWebhookType(WebhookType.fromValue(create.getWebhookType().value()));
   }
 }

@@ -147,7 +147,7 @@ class GlueSource(PipelineServiceSource):
                     )
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
-                        executionDate=attempt["StartedOn"].timestamp(),
+                        timestamp=attempt["StartedOn"].timestamp(),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,
@@ -156,9 +156,9 @@ class GlueSource(PipelineServiceSource):
                         pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
                         pipeline_status=pipeline_status,
                     )
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.error(f"Failed to yield pipeline status: {exc}")
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any

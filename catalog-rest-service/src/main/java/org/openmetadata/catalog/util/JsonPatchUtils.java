@@ -1,6 +1,7 @@
 package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.util.List;
@@ -16,6 +17,7 @@ public class JsonPatchUtils {
   public static List<MetadataOperation> getMetadataOperations(JsonPatch jsonPatch) {
     return jsonPatch.toJsonArray().stream()
         .map(JsonPatchUtils::getMetadataOperation)
+        .distinct()
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
@@ -24,8 +26,12 @@ public class JsonPatchUtils {
     Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
     String path = jsonPatchMap.get("path").toString();
 
+    // TODO clean this up
     if (path.contains(FIELD_DESCRIPTION)) {
       return MetadataOperation.EDIT_DESCRIPTION;
+    }
+    if (path.contains(FIELD_DISPLAY_NAME)) {
+      return MetadataOperation.EDIT_DISPLAY_NAME;
     }
     if (path.contains("tags")) {
       return MetadataOperation.EDIT_TAGS;

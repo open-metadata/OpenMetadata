@@ -99,7 +99,9 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     """
     return sqlalchemy.Column(
         name=str(col.name.__root__),
-        type_=_TYPE_MAP.get(col.dataType),
+        type_=_TYPE_MAP.get(col.dataType)
+        if not col.arrayDataType
+        else _TYPE_MAP.get(col.dataType)(item_type=col.arrayDataType),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
         key=str(

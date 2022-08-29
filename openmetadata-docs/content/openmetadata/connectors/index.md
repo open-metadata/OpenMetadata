@@ -14,6 +14,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [BigQuery](/openmetadata/connectors/database/bigquery)
 - [Clickhouse](/openmetadata/connectors/database/clickhouse)
 - [Databricks](/openmetadata/connectors/database/databricks)
+- [Datalake](/openmetadata/connectors/database/datalake)
 - [DB2](/openmetadata/connectors/database/db2)
 - [DeltaLake](/openmetadata/connectors/database/deltalake)
 - [Druid](/openmetadata/connectors/database/druid)
@@ -37,6 +38,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 
 - [Looker](/openmetadata/connectors/dashboard/looker)
 - [Metabase](/openmetadata/connectors/dashboard/metabase)
+- [Mode](/openmetadata/connectors/dashboard/mode)
 - [PowerBI](/openmetadata/connectors/dashboard/powerbi)
 - [Redash](/openmetadata/connectors/dashboard/redash)
 - [Superset](/openmetadata/connectors/dashboard/superset)
@@ -44,7 +46,7 @@ OpenMetadata can extract metadata from the following list of connectors:
 
 ## Messaging Services
 
-- [Kafka](/openmetadata/connectors/messaging/kafka) 
+- [Kafka](/openmetadata/connectors/messaging/kafka)
 
 ## Pipeline Services
 
@@ -53,9 +55,10 @@ OpenMetadata can extract metadata from the following list of connectors:
 - [Glue](/openmetadata/connectors/pipeline/glue)
 - [Fivetran](/openmetadata/connectors/pipeline/fivetran)
 
+## ML Model Services
+
+- [Mlflow](/openmetadata/connectors/ml-model/mlflow)
+
 ## Metadata Services
 
 - [Amundsen](/openmetadata/connectors/metadata/amundsen)
-
-
-

@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import {
   Bucket,
   FilterObject,
@@ -247,7 +247,8 @@ const ExplorePage: FunctionComponent = () => {
         }
       )
       .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
+        const errMsg = get(err, 'response.data.responseMessage', '');
+        setError(errMsg);
       });
   };
 

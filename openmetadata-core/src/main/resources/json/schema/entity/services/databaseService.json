@@ -10,6 +10,9 @@
     "databaseServiceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "type": "string",
+      "javaInterfaces": [
+        "org.openmetadata.core.entity.interfaces.EnumInterface"
+      ],
       "enum": [
         "BigQuery",
         "Mysql",
@@ -17,9 +20,9 @@
         "Snowflake",
         "Postgres",
         "Mssql",
-        "Hive",
         "Oracle",
         "Athena",
+        "Hive",
         "Presto",
         "Trino",
         "Vertica",
@@ -29,8 +32,8 @@
         "Db2",
         "Clickhouse",
         "Databricks",
-        "DynamoDB",
         "AzureSQL",
+        "DynamoDB",
         "SingleStore",
         "SQLite",
         "DeltaLake",
@@ -129,6 +132,7 @@
       "javaInterfaces": ["org.openmetadata.core.entity.interfaces.ServiceConnectionEntityInterface"],
       "properties": {
         "config": {
+          "mask": true,
           "oneOf": [
             {
               "$ref": "./connections/database/bigQueryConnection.json"

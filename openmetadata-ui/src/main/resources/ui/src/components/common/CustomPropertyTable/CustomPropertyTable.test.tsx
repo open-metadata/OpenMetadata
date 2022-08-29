@@ -53,7 +53,7 @@ jest.mock('./PropertyValue', () => ({
 jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      data: { customProperties: mockCustomProperties },
+      customProperties: mockCustomProperties,
     })
   ),
 }));
@@ -89,7 +89,7 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Should render no data placeholder if custom properties list is empty', async () => {
     (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: { customProperties: [] } })
+      Promise.resolve({ customProperties: [] })
     );
     const { findByTestId } = render(<CustomPropertyTable {...mockProp} />);
     const table = await findByTestId('custom-properties-table');

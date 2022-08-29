@@ -12,8 +12,8 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Switch } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { Card, Space, Switch } from 'antd';
+import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -118,9 +118,9 @@ const Users = ({
 
   const fetchTeams = () => {
     getTeams(['users'])
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
-          setTeams(res.data.data);
+          setTeams(res.data);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -229,7 +229,7 @@ const Users = ({
       return (
         <div className="tw-mt-4 tw-w-full tw-px-3">
           {isDisplayNameEdit ? (
-            <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
+            <Space className="tw-w-full" direction="vertical">
               <input
                 className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
                 data-testid="displayName"
@@ -260,7 +260,7 @@ const Users = ({
                   <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
                 </Button>
               </div>
-            </div>
+            </Space>
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
@@ -272,6 +272,7 @@ const Users = ({
                 onClick={() => setIsDisplayNameEdit(true)}>
                 <SVGIcons
                   alt="edit"
+                  className="tw-mb-2"
                   icon="icon-edit"
                   title="Edit"
                   width="16px"
@@ -374,6 +375,7 @@ const Users = ({
                   onClick={() => setIsTeamsEdit(true)}>
                   <SVGIcons
                     alt="edit"
+                    className=" tw-mb-1"
                     icon="icon-edit"
                     title="Edit"
                     width="16px"
@@ -384,7 +386,7 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isTeamsEdit ? (
-              <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
+              <Space className="tw-w-full" direction="vertical">
                 <Select
                   isClearable
                   isMulti
@@ -426,7 +428,7 @@ const Users = ({
                     />
                   </Button>
                 </div>
-              </div>
+              </Space>
             ) : (
               teamsElement
             )}
@@ -508,6 +510,7 @@ const Users = ({
                   onClick={() => setIsRolesEdit(true)}>
                   <SVGIcons
                     alt="edit"
+                    className="tw-mb-1"
                     icon="icon-edit"
                     title="Edit"
                     width="16px"
@@ -518,7 +521,7 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isRolesEdit ? (
-              <div className="tw-flex tw-items-center tw-justify-between tw-gap-2">
+              <Space className="tw-w-full" direction="vertical">
                 <Select
                   isClearable
                   isMulti
@@ -558,7 +561,7 @@ const Users = ({
                     />
                   </Button>
                 </div>
-              </div>
+              </Space>
             ) : (
               rolesElement
             )}
@@ -698,10 +701,10 @@ const Users = ({
             )}
           </div>
           {isTaskType ? (
-            <div className="tw-flex tw-justify-end">
-              <Switch onChange={onSwitchChange} />
+            <Space align="end" size={5}>
+              <Switch size="small" onChange={onSwitchChange} />
               <span className="tw-ml-1">Closed Tasks</span>
-            </div>
+            </Space>
           ) : null}
         </div>
         <div className="tw-mt-3.5">

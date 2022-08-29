@@ -13,10 +13,11 @@
 
 package org.openmetadata.catalog.exception;
 
-import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.type.MetadataOperation;
 
 public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
@@ -24,6 +25,8 @@ public final class CatalogExceptionMessage {
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
   public static final String FIELD_ALREADY_TOKENIZED = "Field is already tokenized";
   public static final String INVALID_ENTITY_LINK = "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
+  public static final String EMPTY_POLICIES_IN_ROLE = "At least one policy is required in a role";
+  public static final String EMPTY_RULES_IN_POLICY = "At least one rule is required in a policy";
 
   private CatalogExceptionMessage() {}
 
@@ -55,6 +58,10 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
+  public static String resourceTypeNotFound(String resourceType) {
+    return String.format("Resource type %s not found", resourceType);
+  }
+
   public static String entityTypeNotSupported(String entityType) {
     return String.format("Entity type %s not supported", entityType);
   }
@@ -71,7 +78,7 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid fully qualified column name %s", fqn);
   }
 
-  public static String entityVersionNotFound(String entityType, String id, Double version) {
+  public static String entityVersionNotFound(String entityType, UUID id, Double version) {
     return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
 
@@ -84,38 +91,29 @@ public final class CatalogExceptionMessage {
         "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s", parentId, glossaryId);
   }
 
-  public static String notAdmin(Principal principal) {
-    return notAdmin(principal.getName());
-  }
-
   public static String notAdmin(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
-  public static String noPermission(Principal principal) {
-    return noPermission(principal.getName());
-  }
-
+  // TODO delete this
   public static String noPermission(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
   }
 
-  public static String noPermission(Principal principal, String operation) {
-    return noPermission(principal.getName(), operation);
-  }
-
-  public static String noPermission(String name, String operation) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions to %s", name, operation);
-  }
-
-  public static String invalidPolicyOperationNull(String rule, String policy) {
-    return String.format("Found invalid rule %s within policy %s. Please ensure operation is non-null", rule, policy);
-  }
-
-  public static String invalidPolicyDuplicateOperation(String operation, String policy) {
+  public static String permissionDenied(
+      String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
+    if (roleName != null) {
+      return String.format(
+          "Principal: CatalogPrincipal{name='%s'} operation %s denied by role %s, policy %s, rule %s",
+          user, operation, roleName, policyName, ruleName);
+    }
     return String.format(
-        "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
-        operation, policy);
+        "Principal: CatalogPrincipal{name='%s'} operation %s denied policy %s, rule %s",
+        user, operation, policyName, ruleName);
+  }
+
+  public static String permissionNotAllowed(String user, List<MetadataOperation> operations) {
+    return String.format("Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
   public static String entityIsNotEmpty(String entityType) {
@@ -152,5 +150,37 @@ public final class CatalogExceptionMessage {
 
   public static String invalidParentCount(int validParentCount, TeamType teamType) {
     return String.format("Team of type %s can have only %s parents", teamType, validParentCount);
+  }
+
+  public static String deleteOrganization() {
+    return "Organization team type can't be deleted";
+  }
+
+  public static String createOrganization() {
+    return "Only one Organization is allowed. New Organization type can't be created";
+  }
+
+  public static String createGroup() {
+    return "Team of type Group can't have children of type team. Only users are allowed as part of the team";
+  }
+
+  public static String invalidTeamOwner(TeamType teamType) {
+    return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
+  }
+
+  public static String announcementOverlap() {
+    return "There is already an announcement scheduled that overlaps with the given start time and end time";
+  }
+
+  public static String announcementInvalidStartTime() {
+    return "Announcement start time must be earlier than the end time";
+  }
+
+  public static String failedToParse(String message) {
+    return String.format("Failed to parse - %s", message);
+  }
+
+  public static String failedToEvaluate(String message) {
+    return String.format("Failed to evaluate - %s", message);
   }
 }

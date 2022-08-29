@@ -14,7 +14,7 @@ OpenMetadata high-level API Table test
 """
 import uuid
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase
 
 import pytest
@@ -24,6 +24,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -40,6 +43,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableJoins,
     TableProfile,
+    TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -305,29 +309,37 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        profile = [
-            TableProfile(
-                profileDate=datetime(2021, 10, 12),
-                columnCount=1.0,
-                rowCount=3.0,
-                columnNames=[],
-                columnProfile=[
-                    ColumnProfile(
-                        name="id",
-                        uniqueCount=3.0,
-                        uniqueProportion=1.0,
-                        min=1,
-                        max=3,
-                        mean=1.5,
-                        sum=2,
-                        stddev=None,
-                    )
-                ],
+        table_profile = TableProfile(
+            timestamp=datetime.now().timestamp(),
+            columnCount=1.0,
+            rowCount=3.0,
+        )
+        column_profile = [
+            ColumnProfile(
+                name="id",
+                uniqueCount=3.0,
+                uniqueProportion=1.0,
+                min=1,
+                max=3,
+                mean=1.5,
+                sum=2,
+                stddev=None,
+                timestamp=datetime.now(tz=timezone.utc).timestamp(),
             )
         ]
+        profile = CreateTableProfileRequest(
+            tableProfile=table_profile, columnProfile=column_profile
+        )
+        res_profile = self.metadata.ingest_profile_data(res, profile)
+        res_from_table = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["profile"]
+        )
+        assert res_from_table.profile == table_profile
 
-        res_profile = self.metadata.ingest_table_profile_data(res, profile)
-        assert profile == res_profile
+        res_column_profile = next(
+            (col.profile for col in res_from_table.columns if col.name.__root__ == "id")
+        )
+        assert res_column_profile == column_profile[0]
 
     def test_publish_table_usage(self):
         """
@@ -470,7 +482,7 @@ class OMetaTableTest(TestCase):
 
         test_case_result = TestCaseResult(
             result="some result",
-            executionTime=datetime.now().timestamp(),
+            timestamp=datetime.now().timestamp(),
             testCaseStatus=TestCaseStatus.Success,
         )
 
@@ -532,7 +544,7 @@ class OMetaTableTest(TestCase):
 
         col_test_res = TestCaseResult(
             result="some result",
-            executionTime=datetime.now().timestamp(),
+            timestamp=datetime.now().timestamp(),
             testCaseStatus=TestCaseStatus.Success,
         )
 
@@ -572,14 +584,13 @@ class OMetaTableTest(TestCase):
         """
 
         table = self.metadata.create_or_update(data=self.create)
-        assert table.profileSample is None
+        assert table.tableProfilerConfig is None
 
-        updated = self.metadata.update_profile_sample(
-            fqn=table.fullyQualifiedName.__root__, profile_sample=50.0
+        self.metadata._create_or_update_table_profiler_config(
+            table=table, table_profiler_config=TableProfilerConfig(profileSample=50.0)
         )
-        assert updated.profileSample == 50.0
 
         stored = self.metadata.get_by_name(
-            entity=Table, fqn=table.fullyQualifiedName, fields=["profileSample"]
+            entity=Table, fqn=table.fullyQualifiedName, fields=["tableProfilerConfig"]
         )
-        assert stored.profileSample == 50.0
+        assert stored.tableProfilerConfig.profileSample == 50.0

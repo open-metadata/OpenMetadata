@@ -34,7 +34,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         dao,
         "",
         UPDATE_FIELDS);
-    this.allowEdits = true;
   }
 
   @Override
@@ -46,8 +45,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   @Override
   public void prepare(StorageService entity) throws IOException {
     setFullyQualifiedName(entity);
-    // Check if owner is valid and set the relationship
-    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
   }
 
   @Override

@@ -49,6 +49,7 @@ base_requirements = {
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",
+    "croniter~=1.3.0",
 }
 
 
@@ -69,6 +70,7 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
+    "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "datalake": {
         "google-cloud-storage==1.43.0",
         "pandas==1.3.5",
@@ -80,7 +82,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
-    "elasticsearch": {"elasticsearch==7.13.1"},
+    "elasticsearch": {"elasticsearch==7.13.1", "requests-aws4auth==1.1.2"},
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
     "hive": {
@@ -97,7 +99,7 @@ plugins: Dict[str, Set[str]] = {
     "pymssql": {"pymssql~=2.2.5"},
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
-    "oracle": {"cx_Oracle"},
+    "oracle": {"cx_Oracle", "oracledb==1.0.3"},
     "powerbi": {"msal==1.17.0"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"trino[sqlalchemy]"},
@@ -128,6 +130,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake": {"delta-spark~=2.0.0"},
     "great-expectations": {"great-expectations~=0.15.0"},
     "pinotdb": {"pinotdb~=0.3.11"},
+    "nifi": {},
 }
 dev = {
     "datamodel-code-generator==0.12.0",
@@ -174,6 +177,7 @@ setup(
         "Source": "https://github.com/open-metadata/OpenMetadata",
     },
     packages=find_namespace_packages(where="./src", exclude=["tests*"]),
+    namespace_package=["metadata"],
     entry_points={
         "console_scripts": ["metadata = metadata.cmd:metadata"],
         "apache_airflow_provider": [

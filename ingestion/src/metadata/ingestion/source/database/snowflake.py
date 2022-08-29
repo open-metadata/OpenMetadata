@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import traceback
 from typing import Iterable
 
 from snowflake.sqlalchemy.custom_types import VARIANT
@@ -30,9 +30,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -165,9 +165,10 @@ class SnowflakeSource(CommonDbSourceService):
                     self.set_inspector(database_name=new_database)
                     self.set_session_query_tag()
                     yield new_database
-                except Exception as err:
-                    logger.error(
-                        f"Error trying to connect to database {new_database} - {err}"
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error trying to connect to database {new_database}: {exc}"
                     )
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
@@ -180,8 +181,9 @@ class SnowflakeSource(CommonDbSourceService):
                 )
             )
 
-        except Exception as err:
-            logger.error(f"Error fetching tags {err}. Trying with quoted names")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching tags {exc}. Trying with quoted names")
             result = self.connection.execute(
                 SNOWFLAKE_FETCH_ALL_TAGS.format(
                     database_name=f'"{self.context.database.name.__root__}"',

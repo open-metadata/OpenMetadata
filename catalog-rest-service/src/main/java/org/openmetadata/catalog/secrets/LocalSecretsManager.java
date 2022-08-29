@@ -1,12 +1,27 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.secrets;
 
-import static org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider.LOCAL;
+import static org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider.LOCAL;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AuthConfiguration;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
@@ -18,8 +33,8 @@ public class LocalSecretsManager extends SecretsManager {
 
   private Fernet fernet;
 
-  private LocalSecretsManager(OpenMetadataServerConnection.SecretsManagerProvider secretsManagerProvider) {
-    super(secretsManagerProvider);
+  private LocalSecretsManager(String clusterPrefix) {
+    super(LOCAL, clusterPrefix);
     this.fernet = Fernet.getInstance();
   }
 
@@ -30,13 +45,9 @@ public class LocalSecretsManager extends SecretsManager {
 
   @Override
   public Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig,
-      String connectionType,
-      String connectionName,
-      String connectionPackage,
-      boolean encrypt) {
+      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
     try {
-      Class<?> clazz = createConnectionConfigClass(connectionType, connectionPackage);
+      Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
       Object newConnectionConfig = JsonUtils.convertValue(connectionConfig, clazz);
       encryptOrDecryptField(newConnectionConfig, "Password", clazz, encrypt);
       return newConnectionConfig;
@@ -44,6 +55,11 @@ public class LocalSecretsManager extends SecretsManager {
       throw InvalidServiceConnectionException.byMessage(
           connectionType, String.format("Failed to construct connection instance of %s", connectionType));
     }
+  }
+
+  @Override
+  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt) {
+    return dbtConfigSource;
   }
 
   @Override
@@ -74,6 +90,11 @@ public class LocalSecretsManager extends SecretsManager {
     }
   }
 
+  @Override
+  public Object storeTestConnectionObject(TestServiceConnection testServiceConnection) {
+    return testServiceConnection.getConnection();
+  }
+
   private void encryptOrDecryptField(Object connConfig, String field, Class<?> clazz, boolean encrypt)
       throws InvocationTargetException, IllegalAccessException {
     try {
@@ -92,8 +113,8 @@ public class LocalSecretsManager extends SecretsManager {
     }
   }
 
-  public static LocalSecretsManager getInstance() {
-    if (INSTANCE == null) INSTANCE = new LocalSecretsManager(LOCAL);
+  public static LocalSecretsManager getInstance(String clusterPrefix) {
+    if (INSTANCE == null) INSTANCE = new LocalSecretsManager(clusterPrefix);
     return INSTANCE;
   }
 

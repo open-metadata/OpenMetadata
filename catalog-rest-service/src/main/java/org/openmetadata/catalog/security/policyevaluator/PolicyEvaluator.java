@@ -13,92 +13,216 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jeasy.rules.api.Rules;
-import org.jeasy.rules.api.RulesEngine;
-import org.jeasy.rules.api.RulesEngineParameters;
-import org.jeasy.rules.core.DefaultRulesEngine;
-import org.openmetadata.catalog.EntityInterface;
-import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.ResourceRegistry;
+import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.Permission;
+import org.openmetadata.catalog.type.Permission.Access;
+import org.openmetadata.catalog.type.ResourceDescriptor;
+import org.openmetadata.catalog.type.ResourcePermission;
 
 /**
- * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link
- * org.openmetadata.catalog.entity.policies.Policy} format to make access decisions.
+ * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link Policy}
+ * format to make access decisions.
  *
- * <p>This Singleton class uses {@link DefaultRulesEngine} provided by <a
- * href="https://github.com/j-easy/easy-rules">j-easy/easy-rules</a> package.
+ * <p>Policy Evaluation uses the following:
  *
- * <p>The rules defined as {@link org.openmetadata.catalog.entity.policies.accessControl.Rule} are to be fetched from
- * OpenMetadata's {@link org.openmetadata.catalog.jdbi3.PolicyRepository} and converted into type {@link Rule} to be
- * used within the {@link DefaultRulesEngine}
- *
- * <p>The facts are constructed based on 3 inputs for the PolicyEvaluator:
- *
- * <p>- {@link MetadataOperation operation} to be performed
- *
- * <p>- {@link User} (subject) who performs the operation
- *
- * <p>- {@link org.openmetadata.catalog.Entity} (object) on which to operate on.
+ * <ul>
+ *   <li>{@link Policy} which is a collection of `Allow` and `Deny` rules {@link Rule}.
+ *   <li>PolicyEvaluator gets {@link OperationContext} with information about the operation, {@link ResourceContext}
+ *       with information about the resource on which the operations is being performed, and {@link SubjectContext} with
+ *       information about the user performing the operation.
+ *   <li>First, all the Deny rules are applied and if there is rule match, then the operation is denied.
+ *   <li>Second, all the Allow rules are applied and if there is rule match, then the operation is allowed.
+ *   <li>All operations that don't a match rule are not allowed.
+ * </ul>
  */
 @Slf4j
 public class PolicyEvaluator {
-  private final RulesEngine checkPermissionRulesEngine;
-  private final RulesEngine allowedOperationsRulesEngine;
 
-  // Eager initialization of Singleton since PolicyEvaluator is lightweight.
-  private static final PolicyEvaluator policyEvaluator = new PolicyEvaluator();
-
-  private PolicyEvaluator() {
-    // When first rule applies, stop the check for permission.
-    checkPermissionRulesEngine = new DefaultRulesEngine(new RulesEngineParameters().skipOnFirstAppliedRule(true));
-    allowedOperationsRulesEngine = new DefaultRulesEngine();
-  }
-
-  public static PolicyEvaluator getInstance() {
-    return policyEvaluator;
-  }
+  private PolicyEvaluator() {}
 
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
-  public boolean hasPermission(
-      @NonNull SubjectContext subjectContext, EntityInterface entity, @NonNull MetadataOperation operation) {
-    // Role based permission
-    AttributeBasedFacts facts =
-        new AttributeBasedFacts.AttributeBasedFactsBuilder()
-            .withEntity(entity)
-            .withOperation(operation)
-            .withCheckOperation(true)
-            .build();
-    Iterator<PolicyContext> policies = subjectContext.getPolicies();
-    while (policies.hasNext()) {
-      PolicyContext policyContext = policies.next();
-      Rules rules = policyContext.getRules();
-      checkPermissionRulesEngine.fire(rules, facts.getFacts());
-      if (facts.hasPermission()) {
-        return true;
-      }
+  public static void hasPermission(
+      @NonNull SubjectContext subjectContext,
+      @NonNull ResourceContextInterface resourceContext,
+      @NonNull OperationContext operationContext)
+      throws IOException {
+    // First run through all the DENY policies based on the user
+    evaluateDenySubjectPolicies(subjectContext, resourceContext, operationContext);
+
+    // Next run through all the DENY policies based on the resource
+    evaluateDenyResourcePolicies(subjectContext, resourceContext, operationContext);
+
+    // Next run through all the ALLOW policies based on the user
+    evaluateAllowSubjectPolicies(subjectContext, resourceContext, operationContext);
+
+    // Next run through all the ALLOW policies based on the resource
+    evaluateAllowResourcePolicies(subjectContext, resourceContext, operationContext);
+
+    if (!operationContext.getOperations().isEmpty()) { // Some operations have not been allowed
+      throw new AuthorizationException(
+          CatalogExceptionMessage.permissionNotAllowed(
+              subjectContext.getUser().getName(), operationContext.getOperations()));
     }
-    return false;
   }
 
-  /** Returns a list of operations that a user can perform on the given entity. */
-  public List<MetadataOperation> getAllowedOperations(@NonNull SubjectContext subjectContext, EntityInterface entity) {
-    List<MetadataOperation> list = new ArrayList<>();
-    AttributeBasedFacts facts = new AttributeBasedFacts.AttributeBasedFactsBuilder().withEntity(entity).build();
+  private static void evaluateDenySubjectPolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+    evaluatePolicies(subjectContext.getPolicies(), subjectContext, resourceContext, operationContext, true, false);
+  }
+
+  private static void evaluateAllowSubjectPolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+    evaluatePolicies(subjectContext.getPolicies(), subjectContext, resourceContext, operationContext, false, false);
+  }
+
+  private static void evaluateDenyResourcePolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext)
+      throws IOException {
+    if (resourceContext == null || resourceContext.getOwner() == null) {
+      return; // No owner for a resource. No need to walk the hierarchy of user and teams that are resource owners
+    }
+    Iterator<PolicyContext> resourcePolicies = subjectContext.getResourcePolicies(resourceContext.getOwner());
+    evaluatePolicies(resourcePolicies, subjectContext, resourceContext, operationContext, true, true);
+  }
+
+  private static void evaluateAllowResourcePolicies(
+      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext)
+      throws IOException {
+    if (resourceContext == null || resourceContext.getOwner() == null) {
+      return; // No owner for a resource. No need to walk the hierarchy of user and teams that are resource owners
+    }
+    Iterator<PolicyContext> resourcePolicies = subjectContext.getResourcePolicies(resourceContext.getOwner());
+    evaluatePolicies(resourcePolicies, subjectContext, resourceContext, operationContext, false, true);
+  }
+
+  private static void evaluatePolicies(
+      Iterator<PolicyContext> policies,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext,
+      OperationContext operationContext,
+      boolean evaluateDeny,
+      boolean evaluateResourcePolicies) {
+    // When an operation is allowed by a rule, it is removed from operation context
+    // When list of operations is empty in the operation context, all operations have been allowed
+    while (policies.hasNext() && !operationContext.getOperations().isEmpty()) {
+      PolicyContext context = policies.next();
+      for (CompiledRule rule : context.getRules()) {
+        if (evaluateResourcePolicies && !rule.isResourceBased()) {
+          continue; // Only evaluate resource based rules
+        }
+        LOG.debug(
+            "evaluating policy for {} {}:{}:{}",
+            evaluateDeny ? "deny" : "allow",
+            context.getRoleName(),
+            context.getPolicyName(),
+            rule.getName());
+        if (evaluateDeny) {
+          rule.evaluateDenyRule(operationContext, subjectContext, resourceContext, context);
+        } else {
+          rule.evaluateAllowRule(operationContext, subjectContext, resourceContext, context);
+        }
+      }
+    }
+  }
+
+  /** Returns a list of operations that a user can perform on all the resources. */
+  public static List<ResourcePermission> listPermission(@NonNull SubjectContext subjectContext) {
+    Map<String, ResourcePermission> resourcePermissionMap = initResourcePermissions();
 
     Iterator<PolicyContext> policies = subjectContext.getPolicies();
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
-      Rules rules = policyContext.getRules();
-      allowedOperationsRulesEngine.fire(rules, facts.getFacts());
-      list.addAll(facts.getAllowedOperations());
+      for (CompiledRule rule : policyContext.getRules()) {
+        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        rule.setPermission(resourcePermissionMap, policyContext);
+      }
     }
-    return list.stream().distinct().collect(Collectors.toList());
+    return new ArrayList<>(resourcePermissionMap.values());
+  }
+
+  /** Returns a list of operations that a user can perform on the given resource/entity type */
+  public static ResourcePermission getPermission(@NonNull SubjectContext subjectContext, String resourceType) {
+    // Initialize all permissions to NOT_ALLOW
+    ResourcePermission resourcePermission = getResourcePermission(resourceType, Access.NOT_ALLOW);
+
+    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or CONDITIONAL_ALLOW
+    Iterator<PolicyContext> policies = subjectContext.getPolicies();
+    while (policies.hasNext()) {
+      PolicyContext policyContext = policies.next();
+      for (CompiledRule rule : policyContext.getRules()) {
+        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        rule.setPermission(resourceType, resourcePermission, policyContext);
+      }
+    }
+    return resourcePermission;
+  }
+
+  public static ResourcePermission getPermission(
+      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+    // Initialize all permissions to NOT_ALLOW
+    ResourcePermission resourcePermission = getResourcePermission(resourceContext.getResource(), Access.NOT_ALLOW);
+
+    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or CONDITIONAL_ALLOW
+    Iterator<PolicyContext> policies = subjectContext.getPolicies();
+    while (policies.hasNext()) {
+      PolicyContext policyContext = policies.next();
+      for (CompiledRule rule : policyContext.getRules()) {
+        LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
+        rule.setPermission(subjectContext, resourceContext, resourcePermission, policyContext);
+      }
+    }
+    return resourcePermission;
+  }
+
+  /** Get list of resources with all their permissions set to given Access */
+  public static List<ResourcePermission> getResourcePermissions(Access access) {
+    List<ResourcePermission> resourcePermissions = new ArrayList<>();
+    for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
+      List<Permission> permissions = new ArrayList<>();
+      for (MetadataOperation operation : rd.getOperations()) {
+        permissions.add(new Permission().withOperation(operation).withAccess(access));
+      }
+      ResourcePermission resourcePermission =
+          new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
+      resourcePermissions.add(resourcePermission);
+    }
+    return resourcePermissions;
+  }
+
+  /** Get list of resources with all their permissions set to given Access */
+  public static ResourcePermission getResourcePermission(String resource, Access access) {
+    ResourceDescriptor rd = ResourceRegistry.getResourceDescriptor(resource);
+    List<Permission> permissions = new ArrayList<>();
+    for (MetadataOperation operation : rd.getOperations()) {
+      permissions.add(new Permission().withOperation(operation).withAccess(access));
+    }
+    return new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
+  }
+
+  /**
+   * Initialize a map of Resource name to ResourcePermission with for each resource permission for all operations set as
+   * NOT_ALLOW
+   */
+  public static Map<String, ResourcePermission> initResourcePermissions() {
+    // For each resource, initialize permission for each operation as NOT_ALLOW
+    Collection<ResourcePermission> resourcePermissions = getResourcePermissions(Access.NOT_ALLOW);
+    Map<String, ResourcePermission> resourcePermissionMap = new HashMap<>();
+    resourcePermissions.forEach(rp -> resourcePermissionMap.put(rp.getResource(), rp));
+    return resourcePermissionMap;
   }
 }

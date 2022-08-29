@@ -60,11 +60,13 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -210,7 +212,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -309,7 +311,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "User version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -358,9 +360,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
+    dao.prepare(user);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext, true);
     } else {
+      OperationContext createOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
       authorizer.authorize(securityContext, createOperationContext, getResourceContextByName(user.getName()), true);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -386,14 +390,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public JWTAuthMechanism generateToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    if (!user.getIsBot()) {
-      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
-    }
+    authorizeGenerateJWT(user);
     authorizer.authorizeAdmin(securityContext, false);
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
@@ -422,13 +424,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response revokeToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    if (!user.getIsBot()) {
-      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
-    }
+    authorizeGenerateJWT(user);
     authorizer.authorizeAdmin(securityContext, false);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
@@ -455,11 +454,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public JWTAuthMechanism getToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
 
     User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
-    if (!user.getIsBot()) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
     authorizer.authorizeAdmin(securityContext, false);
@@ -484,7 +482,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -514,7 +512,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           }
           if (value != null) {
             String teamId = value.getString("id");
-            dao.validateTeamAddition(id, teamId);
+            dao.validateTeamAddition(id, UUID.fromString(teamId));
             if (!dao.isTeamJoinable(teamId)) {
               // Only admin can join closed teams
               authorizer.authorizeAdmin(securityContext, false);
@@ -544,7 +542,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "User Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "User Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
@@ -565,5 +563,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
+  }
+
+  private void authorizeGenerateJWT(User user) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
+    }
   }
 }

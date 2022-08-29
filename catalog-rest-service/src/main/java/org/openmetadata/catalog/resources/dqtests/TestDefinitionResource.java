@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -35,7 +34,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tests.CreateTestDefinition;
@@ -48,10 +46,12 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.tests.TestDefinition;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.TestDefinitionEntityType;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 @Path("/v1/testDefinition")
@@ -86,9 +86,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
         testDefinitionFile -> {
           try {
             LOG.info("Loading test definitions from file {}", testDefinitionFile);
-            String testDefinitionJson =
-                IOUtil.toString(
-                    Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(testDefinitionFile)));
+            String testDefinitionJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), testDefinitionFile);
             testDefinitionJson = testDefinitionJson.replace("<separator>", Entity.SEPARATOR);
             TestDefinition testDefinition = JsonUtils.readValue(testDefinitionJson, TestDefinition.class);
             long now = System.currentTimeMillis();
@@ -154,9 +152,17 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
+          Include include,
+      @Parameter(
+              description = "Filter by entityType.",
+              schema = @Schema(implementation = TestDefinitionEntityType.class))
+          @QueryParam("entityType")
+          String entityType)
       throws IOException {
     ListFilter filter = new ListFilter(include);
+    if (entityType != null) {
+      filter.addQueryParam("entityType", entityType);
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -197,7 +203,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       })
   public TestDefinition get(
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -268,7 +274,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   public TestDefinition getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Definition Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Test Definition Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Test Definition version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -311,7 +317,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -362,14 +368,15 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, true);
   }
 
-  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
+  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) throws IOException {
     return copy(new TestDefinition(), create, user)
         .withDescription(create.getDescription())
+        .withEntityType(create.getEntityType())
         .withTestPlatforms(create.getTestPlatforms())
         .withDisplayName(create.getDisplayName())
         .withParameterDefinition(create.getParameterDefinition())

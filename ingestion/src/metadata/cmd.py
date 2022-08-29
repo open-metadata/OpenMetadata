@@ -13,6 +13,7 @@ import logging
 import os
 import pathlib
 import sys
+import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
@@ -25,6 +26,7 @@ from metadata.cli.docker import run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
 
 logger = cli_logger()
@@ -77,19 +79,46 @@ def ingest(config: str) -> None:
     "-c",
     "--config",
     type=click.Path(exists=True, dir_okay=False),
-    help="Profiler and Testing Workflow config",
+    help="test suite Workflow config",
+    required=True,
+)
+def test(config: str) -> None:
+    """Main command for running test suites"""
+    config_file = pathlib.Path(config)
+    workflow_config = load_config_file(config_file)
+    try:
+        logger.debug(f"Using config: {workflow_config}")
+        workflow = TestSuiteWorkflow.create(workflow_config)
+    except ValidationError as err:
+        click.echo(err, err=True)
+        sys.exit(1)
+
+    workflow.execute()
+    workflow.stop()
+    ret = workflow.print_status()
+    sys.exit(ret)
+
+
+@metadata.command()
+@click.option(
+    "-c",
+    "--config",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Profiler Workflow config",
     required=True,
 )
 def profile(config: str) -> None:
-    """Main command for profiling and testing Table sources into Metadata"""
+    """Main command for profiling Table sources into Metadata"""
     config_file = pathlib.Path(config)
     workflow_config = load_config_file(config_file)
 
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = ProfilerWorkflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error creating Profiler Workflow: {err}")
+        click.echo(err, err=True)
         sys.exit(1)
 
     workflow.execute()
@@ -236,7 +265,22 @@ def docker(
     required=False,
 )
 @click.option(
-    "-o", "--options", multiple=True, default=["--protocol=tcp", "--no-tablespaces"]
+    "-o",
+    "--options",
+    multiple=True,
+    default=None,
+)
+@click.option(
+    "-a",
+    "--arguments",
+    multiple=True,
+    default=None,
+)
+@click.option(
+    "-s",
+    "--schema",
+    default=None,
+    required=False,
 )
 def backup(
     host: str,
@@ -247,18 +291,26 @@ def backup(
     output: Optional[str],
     upload: Optional[Tuple[str, str, str]],
     options: List[str],
+    arguments: List[str],
+    schema: str,
 ) -> None:
     """
-    Run a backup for the metadata DB.
-    Requires mysqldump installed on the host.
+    Run a backup for the metadata DB. Uses a custom dump strategy for OpenMetadata tables.
 
-    We can pass as many options as required with `-o <opt1>, -o <opt2> [...]`
+    We can pass as many connection options as required with `-o <opt1>, -o <opt2> [...]`
+    Same with connection arguments `-a <arg1>, -a <arg2> [...]`
 
     To run the upload, provide the information as
     `--upload endpoint bucket key` and properly configure the environment
-    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY
+    variables AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY.
+
+    If `-s` or `--schema` is provided, we will trigger a Postgres backup instead
+    of a MySQL backup. This is the value of the schema containing the OpenMetadata
+    tables.
     """
-    run_backup(host, user, password, database, port, output, upload, options)
+    run_backup(
+        host, user, password, database, port, output, upload, options, arguments, schema
+    )
 
 
 metadata.add_command(check)

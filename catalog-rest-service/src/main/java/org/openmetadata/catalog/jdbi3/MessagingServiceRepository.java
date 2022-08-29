@@ -15,11 +15,12 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.MessagingConnection;
 
-public class MessagingServiceRepository extends ServiceRepository<MessagingService, MessagingConnection> {
+public class MessagingServiceRepository extends ServiceEntityRepository<MessagingService, MessagingConnection> {
   private static final String UPDATE_FIELDS = "owner, connection";
 
   public MessagingServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
@@ -30,11 +31,7 @@ public class MessagingServiceRepository extends ServiceRepository<MessagingServi
         dao.messagingServiceDAO(),
         secretsManager,
         MessagingConnection.class,
-        UPDATE_FIELDS);
-  }
-
-  @Override
-  protected String getServiceType(MessagingService messagingService) {
-    return messagingService.getServiceType().value();
+        UPDATE_FIELDS,
+        ServiceType.MESSAGING);
   }
 }

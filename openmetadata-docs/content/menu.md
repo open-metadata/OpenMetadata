@@ -40,8 +40,18 @@ site_menu:
 
   - category: Deployment / Kubernetes Deployment
     url: /deployment/kubernetes
+  - category: Deployment/ Kubernetes Deployment / Helm Values
+    url: /deployment/kubernetes/helm-values
+  - category: Deployment / Kubernetes Deployment / EKS
+    url: /deployment/kubernetes/eks
+  - category: Deployment / Kubernetes Deployment / GKE
+    url: /deployment/kubernetes/gke
+  - category: Deployment / Kubernetes Deployment / On Premises
+    url: /deployment/kubernetes/onprem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
+  - category: Deployment / Kubernetes Deployment / Helm Values
+    url: /deployment/kubernetes/helm-values
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -85,6 +95,8 @@ site_menu:
     url: /deployment/security/okta/bare-metal
   - category: Deployment / Enable Security / Okta SSO / Kubernetes
     url: /deployment/security/okta/kubernetes
+  - category: Deployment / Enable Security / Okta SSO / Troubleshoot
+    url: /deployment/security/okta/troubleshoot
   - category: Deployment / Enable Security / Amazon Cognito SSO
     url: /deployment/security/amazon-cognito
   - category: Deployment / Enable Security / Amazon Cognito SSO / Docker
@@ -101,6 +113,14 @@ site_menu:
     url: /deployment/security/one-login/bare-metal
   - category: Deployment / Enable Security / One Login SSO / Kubernetes
     url: /deployment/security/one-login/kubernetes
+  - category: Deployment / Enable Security / Keycloak SSO
+    url: /deployment/security/keycloak
+  - category: Deployment / Enable Security / Keycloak SSO / Docker
+    url: /deployment/security/keycloak/docker
+  - category: Deployment / Enable Security / Keycloak SSO / Bare Metal
+    url: /deployment/security/keycloak/bare-metal
+  - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
+    url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
@@ -132,7 +152,6 @@ site_menu:
 
   - category: Deployment / Airflow
     url: /deployment/airflow
-
 
   - category: OpenMetadata
     url: /openmetadata
@@ -215,6 +234,14 @@ site_menu:
     url: /openmetadata/connectors/database/databricks/airflow
   - category: OpenMetadata / Connectors / Database / Databricks / CLI
     url: /openmetadata/connectors/database/databricks/cli
+  - category: OpenMetadata / Connectors / Database / Datalake
+    url: /openmetadata/connectors/database/datalake
+  - category: OpenMetadata / Connectors / Database / Datalake / Airflow
+    url: /openmetadata/connectors/database/datalake/airflow
+  - category: OpenMetadata / Connectors / Database / Datalake / CLI
+    url: /openmetadata/connectors/database/datalake/cli
+  - category: OpenMetadata / Connectors / Database / Datalake / Troubleshooting
+    url: /openmetadata/connectors/database/datalake/troubleshooting
   - category: OpenMetadata / Connectors / Database / DB2
     url: /openmetadata/connectors/database/db2
   - category: OpenMetadata / Connectors / Database / DB2 / Airflow
@@ -322,6 +349,12 @@ site_menu:
     url: /openmetadata/connectors/dashboard/metabase/airflow
   - category: OpenMetadata / Connectors / Dashboard / Metabase / CLI
     url: /openmetadata/connectors/dashboard/metabase/cli
+  - category: OpenMetadata / Connectors / Dashboard / Mode
+    url: /openmetadata/connectors/dashboard/mode
+  - category: OpenMetadata / Connectors / Dashboard / Mode / Airflow
+    url: /openmetadata/connectors/dashboard/mode/airflow
+  - category: OpenMetadata / Connectors / Dashboard / Mode / CLI
+    url: /openmetadata/connectors/dashboard/mode/cli
 
   - category: OpenMetadata / Connectors / Messaging
     url: /openmetadata/connectors/messaging
@@ -361,10 +394,22 @@ site_menu:
   - category: OpenMetadata / Connectors / Pipeline / Fivetran / CLI
     url: /openmetadata/connectors/pipeline/fivetran/cli
 
+  - category: OpenMetadata / Connectors / ML Model
+    url: /openmetadata/connectors/ml-model
+  - category: OpenMetadata / Connectors / ML Model / ML Flow
+    url: /openmetadata/connectors/ml-model/mlflow
+  - category: OpenMetadata / Connectors / ML Model / ML Flow / Airflow
+    url: /openmetadata/connectors/ml-model/mlflow/airflow
+  - category: OpenMetadata / Connectors / ML Model / ML Flow / CLI
+    url: /openmetadata/connectors/ml-model/mlflow/cli
+
   - category: OpenMetadata / Connectors / Metadata
     url: /openmetadata/connectors/metadata
   - category: OpenMetadata / Connectors / Metadata / Amundsen
     url: /openmetadata/connectors/metadata/amundsen
+
+  - category: OpenMetadata / Connectors / Managing Credentials
+    url: /openmetadata/connectors/credentials
 
   - category: OpenMetadata / Ingestion
     url: /openmetadata/ingestion
@@ -377,15 +422,19 @@ site_menu:
     url: /openmetadata/ingestion/workflows/metadata/dbt
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
     url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
-  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT CLI
-    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-cli
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
 
   - category: OpenMetadata / Ingestion / Workflows / Usage
     url: /openmetadata/ingestion/workflows/usage
   - category: OpenMetadata / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
     url: /openmetadata/ingestion/workflows/usage/usage-workflow-query-logs
+  - category: OpenMetadata / Ingestion / Workflows / Lineage
+    url: /openmetadata/ingestion/workflows/lineage
   - category: OpenMetadata / Ingestion / Workflows / Profiler
     url: /openmetadata/ingestion/workflows/profiler
+  - category: OpenMetadata / Ingestion / Workflows / Profiler / Metrics
+    url: /openmetadata/ingestion/workflows/profiler/metrics
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
   - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually
@@ -406,8 +455,6 @@ site_menu:
     url: /openmetadata/data-quality
   - category: OpenMetadata / Data Quality / Tests
     url: /openmetadata/data-quality/tests
-  - category: OpenMetadata / Data Quality / Metrics
-    url: /openmetadata/data-quality/metrics
 
   - category: OpenMetadata / Teams & Users
     url: /openmetadata/users
@@ -889,7 +936,6 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/type/usagedetails
   - category: Main Concepts / Metadata Standard / Schemas / Type / UsageRequest
     url: /main-concepts/metadata-standard/schemas/type/usagerequest
-
 
   - category: Main Concepts / Metadata Standard / APIs
     url: /main-concepts/metadata-standard/apis

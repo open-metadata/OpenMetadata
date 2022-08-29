@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceQueryLineagePipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceQueryLineagePipeline",
+  "description": "DatabaseService Query Lineage Pipeline Configuration.",
+  "definitions": {
+    "databaseLineageConfigType": {
+      "description": "Database Source Config Usage Pipeline type",
+      "type": "string",
+      "enum": ["DatabaseLineage"],
+      "default": "DatabaseLineage"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/databaseLineageConfigType",
+      "default": "DatabaseLineage"
+    },
+    "queryLogDuration": {
+      "description": "Configuration to tune how far we want to look back in query logs to process lineage data.",
+      "type": "integer",
+      "default": 1
+    },
+    "queryLogFilePath": {
+      "description": "Configuration to set the file path for query logs",
+      "type": "string"
+    },
+    "resultLimit": {
+      "description": "Configuration to set the limit for query logs",
+      "type": "integer",
+      "default": "1000"
+    },
+    "schemaFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    }
+  },
+  "additionalProperties": false
+}

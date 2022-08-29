@@ -25,12 +25,13 @@ Note that it currently has a bug where we generate an entry:
 which is incorrect and should be removed when pasting this in.
 """
 
-import os
 import json
-import jsonschema2md
+import os
 from datetime import datetime
-from typing import List
 from pathlib import Path
+from typing import List
+
+import jsonschema2md
 
 SOURCES_ROOT = "catalog-rest-service/src/main/resources/json/schema"
 SINK_ROOT = "openmetadata-docs/content"
@@ -77,9 +78,11 @@ def prepare_menu(new_file: Path, is_file: bool) -> None:
     category_root = "- category: Main Concepts / Metadata Standard / Schemas / "
     category_suffix = str(new_file.parent).replace(SCHEMAS_ROOT, "")
 
-    title = ([to_tile(new_file.stem)] if is_file else [])
+    title = [to_tile(new_file.stem)] if is_file else []
 
-    category_suffix_list = list(map(lambda x: x.capitalize(), category_suffix.split("/"))) + title
+    category_suffix_list = (
+        list(map(lambda x: x.capitalize(), category_suffix.split("/"))) + title
+    )
     category = category_root + " / ".join(category_suffix_list)
     print(category)
     print(f"  url: {slug}")
@@ -104,16 +107,11 @@ def main() -> None:
     We build a list of (FilePath, True or False, if it is file or index)
     """
 
-    results = [
-        (file, True)
-        for file in Path(SOURCES_ROOT).rglob("*.json")
-    ]
+    results = [(file, True) for file in Path(SOURCES_ROOT).rglob("*.json")]
 
     directories = [Path(x[0]) for x in os.walk(SOURCES_ROOT)]
 
-    indexes = list(
-        (directory / "index.md", False) for directory in directories
-    )
+    indexes = list((directory / "index.md", False) for directory in directories)
 
     all_elems = results + indexes
     all_elems.sort()

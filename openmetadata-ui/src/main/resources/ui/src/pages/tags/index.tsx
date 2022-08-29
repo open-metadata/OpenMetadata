@@ -13,12 +13,12 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createTag,
@@ -61,7 +61,10 @@ import {
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
-import { getExplorePathWithInitFilters } from '../../utils/RouterUtils';
+import {
+  getExplorePathWithInitFilters,
+  getTagPath,
+} from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
@@ -82,6 +85,8 @@ type DeleteTagsType = {
 };
 
 const TagsPage = () => {
+  const history = useHistory();
+  const { tagCategoryName } = useParams<Record<string, string>>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
@@ -128,8 +133,8 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentCategory = await getCategory(name, 'usageCount');
-        if (currentCategory.data) {
-          setCurrentCategory(currentCategory.data);
+        if (currentCategory) {
+          setCurrentCategory(currentCategory as TagCategory);
           setIsLoading(false);
         } else {
           showErrorToast(
@@ -179,9 +184,9 @@ const TagsPage = () => {
     const errData = onNewCategoryChange(data, true);
     if (!Object.values(errData).length) {
       createTagCategory(data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setCurrentCategory(res.data);
+        .then((res) => {
+          if (res) {
+            setCurrentCategory(res);
             fetchCategories();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -221,8 +226,8 @@ const TagsPage = () => {
    */
   const deleteTagCategoryById = (categoryId: string) => {
     deleteTagCategory(categoryId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           setIsLoading(true);
           const updatedCategory = categories.filter(
             (data) => data.id !== categoryId
@@ -252,7 +257,7 @@ const TagsPage = () => {
    */
   const handleDeleteTag = (categoryName: string, tagId: string) => {
     deleteTag(categoryName, tagId)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
           if (currentCategory) {
             const updatedTags = (currentCategory.children as TagClass[]).filter(
@@ -285,13 +290,13 @@ const TagsPage = () => {
   };
 
   const UpdateCategory = (updatedHTML: string) => {
-    updateTagCategory(currentCategory?.name, {
-      name: currentCategory?.name,
+    updateTagCategory(currentCategory?.name ?? '', {
+      name: currentCategory?.name ?? '',
       description: updatedHTML,
       categoryType: currentCategory?.categoryType,
     })
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           fetchCurrentCategory(currentCategory?.name as string, true);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -337,12 +342,12 @@ const TagsPage = () => {
   const createPrimaryTag = (data: TagCategory) => {
     const errData = onNewTagChange(data, true);
     if (!Object.values(errData).length) {
-      createTag(currentCategory?.name, {
+      createTag(currentCategory?.name ?? '', {
         name: data.name,
         description: data.description,
       })
-        .then((res: AxiosResponse) => {
-          if (res.data) {
+        .then((res) => {
+          if (res) {
             fetchCurrentCategory(currentCategory?.name as string, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -361,11 +366,11 @@ const TagsPage = () => {
   };
 
   const updatePrimaryTag = (updatedHTML: string) => {
-    updateTag(currentCategory?.name, editTag?.name, {
-      name: editTag?.name,
+    updateTag(currentCategory?.name ?? '', editTag?.name ?? '', {
+      name: editTag?.name ?? '',
       description: updatedHTML,
     })
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
           fetchCurrentCategory(currentCategory?.name as string, true);
         } else {
@@ -403,9 +408,14 @@ const TagsPage = () => {
     }
   }, [categories, currentCategory]);
 
+  useEffect(() => {
+    fetchCurrentCategory(tagCategoryName);
+  }, [tagCategoryName]);
+
   const fetchLeftPanel = () => {
     return (
       <Card
+        className="left-panel-container"
         data-testid="data-summary-container"
         size="small"
         style={leftPanelAntCardStyle}
@@ -447,7 +457,7 @@ const TagsPage = () => {
                 data-testid="side-panel-category"
                 key={category.name}
                 onClick={() => {
-                  fetchCurrentCategory(category.name);
+                  history.push(getTagPath(category.name));
                 }}>
                 <Ellipses
                   tooltip
@@ -540,7 +550,6 @@ const TagsPage = () => {
               className="tw-mb-3 tw--ml-5"
               data-testid="description-container">
               <Description
-                blurWithBodyBG
                 description={currentCategory?.description || ''}
                 entityName={
                   currentCategory?.displayName ?? currentCategory?.name

@@ -29,7 +29,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -40,6 +40,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.sql_lineage import (
+    get_lineage_by_query,
+    get_lineage_via_table_entity,
+)
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import (
@@ -48,13 +52,11 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import (
-    get_lineage_by_query,
-    get_lineage_via_table_entity,
-)
 
 logger = ingestion_logger()
 
@@ -90,6 +92,7 @@ class CommonDbSourceService(
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
+        self.context.table_views = []
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -134,23 +137,24 @@ class CommonDbSourceService(
             ),
         )
 
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+        else:
+            for schema_name in self.inspector.get_schema_names():
+                yield schema_name
+
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
         """
-        if self.service_connection.__dict__.get("databaseSchema"):
-            yield self.service_connection.databaseSchema
-
-        else:
-            for schema_name in self.inspector.get_schema_names():
-
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern, schema_name=schema_name
-                ):
-                    self.status.filter(schema_name, "Schema pattern not allowed")
-                    continue
-
-                yield schema_name
+        for schema_name in self.get_raw_database_schema_names():
+            if filter_by_schema(
+                self.source_config.schemaFilterPattern, schema_name=schema_name
+            ):
+                self.status.filter(schema_name, "Schema pattern not allowed")
+                continue
+            yield schema_name
 
     def yield_database_schema(
         self, schema_name: str
@@ -173,8 +177,11 @@ class CommonDbSourceService(
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         # Catch any exception without breaking the ingestion
-        except Exception as err:  # pylint: disable=broad-except
-            logger.warning(f"Table Description Error : {str(err)}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
+            )
         else:
             description = table_info["text"]
         return description
@@ -197,17 +204,6 @@ class CommonDbSourceService(
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
                         "Table pattern not allowed",
-                    )
-                    continue
-
-                if self.is_partition(
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    inspector=self.inspector,
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{table_name}",
-                        "Table is partition",
                     )
                     continue
                 table_name = self.standardize_table_name(schema_name, table_name)
@@ -240,13 +236,14 @@ class CommonDbSourceService(
                 return view_definition
 
             except NotImplementedError:
-                logger.error("View definition not implemented")
+                logger.warning("View definition not implemented")
                 return ""
 
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(err)
-                logger.error(f"Failed to fetch view definition for {table_name}")
+                logger.warning(
+                    f"Failed to fetch view definition for {table_name}: {exc}"
+                )
                 return ""
 
     def is_partition(
@@ -254,9 +251,18 @@ class CommonDbSourceService(
     ) -> bool:
         return False
 
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        """
+        check if the table is partitioned table and return the partition details
+        """
+        return False, None  # By default the table will be a Regular Table
+
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
+    @calculate_execution_time_generator
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Optional[CreateTableRequest]]:
@@ -276,6 +282,13 @@ class CommonDbSourceService(
                 inspector=self.inspector,
             )
 
+            view_definition = self.get_view_definition(
+                table_type=table_type,
+                table_name=table_name,
+                schema_name=schema_name,
+                inspector=self.inspector,
+            )
+
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
@@ -285,12 +298,7 @@ class CommonDbSourceService(
                     inspector=self.inspector,
                 ),
                 columns=columns,
-                viewDefinition=self.get_view_definition(
-                    table_type=table_type,
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    inspector=self.inspector,
-                ),
+                viewDefinition=view_definition,
                 tableConstraints=table_constraints if table_constraints else None,
                 databaseSchema=EntityReference(
                     id=self.context.database_schema.id,
@@ -300,66 +308,91 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
+            is_partitioned, partiotion_details = self.get_table_partition_details(
+                table_name=table_name, schema_name=schema_name, inspector=self.inspector
+            )
+            if is_partitioned:
+                table_request.tableType = TableType.Partitioned.value
+                table_request.tablePartition = partiotion_details
+
+            if table_type == TableType.View or view_definition:
+                table_view = {
+                    "table_name": table_name,
+                    "table_type": table_type,
+                    "schema_name": schema_name,
+                    "db_name": db_name,
+                }
+                self.context.table_views.append(table_view)
 
             yield table_request
-
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
 
-    def yield_view_lineage(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        table_name, table_type = table_name_and_type
-        table_entity: Table = self.context.table
-        schema_name = self.context.database_schema.name.__root__
-        db_name = self.context.database.name.__root__
-        view_definition = self.get_view_definition(
-            table_type=table_type,
-            table_name=table_name,
-            schema_name=schema_name,
-            inspector=self.inspector,
-        )
-        if table_type != TableType.View or not view_definition:
-            return
-        # Prevent sqllineage from modifying the logger config
-        # Disable the DictConfigurator.configure method while importing LineageRunner
-        configure = DictConfigurator.configure
-        DictConfigurator.configure = lambda _: None
-        from sqllineage.runner import LineageRunner
+    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+        logger.info(f"Processing Lineage for Views")
+        for view in self.context.table_views:
+            table_name = view.get("table_name")
+            table_type = view.get("table_type")
+            schema_name = view.get("schema_name")
+            db_name = view.get("db_name")
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.database_service.name.__root__,
+                database_name=db_name,
+                schema_name=schema_name,
+                table_name=table_name,
+            )
+            table_entity = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_fqn,
+            )
+            view_definition = self.get_view_definition(
+                table_type=table_type,
+                table_name=table_name,
+                schema_name=schema_name,
+                inspector=self.inspector,
+            )
+            # Prevent sqllineage from modifying the logger config
+            # Disable the DictConfigurator.configure method while importing LineageRunner
+            configure = DictConfigurator.configure
+            DictConfigurator.configure = lambda _: None
+            from sqllineage.runner import LineageRunner
 
-        # Reverting changes after import is done
-        DictConfigurator.configure = configure
+            # Reverting changes after import is done
+            DictConfigurator.configure = configure
 
-        try:
-            result = LineageRunner(view_definition)
-            if result.source_tables and result.target_tables:
-                yield from get_lineage_by_query(
-                    self.metadata,
-                    query=view_definition,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=db_name,
-                    schema_name=schema_name,
-                ) or []
+            try:
+                result = LineageRunner(view_definition)
+                if result.source_tables and result.target_tables:
+                    yield from get_lineage_by_query(
+                        self.metadata,
+                        query=view_definition,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=db_name,
+                        schema_name=schema_name,
+                    ) or []
 
-            else:
-                yield from get_lineage_via_table_entity(
-                    self.metadata,
-                    table_entity=table_entity,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=db_name,
-                    schema_name=schema_name,
-                    query=view_definition,
-                ) or []
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Query : {view_definition}")
-            logger.warning("Could not parse query: Ingesting lineage failed")
+                else:
+                    yield from get_lineage_via_table_entity(
+                        self.metadata,
+                        table_entity=table_entity,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=db_name,
+                        schema_name=schema_name,
+                        query=view_definition,
+                    ) or []
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
+                )
 
     def test_connection(self) -> None:
         """

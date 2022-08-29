@@ -992,6 +992,9 @@
   border-radius: 6px;
   background: white;
 }
+.is_edit_post.editor-container {
+  margin: 6px;
+}
 .ql-toolbar.ql-snow {
   border-color: rgb(221, 227, 234);
   border-top-left-radius: 6px;

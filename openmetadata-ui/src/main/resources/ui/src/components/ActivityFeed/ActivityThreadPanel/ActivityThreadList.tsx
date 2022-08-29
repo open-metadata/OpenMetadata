@@ -15,6 +15,11 @@ import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
+  ANNOUNCEMENT_BG,
+  ANNOUNCEMENT_BORDER,
+  TASK_BORDER,
+} from '../../../constants/feed.constants';
+import {
   Post,
   ThreadTaskStatus,
   ThreadType,
@@ -27,6 +32,7 @@ import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
+import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
@@ -74,6 +80,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   reactions: thread.reactions,
                 } as Post;
                 const isTask = isEqual(thread.type, ThreadType.Task);
+                const isAnnouncement = thread.type === ThreadType.Announcement;
                 const postLength = thread?.posts?.length || 0;
                 const replies = thread.postsCount ? thread.postsCount - 1 : 0;
                 const repliedUsers = [
@@ -95,8 +102,11 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         marginTop: '20px',
                         paddingTop: isTask ? '8px' : '',
                         border: isTask
-                          ? '1px solid #C6B5F6'
+                          ? `1px solid ${TASK_BORDER}`
+                          : isAnnouncement
+                          ? `1px solid ${ANNOUNCEMENT_BORDER}`
                           : leftPanelAntCardStyle.border,
+                        background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
                       }}
                       onClick={() =>
                         thread.task && handleCardClick(thread.task.id, isTask)
@@ -106,15 +116,19 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           status={thread.task?.status as ThreadTaskStatus}
                         />
                       )}
+                      {isAnnouncement && <AnnouncementBadge />}
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed
                           isThread
+                          announcementDetails={thread.announcement}
                           entityLink={thread.about}
                           feed={mainFeed}
                           feedType={thread.type || ThreadType.Conversation}
                           taskDetails={thread.task}
+                          threadId={thread.id}
                           updateThreadHandler={updateThreadHandler}
+                          onConfirmation={onConfirmation}
                           onReply={() => onThreadSelect(thread.id)}
                         />
                       </div>

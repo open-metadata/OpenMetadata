@@ -95,14 +95,12 @@ const goToAssetsTab = (term) => {
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
-    // redirecting to glossary page
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
-      .scrollIntoView()
+    //Clicking on Glossary
+    cy.get('[data-testid="appbar-item-glossary"]')
+      .should('exist')
       .should('be.visible')
-      .click();
-    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
+      .click({ force: true });
+
     // Todo: need to remove below uncaught exception once tree-view error resolves
     cy.on('uncaught:exception', () => {
       // return false to prevent the error from
@@ -203,6 +201,7 @@ describe('Glossary page should work properly', () => {
     cy.get('@description').type(newDescription);
     cy.get('[data-testid="save"]').click();
     cy.get('.tw-modal-container').should('not.exist');
+    cy.wait(1000);
     cy.get('[data-testid="viewer-container"]')
       .contains(newDescription)
       .should('be.visible');
@@ -217,11 +216,11 @@ describe('Glossary page should work properly', () => {
     cy.wait(500);
     cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
 
-    // updating synonyms
-    cy.get('[data-testid="edit-synonyms"]')
+    cy.get('[data-testid="section-synonyms"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+
     cy.get('[data-testid="synonyms"]')
       .scrollIntoView()
       .should('be.visible')
@@ -230,7 +229,7 @@ describe('Glossary page should work properly', () => {
     cy.get('@synonyms').type(uSynonyms);
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     cy.wait(100);
-    cy.get('[data-testid="synonyms-card-container"]')
+    cy.get('[data-testid="synonyms-container"]')
       .as('synonyms-container')
       .should('be.visible');
 
@@ -239,16 +238,17 @@ describe('Glossary page should work properly', () => {
     });
 
     // updating References
-    cy.get('[data-testid="edit-referencfe"]').should('exist').click();
+    cy.get('[data-testid="section-references"] [data-testid="add-button"]')
+      .should('exist')
+      .click();
     cy.get('.tw-modal-container').should('be.visible');
-    cy.get('[data-testid="references"] > :nth-child(1) > .button-comp')
+    cy.get('[data-testid="references"] .button-comp')
       .should('be.visible')
       .click();
     cy.get('#name-1').should('be.visible').type(newRef.name);
     cy.get('#url-1').should('be.visible').type(newRef.url);
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
-    cy.get('[data-testid="references-card-container"]')
-      .scrollIntoView()
+    cy.get('[data-testid="references-container"]')
       .contains(newRef.name)
       .should('be.visible')
       .invoke('attr', 'href')
@@ -271,6 +271,7 @@ describe('Glossary page should work properly', () => {
       .contains('PersonalData.Personal')
       .should('be.visible');
 
+    cy.wait(1000);
     // updating description
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
     cy.get('.tw-modal-container').should('be.visible');
@@ -281,6 +282,9 @@ describe('Glossary page should work properly', () => {
     cy.get('@description').type(newDescription);
     cy.get('[data-testid="save"]').click();
     cy.get('.tw-modal-container').should('not.exist');
+
+    cy.wait(1000);
+
     cy.get('[data-testid="viewer-container"]')
       .contains(newDescription)
       .should('be.visible');
@@ -321,13 +325,11 @@ describe('Glossary page should work properly', () => {
 
     addNewTagToEntity(entity, term);
 
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
-      .scrollIntoView()
+    cy.get('[data-testid="appbar-item-glossary"]')
+      .should('exist')
       .should('be.visible')
-      .click();
-    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
+      .click({ force: true });
+
     goToAssetsTab(term);
     cy.get('[data-testid="column"] > :nth-child(1)')
       .contains(entity)
@@ -339,6 +341,7 @@ describe('Glossary page should work properly', () => {
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     // go assets tab
     goToAssetsTab(term);
+    cy.wait(1000);
     cy.get('[data-testid="column"] > :nth-child(1) > a')
       .contains(entity)
       .should('be.visible')
@@ -358,10 +361,12 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
+
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
 
+    //Remove the added column tag from entity
     cy.get(
-      ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"] > div'
+      ':nth-child(1) > :nth-child(5) span.tw-text-primary > [data-testid="tags"]'
     )
       .scrollIntoView()
       .should('be.visible')
@@ -371,19 +376,17 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-
     cy.get(':nth-child(1) > .css-xb97g8')
       .scrollIntoView()
       .should('be.visible')
       .click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
-      .scrollIntoView()
+
+    cy.get('[data-testid="appbar-item-glossary"]')
+      .should('exist')
       .should('be.visible')
-      .click();
-    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
+      .click({ force: true });
+
     cy.wait(500);
     goToAssetsTab(term);
     cy.get('.tableBody-cell')

@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card as AntdCard } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
@@ -24,6 +25,7 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
   TITLE_FOR_UPDATE_OWNER,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -32,6 +34,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
 import { getOwnerList } from '../../utils/ManageUtils';
+import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -313,7 +316,11 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           <Button
             data-testid="owner-dropdown"
             disabled={
-              !userPermissions[Operation.EditOwner] &&
+              !hasPemission(
+                Operation.EditOwner,
+                EntityType.GLOSSARY,
+                userPermissions
+              ) &&
               !isAuthDisabled &&
               !hasEditAccess
             }
@@ -469,15 +476,17 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
       <div className="tw-flex tw-gap-3">
         <div className="tw-w-9/12">
           <div className="tw-mb-4" data-testid="description-container">
-            <DescriptionV1
-              removeBlur
-              description={glossary?.description}
-              entityName={glossary?.displayName ?? glossary?.name}
-              isEdit={isDescriptionEditable}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-            />
+            <AntdCard className="glossary-card">
+              <DescriptionV1
+                removeBlur
+                description={glossary?.description}
+                entityName={glossary?.displayName ?? glossary?.name}
+                isEdit={isDescriptionEditable}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
+            </AntdCard>
           </div>
         </div>
         <div className="tw-w-3/12 tw-px-2">

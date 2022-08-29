@@ -15,12 +15,11 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { UserPermissions } from 'Models';
 import React, {
   ComponentType,
   createContext,
@@ -109,11 +108,13 @@ export const AuthProvider = ({
   let silentSignInRetries = 0;
 
   const onLoginHandler = () => {
+    setLoading(true);
     authenticatorRef.current?.invokeLogin();
   };
 
   const onLogoutHandler = () => {
     authenticatorRef.current?.invokeLogout();
+    setLoading(false);
   };
 
   const onRenewIdTokenHandler = () => {
@@ -153,7 +154,7 @@ export const AuthProvider = ({
 
   const resetUserDetails = (forceLogout = false) => {
     appState.updateUserDetails({} as User);
-    appState.updateUserPermissions({} as UserPermissions);
+    appState.updateUserPermissions([]);
     localStorage.removeItem(oidcTokenKey);
     setIsUserAuthenticated(false);
     setLoadingIndicator(false);
@@ -168,8 +169,8 @@ export const AuthProvider = ({
   const getUserPermissions = () => {
     setLoading(true);
     getLoggedInUserPermissions()
-      .then((res: AxiosResponse) => {
-        appState.updateUserPermissions(res.data.metadataOperations);
+      .then((res) => {
+        appState.updateUserPermissions(res.data);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -183,10 +184,10 @@ export const AuthProvider = ({
   const getLoggedInUserDetails = () => {
     setLoading(true);
     getLoggedInUser(userAPIQueryFields)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
+      .then((res) => {
+        if (res) {
           getUserPermissions();
-          appState.updateUserDetails(res.data);
+          appState.updateUserDetails(res);
           fetchAllUsers();
         } else {
           resetUserDetails();
@@ -195,7 +196,9 @@ export const AuthProvider = ({
       })
       .catch((err: AxiosError) => {
         resetUserDetails();
-        if (err.response?.data.code !== 404) {
+        // TODO: verify type for this one
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((err.response?.data as any).code !== 404) {
           showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-logged-in-user-error']
@@ -232,7 +235,7 @@ export const AuthProvider = ({
       isBot,
       roles: roleIds,
     } as User)
-      .then((res: AxiosResponse) => {
+      .then((res) => {
         if (res.data) {
           appState.updateUserDetails(res.data);
         } else {
@@ -349,21 +352,21 @@ export const AuthProvider = ({
   const handleFailedLogin = () => {
     setIsSigningIn(false);
     setIsUserAuthenticated(false);
+    setLoading(false);
     history.push(ROUTES.SIGNIN);
   };
 
   const handleSuccessfulLogin = (user: OidcUser) => {
     setLoading(true);
+    setIsUserAuthenticated(true);
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const updatedUserData = getUserDataFromOidc(res.data, user);
-          if (
-            !matchUserDetails(res.data, updatedUserData, ['profile', 'email'])
-          ) {
-            getUpdatedUser(updatedUserData, res.data);
+      .then((res) => {
+        if (res) {
+          const updatedUserData = getUserDataFromOidc(res, user);
+          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
+            getUpdatedUser(updatedUserData, res);
           } else {
-            appState.updateUserDetails(res.data);
+            appState.updateUserDetails(res);
           }
           getUserPermissions();
           fetchAllUsers();
@@ -376,7 +379,7 @@ export const AuthProvider = ({
         if (err && err.response && err.response.status === 404) {
           appState.updateNewUser(user.profile);
           appState.updateUserDetails({} as User);
-          appState.updateUserPermissions({} as UserPermissions);
+          appState.updateUserPermissions([]);
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
         } else {
@@ -414,7 +417,13 @@ export const AuthProvider = ({
     axiosClient.interceptors.request.use(async function (config) {
       const token: string | void = localStorage.getItem(oidcTokenKey) || '';
       if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+        if (config.headers) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        } else {
+          config.headers = {
+            Authorization: `Bearer ${token}`,
+          };
+        }
       }
 
       return config;
@@ -442,14 +451,16 @@ export const AuthProvider = ({
 
   const fetchAuthConfig = (): void => {
     fetchAuthenticationConfig()
-      .then((authRes: AxiosResponse) => {
-        const isSecureMode =
-          !isNil(authRes.data) && authRes.data.provider !== NO_AUTH;
+      .then((authRes) => {
+        const isSecureMode = !isNil(authRes) && authRes.provider !== NO_AUTH;
         if (isSecureMode) {
           const { provider, providerName, authority, clientId, callbackUrl } =
-            authRes.data;
+            authRes;
           // show an error toast if provider is null or not supported
-          if (provider && Object.values(AuthTypes).includes(provider)) {
+          if (
+            provider &&
+            Object.values(AuthTypes).includes(provider as AuthTypes)
+          ) {
             const configJson = getAuthConfig({
               authority,
               clientId,

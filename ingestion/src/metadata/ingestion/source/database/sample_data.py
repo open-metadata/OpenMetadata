@@ -12,20 +12,26 @@
 import csv
 import json
 import os
-import sys
 import traceback
-import uuid
 from collections import namedtuple
-from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -33,6 +39,8 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
+from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -44,7 +52,11 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
+    Table,
+    TableProfile,
+)
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
@@ -62,18 +74,29 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_tests import OMetaTableTest
+from metadata.ingestion.models.tests_data import (
+    OMetaTestCaseResultsSample,
+    OMetaTestCaseSample,
+    OMetaTestSuiteSample,
+)
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.database_service import TableLocationLink
+from metadata.utils import fqn
 from metadata.utils.helpers import (
     get_chart_entities_from_id,
     get_standard_chart_type,
@@ -125,11 +148,10 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-@dataclass
 class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
 
     def scanned(self, entity_type: str, entity_name: str) -> None:
         self.success.append(entity_name)
@@ -366,6 +388,26 @@ class SampleDataSource(Source[Entity]):
                 "r",
             )
         )
+        self.profiles = json.load(
+            open(
+                self.service_connection.sampleDataFolder
+                + "/profiler/tableProfile.json",
+                "r",
+            )
+        )
+        self.testsSuites = json.load(
+            open(
+                self.service_connection.sampleDataFolder + "/tests/testSuites.json",
+                "r",
+            )
+        )
+        self.testsCaseResults = json.load(
+            open(
+                self.service_connection.sampleDataFolder
+                + "/tests/testCaseResults.json",
+                "r",
+            )
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -394,6 +436,10 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
+        yield from self.ingest_profiles()
+        yield from self.ingest_test_suite()
+        yield from self.ingest_test_case()
+        yield from self.ingest_test_case_results()
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
@@ -409,83 +455,146 @@ class SampleDataSource(Source[Entity]):
             )
             yield location_ev
 
-    def ingest_glue(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = Database(
-            id=uuid.uuid4(),
-            name=self.glue_database["name"],
-            description=self.glue_database["description"],
+    def ingest_glue(self):
+        db = CreateDatabaseRequest(
+            name=self.database["name"],
+            description=self.database["description"],
             service=EntityReference(
-                id=self.glue_database_service.id,
-                type=self.glue_database_service.serviceType.value,
+                id=self.database_service.id.__root__, type="databaseService"
             ),
         )
-        db_schema = DatabaseSchema(
-            id=uuid.uuid4(),
-            name=self.glue_database_schema["name"],
-            description=self.glue_database_schema["description"],
-            service=EntityReference(
-                id=self.glue_database_service.id,
-                type=self.glue_database_service.serviceType.value,
-            ),
-            database=EntityReference(id=db.id, type="database"),
+
+        yield db
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
         )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+        schema = CreateDatabaseSchemaRequest(
+            name=self.database_schema["name"],
+            description=self.database_schema["description"],
+            database=EntityReference(id=database_object.id, type="database"),
+        )
+        yield schema
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+            schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
         for table in self.glue_tables["tables"]:
-            table["id"] = uuid.uuid4()
-            parameters = table.get("Parameters")
-            table = {key: val for key, val in table.items() if key != "Parameters"}
-            table_metadata = Table(**table)
-            location_type = LocationType.Table
-            if parameters:
-                location_type = (
-                    location_type
-                    if parameters.get("table_type") != "ICEBERG"
-                    else LocationType.Iceberg
-                )
-            location_metadata = Location(
-                id=uuid.uuid4(),
+            table_request = CreateTableRequest(
                 name=table["name"],
-                path="s3://glue_bucket/dwh/schema/" + table["name"],
                 description=table["description"],
-                locationType=location_type,
+                columns=table["columns"],
+                databaseSchema=EntityReference(
+                    id=database_schema_object.id, type="databaseSchema"
+                ),
+                tableConstraints=table.get("tableConstraints"),
+                tableType=table["tableType"],
+            )
+
+            self.status.scanned("table", table_request.name.__root__)
+            yield table_request
+
+            location = CreateLocationRequest(
+                name=table["name"],
                 service=EntityReference(
                     id=self.glue_storage_service.id, type="storageService"
                 ),
             )
-            db_table_location = OMetaDatabaseAndTable(
-                database=db,
-                table=table_metadata,
-                location=location_metadata,
-                database_schema=db_schema,
-            )
-            self.status.scanned("table", table_metadata.name.__root__)
-            yield db_table_location
+            self.status.scanned("location", location.name)
+            yield location
 
-    def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = Database(
-            id=uuid.uuid4(),
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.database_service.name.__root__,
+                database_name=db.name.__root__,
+                schema_name=schema.name.__root__,
+                table_name=table_request.name.__root__,
+            )
+
+            location_fqn = fqn.build(
+                self.metadata,
+                entity_type=Location,
+                service_name=self.glue_storage_service.name.__root__,
+                location_name=location.name.__root__,
+            )
+            if table_fqn and location_fqn:
+                yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
+
+    def ingest_tables(self):
+
+        db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
             service=EntityReference(
-                id=self.database_service.id, type=self.service_connection.type.value
+                id=self.database_service.id.__root__, type="databaseService"
             ),
         )
-        schema = DatabaseSchema(
-            id=uuid.uuid4(),
+        yield db
+
+        database_entity = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+        )
+
+        database_object = self.metadata.get_by_name(
+            entity=Database, fqn=database_entity
+        )
+
+        schema = CreateDatabaseSchemaRequest(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
-            service=EntityReference(
-                id=self.database_service.id, type=self.service_connection.type.value
-            ),
-            database=EntityReference(id=db.id, type="database"),
+            database=EntityReference(id=database_object.id, type="database"),
         )
+        yield schema
+
+        database_schema_entity = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.database_service.name.__root__,
+            database_name=db.name.__root__,
+            schema_name=schema.name.__root__,
+        )
+
+        database_schema_object = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=database_schema_entity
+        )
+
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
+
         for table in self.tables["tables"]:
-            table_metadata = Table(**table)
-            table_and_db = OMetaDatabaseAndTable(
-                table=table_metadata, database=db, database_schema=schema
+            table_and_db = CreateTableRequest(
+                name=table["name"],
+                description=table["description"],
+                columns=table["columns"],
+                databaseSchema=EntityReference(
+                    id=database_schema_object.id, type="databaseSchema"
+                ),
+                tableType=table["tableType"],
+                tableConstraints=table.get("tableConstraints"),
+                tags=table["tags"],
             )
-            self.status.scanned("table", table_metadata.name.__root__)
+
+            self.status.scanned("table", table_and_db.name)
             yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
@@ -513,7 +622,8 @@ class SampleDataSource(Source[Entity]):
                 self.status.scanned("chart", chart_ev.name)
                 yield chart_ev
             except ValidationError as err:
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
     def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
         for dashboard in self.dashboards["dashboards"]:
@@ -644,9 +754,9 @@ class SampleDataSource(Source[Entity]):
                     ),
                 )
                 yield model_ev
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         try:
@@ -681,10 +791,9 @@ class SampleDataSource(Source[Entity]):
                 )
 
                 yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
-        except Exception as err:
-            logger.error(err)
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(sys.exc_info()[2])
+            logger.error(f"Error ingesting users: {exc}")
 
     def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
         """
@@ -700,7 +809,6 @@ class SampleDataSource(Source[Entity]):
                     create_table_test = CreateTableTestRequest(
                         description=table_test.get("description"),
                         testCase=TableTestCase.parse_obj(table_test["testCase"]),
-                        executionFrequency=table_test["executionFrequency"],
                         result=TestCaseResult.parse_obj(table_test["result"]),
                     )
                     yield OMetaTableTest(
@@ -712,14 +820,106 @@ class SampleDataSource(Source[Entity]):
                         description=col_test.get("description"),
                         columnName=col_test["columnName"],
                         testCase=ColumnTestCase.parse_obj(col_test["testCase"]),
-                        executionFrequency=col_test["executionFrequency"],
                         result=TestCaseResult.parse_obj(col_test["result"]),
                     )
                     yield OMetaTableTest(
                         table_name=table_name, column_test=create_column_test
                     )
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error ingesting table tests: {exc}")
+
+    def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
+        """Iterate over all the profile data and ingest them"""
+        for table_profile in self.profiles["profiles"]:
+            table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_profile["fqn"],
+            )
+            for i, profile in enumerate(table_profile["profile"]):
+
+                yield OMetaTableProfileSampleData(
+                    table=table,
+                    profile=CreateTableProfileRequest(
+                        tableProfile=TableProfile(
+                            columnCount=profile["columnCount"],
+                            rowCount=profile["rowCount"],
+                            timestamp=(
+                                datetime.now(tz=timezone.utc) - timedelta(days=i)
+                            ).timestamp(),
+                        ),
+                        columnProfile=[
+                            ColumnProfile(
+                                timestamp=(
+                                    datetime.now(tz=timezone.utc) - timedelta(days=i)
+                                ).timestamp(),
+                                **col_profile,
+                            )
+                            for col_profile in profile["columnProfile"]
+                        ],
+                    ),
+                )
+
+    def ingest_test_suite(self) -> Iterable[OMetaTestSuiteSample]:
+        """Iterate over all the testSuite and testCase and ingest them"""
+        for test_suite in self.testsSuites["tests"]:
+            yield OMetaTestSuiteSample(
+                test_suite=CreateTestSuiteRequest(
+                    name=test_suite["testSuiteName"],
+                    description=test_suite["testSuiteDescription"],
+                )
+            )
+
+    def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:
+        for test_suite in self.testsSuites["tests"]:
+            suite = self.metadata.get_by_name(
+                fqn=test_suite["testSuiteName"], entity=TestSuite
+            )
+            for test_case in test_suite["testCases"]:
+                yield OMetaTestCaseSample(
+                    test_case=CreateTestCaseRequest(
+                        name=test_case["name"],
+                        description=test_case["description"],
+                        testDefinition=EntityReference(
+                            id=self.metadata.get_by_name(
+                                fqn=test_case["testDefinitionName"],
+                                entity=TestDefinition,
+                            ).id.__root__,
+                            type="testDefinition",
+                        ),
+                        entityLink=test_case["entityLink"],
+                        testSuite=EntityReference(
+                            id=suite.id.__root__,
+                            type="testSuite",
+                        ),
+                        parameterValues=[
+                            TestCaseParameterValue(**param_values)
+                            for param_values in test_case["parameterValues"]
+                        ],
+                    )
+                )
+
+    def ingest_test_case_results(self) -> Iterable[OMetaTestCaseResultsSample]:
+        """Iterate over all the testSuite and testCase and ingest them"""
+        for test_case_results in self.testsCaseResults["testCaseResults"]:
+            case = self.metadata.get_by_name(
+                TestCase,
+                f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
+                fields=["testSuite", "testDefinition"],
+            )
+            for i, result in enumerate(test_case_results["results"]):
+                yield OMetaTestCaseResultsSample(
+                    test_case_results=TestCaseResult(
+                        timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
+                        testCaseStatus=result["testCaseStatus"],
+                        result=result["result"],
+                        testResultValue=[
+                            TestResultValue.parse_obj(res_value)
+                            for res_value in result["testResultValues"]
+                        ],
+                    ),
+                    test_case_name=case.fullyQualifiedName.__root__,
+                )
 
     def close(self):
         pass

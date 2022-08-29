@@ -50,8 +50,7 @@ source:
       queryLogFilePath: <path to query log file>
 processor:
   type: query-parser
-  config:
-    filter: ''
+  config: {}
 stage:
   type: table-usage
   config:

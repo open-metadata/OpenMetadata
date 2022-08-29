@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -45,6 +46,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -79,7 +81,12 @@ public class DatabaseServiceResource
   }
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(DatabaseService.class, new DatabaseServiceRepository(dao, secretsManager), authorizer, secretsManager);
+    super(
+        DatabaseService.class,
+        new DatabaseServiceRepository(dao, secretsManager),
+        authorizer,
+        secretsManager,
+        ServiceType.DATABASE);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -159,7 +166,7 @@ public class DatabaseServiceResource
   public DatabaseService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") String id,
+      @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -266,7 +273,7 @@ public class DatabaseServiceResource
   public DatabaseService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "database service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -347,12 +354,12 @@ public class DatabaseServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
-          String id)
+          UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
   }
 
-  private DatabaseService getService(CreateDatabaseService create, String user) {
+  private DatabaseService getService(CreateDatabaseService create, String user) throws IOException {
     return copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

@@ -26,6 +26,10 @@ export type TeamDeleteType = {
   state: boolean;
 };
 
+export type ModifiedTeam = Omit<Team, 'children'> & {
+  children: Team[];
+};
+
 export interface TeamsAndUsersProps {
   hasAccess: boolean;
   isUsersLoading: boolean;
@@ -85,7 +89,7 @@ export interface TeamsAndUsersProps {
 
 export interface TeamDetailsProp {
   currentTeam: Team;
-  teams: Team[];
+  teams?: Team[];
   currentTeamUsers: User[];
   teamUserPagin: Paging;
   currentTeamUserPage: number;
@@ -107,4 +111,10 @@ export interface TeamDetailsProp {
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
+  childTeams: Team[];
+  onTeamExpand: (
+    isPageLoading?: boolean,
+    parentTeam?: string,
+    updateChildNode?: boolean
+  ) => void;
 }

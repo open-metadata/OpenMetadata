@@ -11,28 +11,34 @@
  *  limitations under the License.
  */
 
-import { Card, Select, Space } from 'antd';
+import { Card, Col, Row, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
-  PAGE_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+  NO_PERMISSION_FOR_ACTION,
+  SLACK_LISTING_TEXT,
+  WEBHOOK_LISTING_TEXT,
+} from '../../constants/HelperTextUtil';
+import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { WebhooksProps } from './Webhooks.interface';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import { WebhooksV1Props } from './WebhooksV1.interface';
 import './webhookV1.less';
 
-const WebhooksV1: FC<WebhooksProps> = ({
+const WebhooksV1: FC<WebhooksV1Props> = ({
   data = [],
+  webhookType,
   paging,
   selectedStatus = [],
   onAddWebhook,
@@ -41,8 +47,16 @@ const WebhooksV1: FC<WebhooksProps> = ({
   onStatusFilter,
   currentPage,
 }) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
   const [filteredData, setFilteredData] = useState<Array<Webhook>>(data);
+
+  const { permissions } = usePermissionProvider();
+
+  const addWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
 
   const getFilteredWebhooks = () => {
     return selectedStatus.length
@@ -59,10 +73,9 @@ const WebhooksV1: FC<WebhooksProps> = ({
         size="small"
         style={leftPanelAntCardStyle}>
         <div className="tw-my-2">
-          The webhook allows external services to be notified of the metadata
-          change events happening in your organization through APIs. Register
-          callback URLs with webhook integration to receive metadata event
-          notifications. You can add, list, update, and delete webhooks.
+          {webhookType === WebhookType.Slack
+            ? SLACK_LISTING_TEXT
+            : WEBHOOK_LISTING_TEXT}
         </div>
       </Card>
     );
@@ -74,21 +87,22 @@ const WebhooksV1: FC<WebhooksProps> = ({
         <ErrorPlaceHolder>
           <p className="tw-text-center">{message}</p>
           <p className="tw-text-center">
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Tooltip
+              placement="left"
+              title={
+                addWebhookPermission ? 'Add Webhook' : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
-                className={classNames('tw-h-8 tw-rounded tw-my-3', {
-                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                })}
+                className={classNames('tw-h-8 tw-rounded tw-my-3')}
                 data-testid="add-webhook-button"
+                disabled={!addWebhookPermission}
                 size="small"
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add Webhook
+                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
               </Button>
-            </NonAdminAction>
+            </Tooltip>
           </p>
         </ErrorPlaceHolder>
       );
@@ -105,64 +119,84 @@ const WebhooksV1: FC<WebhooksProps> = ({
   }
 
   return (
-    <Space align="start" className="tw-w-full webhook-page-container" size={20}>
-      <div className="tw-w-full">
-        <div className="tw-flex tw-items-center tw-justify-between">
-          <Select
-            bordered={false}
-            className="tw-min-w-64 tw-text-body webhook-filter-select"
-            mode="multiple"
-            options={statuses}
-            placeholder="Filter by status"
-            onChange={onStatusFilter}
-          />
-          {filteredData.length > 0 && (
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <Button
-                className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                })}
-                data-testid="add-webhook-button"
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={onAddWebhook}>
-                Add Webhook
-              </Button>
-            </NonAdminAction>
-          )}
-        </div>
-        {filteredData.length ? (
-          <>
-            {filteredData.map((webhook, index) => (
-              <div className="tw-mb-3" key={index}>
-                <WebhookDataCard
-                  description={webhook.description}
-                  endpoint={webhook.endpoint}
-                  name={webhook.name}
-                  status={webhook.status}
-                  onClick={onClickWebhook}
-                />
-              </div>
-            ))}
-            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={paging}
-                pagingHandler={onPageChange}
-                totalCount={paging.total}
-              />
+    <Row gutter={[16, 16]}>
+      <Col flex="auto">
+        <Row gutter={[16, 16]}>
+          <Col xs={18}>
+            <Select
+              showArrow
+              bordered={false}
+              className="tw-text-body webhook-filter-select cursor-pointer"
+              mode="multiple"
+              options={statuses}
+              placeholder="Filter by status"
+              style={{ minWidth: '148px' }}
+              onChange={onStatusFilter}
+            />
+          </Col>
+          <Col xs={6}>
+            <Space
+              align="center"
+              className="tw-w-full tw-justify-end"
+              size={16}>
+              {filteredData.length > 0 && (
+                <Tooltip
+                  placement="left"
+                  title={
+                    addWebhookPermission
+                      ? 'Add Webhook'
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    className={classNames('tw-h-8 tw-rounded ')}
+                    data-testid="add-webhook-button"
+                    disabled={!addWebhookPermission}
+                    size="small"
+                    theme="primary"
+                    variant="contained"
+                    onClick={onAddWebhook}>
+                    Add{' '}
+                    {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
+                  </Button>
+                </Tooltip>
+              )}
+            </Space>
+          </Col>
+          <Col xs={24}>
+            {filteredData.length ? (
+              <>
+                {filteredData.map((webhook, index) => (
+                  <div className="tw-mb-3" key={index}>
+                    <WebhookDataCard
+                      description={webhook.description}
+                      endpoint={webhook.endpoint}
+                      name={webhook.name}
+                      status={webhook.status}
+                      type={webhook.webhookType}
+                      onClick={onClickWebhook}
+                    />
+                  </div>
+                ))}
+                {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+                  <NextPrevious
+                    currentPage={currentPage}
+                    pageSize={PAGE_SIZE}
+                    paging={paging}
+                    pagingHandler={onPageChange}
+                    totalCount={paging.total}
+                  />
+                )}
+              </>
+            ) : (
+              fetchErrorPlaceHolder('No webhooks found for applied filters')
             )}
-          </>
-        ) : (
-          fetchErrorPlaceHolder('No webhooks found for applied filters')
-        )}
-      </div>
-      <div className="webhook-right-panel">{rightPanel}</div>
-    </Space>
+          </Col>
+        </Row>
+      </Col>
+      <Col flex="312px">
+        <div className="webhook-right-panel">{rightPanel}</div>
+      </Col>
+    </Row>
   );
 };
 

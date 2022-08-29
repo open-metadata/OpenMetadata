@@ -15,11 +15,12 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MlModelService;
+import org.openmetadata.catalog.entity.services.ServiceType;
 import org.openmetadata.catalog.resources.services.mlmodel.MlModelServiceResource;
 import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.MlModelConnection;
 
-public class MlModelServiceRepository extends ServiceRepository<MlModelService, MlModelConnection> {
+public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
   private static final String UPDATE_FIELDS = "owner,connection";
 
   public MlModelServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
@@ -30,11 +31,7 @@ public class MlModelServiceRepository extends ServiceRepository<MlModelService, 
         dao.mlModelServiceDAO(),
         secretsManager,
         MlModelConnection.class,
-        UPDATE_FIELDS);
-  }
-
-  @Override
-  protected String getServiceType(MlModelService mlModelService) {
-    return mlModelService.getServiceType().value();
+        UPDATE_FIELDS,
+        ServiceType.ML_MODEL);
   }
 }

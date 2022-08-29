@@ -35,6 +35,7 @@ class NodeStage(BaseModel, Generic[T]):
     context: Optional[str] = None  # context key storing stage state, if needed
     ack_sink: bool = True  # Validate that the request is present in OM and update the context with the results
     nullable: bool = False  # The yielded value can be null
+    must_return: bool = False  # The sink MUST return a value back after ack. Useful to validate services are correct.
     cache_all: bool = (
         False  # If we need to cache all values being yielded in the context
     )
@@ -66,7 +67,7 @@ class TopologyNode(BaseModel):
 
     children: Optional[List[str]] = None  # nodes to call execute next
     post_process: Optional[
-        str
+        List[str]
     ] = None  # Method to be run after the node has been fully processed
 
 

@@ -45,10 +45,13 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
               <ActivityFeedCard
                 isEntityFeed
                 isThread
+                announcementDetails={threadData.announcement}
                 className="tw-mb-3"
                 feed={mainThread as Post}
                 feedType={threadData.type || ThreadType.Conversation}
+                threadId={threadData.id}
                 updateThreadHandler={updateThreadHandler}
+                onConfirmation={onConfirmation}
               />
             </div>
           ) : null}

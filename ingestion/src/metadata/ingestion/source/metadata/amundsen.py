@@ -10,15 +10,19 @@
 #  limitations under the License.
 
 import traceback
-import uuid
-from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
 
+from metadata.clients.neo4j_client import Neo4JConfig, Neo4jHelper
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
@@ -39,8 +43,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams import team
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -52,11 +56,10 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
     NEO4J_AMUNDSEN_TABLE_QUERY,
@@ -94,12 +97,11 @@ SUPERSET_DEFAULT_CONFIG = {
 }
 
 
-@dataclass
 class AmundsenStatus(SourceStatus):
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    success: List[str] = list()
+    failures: List[str] = list()
+    warnings: List[str] = list()
+    filtered: List[str] = list()
 
     def scanned(self, entity_name: str) -> None:
         self.success.append(entity_name)
@@ -169,14 +171,18 @@ class AmundsenSource(Source[Entity]):
                 name=user["full_name"],
                 displayName=f"{user['first_name']} {user['last_name']}",
             )
-            team_metadata = CreateTeamRequest(name=user["team_name"])
+            team_metadata = CreateTeamRequest(
+                name=user["team_name"],
+                teamType=team.TeamType.Department.value,
+            )
             self.status.scanned(str(user_metadata.email))
             yield OMetaUserProfile(
                 user=user_metadata,
                 teams=[team_metadata],
             )
-        except Exception as err:
-            logger.error(err)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to create user entity [{user}]: {exc}")
 
     def create_tags(self, tags):
         for tag in tags:
@@ -196,21 +202,43 @@ class AmundsenSource(Source[Entity]):
     def create_table_entity(self, table):
         try:
             service_name = table["database"]
-            service_type = self.database_service_map.get(
-                service_name.lower(), DatabaseServiceType.Mysql.value
-            )
-
             # TODO: use metadata.get_service_or_create
             service_entity = self.get_database_service(service_name)
-            database = Database(
-                id=uuid.uuid4(),
+
+            database_request = CreateDatabaseRequest(
                 name="default",
-                service=EntityReference(id=service_entity.id, type=service_type),
+                service=EntityReference(id=service_entity.id, type="databaseService"),
             )
-            database_schema = DatabaseSchema(
+
+            yield database_request
+
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=service_name,
+                database_name=database_request.name.__root__,
+            )
+
+            database_object = self.metadata.get_by_name(
+                entity=Database, fqn=database_fqn
+            )
+
+            database_schema_request = CreateDatabaseSchemaRequest(
                 name=table["schema"],
-                service=EntityReference(id=service_entity.id, type=service_type),
-                database=EntityReference(id=database.id.__root__, type="database"),
+                database=EntityReference(id=database_object.id, type="database"),
+            )
+            yield database_schema_request
+
+            database_schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=service_name,
+                database_name=database_request.name.__root__,
+                schema_name=database_schema_request.name.__root__,
+            )
+
+            database_schema_object = self.metadata.get_by_name(
+                entity=DatabaseSchema, fqn=database_schema_fqn
             )
 
             columns: List[Column] = []
@@ -292,24 +320,24 @@ class AmundsenSource(Source[Entity]):
                         for tag in table["tags"]
                     ]
                 )
-            table_entity = Table(
-                id=uuid.uuid4(),
+            table_request = CreateTableRequest(
                 name=table["name"],
                 tableType="Regular",
                 description=table["description"],
+                databaseSchema=EntityReference(
+                    id=database_schema_object.id, type="databaseSchema"
+                ),
                 tags=tags,
                 columns=columns,
             )
 
-            table_and_db = OMetaDatabaseAndTable(
-                table=table_entity, database=database, database_schema=database_schema
-            )
+            yield table_request
+
             self.status.scanned(table["name"])
-            yield table_and_db
-        except Exception as e:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create table entity, due to {e}")
-            self.status.failure(table["name"], str(e))
+            logger.warning(f"Failed to create table entity [{table}]: {exc}")
+            self.status.failure(table["name"], str(exc))
             return None
 
     def create_dashboard_service(self, dashboard: dict):
@@ -342,10 +370,10 @@ class AmundsenSource(Source[Entity]):
                     id=self.dashboard_service.id, type="dashboardService"
                 ),
             )
-        except Exception as e:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create table entity, due to {e}")
-            self.status.failure(dashboard["name"], str(e))
+            logger.warning(f"Failed to create dashboard entity [{dashboard}]: {exc}")
+            self.status.failure(dashboard["name"], str(exc))
             return None
 
     def create_chart_entity(self, dashboard):

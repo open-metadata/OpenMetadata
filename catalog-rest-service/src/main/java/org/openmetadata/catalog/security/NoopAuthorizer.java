@@ -16,8 +16,6 @@ package org.openmetadata.catalog.security;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -27,9 +25,12 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.catalog.security.policyevaluator.SubjectCache;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.Permission.Access;
+import org.openmetadata.catalog.type.ResourcePermission;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 
@@ -37,14 +38,25 @@ import org.openmetadata.catalog.util.RestUtil;
 public class NoopAuthorizer implements Authorizer {
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
+    SubjectCache.initialize();
     addAnonymousUser();
   }
 
   @Override
-  public List<MetadataOperation> listPermissions(
-      SecurityContext securityContext, ResourceContextInterface resourceContext) {
+  public List<ResourcePermission> listPermissions(SecurityContext securityContext, String user) {
     // Return all operations.
-    return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+    return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
+  }
+
+  @Override
+  public ResourcePermission getPermission(SecurityContext securityContext, String user, String resource) {
+    return PolicyEvaluator.getResourcePermission(resource, Access.ALLOW);
+  }
+
+  @Override
+  public ResourcePermission getPermission(
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+    return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
   }
 
   @Override

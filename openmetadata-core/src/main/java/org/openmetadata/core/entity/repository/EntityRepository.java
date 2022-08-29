@@ -954,14 +954,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getOwner(entity);
   }
 
-  public void populateOwner(EntityReference owner) throws IOException {
-    if (owner == null) {
-      return;
-    }
-    EntityReference ref = Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
-    EntityUtil.copy(ref, owner);
-  }
-
   protected void storeOwner(T entity, EntityReference owner) {
     if (supportsOwner) {
       // Add relationship owner --- owns ---> ownedEntity

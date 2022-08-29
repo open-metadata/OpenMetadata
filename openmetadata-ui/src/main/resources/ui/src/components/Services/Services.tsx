@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
-import React, { Fragment } from 'react';
+import { Card, Col, Row, Tooltip } from 'antd';
+import { isEmpty } from 'lodash';
+import React, { Fragment, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
@@ -20,29 +21,35 @@ import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   NoDataFoundPlaceHolder,
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
-import { DataService } from '../../interface/service.interface';
+import { ServicesType } from '../../interface/service.interface';
 import {
   getEntityName,
   getServiceLogo,
   showPagination,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
-import { getOptionalFields } from '../../utils/ServiceUtils';
+import {
+  getOptionalFields,
+  getResourceEntityFromServiceCategory,
+} from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 interface ServicesProps {
-  serviceData: DataService[];
+  serviceData: ServicesType[];
   serviceName: ServiceCategory;
   paging: Paging;
   currentPage: number;
@@ -56,90 +63,114 @@ const Services = ({
   currentPage,
   onPageChange,
 }: ServicesProps) => {
-  const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
     history.push(getAddServicePath(serviceName));
   };
 
+  const { permissions } = usePermissionProvider();
+
+  const addServicePermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.Create,
+        getResourceEntityFromServiceCategory(serviceName),
+        permissions
+      ),
+    [permissions, serviceName]
+  );
+
   return (
-    <div className="tw-py-1" data-testid="services-container">
+    <Row data-testid="services-container">
       {serviceData.length ? (
         <Fragment>
-          <div className="tw-flex tw-justify-end" data-testid="header">
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <Button
-                className="tw-h-8 tw-rounded tw-mb-2"
-                data-testid="add-new-service-button"
-                disabled={!isAdminUser && !isAuthDisabled}
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={handleAddServiceClick}>
-                Add New Service
-              </Button>
-            </NonAdminAction>
-          </div>
-          <Row data-testid="data-container" gutter={[16, 16]}>
-            {serviceData.map((service, index) => (
-              <Col key={index} span={6}>
-                <Card size="small" style={leftPanelAntCardStyle}>
-                  <div
-                    className="tw-flex tw-justify-between tw-text-grey-muted"
-                    data-testid="service-card">
-                    <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
-                      <div>
-                        <Link
-                          to={getServiceDetailsPath(service.name, serviceName)}>
-                          <button>
-                            <h6
-                              className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                              data-testid={`service-name-${getEntityName(
-                                service
-                              )}`}
-                              title={getEntityName(service)}>
-                              {getEntityName(service)}
-                            </h6>
-                          </button>
-                        </Link>
-                        <div
-                          className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                          data-testid="service-description">
-                          {service.description ? (
-                            <RichTextEditorPreviewer
-                              enableSeeMoreVariant={false}
-                              markdown={service.description}
-                            />
-                          ) : (
-                            <span className="tw-no-description">
-                              No description
-                            </span>
-                          )}
+          <Col span={24}>
+            <div className="tw-flex tw-justify-end" data-testid="header">
+              <Tooltip
+                placement="left"
+                title={
+                  addServicePermission
+                    ? 'Add Service'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className="tw-h-8 tw-rounded tw-mb-2"
+                  data-testid="add-new-service-button"
+                  disabled={!addServicePermission && !isAuthDisabled}
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={handleAddServiceClick}>
+                  Add New Service
+                </Button>
+              </Tooltip>
+            </div>
+          </Col>
+          <Col span={24}>
+            <Row data-testid="data-container" gutter={[16, 16]}>
+              {serviceData.map((service, index) => (
+                <Col key={index} lg={8} xl={6}>
+                  <Card size="small" style={leftPanelAntCardStyle}>
+                    <div
+                      className="tw-flex tw-justify-between tw-text-grey-muted"
+                      data-testid="service-card">
+                      <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
+                        <div>
+                          <Link
+                            to={getServiceDetailsPath(
+                              service.name,
+                              serviceName
+                            )}>
+                            <button>
+                              <h6
+                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                                data-testid={`service-name-${getEntityName(
+                                  service
+                                )}`}
+                                title={getEntityName(service)}>
+                                {getEntityName(service)}
+                              </h6>
+                            </button>
+                          </Link>
+                          <div
+                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                            data-testid="service-description">
+                            {service.description ? (
+                              <RichTextEditorPreviewer
+                                enableSeeMoreVariant={false}
+                                markdown={service.description}
+                              />
+                            ) : (
+                              <span className="tw-no-description">
+                                No description
+                              </span>
+                            )}
+                          </div>
+                          {getOptionalFields(service, serviceName)}
                         </div>
-                        {getOptionalFields(service, serviceName)}
+                        <div className="" data-testid="service-type">
+                          <label className="tw-mb-0">Type:</label>
+                          <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                            {service.serviceType}
+                          </span>
+                        </div>
                       </div>
-                      <div className="" data-testid="service-type">
-                        <label className="tw-mb-0">Type:</label>
-                        <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                          {service.serviceType}
-                        </span>
+                      <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                        <div
+                          className="tw-flex tw-justify-end"
+                          data-testid="service-icon">
+                          {getServiceLogo(service.serviceType || '', 'tw-h-8')}
+                        </div>
                       </div>
                     </div>
-                    <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                      <div
-                        className="tw-flex tw-justify-end"
-                        data-testid="service-icon">
-                        {getServiceLogo(service.serviceType || '', 'tw-h-8')}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          </Col>
+
           {showPagination(paging) && (
             <NextPrevious
               currentPage={currentPage}
@@ -175,7 +206,7 @@ const Services = ({
           </div>
         </div>
       )}
-    </div>
+    </Row>
   );
 };
 

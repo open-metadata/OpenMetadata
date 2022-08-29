@@ -62,13 +62,13 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	@echo "Make sure to first run the install_dev recipe"
 	mkdir -p ingestion/src/metadata/generated
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json/schema --input-file-type jsonschema --output ingestion/src/metadata/generated/schema --set-default-enum-member
-	$(MAKE) py_antlr
+	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
@@ -107,7 +107,7 @@ run_apis_tests:  ## Run the openmetadata airflow apis tests
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	$(MAKE) run_apis_tests
 	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
 ## Ingestion publish
 .PHONY: publish
@@ -184,11 +184,16 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 
 .PHONY: core_py_antlr
 core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
-	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4
 
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
-	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4
+
+.PHONY: js_antlr
+js_antlr:  ## Generate the Python code for parsing FQNs
+	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/*.g4
+
 
 .PHONY: install_antlr_cli
 install_antlr_cli:  ## Install antlr CLI locally
@@ -198,15 +203,15 @@ install_antlr_cli:  ## Install antlr CLI locally
 
 .PHONY: docker-docs
 docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest
 
 .PHONY: docker-docs-validate
 docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest -c 'npm run export'
+	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'npm run export'
 
 .PHONY: docker-docs-local
 docker-docs-local:  ## Runs the OM docs in docker with a local image
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local
 
 
 ## SNYK
@@ -216,49 +221,51 @@ SNYK_ARGS := --severity-threshold=high
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
 	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) >> security/ingestion-docker-scan.out | true;
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) --json > security-report/ingestion-docker-scan.json | true;
 	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
-		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) >> ../security/ingestion-dep-scan.out | true; \
-		snyk code test $(SNYK_ARGS) >> ../security/ingestion-code-scan.out | true;
+		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) --json > ../security-report/ingestion-dep-scan.json | true; \
+		snyk code test $(SNYK_ARGS) --json > ../security-report/ingestion-code-scan.json | true;
 
 .PHONY: snyk-airflow-apis-report
 snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
 	@echo "Validating airflow dependencies. Make sure the venv is activated."
 	cd openmetadata-airflow-apis; \
-    	snyk code test $(SNYK_ARGS) >> ../security/airflow-apis-code-scan.out | true;
+    	snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
 
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
 	@echo "Validating catalog container... Make sure the code is built and available under openmetadata-dist"
 	docker build -t openmetadata-server:scan -f docker/local-metadata/Dockerfile .
-	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) >> security/server-docker-scan.out | true;
-	snyk test --all-projects $(SNYK_ARGS) >> security/server-dep-scan.out | true;
-	snyk code test --all-projects $(SNYK_ARGS) >> security/server-code-scan.out | true;
+	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
+	snyk test --all-projects $(SNYK_ARGS) --json > security-report/server-dep-scan.json | true;
+	snyk code test --all-projects --severity-threshold=high --json > security-report/server-code-scan.json | true;
 
 .PHONY: snyk-ui-report
 snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop the execution
-	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) >> security/ui-dep-scan.out | true;
+	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) --json > security-report/ui-dep-scan.json | true;
 
 .PHONY: snyk-dependencies-report
 snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES. Only local testing.
 	@echo "Validating dependencies images..."
-	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) >> security/mysql-scan.out | true;
-	snyk container test postgres:latest $(SNYK_ARGS) >> security/postgres-scan.out | true;
-	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) >> security/es-scan.out | true;
+	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) --json > security-report/mysql-scan.json | true;
+	snyk container test postgres:latest $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
+	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) --json > security-report/es-scan.json | true;
 
 .PHONY: snyk-report
 snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of the code
 	@echo "To run this locally, make sure to install and authenticate using the Snyk CLI: https://docs.snyk.io/snyk-cli/install-the-snyk-cli"
-	mkdir -p security
+	rm -rf security-report
+	mkdir -p security-report
 	$(MAKE) snyk-ingestion-report
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
-	$(MAKE)	read-report
+	$(MAKE)	export-snyk-html-report
 
-.PHONY: read-report
-read-report:  ## Read files from security/
+.PHONY: export-snyk-html-report
+export-snyk-html-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
-	ls security | xargs -I % cat security/%
+	npm install snyk-to-html -g
+	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html

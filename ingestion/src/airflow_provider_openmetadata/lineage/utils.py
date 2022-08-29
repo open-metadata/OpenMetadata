@@ -301,7 +301,7 @@ def add_status(
     ]
 
     updated_status = PipelineStatus(
-        executionDate=execution_date,
+        timestamp=execution_date,
         executionStatus=get_dag_status(
             all_tasks=dag.task_ids,
             task_status=updated_task_status,
@@ -310,7 +310,9 @@ def add_status(
     )
 
     operator.log.info(f"Added status to DAG {updated_status}")
-    metadata.add_pipeline_status(pipeline=pipeline, status=updated_status)
+    metadata.add_pipeline_status(
+        fqn=pipeline.fullyQualifiedName.__root__, status=updated_status
+    )
 
 
 # pylint: disable=too-many-arguments,too-many-locals

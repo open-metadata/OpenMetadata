@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
+import { Col, Empty, Row } from 'antd';
 import classNames from 'classnames';
-import { isEqual, isNil, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, {
-  Fragment,
-  RefObject,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
@@ -42,6 +37,7 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityId,
   getEntityName,
   getEntityPlaceHolder,
   getPartialNameFromTableFQN,
@@ -67,15 +63,14 @@ import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
-import ManageTab from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTable, {
   SampleColumns,
 } from '../SampleDataTable/SampleDataTable.component';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
-import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
+import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
@@ -216,7 +211,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed & Tasks',
+      name: 'Activity Feeds & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -299,18 +294,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       position: 9,
     },
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: false,
-      protectedState: !owner || hasEditAccess(),
-      position: 10,
-    },
   ];
 
   const getFrequentlyJoinedWithTables = (): Array<
@@ -351,17 +334,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const prepareTableRowInfo = () => {
     const rowData =
-      (tableProfile
-        ?.map((d) => ({
-          date: d.profileDate,
-          value: d.rowCount ?? 0,
-        }))
-        .reverse() as Array<{
+      ([
+        {
+          date: new Date(tableProfile?.timestamp || 0),
+          value: tableProfile?.rowCount ?? 0,
+        },
+      ] as Array<{
         date: Date;
         value: number;
       }>) ?? [];
 
-    if (!isUndefined(tableProfile) && tableProfile.length > 0) {
+    if (!isUndefined(tableProfile)) {
       return (
         <div className="tw-flex">
           {rowData.length > 1 && (
@@ -375,7 +358,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           <span
             className={classNames({
               'tw--ml-6': rowData.length > 1,
-            })}>{`${tableProfile[0].rowCount || 0} rows`}</span>
+            })}>{`${tableProfile.rowCount || 0} rows`}</span>
         </div>
       );
     } else {
@@ -394,6 +377,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         getEntityName(owner),
         owner?.deleted
       ),
+      id: getEntityId(owner),
+      isEntityDetails: true,
       isLink: owner?.type === 'team',
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
@@ -404,14 +389,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} queries` },
+    { value: `${weeklyUsageCount} Queries` },
     {
       key: 'Columns',
       value:
-        tableProfile && tableProfile[0]?.columnCount
-          ? `${tableProfile[0].columnCount} columns`
+        tableProfile && tableProfile?.columnCount
+          ? `${tableProfile.columnCount} Columns`
           : columns.length
-          ? `${columns.length} columns`
+          ? `${columns.length} Columns`
           : '',
     },
     {
@@ -478,35 +463,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         : tableDetails.tags;
       const updatedTableDetails = {
         ...tableDetails,
-        tags: tierTag,
-      };
-
-      return settingsUpdateHandler(updatedTableDetails);
-    } else {
-      return Promise.reject();
-    }
-  };
-
-  const onSettingsUpdate = (newOwner?: Table['owner'], newTier?: string) => {
-    if (newOwner || newTier) {
-      const tierTag: Table['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(tableDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : tableDetails.tags;
-      const updatedTableDetails = {
-        ...tableDetails,
-        owner: newOwner
-          ? {
-              ...tableDetails.owner,
-              ...newOwner,
-            }
-          : tableDetails.owner,
         tags: tierTag,
       };
 
@@ -747,42 +703,30 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
               )}
               {activeTab === 4 && (
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
-                  id="tablequeries">
-                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
-                    <Fragment>
-                      <div />
+                <Row className="tw-p-2" id="tablequeries">
+                  {!isEmpty(tableQueries) || isQueriesLoading ? (
+                    <Col offset={3} span={18}>
                       <TableQueries
                         isLoading={isQueriesLoading}
                         queries={tableQueries}
                       />
-                      <div />
-                    </Fragment>
+                    </Col>
                   ) : (
-                    <div
-                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
-                      data-testid="no-queries">
-                      <span>No queries data available.</span>
-                    </div>
+                    <Col
+                      className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      span={24}>
+                      <div data-testid="no-queries">
+                        <Empty description={<p>No queries data available</p>} />
+                      </div>
+                    </Col>
                   )}
-                </div>
+                </Row>
               )}
               {activeTab === 5 && (
-                <div>
-                  <TableProfiler
-                    columns={columns.map((col) => ({
-                      constraint: col.constraint as string,
-                      colName: col.name,
-                      colType: col.dataTypeDisplay as string,
-                      dataType: col.dataType as string,
-                      colTests: col.columnTests,
-                    }))}
-                    isTableDeleted={deleted}
-                    qualityTestFormHandler={qualityTestFormHandler}
-                    tableProfiles={tableProfile}
-                  />
-                </div>
+                <TableProfilerV1
+                  table={tableDetails}
+                  onAddTestClick={qualityTestFormHandler}
+                />
               )}
 
               {activeTab === 6 && (
@@ -817,6 +761,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
+                    entityType={EntityType.TABLE}
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
                     isOwner={hasEditAccess()}
@@ -843,24 +788,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   entityType={EntityType.TABLE}
                   handleExtentionUpdate={handleExtentionUpdate}
                 />
-              )}
-              {activeTab === 10 && (
-                <div>
-                  <ManageTab
-                    allowDelete
-                    allowSoftDelete={!deleted}
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner}
-                    entityId={tableDetails.id}
-                    entityName={tableDetails.name}
-                    entityType={EntityType.TABLE}
-                    hasEditAccess={hasEditAccess()}
-                    hideOwner={deleted}
-                    hideTier={deleted}
-                    manageSectionType={EntityType.TABLE}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
               )}
               <div
                 data-testid="observer-element"

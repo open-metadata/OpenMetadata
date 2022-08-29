@@ -2,6 +2,7 @@
   "name": "columnValuesToBeNotInSet",
   "displayName": "columnValuesToBeNotInSet",
   "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
+  "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
