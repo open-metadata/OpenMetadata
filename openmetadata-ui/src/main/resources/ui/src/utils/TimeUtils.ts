@@ -128,3 +128,12 @@ export const getDateTimeByTimeStamp = (timeStamp: number): string => {
 export const getLocaleDate = (timeStamp: number): string => {
   return moment(timeStamp, 'x').format('yyyy-MM-DDThh:mm');
 };
+
+export const getTimeZone = (): string => {
+  const date = new Date();
+  const timeZone = date.toString().match(/\(([^)]+)\)$/);
+  const timeZoneString = timeZone ? timeZone[1] : '';
+  const abbreviation = timeZoneString.match(/\b[A-Z]+/g)?.join('') || '';
+
+  return abbreviation;
+};
