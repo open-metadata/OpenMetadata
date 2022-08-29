@@ -134,6 +134,26 @@ the changes.
 - **Consumer Config**: Confluent Kafka Consumer Config.
 - **Schema Registry Config**:Confluent Kafka Schema Registry Config.
 
+### 6. Configure Metadata Ingestion
+
+In this step we will configure the metadata ingestion pipeline,
+Please follow the instructions below
+
+<Image
+src="/images/openmetadata/connectors/configure-metadata-ingestion-messaging.png"
+alt="Configure Metadata Ingestion"
+caption="Configure Metadata Ingestion Page"
+/>
+
+#### Metadata Ingestion Options
+
+- **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
+- **Topic Filter Pattern (Optional)**: Use to pipeline filter patterns to control whether or not to include topics as part of metadata ingestion.
+    - **Include**: Explicitly include topics by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all topics with names matching one or more of the supplied regular expressions. All other topics will be excluded.
+    - **Exclude**: Explicitly exclude topics by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all topics with names matching one or more of the supplied regular expressions. All other topics will be included.
+- **Ingest Sample Data (toggle)**: To ingest sample data from the topics.
+- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The

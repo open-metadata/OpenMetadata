@@ -366,7 +366,7 @@ describe('Glossary page should work properly', () => {
 
     //Remove the added column tag from entity
     cy.get(
-      ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"] > div > span.tw-text-primary > [data-testid="tags"]'
+      ':nth-child(1) > :nth-child(5) span.tw-text-primary > [data-testid="tags"]'
     )
       .scrollIntoView()
       .should('be.visible')

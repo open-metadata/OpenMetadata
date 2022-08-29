@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
-import React, { Fragment } from 'react';
+import { Card, Col, Row, Tooltip } from 'antd';
+import { isEmpty } from 'lodash';
+import React, { Fragment, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
@@ -20,26 +21,32 @@ import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   NoDataFoundPlaceHolder,
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
 import { ServicesType } from '../../interface/service.interface';
 import {
   getEntityName,
   getServiceLogo,
   showPagination,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
-import { getOptionalFields } from '../../utils/ServiceUtils';
+import {
+  getOptionalFields,
+  getResourceEntityFromServiceCategory,
+} from '../../utils/ServiceUtils';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 interface ServicesProps {
   serviceData: ServicesType[];
@@ -56,12 +63,24 @@ const Services = ({
   currentPage,
   onPageChange,
 }: ServicesProps) => {
-  const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
     history.push(getAddServicePath(serviceName));
   };
+
+  const { permissions } = usePermissionProvider();
+
+  const addServicePermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.Create,
+        getResourceEntityFromServiceCategory(serviceName),
+        permissions
+      ),
+    [permissions, serviceName]
+  );
 
   return (
     <Row data-testid="services-container">
@@ -69,20 +88,24 @@ const Services = ({
         <Fragment>
           <Col span={24}>
             <div className="tw-flex tw-justify-end" data-testid="header">
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Tooltip
+                placement="left"
+                title={
+                  addServicePermission
+                    ? 'Add Service'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
                 <Button
                   className="tw-h-8 tw-rounded tw-mb-2"
                   data-testid="add-new-service-button"
-                  disabled={!isAdminUser && !isAuthDisabled}
+                  disabled={!addServicePermission && !isAuthDisabled}
                   size="small"
                   theme="primary"
                   variant="contained"
                   onClick={handleAddServiceClick}>
                   Add New Service
                 </Button>
-              </NonAdminAction>
+              </Tooltip>
             </div>
           </Col>
           <Col span={24}>

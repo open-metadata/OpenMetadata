@@ -41,15 +41,18 @@ import Description from '../../../components/common/description/Description';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/globalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
-import { Policy } from '../../../generated/entity/policies/policy';
+import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getAddPolicyRulePath,
   getEditPolicyRulePath,
@@ -147,6 +150,7 @@ const List = ({
 const PoliciesDetailPage = () => {
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
+  const { permissions } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -158,6 +162,17 @@ const PoliciesDetailPage = () => {
     GlobalSettingsMenuCategory.ACCESS,
     GlobalSettingOptions.POLICIES
   );
+
+  const editDescriptionPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.EditDescription,
+        ResourceEntity.ROLE,
+        permissions
+      )
+    );
+  }, [permissions]);
 
   const breadcrumb = useMemo(
     () => [
@@ -393,6 +408,7 @@ const PoliciesDetailPage = () => {
               entityFqn={policy.fullyQualifiedName}
               entityName={getEntityName(policy)}
               entityType={EntityType.POLICY}
+              hasEditAccess={editDescriptionPermission}
               isEdit={editDescription}
               onCancel={() => setEditDescription(false)}
               onDescriptionEdit={() => setEditDescription(true)}

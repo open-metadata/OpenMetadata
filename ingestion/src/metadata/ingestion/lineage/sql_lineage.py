@@ -88,9 +88,11 @@ def search_table_entities(
                     table_entities.append(table_entity)
             search_cache.put(search_tuple, table_entities)
             return table_entities
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Error searching for table entities for service [{service_name}]: {exc}"
+            )
 
 
 def get_table_entities_from_query(
@@ -251,9 +253,11 @@ def _create_lineage_by_table_name(
                     column_lineage_map=column_lineage_map,
                 )
 
-    except Exception as err:
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error creating lineage - {err}")
+        logger.error(
+            f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}"
+        )
 
 
 def populate_column_lineage_map(raw_column_lineage):
@@ -302,6 +306,7 @@ def get_lineage_by_query(
     column_lineage = {}
 
     try:
+        logger.debug(f"Running lineage with query: {query}")
         result = LineageRunner(query)
 
         raw_column_lineage = result.get_column_lineage()
@@ -343,10 +348,9 @@ def get_lineage_by_query(
                         query=query,
                         column_lineage_map=column_lineage,
                     )
-    except Exception as err:
-        logger.debug(str(err))
-        logger.debug(f"Query : {query}")
-        logger.warning(f"Ingesting lineage failed")
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Ingesting lineage failed for service [{service_name}]: {exc}")
 
 
 def get_lineage_via_table_entity(
@@ -368,6 +372,7 @@ def get_lineage_via_table_entity(
     column_lineage = {}
 
     try:
+        logger.debug(f"Getting lineage via table entity using query: {query}")
         parser = LineageRunner(query)
         to_table_name = table_entity.name.__root__
 
@@ -382,7 +387,8 @@ def get_lineage_via_table_entity(
                 query=query,
                 column_lineage_map=column_lineage,
             ) or []
-    except Exception:  # pylint: disable=broad-except
-        logger.warn("Failed to create view lineage")
-        logger.debug(f"Query : {query}")
+    except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
+        logger.error(
+            f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]: {exc}"
+        )

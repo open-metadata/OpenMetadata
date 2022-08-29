@@ -61,9 +61,9 @@ def column_values_sum_to_be_between(
         )
         sum_value_res = sum_value_dict.get(Metrics.SUM.name)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

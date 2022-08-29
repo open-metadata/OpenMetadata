@@ -13,7 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
-
+import traceback
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
@@ -44,8 +44,12 @@ class OMetaLineageMixin(Generic[T]):
         try:
             self.client.put(self.get_suffix(AddLineageRequest), data=data.json())
         except APIError as err:
+            logger.debug(traceback.format_exc())
             logger.error(
-                "Error %s trying to PUT lineage for %s", err.status_code, data.json()
+                "Error %s trying to PUT lineage for %s: %s",
+                err.status_code,
+                data.json(),
+                str(err),
             )
             raise err
 
@@ -119,8 +123,9 @@ class OMetaLineageMixin(Generic[T]):
             )
             return res
         except APIError as err:
-            logger.error(
+            logger.debug(traceback.format_exc())
+            logger.warning(
                 f"Error {err.status_code} trying to GET linage for "
-                + f"{entity.__name__} and {path}"
+                + f"{entity.__name__} and {path}: {err}"
             )
             return None

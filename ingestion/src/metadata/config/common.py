@@ -56,7 +56,7 @@ class YamlConfigurationMechanism(ConfigurationMechanism):
             config = yaml.safe_load(config_fp)
             return config
         except yaml.error.YAMLError:
-            msg = "YAML Configuration file is not a valid YAML"
+            msg = f"YAML Configuration file [{config_fp}] is not a valid YAML"
             logger.error(msg)
             raise ConfigurationError(msg)
 
@@ -69,7 +69,7 @@ class JsonConfigurationMechanism(ConfigurationMechanism):
             config = json.load(config_fp)
             return config
         except json.decoder.JSONDecodeError:
-            msg = "JSON Configuration file is not a valid JSON"
+            msg = f"JSON Configuration file [{config_fp}] is not a valid JSON"
             logger.error(msg)
             raise ConfigurationError(msg)
 

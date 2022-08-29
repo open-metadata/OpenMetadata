@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import importlib
+import traceback
 from typing import Any, Iterable, Iterator, Optional, Union
 
 import neo4j
@@ -99,5 +100,8 @@ class Neo4jHelper:
         """
         try:
             self.driver.close()
-        except Exception as e:
-            logger.error("Exception encountered while closing the graph driver", e)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Exception encountered while closing the graph driver: {exc}"
+            )

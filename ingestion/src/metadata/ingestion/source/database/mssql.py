@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MSSQL source module"""
+import traceback
 from typing import Iterable
 
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
@@ -62,7 +63,8 @@ class MssqlSource(CommonDbSourceService):
                 try:
                     self.set_inspector(database_name=new_database)
                     yield new_database
-                except Exception as err:
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error trying to connect to database {new_database} - {err}"
+                        f"Error trying to connect to database {new_database}: {exc}"
                     )

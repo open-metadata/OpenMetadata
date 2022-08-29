@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Clickhouse source module"""
 import enum
+import traceback
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
@@ -143,12 +144,14 @@ def get_table_comment(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 def get_view_definition(self, connection, view_name, schema=None, **kw):
+    query = f"select create_table_query from system.tables where engine = 'View' and name='{view_name}' and database='{schema}'"
     try:
-        query = f"select create_table_query from system.tables where engine = 'View' and name='{view_name}' and database='{schema}'"
         result = connection.execute(query)
         view_definition = result.fetchone()
         return view_definition[0] if view_definition else ""
-    except Exception:
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Unexpected exception getting view with query [{query}]: {exc}")
         return ""
 
 

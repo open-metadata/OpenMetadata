@@ -11,28 +11,28 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Select, Space } from 'antd';
+import { Card, Col, Row, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
-  PAGE_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
-import {
+  NO_PERMISSION_FOR_ACTION,
   SLACK_LISTING_TEXT,
   WEBHOOK_LISTING_TEXT,
 } from '../../constants/HelperTextUtil';
 import { WebhookType } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
-import { useAuth } from '../../hooks/authHooks';
+import { Operation } from '../../generated/entity/policies/policy';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { WebhooksV1Props } from './WebhooksV1.interface';
 import './webhookV1.less';
 
@@ -47,8 +47,16 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   onStatusFilter,
   currentPage,
 }) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
   const [filteredData, setFilteredData] = useState<Array<Webhook>>(data);
+
+  const { permissions } = usePermissionProvider();
+
+  const addWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
 
   const getFilteredWebhooks = () => {
     return selectedStatus.length
@@ -79,21 +87,22 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
         <ErrorPlaceHolder>
           <p className="tw-text-center">{message}</p>
           <p className="tw-text-center">
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Tooltip
+              placement="left"
+              title={
+                addWebhookPermission ? 'Add Webhook' : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
-                className={classNames('tw-h-8 tw-rounded tw-my-3', {
-                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                })}
+                className={classNames('tw-h-8 tw-rounded tw-my-3')}
                 data-testid="add-webhook-button"
+                disabled={!addWebhookPermission}
                 size="small"
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
                 Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
               </Button>
-            </NonAdminAction>
+            </Tooltip>
           </p>
         </ErrorPlaceHolder>
       );
@@ -131,14 +140,17 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
               className="tw-w-full tw-justify-end"
               size={16}>
               {filteredData.length > 0 && (
-                <NonAdminAction
-                  position="bottom"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Tooltip
+                  placement="left"
+                  title={
+                    addWebhookPermission
+                      ? 'Add Webhook'
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
-                    className={classNames('tw-h-8 tw-rounded ', {
-                      'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                    })}
+                    className={classNames('tw-h-8 tw-rounded ')}
                     data-testid="add-webhook-button"
+                    disabled={!addWebhookPermission}
                     size="small"
                     theme="primary"
                     variant="contained"
@@ -146,7 +158,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
                     Add{' '}
                     {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
                   </Button>
-                </NonAdminAction>
+                </Tooltip>
               )}
             </Space>
           </Col>

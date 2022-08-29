@@ -146,9 +146,11 @@ class AtlasSource(Source):
                     yield topic
                     yield from self.ingest_lineage(tpc_entity["guid"], name)
 
-                except Exception as e:
-                    logger.error("error occured", e)
-                    logger.error(f"Failed to parse {topic_entity}")
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse topi entry [{topic_entity}]: {exc}"
+                    )
 
     def _parse_table_entity(self, name, entity):
         for table in entity:
@@ -215,10 +217,9 @@ class AtlasSource(Source):
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
 
-                except Exception as e:
-                    logger.error("error occured", e)
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to parse {table_entity}")
+                    logger.warning(f"Failed to parse {table_entity}: {exc}")
 
     def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []
@@ -244,8 +245,9 @@ class AtlasSource(Source):
                     ordinalPosition=ordinal_pos,
                 )
                 om_cols.append(om_column)
-            except Exception as err:
-                logger.error(f"{err}")
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error parsing column [{col}]: {exc}")
                 continue
         return om_cols
 
