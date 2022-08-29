@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { ColumnProfilerConfig } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/tableTest';
@@ -200,3 +201,9 @@ export const codeMirrorOption = {
     name: CSMode.SQL,
   },
 };
+
+export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
+  { name: 'Select/Add Test Suite', step: 1 },
+  { name: 'Configure Test Case', step: 2 },
+  //   { name: 'Schedule Interval', step: 3 },
+];
