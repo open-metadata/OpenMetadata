@@ -123,7 +123,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     }
 
     return;
-  }, [selectedTestType, initialValue, testDefinitions]);
+  }, [selectedTestType, initialValue, testDefinitions, sqlQuery]);
 
   const createTestCaseObj = (value: {
     testName: string;
