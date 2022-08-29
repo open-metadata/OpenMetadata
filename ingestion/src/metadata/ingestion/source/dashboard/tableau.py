@@ -274,7 +274,9 @@ class TableauSource(DashboardServiceSource):
                     yield lineage
             except (Exception, IndexError) as err:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.error(
+                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
+                )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -311,9 +313,9 @@ class TableauSource(DashboardServiceSource):
                     ),
                 )
                 self.status.scanned(chart["id"])
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
 
     def close(self):
         self.client.sign_out()

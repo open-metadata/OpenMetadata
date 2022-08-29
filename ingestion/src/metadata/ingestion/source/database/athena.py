@@ -85,7 +85,7 @@ def _get_column_type(self, type_):
     elif name in ["map"]:
         col_type = sqa_types.SQAMap
     else:
-        logger.warn(f"Did not recognize type '{type_}'")
+        logger.warning(f"Did not recognize type '{type_}'")
         col_type = types.NullType
     return col_type(*args)
 
