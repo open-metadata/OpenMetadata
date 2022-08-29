@@ -306,7 +306,7 @@ class OMetaServiceTest(TestCase):
             ),
             service=EntityReference(
                 id=self.test_suite.id,
-                type="TestSuite",
+                type="testSuite",
                 name=self.test_suite.name.__root__,
             ),
         )
