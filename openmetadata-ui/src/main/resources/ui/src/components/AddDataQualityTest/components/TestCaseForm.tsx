@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Select, Space } from 'antd';
+import { Button, Col, Form, FormProps, Input, Row, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import 'codemirror/addon/fold/foldgutter.css';
+import { isEmpty } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useParams } from 'react-router-dom';
 import {
   getListTestCase,
   getListTestDefinitions,
 } from '../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
+import { codeMirrorOption } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
@@ -30,6 +33,7 @@ import {
 } from '../../../generated/tests/testCase';
 import {
   EntityType,
+  TestDataType,
   TestDefinition,
 } from '../../../generated/tests/testDefinition';
 import { generateEntityLink } from '../../../utils/TableUtils';
@@ -52,6 +56,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     initialValue?.testDefinition?.id
   );
   const [testCases, setTestCases] = useState<{ [key: string]: TestCase }>({});
+  const [sqlQuery, setSqlQuery] = useState({
+    name: 'sqlExpression',
+    value: initialValue?.parameterValues?.[0].value || '',
+  });
 
   const fetchAllTestDefinitions = async () => {
     try {
@@ -88,26 +96,64 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
 
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
+      const name = selectedDefinition.parameterDefinition[0].name;
+      if (name === 'sqlExpression') {
+        return (
+          <Row>
+            <Col data-testid="sql-editor-container" span={24}>
+              <p className="tw-mb-1.5">Profile Sample Query</p>
+              <CodeMirror
+                className="profiler-setting-sql-editor"
+                data-testid="profiler-setting-sql-editor"
+                options={codeMirrorOption}
+                value={sqlQuery.value}
+                onBeforeChange={(_Editor, _EditorChange, value) => {
+                  setSqlQuery((pre) => ({ ...pre, value }));
+                }}
+                onChange={(_Editor, _EditorChange, value) => {
+                  setSqlQuery((pre) => ({ ...pre, value }));
+                }}
+              />
+            </Col>
+          </Row>
+        );
+      }
+
       return <ParameterForm definition={selectedDefinition} />;
     }
 
     return;
-  }, [selectedTestType, initialValue, testDefinitions]);
+  }, [selectedTestType, initialValue, testDefinitions, sqlQuery]);
 
   const createTestCaseObj = (value: {
     testName: string;
-    params: Record<string, string>;
+    params: Record<string, string | { [key: string]: string }[]>;
     testTypeId: string;
   }) => {
+    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
+    const selectedDefinition = testDefinitions.find(
+      (definition) => definition.id === testType
+    );
+    const paramsValue = selectedDefinition?.parameterDefinition?.[0];
+
+    const parameterValues =
+      paramsValue?.name === 'sqlExpression'
+        ? [sqlQuery]
+        : Object.entries(value.params || {}).map(([key, value]) => ({
+            name: key,
+            value:
+              paramsValue?.dataType === TestDataType.Array
+                ? // need to send array as string formate
+                  JSON.stringify(
+                    (value as { value: string }[]).map((data) => data.value)
+                  )
+                : value,
+          }));
+
     return {
       name: value.testName,
       entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
-      parameterValues: Object.entries(value.params || {}).map(
-        ([key, value]) => ({
-          name: key,
-          value: value,
-        })
-      ) as TestCaseParameterValue[],
+      parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: {
         id: value.testTypeId,
         type: 'testDefinition',
@@ -184,16 +230,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         name="testTypeId"
         rules={[{ required: true, message: 'Test type is required' }]}>
         <Select
-          options={testDefinitions
-            .filter(
-              (def) =>
-                def.fullyQualifiedName &&
-                isUndefined(testCases[def.fullyQualifiedName])
-            )
-            .map((suite) => ({
-              label: suite.name,
-              value: suite.id,
-            }))}
+          options={testDefinitions.map((suite) => ({
+            label: suite.name,
+            value: suite.id,
+          }))}
           placeholder="Select test type"
         />
       </Form.Item>

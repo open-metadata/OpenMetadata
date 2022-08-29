@@ -72,9 +72,9 @@ def column_values_in_set(
         set_count_dict = dict(runner.dispatch_query_select_first(set_count(col).fn()))
         set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 
-    except Exception as err:  # pylint: disable=broad-except
+    except Exception as exc:  # pylint: disable=broad-except
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

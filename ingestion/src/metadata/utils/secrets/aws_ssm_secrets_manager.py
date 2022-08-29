@@ -12,6 +12,7 @@
 """
 Secrets manager implementation using AWS SSM Parameter Store
 """
+import traceback
 from typing import Optional
 
 from botocore.exceptions import ClientError
@@ -37,15 +38,16 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
         :return: The value of the parameter. When the parameter is not present, it throws a `ValueError` exception.
         """
         if name is None:
-            raise ValueError
+            raise ValueError("[name] argument is None")
 
         try:
             kwargs = {"Name": name, "WithDecryption": True}
             response = self.client.get_parameter(**kwargs)
             logger.debug("Got value for parameter %s.", name)
-        except ClientError:
-            logger.exception("Couldn't get value for parameter %s.", name)
-            raise
+        except ClientError as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Couldn't get value for parameter [{name}]: {err}")
+            raise err
         else:
             if "Parameter" in response and "Value" in response["Parameter"]:
                 return (
