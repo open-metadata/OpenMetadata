@@ -38,7 +38,7 @@ OpenMetadata includes the following:
 
 ## Features
 
-Check all the supported features [here](https://docs.open-metadata.org/features) ✨
+Check all the supported features [here](https://docs.open-metadata.org/overview/features) ✨
 
 ![](./openmetadata-docs/images/readme/lineage.gif)
 
