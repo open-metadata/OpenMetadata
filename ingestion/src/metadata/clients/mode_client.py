@@ -81,9 +81,9 @@ class ModeApiClient:
                 reports = response_reports[EMBEDDED][REPORTS]
                 all_reports.extend(reports)
             return all_reports
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching all reports: {exc}")
 
     def get_all_reports_for_collection(
         self, workspace_name: str, collection_token: str
@@ -100,9 +100,9 @@ class ModeApiClient:
                 f"/{workspace_name}/{COLLECTIONS}/{collection_token}/{REPORTS}"
             )
             return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching charts: {exc}")
 
     def get_all_queries(self, workspace_name: str, report_token: str) -> dict:
         """Method to fetch all queries
@@ -117,9 +117,9 @@ class ModeApiClient:
                 f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}"
             )
             return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching all queries: {exc}")
 
     def get_all_charts(
         self, workspace_name: str, report_token: str, query_token: str
@@ -137,9 +137,9 @@ class ModeApiClient:
                 f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}/{query_token}/{CHARTS}"
             )
             return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching all charts: {exc}")
 
     def get_all_data_sources(self, workspace_name: str) -> dict:
         """Method to get all data sources
@@ -162,9 +162,9 @@ class ModeApiClient:
                     all_data_sources[data_source.get("id")] = data_source_dict
 
             return all_data_sources
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching all data sources: {exc}")
 
     def get_user_account(self) -> dict:
         """Method to fetch account details

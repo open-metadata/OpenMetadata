@@ -47,9 +47,9 @@ def table_column_count_to_equal(
     try:
         column_count = len(inspect(runner.table).c)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

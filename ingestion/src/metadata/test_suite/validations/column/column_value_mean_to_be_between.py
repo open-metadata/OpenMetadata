@@ -61,9 +61,9 @@ def column_value_mean_to_be_between(
         )
         mean_value_res = mean_value_dict.get(Metrics.MEAN.name)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)
