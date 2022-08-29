@@ -19,7 +19,7 @@ import { usePermissionProvider } from '../components/PermissionProvider/Permissi
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { Operation } from '../generated/entity/policies/policy';
-import { checkPemission } from '../utils/PermissionsUtils';
+import { checkPermission } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -212,7 +212,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddIngestionPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.INGESTIONPIPELINE,
           permissions
@@ -222,7 +222,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={EditIngestionPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.EditAll,
           ResourceEntity.INGESTIONPIPELINE,
           permissions
@@ -304,7 +304,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddGlossaryPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.GLOSSARY,
           permissions
@@ -314,7 +314,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddGlossaryTermPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.GLOSSARYTERM,
           permissions
@@ -324,7 +324,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddGlossaryTermPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.GLOSSARYTERM,
           permissions
@@ -334,7 +334,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddWebhookPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.WEBHOOK,
           permissions
@@ -344,7 +344,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddWebhookPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.WEBHOOK,
           permissions
@@ -355,7 +355,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.USER,
           permissions
@@ -365,7 +365,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.BOT,
           permissions
@@ -375,7 +375,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={BotDetailsPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.ViewAll,
           ResourceEntity.BOT,
           permissions
@@ -385,7 +385,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddCustomProperty}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.TYPE,
           permissions
@@ -411,7 +411,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddRolePage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.ROLE,
           permissions
@@ -421,7 +421,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddPolicyPage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.POLICY,
           permissions
@@ -431,7 +431,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={AddRulePage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.Create,
           ResourceEntity.POLICY,
           permissions
@@ -441,7 +441,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={EditRulePage}
-        hasPermission={checkPemission(
+        hasPermission={checkPermission(
           Operation.EditAll,
           ResourceEntity.POLICY,
           permissions

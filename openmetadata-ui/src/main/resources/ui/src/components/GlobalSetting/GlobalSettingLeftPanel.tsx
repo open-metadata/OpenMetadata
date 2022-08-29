@@ -21,7 +21,7 @@ import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
 import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
-import { checkPemission } from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -32,7 +32,7 @@ const GlobalSettingLeftPanel = () => {
   const { isAuthDisabled } = useAuthContext();
   const { permissions } = usePermissionProvider();
 
-  const viewAllPermission = checkPemission(
+  const viewAllPermission = checkPermission(
     Operation.ViewAll,
     ResourceEntity.ALL,
     permissions
