@@ -336,7 +336,10 @@ def parse_workflow_config_gracefully(
             error_dict["type"] == "value_error.extra"
             and error_dict["loc"][0] in OpenMetadataWorkflowConfig.__fields__
         ):
-            logger.error(f"Extra value {error_dict['loc'][-1]} not permitted : ", e)
+            logger.error(
+                f"Failed when parsing the workflow config, extra value {error_dict['loc'][-1]} not permitted : ",
+                e,
+            )
             exit()
         parse_workflow_source(config_dict)
         parse_server_config(config_dict)
