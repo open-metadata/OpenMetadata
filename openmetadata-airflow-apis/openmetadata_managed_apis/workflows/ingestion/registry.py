@@ -17,6 +17,7 @@ from openmetadata_managed_apis.workflows.ingestion.lineage import build_lineage_
 from openmetadata_managed_apis.workflows.ingestion.metadata import build_metadata_dag
 from openmetadata_managed_apis.workflows.ingestion.profiler import build_profiler_dag
 from openmetadata_managed_apis.workflows.ingestion.usage import build_usage_dag
+from openmetadata_managed_apis.workflows.ingestion.test_suite import build_test_suite_dag
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
@@ -29,3 +30,4 @@ build_registry.add(PipelineType.metadata.value)(build_metadata_dag)
 build_registry.add(PipelineType.usage.value)(build_usage_dag)
 build_registry.add(PipelineType.lineage.value)(build_lineage_dag)
 build_registry.add(PipelineType.profiler.value)(build_profiler_dag)
+build_registry.add(PipelineType.TestSuite.value)(build_test_suite_dag)
