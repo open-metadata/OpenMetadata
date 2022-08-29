@@ -29,7 +29,7 @@ const stepsData = [
     title: 'Ingest Sample Data',
     description:
       'Run sample data to ingest sample entities into your OpenMetadata.',
-    link: 'https://docs.open-metadata.org/openmetadata/connectors',
+    link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
   },
   {
     step: 2,
