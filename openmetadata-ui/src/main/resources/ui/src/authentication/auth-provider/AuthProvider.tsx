@@ -171,7 +171,6 @@ export const AuthProvider = ({
           appState.updateUserDetails(res);
         } else {
           resetUserDetails();
-          setLoading(false);
         }
       })
       .catch((err: AxiosError) => {
@@ -184,6 +183,9 @@ export const AuthProvider = ({
             jsonData['api-error-messages']['fetch-logged-in-user-error']
           );
         }
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
