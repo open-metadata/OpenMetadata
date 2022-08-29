@@ -188,7 +188,6 @@ export const AuthProvider = ({
         if (res) {
           getUserPermissions();
           appState.updateUserDetails(res);
-          fetchAllUsers();
         } else {
           resetUserDetails();
           setLoading(false);
@@ -369,7 +368,6 @@ export const AuthProvider = ({
             appState.updateUserDetails(res);
           }
           getUserPermissions();
-          fetchAllUsers();
           handledVerifiedUser();
           // Start expiry timer on successful login
           startTokenExpiryTimer();
@@ -439,8 +437,6 @@ export const AuthProvider = ({
             storeRedirectPath();
             showErrorToast(error);
             resetUserDetails(true);
-          } else if (status === ClientErrors.FORBIDDEN) {
-            showErrorToast(jsonData['api-error-messages']['forbidden-error']);
           }
         }
 

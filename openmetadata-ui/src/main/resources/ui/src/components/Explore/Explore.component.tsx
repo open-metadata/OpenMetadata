@@ -16,7 +16,7 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Card, Empty } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
@@ -30,6 +30,7 @@ import React, {
   Fragment,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -57,7 +58,9 @@ import {
   UPDATABLE_AGGREGATION,
   ZERO_SIZE,
 } from '../../constants/explore.constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { usePrevious } from '../../hooks/usePrevious';
 import {
   getAggregationList,
@@ -65,10 +68,13 @@ import {
 } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getResourceEntityFromEntityType } from '../../utils/EntityUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { AdvanceField, ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
@@ -89,13 +95,10 @@ const Explore: React.FC<ExploreProps> = ({
   fetchData,
   showDeleted,
   onShowDeleted,
-  updateTableCount,
-  updateTopicCount,
-  updateDashboardCount,
-  updatePipelineCount,
   isFilterSelected,
-  updateMlModelCount,
+  handleTabCounts,
 }: ExploreProps) => {
+  const { permissions } = usePermissionProvider();
   const location = useLocation();
   const history = useHistory();
   const filterObject: FilterObject = {
@@ -134,6 +137,15 @@ const Explore: React.FC<ExploreProps> = ({
   const [isInitialFilterSet, setIsInitialFilterSet] = useState<boolean>(
     !isEmpty(initialFilter)
   );
+
+  const hasPermission = useMemo(() => {
+    const resource = getResourceEntityFromEntityType(getCurrentIndex(tab));
+
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.ViewAll, resource, permissions)
+    );
+  }, [permissions, tab]);
 
   const onAdvancedFieldSelect = (value: string) => {
     const flag = selectedAdvancedFields.some((field) => field.key === value);
@@ -273,23 +285,23 @@ const Explore: React.FC<ExploreProps> = ({
   const setCount = (count = 0, index = searchIndex) => {
     switch (index) {
       case SearchIndex.TABLE:
-        updateTableCount(count);
+        handleTabCounts((prev) => ({ ...prev, table: count }));
 
         break;
       case SearchIndex.DASHBOARD:
-        updateDashboardCount(count);
+        handleTabCounts((prev) => ({ ...prev, dashboard: count }));
 
         break;
       case SearchIndex.TOPIC:
-        updateTopicCount(count);
+        handleTabCounts((prev) => ({ ...prev, topic: count }));
 
         break;
       case SearchIndex.PIPELINE:
-        updatePipelineCount(count);
+        handleTabCounts((prev) => ({ ...prev, pipeline: count }));
 
         break;
       case SearchIndex.MLMODEL:
-        updateMlModelCount(count);
+        handleTabCounts((prev) => ({ ...prev, mlmodel: count }));
 
         break;
       default:
@@ -441,7 +453,7 @@ const Explore: React.FC<ExploreProps> = ({
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
       case SearchIndex.MLMODEL:
-        return getCountBadge(tabCounts.mlModel, className, isActive);
+        return getCountBadge(tabCounts.mlmodel, className, isActive);
       default:
         return getCountBadge();
     }
@@ -469,18 +481,6 @@ const Explore: React.FC<ExploreProps> = ({
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
           )}>
           <div className="tw-flex">
-            {/* <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
-              <Button
-                className={classNames('tw-underline tw-mt-5', {
-                  'tw-invisible': !getFilterCount(filters),
-                })}
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => resetFilters(true)}>
-                Clear All
-              </Button>
-            </div> */}
             <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
@@ -500,7 +500,7 @@ const Explore: React.FC<ExploreProps> = ({
               ))}
             </div>
           </div>
-          {getSortingElements()}
+          {hasPermission && getSortingElements()}
         </nav>
       </div>
     );
@@ -513,7 +513,7 @@ const Explore: React.FC<ExploreProps> = ({
       } else {
         forceSetAgg.current = !isFilterSet;
       }
-      fetchTableData();
+      hasPermission && fetchTableData();
     }
   };
 
@@ -564,7 +564,7 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
-      fetchTableData();
+      hasPermission && fetchTableData();
     }
   }, [searchText, searchIndex, showDeleted]);
 
@@ -668,7 +668,7 @@ const Explore: React.FC<ExploreProps> = ({
   }, []);
 
   const fetchLeftPanel = () => {
-    return (
+    return hasPermission ? (
       <Card
         data-testid="data-summary-container"
         style={{ ...leftPanelAntCardStyle, marginTop: '16px', height: '98%' }}>
@@ -699,7 +699,7 @@ const Explore: React.FC<ExploreProps> = ({
           )}
         </Fragment>
       </Card>
-    );
+    ) : null;
   };
 
   const advanceFieldCheck =
@@ -713,7 +713,7 @@ const Explore: React.FC<ExploreProps> = ({
         ) : (
           <>
             {!connectionError && getTabs()}
-            {advanceFieldCheck && (
+            {hasPermission && advanceFieldCheck && (
               <AdvancedFields
                 fields={selectedAdvancedFields}
                 index={searchIndex}
@@ -722,18 +722,22 @@ const Explore: React.FC<ExploreProps> = ({
                 onFieldValueSelect={onAdvancedFieldValueSelect}
               />
             )}
-            <SearchedData
-              showResultCount
-              currentPage={currentPage}
-              data={data}
-              isFilterSelected={isFilterSelected}
-              isLoading={
-                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-              }
-              paginate={paginate}
-              searchText={searchText}
-              totalValue={totalNumberOfValue}
-            />
+            {hasPermission ? (
+              <SearchedData
+                showResultCount
+                currentPage={currentPage}
+                data={data}
+                isFilterSelected={isFilterSelected}
+                isLoading={
+                  !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+                }
+                paginate={paginate}
+                searchText={searchText}
+                totalValue={totalNumberOfValue}
+              />
+            ) : (
+              <Empty description={NO_PERMISSION_TO_VIEW} />
+            )}
           </>
         )}
       </PageLayout>
