@@ -27,8 +27,6 @@ OPENMETADATA_SERVER=${OPENMETADATA_SERVER:-"http://openmetadata-server:8585"}
 
 sed -i "s#\(sql_alchemy_conn = \).*#\1${DB_CONN}#" /airflow/airflow.cfg
 
-while ! nc -z ${DB_HOST} ${DB_PORT}; do sleep 5; done
-
 airflow db init
 
 airflow users create \
