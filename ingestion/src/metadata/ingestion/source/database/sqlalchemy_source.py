@@ -65,14 +65,6 @@ class SqlAlchemySource(ABC):
         """
 
     @abstractmethod
-    def is_partition(
-        self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> bool:
-        """
-        Method to check if the table is partitioned table
-        """
-
-    @abstractmethod
     def get_data_model(
         self, database: str, schema_name: str, table_name: str
     ) -> DataModel:
