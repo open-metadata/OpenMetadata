@@ -14,7 +14,7 @@
 import { Button, Col, Form, FormProps, Input, Row, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import 'codemirror/addon/fold/foldgutter.css';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
@@ -230,16 +230,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         name="testTypeId"
         rules={[{ required: true, message: 'Test type is required' }]}>
         <Select
-          options={testDefinitions
-            .filter(
-              (def) =>
-                def.fullyQualifiedName &&
-                isUndefined(testCases[def.fullyQualifiedName])
-            )
-            .map((suite) => ({
-              label: suite.name,
-              value: suite.id,
-            }))}
+          options={testDefinitions.map((suite) => ({
+            label: suite.name,
+            value: suite.id,
+          }))}
           placeholder="Select test type"
         />
       </Form.Item>
