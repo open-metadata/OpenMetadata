@@ -240,6 +240,8 @@ export const ROUTES = {
 
   // test suites
   TEST_SUITES: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}`,
+  TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/add-ingestion`,
+  TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
 };
 
 export const SOCKET_EVENTS = {

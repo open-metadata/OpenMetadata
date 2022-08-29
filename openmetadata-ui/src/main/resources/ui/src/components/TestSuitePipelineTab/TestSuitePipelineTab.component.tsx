@@ -5,7 +5,7 @@ import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import { capitalize } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import {
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
@@ -17,6 +17,7 @@ import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
+import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -29,6 +30,7 @@ import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCo
 
 const TestSuitePipelineTab = () => {
   const { testSuiteFQN } = useParams<Record<string, string>>();
+  const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
     IngestionPipeline[]
@@ -364,7 +366,17 @@ const TestSuitePipelineTab = () => {
                     </Button>
                   )}
                   {separator}
-                  <Button data-testid="edit" type="link">
+                  <Button
+                    data-testid="edit"
+                    type="link"
+                    onClick={() => {
+                      history.push(
+                        getTestSuiteIngestionPath(
+                          testSuiteFQN,
+                          record.fullyQualifiedName
+                        )
+                      );
+                    }}>
                     Edit
                   </Button>
                   {separator}
@@ -450,7 +462,10 @@ const TestSuitePipelineTab = () => {
   return (
     <TestCaseCommonTabContainer
       buttonName="Add Ingestion"
-      showButton={testSuitePipelines.length === 0}>
+      showButton={testSuitePipelines.length === 0}
+      onButtonClick={() => {
+        history.push(getTestSuiteIngestionPath(testSuiteFQN));
+      }}>
       <Col span={24}>
         <Table
           columns={pipelineColumns}

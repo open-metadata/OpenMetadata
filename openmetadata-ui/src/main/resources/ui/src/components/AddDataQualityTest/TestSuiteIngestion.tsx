@@ -12,12 +12,14 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { camelCase } from 'lodash';
 import React, { useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
   deployIngestionPipelineById,
+  patchIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
@@ -40,23 +42,31 @@ import { TestSuiteIngestionProps } from './AddDataQualityTest.interface';
 import TestSuiteScheduler from './components/TestSuiteScheduler';
 
 const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
+  ingestionPipeline,
   testSuite,
   onCancel,
 }) => {
+  const { ingestionFQN } = useParams<Record<string, string>>();
   const history = useHistory();
-  const [ingestionData, setIngestionData] = useState<IngestionPipeline>();
+  const [ingestionData, setIngestionData] = useState<
+    IngestionPipeline | undefined
+  >(ingestionPipeline);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showDeployButton, setShowDeployButton] = useState(false);
   const [ingestionAction, setIngestionAction] = useState(
-    IngestionActionMessage.CREATING
+    ingestionFQN
+      ? IngestionActionMessage.UPDATING
+      : IngestionActionMessage.CREATING
   );
   const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const getSuccessMessage = useMemo(() => {
     const createMessage = showDeployButton
-      ? 'has been created, but failed to deploy'
-      : 'has been created and deployed successfully';
+      ? `has been ${ingestionFQN ? 'updated' : 'created'}, but failed to deploy`
+      : `has been ${
+          ingestionFQN ? 'updated' : 'created'
+        } and deployed successfully`;
 
     return (
       <span>
@@ -116,6 +126,42 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     handleIngestionDeploy(ingestion.id);
   };
 
+  const updateIngestionPipeline = async (repeatFrequency: string) => {
+    const updatedPipeline = {
+      ...ingestionPipeline,
+      airflowConfig: {
+        ...ingestionPipeline?.airflowConfig,
+        scheduleInterval: repeatFrequency,
+      },
+    };
+    const jsonPatch = compare(
+      ingestionPipeline as IngestionPipeline,
+      updatedPipeline
+    );
+    if (jsonPatch.length) {
+      try {
+        const response = await patchIngestionPipeline(
+          ingestionPipeline?.id || '',
+          jsonPatch
+        );
+        handleIngestionDeploy(response.id);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          jsonData['api-error-messages']['update-ingestion-error']
+        );
+      }
+    }
+  };
+
+  const handleIngestionSubmit = (repeatFrequency: string) => {
+    if (ingestionFQN) {
+      updateIngestionPipeline(repeatFrequency);
+    } else {
+      createIngestionPipeline(repeatFrequency);
+    }
+  };
+
   const handleViewTestSuiteClick = () => {
     history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
   };
@@ -148,8 +194,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           />
         ) : (
           <TestSuiteScheduler
+            initialData={ingestionPipeline?.airflowConfig.scheduleInterval}
             onCancel={onCancel}
-            onSubmit={createIngestionPipeline}
+            onSubmit={handleIngestionSubmit}
           />
         )}
       </Col>

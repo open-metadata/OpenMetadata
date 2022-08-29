@@ -351,3 +351,19 @@ export const getTestSuitePath = (testSuiteName: string) => {
 
   return path;
 };
+
+export const getTestSuiteIngestionPath = (
+  testSuiteName: string,
+  ingestionFQN?: string
+) => {
+  let path = ingestionFQN
+    ? ROUTES.TEST_SUITES_EDIT_INGESTION
+    : ROUTES.TEST_SUITES_ADD_INGESTION;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+
+  if (ingestionFQN) {
+    path = path.replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN);
+  }
+
+  return path;
+};
