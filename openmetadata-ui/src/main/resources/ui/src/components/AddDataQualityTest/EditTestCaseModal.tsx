@@ -141,6 +141,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         onCancel();
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        form.resetFields();
       }
     }
   };
@@ -173,7 +175,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       destroyOnClose
       title={`Edit ${testCase?.name}`}
       visible={visible}
-      onCancel={onCancel}
+      onCancel={() => {
+        form.resetFields();
+        onCancel();
+      }}
       onOk={() => form.submit()}>
       {isLoading ? (
         <Loader />
