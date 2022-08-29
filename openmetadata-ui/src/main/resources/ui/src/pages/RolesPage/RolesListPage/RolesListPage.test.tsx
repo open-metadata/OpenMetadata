@@ -42,7 +42,27 @@ jest.mock('./RolesList', () =>
   jest.fn().mockReturnValue(<div data-testid="roles-list">RolesList</div>)
 );
 
-describe('Test Roled List Page', () => {
+jest.mock('../../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    permissions: {
+      role: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+describe('Test Roles List Page', () => {
   it('Should render the list component', async () => {
     render(<RolesListPage />);
 
