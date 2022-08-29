@@ -205,5 +205,4 @@ export const codeMirrorOption = {
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   { name: 'Select/Add Test Suite', step: 1 },
   { name: 'Configure Test Case', step: 2 },
-  //   { name: 'Schedule Interval', step: 3 },
 ];

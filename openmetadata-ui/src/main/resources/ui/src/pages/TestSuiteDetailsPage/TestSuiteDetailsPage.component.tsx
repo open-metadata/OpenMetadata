@@ -5,7 +5,6 @@ import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getIngestionPipelines } from '../../axiosAPIs/ingestionPipelineAPI';
 import {
   getListTestCase,
   getTestSuiteByName,
@@ -30,7 +29,6 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { OwnerType } from '../../enums/user.enum';
-import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
@@ -45,14 +43,10 @@ const TestSuiteDetailsPage = () => {
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isDeleteWidgetVisible, setIsDeleteWidgetVisible] = useState(false);
-  const [isIngestionLoaded, setIsIngestionLoaded] = useState(false);
   const [isTestCaseLoaded, setIsTestCaseLoaded] = useState(false);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [testCasesPaging, setTestCasesPaging] = useState<Paging>(pagingObject);
-  const [testSuitePipelines, setTestSuitePipelines] = useState<
-    IngestionPipeline[]
-  >([]);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -203,22 +197,6 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const getAllTestSuiteIngestionWorkflows = async (paging?: string) => {
-    try {
-      setIsIngestionLoaded(false);
-      const response = await getIngestionPipelines(
-        ['owner', 'pipelineStatuses'],
-        testSuite?.fullyQualifiedName,
-        paging
-      );
-      setTestSuitePipelines(response.data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsIngestionLoaded(false);
-    }
-  };
-
   const onSetActiveValue = (tabValue: number) => {
     setActiveTab(tabValue);
   };
@@ -305,18 +283,7 @@ const TestSuiteDetailsPage = () => {
                 )}
               </>
             )}
-            {activeTab === 2 && (
-              <>
-                {isIngestionLoaded ? (
-                  <TestSuitePipelineTab
-                    getAllIngestionWorkflows={getAllTestSuiteIngestionWorkflows}
-                    testSuitePipelines={testSuitePipelines}
-                  />
-                ) : (
-                  <Loader />
-                )}
-              </>
-            )}
+            {activeTab === 2 && <TestSuitePipelineTab />}
           </div>
         </Col>
       </Row>

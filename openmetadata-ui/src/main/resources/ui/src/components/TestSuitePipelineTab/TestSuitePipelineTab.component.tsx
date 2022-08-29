@@ -5,10 +5,12 @@ import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import { capitalize } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
+  getIngestionPipelines,
   triggerIngestionPipelineById,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
@@ -25,13 +27,12 @@ import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal'
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
-const TestSuitePipelineTab = ({
-  getAllIngestionWorkflows,
-  testSuitePipelines,
-}: {
-  getAllIngestionWorkflows: (paging?: string) => void;
-  testSuitePipelines: IngestionPipeline[]; // type to be change after api update
-}) => {
+const TestSuitePipelineTab = () => {
+  const { testSuiteFQN } = useParams<Record<string, string>>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [testSuitePipelines, setTestSuitePipelines] = useState<
+    IngestionPipeline[]
+  >([]);
   const [airFlowEndPoint, setAirFlowEndPoint] = useState('');
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
@@ -52,6 +53,22 @@ const TestSuitePipelineTab = ({
       name: '',
       state: '',
     });
+  };
+
+  const getAllIngestionWorkflows = async (paging?: string) => {
+    try {
+      setIsLoading(true);
+      const response = await getIngestionPipelines(
+        ['owner', 'pipelineStatuses'],
+        testSuiteFQN,
+        paging
+      );
+      setTestSuitePipelines(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async (id: string, displayName: string) => {
@@ -232,6 +249,11 @@ const TestSuitePipelineTab = ({
       );
     }
   };
+
+  useEffect(() => {
+    getAllIngestionWorkflows();
+    fetchAirFlowEndPoint();
+  }, []);
 
   const pipelineColumns = useMemo(() => {
     const column: ColumnsType<IngestionPipeline> = [
@@ -421,13 +443,14 @@ const TestSuitePipelineTab = ({
     return column;
   }, [airFlowEndPoint, isKillModalOpen, isLogsModalOpen, selectedPipeline]);
 
-  useEffect(() => {
-    getAllIngestionWorkflows();
-    fetchAirFlowEndPoint();
-  }, []);
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
-    <TestCaseCommonTabContainer buttonName="Add Ingestion">
+    <TestCaseCommonTabContainer
+      buttonName="Add Ingestion"
+      showButton={testSuitePipelines.length === 0}>
       <Col span={24}>
         <Table
           columns={pipelineColumns}

@@ -71,27 +71,25 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const handleIngestionDeploy = (id?: string) => {
     setShowDeployModal(true);
 
-    return new Promise<void>((resolve) => {
-      setIsIngestionCreated(true);
-      setIngestionProgress(INGESTION_PROGRESS_END_VAL);
-      setIngestionAction(IngestionActionMessage.DEPLOYING);
+    setIsIngestionCreated(true);
+    setIngestionProgress(INGESTION_PROGRESS_END_VAL);
+    setIngestionAction(IngestionActionMessage.DEPLOYING);
 
-      deployIngestionPipelineById(`${id || ingestionData?.id}`)
-        .then(() => {
-          setIsIngestionDeployed(true);
-          setShowDeployButton(false);
-          setIngestionProgress(DEPLOYED_PROGRESS_VAL);
-          setIngestionAction(IngestionActionMessage.DEPLOYED);
-        })
-        .catch((err: AxiosError) => {
-          setShowDeployButton(true);
-          setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
-          showErrorToast(
-            err || jsonData['api-error-messages']['deploy-ingestion-error']
-          );
-        })
-        .finally(() => resolve());
-    });
+    deployIngestionPipelineById(`${id || ingestionData?.id}`)
+      .then(() => {
+        setIsIngestionDeployed(true);
+        setShowDeployButton(false);
+        setIngestionProgress(DEPLOYED_PROGRESS_VAL);
+        setIngestionAction(IngestionActionMessage.DEPLOYED);
+      })
+      .catch((err: AxiosError) => {
+        setShowDeployButton(true);
+        setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
+        showErrorToast(
+          err || jsonData['api-error-messages']['deploy-ingestion-error']
+        );
+      })
+      .finally(() => setTimeout(() => setShowDeployModal(false), 500));
   };
 
   const createIngestionPipeline = async (repeatFrequency: string) => {
@@ -115,9 +113,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     const ingestion = await addIngestionPipeline(ingestionPayload);
 
     setIngestionData(ingestion);
-    handleIngestionDeploy(ingestion.id).finally(() =>
-      setShowDeployModal(false)
-    );
+    handleIngestionDeploy(ingestion.id);
   };
 
   const handleViewTestSuiteClick = () => {
@@ -126,9 +122,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 
   const handleDeployClick = () => {
     setShowDeployModal(true);
-    handleIngestionDeploy?.().finally(() => {
-      setTimeout(() => setShowDeployModal(false), 500);
-    });
+    handleIngestionDeploy();
   };
 
   return (

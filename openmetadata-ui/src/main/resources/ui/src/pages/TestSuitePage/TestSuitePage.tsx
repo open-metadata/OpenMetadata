@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Table, Typography } from 'antd';
+import { Col, Row, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -53,30 +53,32 @@ const TestSuitePage = () => {
     }
   };
 
-  const columns: ColumnsType<TestSuite> = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const col: ColumnsType<TestSuite> = [
       {
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
-        render: (_: Array<unknown>, record: TestSuite) => (
+        render: (_, record) => (
           <Link to={getTestSuitePath(record.name)}>{record.name}</Link>
         ),
       },
       {
         title: 'Description',
         dataIndex: 'description',
-        ellipses: true,
         key: 'description',
-        render: (_: Array<unknown>, record: TestSuite) => (
-          <Ellipses className="tw-w-52">{record.description}</Ellipses>
+        width: 300,
+        render: (_, record) => (
+          <Ellipses tooltip className="tw-w-11/12">
+            {record.description}
+          </Ellipses>
         ),
       },
       {
         title: 'No. of Test',
         dataIndex: 'noOfTests',
         key: 'noOfTests',
-        render: (_: Array<unknown>, record: TestSuite) => (
+        render: (_, record) => (
           <Text strong>{record?.tests?.length} Tests</Text>
         ),
       },
@@ -84,25 +86,12 @@ const TestSuitePage = () => {
         title: 'Owner',
         dataIndex: 'owner',
         key: 'owner',
-        render: (_: Array<unknown>, record: TestSuite) => (
-          <span>{record?.owner?.displayName}</span>
-        ),
+        render: (_, record) => <span>{record?.owner?.displayName}</span>,
       },
-      {
-        title: 'Actions',
-        dataIndex: 'actions',
-        key: 'actions',
-        render: () => (
-          <Button
-            className="tw-border tw-border-primary tw-rounded tw-text-primary"
-            size="small">
-            Add Test
-          </Button>
-        ),
-      },
-    ],
-    [testSuites]
-  );
+    ];
+
+    return col;
+  }, [testSuites]);
 
   const testSuitePagingHandler = (
     cursorValue: string | number,
@@ -129,15 +118,17 @@ const TestSuitePage = () => {
           size="small"
         />
       </Col>
-      <Col span={24}>
-        <NextPrevious
-          currentPage={testSuitePage}
-          pageSize={PAGE_SIZE}
-          paging={testSuitePaging}
-          pagingHandler={testSuitePagingHandler}
-          totalCount={testSuitePaging.total}
-        />
-      </Col>
+      {testSuites.length > PAGE_SIZE && (
+        <Col span={24}>
+          <NextPrevious
+            currentPage={testSuitePage}
+            pageSize={PAGE_SIZE}
+            paging={testSuitePaging}
+            pagingHandler={testSuitePagingHandler}
+            totalCount={testSuitePaging.total}
+          />
+        </Col>
+      )}
     </Row>
   );
 };
