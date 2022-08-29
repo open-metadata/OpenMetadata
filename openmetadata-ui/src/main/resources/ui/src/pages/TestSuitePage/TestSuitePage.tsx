@@ -13,7 +13,6 @@
 
 import { Button, Col, Row, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { kebabCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getListTestSuites } from '../../axiosAPIs/testAPI';
@@ -61,9 +60,7 @@ const TestSuitePage = () => {
         dataIndex: 'name',
         key: 'name',
         render: (_: Array<unknown>, record: TestSuite) => (
-          <Link to={getTestSuitePath(kebabCase(record.name))}>
-            {record.name}
-          </Link>
+          <Link to={getTestSuitePath(record.name)}>{record.name}</Link>
         ),
       },
       {
@@ -98,8 +95,7 @@ const TestSuitePage = () => {
         render: () => (
           <Button
             className="tw-border tw-border-primary tw-rounded tw-text-primary"
-            size="small"
-            onClick={() => console.log('clicked')}>
+            size="small">
             Add Test
           </Button>
         ),

@@ -247,7 +247,6 @@ export const Icons = {
   DOC: 'doc',
   DOC_WHITE: 'doc-white',
   DOC_PRIMARY: 'doc-primary',
-  DELETE_COLORED: 'icon-delete-colored',
   API: 'api',
   WHATS_NEW: 'whats-new',
   TABLE: 'table',

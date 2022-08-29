@@ -1,14 +1,28 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Table } from 'antd';
+import { Button, Col, Space, Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
+import { capitalize } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import {
+  deleteIngestionPipelineById,
+  deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
+  triggerIngestionPipelineById,
+} from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import jsonData from '../../jsons/en';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import Loader from '../Loader/Loader';
+import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
+import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
+import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
 const TestSuitePipelineTab = ({
@@ -16,9 +30,45 @@ const TestSuitePipelineTab = ({
   testSuitePipelines,
 }: {
   getAllIngestionWorkflows: (paging?: string) => void;
-  testSuitePipelines: any; // type to be change after api update
+  testSuitePipelines: IngestionPipeline[]; // type to be change after api update
 }) => {
   const [airFlowEndPoint, setAirFlowEndPoint] = useState('');
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
+  const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
+  const [deleteSelection, setDeleteSelection] = useState({
+    id: '',
+    name: '',
+    state: '',
+  });
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
+  const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+
+  const handleCancelConfirmationModal = () => {
+    setIsConfirmationModalOpen(false);
+    setDeleteSelection({
+      id: '',
+      name: '',
+      state: '',
+    });
+  };
+
+  const handleDelete = async (id: string, displayName: string) => {
+    setDeleteSelection({ id, name: displayName, state: 'waiting' });
+    try {
+      await deleteIngestionPipelineById(id);
+      setDeleteSelection({ id, name: displayName, state: 'success' });
+      getAllIngestionWorkflows();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        `${jsonData['api-error-messages']['delete-ingestion-error']} ${displayName}`
+      );
+    } finally {
+      handleCancelConfirmationModal();
+    }
+  };
 
   const fetchAirFlowEndPoint = async () => {
     try {
@@ -29,9 +79,119 @@ const TestSuitePipelineTab = ({
     }
   };
 
+  const handleEnableDisableIngestion = async (id: string) => {
+    try {
+      await enableDisableIngestionPipelineById(id);
+      getAllIngestionWorkflows();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['unexpected-server-response']
+      );
+    }
+  };
+
   const separator = (
     <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
   );
+
+  const getStatuses = (ingestion: IngestionPipeline) => {
+    const lastFiveIngestions = ingestion.pipelineStatuses
+      ?.sort((a, b) => {
+        // Turn your strings into millis, and then subtract them
+        // to get a value that is either negative, positive, or zero.
+        const date1 = new Date(a.startDate || '');
+        const date2 = new Date(b.startDate || '');
+
+        return date1.getTime() - date2.getTime();
+      })
+      .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
+
+    return lastFiveIngestions?.map((r, i) => {
+      const status =
+        i === lastFiveIngestions.length - 1 ? (
+          <p
+            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+            key={i}>
+            {capitalize(r.state)}
+          </p>
+        ) : (
+          <p
+            className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+            key={i}
+          />
+        );
+
+      return r?.endDate || r?.startDate || r?.timestamp ? (
+        <PopOver
+          html={
+            <div className="tw-text-left">
+              {r.timestamp ? (
+                <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
+              ) : null}
+              {r.startDate ? (
+                <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+              ) : null}
+              {r.endDate ? (
+                <p>End Date: {new Date(r.endDate).toUTCString()}</p>
+              ) : null}
+            </div>
+          }
+          key={i}
+          position="bottom"
+          theme="light"
+          trigger="mouseenter">
+          {status}
+        </PopOver>
+      ) : (
+        status
+      );
+    });
+  };
+
+  const confirmDelete = (id: string, name: string) => {
+    setDeleteSelection({
+      id,
+      name,
+      state: '',
+    });
+    setIsConfirmationModalOpen(true);
+  };
+
+  const handleTriggerIngestion = async (id: string, displayName: string) => {
+    setCurrTriggerId({ id, state: 'waiting' });
+
+    try {
+      await triggerIngestionPipelineById(id);
+      setCurrTriggerId({ id, state: 'success' });
+      setTimeout(() => {
+        setCurrTriggerId({ id: '', state: '' });
+        showSuccessToast('Pipeline triggered successfully');
+      }, 1500);
+      getAllIngestionWorkflows();
+    } catch (error) {
+      showErrorToast(
+        `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
+      );
+      setCurrTriggerId({ id: '', state: '' });
+    }
+  };
+
+  const handleDeployIngestion = async (id: string) => {
+    setCurrDeployId({ id, state: 'waiting' });
+
+    try {
+      await deployIngestionPipelineById(id);
+      setCurrDeployId({ id, state: 'success' });
+      setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
+    } catch (error) {
+      setCurrDeployId({ id: '', state: '' });
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['update-ingestion-error']
+      );
+    }
+  };
 
   const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
     if (ingestion.deployed) {
@@ -39,9 +199,11 @@ const TestSuitePipelineTab = ({
         <Button
           data-testid="run"
           type="link"
-          onClick={() => console.log('clicked')}>
-          {false ? (
-            'success' === 'success' ? (
+          onClick={() =>
+            handleTriggerIngestion(ingestion.id as string, ingestion.name)
+          }>
+          {currTriggerId.id === ingestion.id ? (
+            currTriggerId.state === 'success' ? (
               <FontAwesomeIcon icon="check" />
             ) : (
               <Loader size="small" type="default" />
@@ -56,9 +218,9 @@ const TestSuitePipelineTab = ({
         <Button
           data-testid="deploy"
           type="link"
-          onClick={() => console.log('clicked on Deploy')}>
-          {false ? (
-            'success' === 'success' ? (
+          onClick={() => handleDeployIngestion(ingestion.id as string)}>
+          {currDeployId.id === ingestion.id ? (
+            currDeployId.state === 'success' ? (
               <FontAwesomeIcon icon="check" />
             ) : (
               <Loader size="small" type="default" />
@@ -71,13 +233,13 @@ const TestSuitePipelineTab = ({
     }
   };
 
-  const pipelineColumns = useMemo(
-    () => [
+  const pipelineColumns = useMemo(() => {
+    const column: ColumnsType<IngestionPipeline> = [
       {
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
-        render: () => {
+        render: (name: string) => {
           return (
             <>
               <NonAdminAction
@@ -89,7 +251,7 @@ const TestSuitePipelineTab = ({
                   href={`${airFlowEndPoint}`}
                   rel="noopener noreferrer"
                   target="_blank">
-                  Hello
+                  {name}
                   <SVGIcons
                     alt="external-link"
                     className="tw-align-middle tw-ml-1"
@@ -111,23 +273,26 @@ const TestSuitePipelineTab = ({
         title: 'Schedule',
         dataIndex: 'airflowConfig',
         key: 'airflowEndpoint',
-        render: (_: Array<unknown>, record: any) => {
+        render: (_, record) => {
           return (
             <>
-              {record?.scheduleInterval ? (
+              {record?.airflowConfig.scheduleInterval ? (
                 <PopOver
                   html={
                     <div>
-                      {cronstrue.toString(record?.scheduleInterval || '', {
-                        use24HourTimeFormat: true,
-                        verbose: true,
-                      })}
+                      {cronstrue.toString(
+                        record.airflowConfig.scheduleInterval || '',
+                        {
+                          use24HourTimeFormat: true,
+                          verbose: true,
+                        }
+                      )}
                     </div>
                   }
                   position="bottom"
                   theme="light"
                   trigger="mouseenter">
-                  <span>{record?.scheduleInterval ?? '--'}</span>
+                  <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
                 </PopOver>
               ) : (
                 <span>--</span>
@@ -138,56 +303,57 @@ const TestSuitePipelineTab = ({
       },
       {
         title: 'Recent Runs',
-        dataIndex: 'recentRuns',
+        dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
-        render: () => <>Status</>, // use getIngestionStatuses from commonUtils
+        render: (_, record) => <Space>{getStatuses(record)}</Space>, // use getIngestionStatuses from commonUtils
       },
       {
         title: 'Actions',
         dataIndex: 'actions',
         key: 'actions',
-        render: (_: Array<unknown>, record: any) => {
+        render: (_, record) => {
           return (
             <>
               <NonAdminAction
                 position="bottom"
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
                 <div className="tw-flex">
-                  {true ? (
+                  {record.enabled ? (
                     <Fragment>
-                      {getTriggerDeployButton({
-                        // need to pass proper props after api call
-                        deployed: true,
-                        name: 'ingestion-tets',
-                        airflowConfig: undefined,
-                        openMetadataServerConnection: undefined,
-                        pipelineType:
-                          '/Users/bharatdussa/Desktop/projects/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/generated/entity/services/ingestionPipelines/ingestionPipeline'
-                            .Lineage,
-                        sourceConfig: undefined,
-                      })}
+                      {getTriggerDeployButton(record)}
                       {separator}
-                      <Button data-testid="pause" disabled={!true} type="link">
+                      <Button
+                        data-testid="pause"
+                        type="link"
+                        onClick={() =>
+                          handleEnableDisableIngestion(record.id || '')
+                        }>
                         Pause
                       </Button>
                     </Fragment>
                   ) : (
-                    <Button data-testid="unpause" disabled={!true} type="link">
+                    <Button
+                      data-testid="unpause"
+                      type="link"
+                      onClick={() =>
+                        handleEnableDisableIngestion(record.id || '')
+                      }>
                       Unpause
                     </Button>
                   )}
                   {separator}
-                  <Button
-                    data-testid="edit"
-                    disabled={!true}
-                    type="link"
-                    onClick={() => console.log('edit')}>
+                  <Button data-testid="edit" type="link">
                     Edit
                   </Button>
                   {separator}
-                  <Button data-testid="delete" type="link">
-                    {false ? (
-                      true ? ( // in place of false check of id and in place of true check for success state
+                  <Button
+                    data-testid="delete"
+                    type="link"
+                    onClick={() =>
+                      confirmDelete(record.id as string, record.name)
+                    }>
+                    {deleteSelection.id === record.id ? (
+                      deleteSelection.state === 'success' ? (
                         <FontAwesomeIcon icon="check" />
                       ) : (
                         <Loader size="small" type="default" />
@@ -197,22 +363,63 @@ const TestSuitePipelineTab = ({
                     )}
                   </Button>
                   {separator}
-                  <Button data-testid="kill" disabled={!true} type="link">
+                  <Button
+                    data-testid="kill"
+                    type="link"
+                    onClick={() => {
+                      setIsKillModalOpen(true);
+                      setSelectedPipeline(record);
+                    }}>
                     Kill
                   </Button>
                   {separator}
-                  <Button data-testid="logs" disabled={!true} type="link">
+                  <Button
+                    data-testid="logs"
+                    type="link"
+                    onClick={() => {
+                      setIsLogsModalOpen(true);
+                      setSelectedPipeline(record);
+                    }}>
                     Logs
                   </Button>
                 </div>
               </NonAdminAction>
+              {isLogsModalOpen &&
+                selectedPipeline &&
+                record.id === selectedPipeline?.id && (
+                  <IngestionLogsModal
+                    isModalOpen={isLogsModalOpen}
+                    pipelinName={selectedPipeline.name}
+                    pipelineId={selectedPipeline.id as string}
+                    pipelineType={selectedPipeline.pipelineType}
+                    onClose={() => {
+                      setIsLogsModalOpen(false);
+                      setSelectedPipeline(undefined);
+                    }}
+                  />
+                )}
+              {isKillModalOpen &&
+                selectedPipeline &&
+                record.id === selectedPipeline?.id && (
+                  <KillIngestionModal
+                    isModalOpen={isKillModalOpen}
+                    pipelinName={selectedPipeline.name}
+                    pipelineId={selectedPipeline.id as string}
+                    onClose={() => {
+                      setIsKillModalOpen(false);
+                      setSelectedPipeline(undefined);
+                    }}
+                    onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
+                  />
+                )}
             </>
           );
         },
       },
-    ],
-    [airFlowEndPoint]
-  );
+    ];
+
+    return column;
+  }, [airFlowEndPoint, isKillModalOpen, isLogsModalOpen, selectedPipeline]);
 
   useEffect(() => {
     getAllIngestionWorkflows();
@@ -221,16 +428,25 @@ const TestSuitePipelineTab = ({
 
   return (
     <TestCaseCommonTabContainer buttonName="Add Ingestion">
-      <>
-        <Col span={24}>
-          <Table
-            columns={pipelineColumns}
-            dataSource={testSuitePipelines}
-            pagination={false}
-            size="small"
+      <Col span={24}>
+        <Table
+          columns={pipelineColumns}
+          dataSource={testSuitePipelines}
+          pagination={false}
+          size="small"
+        />
+        {isConfirmationModalOpen && (
+          <EntityDeleteModal
+            entityName={deleteSelection.name}
+            entityType="ingestion"
+            loadingState={deleteSelection.state}
+            onCancel={handleCancelConfirmationModal}
+            onConfirm={() =>
+              handleDelete(deleteSelection.id, deleteSelection.name)
+            }
           />
-        </Col>
-      </>
+        )}
+      </Col>
     </TestCaseCommonTabContainer>
   );
 };

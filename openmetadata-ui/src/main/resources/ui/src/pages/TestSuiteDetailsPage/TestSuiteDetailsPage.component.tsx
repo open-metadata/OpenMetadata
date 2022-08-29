@@ -1,13 +1,15 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { camelCase, snakeCase, startCase } from 'lodash';
+import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { getIngestionPipelines } from '../../axiosAPIs/ingestionPipelineAPI';
 import {
   getListTestCase,
   getTestSuiteByName,
+  ListTestCaseParams,
   updateTestSuiteById,
 } from '../../axiosAPIs/testAPI';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
@@ -28,6 +30,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { OwnerType } from '../../enums/user.enum';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
@@ -43,10 +46,13 @@ const TestSuiteDetailsPage = () => {
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isDeleteWidgetVisible, setIsDeleteWidgetVisible] = useState(false);
   const [isIngestionLoaded, setIsIngestionLoaded] = useState(false);
+  const [isTestCaseLoaded, setIsTestCaseLoaded] = useState(false);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [testCasesPaging, setTestCasesPaging] = useState<Paging>(pagingObject);
-  const [testSuitePipelines, setTestSuitePipelines] = useState<any>([]);
+  const [testSuitePipelines, setTestSuitePipelines] = useState<
+    IngestionPipeline[]
+  >([]);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -85,10 +91,7 @@ const TestSuiteDetailsPage = () => {
     setIsDescriptionEditable(value);
   };
 
-  const fetchTestCases = async (
-    param?: Record<string, string>,
-    limit?: number
-  ) => {
+  const fetchTestCases = async (param?: ListTestCaseParams, limit?: number) => {
     try {
       const response = await getListTestCase({
         fields: 'testCaseResult',
@@ -96,6 +99,7 @@ const TestSuiteDetailsPage = () => {
         limit: limit || PAGE_SIZE,
         before: param && param.before,
         after: param && param.after,
+        ...param,
       });
 
       if (response) {
@@ -109,20 +113,39 @@ const TestSuiteDetailsPage = () => {
     } catch {
       setTestCaseResult([]);
       showErrorToast(jsonData['api-error-messages']['fetch-test-cases-error']);
+    } finally {
+      setIsTestCaseLoaded(true);
     }
   };
 
   const fetchTestSuiteByName = async () => {
-    const testSuiteName = snakeCase(testSuiteFQN);
-
     try {
-      const response = await getTestSuiteByName(testSuiteName, {
+      const response = await getTestSuiteByName(testSuiteFQN, {
         fields: 'owner',
       });
+      setSlashedBreadCrumb([
+        {
+          name: 'Test Suites',
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.DATA_QUALITY,
+            GlobalSettingOptions.TEST_SUITE
+          ),
+        },
+        {
+          name: startCase(
+            camelCase(response?.fullyQualifiedName || response?.name)
+          ),
+          url: '',
+        },
+      ]);
       setTestSuite(response);
-    } catch {
+      fetchTestCases({ testSuiteId: response.id });
+    } catch (error) {
       setTestSuite(undefined);
-      showErrorToast(jsonData['api-error-messages']['fetch-test-suite-error']);
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-test-suite-error']
+      );
     }
   };
 
@@ -180,21 +203,17 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const getAllTestSuiteIngestionWorkflows = (paging?: string) => {
-    setIsIngestionLoaded(true);
+  const getAllTestSuiteIngestionWorkflows = async (paging?: string) => {
     try {
       setIsIngestionLoaded(false);
-
-      // test suite ingestion pipeline api
-      setTestSuitePipelines([
-        {
-          name: 'ingestion_test_suite_1',
-          pipelineType: 'metadata',
-          airflowConfig: 'airflowConfig',
-        },
-      ]);
-    } catch {
-      setIsIngestionLoaded(false);
+      const response = await getIngestionPipelines(
+        ['owner', 'pipelineStatuses'],
+        testSuite?.fullyQualifiedName,
+        paging
+      );
+      setTestSuitePipelines(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     } finally {
       setIsIngestionLoaded(false);
     }
@@ -248,28 +267,6 @@ const TestSuiteDetailsPage = () => {
     fetchTestSuiteByName();
   }, []);
 
-  useEffect(() => {
-    fetchTestCases();
-  }, [testSuite]);
-
-  useEffect(() => {
-    setSlashedBreadCrumb([
-      {
-        name: 'Test Suites',
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.DATA_QUALITY,
-          GlobalSettingOptions.TEST_SUITE
-        ),
-      },
-      {
-        name: startCase(
-          camelCase(testSuite?.fullyQualifiedName || testSuite?.name)
-        ),
-        url: '',
-      },
-    ]);
-  }, [testSuite]);
-
   return (
     <PageContainer>
       <Row className="tw-px-6 tw-w-full">
@@ -294,9 +291,9 @@ const TestSuiteDetailsPage = () => {
             tabs={tabs}
           />
           <div className="tw-mb-4">
-            {activeTab === 1 ? (
+            {activeTab === 1 && (
               <>
-                {testCaseResult ? (
+                {isTestCaseLoaded ? (
                   <TestCasesTab
                     currentPage={currentPage}
                     testCasePageHandler={handleTestCasePaging}
@@ -307,11 +304,10 @@ const TestSuiteDetailsPage = () => {
                   <Loader />
                 )}
               </>
-            ) : null}
-            {activeTab === 2 ? (
+            )}
+            {activeTab === 2 && (
               <>
-                {' '}
-                {true ? (
+                {isIngestionLoaded ? (
                   <TestSuitePipelineTab
                     getAllIngestionWorkflows={getAllTestSuiteIngestionWorkflows}
                     testSuitePipelines={testSuitePipelines}
@@ -320,7 +316,7 @@ const TestSuiteDetailsPage = () => {
                   <Loader />
                 )}
               </>
-            ) : null}
+            )}
           </div>
         </Col>
       </Row>
