@@ -143,7 +143,7 @@ public final class ChangeEventParser {
   public static String getRemoveMarkerClose(PUBLISH_TO publishTo) {
     switch (publishTo) {
       case FEED:
-        return FEED_REMOVE_MARKER;
+        return FEED_SPAN_CLOSE;
       case TEAMS:
         // TEAMS and FEED bold formatting is same
         return "~~ ";
@@ -524,7 +524,6 @@ public final class ChangeEventParser {
     // This is a test <span class="diff-removed">sentence</span><span class="diff-added">line</span>
     String spanAdd = getAddMarker(publishTo);
     String spanAddClose = getAddMarkerClose(publishTo);
-    ;
     String spanRemove = getRemoveMarker(publishTo);
     String spanRemoveClose = getRemoveMarkerClose(publishTo);
     if (diff != null) {
