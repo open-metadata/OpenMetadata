@@ -81,7 +81,7 @@ public final class ChangeEventParser {
       case SLACK:
         return SLACK_BOLD;
       default:
-        return FEED_BOLD;
+        return "INVALID";
     }
   }
 
@@ -94,18 +94,78 @@ public final class ChangeEventParser {
       case SLACK:
         return SLACK_LINE_BREAK;
       default:
-        return FEED_LINE_BREAK;
+        return "INVALID";
     }
   }
 
-  public static String getEntityUrl(ChangeEvent event) {
+  public static String getAddMarker(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_SPAN_ADD;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "**";
+      case SLACK:
+        return "*";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getAddMarkerClose(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_SPAN_CLOSE;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "** ";
+      case SLACK:
+        return "* ";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getRemoveMarker(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_SPAN_REMOVE;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "~~";
+      case SLACK:
+        return "~";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getRemoveMarkerClose(PUBLISH_TO publishTo) {
+    switch (publishTo) {
+      case FEED:
+        return FEED_REMOVE_MARKER;
+      case TEAMS:
+        // TEAMS and FEED bold formatting is same
+        return "~~ ";
+      case SLACK:
+        return "~ ";
+      default:
+        return "INVALID";
+    }
+  }
+
+  public static String getEntityUrl(PUBLISH_TO publishTo, ChangeEvent event) {
     EntityInterface entity = (EntityInterface) event.getEntity();
     URI urlInstance = entity.getHref();
     String fqn = event.getEntityFullyQualifiedName();
     if (Objects.nonNull(urlInstance)) {
       String scheme = urlInstance.getScheme();
       String host = urlInstance.getHost();
-      return String.format("<%s://%s/%s/%s>", scheme, host, event.getEntityType(), fqn);
+      if (publishTo == PUBLISH_TO.SLACK) {
+        return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
+      } else if (publishTo == PUBLISH_TO.TEAMS) {
+        return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, event.getEntityType(), fqn);
+      }
     }
     return urlInstance.toString();
   }
@@ -115,7 +175,7 @@ public final class ChangeEventParser {
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
       String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(event));
+      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(PUBLISH_TO.SLACK, event));
       slackMessage.setText(headerText);
     }
     Map<EntityLink, String> messages =
@@ -139,11 +199,11 @@ public final class ChangeEventParser {
     TeamsMessage.Section teamsSections = new TeamsMessage.Section();
     if (event.getEntity() != null) {
       String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(event));
+      String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(PUBLISH_TO.TEAMS, event));
       teamsSections.setActivityTitle(headerText);
     }
     Map<EntityLink, String> messages =
-        getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
+        getFormattedMessages(PUBLISH_TO.TEAMS, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<TeamsMessage.Section> attachmentList = new ArrayList<>();
     for (var entry : messages.entrySet()) {
       TeamsMessage.Section section = new TeamsMessage.Section();
@@ -462,21 +522,11 @@ public final class ChangeEventParser {
     // Replace them with html tags to render nicely in the UI
     // Example: This is a test <!remove>sentence<!remove><!add>line<!add>
     // This is a test <span class="diff-removed">sentence</span><span class="diff-added">line</span>
-    String spanAdd;
-    String spanAddClose;
-    String spanRemove;
-    String spanRemoveClose;
-    if (publishTo == PUBLISH_TO.FEED) {
-      spanAdd = FEED_SPAN_ADD;
-      spanAddClose = FEED_SPAN_CLOSE;
-      spanRemove = FEED_SPAN_REMOVE;
-      spanRemoveClose = FEED_SPAN_CLOSE;
-    } else {
-      spanAdd = "*";
-      spanAddClose = "* ";
-      spanRemove = "~";
-      spanRemoveClose = "~ ";
-    }
+    String spanAdd = getAddMarker(publishTo);
+    String spanAddClose = getAddMarkerClose(publishTo);
+    ;
+    String spanRemove = getRemoveMarker(publishTo);
+    String spanRemoveClose = getRemoveMarkerClose(publishTo);
     if (diff != null) {
       diff = replaceMarkers(diff, addMarker, spanAdd, spanAddClose);
       diff = replaceMarkers(diff, removeMarker, spanRemove, spanRemoveClose);
