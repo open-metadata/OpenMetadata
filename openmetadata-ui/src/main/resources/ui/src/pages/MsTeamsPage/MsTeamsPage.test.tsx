@@ -1,8 +1,21 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
-import MSTeamsPage from './MsTeamsPage.component';
+import MsTeamsPage from './MsTeamsPage.component';
 
 jest.mock('../../components/containers/PageContainerV1', () => {
   return jest
@@ -13,46 +26,23 @@ jest.mock('../../components/containers/PageContainerV1', () => {
 });
 
 jest.mock('../../components/Webhooks/WebhooksV1', () => {
-  return jest.fn().mockImplementation(() => <div>WebhooksComponent</div>);
+  return jest.fn().mockImplementation(() => <>testWebhookV1</>);
 });
 
-jest.mock('../../axiosAPIs/webhookAPI', () => ({
-  deleteWebhook: jest.fn(),
+jest.mock('../../axiosAPIs/webhookAPI.ts', () => ({
   getWebhooks: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-describe('Test WebhooksPage component', () => {
-  it('WebhooksPage component should render properly', async () => {
-    const { container } = render(<MSTeamsPage />, {
+describe('Test MS Teams page Component', () => {
+  it('should load WebhookV1 component on API success', async () => {
+    const { container } = render(<MsTeamsPage />, {
       wrapper: MemoryRouter,
     });
-
     const PageContainerV1 = await findByTestId(container, 'PageContainerV1');
-    const MSTeamsComponent = await findByText(container, /MsTeamsComponent/i);
+    const webhookComponent = await findByText(container, /testWebhookV1/);
 
     expect(PageContainerV1).toBeInTheDocument();
-    expect(MSTeamsComponent).toBeInTheDocument();
-  });
-
-  it('Should render WebhooksPage component if Api fails', async () => {
-    (getWebhooks as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject({
-        response: {
-          data: {
-            message: 'Error!',
-          },
-        },
-      })
-    );
-
-    const { container } = render(<MSTeamsPage />, {
-      wrapper: MemoryRouter,
-    });
-
-    const PageContainerV1 = await findByTestId(container, 'PageContainerV1');
-    const MSTeamsComponent = await findByText(container, /MsTeamsComponent/i);
-
-    expect(PageContainerV1).toBeInTheDocument();
-    expect(MSTeamsComponent).toBeInTheDocument();
+    expect(webhookComponent).toBeInTheDocument();
+    expect(getWebhooks).toBeCalledTimes(1);
   });
 });

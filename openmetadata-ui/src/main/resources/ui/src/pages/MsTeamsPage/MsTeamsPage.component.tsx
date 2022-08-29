@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
@@ -45,7 +46,7 @@ const MsTeamsPage = () => {
       .then((res) => {
         if (res.data) {
           const genericWebhooks = res.data.filter(
-            (d) => d.webhookType === WebhookType.MSTeams
+            (d) => d.webhookType === WebhookType.Msteams
           );
           setData(genericWebhooks);
           setPaging(res.paging);
@@ -83,7 +84,7 @@ const MsTeamsPage = () => {
   };
 
   const handleAddWebhook = () => {
-    history.push(getAddWebhookPath(WebhookType.MSTeams));
+    history.push(getAddWebhookPath(WebhookType.Msteams));
   };
 
   const handleClickWebhook = (name: string) => {
@@ -94,22 +95,24 @@ const MsTeamsPage = () => {
     fetchData();
   }, []);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
-    <WebhooksV1
-      currentPage={currentPage}
-      data={data}
-      paging={paging}
-      selectedStatus={selectedStatus}
-      webhookType={WebhookType.MSTeams}
-      onAddWebhook={handleAddWebhook}
-      onClickWebhook={handleClickWebhook}
-      onPageChange={handlePageChange}
-      onStatusFilter={handleStatusFilter}
-    />
+    <PageContainerV1>
+      {!isLoading ? (
+        <WebhooksV1
+          currentPage={currentPage}
+          data={data}
+          paging={paging}
+          selectedStatus={selectedStatus}
+          webhookType={WebhookType.Msteams}
+          onAddWebhook={handleAddWebhook}
+          onClickWebhook={handleClickWebhook}
+          onPageChange={handlePageChange}
+          onStatusFilter={handleStatusFilter}
+        />
+      ) : (
+        <Loader />
+      )}
+    </PageContainerV1>
   );
 };
 

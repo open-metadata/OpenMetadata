@@ -224,7 +224,7 @@ const GlobalSettingRouter = () => {
         )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
-          GlobalSettingOptions.MS_TEAMS
+          GlobalSettingOptions.MSTEAMS
         )}
       />
 
