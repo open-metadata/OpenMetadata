@@ -164,6 +164,7 @@ const jsonData = {
     'user-restored-success': 'User restored successfully!',
 
     'update-profile-congif-success': 'Profile config updated successfully!',
+    'update-test-case-success': 'Test case updated successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',

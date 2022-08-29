@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -86,9 +99,10 @@ const TestSuiteDetailsPage = () => {
   };
 
   const fetchTestCases = async (param?: ListTestCaseParams, limit?: number) => {
+    setIsTestCaseLoaded(false);
     try {
       const response = await getListTestCase({
-        fields: 'testCaseResult',
+        fields: 'testCaseResult,testDefinition',
         testSuiteId: testSuiteId,
         limit: limit || PAGE_SIZE,
         before: param && param.before,
@@ -96,20 +110,18 @@ const TestSuiteDetailsPage = () => {
         ...param,
       });
 
-      if (response) {
-        setTestCaseResult(response.data);
-        setTestCasesPaging(response.paging);
-      } else {
-        showErrorToast(
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-      }
+      setTestCaseResult(response.data);
+      setTestCasesPaging(response.paging);
     } catch {
       setTestCaseResult([]);
       showErrorToast(jsonData['api-error-messages']['fetch-test-cases-error']);
     } finally {
       setIsTestCaseLoaded(true);
     }
+  };
+
+  const afterSubmitAction = () => {
+    fetchTestCases();
   };
 
   const fetchTestSuiteByName = async () => {
@@ -277,6 +289,7 @@ const TestSuiteDetailsPage = () => {
                     testCasePageHandler={handleTestCasePaging}
                     testCases={testCaseResult}
                     testCasesPaging={testCasesPaging}
+                    onTestUpdate={afterSubmitAction}
                   />
                 ) : (
                   <Loader />

@@ -19,12 +19,17 @@ import React, { useMemo, useState } from 'react';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
+import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
-const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
+const DataQualityTab: React.FC<DataQualityTabProps> = ({
+  testCases,
+  onTestUpdate,
+}) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
+  const [editTestCase, setEditTestCase] = useState<TestCase>();
   const columns: ColumnsType<TestCase> = useMemo(() => {
     return [
       {
@@ -67,8 +72,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
         title: 'Actions',
         dataIndex: 'actions',
         key: 'actions',
+        width: 100,
         render: (_, record) => (
-          <Space>
+          <Space size={8}>
             <Tooltip placement="bottom" title="Delete">
               <Button
                 icon={
@@ -82,6 +88,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
                 onClick={() => {
                   setSelectedTestCase(record);
                 }}
+              />
+            </Tooltip>
+            <Tooltip placement="bottom" title="Edit">
+              <Button
+                icon={
+                  <SVGIcons
+                    alt="edit"
+                    className="tw-cursor-pointer tw-align-text-top"
+                    icon={Icons.EDIT}
+                    title="Edit"
+                    width="16px"
+                  />
+                }
+                type="text"
+                onClick={() => setEditTestCase(record)}
               />
             </Tooltip>
           </Space>
@@ -101,6 +122,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
         }}
         pagination={false}
         size="small"
+      />
+      <EditTestCaseModal
+        testCase={editTestCase as TestCase}
+        visible={!isUndefined(editTestCase)}
+        onCancel={() => setEditTestCase(undefined)}
+        onUpdate={onTestUpdate}
       />
 
       <DeleteWidgetModal

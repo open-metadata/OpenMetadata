@@ -59,3 +59,10 @@ export type SelectTestSuiteType = {
 export interface ParameterFormProps {
   definition: TestDefinition;
 }
+
+export interface EditTestCaseModalProps {
+  visible: boolean;
+  testCase: TestCase;
+  onCancel: () => void;
+  onUpdate?: () => void;
+}
