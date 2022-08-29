@@ -100,12 +100,16 @@ class SqlColumnHandlerMixin:
                 table_name, schema_name
             )
         except NotImplementedError:
-            logger.warning("Cannot obtain unique constraints - NotImplementedError")
+            logger.debug(
+                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
             unique_constraints = []
         try:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
-            logger.warning("Cannot obtain foreign constraints - NotImplementedError")
+            logger.debug(
+                "Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
             foreign_constraints = []
 
         pk_columns = (

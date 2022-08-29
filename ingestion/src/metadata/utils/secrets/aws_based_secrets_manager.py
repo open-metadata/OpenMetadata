@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.services.connections.serviceConnection imp
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.secrets_manager import (
     AUTH_PROVIDER_MAPPING,
     AUTH_PROVIDER_SECRET_PREFIX,
@@ -37,8 +38,9 @@ from metadata.utils.secrets.secrets_manager import (
     SecretsManager,
     ServiceConnectionType,
     ServiceWithConnectionType,
-    logger,
 )
+
+logger = utils_logger()
 
 NULL_VALUE = "null"
 
@@ -101,10 +103,9 @@ class AWSBasedSecretsManager(SecretsManager, ABC):
                 config.securityConfig = AUTH_PROVIDER_MAPPING.get(
                     config.authProvider
                 ).parse_obj(json.loads(auth_config_json))
-            except KeyError:
-                raise NotImplementedError(
-                    f"No client implemented for auth provider: [{config.authProvider}]"
-                )
+            except KeyError as err:
+                msg = f"No client implemented for auth provider [{config.authProvider}]: {err}"
+                raise NotImplementedError(msg)
 
     def retrieve_dbt_source_config(
         self, source_config: SourceConfig, pipeline_name: str

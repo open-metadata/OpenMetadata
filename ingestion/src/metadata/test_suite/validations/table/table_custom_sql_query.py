@@ -59,9 +59,9 @@ def table_custom_sql_query(
     try:
         rows = runner._session.execute(text(sql_expression)).all()
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

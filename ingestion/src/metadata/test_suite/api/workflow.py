@@ -105,7 +105,9 @@ class TestSuiteWorkflow:
             config = parse_workflow_config_gracefully(config_dict)
             return cls(config)
         except ValidationError as err:
-            logger.error("Error trying to parse the Profiler Workflow configuration")
+            logger.error(
+                f"Error trying to parse the Profiler Workflow configuration: {err}"
+            )
             raise err
 
     def _get_unique_table_entities(self, test_cases: List[TestCase]) -> Set:
@@ -316,11 +318,11 @@ class TestSuiteWorkflow:
                         )
                     )
                 )
-            except Exception as err:
+            except Exception as exc:
                 logger.warning(
-                    f"Couldn't create test case name {test_case_name_to_create}: {err}"
+                    f"Couldn't create test case name {test_case_name_to_create}: {exc}"
                 )
-                logger.debug(traceback.format_exc(err))
+                logger.debug(traceback.format_exc(exc))
 
         return created_test_case
 
@@ -353,9 +355,9 @@ class TestSuiteWorkflow:
                         self.sink.write_record(test_result)
                     logger.info(f"Successfuly ran test case {test_case.name.__root__}")
                     self.status.processed(test_case.fullyQualifiedName.__root__)
-                except Exception as err:
-                    logger.debug(traceback.format_exc(err))
-                    logger.warning(f"Could not run test case {test_case.name}: {err}")
+                except Exception as exc:
+                    logger.debug(traceback.format_exc(exc))
+                    logger.warning(f"Could not run test case {test_case.name}: {exc}")
                     self.status.failure(test_case.fullyQualifiedName.__root__)
 
     def print_status(self) -> int:

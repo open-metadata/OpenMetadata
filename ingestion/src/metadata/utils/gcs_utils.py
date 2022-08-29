@@ -24,13 +24,19 @@ logger = utils_logger()
 
 
 def read_csv_from_gcs(key: str, bucket_name: str) -> DataFrame:
-    df = dd.read_csv(f"gs://{bucket_name}/{key}")
-    return df
+    try:
+        return dd.read_csv(f"gs://{bucket_name}/{key}")
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
 def read_tsv_from_gcs(key: str, bucket_name: str) -> DataFrame:
-    df = dd.read_csv(f"gs://{bucket_name}/{key}", sep="\t")
-    return df
+    try:
+        return dd.read_csv(f"gs://{bucket_name}/{key}", sep="\t")
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error reading TSV from GCS - {exc}")
 
 
 def read_json_from_gcs(client, key: str, bucket_name: str) -> DataFrame:
@@ -40,7 +46,7 @@ def read_json_from_gcs(client, key: str, bucket_name: str) -> DataFrame:
         data = blob.download_as_string().decode()
         data = json.loads(data)
         if isinstance(data, list):
-            df = pd.DataFrame.from_dict(data)
+            df = pd.DataFrame.from_records(data)
         else:
             df = pd.DataFrame.from_dict(
                 dict([(k, pd.Series(v)) for k, v in data.items()])
@@ -49,7 +55,7 @@ def read_json_from_gcs(client, key: str, bucket_name: str) -> DataFrame:
 
     except ValueError as verr:
         logger.debug(traceback.format_exc())
-        logger.error(verr)
+        logger.warning(f"Error reading JSON from GCS - {verr}")
 
 
 def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:

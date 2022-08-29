@@ -17,7 +17,6 @@ import json
 import traceback
 from typing import List, Optional, Union
 
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
