@@ -15,11 +15,11 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
 services:
-  postgres:
+  postgresql:
     build:
       context: ../../.
       dockerfile: docker/local-metadata/Dockerfile_postgres
-    container_name: openmetadata_postgres
+    container_name: openmetadata_postgresql
     restart: always
     depends_on:
       - elasticsearch
@@ -33,6 +33,11 @@ services:
     networks:
       local_app_net:
         ipv4_address: 172.16.239.10
+    healthcheck:
+      test: psql -U postgres -tAc 'select 1' -d openmetadata_db
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
@@ -40,7 +45,6 @@ services:
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
-
     networks:
       local_app_net:
         ipv4_address: 172.16.239.11
@@ -100,13 +104,13 @@ services:
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
-      #Database configuration for Postgres
+      # Database configuration for Postgres
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
       DB_USE_SSL: ${DB_USE_SSL:-false}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
-      DB_HOST: ${DB_HOST:-postgres}
+      DB_HOST: ${DB_HOST:-postgresql}
       DB_PORT: ${DB_PORT:-5432}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db} 
     expose:
@@ -119,28 +123,35 @@ services:
       - 8585:8585
       - 8586:8586
     depends_on:
-      - elasticsearch
-      - postgres
-      - ingestion
+      elasticsearch:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
     networks:
       local_app_net:
         ipv4_address: 172.16.239.13
     extra_hosts:
-      - "postgres:172.16.239.10"
+      - "postgresql:172.16.239.10"
       - "elasticsearch:172.16.239.11"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
 
   ingestion:
     build:
       context: ../../.
-      dockerfile: ingestion/Dockerfile
+      dockerfile: ingestion/Dockerfile_local
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
     depends_on:
-      - postgres
-      - elasticsearch
+      elasticsearch:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
+      openmetadata-server:
+        condition: service_healthy
     environment:
-      DB_HOST: ${DB_HOST:-postgres}
+      DB_HOST: ${DB_HOST:-postgresql}
       DB_PORT: ${DB_PORT:-5432}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
       DB_USER: ${DB_USER:-airflow_user}
@@ -153,7 +164,7 @@ services:
     networks:
       - local_app_net
     extra_hosts:
-      - "postgres:172.16.239.10"
+      - "postgresql:172.16.239.10"
       - "localhost:172.16.239.11"
       - "localhost:172.16.239.13"
     volumes:
