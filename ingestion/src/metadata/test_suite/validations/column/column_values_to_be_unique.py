@@ -73,8 +73,8 @@ def column_values_to_be_unique(
         )
         unique_count_value_res = unique_count_value_dict.get(Metrics.UNIQUE_COUNT.name)
 
-    except Exception as err:
-        msg = f"Error computing {test_case.name.__root__} for {runner.table.__tablename__}: {err}"
+    except Exception as exc:
+        msg = f"Error computing {test_case.name.__root__} for {runner.table.__tablename__}: {exc}"
         logger.debug(traceback.format_exc())
         logger.warning(msg)
         return TestCaseResult(

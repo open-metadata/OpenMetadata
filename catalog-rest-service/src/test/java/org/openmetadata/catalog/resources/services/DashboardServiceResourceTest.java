@@ -18,6 +18,8 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -45,7 +47,6 @@ import org.openmetadata.catalog.services.connections.dashboard.LookerConnection;
 import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.DashboardConnection;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -111,14 +112,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
 
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("connection")
-                .withOldValue(dashboardConnection)
-                .withNewValue(dashboardConnection1));
+    fieldAdded(change, "description", "description1");
+    fieldUpdated(change, "connection", dashboardConnection, dashboardConnection1);
     DashboardService updatedService =
         updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     validateConnection(
@@ -137,13 +132,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(supersetConnection);
     update = createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("connection")
-                .withOldValue(dashboardConnection1)
-                .withNewValue(dashboardConnection2));
+    fieldUpdated(change, "connection", dashboardConnection1, dashboardConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     updatedService = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     validateConnection(

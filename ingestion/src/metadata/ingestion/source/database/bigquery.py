@@ -12,6 +12,7 @@
 We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
+import traceback
 from typing import Iterable, List, Optional
 
 from google import auth
@@ -78,8 +79,9 @@ def get_columns(bq_schema):
                     .get_policy_tag(name=field.policy_tags.names[0])
                     .display_name
                 )
-        except Exception as err:
-            logger.info(f"Skipping Policy Tag: {err}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Skipping Policy Tag: {exc}")
         col_list.append(col_obj)
     return col_list
 
@@ -180,7 +182,6 @@ class BigquerySource(CommonDbSourceService):
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         if table_type == TableType.View:
-            view_definition = ""
             try:
                 view_definition = inspector.get_view_definition(
                     f"{self.project_id}.{schema_name}.{table_name}"
@@ -189,6 +190,7 @@ class BigquerySource(CommonDbSourceService):
                     "" if view_definition is None else str(view_definition)
                 )
             except NotImplementedError:
+                logger.warning("View definition not implemented")
                 view_definition = ""
             return view_definition
 

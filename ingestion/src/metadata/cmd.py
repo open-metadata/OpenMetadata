@@ -13,6 +13,7 @@ import logging
 import os
 import pathlib
 import sys
+import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
@@ -114,8 +115,10 @@ def profile(config: str) -> None:
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = ProfilerWorkflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error creating Profiler Workflow: {err}")
+        click.echo(err, err=True)
         sys.exit(1)
 
     workflow.execute()

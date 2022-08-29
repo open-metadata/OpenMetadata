@@ -51,7 +51,8 @@ def validate_private_key(private_key: str) -> None:
     try:
         serialization.load_pem_private_key(private_key.encode(), password=None)
     except ValueError as err:
-        raise InvalidPrivateKeyException(f"Cannot serialise key - {err}")
+        msg = f"Cannot serialise key: {err}"
+        raise InvalidPrivateKeyException(msg)
 
 
 def create_credential_tmp_file(credentials: dict) -> str:

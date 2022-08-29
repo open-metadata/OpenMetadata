@@ -15,7 +15,7 @@ Open Metadata table quality.
 This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
-
+import traceback
 import warnings
 from typing import Dict, Optional, Union
 
@@ -245,6 +245,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 test_case_builder=test_builder
             ).build_test_from_builder()
         except KeyError:
+            logger.debug(traceback.format_exc())
             logger.warning(
                 "GE Test %s not yet support. Skipping test ingestion",
                 result["expectation_config"]["expectation_type"],

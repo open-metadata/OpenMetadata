@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+import traceback
 from typing import Any, Dict, Optional
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
@@ -112,13 +113,14 @@ class OMetaMlModelMixin(OMetaLineageMixin):
             from sklearn.base import BaseEstimator
 
             # pylint: enable=import-outside-toplevel
-        except ModuleNotFoundError as exc:
+        except ModuleNotFoundError as err:
+            logger.debug(traceback.format_exc())
             logger.error(
                 "Cannot import BaseEstimator, please install sklearn plugin: "
                 "pip install openmetadata-ingestion[sklearn], %s",
-                exc,
+                err,
             )
-            raise exc
+            raise err
 
         if not isinstance(model, BaseEstimator):
             raise ValueError("Input model is not an instance of sklearn BaseEstimator")

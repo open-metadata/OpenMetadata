@@ -18,6 +18,7 @@ import static org.openmetadata.catalog.Entity.DASHBOARD;
 import static org.openmetadata.catalog.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.catalog.Entity.MLMODEL;
 import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -43,7 +44,6 @@ import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.EventType;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -208,10 +208,8 @@ public class UsageRepository {
   }
 
   private ChangeDescription getChangeDescription(Double version, Object newValue, Object oldValue) {
-    FieldChange fieldChange =
-        new FieldChange().withName(FIELD_USAGE_SUMMARY).withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
-    change.getFieldsUpdated().add(fieldChange);
+    fieldUpdated(change, FIELD_USAGE_SUMMARY, oldValue, newValue);
     return change;
   }
 

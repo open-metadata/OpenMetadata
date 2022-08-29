@@ -17,7 +17,7 @@ import GlobalSetting from '../../components/GlobalSetting/GlobalSetting';
 
 const GlobalSettingPage = () => {
   return (
-    <PageContainerV1 className="tw-pt-4">
+    <PageContainerV1>
       <GlobalSetting />
     </PageContainerV1>
   );

@@ -263,9 +263,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             self.generated_auth_token = token
             self.expiry = response_dict.get(EXPIRY)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(f"Unexpected error fetching Okta auth token: {exc}")
             sys.exit()
 
     def get_access_token(self):

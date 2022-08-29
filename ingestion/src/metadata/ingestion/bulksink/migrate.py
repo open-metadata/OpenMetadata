@@ -222,14 +222,14 @@ class MigrateBulkSink(BulkSink):
                 )
 
             except (APIError, ValidationError) as err:
+                logger.debug(traceback.format_exc())
                 logger.error(
-                    "Failed to ingest table {} in database {} ".format(
+                    "Failed to ingest table {} in database {}: {} ".format(
                         table.get("name"),
                         table.get("database").get("name"),
+                        err,
                     )
                 )
-                logger.debug(traceback.format_exc())
-                logger.error(err)
                 self.status.failure("Table: {}".format(table.get("name")))
 
     def _create_role(self, create_role) -> Role:
@@ -240,18 +240,18 @@ class MigrateBulkSink(BulkSink):
             role = self.metadata.create_or_update(create_req)
             self.role_entities[role.name] = str(role.id.__root__)
             return role
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Error creating role [{create_role}]: {exc}")
 
     def _create_team(self, create_team: CreateTeamRequest) -> Team:
         try:
             team = self.metadata.create_or_update(create_team)
             self.team_entities[team.name.__root__] = str(team.id.__root__)
             return team
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Error creating team [{create_team}]: {exc}")
 
     def _get_role_ids(self, user_obj: User):
         if user_obj.roles:  # Roles can be optional
@@ -286,8 +286,9 @@ class MigrateBulkSink(BulkSink):
                     )
                     team_entity = self._create_team(team_request)
                     team_ids.append(team_entity.id.__root__)
-                except Exception as err:
-                    logger.error(err)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Unexpected error to get team id [{team}]: {exc}")
             return team_ids
 
     def write_users(self, file):
@@ -324,12 +325,15 @@ class MigrateBulkSink(BulkSink):
                     user = self.metadata.create_or_update(metadata_user)
                     self.status.records_written(user_obj.displayName)
                     logger.info("User: {}".format(user_obj.displayName))
-                except Exception as err:
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(f"Failed to create user [{user}]: {exc}")
 
-        except Exception as err:
-            self.status.failure(f"User:")
+        except Exception as exc:
+            msg = f"Failed to write users from file [{file}]: {exc}"
+            logger.debug(traceback.format_exc())
+            logger.error(msg)
+            self.status.failure(msg)
 
     def _add_entity_owner_by_patch(self, owner_dict, entity, entity_id):
         if owner_dict:
@@ -388,8 +392,8 @@ class MigrateBulkSink(BulkSink):
                 logger.info(f"Successfully ingested topic {topic.get('name')}")
                 self.status.records_written(f"Topic: {topic.get('name')}")
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest topic {topic.get('name')}")
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Failed to ingest topic [{topic.get('name')}]: {err}")
                 self.status.failure(f"Topic: {topic.get('name')}")
 
     def write_pipelines(self, file):
@@ -422,8 +426,10 @@ class MigrateBulkSink(BulkSink):
                     self.status.records_written(f"Topic: {pipeline.get('name')}")
 
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest pipeline {pipeline.get('name')}")
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to ingest pipeline [{pipeline.get('name')}]: {err}"
+                )
                 self.status.failure(f"Pipeline: {pipeline.get('name')}")
 
     def _get_glossary_reviewers_entities(self, reviewers):
@@ -463,9 +469,9 @@ class MigrateBulkSink(BulkSink):
                 )
                 self.status.records_written(f"Pipeline: {glossary_request.displayName}")
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest pipeline {glossary_obj.name}")
-                logger.error(err)
-                self.status.failure(f"Pipeline: {glossary_obj.name}")
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Failed to write glossary [{glossary}]: {err}")
+                self.status.failure(f"Glossary: {glossary}")
 
     def _get_glossary_entity(self, glossary):
         glossary_obj = self.metadata.get_by_name(entity=Glossary, fqn=glossary.name)
@@ -484,8 +490,11 @@ class MigrateBulkSink(BulkSink):
                     name=glossary_term.name,
                     type=glossary_term.type,
                 )
-            except Exception:
-                logger.error(f"Failed to fetch glossary term: {glossary_term.name}")
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Failed to fetch glossary term: {glossary_term.name}: {exc}"
+                )
 
     def write_glossary_term(self, file):
         for glossary_term in file.readlines():
@@ -509,9 +518,11 @@ class MigrateBulkSink(BulkSink):
                 )
                 self.status.records_written(f"Pipeline: {glossary_request.displayName}")
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest pipeline {glossary_term_obj.name}")
-                logger.error(err)
-                self.status.failure(f"Pipeline: {glossary_term_obj.name}")
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to write glossary term [{glossary_term}]: {err}"
+                )
+                self.status.failure(f"Glossary term: {glossary_term}")
 
     def _create_tag_category(self, tag_category: CreateTagCategoryRequest):
         resp = self.metadata.client.post(
@@ -543,8 +554,10 @@ class MigrateBulkSink(BulkSink):
                 )
                 self._create_tag_category(tag_category_request)
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest TagCategory {tag_category.get('name')}")
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to ingest tag [{tag_category.get('name')}]: {err}"
+                )
                 self.status.failure(f"TagCategory: {tag_category.get('name')}")
 
             try:
@@ -555,12 +568,14 @@ class MigrateBulkSink(BulkSink):
 
                     self._add_tag_to_category(tag_category.get("name"), tag_request)
 
-                logger.info(f"Successfully ingested Tag {tag_category_request.name}")
-                self.status.records_written(f"Tag: {tag_category_request.name}")
+                logger.info(f"Successfully ingested Tag {tag_category.get('name')}")
+                self.status.records_written(f"Tag: {tag_category.get('name')}")
 
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest tag {tag_category.get('name')}")
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to ingest tag [{tag_category.get('name')}]: {err}"
+                )
                 self.status.failure(f"Tag: {tag_category.get('name')}")
 
     def write_messaging_services(self, file):
@@ -598,8 +613,10 @@ class MigrateBulkSink(BulkSink):
                 )
                 self.status.records_written(f"Tag: {messaging_service.get('name')}")
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest tag {messaging_service.get('name')}")
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to ingest tag [{messaging_service.get('name')}]: {err}"
+                )
                 self.status.failure(f"Tag: {messaging_service.get('name')}")
 
     def write_pipeline_services(self, file):
@@ -632,8 +649,10 @@ class MigrateBulkSink(BulkSink):
                 )
                 self.status.records_written(f"Tag: {pipeline_service.get('name')}")
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest tag {pipeline_service.get('name')}")
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to ingest tag [{pipeline_service.get('name')}]: {err}"
+                )
                 self.status.failure(f"Tag: {pipeline_service.get('name')}")
 
     def write_database_services(self, file):
@@ -674,8 +693,10 @@ class MigrateBulkSink(BulkSink):
                 )
                 self.status.records_written(f"Tag: {databas_services.get('name')}")
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest tag {databas_services.get('name')}")
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to ingest tag [{databas_services.get('name')}]: {err}"
+                )
                 self.status.failure(f"Tag: {databas_services.get('name')}")
 
     def get_status(self):

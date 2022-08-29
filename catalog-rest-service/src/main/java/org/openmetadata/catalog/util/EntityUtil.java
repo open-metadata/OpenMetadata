@@ -52,6 +52,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
@@ -438,5 +439,18 @@ public final class EntityUtil {
   public static String addField(String fields, String newField) {
     fields = fields == null ? "" : fields;
     return fields.isEmpty() ? newField : fields + ", " + newField;
+  }
+
+  public static void fieldAdded(ChangeDescription change, String fieldName, Object newValue) {
+    change.getFieldsAdded().add(new FieldChange().withName(fieldName).withNewValue(newValue));
+  }
+
+  public static void fieldDeleted(ChangeDescription change, String fieldName, Object oldValue) {
+    change.getFieldsDeleted().add(new FieldChange().withName(fieldName).withOldValue(oldValue));
+  }
+
+  public static void fieldUpdated(ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
+    FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
+    change.getFieldsUpdated().add(fieldChange);
   }
 }
