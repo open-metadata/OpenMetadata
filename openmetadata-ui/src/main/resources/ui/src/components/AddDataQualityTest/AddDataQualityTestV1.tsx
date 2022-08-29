@@ -40,7 +40,7 @@ import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getTestSuitePath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -126,7 +126,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   }, [table, entityTypeFQN, isColumnFqn]);
 
   const handleViewTestSuiteClick = () => {
-    history.push(getSettingPath());
+    history.push(getTestSuitePath(testSuiteData?.fullyQualifiedName || ''));
   };
 
   const handleAirflowStatusCheck = (): Promise<void> => {

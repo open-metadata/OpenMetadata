@@ -32,7 +32,7 @@ import {
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -121,7 +121,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const handleViewTestSuiteClick = () => {
-    history.push(getSettingPath());
+    history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
   };
 
   const handleDeployClick = () => {
