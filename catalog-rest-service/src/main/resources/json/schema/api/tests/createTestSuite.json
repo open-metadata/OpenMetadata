@@ -19,15 +19,11 @@
       "description": "Description of the test suite.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "scheduleInterval": {
-      "description": "TestSuite schedule interval in cron format.",
-      "type": "string"
-    },
     "owner": {
       "description": "Owner of this test suite",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "description", "testPlatforms"],
+  "required": ["name", "description"],
   "additionalProperties": false
 }

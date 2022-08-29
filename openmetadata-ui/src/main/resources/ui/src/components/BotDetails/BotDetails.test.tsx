@@ -68,6 +68,26 @@ const mockProp = {
   updateBotsDetails,
 };
 
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    permissions: {
+      bot: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPemission: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
     generateUserToken: jest

@@ -352,13 +352,19 @@ class SQAInterface(InterfaceProtocol):
             profile_sample: sample for the profile
         """
 
-        return validation_enum_registry.registry[
-            test_case.testDefinition.fullyQualifiedName
-        ](
-            test_case,
-            execution_date=datetime.now(tz=timezone.utc).timestamp(),
-            runner=self.runner,
-        )
+        try:
+            return validation_enum_registry.registry[
+                test_case.testDefinition.fullyQualifiedName
+            ](
+                test_case,
+                execution_date=datetime.now(tz=timezone.utc).timestamp(),
+                runner=self.runner,
+            )
+        except KeyError as err:
+            logger.warning(
+                f"Test definition {test_case.testDefinition.fullyQualifiedName} not registered in OpenMetadata TestDefintion registry. Skipping test case {test_case.name.__root__}"
+            )
+            return None
 
     def close(self):
         """close session"""

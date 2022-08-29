@@ -42,7 +42,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.filter.Filters;
@@ -51,11 +50,11 @@ import org.openmetadata.catalog.jdbi3.SettingsRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.settings.Settings;
-import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FilterUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Path("/v1/settings")
 @Api(value = "Settings Collection", tags = "Settings collection")
@@ -80,7 +79,7 @@ public class SettingsResource {
     }
     String jsonDataFile = jsonDataFiles.get(0);
     try {
-      String json = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(jsonDataFile));
+      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
       List<Settings> settings = JsonUtils.readObjects(json, Settings.class);
       settings.forEach(
           (setting) -> {
@@ -224,9 +223,5 @@ public class SettingsResource {
           JsonPatch patch)
       throws IOException {
     return settingsRepository.patchSetting(settingName, patch);
-  }
-
-  private Settings getSettings(SettingsType configType, Object configValue) {
-    return new Settings().withConfigType(configType).withConfigValue(configValue);
   }
 }

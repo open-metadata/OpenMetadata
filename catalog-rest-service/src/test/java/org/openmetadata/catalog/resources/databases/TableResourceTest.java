@@ -37,6 +37,9 @@ import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.FullyQualifiedName.build;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
@@ -125,7 +128,6 @@ import org.openmetadata.catalog.type.ColumnProfilerConfig;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.DataModel.ModelType;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
@@ -340,21 +342,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTablePartition(partition);
 
     ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(column3)));
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName(build("columns", "column1", "description"))
-                .withOldValue("column1")
-                .withNewValue(""));
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange().withName(build("columns", "column1", "displayName")).withOldValue("c1").withNewValue(""));
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName(build("columns", "column2", "displayName")).withOldValue("c2"));
+    fieldAdded(change, "columns", List.of(column3));
+    fieldUpdated(change, build("columns", "column1", "description"), "column1", "");
+    fieldUpdated(change, build("columns", "column1", "displayName"), "c1", "");
+    fieldDeleted(change, build("columns", "column2", "displayName"), "c2");
     table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
@@ -372,21 +363,21 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.getColumns().add(2, column4);
 
     change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(column4)));
+    fieldAdded(change, "columns", List.of(column4));
     table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Change column1 data type from INT to STRING to cause major update
     Column updatedColumn1 = getColumn("column1", STRING, null, "column1", "c1").withOrdinalPosition(1);
     create.getColumns().set(0, updatedColumn1);
     change = getChangeDescription(table.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(column1)));
-    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(updatedColumn1)));
+    fieldDeleted(change, "columns", List.of(column1));
+    fieldAdded(change, "columns", List.of(updatedColumn1));
     table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
     // Delete column4 to cause major update
     create.getColumns().remove(2);
     change = getChangeDescription(table.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(column4)));
+    fieldDeleted(change, "columns", List.of(column4));
     updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
     // Change the case of the column name for column2, and it shouldn't update
@@ -451,35 +442,26 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
     change = getChangeDescription(table2.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(c1)));
+    fieldDeleted(change, "columns", List.of(c1));
     Column c1_new = getColumn("c1", ARRAY, "array<int>", USER_ADDRESS_TAG_LABEL).withArrayDataType(CHAR);
-    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(c1_new)));
+    fieldAdded(change, "columns", List.of(c1_new));
 
     // c2 from
     // struct<a:int, b:char, c:struct<d:int>>>
     // to
     // struct<-----, b:char, c:struct<d:int, e:char>, f:char>
     c2_b.withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // Add new tag to c2.b tag
-    change
-        .getFieldsAdded()
-        .add(
-            new FieldChange()
-                .withName(build("columns", "c2", "b", "tags"))
-                .withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
-
+    fieldAdded(change, build("columns", "c2", "b", "tags"), List.of(GLOSSARY1_TERM1_LABEL));
     Column c2_c_e = getColumn("e", INT, USER_ADDRESS_TAG_LABEL);
     c2_c.getChildren().add(c2_c_e); // Add c2.c.e
-    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "c2", "c")).withNewValue(List.of(c2_c_e)));
-
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName(build("columns", "c2")).withOldValue(List.of(c2.getChildren().get(0))));
+    fieldAdded(change, build("columns", "c2", "c"), List.of(c2_c_e));
+    fieldDeleted(change, build("columns", "c2"), List.of(c2.getChildren().get(0)));
     c2.getChildren().remove(0); // Remove c2.a from struct
 
     Column c2_f = getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL);
     c2.getChildren().add(c2_f); // Add c2.f
     create2 = create2.withColumns(Arrays.asList(c1_new, c2));
-    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "c2")).withNewValue(List.of(c2_f)));
+    fieldAdded(change, build("columns", "c2"), List.of(c2_f));
 
     // Update the columns with PUT operation and validate update
     // c1 array<int>                                   --> c1 array<chart
@@ -540,7 +522,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     ChangeDescription change = getChangeDescription(table.getVersion());
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
-    change.getFieldsAdded().add(new FieldChange().withName("tableConstraints").withNewValue(List.of(constraint)));
+    fieldAdded(change, "tableConstraints", List.of(constraint));
     request = request.withTableConstraints(List.of(constraint));
     Table updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -555,14 +537,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withConstraintType(ConstraintType.PRIMARY_KEY)
             .withColumns(List.of(COLUMNS.get(0).getName()));
     request = request.withTableConstraints(List.of(constraint1));
-    change.getFieldsAdded().add(new FieldChange().withName("tableConstraints").withNewValue(List.of(constraint1)));
-    change.getFieldsDeleted().add(new FieldChange().withName("tableConstraints").withOldValue(List.of(constraint)));
+    fieldAdded(change, "tableConstraints", List.of(constraint1));
+    fieldDeleted(change, "tableConstraints", List.of(constraint));
     updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove table constraint and ensure minor version changes
     change = getChangeDescription(updatedTable.getVersion());
     request = request.withTableConstraints(null);
-    change.getFieldsDeleted().add(new FieldChange().withName("tableConstraints").withOldValue(List.of(constraint1)));
+    fieldDeleted(change, "tableConstraints", List.of(constraint1));
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -577,39 +559,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Change the column constraints and expect minor version change
     ChangeDescription change = getChangeDescription(table.getVersion());
     request.getColumns().get(0).withConstraint(ColumnConstraint.NOT_NULL);
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName(build("columns", "c1", "constraint"))
-                .withOldValue(ColumnConstraint.NULL)
-                .withNewValue(ColumnConstraint.NOT_NULL));
+    fieldUpdated(change, build("columns", "c1", "constraint"), ColumnConstraint.NULL, ColumnConstraint.NOT_NULL);
 
     request.getColumns().get(1).withConstraint(ColumnConstraint.PRIMARY_KEY);
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName(build("columns", "c2", "constraint"))
-                .withOldValue(ColumnConstraint.UNIQUE)
-                .withNewValue(ColumnConstraint.PRIMARY_KEY));
+    fieldUpdated(change, build("columns", "c2", "constraint"), ColumnConstraint.UNIQUE, ColumnConstraint.PRIMARY_KEY);
 
     Table updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove column constraints and expect minor version change
     change = getChangeDescription(updatedTable.getVersion());
     request.getColumns().get(0).withConstraint(null);
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName(build("columns", "c1", "constraint")).withOldValue(ColumnConstraint.NOT_NULL));
+    fieldDeleted(change, build("columns", "c1", "constraint"), ColumnConstraint.NOT_NULL);
 
     request.getColumns().get(1).withConstraint(null);
-    change
-        .getFieldsDeleted()
-        .add(
-            new FieldChange()
-                .withName(build("columns", "c2", "constraint"))
-                .withOldValue(ColumnConstraint.PRIMARY_KEY));
+    fieldDeleted(change, build("columns", "c2", "constraint"), ColumnConstraint.PRIMARY_KEY);
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -647,9 +610,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<Column> updatedColumns = new ArrayList<>();
     updatedColumns.add(getColumn("c1", BIGINT, null).withTags(tags));
     ChangeDescription change = getChangeDescription(table.getVersion());
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName(build("columns", "c1", "tags")).withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
+    fieldAdded(change, build("columns", "c1", "tags"), List.of(GLOSSARY1_TERM1_LABEL));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated
@@ -664,7 +625,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     change = getChangeDescription(table.getVersion());
     Column c2 = getColumn("c2", BINARY, null).withOrdinalPosition(2).withDataLength(10).withTags(tags);
     updatedColumns.add(c2);
-    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(c2)));
+    fieldAdded(change, "columns", List.of(c2));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated - column c2 added both address
@@ -680,7 +641,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     c2.setDataLength(20);
     change = getChangeDescription(table.getVersion());
     String fieldName = build("columns", "c2", "dataLength");
-    change.getFieldsUpdated().add(new FieldChange().withName(fieldName).withOldValue(10).withNewValue(20));
+    fieldUpdated(change, fieldName, 10, 20);
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
@@ -689,7 +650,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //
     c2.setDataLength(10);
     change = getChangeDescription(table.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withName(fieldName).withOldValue(20).withNewValue(10));
+    fieldUpdated(change, fieldName, 20, 10);
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
     //
@@ -697,7 +658,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //
     change = getChangeDescription(table.getVersion());
     updatedColumns.remove(1);
-    change.getFieldsDeleted().add(new FieldChange().withName("columns").withOldValue(List.of(c2)));
+    fieldDeleted(change, "columns", List.of(c2));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
     assertEquals(1, table.getColumns().size());
 
@@ -1685,8 +1646,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table.withTableType(TableType.Regular).withTableConstraints(tableConstraints);
 
-    change.getFieldsAdded().add(new FieldChange().withName("tableType").withNewValue(TableType.Regular));
-    change.getFieldsAdded().add(new FieldChange().withName("tableConstraints").withNewValue(tableConstraints));
+    fieldAdded(change, "tableType", TableType.Regular);
+    fieldAdded(change, "tableConstraints", tableConstraints);
 
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1703,11 +1664,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table.withTableType(TableType.External).withTableConstraints(tableConstraints1);
 
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("tableType").withOldValue(TableType.Regular).withNewValue(TableType.External));
-    change.getFieldsDeleted().add(new FieldChange().withName("tableConstraints").withOldValue(tableConstraints));
-    change.getFieldsAdded().add(new FieldChange().withName("tableConstraints").withNewValue(tableConstraints1));
+    fieldUpdated(change, "tableType", TableType.Regular, TableType.External);
+    fieldDeleted(change, "tableConstraints", tableConstraints);
+    fieldAdded(change, "tableConstraints", tableConstraints1);
 
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1717,8 +1676,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table.withTableType(null).withTableConstraints(null);
 
-    change.getFieldsDeleted().add(new FieldChange().withName("tableType").withOldValue(TableType.External));
-    change.getFieldsDeleted().add(new FieldChange().withName("tableConstraints").withOldValue(tableConstraints1));
+    fieldDeleted(change, "tableType", TableType.External);
+    fieldDeleted(change, "tableConstraints", tableConstraints1);
     patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -1739,31 +1698,22 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withDescription("new0") // Set new description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
     // Column c1 has new description
-    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "c1", "description")).withNewValue("new0"));
+    fieldAdded(change, build("columns", "c1", "description"), "new0");
     //  Column c1 got new tags
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName(build("columns", "c1", "tags")).withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
+    fieldAdded(change, build("columns", "c1", "tags"), List.of(GLOSSARY1_TERM1_LABEL));
 
     columns
         .get(1)
         .withDescription("new1") // Change description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
     // Column c2 description changed
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName(build("columns", "c2", "description")).withNewValue("new1").withOldValue("c2"));
+    fieldUpdated(change, build("columns", "c2", "description"), "c2", "new1");
 
     columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
     // Column c3 tags were removed and precision and scale were added
-    change
-        .getFieldsDeleted()
-        .add(
-            new FieldChange()
-                .withName(build("columns", "\"c.3\"", "tags"))
-                .withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
-    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withNewValue(10));
-    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withNewValue(3));
+    fieldDeleted(change, build("columns", "\"c.3\"", "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", "\"c.3\"", "precision"), 10);
+    fieldAdded(change, build("columns", "\"c.3\"", "scale"), 3);
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
@@ -1772,9 +1722,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Now reduce the precision and make sure it is a backward incompatible change
     change = getChangeDescription(table.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withOldValue(10).withNewValue(7));
+    fieldUpdated(change, build("columns", "\"c.3\"", "precision"), 10, 7);
 
     originalJson = JsonUtils.pojoToJson(table);
 
@@ -1786,9 +1734,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Now reduce the scale and make sure it is a backward incompatible change
     change = getChangeDescription(table.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withOldValue(3).withNewValue(1));
+    fieldUpdated(change, build("columns", "\"c.3\"", "scale"), 3, 1);
 
     originalJson = JsonUtils.pojoToJson(table);
 

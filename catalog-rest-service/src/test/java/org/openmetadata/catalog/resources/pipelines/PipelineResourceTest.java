@@ -18,6 +18,9 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
@@ -181,7 +184,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void post_pipelineWithTasksWithDots(TestInfo test) throws IOException, URISyntaxException {
+  void post_pipelineWithTasksWithDots(TestInfo test) throws IOException {
     CreatePipeline create = createRequest(test);
     Task task = new Task().withName("ta.sk").withDescription("description").withTaskUrl("http://localhost:0");
     create.setTasks(List.of(task));
@@ -191,7 +194,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void put_PipelineUrlUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_PipelineUrlUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
         createRequest(test)
             .withService(new EntityReference().withId(AIRFLOW_REFERENCE.getId()).withType("pipelineService"))
@@ -215,14 +218,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void put_PipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE).withDescription(null).withTasks(null);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
-    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
+    fieldAdded(change, "description", "newDescription");
+    fieldAdded(change, "tasks", TASKS);
 
     pipeline =
         updateAndCheckEntity(
@@ -233,7 +236,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     List<Task> tasks = new ArrayList<>();
     Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
-    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
+    fieldAdded(change, "tasks", tasks);
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
     pipeline = updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -243,14 +246,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // create new request with few tasks removed
     updatedTasks.remove(taskEmptyDesc);
     change = getChangeDescription(pipeline.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("tasks").withOldValue(List.of(taskEmptyDesc)));
+    fieldDeleted(change, "tasks", List.of(taskEmptyDesc));
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     pipeline = getPipeline(pipeline.getId(), "tasks", ADMIN_AUTH_HEADERS);
     validateTasks(pipeline.getTasks(), updatedTasks);
   }
 
   @Test
-  void put_PipelineTasksOverride_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_PipelineTasksOverride_200(TestInfo test) throws IOException {
     // A PUT operation with a new Task should override the current tasks in the Pipeline
     // This change will always be minor, both with deletes/adds
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
@@ -265,9 +268,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
                 .withTaskUrl("http://localhost:0"));
 
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(newTask));
-    change.getFieldsDeleted().add(new FieldChange().withName("tasks").withOldValue(TASKS));
-
+    fieldAdded(change, "tasks", newTask);
+    fieldDeleted(change, "tasks", TASKS);
     updateAndCheckEntity(request.withTasks(newTask), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -392,7 +394,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void patch_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException, URISyntaxException {
+  void patch_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException {
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
@@ -402,10 +404,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     List<Task> tasks = new ArrayList<>();
     Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
-    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("description").withOldValue("").withNewValue("newDescription"));
+    fieldAdded(change, "tasks", tasks);
+    fieldUpdated(change, "description", "", "newDescription");
 
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
@@ -419,9 +419,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     List<Task> newTasks = new ArrayList<>();
     Task taskWithDesc = taskEmptyDesc.withDescription("taskDescription");
     newTasks.add(taskWithDesc);
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("tasks.taskEmpty.description").withNewValue("taskDescription"));
+    fieldAdded(change, "tasks.taskEmpty.description", "taskDescription");
 
     List<Task> updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
@@ -433,16 +431,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     newTasks = new ArrayList<>();
     taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
     newTasks.add(taskWithDesc);
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("tasks.taskEmpty.description")
-                .withOldValue("taskDescription")
-                .withNewValue("newTaskDescription"));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("description").withOldValue("newDescription").withNewValue("newDescription2"));
+    fieldUpdated(change, "tasks.taskEmpty.description", "taskDescription", "newTaskDescription");
+    fieldUpdated(change, "description", "newDescription", "newDescription2");
 
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
@@ -455,16 +445,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     newTasks = new ArrayList<>();
     Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
     newTasks.add(taskWithoutDesc);
-    change
-        .getFieldsDeleted()
-        .add(
-            new FieldChange()
-                .withName("tasks.taskEmpty.description")
-                .withOldValue("newTaskDescription")
-                .withNewValue(null));
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName("description").withOldValue("newDescription2").withNewValue(null));
+    fieldDeleted(change, "tasks.taskEmpty.description", "newTaskDescription");
+    fieldDeleted(change, "description", "newDescription2");
 
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
@@ -473,7 +455,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
+  void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
         createRequest(test)
             .withService(AIRFLOW_REFERENCE)
@@ -485,16 +467,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // Add tasks and description
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
-    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
-    change.getFieldsAdded().add(new FieldChange().withName("concurrency").withNewValue(5));
-    change
-        .getFieldsUpdated()
-        .add(
-            new FieldChange()
-                .withName("pipelineUrl")
-                .withNewValue("https://airflow.open-metadata.org")
-                .withOldValue("http://localhost:8080"));
+    fieldAdded(change, "description", "newDescription");
+    fieldAdded(change, "tasks", TASKS);
+    fieldAdded(change, "concurrency", 5);
+    fieldUpdated(change, "pipelineUrl", "http://localhost:8080", "https://airflow.open-metadata.org");
     pipeline =
         updateAndCheckEntity(
             request

@@ -51,6 +51,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   );
 
   const [validationError, setValidationError] = useState<string>('');
+  const [isValidatingCondition, setIsvalidating] = useState<boolean>(false);
 
   /**
    * Derive the resources from policy resources
@@ -148,6 +149,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   const handleConditionValidation = async () => {
     const defaultErrorText = 'Condition is invalid';
     if (ruleData.condition) {
+      setIsvalidating(true);
       try {
         const response = await validateRuleCondition(ruleData.condition);
 
@@ -161,6 +163,8 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           : setValidationError(defaultErrorText);
       } catch (error) {
         setValidationError(getErrorText(error as AxiosError, defaultErrorText));
+      } finally {
+        setIsvalidating(false);
       }
     }
   };
@@ -187,6 +191,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           },
         ]}>
         <Input
+          data-testid="rule-name"
           placeholder="Rule Name"
           type="text"
           value={ruleData.name}
@@ -217,6 +222,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         <TreeSelect
           treeCheckable
           className="tw-w-full"
+          data-testid="resuorces"
           placeholder="Select Resources"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
@@ -239,6 +245,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         <TreeSelect
           treeCheckable
           className="tw-w-full"
+          data-testid="operations"
           placeholder="Select Operations"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
@@ -259,6 +266,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           },
         ]}>
         <Select
+          data-testid="effect"
           placeholder="Select Rule Effect"
           value={ruleData.effect}
           onChange={(value) =>
@@ -271,6 +279,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
       <Form.Item label="Condition:" name="condition">
         <>
           <AutoComplete
+            data-testid="condition"
             options={conditionOptions}
             placeholder="Condition"
             value={ruleData.condition}
@@ -284,6 +293,11 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           {validationError && (
             <div className="ant-form-item-explain-error" role="alert">
               {validationError}
+            </div>
+          )}
+          {isValidatingCondition && (
+            <div className="tw-text-grey-body" role="alert">
+              Validating the condition...
             </div>
           )}
         </>
