@@ -1,3 +1,17 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { AxiosError } from 'axios';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 
 export type UIPermission = {
@@ -13,35 +27,47 @@ export enum ResourceEntity {
   BOT = 'bot',
   CHART = 'chart',
   DASHBOARD = 'dashboard',
-  DASHBOARDSERVICE = 'dashboardService',
+  DASHBOARD_SERVICE = 'dashboardService',
   DATABASE = 'database',
-  DATABASESCHEMA = 'databaseSchema',
-  DATABASESERVICE = 'databaseService',
+  DATABASE_SCHEMA = 'databaseSchema',
+  DATABASE_SERVICE = 'databaseService',
   EVENTS = 'events',
   FEED = 'feed',
   GLOSSARY = 'glossary',
-  GLOSSARYTERM = 'glossaryTerm',
-  INGESTIONPIPELINE = 'ingestionPipeline',
+  GLOSSARY_TERM = 'glossaryTerm',
+  INGESTION_PIPELINE = 'ingestionPipeline',
   LOCATION = 'location',
-  MESSAGINGSERVICE = 'messagingService',
+  MESSAGING_SERVICE = 'messagingService',
   METRICS = 'metrics',
-  MLMODEL = 'mlmodel',
-  MLMODELSERVICE = 'mlmodelService',
+  ML_MODEL = 'mlmodel',
+  ML_MODEL_SERVICE = 'mlmodelService',
   PIPELINE = 'pipeline',
-  PIPELINESERVICE = 'pipelineService',
+  PIPELINE_SERVICE = 'pipelineService',
   POLICY = 'policy',
   REPORT = 'report',
   ROLE = 'role',
-  STORAGESERVICE = 'storageService',
+  STORAGE_SERVICE = 'storageService',
   TABLE = 'table',
   TAG = 'tag',
-  TAGCATEGORY = 'tagCategory',
+  TAG_CATEGORY = 'tagCategory',
   TEAM = 'team',
-  TESTCASE = 'testCase',
-  TESTDEFINITION = 'testDefinition',
-  TESTSUITE = 'testSuite',
+  TEST_CASE = 'testCase',
+  TEST_DEFINITION = 'testDefinition',
+  TEST_SUITE = 'testSuite',
   TOPIC = 'topic',
   TYPE = 'type',
   USER = 'user',
   WEBHOOK = 'webhook',
+}
+
+export interface PermissionContextType {
+  permissions: UIPermission;
+  getEntityPermission: (
+    resource: ResourceEntity,
+    entityId: string
+  ) => Promise<OperationPermission | AxiosError>;
+}
+
+export interface EntityPermissionMap {
+  [key: string]: OperationPermission;
 }

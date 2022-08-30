@@ -105,9 +105,9 @@ class DBTMixin:
                         model_name=model_name,
                     )
                     self.data_models[model_fqn] = model
-                except Exception as err:
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(err)
+                    logger.warning(f"Unexpected exception parsing data model: {exc}")
 
     def _parse_data_model_upstream(self, mnode):
         upstream_nodes = []
@@ -129,9 +129,10 @@ class DBTMixin:
                     )
                     if parent_fqn:
                         upstream_nodes.append(parent_fqn)
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(
-                        f"Failed to parse the node {node} to capture lineage {err}"
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse the node {node} to capture lineage: {exc}"
                     )
                     continue
         return upstream_nodes
@@ -159,8 +160,9 @@ class DBTMixin:
                     ordinalPosition=ccolumn["index"],
                 )
                 columns.append(col)
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(f"Failed to parse column {col_name} due to {err}")
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Failed to parse column {col_name}: {exc}")
 
         return columns
 
@@ -192,7 +194,8 @@ class DBTMixin:
                             )
                         )
 
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(
-                        f"Failed to parse the node {upstream_node} to capture lineage {err}"
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                     )

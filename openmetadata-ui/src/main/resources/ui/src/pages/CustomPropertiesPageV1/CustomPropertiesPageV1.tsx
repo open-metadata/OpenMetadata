@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Empty, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
@@ -23,11 +23,16 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getAddCustomPropertyPath } from '../../constants/constants';
 import { customAttributesPath } from '../../constants/globalSettings.constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import { Operation } from '../../generated/entity/policies/policy';
 import { Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
+import { getResourceEntityFromCustomProperty } from '../../utils/CustomPropertyUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
 
@@ -43,6 +48,19 @@ const CustomEntityDetailV1 = () => {
 
   const tabAttributePath =
     customAttributesPath[tab as keyof typeof customAttributesPath];
+
+  const { permissions } = usePermissionProvider();
+
+  const viewPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.ViewAll,
+        getResourceEntityFromCustomProperty(tab),
+        permissions
+      )
+    );
+  }, [permissions, tab]);
 
   const fetchTypeDetail = async (typeFQN: string) => {
     setIsLoading(true);
@@ -120,7 +138,7 @@ const CustomEntityDetailV1 = () => {
     );
   }
 
-  return (
+  return viewPermission ? (
     <Row
       className="tw-my-2"
       data-testid="custom-entity-container"
@@ -160,6 +178,12 @@ const CustomEntityDetailV1 = () => {
             />
           </div>
         )}
+      </Col>
+    </Row>
+  ) : (
+    <Row>
+      <Col span={24}>
+        <Empty description={NO_PERMISSION_TO_VIEW} />
       </Col>
     </Row>
   );

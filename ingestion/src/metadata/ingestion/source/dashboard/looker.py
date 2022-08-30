@@ -155,8 +155,9 @@ class LookerSource(DashboardServiceSource):
                 dashboard_sources.add(self._clean_table_name(table_name))
 
         except SDKError as err:
-            logger.error(
-                f"Cannot get explore from model={query.model}, view={query.view} - {err}"
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Cannot get explore from model={query.model}, view={query.view}: {err}"
             )
 
     def get_dashboard_sources(self, dashboard_details: LookerDashboard) -> Set[str]:
@@ -237,7 +238,9 @@ class LookerSource(DashboardServiceSource):
 
             except (Exception, IndexError) as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Error building lineage - {err}")
+                logger.warning(
+                    f"Error building lineage for database service [{db_service_name}]: {err}"
+                )
 
     def yield_dashboard_chart(
         self, dashboard_details: LookerDashboard
@@ -273,9 +276,9 @@ class LookerSource(DashboardServiceSource):
                 )
                 self.status.scanned(chart.id)
 
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Error creating chart [{chart}]: {exc}")
 
     def yield_dashboard_usage(
         self, dashboard_details: LookerDashboard
@@ -359,7 +362,8 @@ class LookerSource(DashboardServiceSource):
                     f"Usage already informed for {dashboard.fullyQualifiedName.__root__}"
                 )
 
-        except Exception as err:
-            logger.error(
-                f"Exception computing dashboard usage for {dashboard.fullyQualifiedName.__root__} - {err}"
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Exception computing dashboard usage for {dashboard.fullyQualifiedName.__root__}: {exc}"
             )

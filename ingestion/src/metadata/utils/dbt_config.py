@@ -46,32 +46,42 @@ def get_dbt_details(config):
 def _(config: DbtLocalConfig):
     try:
         if config.dbtCatalogFilePath is not None:
+            logger.debug(
+                f"Reading [dbtCatalogFilePath] from: {config.dbtCatalogFilePath}"
+            )
             with open(config.dbtCatalogFilePath, "r", encoding="utf-8") as catalog:
                 dbt_catalog = catalog.read()
         if config.dbtManifestFilePath is not None:
+            logger.debug(
+                f"Reading [dbtManifestFilePath] from: {config.dbtCatalogFilePath}"
+            )
             with open(config.dbtManifestFilePath, "r", encoding="utf-8") as manifest:
                 dbt_manifest = manifest.read()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.error(traceback.format_exc())
-        logger.error(f"Error fetching dbt files from local {repr(exc)}")
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error fetching dbt files from local: {exc}")
     return None
 
 
 @get_dbt_details.register
 def _(config: DbtHttpConfig):
     try:
+        logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
         dbt_catalog = requests.get(config.dbtCatalogHttpPath)
+        logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
         dbt_manifest = requests.get(config.dbtManifestHttpPath)
         return json.loads(dbt_catalog.text), json.loads(dbt_manifest.text)
     except Exception as exc:
-        logger.error(traceback.format_exc())
-        logger.error(f"Error fetching dbt files from file server {repr(exc)}")
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error fetching dbt files from file server: {exc}")
     return None
 
 
 @get_dbt_details.register
 def _(config: DbtCloudConfig):
+    dbt_catalog = None
+    dbt_manifest = None
     try:
         from metadata.ingestion.ometa.client import REST, ClientConfig
 
@@ -86,27 +96,31 @@ def _(config: DbtCloudConfig):
         )
         client = REST(client_config)
         account_id = config.dbtCloudAccountId
+        logger.debug("Requesting [dbt_catalog] and [dbt_manifest] data")
         response = client.get(
             f"/accounts/{account_id}/runs/?order_by=-finished_at&limit=1"
         )
         runs_data = response.get("data")
         if runs_data:
             run_id = runs_data[0]["id"]
+            logger.debug(f"Requesting [dbt_catalog]")
             dbt_catalog = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
             )
+            logger.debug(f"Requesting [dbt_manifest]")
             dbt_manifest = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}"
             )
-        return dbt_catalog, dbt_manifest
     except Exception as exc:
-        logger.error(traceback.format_exc())
-        logger.error(f"Error fetching dbt files from DBT Cloud {repr(exc)}")
-    return None
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error fetching dbt files from DBT Cloud: {exc}")
+    return dbt_catalog, dbt_manifest
 
 
 @get_dbt_details.register
 def _(config: DbtS3Config):
+    dbt_catalog = None
+    dbt_manifest = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         from metadata.clients.aws_client import AWSClient
@@ -124,18 +138,22 @@ def _(config: DbtS3Config):
                 obj_list = bucket.objects.all()
             for bucket_object in obj_list:
                 if DBT_MANIFEST_FILE_NAME in bucket_object.key:
+                    logger.debug(f"{DBT_MANIFEST_FILE_NAME} found")
                     dbt_manifest = bucket_object.get()["Body"].read().decode()
                 if DBT_CATALOG_FILE_NAME in bucket_object.key:
+                    logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
                     dbt_catalog = bucket_object.get()["Body"].read().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.error(traceback.format_exc())
-        logger.error(f"Error fetching dbt files from s3 {repr(exc)}")
-    return None
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error fetching dbt files from s3: {exc}")
+    return dbt_catalog, dbt_manifest
 
 
 @get_dbt_details.register
 def _(config: DbtGCSConfig):
+    dbt_catalog = None
+    dbt_manifest = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         from google.cloud import storage
@@ -153,14 +171,16 @@ def _(config: DbtGCSConfig):
                 obj_list = client.list_blobs(bucket.name)
             for blob in obj_list:
                 if DBT_MANIFEST_FILE_NAME in blob.name:
+                    logger.debug(f"{DBT_MANIFEST_FILE_NAME} found")
                     dbt_manifest = blob.download_as_string().decode()
                 if DBT_CATALOG_FILE_NAME in blob.name:
+                    logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
                     dbt_catalog = blob.download_as_string().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.error(traceback.format_exc())
-        logger.error(f"Error fetching dbt files from gcs {repr(exc)}")
-    return None
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error fetching dbt files from gcs: {exc}")
+    return dbt_catalog, dbt_manifest
 
 
 def get_dbt_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:

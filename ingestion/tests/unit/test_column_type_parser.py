@@ -31,8 +31,8 @@ import json
 try:
     with open(os.path.join(root, "resources/expected_output_column_parser.json")) as f:
         EXPECTED_OUTPUT = json.loads(f.read())["data"]
-except Exception as err:
-    print(err)
+except Exception as exc:
+    print(exc)
 
 
 class ColumnTypeParseTest(TestCase):

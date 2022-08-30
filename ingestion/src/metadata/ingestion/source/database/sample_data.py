@@ -12,7 +12,6 @@
 import csv
 import json
 import os
-import sys
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -623,7 +622,8 @@ class SampleDataSource(Source[Entity]):
                 self.status.scanned("chart", chart_ev.name)
                 yield chart_ev
             except ValidationError as err:
-                logger.error(err)
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
     def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
         for dashboard in self.dashboards["dashboards"]:
@@ -754,9 +754,9 @@ class SampleDataSource(Source[Entity]):
                     ),
                 )
                 yield model_ev
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         try:
@@ -791,10 +791,9 @@ class SampleDataSource(Source[Entity]):
                 )
 
                 yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
-        except Exception as err:
-            logger.error(err)
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(sys.exc_info()[2])
+            logger.error(f"Error ingesting users: {exc}")
 
     def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
         """
@@ -826,8 +825,9 @@ class SampleDataSource(Source[Entity]):
                     yield OMetaTableTest(
                         table_name=table_name, column_test=create_column_test
                     )
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error ingesting table tests: {exc}")
 
     def ingest_profiles(self) -> Iterable[OMetaTableProfileSampleData]:
         """Iterate over all the profile data and ingest them"""
