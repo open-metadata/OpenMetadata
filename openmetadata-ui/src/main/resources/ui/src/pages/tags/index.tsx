@@ -12,14 +12,12 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Divider, Typography } from 'antd';
+import { Button, Divider, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createTag,
   createTagCategory,
@@ -29,12 +27,10 @@ import {
   updateTag,
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
-import { Button } from '../../components/buttons/Button/Button';
 import CardV1 from '../../components/common/Card/CardV1';
 import Description from '../../components/common/description/Description';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
@@ -42,7 +38,12 @@ import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
 import {
   CreateTagCategory,
@@ -51,7 +52,6 @@ import {
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityReference } from '../../generated/type/entityReference';
-import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
@@ -60,6 +60,7 @@ import {
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getExplorePathWithInitFilters,
   getTagPath,
@@ -84,10 +85,9 @@ type DeleteTagsType = {
 };
 
 const TagsPage = () => {
+  const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { tagCategoryName } = useParams<Record<string, string>>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
   const [currentCategory, setCurrentCategory] = useState<TagCategory>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
@@ -103,6 +103,35 @@ const TagsPage = () => {
     data: undefined,
     state: false,
   });
+  const [categoryPermissions, setCategoryPermissions] =
+    useState<OperationPermission>({} as OperationPermission);
+
+  const createCategoryPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.TAG_CATEGORY,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const createTagPermission = useMemo(
+    () => checkPermission(Operation.Create, ResourceEntity.TAG, permissions),
+    [permissions]
+  );
+
+  const fetchCurrentCategoryPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.TAG_CATEGORY,
+        currentCategory?.id as string
+      );
+      setCategoryPermissions(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const fetchCategories = () => {
     setIsLoading(true);
@@ -404,6 +433,7 @@ const TagsPage = () => {
     setCurrentCategory(categories[0]);
     if (currentCategory) {
       setCurrentCategory(currentCategory);
+      fetchCurrentCategoryPermission();
     }
   }, [categories, currentCategory]);
 
@@ -416,26 +446,30 @@ const TagsPage = () => {
       <CardV1 id="tags" style={{ border: '0px' }}>
         <>
           <div className="tw-flex tw-justify-between tw-items-center">
-            <Typography.Text>Tag Categories</Typography.Text>
-
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <span
+              className="tw-heading tw-text-base tw-my-0"
+              style={{ fontSize: '14px' }}>
+              Tag Categories
+            </span>
+            <Tooltip
+              title={
+                createCategoryPermission
+                  ? 'Add Category'
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
-                className={classNames('tw-px-2 ', {
-                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                })}
+                className="tw-px-2 "
                 data-testid="add-category"
+                disabled={!createCategoryPermission}
                 size="small"
-                theme="primary"
-                variant="contained"
+                type="primary"
                 onClick={() => {
                   setIsAddingCategory((prevState) => !prevState);
                   setErrorDataCategory(undefined);
                 }}>
                 <FontAwesomeIcon icon="plus" />
               </Button>
-            </NonAdminAction>
+            </Tooltip>
           </div>
 
           <Divider style={{ margin: '8px 0 8px 0' }} />
@@ -495,44 +529,39 @@ const TagsPage = () => {
                   {currentCategory.displayName ?? currentCategory.name}
                 </div>
                 <div>
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <Tooltip
+                    title={
+                      createTagPermission || categoryPermissions.EditAll
+                        ? 'Add Tag'
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
                     <Button
-                      className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                        'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                      })}
+                      className="tw-h-8 tw-rounded tw-mb-3"
                       data-testid="add-new-tag-button"
+                      disabled={
+                        !createTagPermission && !categoryPermissions.EditAll
+                      }
                       size="small"
-                      theme="primary"
-                      variant="contained"
+                      type="primary"
                       onClick={() => {
                         setIsAddingTag((prevState) => !prevState);
                         setErrorDataTag(undefined);
                       }}>
                       Add new tag
                     </Button>
-                  </NonAdminAction>
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <Button
-                      className={classNames(
-                        'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
-                        {
-                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                        }
-                      )}
-                      data-testid="delete-tag-category-button"
-                      size="small"
-                      theme="primary"
-                      variant="outlined"
-                      onClick={() => {
-                        deleteTagHandler();
-                      }}>
-                      Delete category
-                    </Button>
-                  </NonAdminAction>
+                  </Tooltip>
+
+                  <Button
+                    className="tw-h-8 tw-rounded tw-mb-3 tw-ml-2"
+                    data-testid="delete-tag-category-button"
+                    disabled={!categoryPermissions.Delete}
+                    size="small"
+                    type="primary"
+                    onClick={() => {
+                      deleteTagHandler();
+                    }}>
+                    Delete category
+                  </Button>
                 </div>
               </div>
             )}
@@ -544,6 +573,7 @@ const TagsPage = () => {
                 entityName={
                   currentCategory?.displayName ?? currentCategory?.name
                 }
+                hasEditAccess={categoryPermissions.EditDescription}
                 isEdit={isEditCategory}
                 onCancel={() => setIsEditCategory(false)}
                 onDescriptionEdit={() => setIsEditCategory(true)}
@@ -595,10 +625,8 @@ const TagsPage = () => {
                                     </span>
                                   )}
                                 </div>
-                                <NonAdminAction
-                                  permission={Operation.EditDescription}
-                                  position="left"
-                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+
+                                {categoryPermissions.EditDescription && (
                                   <button
                                     className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
                                     onClick={() => {
@@ -613,7 +641,7 @@ const TagsPage = () => {
                                       width="16px"
                                     />
                                   </button>
-                                </NonAdminAction>
+                                )}
                               </div>
                               <div className="tw-mt-1" data-testid="usage">
                                 <span className="tw-text-grey-muted tw-mr-1">
@@ -639,40 +667,37 @@ const TagsPage = () => {
                             </td>
                             <td className="tableBody-cell">
                               <div className="tw-text-center">
-                                <NonAdminAction
-                                  position="bottom"
-                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                  <button
-                                    className="link-text"
-                                    data-testid="delete-tag"
-                                    onClick={() =>
-                                      setDeleteTags({
-                                        data: {
-                                          id: tag.id as string,
-                                          name: tag.name,
-                                          categoryName: currentCategory.name,
-                                          isCategory: false,
-                                          status: 'waiting',
-                                        },
-                                        state: true,
-                                      })
-                                    }>
-                                    {deleteTags.data?.id === tag.id ? (
-                                      deleteTags.data?.status === 'success' ? (
-                                        <FontAwesomeIcon icon="check" />
-                                      ) : (
-                                        <Loader size="small" type="default" />
-                                      )
+                                <button
+                                  className="link-text"
+                                  data-testid="delete-tag"
+                                  disabled={!categoryPermissions.EditAll}
+                                  onClick={() =>
+                                    setDeleteTags({
+                                      data: {
+                                        id: tag.id as string,
+                                        name: tag.name,
+                                        categoryName: currentCategory.name,
+                                        isCategory: false,
+                                        status: 'waiting',
+                                      },
+                                      state: true,
+                                    })
+                                  }>
+                                  {deleteTags.data?.id === tag.id ? (
+                                    deleteTags.data?.status === 'success' ? (
+                                      <FontAwesomeIcon icon="check" />
                                     ) : (
-                                      <SVGIcons
-                                        alt="delete"
-                                        icon="icon-delete"
-                                        title="Delete"
-                                        width="16px"
-                                      />
-                                    )}
-                                  </button>
-                                </NonAdminAction>
+                                      <Loader size="small" type="default" />
+                                    )
+                                  ) : (
+                                    <SVGIcons
+                                      alt="delete"
+                                      icon="icon-delete"
+                                      title="Delete"
+                                      width="16px"
+                                    />
+                                  )}
+                                </button>
                               </div>
                             </td>
                           </tr>

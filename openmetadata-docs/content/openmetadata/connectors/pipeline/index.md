@@ -9,3 +9,4 @@ slug: /openmetadata/connectors/pipeline
 - [Airflow](/openmetadata/connectors/pipeline/airflow)
 - [Glue](/openmetadata/connectors/pipeline/glue)
 - [Fivetran](/openmetadata/connectors/pipeline/fivetran)
+- [Dagster](/openmetadata/connectors/pipeline/dagster)
