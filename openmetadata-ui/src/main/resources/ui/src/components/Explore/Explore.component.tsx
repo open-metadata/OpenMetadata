@@ -89,12 +89,8 @@ const Explore: React.FC<ExploreProps> = ({
   fetchData,
   showDeleted,
   onShowDeleted,
-  updateTableCount,
-  updateTopicCount,
-  updateDashboardCount,
-  updatePipelineCount,
   isFilterSelected,
-  updateMlModelCount,
+  handleTabCounts,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
@@ -273,23 +269,23 @@ const Explore: React.FC<ExploreProps> = ({
   const setCount = (count = 0, index = searchIndex) => {
     switch (index) {
       case SearchIndex.TABLE:
-        updateTableCount(count);
+        handleTabCounts({ table: count });
 
         break;
       case SearchIndex.DASHBOARD:
-        updateDashboardCount(count);
+        handleTabCounts({ dashboard: count });
 
         break;
       case SearchIndex.TOPIC:
-        updateTopicCount(count);
+        handleTabCounts({ topic: count });
 
         break;
       case SearchIndex.PIPELINE:
-        updatePipelineCount(count);
+        handleTabCounts({ pipeline: count });
 
         break;
       case SearchIndex.MLMODEL:
-        updateMlModelCount(count);
+        handleTabCounts({ mlmodel: count });
 
         break;
       default:
@@ -441,7 +437,7 @@ const Explore: React.FC<ExploreProps> = ({
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
       case SearchIndex.MLMODEL:
-        return getCountBadge(tabCounts.mlModel, className, isActive);
+        return getCountBadge(tabCounts.mlmodel, className, isActive);
       default:
         return getCountBadge();
     }
@@ -469,18 +465,6 @@ const Explore: React.FC<ExploreProps> = ({
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
           )}>
           <div className="tw-flex">
-            {/* <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
-              <Button
-                className={classNames('tw-underline tw-mt-5', {
-                  'tw-invisible': !getFilterCount(filters),
-                })}
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => resetFilters(true)}>
-                Clear All
-              </Button>
-            </div> */}
             <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button

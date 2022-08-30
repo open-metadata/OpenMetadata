@@ -13,6 +13,8 @@
 
 import { toLower } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
+import { TabCounts } from '../components/Explore/explore.interface';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
@@ -301,3 +303,27 @@ export const tabsInfo = [
     selectedIcon: '',
   },
 ];
+
+export const INITIAL_TAB_COUNTS: TabCounts = {
+  table: 0,
+  topic: 0,
+  dashboard: 0,
+  pipeline: 0,
+  mlmodel: 0,
+};
+
+export const getEntityTypeByIndex = (index: SearchIndex) => {
+  switch (index) {
+    case SearchIndex.TOPIC:
+      return EntityType.TOPIC;
+    case SearchIndex.DASHBOARD:
+      return EntityType.DASHBOARD;
+    case SearchIndex.PIPELINE:
+      return EntityType.PIPELINE;
+    case SearchIndex.MLMODEL:
+      return EntityType.MLMODEL;
+    case SearchIndex.TABLE:
+    default:
+      return EntityType.TABLE;
+  }
+};

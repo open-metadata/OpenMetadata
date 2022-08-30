@@ -12,7 +12,7 @@
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.WebhookType",
       "default": "generic",
-      "enum": ["slack", "generic", "kafka"],
+      "enum": ["slack", "generic", "msteams"],
       "javaEnums": [
         {
           "name": "slack"
@@ -21,7 +21,7 @@
           "name": "generic"
         },
         {
-          "name": "kafka"
+          "name": "msteams"
         }
       ]
     }
@@ -76,6 +76,11 @@
       "description": "Connection timeout in seconds. (Default 10s).",
       "type": "integer",
       "default": 10
+    },
+    "readTimeout": {
+      "description": "Read timeout in seconds. (Default 12s).",
+      "type": "integer",
+      "default": 12
     },
     "enabled": {
       "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`).",

@@ -33,6 +33,12 @@ import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+const HEADER_TEXT_WEBHOOK: { [key: string]: string } = {
+  msteams: 'MS Teams',
+  slack: 'Slack',
+  generic: 'Webhook',
+};
+
 const AddWebhookPage: FunctionComponent = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -89,9 +95,7 @@ const AddWebhookPage: FunctionComponent = () => {
       <div className="tw-self-center">
         <AddWebhook
           allowAccess={isAdminUser || isAuthDisabled}
-          header={`Add ${
-            webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'
-          }`}
+          header={`Add ${HEADER_TEXT_WEBHOOK[webhookType]}`}
           mode={FormSubmitType.ADD}
           saveState={status}
           webhookType={webhookType}

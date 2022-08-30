@@ -26,11 +26,17 @@ type Props = {
   onClick?: (name: string) => void;
 };
 
+const ICON: { [key: string]: string } = {
+  generic: Icons.WEBHOOK,
+  msteams: Icons.MSTEAMS_GREY,
+  slack: Icons.SLACK_GREY,
+};
+
 const WebhookDataCard: FunctionComponent<Props> = ({
   name,
   description,
   endpoint,
-  type,
+  type = WebhookType.Generic,
   status = Status.Disabled,
   onClick,
 }: Props) => {
@@ -44,11 +50,7 @@ const WebhookDataCard: FunctionComponent<Props> = ({
       data-testid="webhook-data-card">
       <div>
         <div className="tw-flex tw-items-center">
-          <SVGIcons
-            alt="webhook"
-            icon={type === WebhookType.Slack ? Icons.SLACK_GREY : Icons.WEBHOOK}
-            width="16"
-          />
+          <SVGIcons alt="webhook" icon={ICON[type]} width="16" />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-1">
             <button
               className="tw-font-medium tw-text-primary hover:tw-underline tw-cursor-pointer"
