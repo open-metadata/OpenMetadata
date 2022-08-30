@@ -50,6 +50,12 @@ process the Entities if needed, and reach the OpenMetadata server.
 The workflow is modeled around the following
 [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
+<Note>
+
+ During the metadata ingestion for redshift, the tables in which the distribution style i.e `DISTSTYLE` is not `AUTO` will be marked as partitioned tables
+ 
+</Note>
+
 ### 1. Define the YAML Config
 
 This is a sample config for Redshift:
