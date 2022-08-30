@@ -346,18 +346,6 @@ describe('Test MyDataDetailsPage page', () => {
     expect(tableProfiler).toBeInTheDocument();
   });
 
-  it('Check if active tab is data quality', async () => {
-    const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={6} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const dataQuality = await findByTestId(container, 'Data Quality');
-
-    expect(dataQuality).toBeInTheDocument();
-  });
-
   it('Check if active tab is lineage', async () => {
     const { container } = render(
       <DatasetDetails {...DatasetDetailsProps} activeTab={7} />,
