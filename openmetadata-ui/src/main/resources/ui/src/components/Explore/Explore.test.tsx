@@ -95,6 +95,7 @@ describe('Test Explore component', () => {
         handleFilterChange={mockFunction}
         handlePathChange={mockFunction}
         handleSearchText={mockFunction}
+        handleTabCounts={mockFunction}
         searchQuery=""
         searchResult={mockSearchResult}
         searchText=""
@@ -106,15 +107,8 @@ describe('Test Explore component', () => {
           topic: 2,
           dashboard: 8,
           pipeline: 5,
-          dbtModel: 7,
-          mlModel: 2,
+          mlmodel: 2,
         }}
-        updateDashboardCount={mockFunction}
-        updateDbtModelCount={mockFunction}
-        updateMlModelCount={mockFunction}
-        updatePipelineCount={mockFunction}
-        updateTableCount={mockFunction}
-        updateTopicCount={mockFunction}
         onShowDeleted={mockFunction}
       />,
       {

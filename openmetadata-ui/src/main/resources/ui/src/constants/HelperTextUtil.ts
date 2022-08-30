@@ -19,11 +19,17 @@ export const WEBHOOK_LISTING_TEXT =
 export const SLACK_LISTING_TEXT =
   'Provide timely updates to the producers and consumers of metadata via Slack notifications. Use Slack webhooks to send notifications regarding the metadata change events in your organization through APIs. You can add, list, update, and delete these webhooks.';
 
+export const MS_TEAMS_LISTING_TEXT =
+  'Provide timely updates to the producers and consumers of metadata via MS Teams notifications. Use MS Teams webhooks to send notifications regarding the metadata change events in your organization through APIs. You can add, list, update, and delete these webhooks.';
+
 export const CONFIGURE_WEBHOOK_TEXT =
   'OpenMetadata can be configured to automatically send out event notifications to registered webhooks. Enter the webhook name, and an Endpoint URL to receive the HTTP call back on. Use Event Filters to only receive notifications based on events of interest, like when an entity is created, updated, or deleted; and for the entities your application is interested in. Add a description to help people understand the purpose of the webhook and to keep  track of the use case. Use advanced configuration to set up a shared secret key to verify the webhook events using HMAC signature.';
 
 export const CONFIGURE_SLACK_TEXT =
   'Automatically send out event notifications to registered Slack webhooks through OpenMetadata. Enter the webhook name, and an Endpoint URL to receive the HTTP call back on. Use Event Filters to only receive notifications for the required entities. Filter events based on when an entity is created, updated, or deleted. Add a description to note the use case of the webhook. You can use advanced configuration to set up a shared secret key to verify the Slack webhook events using HMAC signature.';
+
+export const CONFIGURE_MS_TEAMS_TEXT =
+  'Automatically send out event notifications to registered MS Teams webhooks through OpenMetadata. Enter the MS Teams webhook name, and an Endpoint URL to receive the HTTP call back on. Use Event Filters to only receive notifications for the required entities. Filter events based on when an entity is created, updated, or deleted. Add a description to note the use case of the webhook. You can use advanced configuration to set up a shared secret key to verify the MS Teams webhook events using HMAC signature.';
 
 export const ADD_ROLE_TEXT = `Roles are assigned to Users. In OpenMetadata, Roles are a collection of
         Policies. Each Role must have at least one policy attached to it. A Role

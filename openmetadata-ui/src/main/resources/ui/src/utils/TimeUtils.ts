@@ -128,3 +128,19 @@ export const getDateTimeByTimeStamp = (timeStamp: number): string => {
 export const getLocaleDate = (timeStamp: number): string => {
   return moment(timeStamp, 'x').format('yyyy-MM-DDThh:mm');
 };
+
+export const getTimeZone = (): string => {
+  // Getting local time zone
+  const timeZoneToString = new Date()
+    .toLocaleDateString('en-US', {
+      day: '2-digit',
+      timeZoneName: 'long',
+    })
+    .slice(4);
+
+  // Line below finds out the abbrevation for time zone
+  // e.g. India Standard Time --> IST
+  const abbreviation = timeZoneToString.match(/\b[A-Z]+/g)?.join('') || '';
+
+  return abbreviation;
+};

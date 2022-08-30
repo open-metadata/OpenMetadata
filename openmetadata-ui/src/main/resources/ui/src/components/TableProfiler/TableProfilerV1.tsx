@@ -28,8 +28,10 @@ import {
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
-import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
-import { getProfilerDashboardWithFqnPath } from '../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -162,26 +164,32 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       data-testid="table-profiler-container">
       <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
         <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            className="tw-rounded"
-            data-testid="profiler-add-table-test-btn"
-            type="primary"
-            onClick={() =>
-              onAddTestClick(getCurrentDatasetTab('data-quality'), 'table')
+          <Link
+            to={
+              hasEditAccess
+                ? getAddDataQualityTableTestPath(
+                    ProfilerDashboardType.TABLE,
+                    table.fullyQualifiedName || ''
+                  )
+                : '#'
             }>
-            Add Test
-          </Button>
+            <Button
+              className="tw-rounded"
+              data-testid="profiler-add-table-test-btn"
+              disabled={!hasEditAccess}
+              type="primary">
+              Add Test
+            </Button>
+          </Link>
         </Tooltip>
-        <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
-            data-testid="profiler-setting-btn"
-            icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
-            type="default"
-            onClick={() => handleSettingModal(true)}>
-            Settings
-          </Button>
-        </Tooltip>
+        <Button
+          className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+          data-testid="profiler-setting-btn"
+          icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+          type="default"
+          onClick={() => handleSettingModal(true)}>
+          Settings
+        </Button>
       </div>
 
       <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">

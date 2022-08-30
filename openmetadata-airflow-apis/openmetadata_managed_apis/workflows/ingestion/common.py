@@ -91,7 +91,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         Union[DatabaseService, MessagingService, PipelineService, DashboardService]
     ] = None
 
-    if service_type == "TestSuite":
+    if service_type == "testSuite":
         return WorkflowSource(
             type=service_type,
             serviceName=ingestion_pipeline.service.name,

@@ -65,6 +65,9 @@ export interface PermissionContextType {
     resource: ResourceEntity,
     entityId: string
   ) => Promise<OperationPermission>;
+  getResourcePermission: (
+    resource: ResourceEntity
+  ) => Promise<OperationPermission>;
 }
 
 export interface EntityPermissionMap {

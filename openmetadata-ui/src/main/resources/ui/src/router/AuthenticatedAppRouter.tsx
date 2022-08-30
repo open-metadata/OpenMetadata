@@ -19,6 +19,7 @@ import { usePermissionProvider } from '../components/PermissionProvider/Permissi
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { Operation } from '../generated/entity/policies/policy';
+import AddDataQualityTestPage from '../pages/AddDataQualityTestPage/AddDataQualityTestPage';
 import { checkPermission } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -291,6 +292,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
+      <Route
+        exact
+        component={AddDataQualityTestPage}
+        path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
+      />
       <Route
         exact
         component={ProfilerDashboardPage}
