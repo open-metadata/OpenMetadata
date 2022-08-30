@@ -25,15 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  cloneDeep,
-  includes,
-  isEmpty,
-  isEqual,
-  isString,
-  isUndefined,
-  kebabCase,
-} from 'lodash';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import {
   EntityTags,
   FormattedGlossaryTermData,
@@ -66,6 +58,7 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
+import SummaryDetail from './SummaryDetail';
 import AssetsTabs from './tabs/AssetsTabs.component';
 const { Text } = Typography;
 
@@ -78,13 +71,6 @@ type Props = {
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
   handleUserRedirection?: (name: string) => void;
-};
-
-type SummaryDetailsProps = {
-  title: string;
-  children: React.ReactElement;
-  setShow?: (value: React.SetStateAction<boolean>) => void;
-  data?: FormattedGlossaryTermData[] | TermReference[] | string;
 };
 
 const GlossaryTermsV1 = ({
@@ -357,22 +343,6 @@ const GlossaryTermsV1 = ({
     );
   };
 
-  const addButton = (onClick: () => void) => {
-    return (
-      <Tooltip title={permissions.EditAll ? 'Add' : NO_PERMISSION_FOR_ACTION}>
-        <Button
-          className="tw-cursor-pointer"
-          data-testid="add-button"
-          disabled={!permissions.EditAll}
-          size="small"
-          type="text"
-          onClick={onClick}>
-          <SVGIcons alt="icon-plus-primary" icon="icon-plus-primary-outlined" />
-        </Button>
-      </Tooltip>
-    );
-  };
-
   const getReviewerTabData = () => {
     return (
       <div className="tw--mx-5">
@@ -439,34 +409,6 @@ const GlossaryTermsV1 = ({
     );
   };
 
-  const SummaryDetail = ({
-    title,
-    children,
-    setShow,
-    data,
-    ...props
-  }: SummaryDetailsProps) => {
-    return (
-      <Space direction="vertical" {...props}>
-        <Space>
-          <Text type="secondary">{title}</Text>
-          <div className="tw-ml-2" data-testid={`section-${kebabCase(title)}`}>
-            {addButton(() => setShow && setShow(true))}
-          </div>
-        </Space>
-        {!isString(data) && !isUndefined(data) && data.length > 0 ? (
-          <div
-            className="tw-flex"
-            data-testid={`${kebabCase(title)}-container`}>
-            {children}
-          </div>
-        ) : (
-          <div data-testid={`${kebabCase(title)}-container`}>{children}</div>
-        )}
-      </Space>
-    );
-  };
-
   const SummaryTab = () => {
     return (
       <Row gutter={16}>
@@ -484,6 +426,7 @@ const GlossaryTermsV1 = ({
             <Divider className="m-r-1" />
             <SummaryDetail
               data={relatedTerms}
+              hasAccess={permissions.EditAll}
               key="related_term"
               setShow={setShowRelatedTermsModal}
               title="Related Terms">
@@ -512,6 +455,7 @@ const GlossaryTermsV1 = ({
             <Divider className="m-r-1" />
 
             <SummaryDetail
+              hasAccess={permissions.EditAll}
               key="synonyms"
               setShow={setIsSynonymsEditing}
               title="Synonyms">
@@ -560,6 +504,7 @@ const GlossaryTermsV1 = ({
 
             <SummaryDetail
               data={references}
+              hasAccess={permissions.EditAll}
               key="references"
               setShow={setIsReferencesEditing}
               title="References">

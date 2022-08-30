@@ -20,24 +20,50 @@ import {
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+    permissions: {
+      glossaryTerm: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      glossary: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),
 }));
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 jest.mock('../../components/tags-container/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
@@ -100,6 +126,10 @@ jest.mock('antd', () => ({
     )),
 }));
 
+jest.mock('./SummaryDetail', () =>
+  jest.fn().mockReturnValue(<div>SummaryDetails</div>)
+);
+
 const mockProps = {
   assetData: mockedAssetData,
   currentPage: 1,
@@ -117,42 +147,6 @@ const mockProps = {
   onAssetPaginate: jest.fn(),
   onRelatedTermClick: jest.fn(),
 };
-
-jest.mock('../PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    glossaryTerm: {
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    },
-    glossary: {
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    },
-  }),
-  getEntityPermission: jest.fn().mockReturnValue({
-    Create: true,
-    Delete: true,
-    ViewAll: true,
-    EditAll: true,
-    EditDescription: true,
-    EditDisplayName: true,
-    EditCustomFields: true,
-  }),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-}));
 
 describe('Test Glossary-term component', () => {
   it('Should render Glossary-term component', () => {
