@@ -9,8 +9,8 @@ import org.openmetadata.catalog.util.PipelineServiceClient;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
 
-  public MockPipelineServiceClient(String userName, String password, String apiEndpoint, int apiTimeout) {
-    super(userName, password, apiEndpoint, apiTimeout);
+  public MockPipelineServiceClient(String userName, String password, String apiEndpoint, String hostIp, int apiTimeout) {
+    super(userName, password, apiEndpoint, hostIp, apiTimeout);
   }
 
   @Override

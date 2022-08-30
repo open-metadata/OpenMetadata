@@ -36,6 +36,7 @@ public abstract class PipelineServiceClient {
   protected final URL serviceURL;
   protected final String username;
   protected final String password;
+  protected final String hostIp;
   protected final HttpClient client;
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
@@ -53,7 +54,7 @@ public abstract class PipelineServiceClient {
     SERVER_VERSION = rawServerVersion;
   }
 
-  public PipelineServiceClient(String userName, String password, String apiEndpoint, int apiTimeout) {
+  public PipelineServiceClient(String userName, String password, String apiEndpoint, String hostIp, int apiTimeout) {
     try {
       this.serviceURL = new URL(apiEndpoint);
     } catch (MalformedURLException e) {
@@ -61,6 +62,7 @@ public abstract class PipelineServiceClient {
     }
     this.username = userName;
     this.password = password;
+    this.hostIp = hostIp;
     this.client =
         HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
