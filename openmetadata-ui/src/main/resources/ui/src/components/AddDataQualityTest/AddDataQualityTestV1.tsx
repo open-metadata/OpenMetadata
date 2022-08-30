@@ -126,7 +126,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   }, [table, entityTypeFQN, isColumnFqn]);
 
   const handleViewTestSuiteClick = () => {
-    history.push(getTestSuitePath(testSuiteData?.fullyQualifiedName || ''));
+    history.push(
+      getTestSuitePath(selectedTestSuite?.data?.fullyQualifiedName || '')
+    );
   };
 
   const handleAirflowStatusCheck = (): Promise<void> => {
