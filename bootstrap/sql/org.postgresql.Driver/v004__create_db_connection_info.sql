@@ -103,5 +103,5 @@ CREATE TABLE IF NOT EXISTS openmetadata_settings (
 DELETE FROM entity_extension
 WHERE jsonSchema IN ('tableProfile', 'columnTest', 'tableTest');
 
-delete from ingestion_pipeline_entity 
-where json_extract_path_text("json", 'pipelineType') = 'profiler'
+DELETE FROM ingestion_pipeline_entity 
+WHERE json_extract_path_text("json", 'pipelineType') = 'profiler';
