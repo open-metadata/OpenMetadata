@@ -20,6 +20,7 @@ import {
   Input,
   Row,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -40,10 +41,7 @@ import {
   GlossaryTermAssets,
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import {
-  TITLE_FOR_NON_ADMIN_ACTION,
-  TITLE_FOR_NON_OWNER_ACTION,
-} from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   GlossaryTerm,
   TermReference,
@@ -59,12 +57,12 @@ import {
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DescriptionV1 from '../common/description/DescriptionV1';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TabsPane from '../common/TabsPane/TabsPane';
 import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
@@ -73,7 +71,7 @@ const { Text } = Typography;
 
 type Props = {
   assetData: GlossaryTermAssets;
-  isHasAccess: boolean;
+  permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   currentPage: number;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
@@ -91,12 +89,12 @@ type SummaryDetailsProps = {
 
 const GlossaryTermsV1 = ({
   assetData,
-  isHasAccess,
   glossaryTerm,
   handleGlossaryTermUpdate,
   onAssetPaginate,
   onRelatedTermClick,
   currentPage,
+  permissions,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -301,7 +299,7 @@ const GlossaryTermsV1 = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    if (isHasAccess) {
+    if (permissions.EditAll) {
       return;
     }
     const value = event.target.value;
@@ -344,28 +342,34 @@ const GlossaryTermsV1 = ({
 
   const addReviewerButton = () => {
     return (
-      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <button
-          className="tw-text-primary tw-flex tw-items-center"
+      <Tooltip
+        placement="topRight"
+        title={permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
+        <Button
+          className="tw-p-0"
           data-testid="add-new-reviewer"
-          disabled={isHasAccess}
+          disabled={!permissions.EditAll}
+          type="text"
           onClick={() => setShowRevieweModal(true)}>
           <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
-        </button>
-      </NonAdminAction>
+        </Button>
+      </Tooltip>
     );
   };
 
   const addButton = (onClick: () => void) => {
     return (
-      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <span
+      <Tooltip title={permissions.EditAll ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+        <Button
           className="tw-cursor-pointer"
           data-testid="add-button"
+          disabled={!permissions.EditAll}
+          size="small"
+          type="text"
           onClick={onClick}>
           <SVGIcons alt="icon-plus-primary" icon="icon-plus-primary-outlined" />
-        </span>
-      </NonAdminAction>
+        </Button>
+      </Tooltip>
     );
   };
 
@@ -398,9 +402,7 @@ const GlossaryTermsV1 = ({
                   <span>{getEntityName(term)}</span>
                 </div>
                 <span>
-                  <NonAdminAction
-                    html={<p>{TITLE_FOR_NON_OWNER_ACTION}</p>}
-                    position="bottom">
+                  <Button disabled={!permissions.EditAll} type="text">
                     <span
                       className={classNames('tw-h-8 tw-rounded tw-mb-3')}
                       data-testid="remove"
@@ -410,7 +412,7 @@ const GlossaryTermsV1 = ({
                         icon="remove"
                       />
                     </span>
-                  </NonAdminAction>
+                  </Button>
                 </span>
               </div>
             ))}
@@ -629,50 +631,49 @@ const GlossaryTermsV1 = ({
             )}
           </>
         )}
-        <NonAdminAction
-          position="bottom"
-          title={TITLE_FOR_NON_ADMIN_ACTION}
-          trigger="click">
-          <div className="tw-inline-block" onClick={handleTagContainerClick}>
-            <TagsContainer
-              buttonContainerClass="tw--mt-0"
-              containerClass="tw-flex tw-items-center tw-gap-2"
-              dropDownHorzPosRight={false}
-              editable={isTagEditable}
-              isLoading={isTagLoading}
-              selectedTags={getSelectedTags()}
-              showTags={false}
-              size="small"
-              tagList={getTagOptionsFromFQN(tagList)}
-              type="label"
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags);
-              }}>
-              {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
-                <button className="tw-ml-1 focus:tw-outline-none">
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                </button>
-              ) : (
-                <span>
-                  <Tags
-                    className="tw-text-primary"
-                    startWith="+ "
-                    tag="Add tag"
-                    type="label"
-                  />
-                </span>
-              )}
-            </TagsContainer>
-          </div>
-        </NonAdminAction>
+
+        <div className="tw-inline-block" onClick={handleTagContainerClick}>
+          <TagsContainer
+            buttonContainerClass="tw--mt-0"
+            containerClass="tw-flex tw-items-center tw-gap-2"
+            dropDownHorzPosRight={false}
+            editable={isTagEditable}
+            isLoading={isTagLoading}
+            selectedTags={getSelectedTags()}
+            showTags={false}
+            size="small"
+            tagList={getTagOptionsFromFQN(tagList)}
+            type="label"
+            onCancel={() => {
+              handleTagSelection();
+            }}
+            onSelectionChange={(tags) => {
+              handleTagSelection(tags);
+            }}>
+            {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
+              <button className="tw-ml-1 focus:tw-outline-none">
+                <SVGIcons
+                  alt="edit"
+                  icon="icon-edit"
+                  title="Edit"
+                  width="16px"
+                />
+              </button>
+            ) : (
+              <Button
+                className="tw-p-0"
+                disabled={!permissions.EditTags}
+                type="text">
+                <Tags
+                  className="tw-text-primary"
+                  startWith="+ "
+                  tag="Add tag"
+                  type="label"
+                />
+              </Button>
+            )}
+          </TagsContainer>
+        </div>
       </div>
 
       <div className="tw-flex tw-flex-col tw-flex-grow">

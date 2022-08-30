@@ -111,6 +111,42 @@ const mockProps = {
   onRelatedTermClick: jest.fn(),
 };
 
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    glossaryTerm: {
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    },
+    glossary: {
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    },
+  }),
+  getEntityPermission: jest.fn().mockReturnValue({
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
+
 describe('Test Glossary component', () => {
   it('Should render Glossary header', () => {
     const { container } = render(<GlossaryV1 {...mockProps} />);

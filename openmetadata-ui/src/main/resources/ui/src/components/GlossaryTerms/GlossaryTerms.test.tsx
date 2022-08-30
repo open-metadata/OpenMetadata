@@ -17,6 +17,7 @@ import {
   mockedAssetData,
   mockedGlossaryTerms,
 } from '../../mocks/Glossary.mock';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
 jest.mock('react-router-dom', () => ({
@@ -102,12 +103,56 @@ jest.mock('antd', () => ({
 const mockProps = {
   assetData: mockedAssetData,
   currentPage: 1,
-  isHasAccess: true,
+  permissions: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  } as OperationPermission,
   glossaryTerm: mockedGlossaryTerms[0],
   handleGlossaryTermUpdate: jest.fn(),
   onAssetPaginate: jest.fn(),
   onRelatedTermClick: jest.fn(),
 };
+
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    glossaryTerm: {
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    },
+    glossary: {
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    },
+  }),
+  getEntityPermission: jest.fn().mockReturnValue({
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
 
 describe('Test Glossary-term component', () => {
   it('Should render Glossary-term component', () => {
