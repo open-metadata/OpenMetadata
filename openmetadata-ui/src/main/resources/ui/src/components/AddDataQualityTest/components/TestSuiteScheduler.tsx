@@ -12,15 +12,24 @@
  */
 
 import { Button, Col, Row, Space } from 'antd';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import CronEditor from '../../common/CronEditor/CronEditor';
 import { TestSuiteSchedulerProps } from '../AddDataQualityTest.interface';
 
 const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
+  initialData,
   onCancel,
   onSubmit,
 }) => {
-  const [repeatFrequency, setRepeatFrequency] = useState('');
+  const [repeatFrequency, setRepeatFrequency] = useState<string | undefined>(
+    initialData
+  );
+
+  useEffect(() => {
+    if (initialData) {
+      setRepeatFrequency(initialData);
+    }
+  }, [initialData]);
 
   return (
     <Row gutter={[16, 32]}>
@@ -33,7 +42,9 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
       <Col span={24}>
         <Space className="tw-w-full tw-justify-end" size={16}>
           <Button onClick={onCancel}>Back</Button>
-          <Button type="primary" onClick={() => onSubmit(repeatFrequency)}>
+          <Button
+            type="primary"
+            onClick={() => onSubmit(repeatFrequency || '')}>
             Submit
           </Button>
         </Space>

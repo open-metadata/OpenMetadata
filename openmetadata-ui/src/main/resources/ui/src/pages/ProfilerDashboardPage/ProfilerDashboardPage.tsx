@@ -83,6 +83,10 @@ const ProfilerDashboardPage = () => {
     }
   };
 
+  const handleTestCaseUpdate = () => {
+    fetchTestCases(generateEntityLink(entityTypeFQN));
+  };
+
   const fetchTableEntity = async () => {
     try {
       const fqn = isColumnView
@@ -155,6 +159,7 @@ const ProfilerDashboardPage = () => {
         table={table}
         testCases={testCases}
         onTableChange={updateTableHandler}
+        onTestCaseUpdate={handleTestCaseUpdate}
       />
     </PageContainerV1>
   );

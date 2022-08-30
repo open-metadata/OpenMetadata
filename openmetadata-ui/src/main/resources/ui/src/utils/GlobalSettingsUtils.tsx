@@ -153,6 +153,20 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
+      category: 'Data Quality',
+      items: [
+        {
+          label: 'Test Suite',
+          isProtected: checkPermission(
+            Operation.ViewAll,
+            ResourceEntity.TEST_SUITE,
+            permissions
+          ),
+          icon: <TableIcon className="side-panel-icons" />,
+        },
+      ],
+    },
+    {
       category: 'Custom Attributes',
       items: [
         {
