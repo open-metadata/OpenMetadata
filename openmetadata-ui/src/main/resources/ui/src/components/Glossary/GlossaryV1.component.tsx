@@ -380,11 +380,9 @@ const GlossaryV1 = ({
 
   useEffect(() => {
     setDisplayName(selectedData?.displayName);
-
-    if (isGlossaryActive) {
-      selectedData && fetchGlossaryPermission();
-    } else {
-      selectedData && fetchGlossaryTermPermission();
+    if (selectedData) {
+      fetchGlossaryPermission();
+      fetchGlossaryTermPermission();
     }
   }, [selectedData]);
 
@@ -420,7 +418,11 @@ const GlossaryV1 = ({
 
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
-            disabled={!glossaryPermission.Delete}
+            disabled={
+              isGlossaryActive
+                ? !glossaryPermission.Delete
+                : !glossaryTermPermission.Delete
+            }
             overlay={manageButtonContent()}
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
