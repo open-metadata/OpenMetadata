@@ -222,7 +222,7 @@ class TestSuiteWorkflow:
             if not self._get_profile_sample(table_entity)
             else None,
             partition_config=self._get_partition_details(table_entity)
-            if not self.get_profile_query(table_entity)
+            if not self._get_profile_query(table_entity)
             else None,
         )
 
