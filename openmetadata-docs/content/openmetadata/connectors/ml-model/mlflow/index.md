@@ -138,7 +138,7 @@ In this step we will configure the metadata ingestion pipeline,
 Please follow the instructions below
 
 <Image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-pipeline.png"
+src="/images/openmetadata/connectors/configure-metadata-ingestion-ml-model.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page"
 />

@@ -14,6 +14,7 @@
 import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getBots } from '../../axiosAPIs/botsAPI';
@@ -22,12 +23,13 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
 } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { checkPemission } from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -45,10 +47,11 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
-  const deletePermission = checkPemission(
-    Operation.Delete,
-    ResourceEntity.BOT,
-    permissions
+  const deletePermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Delete, ResourceEntity.BOT, permissions),
+    [permissions]
   );
 
   /**
@@ -103,11 +106,7 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
           <Space align="center" size={8}>
             <Tooltip
               placement="bottom"
-              title={
-                deletePermission
-                  ? 'Delete'
-                  : 'You do not have permissions to perform this action.'
-              }>
+              title={deletePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
               <Button
                 disabled={!deletePermission}
                 icon={

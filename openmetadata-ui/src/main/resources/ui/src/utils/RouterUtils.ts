@@ -28,6 +28,7 @@ import {
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
+  PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
 import { initialFilterQS } from '../constants/explore.constants';
@@ -326,6 +327,42 @@ export const getTagPath = (fqn?: string) => {
   if (fqn) {
     path = ROUTES.TAG_DETAILS;
     path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+  }
+
+  return path;
+};
+
+export const getAddDataQualityTableTestPath = (
+  dashboardType: string,
+  fqn: string
+) => {
+  let path = ROUTES.ADD_DATA_QUALITY_TEST_CASE;
+
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+
+  return path;
+};
+
+export const getTestSuitePath = (testSuiteName: string) => {
+  let path = ROUTES.TEST_SUITES;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+
+  return path;
+};
+
+export const getTestSuiteIngestionPath = (
+  testSuiteName: string,
+  ingestionFQN?: string
+) => {
+  let path = ingestionFQN
+    ? ROUTES.TEST_SUITES_EDIT_INGESTION
+    : ROUTES.TEST_SUITES_ADD_INGESTION;
+  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+
+  if (ingestionFQN) {
+    path = path.replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN);
   }
 
   return path;

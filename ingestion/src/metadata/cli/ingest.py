@@ -39,9 +39,9 @@ def run_ingest(config_path: str) -> None:
     try:
         workflow = Workflow.create(config_dict)
         logger.debug(f"Using config: {workflow.config}")
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
         logger.debug(traceback.format_exc())
+        click.echo(err, err=True)
         sys.exit(1)
 
     workflow.execute()

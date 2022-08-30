@@ -371,7 +371,7 @@ export const addNewTagToEntity = (entity, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
     .contains('Tags')
     .should('be.visible')
     .click();
@@ -386,7 +386,7 @@ export const addNewTagToEntity = (entity, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+  cy.get(':nth-child(1) > :nth-child(5) [data-testid="tag-container"]')
     .scrollIntoView()
     .contains(term)
     .should('exist');

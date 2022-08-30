@@ -179,6 +179,8 @@ the changes.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
+If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave
+the GCS credentials empty. This is why they are not marked as required.
 
 ### 6. Configure Metadata Ingestion
 
@@ -186,7 +188,7 @@ In this step we will configure the metadata ingestion pipeline,
 Please follow the instructions below
 
 <Image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-pipeline.png"
+src="/images/openmetadata/connectors/configure-metadata-ingestion-database.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page"
 />

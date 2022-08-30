@@ -11,42 +11,47 @@
  *  limitations under the License.
  */
 
-import { Menu, MenuProps } from 'antd';
+import { Empty, Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
-import { useAuth } from '../../hooks/authHooks';
-import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
+import {
+  getGlobalSettingMenuItem,
+  getGlobalSettingsMenuWithPermission,
+  MenuList,
+} from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 const GlobalSettingLeftPanel = () => {
-  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
-
-  const isHasAccess = isAdminUser || isAuthDisabled;
-
   const history = useHistory();
-  const items: ItemType[] = GLOBAL_SETTINGS_MENU.filter(({ isProtected }) => {
-    if (isHasAccess) {
-      return isHasAccess;
-    }
+  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
 
-    return !isProtected;
-  }).map(({ category, items }) => {
-    return getGlobalSettingMenus(
-      category,
-      camelCase(category),
-      '',
-      '',
-      items,
-      'group',
-      isHasAccess
-    );
-  });
+  const { permissions } = usePermissionProvider();
+
+  const menuItems: ItemType[] = useMemo(
+    () =>
+      getGlobalSettingsMenuWithPermission(permissions).reduce(
+        (acc: ItemType[], curr: MenuList) => {
+          const menuItem = getGlobalSettingMenuItem(
+            curr.category,
+            camelCase(curr.category),
+            '',
+            '',
+            curr.items,
+            'group'
+          );
+          if (menuItem.children?.length) {
+            return [...acc, menuItem];
+          } else {
+            return acc;
+          }
+        },
+        [] as ItemType[]
+      ),
+    [permissions]
+  );
 
   const onClick: MenuProps['onClick'] = (e) => {
     // As we are setting key as "category.option" and extracting here category and option
@@ -54,14 +59,16 @@ const GlobalSettingLeftPanel = () => {
     history.push(getSettingPath(category, option));
   };
 
-  return (
+  return menuItems.length ? (
     <Menu
       className="global-setting-left-panel"
-      items={items}
+      items={menuItems}
       mode="inline"
       selectedKeys={[`${settingCategory}.${tab}`]}
       onClick={onClick}
     />
+  ) : (
+    <Empty className="tw-mt-8" />
   );
 };
 

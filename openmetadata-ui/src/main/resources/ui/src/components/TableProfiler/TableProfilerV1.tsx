@@ -27,8 +27,10 @@ import {
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
-import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
-import { getProfilerDashboardWithFqnPath } from '../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -156,15 +158,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
       className="table-profiler-container"
       data-testid="table-profiler-container">
       <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
-        <Button
-          className="tw-rounded"
-          data-testid="profiler-add-table-test-btn"
-          type="primary"
-          onClick={() =>
-            onAddTestClick(getCurrentDatasetTab('data-quality'), 'table')
-          }>
-          Add Test
-        </Button>
+        <Link
+          to={getAddDataQualityTableTestPath(
+            ProfilerDashboardType.TABLE,
+            table.fullyQualifiedName || ''
+          )}>
+          <Button
+            className="tw-rounded"
+            data-testid="profiler-add-table-test-btn"
+            type="primary">
+            Add Test
+          </Button>
+        </Link>
         <Button
           className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
           data-testid="profiler-setting-btn"

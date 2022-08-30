@@ -13,20 +13,29 @@
 
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tooltip } from 'antd';
 import { Store } from 'antd/lib/form/interface';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ROUTES, TERM_ALL } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import {
+  CONFIGURE_MS_TEAMS_TEXT,
   CONFIGURE_SLACK_TEXT,
   CONFIGURE_WEBHOOK_TEXT,
+  NO_PERMISSION_FOR_ACTION,
 } from '../../constants/HelperTextUtil';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
@@ -36,25 +45,36 @@ import {
   EventFilter,
 } from '../../generated/api/events/createWebhook';
 import { WebhookType } from '../../generated/entity/events/webhook';
+import { Operation } from '../../generated/entity/policies/policy';
 import {
   errorMsg,
   getSeparator,
   isValidUrl,
   requiredField,
 } from '../../utils/CommonUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEventFilters } from '../../utils/WebhookUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import CardV1 from '../common/Card/CardV1';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { AddWebhookProps } from './AddWebhook.interface';
 import EventFilterSelect from './EventFilterSelect.component';
 import { EVENT_FILTER_FORM_INITIAL_VALUE } from './WebhookConstants';
+
+const CONFIGURE_TEXT: { [key: string]: string } = {
+  msteams: CONFIGURE_MS_TEAMS_TEXT,
+  slack: CONFIGURE_SLACK_TEXT,
+  generic: CONFIGURE_WEBHOOK_TEXT,
+};
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -123,6 +143,29 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   });
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+
+  const { permissions } = usePermissionProvider();
+
+  const editWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.EditAll, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const addWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
+
+  const deleteWebhookPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Delete, ResourceEntity.WEBHOOK, permissions),
+    [permissions]
+  );
 
   const handleDelete = () => {
     if (data) {
@@ -220,7 +263,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const getDeleteButton = () => {
-    return allowAccess ? (
+    return (
       <>
         {deleteState === 'waiting' ? (
           <Button
@@ -232,24 +275,32 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             <Loader size="small" type="default" />
           </Button>
         ) : (
-          <Button
-            className={classNames({
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="delete-webhook"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={() => setIsDelete(true)}>
-            Delete
-          </Button>
+          <Tooltip
+            placement="left"
+            title={
+              deleteWebhookPermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              data-testid="delete-webhook"
+              disabled={!deleteWebhookPermission}
+              size="regular"
+              theme="primary"
+              variant="text"
+              onClick={() => setIsDelete(true)}>
+              Delete
+            </Button>
+          </Tooltip>
         )}
       </>
-    ) : null;
+    );
   };
 
   const getSaveButton = () => {
-    return allowAccess ? (
+    const savePermission =
+      (mode === 'add' && addWebhookPermission) ||
+      (mode === 'edit' && editWebhookPermission);
+
+    return (
       <>
         {saveState === 'waiting' ? (
           <Button
@@ -270,31 +321,33 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-webhook"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
+          <Tooltip
+            placement="left"
+            title={savePermission ? 'Save' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className={classNames('tw-w-16 tw-h-10')}
+              data-testid="save-webhook"
+              disabled={!savePermission}
+              size="regular"
+              theme="primary"
+              variant="contained"
+              onClick={handleSave}>
+              Save
+            </Button>
+          </Tooltip>
         )}
       </>
-    ) : null;
+    );
   };
 
   const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
-        <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
-        <div className="tw-mb-5">
-          {webhookType === WebhookType.Slack
-            ? CONFIGURE_SLACK_TEXT
-            : CONFIGURE_WEBHOOK_TEXT}
-        </div>
+        <CardV1
+          description={CONFIGURE_TEXT[webhookType]}
+          heading="Configure Webhooks"
+          id="webhook"
+        />
       </div>
     );
   }, [webhookType]);
@@ -592,7 +645,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 </div>
               )}
             </Field>
-            {data && isDelete && (
+            {data && isDelete && deleteWebhookPermission && (
               <ConfirmationModal
                 bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
                 cancelText="Cancel"

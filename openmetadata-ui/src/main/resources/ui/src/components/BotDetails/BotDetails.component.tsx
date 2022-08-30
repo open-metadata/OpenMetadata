@@ -15,13 +15,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import moment from 'moment';
 import React, {
   FC,
   Fragment,
   HTMLAttributes,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import Select, { SingleValue } from 'react-select';
@@ -34,7 +35,7 @@ import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { checkPemission } from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -77,21 +78,32 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
 
-  const editAllPermission = checkPemission(
-    Operation.EditAll,
-    ResourceEntity.BOT,
-    permissions
+  const editAllPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.EditAll, ResourceEntity.BOT, permissions),
+    [permissions]
   );
-  const displayNamePermission = checkPemission(
-    Operation.EditDisplayName,
-    ResourceEntity.BOT,
-    permissions
+  const displayNamePermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.EditDisplayName,
+        ResourceEntity.BOT,
+        permissions
+      ),
+    [permissions]
   );
 
-  const descriptionPermission = checkPemission(
-    Operation.EditDescription,
-    ResourceEntity.BOT,
-    permissions
+  const descriptionPermission = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(
+        Operation.EditDescription,
+        ResourceEntity.BOT,
+        permissions
+      ),
+    [permissions]
   );
 
   const getJWTTokenExpiryOptions = () => {

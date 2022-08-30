@@ -2784,7 +2784,8 @@ public interface CollectionDAO {
           .withMlmodelCount(rs.getInt("mlmodelCount"))
           .withServicesCount(rs.getInt("servicesCount"))
           .withUserCount(rs.getInt("userCount"))
-          .withTeamCount(rs.getInt("teamCount"));
+          .withTeamCount(rs.getInt("teamCount"))
+          .withTestSuiteCount(rs.getInt("testSuiteCount"));
     }
   }
 
@@ -2814,7 +2815,8 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity WHERE JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE) as userCount, "
-                + "(SELECT COUNT(*) FROM team_entity) as teamCount",
+                + "(SELECT COUNT(*) FROM team_entity) as teamCount, "
+                + "(SELECT COUNT(*) FROM test_suite) as testSuiteCount",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -2829,7 +2831,8 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity WHERE json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE) as userCount, "
-                + "(SELECT COUNT(*) FROM team_entity) as teamCount",
+                + "(SELECT COUNT(*) FROM team_entity) as teamCount, "
+                + "(SELECT COUNT(*) FROM test_suite) as testSuiteCount",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntitiesCountRowMapper.class)
     EntitiesCount getAggregatedEntitiesCount() throws StatementException;

@@ -279,11 +279,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
             try:
                 dashboard_details = self.get_dashboard_details(dashboard)
-            except Exception as err:
-                logger.error(
-                    f"Cannot extract dashboard details from {dashboard} - {err}"
-                )
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Cannot extract dashboard details from {dashboard}: {exc}"
+                )
                 continue
 
             if filter_by_dashboard(
