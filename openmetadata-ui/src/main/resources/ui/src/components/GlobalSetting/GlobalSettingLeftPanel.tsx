@@ -16,8 +16,12 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GLOBAL_SETTINGS_MENU,
+} from '../../constants/globalSettings.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { TeamType } from '../../generated/entity/teams/team';
 import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -57,7 +61,13 @@ const GlobalSettingLeftPanel = () => {
   const onClick: MenuProps['onClick'] = (e) => {
     // As we are setting key as "category.option" and extracting here category and option
     const [category, option] = e.key.split('.');
-    history.push(getSettingPath(category, option));
+    if (option === GlobalSettingOptions.TEAMS) {
+      history.push(
+        `${getSettingPath(category, option)}/${TeamType.Organization}`
+      );
+    } else {
+      history.push(getSettingPath(category, option));
+    }
   };
 
   return (

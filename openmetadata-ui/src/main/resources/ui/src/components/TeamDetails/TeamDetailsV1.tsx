@@ -79,6 +79,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import ListEntities from './RolesAndPoliciesList';
+import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 interface AddAttribute {
@@ -109,8 +110,7 @@ const TeamDetailsV1 = ({
   removeUserFromTeam,
   afterDeleteAction,
 }: TeamDetailsProp) => {
-  const isOrganization =
-    currentTeam.name === TeamType.Organization.toLowerCase();
+  const isOrganization = currentTeam.name === TeamType.Organization;
   const DELETE_USER_INITIAL_STATE = {
     user: undefined,
     state: false,
@@ -161,39 +161,6 @@ const TeamDetailsV1 = ({
     );
     setDeletingUser({ user, state: true, leave });
   };
-
-  const tabs = [
-    {
-      name: 'Teams',
-      isProtected: false,
-      position: 1,
-      count: currentTeam.children?.length || 0,
-    },
-    {
-      name: 'Users',
-      isProtected: false,
-      position: 2,
-      count: teamUserPagin?.total,
-    },
-    {
-      name: 'Assets',
-      isProtected: false,
-      position: 3,
-      count: filterEntityAssets(currentTeam?.owns || []).length,
-    },
-    {
-      name: 'Roles',
-      isProtected: false,
-      position: 4,
-      count: currentTeam?.defaultRoles?.length,
-    },
-    {
-      name: 'Policies',
-      isProtected: false,
-      position: 5,
-      count: currentTeam?.policies?.length,
-    },
-  ];
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
@@ -649,7 +616,7 @@ const TeamDetailsV1 = ({
 
   const getTeamHeading = () => {
     return (
-      <div className="tw-heading tw-text-link tw-text-base tw-mb-0">
+      <div className="tw-heading tw-text-link tw-text-base tw-mb-2">
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
@@ -699,6 +666,7 @@ const TeamDetailsV1 = ({
                     onClick={() => setIsHeadingEditing(true)}>
                     <SVGIcons
                       alt="edit"
+                      className="tw-mb-1.5"
                       icon="icon-edit"
                       title="Edit"
                       width="16px"
@@ -724,37 +692,41 @@ const TeamDetailsV1 = ({
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
             {getTeamHeading()}
-            <Space align="center">
-              {!isUndefined(currentUser) &&
-                teamActionButton(
-                  !isAlreadyJoinedTeam(currentTeam.id),
-                  currentTeam.isJoinable || false
-                )}
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <ManageButton
-                  afterDeleteAction={afterDeleteAction}
-                  buttonClassName="tw-p-4"
-                  entityId={currentTeam.id}
-                  entityName={
-                    currentTeam.fullyQualifiedName || currentTeam.name
-                  }
-                  entityType="team"
-                />
-              </NonAdminAction>
-            </Space>
+            {!isOrganization && (
+              <Space align="center">
+                {!isUndefined(currentUser) &&
+                  teamActionButton(
+                    !isAlreadyJoinedTeam(currentTeam.id),
+                    currentTeam.isJoinable || false
+                  )}
+                <NonAdminAction
+                  position="bottom"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <ManageButton
+                    afterDeleteAction={afterDeleteAction}
+                    buttonClassName="tw-p-4"
+                    entityId={currentTeam.id}
+                    entityName={
+                      currentTeam.fullyQualifiedName || currentTeam.name
+                    }
+                    entityType="team"
+                  />
+                </NonAdminAction>
+              </Space>
+            )}
           </div>
-          <div className="tw-mb-3">
-            <Switch
-              checked={currentTeam.isJoinable}
-              className="tw-mr-2"
-              size="small"
-              title="Open Group"
-              onChange={handleOpenToJoinToggle}
-            />
-            <span>Open Group</span>
-          </div>
+          {!isOrganization && (
+            <div className="tw-mb-3">
+              <Switch
+                checked={currentTeam.isJoinable}
+                className="tw-mr-2"
+                size="small"
+                title="Open Group"
+                onChange={handleOpenToJoinToggle}
+              />
+              <span>Open Group</span>
+            </div>
+          )}
           <EntitySummaryDetails data={extraInfo} updateOwner={updateOwner} />
           <div
             className="tw-mb-3 tw--ml-5 tw-mt-2"
@@ -774,7 +746,7 @@ const TeamDetailsV1 = ({
             <TabsPane
               activeTab={currentTab}
               setActiveTab={(tab) => setCurrentTab(tab)}
-              tabs={tabs}
+              tabs={getTabs(currentTeam, teamUserPagin, isOrganization)}
             />
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
