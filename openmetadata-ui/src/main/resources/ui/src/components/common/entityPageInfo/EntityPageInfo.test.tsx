@@ -208,14 +208,6 @@ jest.mock('../../../utils/TagsUtils', () => ({
   }),
 }));
 
-jest.mock('../non-admin-action/NonAdminAction', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <p data-testid="tag-action">{children}</p>
-    ));
-});
-
 jest.mock('../../tags-container/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
     return (
@@ -468,7 +460,10 @@ describe('Test EntityPageInfo component', () => {
 
     expect(entityPageInfoContainer).toBeInTheDocument();
 
-    const tagAction = await findByTestId(entityPageInfoContainer, 'tag-action');
+    const tagAction = await findByTestId(
+      entityPageInfoContainer,
+      'tags-wrapper'
+    );
 
     // should render tag action either add tag or edit tag
     expect(tagAction).toBeInTheDocument();
