@@ -1,7 +1,7 @@
 FROM python:3.9-slim as base
 ENV AIRFLOW_HOME=/airflow
 RUN apt-get update && \
-    apt-get install -y gcc netcat libpq-dev libxml2 postgresql postgresql-contrib libsasl2-modules libsasl2-dev build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget openssl --no-install-recommends && \
+    apt-get install -y build-essential freetds-bin freetds-dev gcc libevent-dev libffi-dev libpq-dev librdkafka-dev libsasl2-dev libsasl2-modules libssl-dev libxml2 netcat openjdk-11-jre openssl postgresql postgresql-contrib python3.9-dev tdsodbc unixodbc unixodbc-dev wget --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Manually fix security vulnerability from curl

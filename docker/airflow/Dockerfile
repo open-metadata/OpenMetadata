@@ -3,9 +3,9 @@ USER root
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 RUN apt-get update \
-    && apt-get install -y \
-        build-essential gcc gnupg libevent-dev libffi-dev libpq-dev librdkafka-dev libsasl2-dev libsasl2-modules  \
-        libssl-dev libxml2 netcat postgresql postgresql-contrib unixodbc-dev --no-install-recommends  \
+    && apt-get install -y build-essential freetds-bin freetds-dev gcc gnupg libevent-dev libffi-dev libpq-dev \
+       librdkafka-dev libsasl2-dev libsasl2-modules libssl-dev libxml2 openjdk-11-jre openssl \
+       postgresql postgresql-contrib tdsodbc unixodbc unixodbc-dev --no-install-recommends \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 USER airflow
