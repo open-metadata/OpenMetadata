@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Empty } from 'antd';
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import {
@@ -31,8 +30,6 @@ import {
   TabCounts,
   UrlParams,
 } from '../../components/Explore/explore.interface';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
   emptyValue,
@@ -48,21 +45,14 @@ import {
   tabsInfo,
   ZERO_SIZE,
 } from '../../constants/explore.constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
-import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
-import {
-  getResourceEntityFromEntityType,
-  getTotalEntityCountByType,
-} from '../../utils/EntityUtils';
+import { getTotalEntityCountByType } from '../../utils/EntityUtils';
 import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
-  const { permissions } = usePermissionProvider();
   const history = useHistory();
   const initialFilter = useMemo(
     () => getQueryParam(getInitialFilter(location.search)),
@@ -80,53 +70,6 @@ const ExplorePage: FunctionComponent = () => {
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
     tabsInfo[getCurrentTab(tab) - 1].sortField
-  );
-
-  const viewTablesPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.TABLE, permissions),
-    [permissions]
-  );
-
-  const viewTopicPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.TOPIC, permissions),
-    [permissions]
-  );
-
-  const viewDashboardPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.DASHBOARD, permissions),
-    [permissions]
-  );
-
-  const viewPipeLinePermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.PIPELINE, permissions),
-    [permissions]
-  );
-
-  const viewMlModelPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.ML_MODEL, permissions),
-    [permissions]
-  );
-
-  const viewAllPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      (checkPermission(Operation.ViewAll, ResourceEntity.ALL, permissions) ||
-        viewTablesPermission ||
-        viewTopicPermission ||
-        viewDashboardPermission ||
-        viewPipeLinePermission ||
-        viewMlModelPermission),
-    [permissions]
   );
 
   const handleSearchText = (text: string) => {
@@ -179,25 +122,15 @@ const ExplorePage: FunctionComponent = () => {
   };
 
   const fetchCounts = () => {
-    if (viewTablesPermission) {
-      fetchEntityCount(SearchIndex.TABLE);
-    }
+    fetchEntityCount(SearchIndex.TABLE);
 
-    if (viewTopicPermission) {
-      fetchEntityCount(SearchIndex.TOPIC);
-    }
+    fetchEntityCount(SearchIndex.TOPIC);
 
-    if (viewDashboardPermission) {
-      fetchEntityCount(SearchIndex.DASHBOARD);
-    }
+    fetchEntityCount(SearchIndex.DASHBOARD);
 
-    if (viewPipeLinePermission) {
-      fetchEntityCount(SearchIndex.PIPELINE);
-    }
+    fetchEntityCount(SearchIndex.PIPELINE);
 
-    if (viewMlModelPermission) {
-      fetchEntityCount(SearchIndex.MLMODEL);
-    }
+    fetchEntityCount(SearchIndex.MLMODEL);
   };
 
   const fetchData = (value: SearchDataFunctionType[]) => {
@@ -253,80 +186,69 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     setSearchResult(undefined);
-    const resource = getResourceEntityFromEntityType(getCurrentIndex(tab));
 
-    const hasPermission =
-      !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, resource, permissions);
-
-    if (hasPermission) {
-      fetchData([
-        {
-          queryString: searchText,
-          from: INITIAL_FROM,
-          size: PAGE_SIZE,
-          filters: getFilterString(initialFilter),
-          sortField: initialSortField,
-          sortOrder: INITIAL_SORT_ORDER,
-          searchIndex: getCurrentIndex(tab),
-        },
-        {
-          queryString: searchText,
-          from: INITIAL_FROM,
-          size: ZERO_SIZE,
-          filters: getFilterString(initialFilter),
-          sortField: initialSortField,
-          sortOrder: INITIAL_SORT_ORDER,
-          searchIndex: getCurrentIndex(tab),
-        },
-        {
-          queryString: searchText,
-          from: INITIAL_FROM,
-          size: ZERO_SIZE,
-          filters: getFilterString(initialFilter),
-          sortField: initialSortField,
-          sortOrder: INITIAL_SORT_ORDER,
-          searchIndex: getCurrentIndex(tab),
-        },
-        {
-          queryString: searchText,
-          from: INITIAL_FROM,
-          size: ZERO_SIZE,
-          filters: getFilterString(initialFilter),
-          sortField: initialSortField,
-          sortOrder: INITIAL_SORT_ORDER,
-          searchIndex: getCurrentIndex(tab),
-        },
-      ]);
-    }
+    fetchData([
+      {
+        queryString: searchText,
+        from: INITIAL_FROM,
+        size: PAGE_SIZE,
+        filters: getFilterString(initialFilter),
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+      {
+        queryString: searchText,
+        from: INITIAL_FROM,
+        size: ZERO_SIZE,
+        filters: getFilterString(initialFilter),
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+      {
+        queryString: searchText,
+        from: INITIAL_FROM,
+        size: ZERO_SIZE,
+        filters: getFilterString(initialFilter),
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+      {
+        queryString: searchText,
+        from: INITIAL_FROM,
+        size: ZERO_SIZE,
+        filters: getFilterString(initialFilter),
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+    ]);
   }, []);
 
   return (
     <PageContainerV1>
-      {viewAllPermission ? (
-        <Explore
-          error={error}
-          fetchCount={fetchCounts}
-          fetchData={fetchData}
-          handleFilterChange={handleFilterChange}
-          handlePathChange={handlePathChange}
-          handleSearchText={handleSearchText}
-          handleTabCounts={setTabCounts}
-          initialFilter={initialFilter}
-          isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
-          searchFilter={searchFilter}
-          searchQuery={searchQuery}
-          searchResult={searchResult}
-          searchText={searchText}
-          showDeleted={showDeleted}
-          sortValue={initialSortField}
-          tab={tab}
-          tabCounts={tabCounts}
-          onShowDeleted={(checked) => setShowDeleted(checked)}
-        />
-      ) : (
-        <Empty className="tw-mt-8" description={NO_PERMISSION_TO_VIEW} />
-      )}
+      <Explore
+        error={error}
+        fetchCount={fetchCounts}
+        fetchData={fetchData}
+        handleFilterChange={handleFilterChange}
+        handlePathChange={handlePathChange}
+        handleSearchText={handleSearchText}
+        handleTabCounts={setTabCounts}
+        initialFilter={initialFilter}
+        isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
+        searchFilter={searchFilter}
+        searchQuery={searchQuery}
+        searchResult={searchResult}
+        searchText={searchText}
+        showDeleted={showDeleted}
+        sortValue={initialSortField}
+        tab={tab}
+        tabCounts={tabCounts}
+        onShowDeleted={(checked) => setShowDeleted(checked)}
+      />
     </PageContainerV1>
   );
 };

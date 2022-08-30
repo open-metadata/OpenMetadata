@@ -16,7 +16,7 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Empty } from 'antd';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
@@ -30,7 +30,6 @@ import React, {
   Fragment,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -58,9 +57,7 @@ import {
   UPDATABLE_AGGREGATION,
   ZERO_SIZE,
 } from '../../constants/explore.constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { usePrevious } from '../../hooks/usePrevious';
 import {
   getAggregationList,
@@ -68,13 +65,10 @@ import {
 } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getResourceEntityFromEntityType } from '../../utils/EntityUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { AdvanceField, ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
@@ -98,7 +92,6 @@ const Explore: React.FC<ExploreProps> = ({
   isFilterSelected,
   handleTabCounts,
 }: ExploreProps) => {
-  const { permissions } = usePermissionProvider();
   const location = useLocation();
   const history = useHistory();
   const filterObject: FilterObject = {
@@ -137,15 +130,6 @@ const Explore: React.FC<ExploreProps> = ({
   const [isInitialFilterSet, setIsInitialFilterSet] = useState<boolean>(
     !isEmpty(initialFilter)
   );
-
-  const hasPermission = useMemo(() => {
-    const resource = getResourceEntityFromEntityType(getCurrentIndex(tab));
-
-    return (
-      !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, resource, permissions)
-    );
-  }, [permissions, tab]);
 
   const onAdvancedFieldSelect = (value: string) => {
     const flag = selectedAdvancedFields.some((field) => field.key === value);
@@ -500,7 +484,7 @@ const Explore: React.FC<ExploreProps> = ({
               ))}
             </div>
           </div>
-          {hasPermission && getSortingElements()}
+          {getSortingElements()}
         </nav>
       </div>
     );
@@ -513,7 +497,7 @@ const Explore: React.FC<ExploreProps> = ({
       } else {
         forceSetAgg.current = !isFilterSet;
       }
-      hasPermission && fetchTableData();
+      fetchTableData();
     }
   };
 
@@ -564,7 +548,7 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
-      hasPermission && fetchTableData();
+      fetchTableData();
     }
   }, [searchText, searchIndex, showDeleted]);
 
@@ -673,36 +657,32 @@ const Explore: React.FC<ExploreProps> = ({
         data-testid="data-summary-container"
         style={{ ...leftPanelAntCardStyle, marginTop: '16px', height: '98%' }}>
         <>
-          {hasPermission ? (
-            <Fragment>
-              <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
-                <Button
-                  className={classNames('tw-underline tw-pb-4')}
-                  disabled={!getFilterCount(filters)}
-                  size="custom"
-                  theme="primary"
-                  variant="link"
-                  onClick={() => resetFilters(true)}>
-                  Clear All
-                </Button>
-              </div>
-              <div className="tw-filter-seperator" />
-              {!error && (
-                <FacetFilter
-                  aggregations={getAggrWithDefaultValue(
-                    aggregations,
-                    visibleFilters
-                  )}
-                  filters={getFacetedFilter()}
-                  showDeletedOnly={showDeleted}
-                  onSelectDeleted={handleShowDeleted}
-                  onSelectHandler={handleSelectedFilter}
-                />
-              )}
-            </Fragment>
-          ) : (
-            <Empty className="tw-mt-8" />
-          )}
+          <Fragment>
+            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+              <Button
+                className={classNames('tw-underline tw-pb-4')}
+                disabled={!getFilterCount(filters)}
+                size="custom"
+                theme="primary"
+                variant="link"
+                onClick={() => resetFilters(true)}>
+                Clear All
+              </Button>
+            </div>
+            <div className="tw-filter-seperator" />
+            {!error && (
+              <FacetFilter
+                aggregations={getAggrWithDefaultValue(
+                  aggregations,
+                  visibleFilters
+                )}
+                filters={getFacetedFilter()}
+                showDeletedOnly={showDeleted}
+                onSelectDeleted={handleShowDeleted}
+                onSelectHandler={handleSelectedFilter}
+              />
+            )}
+          </Fragment>
         </>
       </Card>
     );
@@ -719,7 +699,7 @@ const Explore: React.FC<ExploreProps> = ({
         ) : (
           <>
             {!connectionError && getTabs()}
-            {hasPermission && advanceFieldCheck && (
+            {advanceFieldCheck && (
               <AdvancedFields
                 fields={selectedAdvancedFields}
                 index={searchIndex}
@@ -728,22 +708,18 @@ const Explore: React.FC<ExploreProps> = ({
                 onFieldValueSelect={onAdvancedFieldValueSelect}
               />
             )}
-            {hasPermission ? (
-              <SearchedData
-                showResultCount
-                currentPage={currentPage}
-                data={data}
-                isFilterSelected={isFilterSelected}
-                isLoading={
-                  !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-                }
-                paginate={paginate}
-                searchText={searchText}
-                totalValue={totalNumberOfValue}
-              />
-            ) : (
-              <Empty description={NO_PERMISSION_TO_VIEW} />
-            )}
+            <SearchedData
+              showResultCount
+              currentPage={currentPage}
+              data={data}
+              isFilterSelected={isFilterSelected}
+              isLoading={
+                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+              }
+              paginate={paginate}
+              searchText={searchText}
+              totalValue={totalNumberOfValue}
+            />
           </>
         )}
       </PageLayout>
