@@ -15,12 +15,13 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import WebhooksV1 from '../../components/Webhooks/WebhooksV1';
 import {
+  getAddWebhookPath,
   getEditWebhookPath,
   pagingObject,
-  ROUTES,
 } from '../../constants/constants';
 import {
   Status,
@@ -31,7 +32,7 @@ import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const WebhooksPageV1 = () => {
+const MsTeamsPage = () => {
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
@@ -45,7 +46,7 @@ const WebhooksPageV1 = () => {
       .then((res) => {
         if (res.data) {
           const genericWebhooks = res.data.filter(
-            (d) => d.webhookType === WebhookType.Generic
+            (d) => d.webhookType === WebhookType.Msteams
           );
           setData(genericWebhooks);
           setPaging(res.paging);
@@ -83,7 +84,7 @@ const WebhooksPageV1 = () => {
   };
 
   const handleAddWebhook = () => {
-    history.push(ROUTES.ADD_WEBHOOK);
+    history.push(getAddWebhookPath(WebhookType.Msteams));
   };
 
   const handleClickWebhook = (name: string) => {
@@ -94,23 +95,25 @@ const WebhooksPageV1 = () => {
     fetchData();
   }, []);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
-    <WebhooksV1
-      currentPage={currentPage}
-      data={data}
-      paging={paging}
-      selectedStatus={selectedStatus}
-      webhookType={WebhookType.Generic}
-      onAddWebhook={handleAddWebhook}
-      onClickWebhook={handleClickWebhook}
-      onPageChange={handlePageChange}
-      onStatusFilter={handleStatusFilter}
-    />
+    <PageContainerV1>
+      {!isLoading ? (
+        <WebhooksV1
+          currentPage={currentPage}
+          data={data}
+          paging={paging}
+          selectedStatus={selectedStatus}
+          webhookType={WebhookType.Msteams}
+          onAddWebhook={handleAddWebhook}
+          onClickWebhook={handleClickWebhook}
+          onPageChange={handlePageChange}
+          onStatusFilter={handleStatusFilter}
+        />
+      ) : (
+        <Loader />
+      )}
+    </PageContainerV1>
   );
 };
 
-export default WebhooksPageV1;
+export default MsTeamsPage;

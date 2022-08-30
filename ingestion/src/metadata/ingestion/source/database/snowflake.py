@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import traceback
 from typing import Iterable
 
@@ -48,6 +49,9 @@ ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger = ingestion_logger()
+
+
+SnowflakeDialect._json_deserializer = json.loads
 
 
 def get_table_names(self, connection, schema, **kw):
