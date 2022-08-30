@@ -138,7 +138,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           jsonData['api-success-messages']['update-test-case-success']
         );
         onCancel();
-        onCancel();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
