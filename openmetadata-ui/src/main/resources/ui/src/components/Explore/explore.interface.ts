@@ -29,14 +29,7 @@ export type ExploreSearchData = {
 };
 
 export interface ExploreProps {
-  tabCounts: {
-    table: number;
-    topic: number;
-    dashboard: number;
-    pipeline: number;
-    dbtModel: number;
-    mlModel: number;
-  };
+  tabCounts: TabCounts;
   searchText: string;
   initialFilter?: FilterObject;
   searchFilter?: FilterObject;
@@ -51,17 +44,20 @@ export interface ExploreProps {
   handleFilterChange: (data: FilterObject) => void;
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
-  updateTableCount: (count: number) => void;
-  updateTopicCount: (count: number) => void;
-  updateDashboardCount: (count: number) => void;
-  updatePipelineCount: (count: number) => void;
-  updateDbtModelCount: (count: number) => void;
-  updateMlModelCount: (count: number) => void;
   fetchData: (value: SearchDataFunctionType[]) => void;
   onShowDeleted: (checked: boolean) => void;
+  handleTabCounts: (value: { [key: string]: number }) => void;
 }
 
 export interface AdvanceField {
   key: string;
   value: string | undefined;
+}
+
+export interface TabCounts {
+  table: number;
+  topic: number;
+  dashboard: number;
+  pipeline: number;
+  mlmodel: number;
 }

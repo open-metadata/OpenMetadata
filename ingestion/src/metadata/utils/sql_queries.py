@@ -487,3 +487,41 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
       LIMIT {result_limit}
     """
 )
+
+POSTGRES_GET_TABLE_NAMES = """
+    SELECT c.relname FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = :schema AND c.relkind in ('r', 'p') AND relispartition = false
+"""
+
+POSTGRES_PARTITION_DETAILS = textwrap.dedent(
+    """
+select 
+    par.relnamespace::regnamespace::text as schema, 
+    par.relname as table_name, 
+    partition_strategy,
+    col.column_name
+from   
+    (select
+         partrelid,
+         partnatts,
+         case partstrat 
+              when 'l' then 'list'
+              when 'h' then 'hash'
+              when 'r' then 'range' end as partition_strategy,
+         unnest(partattrs) column_index
+     from
+         pg_partitioned_table) pt 
+join   
+    pg_class par 
+on     
+    par.oid = pt.partrelid
+left join
+    information_schema.columns col
+on  
+    col.table_schema = par.relnamespace::regnamespace::text
+    and col.table_name = par.relname
+    and ordinal_position = pt.column_index
+ where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
+"""
+)

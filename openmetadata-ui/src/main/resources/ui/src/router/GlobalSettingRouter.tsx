@@ -69,6 +69,9 @@ const SlackSettingsPage = withSuspenseFallback(
 const TestSuitePage = withSuspenseFallback(
   React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
 );
+const MsTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
+);
 
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -219,6 +222,20 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.SLACK
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={MsTeamsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.MSTEAMS
         )}
       />
 

@@ -19,7 +19,11 @@ import {
   announcementInvalidStartTime,
   validateMessages,
 } from '../../../utils/AnnouncementsUtils';
-import { getLocaleDate, getUTCDateTime } from '../../../utils/TimeUtils';
+import {
+  getLocaleDate,
+  getTimeZone,
+  getUTCDateTime,
+} from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import './AnnouncementModal.less';
@@ -108,7 +112,7 @@ const EditAnnouncementModal: FC<Props> = ({
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
-            label="Start Date (UTC):"
+            label={`Start Date: (${getTimeZone()})`}
             name="startDate"
             rules={[
               {
@@ -122,7 +126,7 @@ const EditAnnouncementModal: FC<Props> = ({
             />
           </Form.Item>
           <Form.Item
-            label="End Date (UTC):"
+            label={`End Date: (${getTimeZone()})`}
             name="endDate"
             rules={[
               {

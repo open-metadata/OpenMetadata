@@ -219,7 +219,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
           "There are pending migrations to be run on the database."
               + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
               + " You can find more information on upgrading OpenMetadata at"
-              + " https://docs.open-metadata.org/deployment/upgrade");
+              + " https://docs.open-metadata.org/deployment/upgrade ");
     }
   }
 

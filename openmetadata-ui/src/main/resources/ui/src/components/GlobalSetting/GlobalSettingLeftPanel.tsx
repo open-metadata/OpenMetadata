@@ -13,46 +13,72 @@
 
 import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
 import { camelCase } from 'lodash';
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { GLOBAL_SETTINGS_MENU } from '../../constants/globalSettings.constants';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { getGlobalSettingMenus } from '../../utils/GlobalSettingsUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import { GLOBAL_SETTING_PERMISSION_RESOURCES } from '../../constants/globalSettings.constants';
+import {
+  getGlobalSettingMenuItem,
+  getGlobalSettingsMenuWithPermission,
+  MenuList,
+} from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../PermissionProvider/PermissionProvider.interface';
 
 const GlobalSettingLeftPanel = () => {
-  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
-
-  const { permissions } = usePermissionProvider();
-
-  const viewAllPermission = checkPermission(
-    Operation.ViewAll,
-    ResourceEntity.ALL,
-    permissions
-  );
-
   const history = useHistory();
-  const items: ItemType[] = GLOBAL_SETTINGS_MENU.filter(({ isProtected }) => {
-    if (viewAllPermission) {
-      return viewAllPermission;
-    }
+  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
+  const [settingResourcePermission, setSettingResourcePermission] =
+    useState<UIPermission>({} as UIPermission);
 
-    return !isProtected;
-  }).map(({ category, items }) => {
-    return getGlobalSettingMenus(
-      category,
-      camelCase(category),
-      '',
-      '',
-      items,
-      'group',
-      viewAllPermission
-    );
-  });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const { getResourcePermission } = usePermissionProvider();
+
+  const fetchResourcesPermission = async (resource: ResourceEntity) => {
+    setIsLoading(true);
+    try {
+      const response = await getResourcePermission(resource);
+      setSettingResourcePermission((prev) => ({
+        ...prev,
+        [resource]: response,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const menuItems: ItemType[] = useMemo(
+    () =>
+      getGlobalSettingsMenuWithPermission(settingResourcePermission).reduce(
+        (acc: ItemType[], curr: MenuList) => {
+          const menuItem = getGlobalSettingMenuItem(
+            curr.category,
+            camelCase(curr.category),
+            '',
+            '',
+            curr.items,
+            'group'
+          );
+          if (menuItem.children?.length) {
+            return [...acc, menuItem];
+          } else {
+            return acc;
+          }
+        },
+        [] as ItemType[]
+      ),
+    [setSettingResourcePermission]
+  );
 
   const onClick: MenuProps['onClick'] = (e) => {
     // As we are setting key as "category.option" and extracting here category and option
@@ -60,14 +86,29 @@ const GlobalSettingLeftPanel = () => {
     history.push(getSettingPath(category, option));
   };
 
+  useEffect(() => {
+    // TODO: This will make number of API calls, need to think of better solution
+    GLOBAL_SETTING_PERMISSION_RESOURCES.forEach((resource) => {
+      fetchResourcesPermission(resource);
+    });
+  }, []);
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
-    <Menu
-      className="global-setting-left-panel"
-      items={items}
-      mode="inline"
-      selectedKeys={[`${settingCategory}.${tab}`]}
-      onClick={onClick}
-    />
+    <>
+      {menuItems.length ? (
+        <Menu
+          className="global-setting-left-panel"
+          items={menuItems}
+          mode="inline"
+          selectedKeys={[`${settingCategory}.${tab}`]}
+          onClick={onClick}
+        />
+      ) : null}
+    </>
   );
 };
 
