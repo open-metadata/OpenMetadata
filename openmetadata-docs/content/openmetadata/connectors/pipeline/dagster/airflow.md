@@ -55,14 +55,22 @@ source:
       hostPort: http://localhost:8080
       numberOfStatus: 10
       dbConnection:
-        type: Mysql
-        username: dagster_user
-        password: dagter_pass
-        databaseSchema: dagster_db
-        hostPort: localhost:3306
+        type: name of database service
+        username: db username
+        password: db password
+        databaseSchema: database name 
+        hostPort: host and port for database
   sourceConfig:
     config:
       type: PipelineMetadata
+      # includeLineage: true
+      # pipelineFilterPattern:
+      #   includes:
+      #     - pipeline1
+      #     - pipeline2
+      #   excludes:
+      #     - pipeline3
+      #     - pipeline4
 sink:
   type: metadata-rest
   config: { }
@@ -76,8 +84,14 @@ workflowConfig:
 #### Source Configuration - Service Connection
 
 
-- **apiKey**: Dagster API Key.
-- **apiSecret**: Dagster API Secret.
+- **hostPort**: host and port for dagster pipeline
+- **numberOfStatus**: 10
+- **dbConnection**
+    - **type**: Name of the Database Service
+    - **username**: db username
+    - **password**: db password
+    - **databaseSchema**: database name
+    - **hostPort**: host and port for database connection
 
 #### Source Configuration - Source Config
 
