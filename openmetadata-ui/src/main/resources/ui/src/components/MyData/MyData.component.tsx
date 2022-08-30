@@ -232,7 +232,6 @@ const MyData: React.FC<MyDataProps> = ({
             <>
               <ActivityFeedList
                 withSidePanel
-                className="tw-mt-3"
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
                 postFeedHandler={postFeedHandler}
