@@ -24,32 +24,6 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(() => ({ search: '', pathname: '/explore' })),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    permissions: {
-      table: {
-        ViewAll: true,
-      },
-      topic: {
-        ViewAll: true,
-      },
-      pipeline: {
-        ViewAll: true,
-      },
-      dashboard: {
-        ViewAll: true,
-      },
-      mlmodel: {
-        ViewAll: true,
-      },
-    },
-  }),
-}));
-
-jest.mock('../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-}));
-
 jest.mock('../../components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
