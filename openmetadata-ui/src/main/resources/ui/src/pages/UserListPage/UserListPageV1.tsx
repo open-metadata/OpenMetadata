@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
+import { Empty } from 'antd';
 import { AxiosError } from 'axios';
 import { FormattedUsersData, SearchResponse } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
@@ -26,17 +29,21 @@ import {
   pagingObject,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
+import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
 
 const UserListPageV1 = () => {
+  const { permissions } = usePermissionProvider();
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
   const [isAdminPage, setIsAdminPage] = useState<boolean | undefined>(
     tab === GlobalSettingOptions.ADMINS || undefined
@@ -48,6 +55,11 @@ const UserListPageV1 = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [searchValue, setSearchValue] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+
+  const viewPermission = useMemo(
+    () => checkPermission(Operation.ViewAll, ResourceEntity.USER, permissions),
+    [permissions]
+  );
 
   const initialSetup = () => {
     setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
@@ -193,7 +205,7 @@ const UserListPageV1 = () => {
     return <Loader />;
   }
 
-  return (
+  return viewPermission ? (
     <UserListV1
       afterDeleteAction={handleFetch}
       currentPage={currentPage}
@@ -206,6 +218,8 @@ const UserListPageV1 = () => {
       onSearch={handleSearch}
       onShowDeletedUserChange={handleShowDeletedUserChange}
     />
+  ) : (
+    <Empty description={NO_PERMISSION_TO_VIEW} />
   );
 };
 
