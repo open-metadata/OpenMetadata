@@ -45,6 +45,7 @@ import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   generateEntityLink,
@@ -298,7 +299,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   const handleAddTestClick = () => {
     history.push(
-      getTableTabPath(table.fullyQualifiedName || '', 'data-quality')
+      getAddDataQualityTableTestPath(
+        isColumnView
+          ? ProfilerDashboardType.COLUMN
+          : ProfilerDashboardType.TABLE,
+        entityTypeFQN || ''
+      )
     );
   };
 

@@ -273,7 +273,6 @@ describe('Test MyDataDetailsPage page', () => {
     const sampleDataTab = await findByTestId(tabs, 'Sample Data');
     const queriesTab = await findByTestId(tabs, 'Queries');
     const profilerTab = await findByTestId(tabs, 'Profiler');
-    const dataQualityTab = await findByTestId(tabs, 'Data Quality');
     const lineageTab = await findByTestId(tabs, 'Lineage');
     const dbtTab = queryByTestId(tabs, 'DBT');
 
@@ -286,7 +285,6 @@ describe('Test MyDataDetailsPage page', () => {
     expect(sampleDataTab).toBeInTheDocument();
     expect(queriesTab).toBeInTheDocument();
     expect(profilerTab).toBeInTheDocument();
-    expect(dataQualityTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
     expect(dbtTab).not.toBeInTheDocument();
   });

@@ -13,7 +13,7 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { camelCase } from 'lodash';
+import { camelCase, isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -105,7 +105,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const createIngestionPipeline = async (repeatFrequency: string) => {
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: repeatFrequency,
+        scheduleInterval: isEmpty(repeatFrequency)
+          ? undefined
+          : repeatFrequency,
       },
       name: `${testSuite.name}_${PipelineType.TestSuite}`,
       pipelineType: PipelineType.TestSuite,
@@ -131,7 +133,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       ...ingestionPipeline,
       airflowConfig: {
         ...ingestionPipeline?.airflowConfig,
-        scheduleInterval: repeatFrequency,
+        scheduleInterval: isEmpty(repeatFrequency)
+          ? undefined
+          : repeatFrequency,
       },
     };
     const jsonPatch = compare(
