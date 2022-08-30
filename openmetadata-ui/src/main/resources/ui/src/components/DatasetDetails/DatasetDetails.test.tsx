@@ -191,6 +191,10 @@ jest.mock('../SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTab</p>);
 });
 
+jest.mock('../DataQualityTab/DataQualityTab', () => {
+  return jest.fn().mockReturnValue(<p>DataQualityTab</p>);
+});
+
 jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
@@ -224,6 +228,34 @@ const mockunObserve = jest.fn();
 window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: mockObserve,
   unobserve: mockunObserve,
+}));
+
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    permissions: {},
+    getEntityPermission: jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      EditAll: true,
+      EditCustomFields: true,
+      EditDataProfile: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditLineage: true,
+      EditOwner: true,
+      EditQueries: true,
+      EditSampleData: true,
+      EditTags: true,
+      EditTests: true,
+      EditTier: true,
+      ViewAll: true,
+      ViewDataProfile: true,
+      ViewQueries: true,
+      ViewSampleData: true,
+      ViewTests: true,
+      ViewUsage: true,
+    }),
+  })),
 }));
 
 describe('Test MyDataDetailsPage page', () => {
@@ -312,18 +344,6 @@ describe('Test MyDataDetailsPage page', () => {
     const tableProfiler = await findByTestId(container, 'TableProfiler');
 
     expect(tableProfiler).toBeInTheDocument();
-  });
-
-  it('Check if active tab is data quality', async () => {
-    const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={6} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const dataQuality = await findByTestId(container, 'data-quality-tab');
-
-    expect(dataQuality).toBeInTheDocument();
   });
 
   it('Check if active tab is lineage', async () => {

@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
-import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -35,6 +34,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityId,
@@ -46,11 +46,13 @@ import {
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getTableTestsValue,
   getTagsWithoutTier,
   getUsagePercentile,
 } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -60,10 +62,15 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import DataQualityTab from '../DataQualityTab/DataQualityTab';
-import Entitylineage from '../EntityLineage/EntityLineage.component';
+import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import SampleDataTable, {
   SampleColumns,
 } from '../SampleDataTable/SampleDataTable.component';
@@ -158,6 +165,31 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermission } = usePermissionProvider();
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      const tablePermission = await getEntityPermission(
+        ResourceEntity.TABLE,
+        tableDetails.id
+      );
+
+      setTablePermissions(tablePermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    }
+  }, [tableDetails.id, getEntityPermission, setTablePermissions]);
+
+  useEffect(() => {
+    fetchResourcePermission();
+  }, [tableDetails.id]);
+
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
   };
@@ -181,17 +213,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       usageSummary?.weeklyStats?.count.toLocaleString() || '--'
     );
   };
-  const hasEditAccess = () => {
-    const loggedInUser = AppState.getCurrentUserDetails();
-    if (owner?.type === 'user') {
-      return owner.id === loggedInUser?.id;
-    } else {
-      return Boolean(
-        loggedInUser?.teams?.length &&
-          loggedInUser?.teams?.some((team) => team.id === owner?.id)
-      );
-    }
-  };
+
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -231,6 +253,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'sample-data-color',
       },
       isProtected: false,
+      isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewSampleData),
       position: 3,
     },
     {
@@ -242,6 +265,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: '',
       },
       isProtected: false,
+      isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewQueries),
       position: 4,
     },
     {
@@ -253,6 +277,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-profilercolor',
       },
       isProtected: false,
+      isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewDataProfile),
       position: 5,
     },
     {
@@ -559,7 +584,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
-          isTagEditable
+          canDelete={tablePermissions.Delete}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -577,14 +602,22 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           followHandler={followTable}
           followers={followersCount}
           followersList={followers}
-          hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
+          isTagEditable={tablePermissions.EditAll || tablePermissions.EditTags}
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedTableName}
-          updateOwner={onOwnerUpdate}
-          updateTier={onTierUpdate}
+          updateOwner={
+            tablePermissions.EditAll || tablePermissions.EditOwner
+              ? onOwnerUpdate
+              : undefined
+          }
+          updateTier={
+            tablePermissions.EditAll || tablePermissions.EditTier
+              ? onTierUpdate
+              : undefined
+          }
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
@@ -617,7 +650,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       entityFqn={datasetFQN}
                       entityName={entityName}
                       entityType={EntityType.TABLE}
-                      hasEditAccess={hasEditAccess()}
+                      hasEditAccess={
+                        tablePermissions.EditAll ||
+                        tablePermissions.EditDescription
+                      }
                       isEdit={isEdit}
                       isReadOnly={deleted}
                       owner={owner}
@@ -651,10 +687,15 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
-                      hasEditAccess={hasEditAccess()}
+                      hasDescriptionEditAccess={
+                        tablePermissions.EditAll ||
+                        tablePermissions.EditDescription
+                      }
+                      hasTagEditAccess={
+                        tablePermissions.EditAll || tablePermissions.EditTags
+                      }
                       isReadOnly={deleted}
                       joins={tableJoinData.columnJoins as ColumnJoins[]}
-                      owner={owner}
                       sampleData={sampleData}
                       tableConstraints={tableDetails.tableConstraints}
                       onEntityFieldSelect={onEntityFieldSelect}
@@ -713,6 +754,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 5 && (
                 <TableProfilerV1
+                  hasEditAccess={
+                    tablePermissions.EditAll || tablePermissions.EditDataProfile
+                  }
                   table={tableDetails}
                   onAddTestClick={qualityTestFormHandler}
                 />
@@ -728,6 +772,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   handleSelectedColumn={handleSelectedColumn}
                   handleShowTestForm={handleShowTestForm}
                   handleTestModeChange={handleTestModeChange}
+                  hasEditAccess={
+                    tablePermissions.EditAll || tablePermissions.EditTests
+                  }
                   isTableDeleted={deleted}
                   selectedColumn={selectedColumn}
                   showTestForm={showTestForm}
@@ -745,15 +792,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       : 'tw-h-full'
                   )}
                   id="lineageDetails">
-                  <Entitylineage
+                  <EntityLineageComponent
                     addLineageHandler={addLineageHandler}
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
                     entityType={EntityType.TABLE}
+                    hasEditAccess={
+                      tablePermissions.EditAll || tablePermissions.EditLineage
+                    }
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
-                    isOwner={hasEditAccess()}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
