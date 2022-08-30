@@ -80,6 +80,7 @@ jest.mock('../../axiosAPIs/testAPI', () => ({
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
+  hasEditAccess: true,
   onAddTestClick: jest.fn(),
 };
 

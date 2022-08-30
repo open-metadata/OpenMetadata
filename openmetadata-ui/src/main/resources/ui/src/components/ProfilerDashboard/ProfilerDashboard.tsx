@@ -44,7 +44,6 @@ import {
   getEntityPlaceHolder,
   getNameFromFQN,
   getPartialNameFromTableFQN,
-  hasEditAccess,
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
@@ -356,10 +355,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followHandler={handleFollowClick}
             followers={follower.length}
             followersList={follower}
-            hasEditAccess={hasEditAccess(
-              table.owner?.type || '',
-              table.owner?.id || ''
-            )}
             isFollowing={isFollowing}
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}

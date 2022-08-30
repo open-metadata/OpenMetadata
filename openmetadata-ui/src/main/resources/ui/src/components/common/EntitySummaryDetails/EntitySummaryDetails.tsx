@@ -50,7 +50,7 @@ const EntitySummaryDetails = ({
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const displayVal = data.placeholderText || data.value;
-  const [show, setshow] = useState(false);
+  const [show, setShow] = useState(false);
 
   const { isEntityDetails, userDetails, isTier, isOwner } = useMemo(() => {
     const userDetails = getTeamsUser(data);
@@ -100,7 +100,7 @@ const EntitySummaryDetails = ({
               No Owner
               <span
                 data-testid={`edit-${data.key}-icon`}
-                onClick={() => setshow(!show)}>
+                onClick={() => setShow(!show)}>
                 {updateOwner ? <EditIcon /> : null}
               </span>
             </>
@@ -187,19 +187,24 @@ const EntitySummaryDetails = ({
                   />
                 )}
                 {data.openInNewTab && (
-                  <SVGIcons
-                    alt="external-link"
-                    className="tw-align-middle"
-                    icon="external-link"
-                    width="16px"
-                  />
+                  <>
+                    &nbsp;
+                    <SVGIcons
+                      alt="external-link"
+                      className="tw-align-middle"
+                      icon="external-link"
+                      width="16px"
+                    />
+                  </>
                 )}
               </a>
-              <span
-                data-testid={`edit-${data.key}-icon`}
-                onClick={() => setshow(true)}>
-                <EditIcon />
-              </span>
+              {(isOwner || isTier) && (
+                <span
+                  data-testid={`edit-${data.key}-icon`}
+                  onClick={() => setShow(true)}>
+                  <EditIcon />
+                </span>
+              )}
             </>
           ) : (
             <>
@@ -225,7 +230,7 @@ const EntitySummaryDetails = ({
                     <span
                       className="tw-ml-2"
                       data-testid={`edit-${data.key}-icon`}
-                      onClick={() => setshow(true)}>
+                      onClick={() => setShow(true)}>
                       {updateOwner ? <EditIcon /> : null}
                     </span>
                   </span>
@@ -279,7 +284,7 @@ const EntitySummaryDetails = ({
         </>
       )}
       <OwnerWidgetWrapper
-        hideWidget={() => setshow(false)}
+        hideWidget={() => setShow(false)}
         updateUser={updateOwner}
         visible={show}
       />
