@@ -23,11 +23,11 @@ import React, {
   useState,
 } from 'react';
 import AppState from '../../AppState';
-import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
 import {
   getEntityPermissionById,
+  getLoggedInUserPermissions,
   getResourcePermission,
-} from '../../axiosAPIs/rolesAPIV1';
+} from '../../axiosAPIs/permissionAPI';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -39,12 +39,12 @@ import {
   ResourceEntity,
   UIPermission,
 } from './PermissionProvider.interface';
-
 /**
  * Permission Context
  * Returns ResourcePermission List for loggedIn User
  * @returns PermissionMap
  */
+
 export const PermissionContext = createContext<PermissionContextType>(
   {} as PermissionContextType
 );

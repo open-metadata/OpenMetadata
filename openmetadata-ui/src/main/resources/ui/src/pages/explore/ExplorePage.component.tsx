@@ -72,6 +72,10 @@ const ExplorePage: FunctionComponent = () => {
     tabsInfo[getCurrentTab(tab) - 1].sortField
   );
 
+  const handleTabCounts = (value: { [key: string]: number }) => {
+    setTabCounts((prev) => ({ ...prev, ...value }));
+  };
+
   const handleSearchText = (text: string) => {
     setSearchText(text);
   };
@@ -236,7 +240,7 @@ const ExplorePage: FunctionComponent = () => {
         handleFilterChange={handleFilterChange}
         handlePathChange={handlePathChange}
         handleSearchText={handleSearchText}
-        handleTabCounts={setTabCounts}
+        handleTabCounts={handleTabCounts}
         initialFilter={initialFilter}
         isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
         searchFilter={searchFilter}

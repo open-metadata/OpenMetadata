@@ -87,6 +87,7 @@ const GlobalSettingLeftPanel = () => {
   };
 
   useEffect(() => {
+    // TODO: This will make number of API calls, need to think of better solution
     GLOBAL_SETTING_PERMISSION_RESOURCES.forEach((resource) => {
       fetchResourcesPermission(resource);
     });

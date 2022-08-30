@@ -46,7 +46,7 @@ export interface ExploreProps {
   handleSearchText: (text: string) => void;
   fetchData: (value: SearchDataFunctionType[]) => void;
   onShowDeleted: (checked: boolean) => void;
-  handleTabCounts: (value: React.SetStateAction<TabCounts>) => void;
+  handleTabCounts: (value: { [key: string]: number }) => void;
 }
 
 export interface AdvanceField {

@@ -269,23 +269,23 @@ const Explore: React.FC<ExploreProps> = ({
   const setCount = (count = 0, index = searchIndex) => {
     switch (index) {
       case SearchIndex.TABLE:
-        handleTabCounts((prev) => ({ ...prev, table: count }));
+        handleTabCounts({ table: count });
 
         break;
       case SearchIndex.DASHBOARD:
-        handleTabCounts((prev) => ({ ...prev, dashboard: count }));
+        handleTabCounts({ dashboard: count });
 
         break;
       case SearchIndex.TOPIC:
-        handleTabCounts((prev) => ({ ...prev, topic: count }));
+        handleTabCounts({ topic: count });
 
         break;
       case SearchIndex.PIPELINE:
-        handleTabCounts((prev) => ({ ...prev, pipeline: count }));
+        handleTabCounts({ pipeline: count });
 
         break;
       case SearchIndex.MLMODEL:
-        handleTabCounts((prev) => ({ ...prev, mlmodel: count }));
+        handleTabCounts({ mlmodel: count });
 
         break;
       default:
