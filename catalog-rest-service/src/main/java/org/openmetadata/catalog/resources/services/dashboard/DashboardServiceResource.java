@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.dashboard;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,7 +72,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class DashboardServiceResource
     extends ServiceEntityResource<DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  static final String FIELDS = FIELD_OWNER;
+  static final String FIELDS = "owner,tags";
 
   @Override
   public DashboardService addHref(UriInfo uriInfo, DashboardService service) {

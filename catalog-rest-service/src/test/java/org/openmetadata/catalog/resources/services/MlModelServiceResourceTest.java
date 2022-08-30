@@ -43,7 +43,12 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 @Slf4j
 public class MlModelServiceResourceTest extends EntityResourceTest<MlModelService, CreateMlModelService> {
   public MlModelServiceResourceTest() {
-    super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
+    super(
+        Entity.MLMODEL_SERVICE,
+        MlModelService.class,
+        MlModelServiceList.class,
+        "services/mlmodelServices",
+        "owner,tags");
     this.supportsPatch = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
@@ -155,7 +160,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
-    fields = "owner";
+    fields = "owner,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -473,6 +473,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    // TODO: there is a scenario of duplicate tags here , when we try to send a patch containing duplicate tags
+    // we are ignoring those duplicate and adding only one time , but the response is returned containing the same
+    // request
+    // with duplicate tags (which is not expected)
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 

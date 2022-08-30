@@ -72,7 +72,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  static final String FIELDS = "pipelines,owner";
+  static final String FIELDS = "pipelines,owner,tags";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -206,7 +206,11 @@ public class PipelineServiceResource
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    try {
+      return patchInternal(uriInfo, securityContext, id, patch);
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   @GET
