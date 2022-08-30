@@ -52,7 +52,7 @@ airflowConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   authProvider: custom-oidc
   customOidc:
-    clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
-    secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
-    tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+      clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
+      tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
 ```
