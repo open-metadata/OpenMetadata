@@ -23,7 +23,6 @@ import {
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -42,7 +41,6 @@ import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import {
@@ -66,8 +64,6 @@ export type ModifiedGlossaryData = Glossary & {
 const GlossaryPageV1 = () => {
   const { glossaryName } = useParams<Record<string, string>>();
 
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isChildLoading, setIsChildLoading] = useState(true);
@@ -724,7 +720,6 @@ const GlossaryPageV1 = () => {
           handleUserRedirection={handleUserRedirection}
           isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
-          isHasAccess={!isAdminUser && !isAuthDisabled}
           isSearchResultEmpty={isSearchResultEmpty}
           loadingKey={loadingKey}
           searchText={searchText}

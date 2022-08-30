@@ -34,6 +34,7 @@ export enum EntityType {
   BOT = 'bot',
   ROLE = 'role',
   POLICY = 'policy',
+  TEST_SUITE = 'testSuite',
 }
 
 export enum AssetsType {

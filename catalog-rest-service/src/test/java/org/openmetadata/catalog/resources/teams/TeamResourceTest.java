@@ -132,6 +132,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     CreateTeam create = createRequest("org_test").withTeamType(ORGANIZATION);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.createOrganization());
+
+    // Organization by default has DataConsumer Role. Ensure Role lists organization as one of the teams
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role role = roleResourceTest.getEntityByName("DataConsumer", "teams", ADMIN_AUTH_HEADERS);
+    assertEntityReferencesContain(role.getTeams(), org.getEntityReference());
   }
 
   @Test
@@ -475,7 +480,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void patch_deleteUserAndDefaultRoleFromTeam_200(TestInfo test) throws IOException {
+  void patch_deleteUserAndDefaultRolesFromTeam_200(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     final int totalUsers = 20;
     ArrayList<UUID> users = new ArrayList<>();

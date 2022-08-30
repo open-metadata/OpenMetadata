@@ -11,18 +11,11 @@
 
 version: "3.9"
 services:
-  postgres:
-    build:
-      context: ../../.
-      dockerfile: docker/local-metadata/Dockerfile_postgres
-    container_name: openmetadata_postgres
+  postgresql:
+    image: openmetadata/postgresql:latest
     restart: always
-    depends_on:
-      - elasticsearch
     environment:
       POSTGRES_PASSWORD: password
-    expose:
-      - 5432
     ports:
       - 5432:5432
     networks:

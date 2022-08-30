@@ -14,6 +14,7 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
+
 services:
   mysql:
     build:
@@ -32,6 +33,11 @@ services:
     networks:
       local_app_net:
         ipv4_address: 172.16.239.10
+    healthcheck:
+      test: mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --silent --execute "use openmetadata_db"
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
@@ -39,7 +45,6 @@ services:
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
-
     networks:
       local_app_net:
         ipv4_address: 172.16.239.11
@@ -109,15 +114,18 @@ services:
       - 8585:8585
       - 8586:8586
     depends_on:
-      - elasticsearch
-      - mysql
-      - ingestion
+      elasticsearch:
+        condition: service_started
+      mysql:
+        condition: service_healthy
     networks:
       local_app_net:
         ipv4_address: 172.16.239.13
     extra_hosts:
       - "localhost:172.16.239.10"
       - "elasticsearch:172.16.239.11"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
 
   ingestion:
     build:
@@ -127,8 +135,12 @@ services:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
     depends_on:
-      - mysql
-      - elasticsearch
+      elasticsearch:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      openmetadata-server:
+        condition: service_healthy
     expose:
       - 8080
     ports:
@@ -144,6 +156,7 @@ services:
       - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
       - ingestion-volume-dags:/ingestion/examples/airflow/dags
       - ingestion-volume-tmp:/tmp
+
 networks:
   local_app_net:
     name: ometa_network

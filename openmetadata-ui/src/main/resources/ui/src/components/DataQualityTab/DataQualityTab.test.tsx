@@ -22,6 +22,7 @@ describe('Test DataQualityTab component', () => {
   it('DataQualityTab component should be render properly', async () => {
     const { container } = render(
       <DataQualityTab
+        hasEditAccess
         columnOptions={[]}
         handleAddColumnTestCase={mockFunction}
         handleAddTableTestCase={mockFunction}
@@ -48,6 +49,7 @@ describe('Test DataQualityTab component', () => {
   it('DataQualityTest component should be visible', async () => {
     const { container } = render(
       <DataQualityTab
+        hasEditAccess
         columnOptions={[]}
         handleAddColumnTestCase={mockFunction}
         handleAddTableTestCase={mockFunction}
@@ -82,6 +84,7 @@ describe('Test DataQualityTab component', () => {
   it('AddDataQualityTest component should be visible', async () => {
     const { container } = render(
       <DataQualityTab
+        hasEditAccess
         showTestForm
         columnOptions={[]}
         handleAddColumnTestCase={mockFunction}

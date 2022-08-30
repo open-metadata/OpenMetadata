@@ -48,19 +48,17 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'react-flow-renderer';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
 import {
   AddLineage,
   ColumnLineage,
 } from '../../generated/api/lineage/addLineage';
 import { Column } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
-import { useAuth } from '../../hooks/authHooks';
 import {
   dragHandle,
   getColumnType,
@@ -77,11 +75,9 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
-import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -101,7 +97,7 @@ import {
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
 
-const Entitylineage: FunctionComponent<EntityLineageProp> = ({
+const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
   loadNodeHandler,
   lineageLeafNodes,
@@ -111,10 +107,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
-  entityType,
+  hasEditAccess,
 }: EntityLineageProp) => {
-  const { userPermissions, isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -1147,56 +1141,38 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         className="tw-absolute tw-top-1 tw-right-3 tw-bottom-full tw-ml-4 tw-mt-4"
         fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
         {!deleted && (
-          <NonAdminAction
-            html={
-              <Fragment>
-                <p>You do not have permission to edit the lineage</p>
-              </Fragment>
-            }
-            permission={Operation.EditLineage}>
-            <ControlButton
-              className={classNames(
-                'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
-                {
-                  'tw-bg-primary': isEditMode,
-                  'tw-bg-primary-hover-lite': !isEditMode,
-                },
-                {
-                  'tw-opacity-40':
-                    !hasPemission(
-                      Operation.EditLineage,
-                      entityType,
-                      userPermissions
-                    ) &&
-                    !isAuthDisabled &&
-                    !isAdminUser,
+          <ControlButton
+            className={classNames(
+              'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg',
+              {
+                'tw-bg-primary': isEditMode,
+                'tw-bg-primary-hover-lite': !isEditMode,
+              }
+            )}
+            disabled={!hasEditAccess}
+            title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
+            onClick={() => {
+              setEditMode((pre) => !pre && !deleted);
+              setSelectedNode({} as SelectedNode);
+              setIsDrawerOpen(false);
+              setNewAddedNode({} as Node);
+            }}>
+            {loading ? (
+              <Loader size="small" type="white" />
+            ) : status === 'success' ? (
+              <FontAwesomeIcon className="tw-text-white" icon="check" />
+            ) : (
+              <SVGIcons
+                alt="icon-edit-lineag"
+                className="tw--mt-1"
+                data-testid="edit-lineage"
+                icon={
+                  !isEditMode ? 'icon-edit-lineage-color' : 'icon-edit-lineage'
                 }
-              )}
-              onClick={() => {
-                setEditMode((pre) => !pre && !deleted);
-                setSelectedNode({} as SelectedNode);
-                setIsDrawerOpen(false);
-                setNewAddedNode({} as Node);
-              }}>
-              {loading ? (
-                <Loader size="small" type="white" />
-              ) : status === 'success' ? (
-                <FontAwesomeIcon className="tw-text-white" icon="check" />
-              ) : (
-                <SVGIcons
-                  alt="icon-edit-lineag"
-                  className="tw--mt-1"
-                  data-testid="edit-lineage"
-                  icon={
-                    !isEditMode
-                      ? 'icon-edit-lineage-color'
-                      : 'icon-edit-lineage'
-                  }
-                  width="14"
-                />
-              )}
-            </ControlButton>
-          </NonAdminAction>
+                width="14"
+              />
+            )}
+          </ControlButton>
         )}
       </CustomControls>
     );
@@ -1391,4 +1367,4 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   );
 };
 
-export default withLoader<EntityLineageProp>(Entitylineage);
+export default withLoader<EntityLineageProp>(EntityLineageComponent);

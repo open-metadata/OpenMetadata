@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { addNewTagToEntity } from '../../common/common';
+import { searchEntity } from '../../common/common';
 import { DELETE_TERM, NEW_GLOSSARY, NEW_GLOSSARY_TERMS, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
@@ -227,6 +227,11 @@ describe('Glossary page should work properly', () => {
       .as('synonyms');
     cy.get('@synonyms').clear();
     cy.get('@synonyms').type(uSynonyms);
+
+    cy.intercept({ method: 'PATCH', url: '/api/v1/glossaryTerms/*' }).as(
+      'getGlossary'
+    );
+
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     cy.wait(100);
     cy.get('[data-testid="synonyms-container"]')
@@ -236,6 +241,8 @@ describe('Glossary page should work properly', () => {
     uSynonyms.split(',').forEach((synonym) => {
       cy.get('@synonyms-container').contains(synonym).should('be.visible');
     });
+
+    cy.wait('@getGlossary').its('response.statusCode').should('eq', 200);
 
     // updating References
     cy.get('[data-testid="section-references"] [data-testid="add-button"]')
@@ -316,6 +323,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Assets Tab should work properly', () => {
+    const glossary = NEW_GLOSSARY.name;
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     goToAssetsTab(term);
@@ -323,7 +331,46 @@ describe('Glossary page should work properly', () => {
       .contains('No assets available.')
       .should('be.visible');
 
-    addNewTagToEntity(entity, term);
+    searchEntity(entity);
+    cy.wait(500);
+    cy.get('[data-testid="table-link"]').first().contains(entity).click();
+
+    //Add tag to breadcrumb
+    cy.get('[data-testid="tag-container"] [data-testid="tags"]')
+      .eq(0)
+      .should('be.visible')
+      .click();
+    cy.get('[class*="-control"]').should('be.visible').type(term);
+    cy.wait(500);
+    cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get(
+      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
+    ).contains(term);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.wait(1000);
+
+    cy.get('[data-testid="entity-tags"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(term);
+
+    //Add tag to schema table
+    cy.get('[data-testid="tag-container"] [data-testid="tags"]')
+      .eq(0)
+      .should('be.visible')
+      .click();
+    cy.get('[class*="-control"]').should('be.visible').type(term);
+    cy.wait(500);
+    cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get(
+      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
+    ).contains(term);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.wait(1000);
+    cy.get(`[data-testid="tag-${glossary}.${term}"]`)
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(term);
 
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
@@ -353,34 +400,17 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get(':nth-child(1) > .css-xb97g8')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get(':nth-child(1) > .css-xb97g8')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[role="button"]').eq(0).should('be.visible').click();
+    cy.get('[role="button"]').eq(0).should('be.visible').click();
 
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
 
     //Remove the added column tag from entity
-    cy.get(
-      ':nth-child(1) > :nth-child(5) span.tw-text-primary > [data-testid="tags"]'
-    )
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
 
-    cy.get(':nth-child(1) > .css-xb97g8')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get(':nth-child(1) > .css-xb97g8')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
+
+    cy.wait(500);
+    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
 
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
