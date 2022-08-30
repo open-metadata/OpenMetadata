@@ -13,6 +13,7 @@
 
 import { ReactNode } from 'react';
 import { Table } from '../../generated/entity/data/table';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestDefinition } from '../../generated/tests/testDefinition';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -34,10 +35,12 @@ export interface TestCaseFormProps {
 
 export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
+  ingestionPipeline?: IngestionPipeline;
   onCancel: () => void;
 }
 
 export interface TestSuiteSchedulerProps {
+  initialData?: string;
   onSubmit: (repeatFrequency: string) => void;
   onCancel: () => void;
 }
@@ -58,4 +61,11 @@ export type SelectTestSuiteType = {
 
 export interface ParameterFormProps {
   definition: TestDefinition;
+}
+
+export interface EditTestCaseModalProps {
+  visible: boolean;
+  testCase: TestCase;
+  onCancel: () => void;
+  onUpdate?: () => void;
 }

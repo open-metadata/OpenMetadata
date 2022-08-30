@@ -11,21 +11,15 @@
  *  limitations under the License.
  */
 
-import { Row, Typography } from 'antd';
-import React from 'react';
-import { RightPanelProps } from '../AddDataQualityTest.interface';
+// common css utils file
 
-const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
-  return (
-    <Row>
-      <Typography.Paragraph
-        className="tw-heading tw-text-base"
-        data-testid="right-panel-header">
-        {data.title}
-      </Typography.Paragraph>
-      <Typography.Paragraph>{data.body}</Typography.Paragraph>
-    </Row>
-  );
-};
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-export default RightPanel;
+.mx-auto {
+  margin-right: auto;
+  margin-left: auto;
+}

@@ -25,10 +25,12 @@ import org.openmetadata.catalog.api.services.CreateMlModelService;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.api.teams.CreateUser;
+import org.openmetadata.catalog.api.tests.CreateTestSuite;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.catalog.resources.pipelines.PipelineResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
@@ -73,6 +75,7 @@ public class UtilResourceTest extends CatalogApplicationTest {
     int beforeServiceCount = getEntitiesCount().getServicesCount();
     int beforeUserCount = getEntitiesCount().getUserCount();
     int beforeTeamCount = getEntitiesCount().getTeamCount();
+    int beforeTestSuiteCount = getEntitiesCount().getTestSuiteCount();
 
     // Create Table
     TableResourceTest tableResourceTest = new TableResourceTest();
@@ -109,6 +112,11 @@ public class UtilResourceTest extends CatalogApplicationTest {
     CreateTeam createTeam = teamResourceTest.createRequest(test);
     teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
+    // Create Test Suite
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
+    testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+
     // Get count after adding entities
     int afterTableCount = getEntitiesCount().getTableCount();
     int afterDashboardCount = getEntitiesCount().getDashboardCount();
@@ -117,6 +125,7 @@ public class UtilResourceTest extends CatalogApplicationTest {
     int afterServiceCount = getEntitiesCount().getServicesCount();
     int afterUserCount = getEntitiesCount().getUserCount();
     int afterTeamCount = getEntitiesCount().getTeamCount();
+    int afterTestSuiteCount = getEntitiesCount().getTestSuiteCount();
 
     int actualCount = 1;
 
@@ -127,6 +136,7 @@ public class UtilResourceTest extends CatalogApplicationTest {
     Assertions.assertEquals(afterTableCount - beforeTableCount, actualCount);
     Assertions.assertEquals(afterTeamCount - beforeTeamCount, actualCount);
     Assertions.assertEquals(afterTopicCount - beforeTopicCount, actualCount);
+    Assertions.assertEquals(afterTestSuiteCount - beforeTestSuiteCount, actualCount);
   }
 
   @Test
