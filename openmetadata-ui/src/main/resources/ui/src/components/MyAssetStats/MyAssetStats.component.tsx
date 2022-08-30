@@ -72,17 +72,16 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: getExplorePathWithSearch(undefined, 'mlmodels'),
         dataTestId: 'mlmodels',
       },
-      // uncomment below once backend change for test-suite count available
-      // testSuite: {
-      //   icon: Icons.TABLE_GREY,
-      //   data: 'Test Suite',
-      //   count: entityCounts.mlmodelCount,
-      //   link: getSettingPath(
-      //     GlobalSettingsMenuCategory.DATA_QUALITY,
-      //     GlobalSettingOptions.TEST_SUITE
-      //   ),
-      //   dataTestId: 'test-suite',
-      // },
+      testSuite: {
+        icon: Icons.TABLE_GREY,
+        data: 'Test Suite',
+        count: entityCounts.testSuiteCount,
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.DATA_QUALITY,
+          GlobalSettingOptions.TEST_SUITE
+        ),
+        dataTestId: 'test-suite',
+      },
       service: {
         icon: Icons.SERVICE,
         data: 'Services',
