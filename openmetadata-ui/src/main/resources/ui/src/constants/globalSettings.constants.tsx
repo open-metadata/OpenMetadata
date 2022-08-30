@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
+
 export const customAttributesPath = {
   tables: 'table',
   topics: 'topic',
@@ -43,3 +45,18 @@ export enum GlobalSettingOptions {
   BOTS = 'bots',
   TABLES = 'tables',
 }
+
+export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
+  ResourceEntity.TEAM,
+  ResourceEntity.USER,
+  ResourceEntity.ROLE,
+  ResourceEntity.POLICY,
+  ResourceEntity.DATABASE_SERVICE,
+  ResourceEntity.MESSAGING_SERVICE,
+  ResourceEntity.DASHBOARD_SERVICE,
+  ResourceEntity.PIPELINE_SERVICE,
+  ResourceEntity.ML_MODEL_SERVICE,
+  ResourceEntity.TYPE,
+  ResourceEntity.WEBHOOK,
+  ResourceEntity.BOT,
+];

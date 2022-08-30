@@ -91,42 +91,34 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     resource: ResourceEntity,
     entityId: string
   ) => {
-    try {
-      const entityPermission = entitiesPermission[entityId];
-      if (entityPermission) {
-        return entityPermission;
-      } else {
-        const response = await getEntityPermissionById(resource, entityId);
-        const operationPermission = getOperationPermissions(response);
-        setEntitiesPermission((prev) => ({
-          ...prev,
-          [entityId]: operationPermission,
-        }));
+    const entityPermission = entitiesPermission[entityId];
+    if (entityPermission) {
+      return entityPermission;
+    } else {
+      const response = await getEntityPermissionById(resource, entityId);
+      const operationPermission = getOperationPermissions(response);
+      setEntitiesPermission((prev) => ({
+        ...prev,
+        [entityId]: operationPermission,
+      }));
 
-        return operationPermission;
-      }
-    } catch (error) {
-      return error as AxiosError;
+      return operationPermission;
     }
   };
 
   const fetchResourcePermission = async (resource: ResourceEntity) => {
-    try {
-      const resourcePermission = resourcesPermission[resource];
-      if (resourcePermission) {
-        return resourcePermission;
-      } else {
-        const response = await getResourcePermission(resource);
-        const operationPermission = getOperationPermissions(response);
-        setResourcesPermission((prev) => ({
-          ...prev,
-          [resource]: operationPermission,
-        }));
+    const resourcePermission = resourcesPermission[resource];
+    if (resourcePermission) {
+      return resourcePermission;
+    } else {
+      const response = await getResourcePermission(resource);
+      const operationPermission = getOperationPermissions(response);
+      setResourcesPermission((prev) => ({
+        ...prev,
+        [resource]: operationPermission,
+      }));
 
-        return operationPermission;
-      }
-    } catch (error) {
-      return error as AxiosError;
+      return operationPermission;
     }
   };
 
