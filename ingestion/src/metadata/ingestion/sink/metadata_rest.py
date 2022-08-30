@@ -384,7 +384,6 @@ class MetadataRestSink(Sink[Entity]):
                 description=ometa_policy.policy.description,
                 owner=ometa_policy.policy.owner,
                 policyUrl=ometa_policy.policy.policyUrl,
-                policyType=ometa_policy.policy.policyType,
                 rules=ometa_policy.policy.rules,
                 location=created_location.id if created_location else None,
             )

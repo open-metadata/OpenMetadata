@@ -30,7 +30,6 @@ import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
@@ -74,16 +73,8 @@ public class PolicyCache {
 
   protected List<CompiledRule> getRules(Policy policy) {
     List<CompiledRule> rules = new ArrayList<>();
-    for (Object r : policy.getRules()) {
-      try {
-        Rule rule =
-            JsonUtils.readValue(
-                JsonUtils.getJsonStructure(r).toString(),
-                org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
-        rules.add(new CompiledRule(rule));
-      } catch (Exception e) {
-        LOG.warn("Failed to load a rule", e);
-      }
+    for (Rule r : policy.getRules()) {
+      rules.add(new CompiledRule(r));
     }
     return rules;
   }
