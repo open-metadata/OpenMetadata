@@ -168,8 +168,9 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
         echo=verbose,
         max_overflow=-1,
     )
-    if connection.supportsQueryComment:
-        listen(engine, "before_cursor_execute", inject_query_header, retval=True)
+    if hasattr(connection, "supportsQueryComment"):
+        if connection.supportsQueryComment.__root__:
+            listen(engine, "before_cursor_execute", inject_query_header, retval=True)
 
     return engine
 

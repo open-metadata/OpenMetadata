@@ -4,7 +4,6 @@ source:
   serviceConnection:
     config:
       type: Hive
-      supportsQueryComment: false
       databaseSchema: default
       hostPort: localhost:10000
   sourceConfig:

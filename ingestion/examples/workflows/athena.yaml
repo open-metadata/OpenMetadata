@@ -4,7 +4,6 @@ source:
   serviceConnection:
     config:
       type: Athena
-      supportsQueryComment: false
       database: database_name
       awsConfig:
         awsAccessKeyId: access key id
