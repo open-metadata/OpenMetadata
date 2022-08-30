@@ -70,14 +70,14 @@ class OMetaPatchMixin(Generic[T]):
         instance = self.get_by_id(entity=entity, entity_id=entity_id)
 
         if not instance:
-            logger.warn(
-                f"Cannot find an instance of {entity.__class__.__name__} with the given ID."
+            logger.warning(
+                f"Cannot find an instance of '{entity.__class__.__name__}' with id [{str(entity_id)}]."
             )
             return None
 
         if instance.description and not force:
-            logger.warn(
-                f"The Entity already has a description. To overwrite it, set `force` to True."
+            logger.warning(
+                f"The entity with id [{str(entity_id)}] already has a description. To overwrite it, set `force` to True."
             )
             return None
 
@@ -124,10 +124,10 @@ class OMetaPatchMixin(Generic[T]):
             return entity(**res)
 
         except Exception as exc:
-            logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__}: {entity_id} - {exc}"
-            )
             logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to PATCH description for {entity.__class__.__name__} [{entity_id}]: {exc}"
+            )
 
     def patch_column_description(
         self,
@@ -164,12 +164,12 @@ class OMetaPatchMixin(Generic[T]):
         )
 
         if not col_index:
-            logger.error(f"Cannot find column {column_name} in Table.")
+            logger.warning(f"Cannot find column {column_name} in Table.")
             return None
 
         if col.description and not force:
-            logger.warn(
-                f"The Column already has a description. To overwrite it, set `force` to True."
+            logger.warning(
+                f"The column '{column_name}' in '{table.displayName}' already has a description. To overwrite it, set `force` to True."
             )
             return None
 
@@ -189,7 +189,7 @@ class OMetaPatchMixin(Generic[T]):
             return Table(**res)
 
         except Exception as exc:
-            logger.error(
-                f"Error trying to PATCH description for Table Column: {entity_id}, {column_name} - {exc}"
-            )
             logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PATCH description for Table Column: {entity_id}, {column_name}: {exc}"
+            )

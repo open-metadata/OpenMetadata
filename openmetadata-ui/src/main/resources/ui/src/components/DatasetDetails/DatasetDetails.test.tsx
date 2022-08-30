@@ -48,6 +48,12 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
+jest.mock('antd', () => ({
+  Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -231,7 +237,7 @@ describe('Test MyDataDetailsPage page', () => {
     const description = await findByText(container, /Description/i);
     const tabs = await findByTestId(container, 'tabs');
     const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
     const sampleDataTab = await findByTestId(tabs, 'Sample Data');
     const queriesTab = await findByTestId(tabs, 'Queries');
     const profilerTab = await findByTestId(tabs, 'Profiler');

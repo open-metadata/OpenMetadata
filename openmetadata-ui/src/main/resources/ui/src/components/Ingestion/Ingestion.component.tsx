@@ -13,12 +13,12 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button } from 'antd';
+import { Button, Empty } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   PAGE_SIZE,
@@ -630,17 +630,31 @@ const Ingestion: React.FC<IngestionProps> = ({
             )}
           </div>
         ) : (
-          <div className="tw-flex tw-items-center tw-flex-col">
-            {isRequiredDetailsAvailable && ingestionList.length === 0 && (
-              <div className="tw-mt-24">
-                <p className="tw-text-lg tw-text-center">
-                  {`No ingestion workflows found ${
-                    searchText ? `for "${searchText}"` : ''
-                  }`}
-                </p>
-              </div>
-            )}
-          </div>
+          isRequiredDetailsAvailable &&
+          ingestionList.length === 0 && (
+            <div className="tw-border tw-border-main tw-rounded-md tw-mt-2 tw-p-8 tw-w-full tw-bg-white">
+              <Empty
+                description={
+                  <>
+                    <p>No ingestion data available</p>
+                    <p className="tw-mt-2">
+                      To view Ingestion Data, run the MetaData Ingestion. Please
+                      refer to this doc to schedule the{' '}
+                      <Link
+                        className="tw-ml-1"
+                        target="_blank"
+                        to={{
+                          pathname:
+                            'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata',
+                        }}>
+                        MetaData Ingestion
+                      </Link>
+                    </p>
+                  </>
+                }
+              />
+            </div>
+          )
         )}
       </div>
     );

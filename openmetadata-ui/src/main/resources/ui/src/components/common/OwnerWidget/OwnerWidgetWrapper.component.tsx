@@ -12,7 +12,7 @@ import {
 } from '../../../utils/UserDataUtils';
 import DropDownList from '../../dropdown/DropDownList';
 import { Status } from '../../ManageTab/ManageTab.interface';
-import './OwnerWidgetWrapper.module.css';
+import './OwnerWidgetWrapper.style.less';
 
 interface OwnerWidgetWrapperProps {
   currentOwner?: Table['owner'];
@@ -160,7 +160,7 @@ const OwnerWidgetWrapper = ({
 
   return visible ? (
     <DropDownList
-      className="dropdown"
+      className="edit-owner-dropdown"
       dropDownList={listOwners}
       groupType="tab"
       isLoading={isUserLoading}

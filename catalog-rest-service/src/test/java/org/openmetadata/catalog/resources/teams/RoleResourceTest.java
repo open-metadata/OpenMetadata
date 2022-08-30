@@ -18,6 +18,8 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
@@ -44,7 +46,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -112,16 +113,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String originalJson = JsonUtils.pojoToJson(role);
     role.getPolicies().addAll(DATA_STEWARD_ROLE.getPolicies());
     ChangeDescription change = getChangeDescription(role.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("policies").withNewValue(DATA_STEWARD_ROLE.getPolicies()));
+    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove new DATA_CONSUMER_POLICY
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
     change = getChangeDescription(role.getVersion());
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName("policies").withOldValue(DATA_CONSUMER_ROLE.getPolicies()));
+    fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove all the policies. It should be disallowed
@@ -130,9 +129,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     final Role role1 = role;
     role1.setPolicies(null);
     change = getChangeDescription(role1.getVersion());
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName("policies").withOldValue(DATA_CONSUMER_ROLE.getPolicies()));
+    fieldAdded(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
     assertResponse(
         () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,

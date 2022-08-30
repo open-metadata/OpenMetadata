@@ -407,7 +407,7 @@ export const getNoLineageDataPlaceholder = () => {
         target="_blank"
         to={{
           pathname:
-            'https://docs.open-metadata.org/install/metadata-ingestion/airflow/configure-airflow-lineage',
+            'https://docs.open-metadata.org/openmetadata/connectors/pipeline/airflow/lineage-backend',
         }}>
         here.
       </Link>

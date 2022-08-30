@@ -21,7 +21,7 @@ import {
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import Searchbar from '../common/searchbar/Searchbar';
-import EntityTable from '../EntityTable/EntityTable.component';
+import EntityTableV1 from '../EntityTable/EntityTable.component';
 
 type Props = {
   owner?: Table['owner'];
@@ -76,7 +76,7 @@ const SchemaTab: FunctionComponent<Props> = ({
       <div className="row">
         {columns?.length > 0 ? (
           <div className="col-sm-12">
-            <EntityTable
+            <EntityTableV1
               columnName={columnName}
               entityFieldTasks={entityFieldTasks}
               entityFieldThreads={entityFieldThreads}

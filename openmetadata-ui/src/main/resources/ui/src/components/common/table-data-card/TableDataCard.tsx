@@ -23,7 +23,7 @@ import {
 } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
@@ -80,7 +80,6 @@ const TableDataCard: FunctionComponent<Props> = ({
   databaseSchema,
 }: Props) => {
   const location = useLocation();
-  const history = useHistory();
   const getTier = () => {
     if (tier) {
       return isString(tier) ? tier : tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
@@ -129,8 +128,6 @@ const TableDataCard: FunctionComponent<Props> = ({
   const handleLinkClick = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {
       AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
-    } else {
-      history.push(getEntityLink(indexType, fullyQualifiedName));
     }
   };
 
@@ -160,12 +157,13 @@ const TableDataCard: FunctionComponent<Props> = ({
             src={serviceTypeLogo(serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
-            <Link to={getEntityLink(indexType, fullyQualifiedName)}>
+            <Link
+              to={getEntityLink(indexType, fullyQualifiedName)}
+              onClick={handleLinkClick}>
               <button
                 className="tw-text-grey-body tw-font-semibold"
                 data-testid="table-link"
-                id={`${id}Title`}
-                onClick={handleLinkClick}>
+                id={`${id}Title`}>
                 {stringToHTML(name)}
               </button>
             </Link>

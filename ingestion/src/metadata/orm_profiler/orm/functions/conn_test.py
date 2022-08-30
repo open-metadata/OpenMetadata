@@ -44,3 +44,8 @@ def _(*_, **__):
 @compiles(ConnTestFn, Dialects.BigQuery)
 def _(*_, **__):
     return "SELECT SESSION_USER()"
+
+
+@compiles(ConnTestFn, Dialects.Db2)
+def _(*_, **__):
+    return "SELECT 42 FROM SYSIBM.SYSDUMMY1;"

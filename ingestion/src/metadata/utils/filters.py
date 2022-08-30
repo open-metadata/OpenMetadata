@@ -35,8 +35,9 @@ def validate_regex(regex_list: List[str]) -> None:
     for regex in regex_list:
         try:
             re.compile(regex)
-        except re.error:
-            raise InvalidPatternException(f"Invalid regex {regex}.")
+        except re.error as err:
+            msg = f"Invalid regex [{regex}]: {err}"
+            raise InvalidPatternException(msg)
 
 
 def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:

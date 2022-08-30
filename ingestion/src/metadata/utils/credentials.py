@@ -51,7 +51,8 @@ def validate_private_key(private_key: str) -> None:
     try:
         serialization.load_pem_private_key(private_key.encode(), password=None)
     except ValueError as err:
-        raise InvalidPrivateKeyException(f"Cannot serialise key - {err}")
+        msg = f"Cannot serialise key: {err}"
+        raise InvalidPrivateKeyException(msg)
 
 
 def create_credential_tmp_file(credentials: dict) -> str:
@@ -119,5 +120,5 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
 
     raise InvalidGcsConfigException(
         f"Error trying to set GCS credentials with {gcs_credentials}."
-        " Check https://docs.open-metadata.org/connectors/bigquery"
+        " Check https://docs.open-metadata.org/openmetadata/connectors/database/bigquery "
     )

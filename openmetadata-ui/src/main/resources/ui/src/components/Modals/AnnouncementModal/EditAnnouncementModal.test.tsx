@@ -15,20 +15,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import EditAnnouncementModal from './EditAnnouncementModal';
 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
 jest.mock('../../../utils/AnnouncementsUtils', () => ({
   validateMessages: {
     title: '',
@@ -42,6 +28,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
 jest.mock('../../../utils/TimeUtils', () => ({
   getUTCDateTime: jest.fn(),
   getLocaleDate: jest.fn(),
+  getTimeZone: jest.fn(),
 }));
 
 jest.mock('../../common/rich-text-editor/RichTextEditor', () => {

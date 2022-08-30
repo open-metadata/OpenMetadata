@@ -29,13 +29,13 @@ const stepsData = [
     title: 'Ingest Sample Data',
     description:
       'Run sample data to ingest sample entities into your OpenMetadata.',
-    link: 'https://docs.open-metadata.org/integrations/ingest-sample-data',
+    link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
   },
   {
     step: 2,
     title: 'Start Elasticsearch Docker',
     description: 'Ensure that the Elasticsearch docker is up and running.',
-    link: 'https://docs.open-metadata.org/integrations/ingest-sample-data#index-sample-data-into-elasticsearch',
+    link: 'https://docs.open-metadata.org/quick-start/local-deployment',
   },
   {
     step: 3,

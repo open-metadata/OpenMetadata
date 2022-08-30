@@ -15,9 +15,14 @@ import { Button, Col, Row, Space, Switch } from 'antd';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import BotListV1 from '../../components/BotListV1/BotListV1.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { getCreateUserPath } from '../../constants/constants';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { checkPermission } from '../../utils/PermissionsUtils';
 
 export const BotsPageV1 = () => {
+  const { permissions } = usePermissionProvider();
   const history = useHistory();
   const [showDeleted, setShowDeleted] = useState(false);
 
@@ -28,6 +33,12 @@ export const BotsPageV1 = () => {
   const handleShowDeleted = (checked: boolean) => {
     setShowDeleted(checked);
   };
+
+  const createPermission = checkPermission(
+    Operation.Create,
+    ResourceEntity.BOT,
+    permissions
+  );
 
   return (
     <Row gutter={[16, 16]}>
@@ -43,9 +54,12 @@ export const BotsPageV1 = () => {
             />
             <label htmlFor="switch-deleted">Show deleted</label>
           </Space>
-          <Button type="primary" onClick={handleAddBotClick}>
-            Add Bot
-          </Button>
+
+          {createPermission && (
+            <Button type="primary" onClick={handleAddBotClick}>
+              Add Bot
+            </Button>
+          )}
         </Space>
       </Col>
       <Col span={24}>

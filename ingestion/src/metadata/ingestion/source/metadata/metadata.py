@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Metadata source module"""
-
+import traceback
 from typing import Iterable, List
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -193,9 +193,11 @@ class MetadataSource(Source[Entity]):
                     break
                 after = entities_list.after
 
-        except Exception as err:
-            logger.debug(err)
-            logger.error(f"Fetching entities failed for {entity_class.__name__}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Fetching entities failed for [{entity_class.__name__}]: {exc}"
+            )
 
     def get_status(self) -> SourceStatus:
         return self.status

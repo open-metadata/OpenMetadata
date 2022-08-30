@@ -64,9 +64,9 @@ def column_values_missing_count_to_be_equal(
         )
         null_count_value_res = null_count_value_dict.get(Metrics.NULL_COUNT.name)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)
@@ -105,8 +105,8 @@ def column_values_missing_count_to_be_equal(
             # Add set count for special values into the missing count
             null_count_value_res += set_count_res
 
-        except Exception as err:  # pylint: disable=broad-except
-            msg = f"Error computing {test_case.__class__.__name__} for {runner.table.__tablename__}: {err}"
+        except Exception as exc:  # pylint: disable=broad-except
+            msg = f"Error computing {test_case.__class__.__name__} for {runner.table.__tablename__}: {exc}"
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return TestCaseResult(
