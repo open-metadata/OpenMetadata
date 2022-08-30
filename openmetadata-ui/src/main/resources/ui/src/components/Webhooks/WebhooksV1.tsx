@@ -83,7 +83,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   const rightPanel = useMemo(() => {
     return (
       <div style={leftPanelAntCardStyle}>
-        <CardV1 description={LISTING_TEXT[webhookType]} id="data" />
+        <CardV1 id="data">{LISTING_TEXT[webhookType]}</CardV1>
       </div>
     );
   }, []);
@@ -201,7 +201,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
           </Col>
         </Row>
       </Col>
-      <Col flex="312px">
+      <Col flex="284px">
         <div className="webhook-right-panel">{rightPanel}</div>
       </Col>
     </Row>

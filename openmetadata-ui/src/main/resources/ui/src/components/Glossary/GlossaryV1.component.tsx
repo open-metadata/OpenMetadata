@@ -12,7 +12,16 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Col, Dropdown, Input, Menu, Row, Space, Typography } from 'antd';
+import {
+  Col,
+  Divider,
+  Dropdown,
+  Input,
+  Menu,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
@@ -38,7 +47,7 @@ import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import TreeView from '../common/TreeView/TreeView.component';
-import PageLayout from '../containers/PageLayout';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
@@ -253,57 +262,58 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-h-full tw-px-1" id="glossary-left-panel">
-        <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
-          <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
-            <h6 className="tw-heading tw-text-base">Glossary</h6>
-          </div>
-          <div>
-            {treeData.length ? (
-              <Fragment>
-                <div className="tw-px-3 tw-mb-3">
-                  <Searchbar
-                    showLoadingStatus
-                    placeholder="Search term..."
-                    searchValue={searchText}
-                    typingInterval={500}
-                    onSearch={handleSearchText}
-                  />
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <button
-                      className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
-                      onClick={handleAddGlossaryClick}>
-                      <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                      <span>Add Glossary</span>
-                    </button>
-                  </NonAdminAction>
-                </div>
-                {isSearchResultEmpty ? (
-                  <p className="tw-text-grey-muted tw-text-center">
-                    {searchText ? (
-                      <span>{`No Glossary found for "${searchText}"`}</span>
-                    ) : (
-                      <span>No Glossary found</span>
-                    )}
-                  </p>
-                ) : (
-                  <TreeView
-                    expandedKeys={expandedKey}
-                    handleClick={handleTreeClick}
-                    handleExpand={(key) => handleExpandedKey(key as string[])}
-                    loadingKey={loadingKey}
-                    ref={treeRef}
-                    selectedKeys={[selectedKey]}
-                    treeData={treeData}
-                  />
-                )}
-              </Fragment>
-            ) : (
-              <Loader />
-            )}
-          </div>
+      <div className="tw-bg-white tw-h-full tw-py-2 " id="glossary-left-panel">
+        <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
+          <Typography.Text>Glossary</Typography.Text>
+        </div>
+
+        <Divider style={{ margin: '8px 0 12px 0' }} />
+
+        <div>
+          {treeData.length ? (
+            <Fragment>
+              <div className="tw-px-3 tw-mb-3">
+                <Searchbar
+                  showLoadingStatus
+                  placeholder="Search term..."
+                  searchValue={searchText}
+                  typingInterval={500}
+                  onSearch={handleSearchText}
+                />
+                <NonAdminAction
+                  position="bottom"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <button
+                    className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                    onClick={handleAddGlossaryClick}>
+                    <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                    <span>Add Glossary</span>
+                  </button>
+                </NonAdminAction>
+              </div>
+              {isSearchResultEmpty ? (
+                <p className="tw-text-grey-muted tw-text-center">
+                  {searchText ? (
+                    <span>{`No Glossary found for "${searchText}"`}</span>
+                  ) : (
+                    <span>No Glossary found</span>
+                  )}
+                </p>
+              ) : (
+                <TreeView
+                  expandedKeys={expandedKey}
+                  handleClick={handleTreeClick}
+                  handleExpand={(key) => handleExpandedKey(key as string[])}
+                  loadingKey={loadingKey}
+                  ref={treeRef}
+                  selectedKeys={[selectedKey]}
+                  treeData={treeData}
+                />
+              )}
+            </Fragment>
+          ) : (
+            <Loader />
+          )}
         </div>
       </div>
     );
@@ -314,7 +324,7 @@ const GlossaryV1 = ({
   }, [selectedData]);
 
   return glossaryList.length ? (
-    <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1 leftPanel={fetchLeftPanel()}>
       <div
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
@@ -326,7 +336,7 @@ const GlossaryV1 = ({
             }
           />
         </div>
-        <div className="tw-relative tw-mr-2 tw--mt-2" id="add-term-button">
+        <div className="tw-relative tw-mr-2" id="add-term-button">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className={classNames('tw-h-8 tw-rounded tw-mb-1 tw-mr-2', {
@@ -454,9 +464,9 @@ const GlossaryV1 = ({
           onConfirm={handleDelete}
         />
       )}
-    </PageLayout>
+    </PageLayoutV1>
   ) : (
-    <PageLayout>
+    <PageLayoutV1>
       <ErrorPlaceHolder>
         <p className="tw-text-center">No glossaries found</p>
         <p className="tw-text-center">
@@ -475,7 +485,7 @@ const GlossaryV1 = ({
           </NonAdminAction>
         </p>
       </ErrorPlaceHolder>
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 

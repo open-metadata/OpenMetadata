@@ -16,7 +16,7 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Col, Divider, Row } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
@@ -26,13 +26,7 @@ import {
   FormattedTableData,
   SearchResponse,
 } from 'Models';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -68,7 +62,8 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import CardV1 from '../common/Card/CardV1';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import { AdvanceField, ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
@@ -653,13 +648,11 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        style={{ ...leftPanelAntCardStyle, marginTop: '16px', height: '98%' }}>
-        <Fragment>
-          <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+      <CardV1 id="explorer" style={{ border: '0px' }}>
+        <Row>
+          <Col span={24}>
             <Button
-              className={classNames('tw-underline tw-pb-4')}
+              className={classNames('tw-underline')}
               disabled={!getFilterCount(filters)}
               size="custom"
               theme="primary"
@@ -667,22 +660,24 @@ const Explore: React.FC<ExploreProps> = ({
               onClick={() => resetFilters(true)}>
               Clear All
             </Button>
-          </div>
-          <div className="tw-filter-seperator" />
-          {!error && (
-            <FacetFilter
-              aggregations={getAggrWithDefaultValue(
-                aggregations,
-                visibleFilters
-              )}
-              filters={getFacetedFilter()}
-              showDeletedOnly={showDeleted}
-              onSelectDeleted={handleShowDeleted}
-              onSelectHandler={handleSelectedFilter}
-            />
-          )}
-        </Fragment>
-      </Card>
+          </Col>
+          <Divider style={{ margin: '8px 0 8px 0' }} />
+          <Col span={24}>
+            {!error && (
+              <FacetFilter
+                aggregations={getAggrWithDefaultValue(
+                  aggregations,
+                  visibleFilters
+                )}
+                filters={getFacetedFilter()}
+                showDeletedOnly={showDeleted}
+                onSelectDeleted={handleShowDeleted}
+                onSelectHandler={handleSelectedFilter}
+              />
+            )}
+          </Col>
+        </Row>
+      </CardV1>
     );
   };
 
@@ -690,38 +685,38 @@ const Explore: React.FC<ExploreProps> = ({
     !connectionError && Boolean(selectedAdvancedFields.length);
 
   return (
-    <Fragment>
-      <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
-        {error ? (
-          <ErrorPlaceHolderES errorMessage={error} type="error" />
-        ) : (
-          <>
-            {!connectionError && getTabs()}
-            {advanceFieldCheck && (
-              <AdvancedFields
-                fields={selectedAdvancedFields}
-                index={searchIndex}
-                onClear={onAdvancedFieldClear}
-                onFieldRemove={onAdvancedFieldRemove}
-                onFieldValueSelect={onAdvancedFieldValueSelect}
-              />
-            )}
-            <SearchedData
-              showResultCount
-              currentPage={currentPage}
-              data={data}
-              isFilterSelected={isFilterSelected}
-              isLoading={
-                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-              }
-              paginate={paginate}
-              searchText={searchText}
-              totalValue={totalNumberOfValue}
+    <PageLayoutV1
+      className="tw-h-full tw-px-6"
+      leftPanel={Boolean(!error) && fetchLeftPanel()}>
+      {error ? (
+        <ErrorPlaceHolderES errorMessage={error} type="error" />
+      ) : (
+        <div>
+          {!connectionError && getTabs()}
+          {advanceFieldCheck && (
+            <AdvancedFields
+              fields={selectedAdvancedFields}
+              index={searchIndex}
+              onClear={onAdvancedFieldClear}
+              onFieldRemove={onAdvancedFieldRemove}
+              onFieldValueSelect={onAdvancedFieldValueSelect}
             />
-          </>
-        )}
-      </PageLayout>
-    </Fragment>
+          )}
+          <SearchedData
+            showResultCount
+            currentPage={currentPage}
+            data={data}
+            isFilterSelected={isFilterSelected}
+            isLoading={
+              !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+            }
+            paginate={paginate}
+            searchText={searchText}
+            totalValue={totalNumberOfValue}
+          />
+        </div>
+      )}
+    </PageLayoutV1>
   );
 };
 

@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Divider, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toLower } from 'lodash';
@@ -30,15 +30,14 @@ import {
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import CardV1 from '../../components/common/Card/CardV1';
 import Description from '../../components/common/description/Description';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout, {
-  leftPanelAntCardStyle,
-} from '../../components/containers/PageLayout';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
@@ -414,18 +413,11 @@ const TagsPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        className="left-panel-container"
-        data-testid="data-summary-container"
-        size="small"
-        style={leftPanelAntCardStyle}
-        title={
+      <CardV1 id="tags" style={{ border: '0px' }}>
+        <>
           <div className="tw-flex tw-justify-between tw-items-center">
-            <span
-              className="tw-heading tw-text-base tw-my-0"
-              style={{ fontSize: '14px' }}>
-              Tag Categories
-            </span>
+            <Typography.Text>Tag Categories</Typography.Text>
+
             <NonAdminAction
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -445,8 +437,9 @@ const TagsPage = () => {
               </Button>
             </NonAdminAction>
           </div>
-        }>
-        <>
+
+          <Divider style={{ margin: '8px 0 8px 0' }} />
+
           {categories &&
             categories.map((category: TagCategory) => (
               <div
@@ -477,13 +470,13 @@ const TagsPage = () => {
               </div>
             ))}
         </>
-      </Card>
+      </CardV1>
     );
   };
 
   return (
-    <PageContainerV1 className="tw-py-4">
-      <PageLayout leftPanel={fetchLeftPanel()}>
+    <PageContainerV1>
+      <PageLayoutV1 leftPanel={fetchLeftPanel()}>
         {isLoading ? (
           <Loader />
         ) : error ? (
@@ -491,10 +484,7 @@ const TagsPage = () => {
             <p className="tw-text-center tw-m-auto">{error}</p>
           </ErrorPlaceHolder>
         ) : (
-          <div
-            className="full-height"
-            data-testid="tags-container"
-            style={{ padding: '14px' }}>
+          <div className="full-height" data-testid="tags-container">
             {currentCategory && (
               <div
                 className="tw-flex tw-justify-between tw-items-center"
@@ -769,7 +759,7 @@ const TagsPage = () => {
             )}
           </div>
         )}
-      </PageLayout>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

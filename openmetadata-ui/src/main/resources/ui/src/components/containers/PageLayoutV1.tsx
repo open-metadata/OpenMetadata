@@ -12,11 +12,13 @@
  */
 
 import { Col, Row } from 'antd';
+import classNames from 'classnames';
 import React, { FC, HTMLAttributes, ReactNode } from 'react';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
+  defaultLeftPanelStyle?: boolean;
   header?: ReactNode;
   rightPanel?: ReactNode;
 }
@@ -28,6 +30,7 @@ export const pageContainerStyles = {
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
+  defaultLeftPanelStyle = true,
   children,
   rightPanel,
   className,
@@ -35,8 +38,12 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Row className={className} gutter={[16, 16]} style={pageContainerStyles}>
       {leftPanel && (
-        <Col flex="312px">
-          <div className="page-layout-v1-left-panel page-layout-v1-vertical-scroll">
+        <Col flex="284px">
+          <div
+            className={classNames(
+              { 'page-layout-v1-left-panel': defaultLeftPanelStyle },
+              'page-layout-v1-vertical-scroll'
+            )}>
             {leftPanel}
           </div>
         </Col>
@@ -45,14 +52,14 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         className="page-layout-v1-center page-layout-v1-vertical-scroll"
         flex={
           leftPanel && rightPanel
-            ? 'calc(100% - 624px)'
+            ? 'calc(100% - 568px)'
             : leftPanel || rightPanel
-            ? 'calc(100% - 312px)'
-            : '1080px'
+            ? 'calc(100% - 284px)'
+            : '100%'
         }>
         {children}
       </Col>
-      {rightPanel && <Col span={6}>{rightPanel}</Col>}
+      {rightPanel && <Col flex="284px">{rightPanel}</Col>}
     </Row>
   );
 };
