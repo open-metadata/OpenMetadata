@@ -13,6 +13,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
@@ -29,7 +30,7 @@ public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
   private static final String UPDATE_FIELDS = "owner";
-
+  protected static final String PATCH_FIELDS = "owner,tags";
   @Getter private final Class<S> serviceConnectionClass;
 
   protected final SecretsManager secretsManager;
@@ -56,7 +57,7 @@ public abstract class ServiceEntityRepository<
       Class<S> serviceConnectionClass,
       String updatedFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, PATCH_FIELDS, updatedFields);
     this.secretsManager = secretsManager;
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
@@ -66,6 +67,7 @@ public abstract class ServiceEntityRepository<
   public T setFields(T entity, EntityUtil.Fields fields) throws IOException {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
+    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     return entity;
   }
 

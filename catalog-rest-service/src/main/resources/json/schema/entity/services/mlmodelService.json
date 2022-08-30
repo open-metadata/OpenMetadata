@@ -107,6 +107,14 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "tags": {
+      "description": "Tags for this table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     }
   },
   "required": ["id", "name", "serviceType"],
