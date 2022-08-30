@@ -380,10 +380,11 @@ const GlossaryV1 = ({
 
   useEffect(() => {
     setDisplayName(selectedData?.displayName);
+
     if (isGlossaryActive) {
-      fetchGlossaryPermission();
+      selectedData && fetchGlossaryPermission();
     } else {
-      fetchGlossaryTermPermission();
+      selectedData && fetchGlossaryTermPermission();
     }
   }, [selectedData]);
 
@@ -556,7 +557,7 @@ const GlossaryV1 = ({
           <Button
             className="tw-h-8 tw-rounded tw-my-3"
             data-testid="add-webhook-button"
-            disabled={!glossaryPermission.Create}
+            disabled={!createGlossaryPermission}
             size="small"
             theme="primary"
             variant="contained"
