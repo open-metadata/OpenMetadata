@@ -527,9 +527,10 @@ on
 )
 
 SNOWFLAKE_GET_CLUSTER_KEY = """
-  select CLUSTERING_KEY 
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
   from   information_schema.tables 
-  where  TABLE_SCHEMA = '{schme_name}' 
-    and  TABLE_TYPE = 'BASE TABLE'
-    and  TABLE_NAME = '{table_name}'
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
 """
