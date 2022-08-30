@@ -30,6 +30,7 @@ export const leftPanelAntCardStyle = {
   boxShadow: '1px 1px 8px rgb(0 0 0 / 6%)',
   marginRight: '4px',
   marginLeft: '4px',
+  height: '100%',
 };
 
 /**

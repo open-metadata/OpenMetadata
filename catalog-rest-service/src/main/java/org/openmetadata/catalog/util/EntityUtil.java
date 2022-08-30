@@ -143,13 +143,7 @@ public final class EntityUtil {
   public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
-  public static final BiPredicate<Rule, Rule> ruleMatch =
-      (ref1, ref2) ->
-          ref1.getName().equals(ref2.getName())
-              && ref1.getOperations().equals(ref2.getOperations())
-              && ref1.getResources().equals(ref2.getResources())
-              && ref1.getEffect().equals(ref2.getEffect())
-              && Objects.equals(ref1.getCondition(), ref2.getCondition());
+  public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   private EntityUtil() {}
 
@@ -375,7 +369,7 @@ public final class EntityUtil {
     return String.join(Entity.SEPARATOR, strings);
   }
 
-  /** Return column field name of format columnName:fieldName */
+  /** Return column field name of format "columns".columnName.columnFieldName */
   public static String getColumnField(Table table, Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName =
@@ -383,6 +377,13 @@ public final class EntityUtil {
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);
+  }
+
+  /** Return rule field name of format "rules".ruleName.ruleFieldName */
+  public static String getRuleField(Rule rule, String ruleField) {
+    return ruleField == null
+        ? FullyQualifiedName.build("rules", rule.getName())
+        : FullyQualifiedName.build("rules", rule.getName(), ruleField);
   }
 
   public static Double nextVersion(Double version) {

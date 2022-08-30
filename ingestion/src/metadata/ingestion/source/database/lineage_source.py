@@ -20,6 +20,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
@@ -61,34 +62,35 @@ class LineageSource(QueryParserSource, ABC):
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
             try:
-                rows = self.engine.execute(
-                    self.get_sql_statement(
-                        start_time=self.start,
-                        end_time=self.end,
+                with get_connection(self.connection).connect() as conn:
+                    rows = conn.execute(
+                        self.get_sql_statement(
+                            start_time=self.start,
+                            end_time=self.end,
+                        )
                     )
-                )
-                for row in rows:
-                    query_dict = dict(row)
-                    try:
-                        if filter_by_database(
-                            self.source_config.databaseFilterPattern,
-                            self.get_database_name(query_dict),
-                        ) or filter_by_schema(
-                            self.source_config.schemaFilterPattern,
-                            schema_name=self.get_schema_name(query_dict),
-                        ):
-                            continue
-                        yield TableQuery(
-                            query=query_dict["query_text"],
-                            databaseName=self.get_database_name(query_dict),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=self.get_schema_name(query_dict),
-                        )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Error processing query_dict {query_dict}: {exc}"
-                        )
+                    for row in rows:
+                        query_dict = dict(row)
+                        try:
+                            if filter_by_database(
+                                self.source_config.databaseFilterPattern,
+                                self.get_database_name(query_dict),
+                            ) or filter_by_schema(
+                                self.source_config.schemaFilterPattern,
+                                schema_name=self.get_schema_name(query_dict),
+                            ):
+                                continue
+                            yield TableQuery(
+                                query=query_dict["query_text"],
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Error processing query_dict {query_dict}: {exc}"
+                            )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")

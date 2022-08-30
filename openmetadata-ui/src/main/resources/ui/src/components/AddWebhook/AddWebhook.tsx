@@ -32,6 +32,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import {
+  CONFIGURE_MS_TEAMS_TEXT,
   CONFIGURE_SLACK_TEXT,
   CONFIGURE_WEBHOOK_TEXT,
   NO_PERMISSION_FOR_ACTION,
@@ -57,6 +58,7 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import CardV1 from '../common/Card/CardV1';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
@@ -70,6 +72,12 @@ import {
   EVENT_FILTERS_DEFAULT_VALUE,
   EVENT_FILTER_FORM_INITIAL_VALUE,
 } from './WebhookConstants';
+
+const CONFIGURE_TEXT: { [key: string]: string } = {
+  msteams: CONFIGURE_MS_TEAMS_TEXT,
+  slack: CONFIGURE_SLACK_TEXT,
+  generic: CONFIGURE_WEBHOOK_TEXT,
+};
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -374,12 +382,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const fetchRightPanel = useCallback(() => {
     return (
       <div className="tw-px-2">
-        <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
-        <div className="tw-mb-5">
-          {webhookType === WebhookType.Slack
-            ? CONFIGURE_SLACK_TEXT
-            : CONFIGURE_WEBHOOK_TEXT}
-        </div>
+        <CardV1
+          description={CONFIGURE_TEXT[webhookType]}
+          heading="Configure Webhooks"
+          id="webhook"
+        />
       </div>
     );
   }, [webhookType]);

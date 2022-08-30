@@ -44,6 +44,7 @@ export enum GlobalSettingOptions {
   SLACK = 'slack',
   BOTS = 'bots',
   TABLES = 'tables',
+  MSTEAMS = 'msteams',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

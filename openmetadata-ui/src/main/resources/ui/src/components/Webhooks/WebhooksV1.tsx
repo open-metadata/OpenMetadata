@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Select, Space, Tooltip } from 'antd';
+import { Col, Row, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
+  MS_TEAMS_LISTING_TEXT,
   NO_PERMISSION_FOR_ACTION,
   SLACK_LISTING_TEXT,
   WEBHOOK_LISTING_TEXT,
@@ -27,6 +28,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { statuses } from '../AddWebhook/WebhookConstants';
 import { Button } from '../buttons/Button/Button';
+import CardV1 from '../common/Card/CardV1';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
@@ -36,9 +38,21 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import { WebhooksV1Props } from './WebhooksV1.interface';
 import './webhookV1.less';
 
+const LISTING_TEXT: { [key: string]: string } = {
+  msteams: MS_TEAMS_LISTING_TEXT,
+  slack: SLACK_LISTING_TEXT,
+  generic: WEBHOOK_LISTING_TEXT,
+};
+
+const WEBHOOKS_INTEGRATION: { [key: string]: string } = {
+  msteams: 'MS Teams',
+  slack: 'Slack',
+  generic: 'Webhook',
+};
+
 const WebhooksV1: FC<WebhooksV1Props> = ({
   data = [],
-  webhookType,
+  webhookType = WebhookType.Generic,
   paging,
   selectedStatus = [],
   onAddWebhook,
@@ -68,16 +82,9 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
 
   const rightPanel = useMemo(() => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        size="small"
-        style={leftPanelAntCardStyle}>
-        <div className="tw-my-2">
-          {webhookType === WebhookType.Slack
-            ? SLACK_LISTING_TEXT
-            : WEBHOOK_LISTING_TEXT}
-        </div>
-      </Card>
+      <div style={leftPanelAntCardStyle}>
+        <CardV1 description={LISTING_TEXT[webhookType]} id="data" />
+      </div>
     );
   }, []);
 
@@ -100,7 +107,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
                 theme="primary"
                 variant="contained"
                 onClick={onAddWebhook}>
-                Add {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
+                Add {WEBHOOKS_INTEGRATION[webhookType]}
               </Button>
             </Tooltip>
           </p>
@@ -115,7 +122,9 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
   }, [data, selectedStatus]);
 
   if (data.length === 0) {
-    return fetchErrorPlaceHolder('No webhooks found');
+    return fetchErrorPlaceHolder(
+      `No ${WEBHOOKS_INTEGRATION[webhookType]} found`
+    );
   }
 
   return (
@@ -155,8 +164,7 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
                     theme="primary"
                     variant="contained"
                     onClick={onAddWebhook}>
-                    Add{' '}
-                    {webhookType === WebhookType.Slack ? 'Slack' : 'Webhook'}
+                    Add {WEBHOOKS_INTEGRATION[webhookType]}
                   </Button>
                 </Tooltip>
               )}
