@@ -11,55 +11,28 @@
  *  limitations under the License.
  */
 
-import { Menu, MenuProps } from 'antd';
+import { Empty, Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { AxiosError } from 'axios';
 import { camelCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { GLOBAL_SETTING_PERMISSION_RESOURCES } from '../../constants/globalSettings.constants';
 import {
   getGlobalSettingMenuItem,
   getGlobalSettingsMenuWithPermission,
   MenuList,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
-import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../PermissionProvider/PermissionProvider.interface';
 
 const GlobalSettingLeftPanel = () => {
   const history = useHistory();
   const { tab, settingCategory } = useParams<{ [key: string]: string }>();
-  const [settingResourcePermission, setSettingResourcePermission] =
-    useState<UIPermission>({} as UIPermission);
 
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  const { getResourcePermission } = usePermissionProvider();
-
-  const fetchResourcesPermission = async (resource: ResourceEntity) => {
-    setIsLoading(true);
-    try {
-      const response = await getResourcePermission(resource);
-      setSettingResourcePermission((prev) => ({
-        ...prev,
-        [resource]: response,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { permissions } = usePermissionProvider();
 
   const menuItems: ItemType[] = useMemo(
     () =>
-      getGlobalSettingsMenuWithPermission(settingResourcePermission).reduce(
+      getGlobalSettingsMenuWithPermission(permissions).reduce(
         (acc: ItemType[], curr: MenuList) => {
           const menuItem = getGlobalSettingMenuItem(
             curr.category,
@@ -77,7 +50,7 @@ const GlobalSettingLeftPanel = () => {
         },
         [] as ItemType[]
       ),
-    [setSettingResourcePermission]
+    [permissions]
   );
 
   const onClick: MenuProps['onClick'] = (e) => {
@@ -86,29 +59,16 @@ const GlobalSettingLeftPanel = () => {
     history.push(getSettingPath(category, option));
   };
 
-  useEffect(() => {
-    // TODO: This will make number of API calls, need to think of better solution
-    GLOBAL_SETTING_PERMISSION_RESOURCES.forEach((resource) => {
-      fetchResourcesPermission(resource);
-    });
-  }, []);
-
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  return (
-    <>
-      {menuItems.length ? (
-        <Menu
-          className="global-setting-left-panel"
-          items={menuItems}
-          mode="inline"
-          selectedKeys={[`${settingCategory}.${tab}`]}
-          onClick={onClick}
-        />
-      ) : null}
-    </>
+  return menuItems.length ? (
+    <Menu
+      className="global-setting-left-panel"
+      items={menuItems}
+      mode="inline"
+      selectedKeys={[`${settingCategory}.${tab}`]}
+      onClick={onClick}
+    />
+  ) : (
+    <Empty className="tw-mt-8" />
   );
 };
 

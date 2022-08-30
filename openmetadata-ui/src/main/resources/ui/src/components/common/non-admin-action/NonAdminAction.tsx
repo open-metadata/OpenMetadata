@@ -28,6 +28,10 @@ type Props = {
   permission?: Operation;
 };
 
+/**
+ * @deprecated
+ * TODO: Remove this component once we have new permission structure everywhere
+ */
 const NonAdminAction = ({
   children,
   className = '',
