@@ -23,6 +23,7 @@ import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
+import IconAnnouncementsOrange from '../assets/svg/announcements-orange.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
@@ -304,6 +305,7 @@ export const Icons = {
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
+  ANNOUNCEMENT_ORANGE: 'icon-announcement-orange',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -831,6 +833,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ANNOUNCEMENT:
       IconComponent = IconAnnouncements;
+
+      break;
+    case Icons.ANNOUNCEMENT_ORANGE:
+      IconComponent = IconAnnouncementsOrange;
 
       break;
     case Icons.ANNOUNCEMENT_BLACK:

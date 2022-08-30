@@ -136,7 +136,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                     </div>
                   </div>
                 ) : null}
-                <div data-testid="latest-reply">
+                {/* <div data-testid="latest-reply">
                   <ActivityFeedCard
                     isEntityFeed
                     className="tw-ml-9"
@@ -147,7 +147,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                     onConfirmation={onConfirmation}
                     onReply={() => toggleReplyEditor(thread.id)}
                   />
-                </div>
+                </div> */}
               </div>
             ) : null}
             {selectedThreadId === thread.id ? (
