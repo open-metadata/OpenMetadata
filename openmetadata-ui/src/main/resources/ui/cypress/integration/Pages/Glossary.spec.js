@@ -323,6 +323,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Assets Tab should work properly', () => {
+    const glossary = NEW_GLOSSARY.name;
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     goToAssetsTab(term);
@@ -343,7 +344,7 @@ describe('Glossary page should work properly', () => {
     cy.wait(500);
     cy.get('[id*="-option-0"]').should('be.visible').click();
     cy.get(
-      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
     ).contains(term);
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     cy.wait(1000);
@@ -361,12 +362,12 @@ describe('Glossary page should work properly', () => {
     cy.get('[class*="-control"]').should('be.visible').type(term);
     cy.wait(500);
     cy.get('[id*="-option-0"]').should('be.visible').click();
-    cy.get('[data-testid="tags-wrapper"] > [data-testid="tag-container"]')
-      .scrollIntoView()
-      .contains(term);
+    cy.get(
+      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
+    ).contains(term);
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     cy.wait(1000);
-    cy.get('[data-testid="entity-tags"]')
+    cy.get(`[data-testid="tag-${glossary}.${term}"]`)
       .scrollIntoView()
       .should('be.visible')
       .contains(term);
@@ -406,16 +407,10 @@ describe('Glossary page should work properly', () => {
 
     //Remove the added column tag from entity
 
-    cy.get('[data-testid="remove"]')
-      .eq(0)
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="remove"]')
-      .eq(0)
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
+
+    cy.wait(500);
+    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
 
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
