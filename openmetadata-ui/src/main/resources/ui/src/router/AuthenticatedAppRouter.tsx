@@ -34,6 +34,24 @@ const ProfilerDashboardPage = withSuspenseFallback(
   )
 );
 
+const TestSuiteIngestionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
+  )
+);
+
+const TestSuiteDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
+  )
+);
+
+const AddDataQualityTestPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/AddDataQualityTestPage/AddDataQualityTestPage')
+  )
+);
+
 const AddCustomProperty = withSuspenseFallback(
   React.lazy(
     () =>
@@ -466,7 +484,17 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlobalSettingPage}
         path={ROUTES.SETTINGS_WITH_TAB_FQN}
       />
-
+      <Route exact component={TestSuiteDetailsPage} path={ROUTES.TEST_SUITES} />
+      <Route
+        exact
+        component={TestSuiteIngestionPage}
+        path={ROUTES.TEST_SUITES_ADD_INGESTION}
+      />
+      <Route
+        exact
+        component={TestSuiteIngestionPage}
+        path={ROUTES.TEST_SUITES_EDIT_INGESTION}
+      />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

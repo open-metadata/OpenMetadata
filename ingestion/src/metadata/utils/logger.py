@@ -16,6 +16,8 @@ import logging
 from enum import Enum
 from typing import Union
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 )
@@ -77,3 +79,23 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
     utils_logger().setLevel(level)
     great_expectations_logger().setLevel(level)
     test_suite_logger().setLevel(level)
+
+
+def get_add_lineage_log_str(add_lineage: AddLineageRequest) -> str:
+    """
+    Given a LineageRequest, parse its contents to return
+    a string that we can log
+    """
+
+    # id and type will always be informed
+    id_ = add_lineage.edge.fromEntity.id.__root__
+    type_ = add_lineage.edge.fromEntity.type
+
+    # name can be informed or not
+    name_str = (
+        f"name: {add_lineage.edge.fromEntity.name}, "
+        if add_lineage.edge.fromEntity.name
+        else ""
+    )
+
+    return f"{type_} [{name_str}id: {id_}]"

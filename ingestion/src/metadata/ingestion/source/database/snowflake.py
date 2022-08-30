@@ -10,16 +10,20 @@
 #  limitations under the License.
 import json
 import traceback
-from typing import Iterable
+from typing import Iterable, List, Optional, Tuple
 
+import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
+from sqlparse.sql import Function, Identifier
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -38,6 +42,7 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
+    SNOWFLAKE_GET_CLUSTER_KEY,
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
@@ -124,6 +129,7 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 
 class SnowflakeSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
+        self.partiotion_details = {}
         super().__init__(config, metadata_config)
 
     @classmethod
@@ -147,11 +153,21 @@ class SnowflakeSource(CommonDbSourceService):
                 )
             )
 
+    def set_partiotion_details(self) -> None:
+        self.partiotion_details.clear()
+        results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
+        for row in results:
+            if row.CLUSTERING_KEY:
+                self.partiotion_details[
+                    f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
+                ] = row.CLUSTERING_KEY
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()
+            self.set_partiotion_details()
             yield configured_db
         else:
             results = self.connection.execute("SHOW DATABASES")
@@ -168,12 +184,75 @@ class SnowflakeSource(CommonDbSourceService):
                 try:
                     self.set_inspector(database_name=new_database)
                     self.set_session_query_tag()
+                    self.set_partiotion_details()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    def __get_identifier_from_function(self, function_token: Function) -> List:
+        identifiers = []
+        for token in function_token.get_parameters():
+            if isinstance(token, Function):
+                # get column names from nested functions
+                identifiers.extend(self.__get_identifier_from_function(token))
+            elif isinstance(token, Identifier):
+                identifiers.append(token.get_real_name())
+        return identifiers
+
+    def parse_column_name_from_expr(self, cluster_key_expr: str) -> Optional[List[str]]:
+        try:
+            parser = sqlparse.parse(cluster_key_expr)
+            if not parser:
+                return []
+            result = []
+            tokens_list = parser[0].tokens
+            for token in tokens_list:
+                if isinstance(token, Function):
+                    result.extend(self.__get_identifier_from_function(token))
+                elif isinstance(token, Identifier):
+                    result.append(token.get_real_name())
+            return result
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to parse cluster key - {err}")
+
+    def __fix_partition_column_case(
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+        partition_columns: Optional[List[str]],
+    ) -> List[str]:
+        if partition_columns:
+            columns = []
+            table_columns = inspector.get_columns(
+                table_name=table_name, schema=schema_name
+            )
+            for pcolumn in partition_columns:
+                for tcolumn in table_columns:
+                    if tcolumn["name"].lower() == pcolumn.lower():
+                        columns.append(tcolumn["name"])
+                        break
+            return columns
+        return []
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        cluster_key = self.partiotion_details.get(f"{schema_name}.{table_name}")
+        if cluster_key:
+            partition_columns = self.parse_column_name_from_expr(cluster_key)
+            partition_details = TablePartition(
+                columns=self.__fix_partition_column_case(
+                    table_name, schema_name, inspector, partition_columns
+                ),
+                intervalType=IntervalType.COLUMN_VALUE,
+            )
+            return True, partition_details
+        return False, None
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
 
