@@ -47,7 +47,9 @@ To install or upgrade Elasticsearch to a supported version please see the instru
 
 We do not support ElasticSearch 8.x yet.
 
-Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setup.html).
+Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.13/setup.html).
+
+If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version upto 1.3. For more information on AWS OpenSearch Service, please visit the offical docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
 ## Airflow (version 2.0.0 or greater) or other workflow schedulers
 
@@ -152,10 +154,10 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version upto 8.0.29
-- Amazon OpenSearch (ElasticSearch) engine version upto 7.1
+- Amazon OpenSearch (ElasticSearch) engine version upto 7.1 or Amazon OpenSearch engine version upto 1.3
 - Amazon RDS (PostgreSQL) engine version upto 14.2-R1
 
-For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
+For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata bare metal systems to connect with Database and ElasticSearch.
 
