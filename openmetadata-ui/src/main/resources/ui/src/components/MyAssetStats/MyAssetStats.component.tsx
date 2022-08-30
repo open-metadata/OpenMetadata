@@ -72,6 +72,16 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: getExplorePathWithSearch(undefined, 'mlmodels'),
         dataTestId: 'mlmodels',
       },
+      testSuite: {
+        icon: Icons.TABLE_GREY,
+        data: 'Test Suite',
+        count: entityCounts.testSuiteCount,
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.DATA_QUALITY,
+          GlobalSettingOptions.TEST_SUITE
+        ),
+        dataTestId: 'test-suite',
+      },
       service: {
         icon: Icons.SERVICE,
         data: 'Services',

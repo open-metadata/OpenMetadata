@@ -525,3 +525,12 @@ on
  where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
 """
 )
+
+SNOWFLAKE_GET_CLUSTER_KEY = """
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
+  from   information_schema.tables 
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
+"""

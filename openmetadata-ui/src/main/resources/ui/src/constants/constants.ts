@@ -94,6 +94,7 @@ export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
+export const PLACEHOLDER_TEST_SUITE_FQN = ':testSuiteFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -236,6 +237,11 @@ export const ROUTES = {
   ADD_POLICY: '/settings/access/policies/add-policy',
   ADD_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/add-rule`,
   EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
+
+  // test suites
+  TEST_SUITES: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}`,
+  TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/add-ingestion`,
+  TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
 };
 
 export const SOCKET_EVENTS = {

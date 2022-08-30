@@ -66,6 +66,9 @@ const SlackSettingsPage = withSuspenseFallback(
     () => import('../pages/SlackSettingsPage/SlackSettingsPage.component')
   )
 );
+const TestSuitePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
+);
 const MsTeamsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
 );
@@ -98,6 +101,14 @@ const GlobalSettingRouter = () => {
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true
+        )}
+      />
+      <Route
+        exact
+        component={TestSuitePage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.DATA_QUALITY,
+          GlobalSettingOptions.TEST_SUITE
         )}
       />
       {/* Roles route start
