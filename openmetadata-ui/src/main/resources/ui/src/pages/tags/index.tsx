@@ -538,9 +538,7 @@ const TagsPage = () => {
                 <div>
                   <Tooltip
                     title={
-                      createTagPermission ||
-                      categoryPermissions.EditTags ||
-                      categoryPermissions.EditAll
+                      createTagPermission || categoryPermissions.EditAll
                         ? 'Add Tag'
                         : NO_PERMISSION_FOR_ACTION
                     }>
@@ -548,9 +546,7 @@ const TagsPage = () => {
                       className="tw-h-8 tw-rounded tw-mb-3"
                       data-testid="add-new-tag-button"
                       disabled={
-                        !createTagPermission &&
-                        !categoryPermissions.EditTags &&
-                        !categoryPermissions.EditAll
+                        !createTagPermission && !categoryPermissions.EditAll
                       }
                       size="small"
                       type="primary"
@@ -561,24 +557,18 @@ const TagsPage = () => {
                       Add new tag
                     </Button>
                   </Tooltip>
-                  <Tooltip
-                    title={
-                      categoryPermissions.Delete
-                        ? 'Delete Category'
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      className="tw-h-8 tw-rounded tw-mb-3 tw-ml-2"
-                      data-testid="delete-tag-category-button"
-                      disabled={!categoryPermissions.Delete}
-                      size="small"
-                      type="primary"
-                      onClick={() => {
-                        deleteTagHandler();
-                      }}>
-                      Delete category
-                    </Button>
-                  </Tooltip>
+
+                  <Button
+                    className="tw-h-8 tw-rounded tw-mb-3 tw-ml-2"
+                    data-testid="delete-tag-category-button"
+                    disabled={!categoryPermissions.Delete}
+                    size="small"
+                    type="primary"
+                    onClick={() => {
+                      deleteTagHandler();
+                    }}>
+                    Delete category
+                  </Button>
                 </div>
               </div>
             )}
@@ -684,48 +674,37 @@ const TagsPage = () => {
                             </td>
                             <td className="tableBody-cell">
                               <div className="tw-text-center">
-                                <Tooltip
-                                  title={
-                                    categoryPermissions.EditAll ||
-                                    categoryPermissions.EditTags
-                                      ? 'Delete Tag'
-                                      : NO_PERMISSION_FOR_ACTION
+                                <button
+                                  className="link-text"
+                                  data-testid="delete-tag"
+                                  disabled={!categoryPermissions.EditAll}
+                                  onClick={() =>
+                                    setDeleteTags({
+                                      data: {
+                                        id: tag.id as string,
+                                        name: tag.name,
+                                        categoryName: currentCategory.name,
+                                        isCategory: false,
+                                        status: 'waiting',
+                                      },
+                                      state: true,
+                                    })
                                   }>
-                                  <button
-                                    className="link-text"
-                                    data-testid="delete-tag"
-                                    disabled={
-                                      !categoryPermissions.EditAll &&
-                                      !categoryPermissions.EditTags
-                                    }
-                                    onClick={() =>
-                                      setDeleteTags({
-                                        data: {
-                                          id: tag.id as string,
-                                          name: tag.name,
-                                          categoryName: currentCategory.name,
-                                          isCategory: false,
-                                          status: 'waiting',
-                                        },
-                                        state: true,
-                                      })
-                                    }>
-                                    {deleteTags.data?.id === tag.id ? (
-                                      deleteTags.data?.status === 'success' ? (
-                                        <FontAwesomeIcon icon="check" />
-                                      ) : (
-                                        <Loader size="small" type="default" />
-                                      )
+                                  {deleteTags.data?.id === tag.id ? (
+                                    deleteTags.data?.status === 'success' ? (
+                                      <FontAwesomeIcon icon="check" />
                                     ) : (
-                                      <SVGIcons
-                                        alt="delete"
-                                        icon="icon-delete"
-                                        title="Delete"
-                                        width="16px"
-                                      />
-                                    )}
-                                  </button>
-                                </Tooltip>
+                                      <Loader size="small" type="default" />
+                                    )
+                                  ) : (
+                                    <SVGIcons
+                                      alt="delete"
+                                      icon="icon-delete"
+                                      title="Delete"
+                                      width="16px"
+                                    />
+                                  )}
+                                </button>
                               </div>
                             </td>
                           </tr>
