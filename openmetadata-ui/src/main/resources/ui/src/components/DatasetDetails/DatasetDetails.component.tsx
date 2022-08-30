@@ -256,17 +256,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 5,
     },
     {
-      name: 'Data Quality',
-      icon: {
-        alt: 'data-quality',
-        name: 'icon-quality',
-        title: 'Data Quality',
-        selectedName: '',
-      },
-      isProtected: false,
-      position: 6,
-    },
-    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',

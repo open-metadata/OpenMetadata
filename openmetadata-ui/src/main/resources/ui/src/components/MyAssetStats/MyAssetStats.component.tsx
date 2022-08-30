@@ -73,7 +73,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         dataTestId: 'mlmodels',
       },
       testSuite: {
-        icon: Icons.TABLE_GREY,
+        icon: Icons.TEST_SUITE,
         data: 'Test Suite',
         count: entityCounts.testSuiteCount,
         link: getSettingPath(
