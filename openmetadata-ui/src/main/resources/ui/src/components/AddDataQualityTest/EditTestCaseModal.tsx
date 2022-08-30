@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, FormProps, Input, Row } from 'antd';
+import { Col, Form, FormProps, Input, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -60,10 +60,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         return (
           <Row>
             <Col data-testid="sql-editor-container" span={24}>
-              <p className="tw-mb-1.5">Profile Sample Query</p>
+              <Typography.Paragraph className="tw-mb-1.5">
+                Profile Sample Query
+              </Typography.Paragraph>
               <CodeMirror
-                className="profiler-setting-sql-editor"
-                data-testid="profiler-setting-sql-editor"
+                data-testid="sql-editor"
                 options={codeMirrorOption}
                 value={sqlQuery.value || ''}
                 onBeforeChange={(_Editor, _EditorChange, value) => {

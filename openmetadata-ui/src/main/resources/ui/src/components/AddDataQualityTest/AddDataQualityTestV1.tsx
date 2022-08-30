@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -284,9 +284,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       ) : (
         <Row className="tw-form-container" gutter={[16, 16]}>
           <Col span={24}>
-            <h6 className="tw-heading tw-text-base" data-testid="header">
+            <Typography.Paragraph
+              className="tw-heading tw-text-base"
+              data-testid="header">
               {`Add ${isColumnFqn ? 'Column' : 'Table'} Test`}
-            </h6>
+            </Typography.Paragraph>
           </Col>
           <Col span={24}>
             <IngestionStepper
