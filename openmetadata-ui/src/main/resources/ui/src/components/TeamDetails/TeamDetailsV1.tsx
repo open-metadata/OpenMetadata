@@ -15,11 +15,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
+  Modal,
   Row,
   Space,
   Switch,
   Table,
   Tooltip,
+  Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
@@ -28,7 +30,6 @@ import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Tooltip as TooltipTippy } from 'react-tippy';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
@@ -52,6 +53,7 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
+import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import UserCard from '../../pages/teams/UserCard';
 import {
   getEntityName,
@@ -63,9 +65,9 @@ import { hasPemission } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
-import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import Description from '../common/description/Description';
 import Ellipses from '../common/Ellipses/Ellipses';
+import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
@@ -76,8 +78,13 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import ListEntities from './RolesAndPoliciesList';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+interface AddAttribute {
+  type: EntityType;
+  selectedData: EntityReference[];
+}
 
 const TeamDetailsV1 = ({
   hasAccess,
@@ -121,13 +128,16 @@ const TeamDetailsV1 = ({
     state: boolean;
     leave: boolean;
   }>(DELETE_USER_INITIAL_STATE);
-  const [showAction, setShowAction] = useState(false);
-  const [isDelete, setIsDelete] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [table, setTable] = useState<Team[]>([]);
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+  const [selectedEntity, setEntity] = useState<{
+    attribute: 'defaultRoles' | 'policies';
+    record: EntityReference;
+  }>();
 
   /**
    * Check if current team is the owner or not
@@ -177,6 +187,12 @@ const TeamDetailsV1 = ({
       position: 4,
       count: currentTeam?.defaultRoles?.length,
     },
+    {
+      name: 'Policies',
+      isProtected: false,
+      position: 5,
+      count: currentTeam?.policies?.length,
+    },
   ];
 
   const columns: ColumnsType<User> = useMemo(() => {
@@ -212,15 +228,15 @@ const TeamDetailsV1 = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center"
+            className="tw-w-full tw-justify-center remove-icon"
             size={8}>
             <Tooltip placement="bottom" title="Remove">
               <ButtonAntd
                 icon={
                   <SVGIcons
                     alt="Remove"
-                    className="tw-w-4"
-                    icon={Icons.DELETE}
+                    className="tw-w-4 tw-mb-2.5"
+                    icon={Icons.ICON_REMOVE}
                   />
                 }
                 type="text"
@@ -231,33 +247,7 @@ const TeamDetailsV1 = ({
         ),
       },
     ];
-  }, []);
-
-  const manageButtonContent = () => {
-    return (
-      <div
-        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
-        id="manage-button"
-        onClick={() => setIsDelete(true)}>
-        <div>
-          <SVGIcons
-            alt="Delete"
-            className="tw-w-12"
-            icon={Icons.DELETE_GRADIANT}
-          />
-        </div>
-        <div className="tw-text-left" data-testid="delete-button">
-          <p className="tw-font-medium">
-            Delete Team “{getEntityName(currentTeam)}”
-          </p>
-          <p className="tw-text-grey-muted tw-text-xs">
-            Deleting this Team {getEntityName(currentTeam)} will permanently
-            remove its metadata from OpenMetadata.
-          </p>
-        </div>
-      </div>
-    );
-  };
+  }, [deleteUserHandler]);
 
   const extraInfo: ExtraInfo = {
     key: 'Owner',
@@ -387,6 +377,52 @@ const TeamDetailsV1 = ({
     } else {
       setTable(childTeams ?? []);
     }
+  };
+
+  const handleAddAttribute = (selectedIds: string[]) => {
+    if (addAttribute) {
+      let updatedTeamData = { ...currentTeam };
+      const updatedData = selectedIds.map((id) => {
+        const existingData = addAttribute.selectedData.find(
+          (data) => data.id === id
+        );
+
+        return existingData ? existingData : { id, type: addAttribute.type };
+      });
+
+      switch (addAttribute.type) {
+        case EntityType.ROLE:
+          updatedTeamData = { ...updatedTeamData, defaultRoles: updatedData };
+
+          break;
+
+        case EntityType.POLICY:
+          updatedTeamData = { ...updatedTeamData, policies: updatedData };
+
+          break;
+
+        default:
+          break;
+      }
+      updateTeamHandler(updatedTeamData);
+    }
+  };
+
+  const handleAttributeDelete = (
+    record: EntityReference,
+    attribute: 'defaultRoles' | 'policies'
+  ) => {
+    const attributeData =
+      (currentTeam[attribute as keyof Team] as EntityReference[]) ?? [];
+    const updatedAttributeData = attributeData.filter(
+      (attrData) => attrData.id !== record.id
+    );
+
+    const updatedTeamData = {
+      ...currentTeam,
+      [attribute]: updatedAttributeData,
+    };
+    updateTeamHandler(updatedTeamData);
   };
 
   useEffect(() => {
@@ -589,7 +625,7 @@ const TeamDetailsV1 = ({
     return alreadyJoined ? (
       isJoinable || hasAccess ? (
         <Button
-          className="tw-h-8 tw-px-2 tw-mb-4 tw-ml-2"
+          className="tw-h-8 tw-px-2"
           data-testid="join-teams"
           size="small"
           theme="primary"
@@ -600,7 +636,7 @@ const TeamDetailsV1 = ({
       ) : null
     ) : (
       <Button
-        className="tw-h-8 tw-rounded tw-ml-2"
+        className="tw-h-8 tw-rounded"
         data-testid="leave-team-button"
         size="small"
         theme="primary"
@@ -608,38 +644,6 @@ const TeamDetailsV1 = ({
         onClick={() => currentUser && deleteUserHandler(currentUser.id, true)}>
         Leave Team
       </Button>
-    );
-  };
-
-  /**
-   * Check for team default role and return roles card
-   * @returns - roles card
-   */
-  const getDefaultRoles = () => {
-    if ((currentTeam?.defaultRoles?.length as number) === 0) {
-      return (
-        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>There are no roles assigned yet.</p>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-        data-testid="teams-card">
-        {currentTeam?.defaultRoles?.map((role, i) => {
-          const roleData = {
-            displayName: role.displayName || role.name || '',
-            fqn: role.fullyQualifiedName as string,
-            type: role.type,
-            id: role.id,
-            name: role.name,
-          };
-
-          return <UserCard isIconVisible item={roleData} key={i} />;
-        })}
-      </div>
     );
   };
 
@@ -720,7 +724,7 @@ const TeamDetailsV1 = ({
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
             {getTeamHeading()}
-            <div className="tw-flex">
+            <Space align="center">
               {!isUndefined(currentUser) &&
                 teamActionButton(
                   !isAlreadyJoinedTeam(currentTeam.id),
@@ -729,30 +733,17 @@ const TeamDetailsV1 = ({
               <NonAdminAction
                 position="bottom"
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <Button
-                  className="tw-h-8 tw-rounded tw-mb-1 tw-ml-2 tw-flex"
-                  data-testid="manage-button"
-                  disabled={!hasAccess}
-                  size="small"
-                  theme="primary"
-                  variant="outlined"
-                  onClick={() => setIsDelete(true)}>
-                  <TooltipTippy
-                    arrow
-                    arrowSize="big"
-                    disabled={!hasAccess}
-                    html={manageButtonContent()}
-                    open={showAction}
-                    position="bottom-end"
-                    theme="light"
-                    onRequestClose={() => setShowAction(false)}>
-                    <span>
-                      <FontAwesomeIcon icon="ellipsis-vertical" />
-                    </span>
-                  </TooltipTippy>
-                </Button>
+                <ManageButton
+                  afterDeleteAction={afterDeleteAction}
+                  buttonClassName="tw-p-4"
+                  entityId={currentTeam.id}
+                  entityName={
+                    currentTeam.fullyQualifiedName || currentTeam.name
+                  }
+                  entityType="team"
+                />
               </NonAdminAction>
-            </div>
+            </Space>
           </div>
           <div className="tw-mb-3">
             <Switch
@@ -822,7 +813,54 @@ const TeamDetailsV1 = ({
 
               {currentTab === 3 && getDatasetCards()}
 
-              {currentTab === 4 && getDefaultRoles()}
+              {currentTab === 4 && (
+                <Space
+                  className="tw-w-full roles-and-policy"
+                  direction="vertical">
+                  <ButtonAntd
+                    data-testid="add-role"
+                    type="primary"
+                    onClick={() =>
+                      setAddAttribute({
+                        type: EntityType.ROLE,
+                        selectedData: currentTeam.defaultRoles || [],
+                      })
+                    }>
+                    Add Role
+                  </ButtonAntd>
+                  <ListEntities
+                    list={currentTeam.defaultRoles || []}
+                    type={EntityType.ROLE}
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'defaultRoles' })
+                    }
+                  />
+                </Space>
+              )}
+              {currentTab === 5 && (
+                <Space
+                  className="tw-w-full roles-and-policy"
+                  direction="vertical">
+                  <ButtonAntd
+                    data-testid="add-policy"
+                    type="primary"
+                    onClick={() =>
+                      setAddAttribute({
+                        type: EntityType.POLICY,
+                        selectedData: currentTeam.policies || [],
+                      })
+                    }>
+                    Add Policy
+                  </ButtonAntd>
+                  <ListEntities
+                    list={currentTeam.policies || []}
+                    type={EntityType.POLICY}
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'policies' })
+                    }
+                  />
+                </Space>
+              )}
             </div>
           </div>
         </Fragment>
@@ -858,14 +896,40 @@ const TeamDetailsV1 = ({
         />
       )}
 
-      <DeleteWidgetModal
-        afterDeleteAction={afterDeleteAction}
-        entityId={currentTeam.id}
-        entityName={currentTeam.fullyQualifiedName || currentTeam.name}
-        entityType="team"
-        visible={isDelete}
-        onCancel={() => setIsDelete(false)}
-      />
+      {addAttribute && (
+        <AddAttributeModal
+          isOpen={!isUndefined(addAttribute)}
+          selectedKeys={addAttribute.selectedData.map((data) => data.id)}
+          title={`Add ${addAttribute.type}`}
+          type={addAttribute.type}
+          onCancel={() => setAddAttribute(undefined)}
+          onSave={(data) => handleAddAttribute(data)}
+        />
+      )}
+      {selectedEntity && (
+        <Modal
+          centered
+          okText="Confirm"
+          title={`Remove ${getEntityName(
+            selectedEntity.record
+          )} from ${getEntityName(currentTeam)}`}
+          visible={!isUndefined(selectedEntity.record)}
+          onCancel={() => setEntity(undefined)}
+          onOk={() => {
+            handleAttributeDelete(
+              selectedEntity.record,
+              selectedEntity.attribute
+            );
+            setEntity(undefined);
+          }}>
+          <Typography.Text>
+            Are you sure you want to remove the{' '}
+            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
+              currentTeam
+            )}?`}
+          </Typography.Text>
+        </Modal>
+      )}
     </div>
   );
 };

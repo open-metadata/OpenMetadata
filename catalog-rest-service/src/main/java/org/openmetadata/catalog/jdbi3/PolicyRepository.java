@@ -13,14 +13,17 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.POLICY;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.getRuleField;
 import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
 import static org.openmetadata.catalog.util.EntityUtil.ruleMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -194,7 +197,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       updateLocation(original, updated);
-      updateRules(original.getRules(), updated.getRules());
+      updateRules(resolveRules(original.getRules()), resolveRules(updated.getRules()));
     }
 
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
@@ -215,12 +218,51 @@ public class PolicyRepository extends EntityRepository<Policy> {
       recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
     }
 
-    private void updateRules(List<Object> origRules, List<Object> updatedRules) throws IOException {
+    private void updateRules(List<Rule> origRules, List<Rule> updatedRules) throws IOException {
       // Record change description
       List<Rule> deletedRules = new ArrayList<>();
       List<Rule> addedRules = new ArrayList<>();
-      recordListChange(
-          "rules", resolveRules(origRules), resolveRules(updatedRules), addedRules, deletedRules, ruleMatch);
+
+      recordListChange("rules", origRules, updatedRules, addedRules, deletedRules, ruleMatch);
+
+      // Record changes based on updatedRule
+      for (Rule updated : updatedRules) {
+        Rule stored = origRules.stream().filter(c -> ruleMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New Rule added
+          continue;
+        }
+
+        updateRuleDescription(stored, updated);
+        updateRuleEffect(stored, updated);
+        updateRuleOperations(stored, updated);
+        updateRuleResources(stored, updated);
+        updateRuleCondition(stored, updated);
+      }
+    }
+
+    private void updateRuleDescription(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, FIELD_DESCRIPTION);
+      recordChange(ruleField, stored.getDescription(), updated.getDescription());
+    }
+
+    private void updateRuleEffect(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "effect");
+      recordChange(ruleField, stored.getEffect(), updated.getEffect());
+    }
+
+    private void updateRuleOperations(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "operations");
+      recordChange(ruleField, stored.getOperations(), updated.getOperations());
+    }
+
+    private void updateRuleResources(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "resources");
+      recordChange(ruleField, stored.getResources(), updated.getResources());
+    }
+
+    private void updateRuleCondition(Rule stored, Rule updated) throws JsonProcessingException {
+      String ruleField = getRuleField(stored, "condition");
+      recordChange(ruleField, stored.getCondition(), updated.getCondition());
     }
   }
 }

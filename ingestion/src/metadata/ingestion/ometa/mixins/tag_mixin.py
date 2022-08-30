@@ -13,6 +13,7 @@ Mixin class containing entity tag specific methods
 
 To be used be OpenMetadata
 """
+import traceback
 from typing import List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
@@ -50,7 +51,8 @@ class OMetaTagMixin:
             resp = self.client.get(f"{self.get_suffix(entity)}/{fields_str}")
             return [entity(**tag_cat) for tag_cat in resp.get("data")]
         except APIError as err:
-            logger.error(f"GET {entity.__name__}. Error {err.status_code} - {err}")
+            logger.debug(traceback.format_exc())
+            logger.warning(f"GET {entity.__name__}. Error {err.status_code}: {err}")
             return None
 
     def create_tag_category(self, tag_category_body: CreateTagCategoryRequest):

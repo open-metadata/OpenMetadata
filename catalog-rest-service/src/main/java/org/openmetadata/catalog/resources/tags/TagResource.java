@@ -43,7 +43,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.tags.CreateTag;
@@ -63,6 +62,7 @@ import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 @Path("/v1/tags")
@@ -100,8 +100,7 @@ public class TagResource {
         tagFile -> {
           try {
             LOG.info("Loading tag definitions from file {}", tagFile);
-            String tagJson =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
+            String tagJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), tagFile);
             tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             long now = System.currentTimeMillis();
@@ -419,7 +418,7 @@ public class TagResource {
       Tag origTag = getTag(securityContext, create, FullyQualifiedName.build(categoryName)).withName(primaryTag);
       response = dao.createOrUpdate(uriInfo, origTag, tag);
     }
-    tag = addHref(categoryHref, (Tag) response.getEntity());
+    addHref(categoryHref, (Tag) response.getEntity());
     return response.toResponse();
   }
 

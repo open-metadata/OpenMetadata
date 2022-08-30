@@ -73,9 +73,9 @@ def column_values_to_match_regex(
         )
         like_count_value_res = like_count_value_dict.get(Metrics.LIKE_COUNT.name)
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

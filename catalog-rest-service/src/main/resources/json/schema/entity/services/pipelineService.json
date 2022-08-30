@@ -14,7 +14,7 @@
       "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.catalog.EnumInterface"],
-      "enum": ["Airflow", "Glue", "Airbyte", "Fivetran", "Dagster"],
+      "enum": ["Airflow", "Glue", "Airbyte", "Fivetran", "Dagster", "Nifi"],
       "javaEnums": [
         {
           "name": "Airflow"
@@ -30,6 +30,9 @@
         },
         {
           "name": "Dagster"
+        },
+        {
+          "name": "Nifi"
         }
       ]
     },
@@ -58,6 +61,9 @@
             },
             {
               "$ref": "./connections/pipeline/dagsterConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/nifiConnection.json"
             }
           ]
         }

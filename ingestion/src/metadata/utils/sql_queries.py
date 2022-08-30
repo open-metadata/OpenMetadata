@@ -461,3 +461,76 @@ TRINO_GET_COLUMNS = textwrap.dedent(
     ORDER BY "ordinal_position" ASC
 """
 )
+
+
+POSTGRES_SQL_STATEMENT = textwrap.dedent(
+    """
+      SELECT
+        u.usename,
+        d.datname,
+        s.query query_text,
+        a.query_start start_time,
+        s.total_exec_time,
+        s.mean_exec_time,
+        s.calls
+      FROM
+        pg_stat_statements s
+        JOIN pg_catalog.pg_database d ON s.dbid = d.oid
+        JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
+        JOIN pg_catalog.pg_stat_activity a ON d.datname = a.datname
+      WHERE
+        a.query_start >= '{start_time}' AND
+        a.state_change <  current_timestamp
+        AND s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        {filters}
+      LIMIT {result_limit}
+    """
+)
+
+POSTGRES_GET_TABLE_NAMES = """
+    SELECT c.relname FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = :schema AND c.relkind in ('r', 'p') AND relispartition = false
+"""
+
+POSTGRES_PARTITION_DETAILS = textwrap.dedent(
+    """
+select 
+    par.relnamespace::regnamespace::text as schema, 
+    par.relname as table_name, 
+    partition_strategy,
+    col.column_name
+from   
+    (select
+         partrelid,
+         partnatts,
+         case partstrat 
+              when 'l' then 'list'
+              when 'h' then 'hash'
+              when 'r' then 'range' end as partition_strategy,
+         unnest(partattrs) column_index
+     from
+         pg_partitioned_table) pt 
+join   
+    pg_class par 
+on     
+    par.oid = pt.partrelid
+left join
+    information_schema.columns col
+on  
+    col.table_schema = par.relnamespace::regnamespace::text
+    and col.table_name = par.relname
+    and ordinal_position = pt.column_index
+ where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
+"""
+)
+
+SNOWFLAKE_GET_CLUSTER_KEY = """
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
+  from   information_schema.tables 
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
+"""

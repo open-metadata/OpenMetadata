@@ -64,9 +64,9 @@ def table_column_name_to_exist(
     try:
         column_names = inspect(runner.table).c
 
-    except Exception as err:
+    except Exception as exc:
         msg = (
-            f"Error computing {test_case.name} for {runner.table.__tablename__}: {err}"
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: {exc}"
         )
         logger.debug(traceback.format_exc())
         logger.warning(msg)

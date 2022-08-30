@@ -148,9 +148,11 @@ class PowerbiSource(DashboardServiceSource):
                                 )
                             )
                             yield lineage
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.error(
+                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -185,7 +187,7 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                 )
                 self.status.scanned(chart["title"])
-            except Exception as err:  # pylint: disable=broad-except
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.error(err)
-                self.status.failure(chart.get("id"), repr(err))
+                logger.warning(f"Error creating chart [{chart}]: {exc}")
+                self.status.failure(chart.get("id"), repr(exc))

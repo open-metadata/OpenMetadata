@@ -104,6 +104,7 @@ const WebhooksPageV1 = () => {
       data={data}
       paging={paging}
       selectedStatus={selectedStatus}
+      webhookType={WebhookType.Generic}
       onAddWebhook={handleAddWebhook}
       onClickWebhook={handleClickWebhook}
       onPageChange={handlePageChange}

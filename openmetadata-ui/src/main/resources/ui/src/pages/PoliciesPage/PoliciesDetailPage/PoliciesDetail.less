@@ -13,6 +13,8 @@
 
 @primary: #7147e8;
 @white: #ffffff;
+@text-color: #37352f;
+@border-color: #dde3ea;
 
 .policies-detail {
   .list-table {
@@ -21,13 +23,17 @@
       padding-left: 16px;
     }
   }
+
   .ant-collapse {
     background-color: @white;
+    border: 1px solid @border-color;
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
     .ant-collapse-item {
       .ant-collapse-header {
-        padding: 6px 16px;
+        padding: 16px;
         .ant-collapse-arrow {
-          color: @primary;
+          color: @text-color;
           font-size: 14px;
           margin-right: 6px;
         }

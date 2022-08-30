@@ -52,17 +52,3 @@ jobs:
         user-email: openmetadata@getcollate.io
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
         target-branch: publish
-
-    - name: Push ingestion
-      id: push_ingestion
-      uses: cpina/github-action-push-to-another-repository@main
-      env:
-        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
-      with:
-        source-directory: openmetadata-docs/ingestion/
-        target-directory: public/ingestion/
-        destination-github-username: 'open-metadata'
-        destination-repository-name: 'docs'
-        user-email: openmetadata@getcollate.io
-        commit-message: See ORIGIN_COMMIT from $GITHUB_REF
-        target-branch: publish

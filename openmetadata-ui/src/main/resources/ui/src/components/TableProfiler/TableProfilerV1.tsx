@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Empty, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -27,8 +27,10 @@ import {
   formTwoDigitNmber,
 } from '../../utils/CommonUtils';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
-import { getCurrentDatasetTab } from '../../utils/DatasetDetailsUtils';
-import { getProfilerDashboardWithFqnPath } from '../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getProfilerDashboardWithFqnPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -126,21 +128,27 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
   if (isUndefined(profile)) {
     return (
       <div
-        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+        className=" tw-m-2 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
         data-testid="no-profiler-placeholder-container">
-        <span>
-          Data Profiler is an optional configuration in Ingestion. Please enable
-          the data profiler by following the documentation
-        </span>
-        <Link
-          className="tw-ml-1"
-          target="_blank"
-          to={{
-            pathname:
-              'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
-          }}>
-          here.
-        </Link>
+        <Empty
+          description={
+            <p>
+              <span>
+                Data Profiler is an optional configuration in Ingestion. Please
+                enable the data profiler by following the documentation
+              </span>
+              <Link
+                className="tw-ml-1"
+                target="_blank"
+                to={{
+                  pathname:
+                    'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+                }}>
+                here.
+              </Link>
+            </p>
+          }
+        />
       </div>
     );
   }
@@ -150,15 +158,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
       className="table-profiler-container"
       data-testid="table-profiler-container">
       <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
-        <Button
-          className="tw-rounded"
-          data-testid="profiler-add-table-test-btn"
-          type="primary"
-          onClick={() =>
-            onAddTestClick(getCurrentDatasetTab('data-quality'), 'table')
-          }>
-          Add Test
-        </Button>
+        <Link
+          to={getAddDataQualityTableTestPath(
+            ProfilerDashboardType.TABLE,
+            table.fullyQualifiedName || ''
+          )}>
+          <Button
+            className="tw-rounded"
+            data-testid="profiler-add-table-test-btn"
+            type="primary">
+            Add Test
+          </Button>
+        </Link>
         <Button
           className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
           data-testid="profiler-setting-btn"

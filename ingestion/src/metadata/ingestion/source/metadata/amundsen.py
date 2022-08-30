@@ -180,8 +180,9 @@ class AmundsenSource(Source[Entity]):
                 user=user_metadata,
                 teams=[team_metadata],
             )
-        except Exception as err:
-            logger.error(err)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to create user entity [{user}]: {exc}")
 
     def create_tags(self, tags):
         for tag in tags:
@@ -333,10 +334,10 @@ class AmundsenSource(Source[Entity]):
             yield table_request
 
             self.status.scanned(table["name"])
-        except Exception as e:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create table entity, due to {e}")
-            self.status.failure(table["name"], str(e))
+            logger.warning(f"Failed to create table entity [{table}]: {exc}")
+            self.status.failure(table["name"], str(exc))
             return None
 
     def create_dashboard_service(self, dashboard: dict):
@@ -369,10 +370,10 @@ class AmundsenSource(Source[Entity]):
                     id=self.dashboard_service.id, type="dashboardService"
                 ),
             )
-        except Exception as e:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to create table entity, due to {e}")
-            self.status.failure(dashboard["name"], str(e))
+            logger.warning(f"Failed to create dashboard entity [{dashboard}]: {exc}")
+            self.status.failure(dashboard["name"], str(exc))
             return None
 
     def create_chart_entity(self, dashboard):

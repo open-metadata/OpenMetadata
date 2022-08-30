@@ -13,11 +13,15 @@
 
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
+import { usePermissionProvider } from '../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
+import { Operation } from '../generated/entity/policies/policy';
 import TeamsPage from '../pages/teams/TeamsPage';
+import { checkPermission } from '../utils/PermissionsUtils';
 import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -62,8 +66,13 @@ const SlackSettingsPage = withSuspenseFallback(
     () => import('../pages/SlackSettingsPage/SlackSettingsPage.component')
   )
 );
+const MsTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
+);
 
 const GlobalSettingRouter = () => {
+  const { permissions } = usePermissionProvider();
+
   return (
     <Switch>
       <Route exact path={getSettingPath()}>
@@ -97,6 +106,11 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={RolesListPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
@@ -106,6 +120,11 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={RolesDetailPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES,
@@ -119,6 +138,11 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={PoliciesListPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES
@@ -127,6 +151,11 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={PoliciesDetailPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
@@ -136,12 +165,22 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={UserListPageV1}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.USER,
+          permissions
+        )}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
       />
 
       <AdminProtectedRoute
         exact
         component={WebhooksPageV1}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.WEBHOOK
@@ -150,6 +189,11 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.BOT,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
@@ -159,9 +203,28 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={SlackSettingsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.SLACK
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={MsTeamsPage}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.WEBHOOK,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.MSTEAMS
         )}
       />
 
@@ -174,6 +237,11 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
+        hasPermission={checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.ALL,
+          permissions
+        )}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}

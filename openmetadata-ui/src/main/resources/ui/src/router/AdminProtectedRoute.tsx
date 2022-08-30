@@ -17,11 +17,15 @@ import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 
-const AdminProtectedRoute = (routeProps: RouteProps) => {
+interface AdminProtectedRouteProps extends RouteProps {
+  hasPermission: boolean;
+}
+
+const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled, isAuthenticated } = useAuthContext();
 
-  if (isAuthDisabled || isAdminUser) {
+  if (isAuthDisabled || isAdminUser || routeProps.hasPermission) {
     return <Route {...routeProps} />;
   } else if (isAuthenticated) {
     return <Redirect to={ROUTES.NOT_FOUND} />;

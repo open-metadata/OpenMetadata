@@ -11,18 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space, Table, Tag } from 'antd';
+import { Button, Popover, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isUndefined, uniqueId } from 'lodash';
+import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { LIST_CAP } from '../../../utils/PermissionsUtils';
+import { checkPermission, LIST_CAP } from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -37,6 +44,22 @@ interface RolesListProps {
 const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
   const [selectedRole, setSelectedRole] = useState<Role>();
 
+  const { permissions } = usePermissionProvider();
+
+  const viewPolicyPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.ViewAll, ResourceEntity.POLICY, permissions)
+    );
+  }, [permissions]);
+
+  const deleteRolePermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Delete, ResourceEntity.ROLE, permissions)
+    );
+  }, [permissions]);
+
   const columns: ColumnsType<Role> = useMemo(() => {
     return [
       {
@@ -47,6 +70,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
+            data-testid="role-name"
             to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
             {getEntityName(record)}
           </Link>
@@ -70,33 +94,45 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
           const hasMore = listLength > LIST_CAP;
 
           return record.policies?.length ? (
-            <Space wrap size={4}>
-              {record.policies.slice(0, LIST_CAP).map((policy) => (
-                <Link
-                  key={uniqueId()}
-                  to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
-                  {getEntityName(policy)}
-                </Link>
-              ))}
+            <Space wrap data-testid="policy-link" size={4}>
+              {record.policies.slice(0, LIST_CAP).map((policy) =>
+                viewPolicyPermission ? (
+                  <Link
+                    key={uniqueId()}
+                    to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
+                    {getEntityName(policy)}
+                  </Link>
+                ) : (
+                  <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                    {getEntityName(policy)}
+                  </Tooltip>
+                )
+              )}
               {hasMore && (
                 <Popover
                   className="tw-cursor-pointer"
                   content={
                     <Space wrap size={4}>
-                      {record.policies.slice(LIST_CAP).map((policy) => (
-                        <Link
-                          key={uniqueId()}
-                          to={getPolicyWithFqnPath(
-                            policy.fullyQualifiedName || ''
-                          )}>
-                          {getEntityName(policy)}
-                        </Link>
-                      ))}
+                      {record.policies.slice(LIST_CAP).map((policy) =>
+                        viewPolicyPermission ? (
+                          <Link
+                            key={uniqueId()}
+                            to={getPolicyWithFqnPath(
+                              policy.fullyQualifiedName || ''
+                            )}>
+                            {getEntityName(policy)}
+                          </Link>
+                        ) : (
+                          <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                            {getEntityName(policy)}
+                          </Tooltip>
+                        )
+                      )}
                     </Space>
                   }
                   overlayClassName="tw-w-40 tw-text-center"
                   trigger="click">
-                  <Tag className="tw-ml-1">{`+${
+                  <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
                     listLength - LIST_CAP
                   } more`}</Tag>
                 </Popover>
@@ -114,9 +150,21 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button type="text" onClick={() => setSelectedRole(record)}>
-              <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
-            </Button>
+            <Tooltip
+              placement="left"
+              title={
+                deleteRolePermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                data-testid={`delete-action-${getEntityName(record)}`}
+                disabled={!deleteRolePermission}
+                icon={
+                  <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+                }
+                type="text"
+                onClick={() => setSelectedRole(record)}
+              />
+            </Tooltip>
           );
         },
       },
@@ -128,6 +176,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
       <Table
         className="roles-list-table"
         columns={columns}
+        data-testid="roles-list-table"
         dataSource={roles}
         pagination={false}
         size="middle"

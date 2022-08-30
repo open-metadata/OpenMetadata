@@ -105,13 +105,15 @@ class UsageSource(QueryParserSource, ABC):
                                         databaseSchema=self.get_schema_name(row),
                                     )
                                 )
-                            except Exception as err:
+                            except Exception as exc:
                                 logger.debug(traceback.format_exc())
-                                logger.error(str(err))
+                                logger.warning(
+                                    f"Unexpected exception processing row [{row}]: {exc}"
+                                )
                     yield TableQueries(queries=queries)
-                except Exception as err:
-                    logger.error(f"Source usage processing error - {err}")
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
+                    logger.error(f"Source usage processing error: {exc}")
 
     def next_record(self) -> Iterable[TableQuery]:
         for table_queries in self.get_table_query():
