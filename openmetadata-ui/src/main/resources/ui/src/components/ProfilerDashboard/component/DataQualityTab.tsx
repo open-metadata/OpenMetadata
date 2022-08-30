@@ -11,20 +11,27 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table, Tooltip } from 'antd';
+import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
 import React, { useMemo, useState } from 'react';
+import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
+import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
+import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
-const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
+const DataQualityTab: React.FC<DataQualityTabProps> = ({
+  testCases,
+  onTestUpdate,
+}) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
+  const [editTestCase, setEditTestCase] = useState<TestCase>();
   const columns: ColumnsType<TestCase> = useMemo(() => {
     return [
       {
@@ -67,24 +74,47 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
         title: 'Actions',
         dataIndex: 'actions',
         key: 'actions',
+        width: 100,
         render: (_, record) => (
-          <Space>
+          <Row align="middle">
             <Tooltip placement="bottom" title="Delete">
               <Button
+                className="flex-center"
                 icon={
                   <SVGIcons
                     alt="Delete"
-                    className="tw-w-4"
+                    className="tw-h-4"
                     icon={Icons.DELETE}
                   />
                 }
                 type="text"
-                onClick={() => {
+                onClick={(e) => {
+                  // preventing expand/collapse on click of delete button
+                  e.stopPropagation();
                   setSelectedTestCase(record);
                 }}
               />
             </Tooltip>
-          </Space>
+            <Tooltip placement="bottom" title="Edit">
+              <Button
+                className="flex-center"
+                icon={
+                  <SVGIcons
+                    alt="edit"
+                    className="tw-h-4"
+                    icon={Icons.EDIT}
+                    title="Edit"
+                  />
+                }
+                type="text"
+                onClick={(e) => {
+                  // preventing expand/collapse on click of edit button
+                  e.stopPropagation();
+                  setEditTestCase(record);
+                }}
+              />
+            </Tooltip>
+          </Row>
         ),
       },
     ];
@@ -96,11 +126,40 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ testCases }) => {
         columns={columns}
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
         expandable={{
+          expandRowByClick: true,
           rowExpandable: () => true,
           expandedRowRender: (recode) => <TestSummary data={recode} />,
+          expandIcon: ({ expanded, onExpand, record }) =>
+            expanded ? (
+              <ArrowDown
+                className="mx-auto"
+                onClick={(e: React.MouseEvent) =>
+                  onExpand(
+                    record,
+                    e as React.MouseEvent<HTMLElement, MouseEvent>
+                  )
+                }
+              />
+            ) : (
+              <ArrowRight
+                className="mx-auto"
+                onClick={(e: React.MouseEvent) =>
+                  onExpand(
+                    record,
+                    e as React.MouseEvent<HTMLElement, MouseEvent>
+                  )
+                }
+              />
+            ),
         }}
         pagination={false}
         size="small"
+      />
+      <EditTestCaseModal
+        testCase={editTestCase as TestCase}
+        visible={!isUndefined(editTestCase)}
+        onCancel={() => setEditTestCase(undefined)}
+        onUpdate={onTestUpdate}
       />
 
       <DeleteWidgetModal

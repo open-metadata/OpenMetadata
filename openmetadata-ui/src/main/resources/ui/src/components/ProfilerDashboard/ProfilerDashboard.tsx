@@ -69,6 +69,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   testCases,
   fetchProfilerData,
   fetchTestCases,
+  onTestCaseUpdate,
   profilerData,
   onTableChange,
 }) => {
@@ -414,7 +415,10 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
-            <DataQualityTab testCases={getFilterTestCase()} />
+            <DataQualityTab
+              testCases={getFilterTestCase()}
+              onTestUpdate={onTestCaseUpdate}
+            />
           </Col>
         )}
       </Row>

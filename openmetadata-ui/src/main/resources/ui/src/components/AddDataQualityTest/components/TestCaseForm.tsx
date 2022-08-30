@@ -89,12 +89,14 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     }
   };
 
-  const GenerateParamsField = useCallback(() => {
+  const getSelectedTestDefinition = () => {
     const testType = initialValue?.testDefinition?.id ?? selectedTestType;
-    const selectedDefinition = testDefinitions.find(
-      (definition) => definition.id === testType
-    );
 
+    return testDefinitions.find((definition) => definition.id === testType);
+  };
+
+  const GenerateParamsField = useCallback(() => {
+    const selectedDefinition = getSelectedTestDefinition();
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
       const name = selectedDefinition.parameterDefinition[0].name;
       if (name === 'sqlExpression') {
@@ -130,10 +132,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     params: Record<string, string | { [key: string]: string }[]>;
     testTypeId: string;
   }) => {
-    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
-    const selectedDefinition = testDefinitions.find(
-      (definition) => definition.id === testType
-    );
+    const selectedDefinition = getSelectedTestDefinition();
     const paramsValue = selectedDefinition?.parameterDefinition?.[0];
 
     const parameterValues =
@@ -172,6 +171,22 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     onCancel(createTestCaseObj(data));
   };
 
+  const getParamsValue = () => {
+    return initialValue?.parameterValues?.reduce(
+      (acc, curr) => ({
+        ...acc,
+        [curr.name || '']:
+          getSelectedTestDefinition()?.parameterDefinition?.[0].dataType ===
+          TestDataType.Array
+            ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
+                value: val,
+              }))
+            : curr.value,
+      }),
+      {}
+    );
+  };
+
   useEffect(() => {
     if (testDefinitions.length === 0) {
       fetchAllTestDefinitions();
@@ -187,13 +202,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       initialValues={{
         testName: initialValue?.name,
         testTypeId: initialValue?.testDefinition?.id,
-        params: initialValue?.parameterValues?.reduce(
-          (acc, curr) => ({
-            ...acc,
-            [curr.name || '']: curr.value,
-          }),
-          {}
-        ),
+        params: getParamsValue(),
       }}
       layout="vertical"
       name="tableTestForm"
