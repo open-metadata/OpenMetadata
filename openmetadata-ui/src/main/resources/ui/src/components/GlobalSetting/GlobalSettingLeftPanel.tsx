@@ -27,7 +27,7 @@ import {
   getGlobalSettingsMenuWithPermission,
   MenuList,
 } from '../../utils/GlobalSettingsUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -88,9 +88,7 @@ const GlobalSettingLeftPanel = () => {
     // As we are setting key as "category.option" and extracting here category and option
     const [category, option] = e.key.split('.');
     if (option === GlobalSettingOptions.TEAMS) {
-      history.push(
-        `${getSettingPath(category, option)}/${TeamType.Organization}`
-      );
+      history.push(getTeamsWithFqnPath(TeamType.Organization));
     } else {
       history.push(getSettingPath(category, option));
     }
