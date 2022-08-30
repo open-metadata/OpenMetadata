@@ -12,6 +12,7 @@
  */
 
 import { Button, Col, Empty, Row, Space, Switch, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -61,16 +62,15 @@ const Teams: FC<TeamsProps> = ({
   );
 
   const fetchPermissions = async () => {
-    getResourcePermission(ResourceEntity.TEAM)
-      .then((perms) => {
-        setResourcePermissions(perms);
-      })
-      .catch((error) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['fetch-user-permission-error']
-        );
-      });
+    try {
+      const perms = await getResourcePermission(ResourceEntity.TEAM);
+      setResourcePermissions(perms);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-user-permission-error']
+      );
+    }
   };
 
   useEffect(() => {

@@ -20,6 +20,21 @@ export const getTabs = (
   teamUserPagin: Paging,
   isOrganization: boolean
 ) => {
+  const commonTabs = [
+    {
+      name: 'Roles',
+      isProtected: false,
+      position: 4,
+      count: currentTeam?.defaultRoles?.length,
+    },
+    {
+      name: 'Policies',
+      isProtected: false,
+      position: 5,
+      count: currentTeam?.policies?.length,
+    },
+  ];
+
   if (isOrganization) {
     return [
       {
@@ -28,18 +43,7 @@ export const getTabs = (
         position: 1,
         count: currentTeam.children?.length || 0,
       },
-      {
-        name: 'Roles',
-        isProtected: false,
-        position: 4,
-        count: currentTeam?.defaultRoles?.length,
-      },
-      {
-        name: 'Policies',
-        isProtected: false,
-        position: 5,
-        count: currentTeam?.policies?.length,
-      },
+      ...commonTabs,
     ];
   }
 
@@ -62,17 +66,6 @@ export const getTabs = (
       position: 3,
       count: filterEntityAssets(currentTeam?.owns || []).length,
     },
-    {
-      name: 'Roles',
-      isProtected: false,
-      position: 4,
-      count: currentTeam?.defaultRoles?.length,
-    },
-    {
-      name: 'Policies',
-      isProtected: false,
-      position: 5,
-      count: currentTeam?.policies?.length,
-    },
+    ...commonTabs,
   ];
 };

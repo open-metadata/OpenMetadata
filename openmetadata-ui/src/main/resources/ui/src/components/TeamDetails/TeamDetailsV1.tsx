@@ -25,6 +25,7 @@ import {
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
@@ -54,7 +55,6 @@ import {
   User,
 } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
-import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import jsonData from '../../jsons/en';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
@@ -65,7 +65,7 @@ import {
   hasEditAccess,
 } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
-import { checkPermission, hasPemission } from '../../utils/PermissionsUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -125,7 +125,6 @@ const TeamDetailsV1 = ({
     state: false,
     leave: false,
   };
-  const { userPermissions } = useAuth();
   const { permissions, getEntityPermission } = usePermissionProvider();
   const [currentTab, setCurrentTab] = useState(1);
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
@@ -149,7 +148,7 @@ const TeamDetailsV1 = ({
     record: EntityReference;
   }>();
   const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>();
+    useState<OperationPermission>({} as OperationPermission);
 
   const createTeamPermission = useMemo(
     () =>
@@ -417,21 +416,23 @@ const TeamDetailsV1 = ({
   };
 
   const fetchPermissions = async () => {
-    getEntityPermission(ResourceEntity.TEAM, currentTeam.id)
-      .then((perms) => {
-        setEntityPermissions({ ...perms, Create: false });
-      })
-      .catch((error) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['fetch-user-permission-error']
-        );
-      });
+    try {
+      const perms = await getEntityPermission(
+        ResourceEntity.TEAM,
+        currentTeam.id
+      );
+      setEntityPermissions(perms);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-user-permission-error']
+      );
+    }
   };
 
   useEffect(() => {
     !isEmpty(currentTeam) && fetchPermissions();
-  }, []);
+  }, [currentTeam]);
 
   useEffect(() => {
     if (currentTeam) {
@@ -533,32 +534,22 @@ const TeamDetailsV1 = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(
-                  hasPemission(
-                    Operation.EditUsers,
-                    EntityType.TEAM,
-                    userPermissions
-                  )
-                ) ? (
-                  <>
-                    <p>Would like to start adding some?</p>
-                    <Button
-                      className="tw-h-8 tw-rounded tw-my-2"
-                      data-testid="add-new-user"
-                      disabled={!entityPermissions?.EditAll}
-                      size="small"
-                      theme="primary"
-                      title={
-                        entityPermissions?.EditAll
-                          ? 'Add New User'
-                          : NO_PERMISSION_FOR_ACTION
-                      }
-                      variant="contained"
-                      onClick={() => handleAddUser(true)}>
-                      Add new user
-                    </Button>
-                  </>
-                ) : null}
+                <p>Would like to start adding some?</p>
+                <Button
+                  className="tw-h-8 tw-rounded tw-my-2"
+                  data-testid="add-new-user"
+                  disabled={!entityPermissions?.EditAll}
+                  size="small"
+                  theme="primary"
+                  title={
+                    entityPermissions?.EditAll
+                      ? 'Add New User'
+                      : NO_PERMISSION_FOR_ACTION
+                  }
+                  variant="contained"
+                  onClick={() => handleAddUser(true)}>
+                  Add new user
+                </Button>
               </div>
             ) : (
               <Fragment>
@@ -733,7 +724,10 @@ const TeamDetailsV1 = ({
     );
   };
 
-  return !isEmpty(entityPermissions) && entityPermissions?.ViewAll ? (
+  const viewPermission =
+    !isEmpty(entityPermissions) && entityPermissions.ViewAll;
+
+  return viewPermission ? (
     <div
       className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
       data-testid="team-details-container">
