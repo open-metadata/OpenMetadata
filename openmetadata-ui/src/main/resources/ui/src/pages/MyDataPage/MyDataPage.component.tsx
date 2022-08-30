@@ -77,13 +77,6 @@ const MyDataPage = () => {
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const viewFeedPermission = useMemo(() => {
-    return (
-      !isEmpty(permissions) &&
-      checkPermission(RuleOperation.ViewAll, ResourceEntity.FEED, permissions)
-    );
-  }, [permissions]);
-
   const viewUserPermission = useMemo(() => {
     return (
       !isEmpty(permissions) &&
@@ -264,11 +257,11 @@ const MyDataPage = () => {
   useEffect(() => {
     fetchSandboxMode();
     fetchData();
-    viewFeedPermission && fetchMyTaskData();
+    fetchMyTaskData();
   }, []);
 
   useEffect(() => {
-    viewFeedPermission && getFeedData();
+    getFeedData();
   }, []);
 
   useEffect(() => {
@@ -282,7 +275,7 @@ const MyDataPage = () => {
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
   useEffect(() => {
-    if (socket && viewFeedPermission) {
+    if (socket) {
       socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
         if (newActivity) {
           setActivityFeeds((prevActivities) => [
@@ -307,7 +300,7 @@ const MyDataPage = () => {
   }, [socket]);
 
   const onRefreshFeeds = () => {
-    viewFeedPermission && getFeedData();
+    getFeedData();
     setEntityThread([]);
     setActivityFeeds([]);
   };
