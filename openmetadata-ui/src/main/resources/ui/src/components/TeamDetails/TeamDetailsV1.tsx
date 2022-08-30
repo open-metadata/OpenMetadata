@@ -699,14 +699,14 @@ const TeamDetailsV1 = ({
                 <Tooltip
                   placement="bottomLeft"
                   title={
-                    !entityPermissions?.EditDisplayName
+                    entityPermissions?.EditDisplayName
                       ? 'Edit Display Name'
                       : NO_PERMISSION_FOR_ACTION
                   }>
                   <button
                     className="tw-ml-2 focus:tw-outline-none"
                     data-testid="edit-synonyms"
-                    disabled={entityPermissions?.EditDisplayName}
+                    disabled={!entityPermissions?.EditDisplayName}
                     onClick={() => setIsHeadingEditing(true)}>
                     <SVGIcons
                       alt="edit"
