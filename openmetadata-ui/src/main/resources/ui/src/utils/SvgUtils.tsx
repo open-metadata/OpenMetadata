@@ -118,6 +118,7 @@ import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
+import IconTestSuite from '../assets/svg/icon-test-suite.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconUp from '../assets/svg/icon-up.svg';
@@ -204,6 +205,7 @@ export const Icons = {
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
+  TEST_SUITE: 'icon-test-suite',
   WORKFLOWS: 'icon-workflows',
   MENU: 'icon-menu',
   FEED: 'icon-feed',
@@ -1007,6 +1009,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DELETE_COLORED:
       IconComponent = IconDeleteColored;
+
+      break;
+    case Icons.TEST_SUITE:
+      IconComponent = IconTestSuite;
 
       break;
     default:

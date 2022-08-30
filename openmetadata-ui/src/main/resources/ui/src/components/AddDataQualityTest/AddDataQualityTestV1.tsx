@@ -55,7 +55,7 @@ import {
 import RightPanel from './components/RightPanel';
 import SelectTestSuite from './components/SelectTestSuite';
 import TestCaseForm from './components/TestCaseForm';
-import { INGESTION_DATA, TEST_FORM_DATA } from './rightPanelData';
+import { addTestSuiteRightPanel, INGESTION_DATA } from './rightPanelData';
 import TestSuiteIngestion from './TestSuiteIngestion';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
@@ -226,7 +226,8 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
             &quot;{successName}&quot;
           </span>
           <span>
-            has been created successfully. and will be pickup in next run.
+            has been created successfully. This will be picked up in the next
+            run.
           </span>
         </span>
       );
@@ -268,7 +269,14 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           data={
             addIngestion
               ? INGESTION_DATA
-              : TEST_FORM_DATA[activeServiceStep - 1]
+              : addTestSuiteRightPanel(
+                  activeServiceStep,
+                  selectedTestSuite?.isNewTestSuite,
+                  {
+                    testCase: testCaseData?.name || '',
+                    testSuite: testSuiteData?.name || '',
+                  }
+                )
           }
         />
       }>
