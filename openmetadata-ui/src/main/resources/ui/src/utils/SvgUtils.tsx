@@ -130,6 +130,8 @@ import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
 import IconMlModal from '../assets/svg/mlmodal.svg';
+import IconMSTeamsGrey from '../assets/svg/ms-teams-grey.svg';
+import IconMSTeams from '../assets/svg/ms-teams.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
@@ -341,6 +343,8 @@ export const Icons = {
   ICON_REMOVE: 'icon-remove',
   DELETE_COLORED: 'icon-delete-colored',
   IC_EDIT_PRIMARY: 'ic-edit-primary',
+  MSTEAMS: 'msteams',
+  MSTEAMS_GREY: 'msteams-grey',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -993,12 +997,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconInfoSecondary;
 
       break;
+    case Icons.MSTEAMS:
+      IconComponent = IconMSTeams;
 
+      break;
+    case Icons.MSTEAMS_GREY:
+      IconComponent = IconMSTeamsGrey;
+
+      break;
     case Icons.DELETE_COLORED:
       IconComponent = IconDeleteColored;
 
       break;
-
     default:
       IconComponent = null;
 

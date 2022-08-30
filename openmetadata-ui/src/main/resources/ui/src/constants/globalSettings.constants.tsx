@@ -16,6 +16,7 @@ import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg'
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
+import { ReactComponent as MSTeams } from '../../src/assets/svg/ms-teams.svg';
 import { ReactComponent as PipelineIcon } from '../../src/assets/svg/pipeline-grey.svg';
 import { ReactComponent as PoliciesIcon } from '../../src/assets/svg/policies.svg';
 import { ReactComponent as SlackIcon } from '../../src/assets/svg/slack.svg';
@@ -140,6 +141,11 @@ export const GLOBAL_SETTINGS_MENU = [
         icon: <SlackIcon className="tw-w-4 side-panel-icons" />,
       },
       {
+        label: 'MS Teams',
+        isProtected: true,
+        icon: <MSTeams className="tw-w-4 side-panel-icons" />,
+      },
+      {
         label: 'Bots',
         isProtected: true,
         icon: <BotIcon className="tw-w-4 side-panel-icons" />,
@@ -179,4 +185,5 @@ export enum GlobalSettingOptions {
   SLACK = 'slack',
   BOTS = 'bots',
   TABLES = 'tables',
+  MSTEAMS = 'msteams',
 }

@@ -30,11 +30,17 @@ import {
 } from '../../constants/globalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
-import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
+import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+
+const EDIT_HEADER_WEBHOOKS_TITLE: { [key: string]: string } = {
+  msteams: 'MS Teams',
+  slack: 'Edit Slack',
+  generic: 'Edit Webhook',
+};
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
@@ -126,9 +132,7 @@ const EditWebhookPage: FunctionComponent = () => {
             data={webhookData}
             deleteState={deleteStatus}
             header={
-              webhookData?.webhookType === WebhookType.Slack
-                ? 'Edit Slack'
-                : 'Edit Webhook'
+              EDIT_HEADER_WEBHOOKS_TITLE[webhookData?.webhookType || 'generic']
             }
             mode={FormSubmitType.EDIT}
             saveState={status}
