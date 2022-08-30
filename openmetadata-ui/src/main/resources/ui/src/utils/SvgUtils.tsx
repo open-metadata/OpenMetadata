@@ -21,6 +21,7 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
+import IconAdmin from '../assets/svg/admin.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
@@ -345,6 +346,7 @@ export const Icons = {
   IC_EDIT_PRIMARY: 'ic-edit-primary',
   MSTEAMS: 'msteams',
   MSTEAMS_GREY: 'msteams-grey',
+  ADMIN: 'admin',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -1007,6 +1009,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DELETE_COLORED:
       IconComponent = IconDeleteColored;
+
+      break;
+    case Icons.ADMIN:
+      IconComponent = IconAdmin;
 
       break;
     default:
