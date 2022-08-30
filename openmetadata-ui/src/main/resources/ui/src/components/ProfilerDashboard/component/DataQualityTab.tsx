@@ -16,6 +16,8 @@ import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
 import React, { useMemo, useState } from 'react';
+import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
+import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
@@ -86,7 +88,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   />
                 }
                 type="text"
-                onClick={() => {
+                onClick={(e) => {
+                  // preventing expand/collapse on click of delete button
+                  e.stopPropagation();
                   setSelectedTestCase(record);
                 }}
               />
@@ -103,7 +107,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   />
                 }
                 type="text"
-                onClick={() => setEditTestCase(record)}
+                onClick={(e) => {
+                  // preventing expand/collapse on click of edit button
+                  e.stopPropagation();
+                  setEditTestCase(record);
+                }}
               />
             </Tooltip>
           </Row>
@@ -118,8 +126,31 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         columns={columns}
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
         expandable={{
+          expandRowByClick: true,
           rowExpandable: () => true,
           expandedRowRender: (recode) => <TestSummary data={recode} />,
+          expandIcon: ({ expanded, onExpand, record }) =>
+            expanded ? (
+              <ArrowDown
+                className="mx-auto"
+                onClick={(e: React.MouseEvent) =>
+                  onExpand(
+                    record,
+                    e as React.MouseEvent<HTMLElement, MouseEvent>
+                  )
+                }
+              />
+            ) : (
+              <ArrowRight
+                className="mx-auto"
+                onClick={(e: React.MouseEvent) =>
+                  onExpand(
+                    record,
+                    e as React.MouseEvent<HTMLElement, MouseEvent>
+                  )
+                }
+              />
+            ),
         }}
         pagination={false}
         size="small"

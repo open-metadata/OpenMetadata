@@ -78,9 +78,7 @@ const TestSuitePage = () => {
         title: 'No. of Test',
         dataIndex: 'noOfTests',
         key: 'noOfTests',
-        render: (_, record) => (
-          <Text strong>{record?.tests?.length} Tests</Text>
-        ),
+        render: (_, record) => <Text>{record?.tests?.length} Tests</Text>,
       },
       {
         title: 'Owner',
@@ -112,7 +110,7 @@ const TestSuitePage = () => {
       <Col span={24}>
         <Table
           columns={columns}
-          dataSource={testSuites}
+          dataSource={testSuites.map((test) => ({ ...test, key: test.name }))}
           loading={isLoading}
           pagination={false}
           size="small"
