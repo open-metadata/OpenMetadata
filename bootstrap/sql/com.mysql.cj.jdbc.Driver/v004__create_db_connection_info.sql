@@ -104,3 +104,5 @@ CREATE TABLE IF NOT EXISTS openmetadata_settings (
     PRIMARY KEY (id, configType),
     UNIQUE(configType)
 );
+
+DELETE FROM entity_extension WHERE jsonSchema IN ('tableProfile', 'columnTest', 'tableTest');
