@@ -113,7 +113,18 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     } else {
       const response = await getResourcePermission(resource);
       const operationPermission = getOperationPermissions(response);
+      /**
+       * Store resource permission if it's not exits
+       */
       setResourcesPermission((prev) => ({
+        ...prev,
+        [resource]: operationPermission,
+      }));
+
+      /**
+       * Store updated resource permission
+       */
+      setPermissions((prev) => ({
         ...prev,
         [resource]: operationPermission,
       }));
