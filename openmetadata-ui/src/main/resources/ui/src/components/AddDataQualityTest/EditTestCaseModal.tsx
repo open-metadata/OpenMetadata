@@ -165,6 +165,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   useEffect(() => {
     if (testCase) {
       fetchTestDefinitionById();
+      form.setFieldsValue({
+        name: testCase?.name,
+        testDefinition: testCase?.testDefinition?.name,
+        params: getParamsValue(),
+      });
     }
   }, [testCase]);
 
@@ -172,23 +177,19 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     <Modal
       centered
       destroyOnClose
-      title={`Edit ${testCase?.name}`}
-      visible={visible}
-      onCancel={() => {
+      afterClose={() => {
         form.resetFields();
         onCancel();
       }}
+      title={`Edit ${testCase?.name}`}
+      visible={visible}
+      onCancel={onCancel}
       onOk={() => form.submit()}>
       {isLoading ? (
         <Loader />
       ) : (
         <Form
           form={form}
-          initialValues={{
-            name: testCase?.name,
-            testDefinition: testCase?.testDefinition?.name,
-            params: getParamsValue(),
-          }}
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>

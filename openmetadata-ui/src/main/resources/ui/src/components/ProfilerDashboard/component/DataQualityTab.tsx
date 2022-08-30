@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table, Tooltip } from 'antd';
+import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
@@ -74,13 +74,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'actions',
         width: 100,
         render: (_, record) => (
-          <Space size={8}>
+          <Row align="middle">
             <Tooltip placement="bottom" title="Delete">
               <Button
+                className="flex-center"
                 icon={
                   <SVGIcons
                     alt="Delete"
-                    className="tw-w-4"
+                    className="tw-h-4"
                     icon={Icons.DELETE}
                   />
                 }
@@ -92,20 +93,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             </Tooltip>
             <Tooltip placement="bottom" title="Edit">
               <Button
+                className="flex-center"
                 icon={
                   <SVGIcons
                     alt="edit"
-                    className="tw-cursor-pointer tw-align-text-top"
+                    className="tw-h-4"
                     icon={Icons.EDIT}
                     title="Edit"
-                    width="16px"
                   />
                 }
                 type="text"
                 onClick={() => setEditTestCase(record)}
               />
             </Tooltip>
-          </Space>
+          </Row>
         ),
       },
     ];

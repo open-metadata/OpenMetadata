@@ -1,9 +1,8 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Col, Space, Table } from 'antd';
+import { Button, Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
-import { capitalize } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -17,6 +16,7 @@ import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import jsonData from '../../jsons/en';
+import { getIngestionStatuses } from '../../utils/CommonUtils';
 import { getTestSuiteIngestionPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -113,60 +113,6 @@ const TestSuitePipelineTab = () => {
   const separator = (
     <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
   );
-
-  const getStatuses = (ingestion: IngestionPipeline) => {
-    const lastFiveIngestions = ingestion.pipelineStatuses
-      ?.sort((a, b) => {
-        // Turn your strings into millis, and then subtract them
-        // to get a value that is either negative, positive, or zero.
-        const date1 = new Date(a.startDate || '');
-        const date2 = new Date(b.startDate || '');
-
-        return date1.getTime() - date2.getTime();
-      })
-      .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
-
-    return lastFiveIngestions?.map((r, i) => {
-      const status =
-        i === lastFiveIngestions.length - 1 ? (
-          <p
-            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
-            key={i}>
-            {capitalize(r.state)}
-          </p>
-        ) : (
-          <p
-            className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-            key={i}
-          />
-        );
-
-      return r?.endDate || r?.startDate || r?.timestamp ? (
-        <PopOver
-          html={
-            <div className="tw-text-left">
-              {r.timestamp ? (
-                <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
-              ) : null}
-              {r.startDate ? (
-                <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
-              ) : null}
-              {r.endDate ? (
-                <p>End Date: {new Date(r.endDate).toUTCString()}</p>
-              ) : null}
-            </div>
-          }
-          key={i}
-          position="bottom"
-          theme="light"
-          trigger="mouseenter">
-          {status}
-        </PopOver>
-      ) : (
-        status
-      );
-    });
-  };
 
   const confirmDelete = (id: string, name: string) => {
     setDeleteSelection({
@@ -329,7 +275,9 @@ const TestSuitePipelineTab = () => {
         title: 'Recent Runs',
         dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
-        render: (_, record) => <Space>{getStatuses(record)}</Space>, // use getIngestionStatuses from commonUtils
+        render: (_, record) => (
+          <Row align="middle">{getIngestionStatuses(record)}</Row>
+        ),
       },
       {
         title: 'Actions',
@@ -469,7 +417,10 @@ const TestSuitePipelineTab = () => {
       <Col span={24}>
         <Table
           columns={pipelineColumns}
-          dataSource={testSuitePipelines}
+          dataSource={testSuitePipelines.map((test) => ({
+            ...test,
+            key: test.name,
+          }))}
           pagination={false}
           size="small"
         />
