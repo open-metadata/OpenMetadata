@@ -235,13 +235,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public Map<String, String> getHostIp() {
     HttpResponse<String> response;
     try {
-      if (this.hostIp ==  null || this.hostIp.isEmpty()) {
+      if (this.hostIp == null || this.hostIp.isEmpty()) {
         response = getRequestAuthenticatedForJsonContent("%s/%s/ip", serviceURL, API_ENDPOINT);
         if (response.statusCode() == 200) {
           return JsonUtils.readValue(response.body(), new TypeReference<>() {});
         }
-      }
-      else {
+      } else {
         return Map.of("ip", this.hostIp);
       }
 
