@@ -24,7 +24,10 @@ import React, {
 } from 'react';
 import AppState from '../../AppState';
 import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
-import { getEntityPermissionById } from '../../axiosAPIs/rolesAPIV1';
+import {
+  getEntityPermissionById,
+  getResourcePermission,
+} from '../../axiosAPIs/rolesAPIV1';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -62,6 +65,10 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
 
   const [entitiesPermission, setEntitiesPermission] =
     useState<EntityPermissionMap>({} as EntityPermissionMap);
+
+  const [resourcesPermission, setResourcesPermission] = useState<UIPermission>(
+    {} as UIPermission
+  );
 
   // Update current user details of AppState change
   const currentUser = useMemo(() => {
@@ -103,6 +110,26 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   };
 
+  const fetchResourcePermission = async (resource: ResourceEntity) => {
+    try {
+      const resourcePermission = resourcesPermission[resource];
+      if (resourcePermission) {
+        return resourcePermission;
+      } else {
+        const response = await getResourcePermission(resource);
+        const operationPermission = getOperationPermissions(response);
+        setResourcesPermission((prev) => ({
+          ...prev,
+          [resource]: operationPermission,
+        }));
+
+        return operationPermission;
+      }
+    } catch (error) {
+      return error as AxiosError;
+    }
+  };
+
   useEffect(() => {
     /**
      * Only fetch permission if user is logged In
@@ -117,6 +144,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       value={{
         permissions,
         getEntityPermission: fetchEntityPermission,
+        getResourcePermission: fetchResourcePermission,
       }}>
       {children}
     </PermissionContext.Provider>

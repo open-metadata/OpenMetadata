@@ -66,6 +66,9 @@ export interface PermissionContextType {
     resource: ResourceEntity,
     entityId: string
   ) => Promise<OperationPermission | AxiosError>;
+  getResourcePermission: (
+    resource: ResourceEntity
+  ) => Promise<OperationPermission | AxiosError>;
 }
 
 export interface EntityPermissionMap {

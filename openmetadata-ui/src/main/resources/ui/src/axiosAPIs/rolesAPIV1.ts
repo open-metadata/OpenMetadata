@@ -167,3 +167,11 @@ export const getEntityPermissionById = async (
 
   return response.data;
 };
+
+export const getResourcePermission = async (resource: ResourceEntity) => {
+  const response = await APIClient.get<ResourcePermission>(
+    `/permissions/${resource}`
+  );
+
+  return response.data;
+};
