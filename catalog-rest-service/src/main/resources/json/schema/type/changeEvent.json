@@ -25,13 +25,22 @@
           "description": "Event type that is being requested.",
           "$ref": "#/definitions/eventType"
         },
-        "fields": {
-          "description": "Field on which to apply the filter on",
+        "include": {
+          "description": "Field which are allowed to pass",
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": ["all"],
+          "uniqueItems": true
+        },
+        "exclude": {
+          "description": "Field which are not allowed to pass",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
           "uniqueItems": true
         }
       },

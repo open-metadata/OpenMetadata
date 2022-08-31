@@ -46,7 +46,7 @@ public class FilterUtil {
         if ((sf = filtersOfEntity.get(eventType)) == null) {
           return false;
         } else {
-          return sf.getFields().contains("all") || checkIfFilterContainField(sf, getUpdateField(changeEvent));
+          return checkIfFilterContainField(sf, getUpdateField(changeEvent));
         }
       }
     }
@@ -59,7 +59,7 @@ public class FilterUtil {
       // check if we have all entities Filter
       Filters f = wildCardFilter.get(type);
       boolean allFieldCheck = checkIfFilterContainField(f, updatedField);
-      return f != null && (f.getFields().contains("all") || allFieldCheck);
+      // return f != null && (f.getFields().contains("all") || allFieldCheck);
     }
     return false;
   }
@@ -67,10 +67,14 @@ public class FilterUtil {
   public static boolean checkIfFilterContainField(Filters f, List<String> updatedField) {
     if (f != null) {
       for (String changed : updatedField) {
-        if (f.getFields().contains(changed)) {
+        // field is present in excluded
+        if (f.getInclude().contains(changed)) {
           return true;
+        } else if (f.getExclude().contains(changed)) {
+          return false;
         }
       }
+      return f.getInclude().contains("all");
     }
     return false;
   }
