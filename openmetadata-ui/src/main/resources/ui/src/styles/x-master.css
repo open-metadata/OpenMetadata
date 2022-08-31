@@ -1121,9 +1121,6 @@ code {
 
 .ant-modal-content {
   border-radius: 8px;
-  height: 100%;
-  max-height: 650px;
-  overflow-y: scroll;
   box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.2);
 }
 
