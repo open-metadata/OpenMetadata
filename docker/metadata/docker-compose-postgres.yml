@@ -123,6 +123,8 @@ services:
     extra_hosts:
       - "postgresql:172.16.240.10"
       - "elasticsearch:172.16.240.11"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
 
   ingestion:
     container_name: openmetadata_ingestion
