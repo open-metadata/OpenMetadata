@@ -41,13 +41,13 @@ skipMaven="${skipMaven:=false}"
 echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven]"
 
 cd ../
+
 if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
         echo "Maven Build - Skipping Tests and UI"
         mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
     else
         echo "Maven Build - Skipping Tests"
-        cd ../
         mvn -DskipTests clean package
     fi
 else
