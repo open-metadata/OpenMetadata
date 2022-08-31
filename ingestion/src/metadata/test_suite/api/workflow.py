@@ -110,6 +110,17 @@ class TestSuiteWorkflow:
             )
             raise err
 
+    def _filter_test_cases_for_table_entity(
+        self, table_fqn: str, test_cases: List[TestCase]
+    ) -> list[TestCase]:
+        """Filter test cases for specific entity"""
+        return [
+            test_case
+            for test_case in test_cases
+            if test_case.entityLink.__root__.split("::")[2].replace(">", "")
+            == table_fqn
+        ]
+
     def _get_unique_table_entities(self, test_cases: List[TestCase]) -> Set:
         """from a list of test cases extract unique table entities"""
         table_fqns = [
@@ -240,6 +251,7 @@ class TestSuiteWorkflow:
             entity=TestSuite,
             fqn=self.config.source.serviceName,
         )
+
         if test_suite:
             return [test_suite]
         return None
@@ -377,7 +389,9 @@ class TestSuiteWorkflow:
         for table_fqn in unique_table_fqns:
             try:
                 sqa_interface = self._create_sqa_tests_runner_interface(table_fqn)
-                for test_case in test_cases:
+                for test_case in self._filter_test_cases_for_table_entity(
+                    table_fqn, test_cases
+                ):
                     try:
                         data_test_runner = self._create_data_tests_runner(sqa_interface)
                         test_result = data_test_runner.run_and_handle(test_case)
