@@ -17,7 +17,7 @@ import logging
 import os
 import traceback
 from functools import singledispatch
-from typing import Union, Tuple
+from typing import Union
 
 import pkg_resources
 import requests
@@ -103,7 +103,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
-from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import RedpandaConnection
+from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
+    RedpandaConnection,
+)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )

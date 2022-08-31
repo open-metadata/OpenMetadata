@@ -29,7 +29,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.messaging.messaging_service import MessagingServiceSource
-
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
