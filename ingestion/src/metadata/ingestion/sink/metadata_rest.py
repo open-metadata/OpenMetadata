@@ -370,34 +370,6 @@ class MetadataRestSink(Sink[Entity]):
                 f"Unexpected error writing db schema and table [{db_schema_and_table}]: {exc}"
             )
 
-    def write_policies(self, ometa_policy: OMetaPolicy) -> None:
-        try:
-            created_location = None
-            if ometa_policy.location is not None:
-                created_location = self._create_location(ometa_policy.location)
-                logger.info(f"Successfully ingested Location {created_location.name}")
-                self.status.records_written(f"Location: {created_location.name}")
-
-            policy_request = CreatePolicyRequest(
-                name=ometa_policy.policy.name,
-                displayName=ometa_policy.policy.displayName,
-                description=ometa_policy.policy.description,
-                owner=ometa_policy.policy.owner,
-                policyUrl=ometa_policy.policy.policyUrl,
-                rules=ometa_policy.policy.rules,
-                location=created_location.id if created_location else None,
-            )
-            created_policy = self.metadata.create_or_update(policy_request)
-            logger.info(f"Successfully ingested Policy {created_policy.name}")
-            self.status.records_written(f"Policy: {created_policy.name}")
-
-        except (APIError, ValidationError) as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to ingest Policy [{ometa_policy.policy.name}]: {err}"
-            )
-            self.status.failure(f"Policy: {ometa_policy.policy.name}")
-
     def _create_location(self, location: Location) -> Location:
         try:
             location_request = CreateLocationRequest(
