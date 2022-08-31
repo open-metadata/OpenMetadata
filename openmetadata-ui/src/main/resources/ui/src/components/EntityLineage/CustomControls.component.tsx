@@ -12,12 +12,16 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, HTMLAttributes, memo, useCallback, useState } from 'react';
+import React, {
+  ButtonHTMLAttributes,
+  FC,
+  HTMLAttributes,
+  memo,
+  useCallback,
+  useState,
+} from 'react';
 import { FitViewOptions, useReactFlow } from 'react-flow-renderer';
 import SVGIcons from '../../utils/SvgUtils';
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface ControlButtonProps extends HTMLAttributes<HTMLButtonElement> {}
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   showZoom?: boolean;
@@ -28,7 +32,7 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   onFitView?: () => void;
 }
 
-export const ControlButton: FC<ControlButtonProps> = ({
+export const ControlButton: FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
   children,
   className,
   ...rest

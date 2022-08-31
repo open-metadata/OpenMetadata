@@ -1826,12 +1826,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @SqlQuery("SELECT id FROM role_entity WHERE defaultRole = TRUE")
-    List<String> getDefaultRolesIds();
-
-    @SqlQuery("SELECT json FROM role_entity WHERE defaultRole = TRUE")
-    List<String> getDefaultRoles();
   }
 
   interface TeamDAO extends EntityDAO<Team> {
@@ -1858,7 +1852,7 @@ public interface CollectionDAO {
         // validate parent team
         Team team = findEntityByName(parentTeam);
         if (ORGANIZATION_NAME.equals(team.getName())) {
-          // All the parentless teams should come under "organization" team
+          // All the teams without parents should come under "organization" team
           condition =
               String.format(
                   "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
@@ -2784,7 +2778,8 @@ public interface CollectionDAO {
           .withMlmodelCount(rs.getInt("mlmodelCount"))
           .withServicesCount(rs.getInt("servicesCount"))
           .withUserCount(rs.getInt("userCount"))
-          .withTeamCount(rs.getInt("teamCount"));
+          .withTeamCount(rs.getInt("teamCount"))
+          .withTestSuiteCount(rs.getInt("testSuiteCount"));
     }
   }
 
@@ -2814,7 +2809,8 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity WHERE JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE) as userCount, "
-                + "(SELECT COUNT(*) FROM team_entity) as teamCount",
+                + "(SELECT COUNT(*) FROM team_entity) as teamCount, "
+                + "(SELECT COUNT(*) FROM test_suite) as testSuiteCount",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -2829,7 +2825,8 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_service_entity)+ "
                 + "(SELECT COUNT(*) FROM mlmodel_service_entity)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity WHERE json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE) as userCount, "
-                + "(SELECT COUNT(*) FROM team_entity) as teamCount",
+                + "(SELECT COUNT(*) FROM team_entity) as teamCount, "
+                + "(SELECT COUNT(*) FROM test_suite) as testSuiteCount",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntitiesCountRowMapper.class)
     EntitiesCount getAggregatedEntitiesCount() throws StatementException;

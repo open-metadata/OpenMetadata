@@ -12,16 +12,26 @@
  */
 
 import { Card, Col, Row, Statistic } from 'antd';
+import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { getListTestCase } from '../../../axiosAPIs/testAPI';
+import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import {
   INITIAL_COUNT_METRIC_VALUE,
   INITIAL_MATH_METRIC_VALUE,
   INITIAL_PROPORTION_METRIC_VALUE,
   INITIAL_SUM_METRIC_VALUE,
+  INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
+import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
+import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
+import { generateEntityLink } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Ellipses from '../../common/Ellipses/Ellipses';
+import { TableTestsType } from '../../TableProfiler/TableProfiler.interface';
 import {
   MetricChartType,
   ProfilerTabProps,
@@ -34,6 +44,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   profilerData,
   tableProfile,
 }) => {
+  const { entityTypeFQN } = useParams<Record<string, string>>();
   const [countMetrics, setCountMetrics] = useState<MetricChartType>(
     INITIAL_COUNT_METRIC_VALUE
   );
@@ -46,6 +57,10 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   const [sumMetrics, setSumMetrics] = useState<MetricChartType>(
     INITIAL_SUM_METRIC_VALUE
   );
+  const [tableTests, setTableTests] = useState<TableTestsType>({
+    tests: [],
+    results: INITIAL_TEST_RESULT_SUMMARY,
+  });
 
   const tableState = useMemo(
     () => [
@@ -64,23 +79,24 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     ],
     [tableProfile]
   );
-  const testSummary = useMemo(
-    () => [
+  const testSummary = useMemo(() => {
+    const { results } = tableTests;
+
+    return [
       {
         title: 'Success',
-        value: 0,
+        value: results.success,
       },
       {
         title: 'Aborted',
-        value: 0,
+        value: results.aborted,
       },
       {
         title: 'Failed',
-        value: 0,
+        value: results.failed,
       },
-    ],
-    []
-  );
+    ];
+  }, [tableTests]);
 
   const createMetricsChartData = () => {
     const updateProfilerData = sortBy(profilerData, 'timestamp');
@@ -171,9 +187,37 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     }));
   };
 
+  const fetchAllTests = async () => {
+    const tableFqn = getTableFQNFromColumnFQN(entityTypeFQN);
+    try {
+      const { data } = await getListTestCase({
+        fields: 'testCaseResult',
+        entityLink: generateEntityLink(tableFqn),
+        limit: API_RES_MAX_SIZE,
+      });
+      const tableTests: TableTestsType = {
+        tests: [],
+        results: { ...INITIAL_TEST_RESULT_SUMMARY },
+      };
+      data.forEach((test) => {
+        updateTestResults(
+          tableTests.results,
+          test.testCaseResult?.testCaseStatus || ''
+        );
+      });
+      setTableTests(tableTests);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     createMetricsChartData();
   }, [profilerData]);
+
+  useEffect(() => {
+    fetchAllTests();
+  }, []);
 
   return (
     <Row gutter={[16, 16]}>

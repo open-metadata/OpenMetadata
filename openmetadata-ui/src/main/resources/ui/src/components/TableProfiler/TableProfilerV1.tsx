@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Empty, Row } from 'antd';
+import { Button, Col, Empty, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -19,6 +19,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getListTestCase } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { TestCase } from '../../generated/tests/testCase';
@@ -43,7 +44,11 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({
+  table,
+  onAddTestClick,
+  hasEditAccess,
+}) => {
   const { profile, columns } = table;
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
@@ -158,18 +163,25 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, onAddTestClick }) => {
       className="table-profiler-container"
       data-testid="table-profiler-container">
       <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
-        <Link
-          to={getAddDataQualityTableTestPath(
-            ProfilerDashboardType.TABLE,
-            table.fullyQualifiedName || ''
-          )}>
-          <Button
-            className="tw-rounded"
-            data-testid="profiler-add-table-test-btn"
-            type="primary">
-            Add Test
-          </Button>
-        </Link>
+        <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
+          <Link
+            to={
+              hasEditAccess
+                ? getAddDataQualityTableTestPath(
+                    ProfilerDashboardType.TABLE,
+                    table.fullyQualifiedName || ''
+                  )
+                : '#'
+            }>
+            <Button
+              className="tw-rounded"
+              data-testid="profiler-add-table-test-btn"
+              disabled={!hasEditAccess}
+              type="primary">
+              Add Test
+            </Button>
+          </Link>
+        </Tooltip>
         <Button
           className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
           data-testid="profiler-setting-btn"

@@ -216,8 +216,8 @@ public class SubjectContextTest {
     return policies;
   }
 
-  private static List<Object> getRules(String prefix, int count) {
-    List<Object> rules = new ArrayList<>(count);
+  private static List<Rule> getRules(String prefix, int count) {
+    List<Rule> rules = new ArrayList<>(count);
     for (int i = 1; i <= count; i++) {
       rules.add(new Rule().withName(prefix + "rule" + count));
     }

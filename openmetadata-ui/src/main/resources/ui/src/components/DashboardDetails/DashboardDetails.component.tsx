@@ -11,32 +11,39 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
-import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
-  getHtmlForNonAdminAction,
   isEven,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
@@ -46,23 +53,29 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
-import Entitylineage from '../EntityLineage/EntityLineage.component';
+import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
@@ -133,6 +146,39 @@ const DashboardDetails = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
+  const [dashboardPermissions, setDashboardPermissions] = useState(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermission, permissions } = usePermissionProvider();
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      const entityPermission = await getEntityPermission(
+        ResourceEntity.DASHBOARD,
+        dashboardDetails.id
+      );
+      setDashboardPermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    }
+  }, [dashboardDetails.id, getEntityPermission, setDashboardPermissions]);
+
+  const chartDescriptionPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.EditDescription,
+        ResourceEntity.CHART,
+        permissions
+      ),
+    [permissions]
+  );
+
+  useEffect(() => {
+    fetchResourcePermission();
+  }, [dashboardDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -140,17 +186,7 @@ const DashboardDetails = ({
   const closeRequestModal = () => {
     setSelectedField('');
   };
-  const hasEditAccess = () => {
-    const loggedInUser = AppState.getCurrentUserDetails();
-    if (owner?.type === 'user') {
-      return owner.id === loggedInUser?.id;
-    } else {
-      return Boolean(
-        loggedInUser?.teams?.length &&
-          loggedInUser?.teams?.some((team) => team.id === owner?.id)
-      );
-    }
-  };
+
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -458,7 +494,7 @@ const DashboardDetails = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
-          isTagEditable
+          canDelete={dashboardPermissions.Delete}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -476,15 +512,16 @@ const DashboardDetails = ({
           followHandler={followDashboard}
           followers={followersCount}
           followersList={followers}
-          hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
-          owner={owner}
+          isTagEditable={dashboardPermissions.EditTags}
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
           tier={tier || ''}
           titleLinks={slashedDashboardName}
-          updateOwner={onOwnerUpdate}
-          updateTier={onTierUpdate}
+          updateOwner={
+            dashboardPermissions.EditOwner ? onOwnerUpdate : undefined
+          }
+          updateTier={dashboardPermissions.EditTier ? onTierUpdate : undefined}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
@@ -516,7 +553,7 @@ const DashboardDetails = ({
                         entityFqn={dashboardFQN}
                         entityName={entityName}
                         entityType={EntityType.DASHBOARD}
-                        hasEditAccess={hasEditAccess()}
+                        hasEditAccess={dashboardPermissions.EditDescription}
                         isEdit={isEdit}
                         isReadOnly={deleted}
                         owner={owner}
@@ -585,15 +622,15 @@ const DashboardDetails = ({
                                     )}
                                   </div>
                                   {!deleted && (
-                                    <NonAdminAction
-                                      html={getHtmlForNonAdminAction(
-                                        Boolean(owner)
-                                      )}
-                                      isOwner={hasEditAccess()}
-                                      permission={Operation.EditDescription}
-                                      position="top">
+                                    <Tooltip
+                                      title={
+                                        chartDescriptionPermission
+                                          ? 'Edit Description'
+                                          : NO_PERMISSION_FOR_ACTION
+                                      }>
                                       <button
                                         className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                        disabled={!chartDescriptionPermission}
                                         onClick={() =>
                                           handleUpdateChart(chart, index)
                                         }>
@@ -604,7 +641,7 @@ const DashboardDetails = ({
                                           width="16px"
                                         />
                                       </button>
-                                    </NonAdminAction>
+                                    </Tooltip>
                                   )}
                                 </div>
                               </div>
@@ -623,36 +660,29 @@ const DashboardDetails = ({
                                   />
                                 </div>
                               ) : (
-                                <NonAdminAction
-                                  html={getHtmlForNonAdminAction(
-                                    Boolean(owner)
-                                  )}
-                                  isOwner={hasEditAccess()}
-                                  permission={Operation.EditTags}
-                                  position="left"
-                                  trigger="click">
-                                  <TagsContainer
-                                    showAddTagButton
-                                    editable={editChartTags?.index === index}
-                                    isLoading={
-                                      isTagLoading &&
-                                      editChartTags?.index === index
-                                    }
-                                    selectedTags={chart.tags as EntityTags[]}
-                                    size="small"
-                                    tagList={tagList}
-                                    type="label"
-                                    onCancel={() => {
-                                      handleChartTagSelection();
-                                    }}
-                                    onSelectionChange={(tags) => {
-                                      handleChartTagSelection(tags, {
-                                        chart,
-                                        index,
-                                      });
-                                    }}
-                                  />
-                                </NonAdminAction>
+                                <TagsContainer
+                                  editable={editChartTags?.index === index}
+                                  isLoading={
+                                    isTagLoading &&
+                                    editChartTags?.index === index
+                                  }
+                                  selectedTags={chart.tags as EntityTags[]}
+                                  showAddTagButton={
+                                    dashboardPermissions.EditTags
+                                  }
+                                  size="small"
+                                  tagList={tagList}
+                                  type="label"
+                                  onCancel={() => {
+                                    handleChartTagSelection();
+                                  }}
+                                  onSelectionChange={(tags) => {
+                                    handleChartTagSelection(tags, {
+                                      chart,
+                                      index,
+                                    });
+                                  }}
+                                />
                               )}
                             </td>
                           </tr>
@@ -683,7 +713,7 @@ const DashboardDetails = ({
               )}
               {activeTab === 3 && (
                 <div className="tw-h-full tw-px-3">
-                  <Entitylineage
+                  <EntityLineageComponent
                     addLineageHandler={addLineageHandler}
                     deleted={deleted}
                     entityLineage={entityLineage}
@@ -691,7 +721,7 @@ const DashboardDetails = ({
                     entityType={EntityType.DASHBOARD}
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
-                    isOwner={hasEditAccess()}
+                    isOwner={dashboardPermissions.EditLineage}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}

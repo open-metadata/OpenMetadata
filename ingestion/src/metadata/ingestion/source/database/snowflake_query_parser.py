@@ -30,6 +30,7 @@ from metadata.ingestion.source.database.query_parser_source import QueryParserSo
 from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 
 logger = ingestion_logger()
 SNOWFLAKE_ABORTED_CODE = "1969"
@@ -69,11 +70,21 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             filters=self.filters,
         )
 
+    def set_session_query_tag(self) -> None:
+        """
+        Method to set query tag for current session
+        """
+        if self.connection.queryTag:
+            self.engine.execute(
+                SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=self.connection.queryTag)
+            )
+
     def get_table_query(self) -> Iterable[TableQuery]:
         database = self.config.serviceConnection.__root__.config.database
         if database:
             use_db_query = f"USE DATABASE {database}"
             self.engine.execute(use_db_query)
+            self.set_session_query_tag()
             yield from super().get_table_query()
         else:
             query = "SHOW DATABASES"
@@ -85,6 +96,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
                 self.engine = get_connection(self.connection)
+                self.set_session_query_tag()
                 yield from super().get_table_query()
 
     def get_database_name(self, data: dict) -> str:

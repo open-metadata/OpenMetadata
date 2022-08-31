@@ -14,6 +14,7 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
+
 services:
   mysql:
     container_name: openmetadata_mysql
@@ -26,6 +27,11 @@ services:
     networks:
       app_net:
         ipv4_address: 172.16.240.10
+    healthcheck:
+      test: mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --silent --execute "use openmetadata_db"
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   elasticsearch:
     container_name: openmetadata_elasticsearch
@@ -33,7 +39,6 @@ services:
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
-
     networks:
       app_net:
         ipv4_address: 172.16.240.11
@@ -98,19 +103,29 @@ services:
       - 8585:8585
       - 8586:8586
     depends_on:
-      - mysql
+      elasticsearch:
+        condition: service_started
+      mysql:
+        condition: service_healthy
     networks:
       app_net:
         ipv4_address: 172.16.240.13
     extra_hosts:
       - "localhost:172.16.240.10"
       - "elasticsearch:172.16.240.11"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
 
   ingestion:
     container_name: openmetadata_ingestion
     image: openmetadata/ingestion:0.11.5
     depends_on:
-      - mysql
+      elasticsearch:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+      openmetadata-server:
+        condition: service_healthy
     expose:
       - 8080
     ports:

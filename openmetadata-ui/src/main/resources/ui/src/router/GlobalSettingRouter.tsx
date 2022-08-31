@@ -20,6 +20,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
 import { Operation } from '../generated/entity/policies/policy';
+import { TeamType } from '../generated/entity/teams/team';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { checkPermission } from '../utils/PermissionsUtils';
 import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
@@ -66,6 +67,9 @@ const SlackSettingsPage = withSuspenseFallback(
     () => import('../pages/SlackSettingsPage/SlackSettingsPage.component')
   )
 );
+const TestSuitePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
+);
 const MsTeamsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
 );
@@ -77,10 +81,10 @@ const GlobalSettingRouter = () => {
     <Switch>
       <Route exact path={getSettingPath()}>
         <Redirect
-          to={getSettingPath(
+          to={`${getSettingPath(
             GlobalSettingsMenuCategory.MEMBERS,
             GlobalSettingOptions.TEAMS
-          )}
+          )}/${TeamType.Organization}`}
         />
       </Route>
       <Route
@@ -98,6 +102,14 @@ const GlobalSettingRouter = () => {
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true
+        )}
+      />
+      <Route
+        exact
+        component={TestSuitePage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.DATA_QUALITY,
+          GlobalSettingOptions.TEST_SUITE
         )}
       />
       {/* Roles route start
