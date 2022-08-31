@@ -66,8 +66,9 @@ source:
       #     - pipeline4
 sink:
   type: metadata-rest
-  config: { }
+  config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
