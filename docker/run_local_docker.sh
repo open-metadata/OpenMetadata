@@ -10,21 +10,62 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
 
-if [[ $1 == "no-ui" ]]; then
+helpFunction()
+{
+   echo ""
+   echo "Usage: $0 -m mode -d database"
+   printf "\t-m Running mode: [ui, no-ui]. Default [ui]\n"
+   printf "\t-d Database: [mysql, postgresql]. Default [mysql]\n"
+   printf "\t-s Skip maven build: [true, false]. Default [false]\n"
+   printf "\t-h For usage help\n"
+   exit 1 # Exit script after printing help
+}
+
+while getopts "m:d:s:h" opt
+do
+   case "$opt" in
+      m ) mode="$OPTARG" ;;
+      d ) database="$OPTARG" ;;
+      s ) skipMaven="$OPTARG" ;;
+      h ) helpFunction ;;
+      ? ) helpFunction ;;
+   esac
+done
+
+mode="${mode:=ui}"
+database="${database:=mysql}"
+skipMaven="${skipMaven:=false}"
+
+echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven]"
+
+if [[ $mode == "no-ui" ]]; then
     echo "Maven Build - Skipping Tests and UI"
-    cd ../ && mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+    cd ../
+    if [[ $skipMaven == "false" ]]; then
+      mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+    fi
 else
     echo "Maven Build - Skipping Tests"
-    cd ../ && mvn -DskipTests clean package
+    cd ../
+    if [[ $skipMaven == "false" ]]; then
+      mvn -DskipTests clean package
+    fi
 fi
 
-echo "Prepare Docker volume for the operators"@
-cd docker/local-metadata
+echo "Prepare Docker volume for the operators"
+cd docker/local-metadata || exit
 echo "Starting Local Docker Containers"
 
-docker compose down && docker compose up --build -d
+docker compose -f docker-compose-postgres.yml down
+docker compose down
+
+if [[ $database == "postgresql" ]]; then
+    docker compose -f docker-compose-postgres.yml up --build -d
+else
+    docker compose up --build -d
+fi
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
   printf 'Checking if Elastic Search instance is up...\n'
