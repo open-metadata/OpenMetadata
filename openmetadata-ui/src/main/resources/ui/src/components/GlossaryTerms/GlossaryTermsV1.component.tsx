@@ -285,9 +285,6 @@ const GlossaryTermsV1 = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    if (permissions.EditAll) {
-      return;
-    }
     const value = event.target.value;
     const eleName = event.target.name;
 
