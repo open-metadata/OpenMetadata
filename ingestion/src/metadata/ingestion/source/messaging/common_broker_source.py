@@ -15,6 +15,7 @@ from abc import ABC
 from typing import Any, Iterable, Optional
 
 import confluent_kafka
+from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 from pydantic import BaseModel
@@ -72,79 +73,112 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def yield_topic(
         self, topic_details: BrokerTopicDetails
     ) -> Iterable[CreateTopicRequest]:
-        logger.info("Fetching topic schema {}".format(topic_details.topic_name))
-        topic_schema = self._parse_topic_metadata(topic_details.topic_name)
-        logger.info("Fetching topic config {}".format(topic_details.topic_name))
-        topic = CreateTopicRequest(
-            name=topic_details.topic_name,
-            service=EntityReference(
-                id=self.context.messaging_service.id.__root__, type="messagingService"
-            ),
-            partitions=len(topic_details.topic_metadata.partitions),
-            replicationFactor=len(
-                topic_details.topic_metadata.partitions.get(0).replicas
-            ),
-        )
-        topic_configResource = self.admin_client.describe_configs(
-            [
-                ConfigResource(
-                    confluent_kafka.admin.RESOURCE_TOPIC, topic_details.topic_name
-                )
-            ]
-        )
-        for j in concurrent.futures.as_completed(iter(topic_configResource.values())):
-            config_response = j.result(timeout=10)
-            if "max.message.bytes" in config_response:
-                topic.maximumMessageSize = config_response.get(
-                    "max.message.bytes", {}
-                ).value
-
-            if "min.insync.replicas" in config_response:
-                topic.minimumInSyncReplicas = config_response.get(
-                    "min.insync.replicas"
-                ).value
-
-            if "retention.ms" in config_response:
-                topic.retentionTime = config_response.get("retention.ms").value
-
-            if "cleanup.policy" in config_response:
-                cleanup_policies = config_response.get("cleanup.policy").value
-                topic.cleanupPolicies = cleanup_policies.split(",")
-
-            topic_config = {}
-            for key, conf_response in config_response.items():
-                topic_config[key] = conf_response.value
-            topic.topicConfig = topic_config
-
-        if topic_schema is not None:
-            topic.schemaText = topic_schema.schema_str
-            if topic_schema.schema_type.lower() == SchemaType.Avro.value.lower():
-                topic.schemaType = SchemaType.Avro.name
-                if self.generate_sample_data:
-                    topic.sampleData = self._get_sample_data(topic.name)
-            elif topic_schema.schema_type.lower() == SchemaType.Protobuf.name.lower():
-                topic.schemaType = SchemaType.Protobuf.name
-            elif topic_schema.schema_type.lower() == SchemaType.JSON.name.lower():
-                topic.schemaType = SchemaType.JSON.name
-            else:
-                topic.schemaType = SchemaType.Other.name
-
-        self.status.topic_scanned(topic.name.__root__)
-        yield topic
-
-    def _parse_topic_metadata(self, topic: str) -> Optional[Schema]:
-        schema: Optional[Schema] = None
         try:
-            registered_schema = self.schema_registry_client.get_latest_version(
-                topic + "-value"
+            logger.info("Fetching topic schema {}".format(topic_details.topic_name))
+            topic_schema = self._parse_topic_metadata(topic_details.topic_name)
+            logger.info("Fetching topic config {}".format(topic_details.topic_name))
+            topic = CreateTopicRequest(
+                name=topic_details.topic_name,
+                service=EntityReference(
+                    id=self.context.messaging_service.id.__root__,
+                    type="messagingService",
+                ),
+                partitions=len(topic_details.topic_metadata.partitions),
+                replicationFactor=len(
+                    topic_details.topic_metadata.partitions.get(0).replicas
+                ),
             )
-            schema = registered_schema.schema
+            topic_config_resource = self.admin_client.describe_configs(
+                [
+                    ConfigResource(
+                        confluent_kafka.admin.RESOURCE_TOPIC, topic_details.topic_name
+                    )
+                ]
+            )
+            self.add_properties_to_topic_from_resource(topic, topic_config_resource)
+
+            if topic_schema is not None:
+                topic.schemaText = topic_schema.schema_str
+                if topic_schema.schema_type.lower() == SchemaType.Avro.value.lower():
+                    topic.schemaType = SchemaType.Avro.name
+                    if self.generate_sample_data:
+                        topic.sampleData = self._get_sample_data(topic.name)
+                elif (
+                    topic_schema.schema_type.lower() == SchemaType.Protobuf.name.lower()
+                ):
+                    topic.schemaType = SchemaType.Protobuf.name
+                elif topic_schema.schema_type.lower() == SchemaType.JSON.name.lower():
+                    topic.schemaType = SchemaType.JSON.name
+                else:
+                    topic.schemaType = SchemaType.Other.name
+
+            self.status.topic_scanned(topic.name.__root__)
+            yield topic
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema for topic [{topic}]: {exc}")
-            self.status.warning(topic, f"failed to get schema: {exc} for topic {topic}")
+            logger.warning(
+                f"Unexpected exception to yield topic [{topic_details.topic_name}]: {exc}"
+            )
+            self.status.failures.append(
+                "{}.{}".format(self.config.serviceName, topic_details.topic_name)
+            )
 
-        return schema
+    @staticmethod
+    def add_properties_to_topic_from_resource(
+        topic: CreateTopicRequest, topic_config_resource: dict
+    ) -> None:
+        """
+        Stateful operation that adds new properties to a given Topic
+        """
+        try:
+            for resource_value in concurrent.futures.as_completed(
+                iter(topic_config_resource.values())
+            ):
+                config_response = resource_value.result(timeout=10)
+                if "max.message.bytes" in config_response:
+                    topic.maximumMessageSize = config_response.get(
+                        "max.message.bytes", {}
+                    ).value
+
+                if "min.insync.replicas" in config_response:
+                    topic.minimumInSyncReplicas = config_response.get(
+                        "min.insync.replicas"
+                    ).value
+
+                if "retention.ms" in config_response:
+                    topic.retentionTime = config_response.get("retention.ms").value
+
+                if "cleanup.policy" in config_response:
+                    cleanup_policies = config_response.get("cleanup.policy").value
+                    topic.cleanupPolicies = cleanup_policies.split(",")
+
+                topic_config = {}
+                for key, conf_response in config_response.items():
+                    topic_config[key] = conf_response.value
+                topic.topicConfig = topic_config
+
+        except (KafkaException, KafkaError) as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Exception adding properties to topic [{topic.name}]: {exc}"
+            )
+
+    def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
+        try:
+            if self.schema_registry_client:
+                registered_schema = self.schema_registry_client.get_latest_version(
+                    topic_name + "-value"
+                )
+                return registered_schema.schema
+
+            return None
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to get schema for topic [{topic_name}]: {exc}")
+            self.status.warning(
+                topic_name, f"failed to get schema: {exc} for topic {topic_name}"
+            )
 
     def _get_sample_data(self, topic_name):
         sample_data = []
