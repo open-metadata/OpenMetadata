@@ -375,10 +375,16 @@ class Profiler(Generic[TMetric]):
         self.compute_metrics()
 
         if generate_sample_data:
-            logger.info(
-                f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
-            )
-            sample_data = self.profiler_interface.fetch_sample_data()
+            try:
+                logger.info(
+                    f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                )
+                sample_data = self.profiler_interface.fetch_sample_data()
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error fetching sample data: {err}")
+                sample_data = None
+
         else:
             sample_data = None
 
