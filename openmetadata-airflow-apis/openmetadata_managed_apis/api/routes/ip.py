@@ -32,8 +32,7 @@ from openmetadata_managed_apis.api.response import ApiResponse
 
 logger = routes_logger()
 
-IPIFY_URL = "https://api.ipify.org"
-MY_API_URL = "https://api.my-ip.io/ip"
+IP_SERVICES = ["https://api.ipify.org", "https://api.my-ip.io/ip"]
 
 
 def _get_ip_safely(url: str) -> Optional[str]:
@@ -64,21 +63,15 @@ def get_host_ip():
 
     try:
 
-        # Try to pick up IP from ipify
-        host_ip = _get_ip_safely(IPIFY_URL)
+        for ip_service in IP_SERVICES:
+            host_ip = _get_ip_safely(ip_service)
+            if host_ip:
+                return ApiResponse.success({"ip": host_ip})
 
-        # If that service is not available, let's use my-ip as a fallback
-        if not host_ip:
-            host_ip = _get_ip_safely(MY_API_URL)
-
-        # If everything fails, raise an error.
-        if not host_ip:
-            return ApiResponse.error(
-                status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Could not extract the host IP from neither {IPIFY_URL} nor {MY_API_URL}. Verify connectivity.",
-            )
-
-        return ApiResponse.success({"ip": _get_ip_safely(MY_API_URL)})
+        return ApiResponse.error(
+            status=ApiResponse.STATUS_SERVER_ERROR,
+            error=f"Could not extract the host IP from neither {IP_SERVICES}. Verify connectivity.",
+        )
 
     except Exception as exc:
         msg = f"Internal error obtaining host IP due to [{exc}] "

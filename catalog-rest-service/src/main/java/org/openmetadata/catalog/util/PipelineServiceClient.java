@@ -117,6 +117,18 @@ public abstract class PipelineServiceClient {
     return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
   }
 
+  public final Map<String, String> getHostIp() {
+    try {
+      if (this.hostIp == null || this.hostIp.isEmpty()) {
+        return requestGetHostIp();
+      } else {
+        return Map.of("ip", this.hostIp);
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());
+    }
+  }
+
   /* Check the status of pipeline service to ensure it is healthy */
   public abstract Response getServiceStatus();
 
@@ -144,6 +156,9 @@ public abstract class PipelineServiceClient {
   /* Get the all last run logs of a deployed pipeline */
   public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
 
-  /* Get the Pipeline Service host IP to whitelist in source systems */
-  public abstract Map<String, String> getHostIp();
+  /*
+  Get the Pipeline Service host IP to whitelist in source systems
+  Should return a map in the shape {"ip": "111.11.11.1"}
+  */
+  public abstract Map<String, String> requestGetHostIp();
 }
