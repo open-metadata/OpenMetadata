@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_PASSWORD: password
     ports:
-      - 5432:5432
+      - "5432:5432"
     networks:
       app_net:
         ipv4_address: 172.16.239.10
@@ -30,8 +30,8 @@ services:
       app_net:
         ipv4_address: 172.16.239.11
     ports:
-      - 9200:9200
-      - 9300:9300
+      - "9200:9200"
+      - "9300:9300"
 
 networks:
   app_net:
