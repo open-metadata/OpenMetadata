@@ -24,7 +24,8 @@ echo "Prepare Docker volume for the operators"@
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
 
-docker compose down && docker compose up --build -d
+echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
+docker compose down && docker compose build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose up -d
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
   printf 'Checking if Elastic Search instance is up...\n'

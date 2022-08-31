@@ -28,6 +28,7 @@ from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
+    IntervalType,
     Table,
     TableProfile,
 )
@@ -209,6 +210,26 @@ class ProfilerWorkflow:
         entity_config: TableConfig = self.get_config_for_entity(entity)
         if entity_config:
             return entity_config.partitionConfig
+
+        if entity.tablePartition:
+            if entity.tablePartition.intervalType in {
+                IntervalType.TIME_UNIT,
+                IntervalType.INGESTION_TIME,
+            }:
+                try:
+                    partition_field = entity.tablePartition.columns[0]
+                except Exception:
+                    raise TypeError(
+                        "Unsupported ingestion based partition type. Skipping table"
+                    )
+
+                return TablePartitionConfig(
+                    partitionField=partition_field,
+                )
+
+            raise TypeError(
+                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
+            )
 
         return None
 

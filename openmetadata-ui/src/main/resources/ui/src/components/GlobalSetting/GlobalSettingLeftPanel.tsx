@@ -16,12 +16,14 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React, { useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
+import { TeamType } from '../../generated/entity/teams/team';
 import {
   getGlobalSettingMenuItem,
   getGlobalSettingsMenuWithPermission,
   MenuList,
 } from '../../utils/GlobalSettingsUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 const GlobalSettingLeftPanel = () => {
@@ -56,7 +58,11 @@ const GlobalSettingLeftPanel = () => {
   const onClick: MenuProps['onClick'] = (e) => {
     // As we are setting key as "category.option" and extracting here category and option
     const [category, option] = e.key.split('.');
-    history.push(getSettingPath(category, option));
+    if (option === GlobalSettingOptions.TEAMS) {
+      history.push(getTeamsWithFqnPath(TeamType.Organization));
+    } else {
+      history.push(getSettingPath(category, option));
+    }
   };
 
   return menuItems.length ? (

@@ -1826,12 +1826,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @SqlQuery("SELECT id FROM role_entity WHERE defaultRole = TRUE")
-    List<String> getDefaultRolesIds();
-
-    @SqlQuery("SELECT json FROM role_entity WHERE defaultRole = TRUE")
-    List<String> getDefaultRoles();
   }
 
   interface TeamDAO extends EntityDAO<Team> {
@@ -1858,7 +1852,7 @@ public interface CollectionDAO {
         // validate parent team
         Team team = findEntityByName(parentTeam);
         if (ORGANIZATION_NAME.equals(team.getName())) {
-          // All the parentless teams should come under "organization" team
+          // All the teams without parents should come under "organization" team
           condition =
               String.format(
                   "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",

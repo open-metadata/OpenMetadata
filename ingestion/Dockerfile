@@ -1,7 +1,7 @@
 FROM python:3.9-slim as base
 ENV AIRFLOW_HOME=/airflow
 RUN apt-get update && \
-    apt-get install -y gcc libsasl2-modules libxml2 libsasl2-dev build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre unixodbc freetds-dev freetds-bin tdsodbc libevent-dev wget openssl --no-install-recommends && \
+    apt-get install -y build-essential freetds-bin freetds-dev gcc libevent-dev libffi-dev libpq-dev librdkafka-dev libsasl2-dev libsasl2-modules libssl-dev libxml2 netcat openjdk-11-jre openssl postgresql postgresql-contrib python3.9-dev tdsodbc unixodbc unixodbc-dev wget --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Manually fix security vulnerability from curl
@@ -27,6 +27,7 @@ RUN apt-get update && \
 
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 # Add docker provider for the DockerOperator
+RUN pip install --upgrade pip
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 
 
@@ -42,6 +43,13 @@ COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
 RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
+
+# Uninstalling psycopg2-binary and installing psycopg2 instead 
+# because the psycopg2-binary generates a architecture specific error 
+# while authrenticating connection with the airflow, psycopg2 solves this error 
+RUN pip uninstall psycopg2-binary -y
+RUN pip install psycopg2
+
 
 RUN airflow db init
 RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg

@@ -85,6 +85,18 @@ def column_value_length_to_be_between(
             ],
         )
 
+    if not max_value_length_value_res or not min_value_length_value_res:
+        msg = f"Error computing {test_case.name} for {runner.table.__tablename__}: missing max value length or min value length"
+        return TestCaseResult(
+            timestamp=execution_date,
+            testCaseStatus=TestCaseStatus.Aborted,
+            result=msg,
+            testResultValue=[
+                TestResultValue(name="minValueLength", value=None),
+                TestResultValue(name="maxValueLength", value=None),
+            ],
+        )
+
     min_bound = next(
         (
             float(param.value)
@@ -102,8 +114,8 @@ def column_value_length_to_be_between(
 
     status = (
         TestCaseStatus.Success
-        if min_bound >= min_value_length_value_res
-        and max_bound <= max_value_length_value_res
+        if min_bound <= min_value_length_value_res
+        and max_bound >= max_value_length_value_res
         else TestCaseStatus.Failed
     )
     result = (

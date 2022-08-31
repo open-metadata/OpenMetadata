@@ -44,6 +44,11 @@
       "description": "The source service supports the database concept in its hierarchy",
       "type": "boolean",
       "default": true
+    },
+    "supportsQueryComment": {
+      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+      "type": "boolean",
+      "default": true
     }
   }
 }
