@@ -80,7 +80,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -748,10 +747,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create a policy with the rule
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
     CreatePolicy createPolicy =
-        policyResourceTest
-            .createRequest("TeamManagerPolicy", "", "", null)
-            .withPolicyType(PolicyType.AccessControl)
-            .withRules(List.of(rule));
+        policyResourceTest.createRequest("TeamManagerPolicy", "", "", null).withRules(List.of(rule));
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
 
     // Create TeamManager role with the policy to update team
