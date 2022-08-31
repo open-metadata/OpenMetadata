@@ -209,13 +209,12 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws"
-#  secretsManager: aws
+  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws", "aws-ssm"
 # it will use the default auth provider for the secrets' manager service if parameters are not set
-#  parameters:
-#    region:
-#    accessKeyId:
-#    secretAccessKey:
+  parameters:
+    region: ${OM_SM_REGION:-""}
+    accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
 
 health:
   delayedShutdownHandlerEnabled: true
