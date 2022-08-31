@@ -382,7 +382,7 @@ class Profiler(Generic[TMetric]):
                 sample_data = self.profiler_interface.fetch_sample_data()
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Error fetching sample data: {err}")
+                logger.warning(f"Error fetching sample data: {err}")
                 sample_data = None
 
         else:
