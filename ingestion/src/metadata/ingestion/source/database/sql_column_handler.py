@@ -34,7 +34,7 @@ logger = ingestion_logger()
 class SqlColumnHandlerMixin:
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         if self.source_config.includeTags:
-            logger.info("Fetching tags not implemeneted for this connector")
+            logger.info("Fetching tags not implemented for this connector")
             self.source_config.includeTags = False
 
     def _get_display_datatype(
@@ -100,12 +100,16 @@ class SqlColumnHandlerMixin:
                 table_name, schema_name
             )
         except NotImplementedError:
-            logger.warning("Cannot obtain unique constraints - NotImplementedError")
+            logger.debug(
+                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
             unique_constraints = []
         try:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
-            logger.warning("Cannot obtain foreign constraints - NotImplementedError")
+            logger.debug(
+                "Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
             foreign_constraints = []
 
         pk_columns = (
@@ -237,9 +241,11 @@ class SqlColumnHandlerMixin:
                 om_column.tags = self.get_column_tag_labels(
                     table_name=table_name, column=column
                 )
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(f"{err} : {column}")
+                logger.warning(
+                    f"Unexpected exception processing column [{column}]: {exc}"
+                )
                 continue
             table_columns.append(om_column)
         return table_columns, table_constraints

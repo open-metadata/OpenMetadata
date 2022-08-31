@@ -30,6 +30,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.BOT_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -84,7 +87,6 @@ import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.Profile;
@@ -193,10 +195,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     CreateUser update = create.withEmail("test1@email.com").withDisplayName("displayName1");
 
     ChangeDescription change = getChangeDescription(user.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName1"));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("email").withOldValue(oldEmail).withNewValue("test1@email.com"));
+    fieldAdded(change, "displayName", "displayName1");
+    fieldUpdated(change, "email", oldEmail, "test1@email.com");
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -526,15 +526,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsBot(false)
         .withIsAdmin(false);
     ChangeDescription change = getChangeDescription(user.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(Arrays.asList(role1)));
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName("teams").withOldValue(Arrays.asList(ORG_TEAM.getEntityReference())));
-    change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(teams));
-    change.getFieldsAdded().add(new FieldChange().withName("timezone").withNewValue(timezone));
-    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
-    change.getFieldsAdded().add(new FieldChange().withName("profile").withNewValue(profile));
-    change.getFieldsAdded().add(new FieldChange().withName("isBot").withNewValue(false));
+    fieldAdded(change, "roles", Arrays.asList(role1));
+    fieldDeleted(change, "teams", Arrays.asList(ORG_TEAM.getEntityReference()));
+    fieldAdded(change, "teams", teams);
+    fieldAdded(change, "timezone", timezone);
+    fieldAdded(change, "displayName", "displayName");
+    fieldAdded(change, "profile", profile);
+    fieldAdded(change, "isBot", false);
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
@@ -557,18 +555,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsAdmin(false);
 
     change = getChangeDescription(user.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(Arrays.asList(role1)));
-    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(Arrays.asList(role2)));
-    change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(of(team2)));
-    change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(of(team3)));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("timezone").withOldValue(timezone).withNewValue(timezone1));
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("displayName1"));
-    change.getFieldsUpdated().add(new FieldChange().withName("profile").withOldValue(profile).withNewValue(profile1));
-    change.getFieldsUpdated().add(new FieldChange().withName("isBot").withOldValue(false).withNewValue(true));
+    fieldDeleted(change, "roles", Arrays.asList(role1));
+    fieldAdded(change, "roles", Arrays.asList(role2));
+    fieldDeleted(change, "teams", of(team2));
+    fieldAdded(change, "teams", of(team3));
+    fieldUpdated(change, "timezone", timezone, timezone1);
+    fieldUpdated(change, "displayName", "displayName", "displayName1");
+    fieldUpdated(change, "profile", profile, profile1);
+    fieldUpdated(change, "isBot", false, true);
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
@@ -585,15 +579,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Note non-empty display field is not deleted. When teams are deleted, Organization is added back as default team.
     change = getChangeDescription(user.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(Arrays.asList(role2)));
-    change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(teams1));
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("teams").withNewValue(Arrays.asList(ORG_TEAM.getEntityReference())));
-    change.getFieldsDeleted().add(new FieldChange().withName("timezone").withOldValue(timezone1));
-    change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
-    change.getFieldsDeleted().add(new FieldChange().withName("profile").withOldValue(profile1));
-    change.getFieldsDeleted().add(new FieldChange().withName("isBot").withOldValue(true).withNewValue(null));
+    fieldDeleted(change, "roles", Arrays.asList(role2));
+    fieldDeleted(change, "teams", teams1);
+    fieldAdded(change, "teams", Arrays.asList(ORG_TEAM.getEntityReference()));
+    fieldDeleted(change, "timezone", timezone1);
+    fieldDeleted(change, "displayName", "displayName1");
+    fieldDeleted(change, "profile", profile1);
+    fieldDeleted(change, "isBot", true);
     patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 

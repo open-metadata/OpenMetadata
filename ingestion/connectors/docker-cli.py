@@ -5,6 +5,7 @@ all the connectors
 import io
 import logging
 import sys
+import traceback
 from distutils.core import run_setup
 
 import click
@@ -65,7 +66,8 @@ def build():
                 fileobj=io.BytesIO(file.encode()), tag=f"{target}:latest"
             )
         except Exception as exc:
-            logger.error(f"Error trying to build {conn}", exc)
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to build {conn}: {exc}")
 
 
 @click.command()
@@ -89,7 +91,8 @@ def push():
                 decode=True,
             )
         except Exception as exc:
-            logger.error(f"Error trying to push {conn}", exc)
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to push {conn}: {exc}")
 
 
 cli.add_command(build)

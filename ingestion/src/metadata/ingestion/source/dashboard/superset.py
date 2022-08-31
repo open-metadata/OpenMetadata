@@ -230,9 +230,11 @@ class SupersetSource(DashboardServiceSource):
                     )
                     yield lineage
 
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.error(
+                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+                )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -279,6 +281,9 @@ class SupersetSource(DashboardServiceSource):
                 service_name=db_service_name,
             )
             return dataset_fqn
-        except KeyError:
-            logger.warning(f"Failed to fetch Datasource with id: {datasource_id}")
+        except KeyError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
+            )
             return None

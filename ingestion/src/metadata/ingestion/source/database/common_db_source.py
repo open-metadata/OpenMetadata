@@ -29,7 +29,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -177,8 +177,11 @@ class CommonDbSourceService(
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         # Catch any exception without breaking the ingestion
-        except Exception as err:  # pylint: disable=broad-except
-            logger.warning(f"Table Description Error : {str(err)}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
+            )
         else:
             description = table_info["text"]
         return description
@@ -201,17 +204,6 @@ class CommonDbSourceService(
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
                         "Table pattern not allowed",
-                    )
-                    continue
-
-                if self.is_partition(
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    inspector=self.inspector,
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{table_name}",
-                        "Table is partition",
                     )
                     continue
                 table_name = self.standardize_table_name(schema_name, table_name)
@@ -244,19 +236,28 @@ class CommonDbSourceService(
                 return view_definition
 
             except NotImplementedError:
-                logger.error("View definition not implemented")
+                logger.warning("View definition not implemented")
                 return ""
 
-            except Exception as err:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(err)
-                logger.error(f"Failed to fetch view definition for {table_name}")
+                logger.warning(
+                    f"Failed to fetch view definition for {table_name}: {exc}"
+                )
                 return ""
 
     def is_partition(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> bool:
         return False
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        """
+        check if the table is partitioned table and return the partition details
+        """
+        return False, None  # By default the table will be a Regular Table
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
@@ -307,6 +308,12 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
+            is_partitioned, partiotion_details = self.get_table_partition_details(
+                table_name=table_name, schema_name=schema_name, inspector=self.inspector
+            )
+            if is_partitioned:
+                table_request.tableType = TableType.Partitioned.value
+                table_request.tablePartition = partiotion_details
 
             if table_type == TableType.View or view_definition:
                 table_view = {
@@ -320,9 +327,9 @@ class CommonDbSourceService(
             yield table_request
             self.register_record(table_request=table_request)
 
-        except Exception as err:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(err)
+            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
@@ -381,10 +388,11 @@ class CommonDbSourceService(
                         schema_name=schema_name,
                         query=view_definition,
                     ) or []
-            except Exception:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(f"Query : {view_definition}")
-                logger.warning("Could not parse query: Ingesting lineage failed")
+                logger.warning(
+                    f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
+                )
 
     def test_connection(self) -> None:
         """

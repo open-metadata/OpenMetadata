@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.AIRFLOW_CONNECTION;
 import static org.openmetadata.catalog.util.TestUtils.BOT_AUTH_HEADERS;
@@ -54,7 +55,6 @@ import org.openmetadata.catalog.services.connections.database.RedshiftConnection
 import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -123,7 +123,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     CreatePipelineService update = createRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    fieldAdded(change, "description", "description1");
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
 
     PipelineConnection updatedConnection =

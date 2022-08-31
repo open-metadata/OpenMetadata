@@ -13,13 +13,14 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
-import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidServiceEntity;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -47,7 +48,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -120,10 +120,9 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     Dashboard dashboard = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description, and charts
-    List<FieldChange> fields = new ArrayList<>();
-    fields.add(new FieldChange().withName("description").withNewValue("newDescription"));
-    fields.add(new FieldChange().withName("charts").withNewValue(CHART_REFERENCES));
-    ChangeDescription change = getChangeDescription(dashboard.getVersion()).withFieldsAdded(fields);
+    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    fieldAdded(change, "description", "newDescription");
+    fieldAdded(change, "charts", CHART_REFERENCES);
     updateAndCheckEntity(
         request.withDescription("newDescription").withCharts(CHART_REFERENCES),
         OK,
@@ -138,16 +137,16 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     Dashboard dashboard = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add charts
-    FieldChange charts = new FieldChange().withName("charts").withNewValue(CHART_REFERENCES);
-    ChangeDescription change = getChangeDescription(dashboard.getVersion()).withFieldsAdded(singletonList(charts));
+    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    fieldAdded(change, "charts", CHART_REFERENCES);
     dashboard =
         updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     validateDashboardCharts(dashboard, CHART_REFERENCES);
 
     // remove a chart
-    charts = new FieldChange().withName("charts").withOldValue(List.of(CHART_REFERENCES.get(0)));
+    change = getChangeDescription(dashboard.getVersion());
+    fieldDeleted(change, "charts", List.of(CHART_REFERENCES.get(0)));
     CHART_REFERENCES.remove(0);
-    change = getChangeDescription(dashboard.getVersion()).withFieldsDeleted(singletonList(charts));
     updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 

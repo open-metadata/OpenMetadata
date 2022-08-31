@@ -140,7 +140,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     <div
       className={classNames('tw-cursor-pointer', containerClass)}
       data-testid="tag-container">
-      <div>
+      <div className="tw-flex tw-flex-wrap">
         {showTags && !editable && (
           <Fragment>
             {showAddTagButton && (

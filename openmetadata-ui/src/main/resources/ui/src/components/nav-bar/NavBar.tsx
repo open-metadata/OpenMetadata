@@ -257,7 +257,7 @@ const NavBar = ({
               className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
-              placeholder="Search for Table, Topics, Dashboards,Pipeline and ML Models"
+              placeholder="Search for Tables, Topics, Dashboards, Pipelines and ML Models"
               style={{
                 borderRadius: '0.24rem',
                 boxShadow: 'none',

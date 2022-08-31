@@ -167,9 +167,9 @@ class MetabaseSource(DashboardServiceSource):
                     ),
                 )
                 self.status.scanned(chart_details["name"])
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(repr(err))
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
+                logger.warning(f"Error creating chart [{chart}]: {exc}")
                 continue
 
     def yield_dashboard_lineage_details(
@@ -287,9 +287,9 @@ class MetabaseSource(DashboardServiceSource):
                                 )
                             )
                             yield lineage
-            except Exception as err:  # pylint: disable=broad-except,unused-variable
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.error(err)
+                logger.error(f"Error creating chart [{chart}]: {exc}")
 
     def req_get(self, path):
         """Send get request method

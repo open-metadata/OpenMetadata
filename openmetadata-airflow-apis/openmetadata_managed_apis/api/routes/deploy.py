@@ -20,11 +20,14 @@ from flask import Response, request
 from openmetadata_managed_apis.api.app import blueprint
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.deploy import DagDeployer
+from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+
+logger = routes_logger()
 
 
 @blueprint.route("/deploy", methods=["POST"])
@@ -48,13 +51,19 @@ def deploy_dag() -> Response:
         return response
 
     except ValidationError as err:
+        logger.debug(traceback.format_exc())
+        logger.error(
+            f"Request Validation Error parsing payload [{json_request}]. IngestionPipeline expected: {err}"
+        )
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
-            error=f"Request Validation Error parsing payload {json_request}. IngestionPipeline expected - {err}",
+            error=f"Request Validation Error parsing payload. IngestionPipeline expected: {err}",
         )
 
-    except Exception as err:
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Internal error deploying [{json_request}] due to [{exc}] ")
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Internal error deploying {json_request} - {err} - {traceback.format_exc()}",
+            error=f"Internal error while deploying due to [{exc}] ",
         )

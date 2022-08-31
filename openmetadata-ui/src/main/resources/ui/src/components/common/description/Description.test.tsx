@@ -93,9 +93,12 @@ jest.mock('../non-admin-action/NonAdminAction', () => {
 
 describe('Test Description Component', () => {
   it('Check if it has all child elements', async () => {
-    const { container } = render(<Description {...mockDescriptionProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <Description {...mockDescriptionProp} hasEditAccess />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const descriptionContainer = await findByTestId(container, 'description');
     const editDescriptionButton = await findByTestId(
@@ -235,5 +238,20 @@ describe('Test Description Component', () => {
 
     // should render requestDescription, as description thread and description are empty value
     expect(requestDescription).toBeInTheDocument();
+  });
+
+  it('Should not show edit button if hasEditAccess is false', async () => {
+    const { container } = render(
+      <Description {...mockDescriptionProp} hasEditAccess={false} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const descriptionContainer = await findByTestId(container, 'description');
+    const editDescriptionButton = queryByTestId(container, 'edit-description');
+
+    expect(descriptionContainer).toBeInTheDocument();
+    expect(editDescriptionButton).toBeNull();
   });
 });

@@ -15,6 +15,9 @@ package org.openmetadata.catalog.resources.mlmodels;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -52,7 +55,6 @@ import org.openmetadata.catalog.resources.mlmodels.MlModelResource.MlModelList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FeatureSourceDataType;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureDataType;
 import org.openmetadata.catalog.type.MlFeatureSource;
@@ -170,10 +172,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("algorithm").withNewValue("SVM").withOldValue("regression"));
-
+    fieldUpdated(change, "algorithm", "regression", "SVM");
     updateAndCheckEntity(request.withAlgorithm("SVM"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
@@ -182,8 +181,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test).withDashboard(null);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("dashboard").withNewValue(DASHBOARD_REFERENCE));
-
+    fieldAdded(change, "dashboard", DASHBOARD_REFERENCE);
     updateAndCheckEntity(
         request.withDashboard(DASHBOARD_REFERENCE), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -205,8 +203,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("server").withNewValue(SERVER));
-
+    fieldAdded(change, "server", SERVER);
     updateAndCheckEntity(request.withServer(SERVER), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
@@ -215,10 +212,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test).withServer(SERVER);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
-
     URI newServer = URI.create("http://localhost.com/mlModel/v2");
-    change.getFieldsUpdated().add(new FieldChange().withName("server").withNewValue(newServer).withOldValue(SERVER));
-
+    fieldUpdated(change, "server", SERVER, newServer);
     updateAndCheckEntity(request.withServer(newServer), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
@@ -227,8 +222,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("mlStore").withNewValue(ML_STORE));
-
+    fieldAdded(change, "mlStore", ML_STORE);
     updateAndCheckEntity(request.withMlStore(ML_STORE), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -238,8 +232,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM).withService(MLFLOW_REFERENCE);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(ML_FEATURES));
-
+    fieldAdded(change, "mlFeatures", ML_FEATURES);
     updateAndCheckEntity(request.withMlFeatures(ML_FEATURES), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -255,9 +248,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(newFeatures));
-    change.getFieldsDeleted().add(new FieldChange().withName("mlFeatures").withOldValue(ML_FEATURES));
-
+    fieldAdded(change, "mlFeatures", newFeatures);
+    fieldDeleted(change, "mlFeatures", ML_FEATURES);
     updateAndCheckEntity(request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -279,9 +271,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(newFeatures));
-    change.getFieldsDeleted().add(new FieldChange().withName("mlFeatures").withOldValue(ML_FEATURES));
-
+    fieldAdded(change, "mlFeatures", newFeatures);
+    fieldDeleted(change, "mlFeatures", ML_FEATURES);
     updateAndCheckEntity(request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -316,8 +307,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM).withService(MLFLOW_REFERENCE);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("mlHyperParameters").withNewValue(ML_HYPERPARAMS));
-
+    fieldAdded(change, "mlHyperParameters", ML_HYPERPARAMS);
     updateAndCheckEntity(
         request.withMlHyperParameters(ML_HYPERPARAMS), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -326,10 +316,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelAddTarget_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("target").withNewValue("myTarget"));
-
+    fieldAdded(change, "target", "myTarget");
     updateAndCheckEntity(request.withTarget("myTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
@@ -339,10 +327,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     ChangeDescription change = getChangeDescription(model.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("target").withNewValue("newTarget").withOldValue("origTarget"));
-
+    fieldUpdated(change, "target", "origTarget", "newTarget");
     updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
@@ -423,7 +408,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
       };
 
   private void validateMlFeatureSources(List<MlFeature> expected, List<MlFeature> actual) {
-    if (expected == null && actual == null) {
+    if (expected == actual) {
       return;
     }
 

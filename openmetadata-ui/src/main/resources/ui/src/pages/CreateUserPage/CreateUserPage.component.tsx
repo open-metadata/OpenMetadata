@@ -17,7 +17,6 @@ import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { createBot } from '../../axiosAPIs/botsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -30,14 +29,11 @@ import { EntityType } from '../../enums/entity.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Bot } from '../../generated/entity/bot';
 import { Role } from '../../generated/entity/teams/role';
-import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const CreateUserPage = () => {
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
 
   const [roles, setRoles] = useState<Array<Role>>([]);
@@ -128,7 +124,6 @@ const CreateUserPage = () => {
     <PageContainerV1>
       <div className="tw-self-center">
         <CreateUserComponent
-          allowAccess={isAdminUser || isAuthDisabled}
           forceBot={Boolean(bot)}
           roles={roles}
           saveState={status}

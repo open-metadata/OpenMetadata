@@ -54,6 +54,18 @@ from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
 
 
+class InvalidServiceException(Exception):
+    """
+    Exception to be thrown when couldn't fetch the service from server
+    """
+
+
+class ClientInitializationError(Exception):
+    """
+    Exception to be thrown when couldn't initialize the Openmetadata Client
+    """
+
+
 def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     """
     Use the service EntityReference to build the Source.
@@ -69,14 +81,17 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         build_secrets_manager_credentials(secrets_manager)
     )
 
-    metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+    try:
+        metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+    except Exception as exc:
+        raise ClientInitializationError(f"Failed to initialize the client: {exc}")
 
     service_type = ingestion_pipeline.service.type
     service: Optional[
         Union[DatabaseService, MessagingService, PipelineService, DashboardService]
     ] = None
 
-    if service_type == "TestSuite":
+    if service_type == "testSuite":
         return WorkflowSource(
             type=service_type,
             serviceName=ingestion_pipeline.service.name,
@@ -105,7 +120,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         )
 
     if not service:
-        raise ValueError(f"Could not get service from type {service_type}")
+        raise InvalidServiceException(f"Could not get service from type {service_type}")
 
     return WorkflowSource(
         type=service.serviceType.value.lower(),

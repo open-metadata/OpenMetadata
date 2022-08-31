@@ -44,4 +44,4 @@ class OMetaDashboardMixin:
             f"/usage/dashboard/{dashboard.id.__root__}",
             data=dashboard_usage_request.json(),
         )
-        logger.debug("published dashboard usage %s", resp)
+        logger.debug("Published dashboard usage %s", resp)

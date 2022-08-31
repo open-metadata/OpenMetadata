@@ -25,6 +25,8 @@ import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.type.Include.NON_DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
+import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
@@ -45,7 +47,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -55,7 +56,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -93,6 +93,7 @@ import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CommonUtil;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -246,8 +247,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json =
-                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
+            String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
             initSeedData(JsonUtils.readValue(json, entityClass));
           } catch (Exception e) {
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
@@ -491,9 +491,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     addRelationship(userId, entityId, Entity.USER, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName(FIELD_FOLLOWERS).withNewValue(List.of(user.getEntityReference())));
+    fieldAdded(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -639,9 +637,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
-    change
-        .getFieldsDeleted()
-        .add(new FieldChange().withName(FIELD_FOLLOWERS).withOldValue(List.of(user.getEntityReference())));
+    fieldDeleted(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -1183,7 +1179,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateDisplayName() throws JsonProcessingException {
       if (operation.isPut() && !nullOrEmpty(original.getDisplayName()) && updatedByBot()) {
-        // Revert change to non-empty description if it is being updated by a bot
+        // Revert change to non-empty displayName if it is being updated by a bot
         updated.setDisplayName(original.getDisplayName());
         return;
       }
@@ -1327,12 +1323,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
       if (!addedItems.isEmpty()) {
-        FieldChange fieldChange = new FieldChange().withName(field).withNewValue(JsonUtils.pojoToJson(addedItems));
-        changeDescription.getFieldsAdded().add(fieldChange);
+        fieldAdded(changeDescription, field, JsonUtils.pojoToJson(addedItems));
       }
       if (!deletedItems.isEmpty()) {
-        FieldChange fieldChange = new FieldChange().withName(field).withOldValue(JsonUtils.pojoToJson(deletedItems));
-        changeDescription.getFieldsDeleted().add(fieldChange);
+        fieldDeleted(changeDescription, field, JsonUtils.pojoToJson(deletedItems));
       }
       return !addedItems.isEmpty() || !deletedItems.isEmpty();
     }

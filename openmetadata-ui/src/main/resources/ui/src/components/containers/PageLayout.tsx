@@ -30,8 +30,13 @@ export const leftPanelAntCardStyle = {
   boxShadow: '1px 1px 8px rgb(0 0 0 / 6%)',
   marginRight: '4px',
   marginLeft: '4px',
+  height: '100%',
 };
 
+/**
+ *
+ * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/containers/PageLayoutV1.tsx PageLayoutV1}
+ */
 const PageLayout: FC<PageLayoutProp> = ({
   leftPanel,
   header,

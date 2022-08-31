@@ -6,7 +6,7 @@ export const databaseDetailsTabs = [
     path: 'schemas',
   },
   {
-    name: 'Activity Feed',
+    name: 'Activity Feeds',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },

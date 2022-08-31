@@ -15,6 +15,7 @@ import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -23,6 +24,7 @@ import {
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -442,4 +444,30 @@ export const filterEntityAssets = (data: EntityReference[]) => {
   const includedEntity = Object.values(AssetsType);
 
   return data.filter((d) => includedEntity.includes(d.type as AssetsType));
+};
+
+export const getResourceEntityFromEntityType = (entityType: string) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+    case SearchIndex.TABLE:
+      return ResourceEntity.TABLE;
+
+    case EntityType.TOPIC:
+    case SearchIndex.TOPIC:
+      return ResourceEntity.TOPIC;
+
+    case EntityType.DASHBOARD:
+    case SearchIndex.DASHBOARD:
+      return ResourceEntity.DASHBOARD;
+
+    case EntityType.PIPELINE:
+    case SearchIndex.PIPELINE:
+      return ResourceEntity.PIPELINE;
+
+    case EntityType.MLMODEL:
+    case SearchIndex.MLMODEL:
+      return ResourceEntity.ML_MODEL;
+  }
+
+  return ResourceEntity.ALL;
 };

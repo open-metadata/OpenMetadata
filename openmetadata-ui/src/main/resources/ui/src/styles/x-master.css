@@ -782,11 +782,12 @@ body .profiler-graph .recharts-active-dot circle {
   height: calc(100vh - 110px);
 }
 
+/* 64 header + ( 16 + 16 )spacing Y = 96*/
 #left-panel {
   position: fixed;
   overflow-y: scroll;
   width: 304px;
-  height: calc(100vh - 90px);
+  height: calc(100vh - 96px);
 }
 
 #right-panel {
@@ -1329,4 +1330,19 @@ div.ant-typography-ellipsis-custom {
 
 .ant-switch-checked {
   background: rgb(244, 240, 253);
+}
+
+/* 64 header + ( 16 + 16 )spacing Y = 96*/
+.left-panel-container {
+  height: calc(100vh - 96px);
+  border: 1px solid rgb(229, 231, 235);
+  border-radius: 4px;
+  box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.06);
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.left-panel-container::-webkit-scrollbar {
+  display: none;
 }
