@@ -40,31 +40,34 @@ skipMaven="${skipMaven:=false}"
 
 echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven]"
 
-if [[ $mode == "no-ui" ]]; then
-    echo "Maven Build - Skipping Tests and UI"
-    cd ../
-    if [[ $skipMaven == "false" ]]; then
-      mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+cd ../
+if [[ $skipMaven == "false" ]]; then
+    if [[ $mode == "no-ui" ]]; then
+        echo "Maven Build - Skipping Tests and UI"
+        mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+    else
+        echo "Maven Build - Skipping Tests"
+        cd ../
+        mvn -DskipTests clean package
     fi
 else
-    echo "Maven Build - Skipping Tests"
-    cd ../
-    if [[ $skipMaven == "false" ]]; then
-      mvn -DskipTests clean package
-    fi
+    echo "Skipping Maven Build"
 fi
 
-echo "Prepare Docker volume for the operators"
 cd docker/local-metadata || exit
-echo "Starting Local Docker Containers"
 
+echo "Stopping any previous Local Docker Containers"
 docker compose -f docker-compose-postgres.yml down
 docker compose down
 
+echo "Starting Local Docker Containers"
+
+echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
+
 if [[ $database == "postgresql" ]]; then
-    docker compose -f docker-compose-postgres.yml up --build -d
+    docker compose -f docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker-compose-postgres.yml up -d
 else
-    docker compose up --build -d
+    docker compose build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose up --build -d
 fi
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do

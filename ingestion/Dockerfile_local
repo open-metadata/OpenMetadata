@@ -31,9 +31,6 @@ ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints
 # Add docker provider for the DockerOperator
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 
-RUN pip install "openmetadata-ingestion[all]"
-RUN pip uninstall openmetadata-ingestion -y
-
 FROM airflow as apis
 WORKDIR /openmetadata-airflow-apis
 COPY openmetadata-airflow-apis /openmetadata-airflow-apis
@@ -44,7 +41,7 @@ FROM apis as ingestion
 WORKDIR /ingestion
 COPY ingestion /ingestion
 
-ARG INGESTION_DEPENDENCY=all
+ARG INGESTION_DEPENDENCY
 RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 

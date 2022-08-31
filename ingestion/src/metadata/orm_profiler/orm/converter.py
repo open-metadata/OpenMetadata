@@ -70,6 +70,23 @@ _TYPE_MAP = {
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
 
+def map_types(col: Column, table_service_type):
+    """returns an ORM type"""
+
+    if col.arrayDataType:
+        return _TYPE_MAP.get(col.dataType)(item_type=col.arrayDataType)
+
+    if (
+        table_service_type == databaseService.DatabaseServiceType.Snowflake
+        and col.dataType == DataType.JSON
+    ):
+        from snowflake.sqlalchemy import VARIANT
+
+        return VARIANT
+
+    return _TYPE_MAP.get(col.dataType)
+
+
 def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
     """Check whether column or table name are not uppercase for snowflake table.
     If so, then force quoting, If not return None to let engine backend handle the logic.
@@ -97,11 +114,10 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     As this is only used for INSERT/UPDATE/DELETE,
     there is no impact for our read-only purposes.
     """
+
     return sqlalchemy.Column(
         name=str(col.name.__root__),
-        type_=_TYPE_MAP.get(col.dataType)
-        if not col.arrayDataType
-        else _TYPE_MAP.get(col.dataType)(item_type=col.arrayDataType),
+        type_=map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
         key=str(

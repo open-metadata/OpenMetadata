@@ -22,7 +22,7 @@ from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import run_backup
-from metadata.cli.docker import run_docker
+from metadata.cli.docker import BACKEND_DATABASES, run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.config.common import load_config_file
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
@@ -189,6 +189,12 @@ def webhook(host: str, port: int) -> None:
 @click.option(
     "--ingest-sample-data", help="Enable the sample metadata ingestion", is_flag=True
 )
+@click.option(
+    "-db",
+    "--database",
+    type=click.Choice(list(BACKEND_DATABASES.keys())),
+    default="mysql",
+)
 def docker(
     start,
     stop,
@@ -199,6 +205,7 @@ def docker(
     env_file_path,
     reset_db,
     ingest_sample_data,
+    database,
 ) -> None:
     """
     Checks Docker Memory Allocation
@@ -215,6 +222,7 @@ def docker(
         env_file_path,
         reset_db,
         ingest_sample_data,
+        database,
     )
 
 
