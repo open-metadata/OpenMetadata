@@ -19,6 +19,14 @@ OpenMetadata.
 
 <Collapse title="OSX and Linux">
 
+### Python (version 3.7 or greater)
+
+To check what version of Python you have, you can use the following command:
+
+```bash
+python3 --version
+```
+
 ### Docker (version 20.10.0 or greater)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your
