@@ -83,7 +83,7 @@ const Services = ({
   );
 
   return (
-    <Row data-testid="services-container">
+    <Row className="tw-justify-center" data-testid="services-container">
       {serviceData.length ? (
         <Fragment>
           <Col span={24}>

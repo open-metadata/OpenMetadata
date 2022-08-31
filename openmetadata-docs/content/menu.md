@@ -393,6 +393,12 @@ site_menu:
     url: /openmetadata/connectors/pipeline/fivetran/airflow
   - category: OpenMetadata / Connectors / Pipeline / Fivetran / CLI
     url: /openmetadata/connectors/pipeline/fivetran/cli
+  - category: OpenMetadata / Connectors / Pipeline / Dagster
+    url: /openmetadata/connectors/pipeline/dagster
+  - category: OpenMetadata / Connectors / Pipeline / Dagster / Airflow
+    url: /openmetadata/connectors/pipeline/dagster/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Dagster / CLI
+    url: /openmetadata/connectors/pipeline/dagster/cli
 
   - category: OpenMetadata / Connectors / ML Model
     url: /openmetadata/connectors/ml-model

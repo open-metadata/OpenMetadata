@@ -12,9 +12,10 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Dropdown, Menu, Space } from 'antd';
+import { Button, Dropdown, Menu, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { FC, useState } from 'react';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
@@ -25,12 +26,15 @@ interface Props {
   allowSoftDelete?: boolean;
   afterDeleteAction?: () => void;
   buttonClassName?: string;
+  disabled?: boolean;
   entityName: string;
   entityId?: string;
   entityType?: string;
   entityFQN?: string;
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
+  canDelete?: boolean;
+  title?: string;
   onAnnouncementClick?: () => void;
 }
 
@@ -39,10 +43,13 @@ const ManageButton: FC<Props> = ({
   afterDeleteAction,
   buttonClassName,
   deleteMessage,
+  disabled,
   entityName,
   entityType,
+  canDelete,
   entityId,
   isRecursiveDelete,
+  title,
   onAnnouncementClick,
 }) => {
   const [showActions, setShowActions] = useState<boolean>(false);
@@ -53,25 +60,31 @@ const ManageButton: FC<Props> = ({
       items={[
         {
           label: (
-            <Space
-              className="tw-cursor-pointer manage-button"
-              size={8}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDelete(true);
-                setShowActions(false);
-              }}>
-              <SVGIcons alt="Delete" icon={Icons.DELETE} />
-              <div className="tw-text-left" data-testid="delete-button">
-                <p className="tw-font-medium" data-testid="delete-button-title">
-                  Delete
-                </p>
-                <p className="tw-text-grey-muted tw-text-xs">
-                  Deleting this {entityType} will permanently remove its
-                  metadata from OpenMetadata.
-                </p>
-              </div>
-            </Space>
+            <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+              <Space
+                className={classNames('tw-cursor-pointer manage-button', {
+                  'tw-cursor-not-allowed tw-opacity-50': !canDelete,
+                })}
+                size={8}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDelete(true);
+                  setShowActions(false);
+                }}>
+                <SVGIcons alt="Delete" icon={Icons.DELETE} />
+                <div className="tw-text-left" data-testid="delete-button">
+                  <p
+                    className="tw-font-medium"
+                    data-testid="delete-button-title">
+                    Delete
+                  </p>
+                  <p className="tw-text-grey-muted tw-text-xs">
+                    Deleting this {entityType} will permanently remove its
+                    metadata from OpenMetadata.
+                  </p>
+                </div>
+              </Space>
+            </Tooltip>
           ),
           key: 'delete-button',
         },
@@ -114,6 +127,7 @@ const ManageButton: FC<Props> = ({
     <>
       <Dropdown
         align={{ targetOffset: [-12, 0] }}
+        disabled={disabled}
         overlay={menu}
         overlayStyle={{ width: '350px' }}
         placement="bottomRight"
@@ -126,7 +140,9 @@ const ManageButton: FC<Props> = ({
             buttonClassName
           )}
           data-testid="manage-button"
+          disabled={disabled}
           size="small"
+          title={title ?? 'Manage'}
           type="default"
           onClick={() => setShowActions(true)}>
           <FontAwesomeIcon

@@ -16,6 +16,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 
 export interface DescriptionProps {
+  className?: string;
   entityName?: string;
   owner?: Table['owner'];
   hasEditAccess?: boolean;

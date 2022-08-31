@@ -14,10 +14,11 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
+
 services:
-  postgressql:
-    container_name: openmetadata_postgressql
-    image: openmetadata/postgressql:0.11.4
+  postgresql:
+    container_name: openmetadata_postgresql
+    image: openmetadata/postgresql:0.11.4
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -27,6 +28,11 @@ services:
     networks:
       app_net:
         ipv4_address: 172.16.240.10
+    healthcheck:
+      test: psql -U postgres -tAc 'select 1' -d openmetadata_db
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
   elasticsearch:
     container_name: openmetadata_elasticsearch
@@ -34,7 +40,6 @@ services:
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
-
     networks:
       app_net:
         ipv4_address: 172.16.240.11
@@ -89,15 +94,15 @@ services:
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
-      #Database configuration for Postgressql
+      #Database configuration for postgresql
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
       DB_USE_SSL: ${DB_USE_SSL:-false}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
-      DB_HOST: ${DB_HOST:-postgres}
+      DB_HOST: ${DB_HOST:-postgresql}
       DB_PORT: ${DB_PORT:-5432}
-      OM_DATABASE: ${OM_DATABASE:-openmetadata_db} 
+      OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
     expose:
       - 8585
       - 8586
@@ -108,21 +113,29 @@ services:
       - 8585:8585
       - 8586:8586
     depends_on:
-      - postgressql
+      elasticsearch:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
     networks:
       app_net:
         ipv4_address: 172.16.240.13
     extra_hosts:
-      - "postgres:172.16.240.10"
+      - "postgresql:172.16.240.10"
       - "elasticsearch:172.16.240.11"
 
   ingestion:
     container_name: openmetadata_ingestion
     image: openmetadata/ingestion:0.11.4
     depends_on:
-      - potgressql
+      elasticsearch:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
+      openmetadata-server:
+        condition: service_healthy
     environment:
-      DB_HOST: ${DB_HOST:-postgres}
+      DB_HOST: ${DB_HOST:-postgresql}
       DB_PORT: ${DB_PORT:-5432}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
       DB_USER: ${DB_USER:-airflow_user}
@@ -135,7 +148,7 @@ services:
     networks:
       - app_net
     extra_hosts:
-      - "postgres:172.16.240.10"
+      - "postgresql:172.16.240.10"
       - "localhost:172.16.240.11"
       - "localhost:172.16.240.13"
     volumes:

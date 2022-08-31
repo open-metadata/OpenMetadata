@@ -67,7 +67,7 @@ from metadata.ingestion.source.database.database_service import (
     TableLocationLink,
 )
 from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
@@ -446,12 +446,19 @@ class MetadataRestSink(Sink[Entity]):
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:
             created_lineage = self.metadata.add_lineage(add_lineage)
-            logger.info(f"Successfully added Lineage {created_lineage}")
-            self.status.records_written(f"Lineage: {created_lineage}")
+            created_lineage_info = created_lineage["entity"]["fullyQualifiedName"]
+
+            logger.info(f"Successfully added Lineage from {created_lineage_info}")
+            self.status.records_written(f"Lineage from: {created_lineage_info}")
         except (APIError, ValidationError) as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to ingest lineage [{add_lineage}]: {err}")
-            self.status.failure(f"Lineage: {add_lineage}")
+            logger.error(
+                f"Failed to ingest lineage [{get_add_lineage_log_str(add_lineage)}]: {err}"
+            )
+            self.status.failure(f"Lineage: {get_add_lineage_log_str(add_lineage)}")
+        except (KeyError, ValueError) as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to extract lineage information after sink - {err}")
 
     def _create_role(self, create_role: CreateRoleRequest) -> Role:
         try:

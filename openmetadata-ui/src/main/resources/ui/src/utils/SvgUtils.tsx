@@ -118,6 +118,7 @@ import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconPlusPrimaryOutlined from '../assets/svg/icon-plus-primary-outlined.svg';
 import IconRoleGrey from '../assets/svg/icon-role-grey.svg';
+import IconTestSuite from '../assets/svg/icon-test-suite.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconUp from '../assets/svg/icon-up.svg';
@@ -130,6 +131,8 @@ import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
 import IconMlModal from '../assets/svg/mlmodal.svg';
+import IconMSTeamsGrey from '../assets/svg/ms-teams-grey.svg';
+import IconMSTeams from '../assets/svg/ms-teams.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
@@ -202,6 +205,7 @@ export const Icons = {
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
+  TEST_SUITE: 'icon-test-suite',
   WORKFLOWS: 'icon-workflows',
   MENU: 'icon-menu',
   FEED: 'icon-feed',
@@ -341,6 +345,8 @@ export const Icons = {
   ICON_REMOVE: 'icon-remove',
   DELETE_COLORED: 'icon-delete-colored',
   IC_EDIT_PRIMARY: 'ic-edit-primary',
+  MSTEAMS: 'msteams',
+  MSTEAMS_GREY: 'msteams-grey',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -993,12 +999,22 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconInfoSecondary;
 
       break;
+    case Icons.MSTEAMS:
+      IconComponent = IconMSTeams;
 
+      break;
+    case Icons.MSTEAMS_GREY:
+      IconComponent = IconMSTeamsGrey;
+
+      break;
     case Icons.DELETE_COLORED:
       IconComponent = IconDeleteColored;
 
       break;
+    case Icons.TEST_SUITE:
+      IconComponent = IconTestSuite;
 
+      break;
     default:
       IconComponent = null;
 

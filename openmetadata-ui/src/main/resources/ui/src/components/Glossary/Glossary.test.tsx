@@ -22,24 +22,50 @@ import React from 'react';
 import { mockedAssetData, mockedGlossaries } from '../../mocks/Glossary.mock';
 import GlossaryV1 from './GlossaryV1.component';
 
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+    permissions: {
+      glossaryTerm: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      glossary: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),
 }));
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 jest.mock('../../components/GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
@@ -77,6 +103,12 @@ jest.mock('antd', () => ({
       })}
     </div>
   )),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children }) => <button>{children}</button>),
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
 }));
 
 jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
