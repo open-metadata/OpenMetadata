@@ -90,7 +90,8 @@
         "GEOGRAPHY",
         "ENUM",
         "JSON",
-        "UUID"
+        "UUID",
+        "VARIANT"
       ]
     },
     "constraint": {
