@@ -352,9 +352,7 @@ export const addNewTagToEntity = (entity, term) => {
   searchEntity(entity);
   cy.wait(500);
   cy.get('[data-testid="table-link"]').first().contains(entity).click();
-  cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > div > :nth-child(1) > [data-testid="tags"] > .tw-no-underline'
-  )
+  cy.get('[data-testid="tags"] > [data-testid="add-tag"]').eq(0)
     .should('be.visible')
     .scrollIntoView()
     .click();
