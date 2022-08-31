@@ -114,8 +114,8 @@ def column_value_length_to_be_between(
 
     status = (
         TestCaseStatus.Success
-        if min_bound >= min_value_length_value_res
-        and max_bound <= max_value_length_value_res
+        if min_bound <= min_value_length_value_res
+        and max_bound >= max_value_length_value_res
         else TestCaseStatus.Failed
     )
     result = (
