@@ -46,7 +46,6 @@ from metadata.ingestion.lineage.sql_lineage import (
     _create_lineage_by_table_name,
     get_lineage_by_query,
 )
-from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -121,8 +120,6 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, OMetaPolicy):
-            self.write_policies(record)
         elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
         elif isinstance(record, OMetaUserProfile):
