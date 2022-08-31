@@ -96,7 +96,7 @@ const AddIngestion = ({
   );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
-    data?.airflowConfig.scheduleInterval ?? null
+    data?.airflowConfig.scheduleInterval ?? ''
   );
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(
@@ -502,7 +502,9 @@ const AddIngestion = ({
   const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(repeatFrequency) ? null : repeatFrequency,
+        scheduleInterval: isEmpty(repeatFrequency)
+          ? undefined
+          : repeatFrequency,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
@@ -548,7 +550,9 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: repeatFrequency,
+          scheduleInterval: isEmpty(repeatFrequency)
+            ? undefined
+            : repeatFrequency,
         },
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {
