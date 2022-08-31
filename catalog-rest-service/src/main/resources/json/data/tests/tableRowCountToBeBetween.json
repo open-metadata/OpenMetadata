@@ -6,13 +6,13 @@
   "testPlatforms": ["OpenMetadata", "GreatExpectations"],
   "parameterDefinition": [
     {
-      "name": "minColValue",
+      "name": "minValue",
       "displayName": "minColValue",
       "description": "Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of column",
       "dataType": "INT"
     },
     {
-      "name": "maxColValue",
+      "name": "maxValue",
       "displayName": "maxColValue",
       "description": "Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum number of column",
       "dataType": "INT"
