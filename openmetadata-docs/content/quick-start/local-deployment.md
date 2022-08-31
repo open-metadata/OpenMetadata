@@ -211,6 +211,18 @@ experiment with. This might take several minutes, depending on your system.
 
 </Note>
 
+#### Running with Postgres
+
+From 0.12, OpenMetadata also supports Postgres local deployment out of the box!
+
+You just need to run:
+
+```bash
+metadata docker --start -db postgres
+```
+
+Note that the option `-db postgres` needs to be passed to the other commands as well to locate the proper compose file.
+
 ### 8. Wait for metadata ingestion to finish
 ˚
 Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.
