@@ -34,7 +34,7 @@ class TablePartitionConfig(ConfigModel):
     """table partition config"""
 
     partitionField: Optional[str] = None
-    partitionQueryDuration: Optional[int] = 1
+    partitionQueryDuration: Optional[int] = 30
     partitionValues: Optional[List] = None
 
 

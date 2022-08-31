@@ -32,6 +32,7 @@ import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer
 import { DescriptionProps } from './Description.interface';
 
 const Description: FC<DescriptionProps> = ({
+  className,
   hasEditAccess,
   onDescriptionEdit,
   description = '',
@@ -181,8 +182,8 @@ const Description: FC<DescriptionProps> = ({
   };
 
   return (
-    <div className="schema-description tw-relative">
-      <div className="tw-px-3 tw-py-1 tw-flex">
+    <div className={`schema-description tw-relative ${className}`}>
+      <div className="tw-px-3 tw-py-1 tw-flex description-inner-main-container">
         <div className="tw-relative">
           <div
             className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"

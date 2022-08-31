@@ -54,6 +54,7 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
             profiler_task?: string;
             usage_task?: string;
             lineage_task?: string;
+            test_suite_task?: string;
           }>
         ) => {
           switch (pipelineType) {
@@ -71,6 +72,10 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
               break;
             case PipelineType.Lineage:
               setLogs(gzipToStringConverter(res.data?.lineage_task || ''));
+
+              break;
+            case PipelineType.TestSuite:
+              setLogs(gzipToStringConverter(res.data?.test_suite_task || ''));
 
               break;
 

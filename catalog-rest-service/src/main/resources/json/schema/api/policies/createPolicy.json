@@ -24,9 +24,6 @@
       "description": "Owner of this Policy.",
       "$ref": "../../type/entityReference.json"
     },
-    "policyType": {
-      "$ref": "../../entity/policies/policy.json#/definitions/policyType"
-    },
     "rules": {
       "$ref": "../../entity/policies/policy.json#/definitions/rules"
     },
@@ -41,6 +38,6 @@
       "default": null
     }
   },
-  "required": ["name", "policyType", "rules"],
+  "required": ["name", "rules"],
   "additionalProperties": false
 }

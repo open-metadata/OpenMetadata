@@ -42,8 +42,9 @@ describe('Test DataQualityTest component', () => {
   it('DataQualityTest component should be render properly', async () => {
     const { container } = render(
       <DataQualityTest
+        hasEditAccess
         columns={[]}
-        haandleDropDownClick={mockFunction}
+        handleDropDownClick={mockFunction}
         handleEditTest={mockFunction}
         handleRemoveColumnTest={mockFunction}
         handleRemoveTableTest={mockFunction}
@@ -74,8 +75,9 @@ describe('Test DataQualityTest component', () => {
   it('If data provided respective component should be visible', async () => {
     const { container } = render(
       <DataQualityTest
+        hasEditAccess
         columns={columns as ModifiedTableColumn[]}
-        haandleDropDownClick={mockFunction}
+        handleDropDownClick={mockFunction}
         handleEditTest={mockFunction}
         handleRemoveColumnTest={mockFunction}
         handleRemoveTableTest={mockFunction}

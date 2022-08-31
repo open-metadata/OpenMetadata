@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
@@ -83,7 +85,48 @@ export const createTestCase = async (data: CreateTestCase) => {
   return response.data;
 };
 
-// testSuite section
+export const updateTestCaseById = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
+    `${testCaseUrl}/${id}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};
+
+// testDefinition Section
+export const getListTestDefinitions = async (
+  params?: ListTestDefinitionsParams
+) => {
+  const response = await APIClient.get<{
+    data: TestDefinition[];
+    paging: Paging;
+  }>(testDefinitionUrl, {
+    params,
+  });
+
+  return response.data;
+};
+export const getTestDefinitionById = async (
+  id: string,
+  params?: Pick<ListParams, 'fields' | 'include'>
+) => {
+  const response = await APIClient.get<TestDefinition>(
+    `${testDefinitionUrl}/${id}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+// testSuite Section
 export const getListTestSuites = async (params?: ListParams) => {
   const response = await APIClient.get<{
     data: TestSuite[];
@@ -101,16 +144,28 @@ export const createTestSuites = async (data: CreateTestSuite) => {
   return response.data;
 };
 
-// testDefinition Section
-export const getListTestDefinitions = async (
-  params?: ListTestDefinitionsParams
+export const getTestSuiteByName = async (
+  name: string,
+  params?: ListTestCaseParams
 ) => {
-  const response = await APIClient.get<{
-    data: TestDefinition[];
-    paging: Paging;
-  }>(testDefinitionUrl, {
-    params,
-  });
+  const response = await APIClient.get<TestSuite>(
+    `${testSuiteUrl}/name/${name}`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const updateTestSuiteById = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
+    `${testSuiteUrl}/${id}`,
+    data,
+    configOptions
+  );
 
   return response.data;
 };

@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
@@ -92,6 +93,19 @@ export const updateIngestionPipeline = async (
     CreateIngestionPipeline,
     AxiosResponse<IngestionPipeline>
   >(`/services/ingestionPipelines`, data);
+
+  return response.data;
+};
+
+export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<IngestionPipeline>
+  >(`/services/ingestionPipelines/${id}`, data, configOptions);
 
   return response.data;
 };

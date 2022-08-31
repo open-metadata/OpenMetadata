@@ -32,9 +32,7 @@ AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 # Airflow Configuration
 AIRFLOW_AUTH_PROVIDER=custom-oidc
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID=open-metadata # Update with your Client ID
-# Make sure to add the path where the file is saved in the Airflow Volume
-# It needs to be reachable locally by the container
-OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH={Secret Key} # Update with your Secret Key
+OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY={Secret Key} # Update with your Secret Key
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL="http://localhost:8080/realms/data-sec/protocol/openid-connect/token"
 ```
 
