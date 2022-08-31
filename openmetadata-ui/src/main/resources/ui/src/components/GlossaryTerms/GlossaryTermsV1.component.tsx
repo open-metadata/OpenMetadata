@@ -415,6 +415,7 @@ const GlossaryTermsV1 = ({
               removeBlur
               description={glossaryTerm.description || ''}
               entityName={glossaryTerm?.displayName ?? glossaryTerm?.name}
+              hasEditAccess={permissions.EditDescription}
               isEdit={isDescriptionEditable}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
