@@ -19,7 +19,6 @@ import {
 import {
   EntityReference,
   TableTestType,
-  TestCaseExecutionFrequency,
   TestCaseResult,
 } from '../generated/tests/tableTest';
 
@@ -43,7 +42,8 @@ export interface ModifiedTableColumn extends Column {
 
 export interface TableTestDataType {
   description?: string;
-  executionFrequency?: TestCaseExecutionFrequency;
+  // Todo: Remove unwanted code
+  executionFrequency?: string;
   columnName?: string;
   id?: string;
   name: string;
