@@ -109,4 +109,27 @@ export const getUIPermission = (
   }, {} as UIPermission);
 };
 
+export const DEFAULT_ENTITY_PERMISSION = {
+  Create: false,
+  Delete: false,
+  EditAll: false,
+  EditCustomFields: false,
+  EditDataProfile: false,
+  EditDescription: false,
+  EditDisplayName: false,
+  EditLineage: false,
+  EditOwner: false,
+  EditQueries: false,
+  EditSampleData: false,
+  EditTags: false,
+  EditTests: false,
+  EditTier: false,
+  ViewAll: false,
+  ViewDataProfile: false,
+  ViewQueries: false,
+  ViewSampleData: false,
+  ViewTests: false,
+  ViewUsage: false,
+} as OperationPermission;
+
 export const LIST_CAP = 1;

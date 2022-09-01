@@ -17,7 +17,6 @@ import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
@@ -30,7 +29,6 @@ import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { fetchAllUsers } from '../../utils/UserDataUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -46,31 +44,12 @@ const Signup = () => {
 
   const history = useHistory();
 
-  const getUserPermissions = () => {
-    getLoggedInUserPermissions()
-      .then((res) => {
-        if (res.data) {
-          appState.updateUserPermissions(res.data);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-user-permission-error']
-        );
-      });
-  };
-
   const createNewUser = (details: User | CreateUser) => {
     setLoading(true);
     createUser(details as CreateUser)
       .then((res) => {
         if (res) {
           appState.updateUserDetails(res);
-          fetchAllUsers();
-          getUserPermissions();
           cookieStorage.removeItem(REDIRECT_PATHNAME);
           setIsSigningIn(false);
           history.push(ROUTES.HOME);
