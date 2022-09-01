@@ -41,6 +41,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         airflowConfig.getUsername(),
         airflowConfig.getPassword(),
         airflowConfig.getApiEndpoint(),
+        airflowConfig.getHostIp(),
         airflowConfig.getTimeout());
   }
 
@@ -231,7 +232,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getHostIp() {
+  public Map<String, String> requestGetHostIp() {
     HttpResponse<String> response;
     try {
       response = getRequestAuthenticatedForJsonContent("%s/%s/ip", serviceURL, API_ENDPOINT);

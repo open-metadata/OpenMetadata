@@ -9,8 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
-    KafkaConnection,
+from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
+    RedpandaConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -22,13 +22,13 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.messaging.common_broker_source import CommonBrokerSource
 
 
-class KafkaSource(CommonBrokerSource):
+class RedpandaSource(CommonBrokerSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: KafkaConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, KafkaConnection):
+        connection: RedpandaConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, RedpandaConnection):
             raise InvalidSourceException(
-                f"Expected KafkaConnection, but got {connection}"
+                f"Expected RedpandaConnection, but got {connection}"
             )
         return cls(config, metadata_config)
