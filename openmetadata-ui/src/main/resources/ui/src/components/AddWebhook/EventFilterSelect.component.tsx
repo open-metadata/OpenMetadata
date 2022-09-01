@@ -38,8 +38,8 @@ const EventFilterSelect = ({
             metric === EventType.EntityUpdated
               ? Object.values(EventUpdateTypes).map((updateType) => ({
                   title: startCase(updateType),
-                  value: updateType,
-                  key: updateType,
+                  value: `${EventType.EntityUpdated}-${updateType}`,
+                  key: `${EventType.EntityUpdated}-${updateType}`,
                 }))
               : undefined,
         })),

@@ -1,11 +1,15 @@
 import { Store } from 'antd/lib/form/interface';
-import { isEqual } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import {
   EVENT_FILTERS_DEFAULT_VALUE,
   EVENT_FILTER_FORM_INITIAL_VALUE,
 } from '../components/AddWebhook/WebhookConstants';
 import { TERM_ALL } from '../constants/constants';
-import { EventFilter, Filters } from '../generated/entity/events/webhook';
+import {
+  EventFilter,
+  EventType,
+  Filters,
+} from '../generated/entity/events/webhook';
 
 export const getEventFilters = (data: Store): EventFilter[] => {
   if (isEqual(data, EVENT_FILTER_FORM_INITIAL_VALUE)) {
@@ -18,17 +22,39 @@ export const getEventFilters = (data: Store): EventFilter[] => {
     }
     if (value) {
       const selectedFilter = data[`${key}-tree`] as string[];
+      const entityUpdatedFields = selectedFilter
+        ?.map((filter) =>
+          filter.includes(`${EventType.EntityUpdated}-`)
+            ? filter.split('-')[1]
+            : undefined
+        )
+        .filter((filter) => filter);
+
+      const eventFilters = [
+        ...selectedFilter.filter(
+          (filter) => !filter.includes(`${EventType.EntityUpdated}-`)
+        ),
+        entityUpdatedFields ? EventType.EntityUpdated : undefined,
+      ];
+
+      const includeData = (entityUpdatedFields as string[]).filter(
+        (entityUpdatedField) => !isUndefined(entityUpdatedField)
+      );
 
       return [
         ...acc,
         {
           entityType: key,
           filters:
-            selectedFilter[0] === TERM_ALL
+            eventFilters[0] === TERM_ALL
               ? EVENT_FILTERS_DEFAULT_VALUE.filters
-              : (selectedFilter.map((filter) => ({
+              : (eventFilters.map((filter) => ({
                   eventType: filter,
-                  fields: [TERM_ALL],
+                  include:
+                    filter === EventType.EntityUpdated
+                      ? includeData
+                      : [TERM_ALL],
+                  exclude: [],
                 })) as Filters[]),
         },
       ];
