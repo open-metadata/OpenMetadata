@@ -14,6 +14,7 @@
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React, { ReactNode } from 'react';
+import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-activity.svg';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
@@ -164,6 +165,20 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <TestSuite className="side-panel-icons" />,
+        },
+      ],
+    },
+    {
+      category: 'Collaboration',
+      items: [
+        {
+          label: 'Activity Feed',
+          isProtected: checkPermission(
+            Operation.EditAll,
+            ResourceEntity.ACTIVITY_FEED,
+            permissions
+          ),
+          icon: <AllActivityIcon className="side-panel-icons" />,
         },
       ],
     },
