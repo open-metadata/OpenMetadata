@@ -479,8 +479,8 @@ class testSuiteValidation(unittest.TestCase):
             testSuite=EntityReference(id=uuid4(), type="TestSuite"),
             testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(name="minColvalue", value="2"),
-                TestCaseParameterValue(name="maxColvalue", value="10"),
+                TestCaseParameterValue(name="minColValue", value="2"),
+                TestCaseParameterValue(name="maxColValue", value="10"),
             ],
         )
 
@@ -614,7 +614,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableCustomSQLQuery"](
+        res = validation_enum_registry.registry["tableCustomSQLQuery"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -636,7 +636,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableCustomSQLQuery"](
+        res = validation_enum_registry.registry["tableCustomSQLQuery"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,

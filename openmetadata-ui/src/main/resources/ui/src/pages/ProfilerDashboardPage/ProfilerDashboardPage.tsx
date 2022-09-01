@@ -84,7 +84,7 @@ const ProfilerDashboardPage = () => {
   };
 
   const handleTestCaseUpdate = () => {
-    fetchTestCases(generateEntityLink(entityTypeFQN));
+    fetchTestCases(generateEntityLink(entityTypeFQN, isColumnView));
   };
 
   const fetchTableEntity = async () => {

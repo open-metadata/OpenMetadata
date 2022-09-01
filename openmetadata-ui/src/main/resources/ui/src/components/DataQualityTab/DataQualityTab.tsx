@@ -36,6 +36,7 @@ type Props = {
   tableTestCase: TableTest[];
   handleRemoveTableTest: (testType: TableTestType) => void;
   selectedColumn: string;
+  hasEditAccess: boolean;
   handleSelectedColumn: (value: string | undefined) => void;
   handleRemoveColumnTest: (
     columnName: string,
@@ -47,6 +48,7 @@ const DataQualityTab = ({
   isTableDeleted,
   columnOptions,
   showTestForm,
+  hasEditAccess,
   handleTestModeChange,
   handleShowTestForm,
   handleAddTableTestCase,
@@ -76,7 +78,7 @@ const DataQualityTab = ({
     handleShowTestForm(true);
   };
 
-  const haandleDropDownClick = (
+  const handleDropDownClick = (
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string
   ) => {
@@ -121,11 +123,12 @@ const DataQualityTab = ({
       ) : (
         <DataQualityTest
           columns={columnOptions as ModifiedTableColumn[]}
-          haandleDropDownClick={haandleDropDownClick}
+          handleDropDownClick={handleDropDownClick}
           handleEditTest={handleEditTest}
           handleRemoveColumnTest={handleRemoveColumnTest}
           handleRemoveTableTest={handleRemoveTableTest}
           handleShowDropDown={handleShowDropDown}
+          hasEditAccess={hasEditAccess}
           isTableDeleted={isTableDeleted}
           showDropDown={showDropDown}
           tableTestCase={tableTestCase}

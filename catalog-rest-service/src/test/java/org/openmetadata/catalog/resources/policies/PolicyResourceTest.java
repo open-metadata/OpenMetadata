@@ -25,7 +25,6 @@ import static org.openmetadata.catalog.util.EntityUtil.fieldAdded;
 import static org.openmetadata.catalog.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.catalog.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.catalog.util.EntityUtil.getRuleField;
-import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -37,10 +36,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -72,7 +71,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Function;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.ResourceDescriptor;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -98,7 +96,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     POLICY1 = createEntity(createRequest("policy1").withOwner(null), ADMIN_AUTH_HEADERS);
     POLICY2 = createEntity(createRequest("policy2").withOwner(null), ADMIN_AUTH_HEADERS);
     TEAM_ONLY_POLICY = getEntityByName("TeamOnlyPolicy", "", ADMIN_AUTH_HEADERS);
-    TEAM_ONLY_POLICY_RULES = EntityUtil.resolveRules(TEAM_ONLY_POLICY.getRules());
+    TEAM_ONLY_POLICY_RULES = TEAM_ONLY_POLICY.getRules();
   }
 
   @Override
@@ -111,11 +109,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Override
   @SneakyThrows
   public void validateCreatedEntity(Policy policy, CreatePolicy createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getPolicyType(), policy.getPolicyType());
     if (createRequest.getLocation() != null) {
       assertEquals(createRequest.getLocation(), policy.getLocation().getId());
     }
-    assertEquals(createRequest.getRules(), resolveRules(policy.getRules()));
+    if (createRequest.getRules().size() > 1) {
+      createRequest.getRules().sort(Comparator.comparing(Rule::getName));
+    }
+    policy.getRules().sort(Comparator.comparing(Rule::getName));
+    assertEquals(createRequest.getRules(), policy.getRules());
   }
 
   @Override
@@ -136,7 +137,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       assertEquals(expectedLocation.getId(), actualLocation.getId());
     } else if (fieldName.equals("rules")) {
       List<Rule> expectedRule = (List<Rule>) expected;
-      List<Rule> actualRule = resolveRules(JsonUtils.readObjects(actual.toString(), Object.class));
+      List<Rule> actualRule = JsonUtils.readObjects(actual.toString(), Rule.class);
       assertEquals(expectedRule, actualRule);
     } else if (fieldName.startsWith("rules") && (fieldName.endsWith("effect"))) {
       Effect expectedEffect = (Effect) expected;
@@ -147,12 +148,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
-  }
-
-  @Test
-  void post_PolicyWithoutPolicyType_400_badRequest(TestInfo test) {
-    CreatePolicy create = createRequest(test).withPolicyType(null);
-    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[policyType must not be null]");
   }
 
   @Test
@@ -402,12 +397,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   private CreatePolicy createAccessControlPolicyWithRules(String name, List<Rule> rules) {
-    return new CreatePolicy()
-        .withName(name)
-        .withDescription("description")
-        .withPolicyType(PolicyType.AccessControl)
-        .withRules(rules.stream().map(rule -> (Object) rule).collect(Collectors.toList()))
-        .withOwner(USER1_REF);
+    return new CreatePolicy().withName(name).withDescription("description").withRules(rules).withOwner(USER1_REF);
   }
 
   private void validateCondition(String expression) throws HttpResponseException {

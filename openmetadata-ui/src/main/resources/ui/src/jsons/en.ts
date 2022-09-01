@@ -112,6 +112,7 @@ const jsonData = {
     'fetch-table-profiler-config-error':
       'Error while fetching table profiler config!',
     'fetch-column-test-error': 'Error while fetching column test case!',
+    'fetch-entity-permissions-error': 'Unable to get permission for entity.',
     'fetch-test-suite-error': 'Error while fetching test suite',
     'fetch-test-cases-error': 'Error while fetching test cases',
 

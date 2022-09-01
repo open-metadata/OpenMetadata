@@ -200,7 +200,7 @@ class TopologyRunnerMixin(Generic[C]):
                 # We have ack the sink waiting for a response, but got nothing back
                 if stage.must_return and entity is None:
                     # Safe access to Entity Request name
-                    raise MissingExpectedEntityAck(
+                    raise MissingExpectedEntityAckException(
                         f"Missing ack back from [{stage.type_.__name__}: {getattr(entity_request, 'name')}] - "
                         "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
                         "for the service connection."

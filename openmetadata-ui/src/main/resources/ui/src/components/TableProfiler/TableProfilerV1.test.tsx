@@ -31,6 +31,7 @@ jest.mock('react-router-dom', () => ({
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
+
 jest.mock('antd', () => ({
   Button: jest
     .fn()
@@ -51,9 +52,11 @@ jest.mock('antd', () => ({
   Empty: jest
     .fn()
     .mockImplementation(({ description }) => <div>{description}</div>),
+  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
+  Tooltip: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
 }));
 
-// mock internel imports
+// mock internal imports
 jest.mock('./Component/ProfilerSettingsModal', () => {
   return jest.fn().mockImplementation(() => {
     return <div>ProfilerSettingsModal.component</div>;
@@ -64,7 +67,7 @@ jest.mock('./Component/ColumnProfileTable', () => {
     return <div>ColumnProfileTable.component</div>;
   });
 });
-jest.mock('../../utils/DatasetDetailsUtils');
+
 jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   formTwoDigitNmber: jest.fn(),
@@ -78,6 +81,7 @@ jest.mock('../../axiosAPIs/testAPI', () => ({
 
 const mockProps: TableProfilerProps = {
   table: MOCK_TABLE,
+  hasEditAccess: true,
   onAddTestClick: jest.fn(),
 };
 

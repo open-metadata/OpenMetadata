@@ -44,8 +44,8 @@ import {
   getEntityPlaceHolder,
   getNameFromFQN,
   getPartialNameFromTableFQN,
-  hasEditAccess,
 } from '../../utils/CommonUtils';
+import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   generateEntityLink,
@@ -299,7 +299,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   const handleAddTestClick = () => {
     history.push(
-      getTableTabPath(table.fullyQualifiedName || '', 'data-quality')
+      getAddDataQualityTableTestPath(
+        isColumnView
+          ? ProfilerDashboardType.COLUMN
+          : ProfilerDashboardType.TABLE,
+        entityTypeFQN || ''
+      )
     );
   };
 
@@ -357,10 +362,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followHandler={handleFollowClick}
             followers={follower.length}
             followersList={follower}
-            hasEditAccess={hasEditAccess(
-              table.owner?.type || '',
-              table.owner?.id || ''
-            )}
             isFollowing={isFollowing}
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}

@@ -27,12 +27,10 @@ import { SettledStatus } from '../../../enums/axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
-import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { useAfterMount } from '../../../hooks/useAfterMount';
 import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
-import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   fetchGlossaryTerms,
@@ -50,7 +48,6 @@ import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
@@ -68,14 +65,13 @@ interface Props {
   tier: TagLabel | undefined;
   tags: Array<EntityTags>;
   isTagEditable?: boolean;
-  owner?: EntityReference;
-  hasEditAccess?: boolean;
   followersList: Array<EntityReference>;
   entityName: string;
   entityId?: string;
   entityType?: string;
   entityFqn?: string;
   version?: string;
+  canDelete?: boolean;
   isVersionSelected?: boolean;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
@@ -97,8 +93,6 @@ const EntityPageInfo = ({
   tier,
   tags,
   isTagEditable = false,
-  owner,
-  hasEditAccess,
   tagsHandler,
   followersList = [],
   entityName,
@@ -112,6 +106,7 @@ const EntityPageInfo = ({
   entityType,
   updateOwner,
   updateTier,
+  canDelete,
   entityFieldTasks,
 }: Props) => {
   const history = useHistory();
@@ -483,13 +478,16 @@ const EntityPageInfo = ({
               </Space>
             </Button>
           ) : null}
-          <ManageButton
-            entityFQN={entityFqn}
-            entityId={entityId}
-            entityName={entityName}
-            entityType={entityType}
-            onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
-          />
+          {!isVersionSelected && (
+            <ManageButton
+              canDelete={canDelete}
+              entityFQN={entityFqn}
+              entityId={entityId}
+              entityName={entityName}
+              entityType={entityType}
+              onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
+            />
+          )}
         </Space>
       </Space>
 
@@ -549,55 +547,48 @@ const EntityPageInfo = ({
             )}
             {isTagEditable && !deleted && (
               <Fragment>
-                <NonAdminAction
-                  html={getHtmlForNonAdminAction(Boolean(owner))}
-                  isOwner={hasEditAccess}
-                  permission={Operation.EditTags}
-                  position="bottom"
-                  trigger="click">
-                  <div
-                    className="tw-inline-block tw-mr-1"
-                    data-testid="tags-wrapper"
-                    onClick={() => {
-                      // Fetch tags and terms only once
-                      if (tagList.length === 0 || tagFetchFailed) {
-                        fetchTagsAndGlossaryTerms();
-                      }
-                      setIsEditable(true);
+                <div
+                  className="tw-inline-block tw-mr-1"
+                  data-testid="tags-wrapper"
+                  onClick={() => {
+                    // Fetch tags and terms only once
+                    if (tagList.length === 0 || tagFetchFailed) {
+                      fetchTagsAndGlossaryTerms();
+                    }
+                    setIsEditable(true);
+                  }}>
+                  <TagsContainer
+                    dropDownHorzPosRight={false}
+                    editable={isEditable}
+                    isLoading={isTagLoading}
+                    selectedTags={getSelectedTags()}
+                    showTags={!isTagEditable}
+                    size="small"
+                    tagList={tagList}
+                    onCancel={() => {
+                      handleTagSelection();
+                    }}
+                    onSelectionChange={(tags) => {
+                      handleTagSelection(tags);
                     }}>
-                    <TagsContainer
-                      dropDownHorzPosRight={false}
-                      editable={isEditable}
-                      isLoading={isTagLoading}
-                      selectedTags={getSelectedTags()}
-                      showTags={!isTagEditable}
-                      size="small"
-                      tagList={tagList}
-                      onCancel={() => {
-                        handleTagSelection();
-                      }}
-                      onSelectionChange={(tags) => {
-                        handleTagSelection(tags);
-                      }}>
-                      {tags.length || tier ? (
-                        <button
-                          className="tw-w-auto tw-h-auto tw-flex-none focus:tw-outline-none"
-                          data-testid="edit-button">
-                          <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
-                        </button>
-                      ) : (
-                        <span>
-                          <Tags
-                            className="tw-text-primary"
-                            startWith="+ "
-                            tag="Add tag"
-                            type="label"
-                          />
-                        </span>
-                      )}
-                    </TagsContainer>
-                  </div>
-                </NonAdminAction>
+                    {tags.length || tier ? (
+                      <button
+                        className="tw-w-auto tw-h-auto tw-flex-none focus:tw-outline-none"
+                        data-testid="edit-button">
+                        <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
+                      </button>
+                    ) : (
+                      <span>
+                        <Tags
+                          className="tw-text-primary"
+                          startWith="+ "
+                          tag="Add tag"
+                          type="label"
+                        />
+                      </span>
+                    )}
+                  </TagsContainer>
+                </div>
                 <div className="tw--mt-1.5">
                   {getRequestTagsElements()}
                   {getTaskElement()}

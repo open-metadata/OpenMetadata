@@ -22,6 +22,7 @@ export interface TableProfilerProps {
     columnName?: string
   ) => void;
   table: Table;
+  hasEditAccess: boolean;
 }
 
 export type TableTestsType = {

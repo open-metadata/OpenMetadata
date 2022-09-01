@@ -413,16 +413,6 @@ public final class EntityUtil {
         .withDeleted(from.getDeleted());
   }
 
-  public static List<Rule> resolveRules(List<Object> rules) throws IOException {
-    List<Rule> resolvedRules = new ArrayList<>();
-    for (Object ruleObject : rules) {
-      // Cast to access control policy Rule.
-      resolvedRules.add(
-          JsonUtils.readValueWithValidation(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class));
-    }
-    return resolvedRules;
-  }
-
   public static TagLabel getTagLabel(GlossaryTerm term) {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())

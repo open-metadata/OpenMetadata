@@ -15,7 +15,6 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
-import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -32,6 +31,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityName,
@@ -40,7 +40,9 @@ import {
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -49,10 +51,12 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
-import Entitylineage from '../EntityLineage/EntityLineage.component';
+import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
@@ -129,6 +133,30 @@ const PipelineDetails = ({
     ThreadType.Conversation
   );
 
+  const [pipelinePermissions, setPipelinePermissions] = useState(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermission } = usePermissionProvider();
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      const entityPermission = await getEntityPermission(
+        ResourceEntity.PIPELINE,
+        pipelineDetails.id
+      );
+      setPipelinePermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    }
+  }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
+
+  useEffect(() => {
+    fetchResourcePermission();
+  }, [pipelineDetails.id]);
+
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
   };
@@ -136,17 +164,6 @@ const PipelineDetails = ({
     setSelectedField('');
   };
 
-  const hasEditAccess = () => {
-    const loggedInUser = AppState.getCurrentUserDetails();
-    if (owner?.type === 'user') {
-      return owner.id === loggedInUser?.id;
-    } else {
-      return Boolean(
-        loggedInUser?.teams?.length &&
-          loggedInUser?.teams?.some((team) => team.id === owner?.id)
-      );
-    }
-  };
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
@@ -257,6 +274,7 @@ const PipelineDetails = ({
       settingsUpdateHandler(updatedPipelineDetails);
     }
   };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Pipeline['tags'] = newTier
@@ -361,7 +379,7 @@ const PipelineDetails = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
-          isTagEditable
+          canDelete={pipelinePermissions.Delete}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -379,15 +397,24 @@ const PipelineDetails = ({
           followHandler={followPipeline}
           followers={followersCount}
           followersList={followers}
-          hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
-          owner={owner}
+          isTagEditable={
+            pipelinePermissions.EditAll || pipelinePermissions.EditTags
+          }
           tags={pipelineTags}
           tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedPipelineName}
-          updateOwner={onOwnerUpdate}
-          updateTier={onTierUpdate}
+          updateOwner={
+            pipelinePermissions.EditAll || pipelinePermissions.EditOwner
+              ? onOwnerUpdate
+              : undefined
+          }
+          updateTier={
+            pipelinePermissions.EditAll || pipelinePermissions.EditTier
+              ? onTierUpdate
+              : undefined
+          }
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
@@ -418,7 +445,10 @@ const PipelineDetails = ({
                         entityFqn={pipelineFQN}
                         entityName={entityName}
                         entityType={EntityType.PIPELINE}
-                        hasEditAccess={hasEditAccess()}
+                        hasEditAccess={
+                          pipelinePermissions.EditAll ||
+                          pipelinePermissions.EditDescription
+                        }
                         isEdit={isEdit}
                         isReadOnly={deleted}
                         owner={owner}
@@ -480,7 +510,7 @@ const PipelineDetails = ({
               )}
               {activeTab === 3 && (
                 <div className="tw-h-full tw-px-3">
-                  <Entitylineage
+                  <EntityLineageComponent
                     addLineageHandler={addLineageHandler}
                     deleted={deleted}
                     entityLineage={entityLineage}
@@ -488,7 +518,10 @@ const PipelineDetails = ({
                     entityType={EntityType.PIPELINE}
                     isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
-                    isOwner={hasEditAccess()}
+                    isOwner={
+                      pipelinePermissions.EditAll ||
+                      pipelinePermissions.EditLineage
+                    }
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}

@@ -19,7 +19,6 @@ import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.POLICY;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.getRuleField;
-import static org.openmetadata.catalog.util.EntityUtil.resolveRules;
 import static org.openmetadata.catalog.util.EntityUtil.ruleMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -41,7 +40,6 @@ import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.security.policyevaluator.CompiledRule;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -142,12 +140,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public void validateRules(Policy policy) throws IOException {
-    if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
-      return;
-    }
-
     // Resolve JSON blobs into Rule object and perform schema based validation
-    List<Rule> rules = EntityUtil.resolveRules(policy.getRules());
+    List<Rule> rules = policy.getRules();
     if (listOrEmpty(rules).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_RULES_IN_POLICY);
     }
@@ -162,13 +156,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public List<Policy> getAccessControlPolicies() throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
+    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("rules", ENABLED));
     ListFilter filter = new ListFilter();
     List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
-      if (!policy.getPolicyType().equals(PolicyType.AccessControl) && !Boolean.TRUE.equals(policy.getEnabled())) {
+      if (!Boolean.TRUE.equals(policy.getEnabled())) {
         continue;
       }
       policies.add(policy);
@@ -191,13 +185,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      // Disallow changing policyType.
-      if (original.getPolicyType() != updated.getPolicyType()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(POLICY, "policyType"));
-      }
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       updateLocation(original, updated);
-      updateRules(resolveRules(original.getRules()), resolveRules(updated.getRules()));
+      updateRules(original.getRules(), updated.getRules());
     }
 
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
