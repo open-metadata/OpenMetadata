@@ -13,40 +13,37 @@
 
 package org.openmetadata.catalog.secrets;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.openmetadata.catalog.airflow.AirflowConfiguration;
-import org.openmetadata.catalog.airflow.AuthConfiguration;
-import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.catalog.entity.services.ServiceType;
-import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
-import org.openmetadata.catalog.exception.SecretsManagerException;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider;
-import org.openmetadata.catalog.util.JsonUtils;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
-public abstract class AWSBasedSecretsManager extends SecretsManager {
+public abstract class AWSBasedSecretsManager extends ThirdPartySecretsManager {
 
-  public static final String AUTH_PROVIDER_SECRET_ID_PREFIX = "auth-provider";
-  public static final String DATABASE_METADATA_PIPELINE_SECRET_ID_PREFIX = "database-metadata-pipeline";
-  public static final String TEST_CONNECTION_TEMP_SECRET_ID_PREFIX = "test-connection-temp";
   public static final String ACCESS_KEY_ID = "accessKeyId";
   public static final String SECRET_ACCESS_KEY = "secretAccessKey";
   public static final String REGION = "region";
-  public static final String NULL_SECRET_STRING = "null";
 
   protected AWSBasedSecretsManager(
       SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, String clusterPrefix) {
     super(awsProvider, clusterPrefix);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
-    if (config != null && config.getParameters() != null) {
+    if (config != null
+        && config.getParameters() != null
+        && !Strings.isBlank(config.getParameters().getOrDefault(REGION, ""))) {
       String region = config.getParameters().getOrDefault(REGION, "");
       String accessKeyId = config.getParameters().getOrDefault(ACCESS_KEY_ID, "");
       String secretAccessKey = config.getParameters().getOrDefault(SECRET_ACCESS_KEY, "");
-      StaticCredentialsProvider staticCredentialsProvider =
-          StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
-      initClientWithCredentials(region, staticCredentialsProvider);
+      AwsCredentialsProvider credentialsProvider;
+      if (Strings.isBlank(accessKeyId) && Strings.isBlank(secretAccessKey)) {
+        credentialsProvider = DefaultCredentialsProvider.create();
+      } else {
+        credentialsProvider =
+            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
+      }
+      initClientWithCredentials(region, credentialsProvider);
     } else {
       // initialized with the region loaded from the DefaultAwsRegionProviderChain and credentials loaded from the
       // DefaultCredentialsProvider
@@ -56,129 +53,5 @@ public abstract class AWSBasedSecretsManager extends SecretsManager {
 
   abstract void initClientWithoutCredentials();
 
-  abstract void initClientWithCredentials(String region, StaticCredentialsProvider staticCredentialsProvider);
-
-  @Override
-  public Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
-    String secretName = buildSecretId("service", serviceType.value(), connectionType, connectionName);
-    try {
-      if (encrypt) {
-        String connectionConfigJson = JsonUtils.pojoToJson(connectionConfig);
-        if (connectionConfigJson != null) {
-          upsertSecret(secretName, connectionConfigJson);
-        }
-        return null;
-      } else {
-        Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
-        return JsonUtils.readValue(getSecret(secretName), clazz);
-      }
-    } catch (ClassNotFoundException ex) {
-      throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to construct connection instance of %s", connectionType));
-    } catch (Exception e) {
-      throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
-    }
-  }
-
-  @Override
-  public Object storeTestConnectionObject(TestServiceConnection testServiceConnection) {
-    String secretName =
-        buildSecretId(TEST_CONNECTION_TEMP_SECRET_ID_PREFIX, testServiceConnection.getConnectionType().value());
-    try {
-      String connectionConfigJson = JsonUtils.pojoToJson(testServiceConnection.getConnection());
-      upsertSecret(secretName, connectionConfigJson);
-    } catch (JsonProcessingException e) {
-      throw new SecretsManagerException("Error parsing to JSON the service connection config: " + e.getMessage());
-    }
-    return null;
-  }
-
-  @Override
-  public AirflowConfiguration encryptAirflowConnection(AirflowConfiguration airflowConfiguration) {
-    OpenMetadataServerConnection.AuthProvider authProvider =
-        OpenMetadataServerConnection.AuthProvider.fromValue(airflowConfiguration.getAuthProvider());
-    AuthConfiguration authConfig = airflowConfiguration.getAuthConfig();
-    String authProviderJson = null;
-    try {
-      switch (authProvider) {
-        case GOOGLE:
-          authProviderJson = JsonUtils.pojoToJson(authConfig.getGoogle());
-          break;
-        case AUTH_0:
-          authProviderJson = JsonUtils.pojoToJson(authConfig.getAuth0());
-          break;
-        case OKTA:
-          authProviderJson = JsonUtils.pojoToJson(authConfig.getOkta());
-          break;
-        case AZURE:
-          authProviderJson = JsonUtils.pojoToJson(authConfig.getAzure());
-          break;
-        case CUSTOM_OIDC:
-          authProviderJson = JsonUtils.pojoToJson(authConfig.getCustomOidc());
-          break;
-        case OPENMETADATA:
-          authProviderJson = JsonUtils.pojoToJson(authConfig.getOpenmetadata());
-          break;
-        case NO_AUTH:
-          break;
-        default:
-          throw new IllegalArgumentException("OpenMetadata doesn't support auth provider type " + authProvider.value());
-      }
-    } catch (JsonProcessingException e) {
-      throw new SecretsManagerException("Error parsing to JSON the auth config :" + e.getMessage());
-    }
-    if (authProviderJson != null) {
-      upsertSecret(buildSecretId(AUTH_PROVIDER_SECRET_ID_PREFIX, authProvider.value()), authProviderJson);
-    }
-    airflowConfiguration.setAuthConfig(null);
-    return airflowConfiguration;
-  }
-
-  @Override
-  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt) {
-    String secretName = buildSecretId(DATABASE_METADATA_PIPELINE_SECRET_ID_PREFIX, serviceName);
-    try {
-      if (encrypt) {
-        String dbtConfigSourceJson = JsonUtils.pojoToJson(dbtConfigSource);
-        upsertSecret(secretName, dbtConfigSourceJson);
-        return null;
-      } else {
-        String dbtConfigSourceJson = getSecret(secretName);
-        return NULL_SECRET_STRING.equals(dbtConfigSourceJson)
-            ? null
-            : JsonUtils.readValue(dbtConfigSourceJson, Object.class);
-      }
-    } catch (Exception e) {
-      throw SecretsManagerException.byMessage(getClass().getSimpleName(), secretName, e.getMessage());
-    }
-  }
-
-  @Override
-  protected Object decryptAuthProviderConfig(
-      OpenMetadataServerConnection.AuthProvider authProvider, AuthConfiguration authConfig) {
-    return null;
-  }
-
-  private void upsertSecret(String secretName, String secretValue) {
-    if (existSecret(secretName)) {
-      updateSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
-    } else {
-      storeSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
-    }
-  }
-
-  public boolean existSecret(String secretName) {
-    try {
-      return getSecret(secretName) != null;
-    } catch (Exception e) {
-      return false;
-    }
-  }
-
-  abstract void storeSecret(String secretName, String secretValue);
-
-  abstract void updateSecret(String secretName, String secretValue);
-
-  abstract String getSecret(String secretName);
+  abstract void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider);
 }

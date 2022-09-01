@@ -17,7 +17,7 @@ import static org.openmetadata.catalog.services.connections.metadata.SecretsMana
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
@@ -40,7 +40,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
   }
 
   @Override
-  void initClientWithCredentials(String region, StaticCredentialsProvider staticCredentialsProvider) {
+  void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider) {
     this.secretsClient =
         SecretsManagerClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
   }

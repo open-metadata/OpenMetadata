@@ -80,7 +80,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -132,6 +131,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     CreateTeam create = createRequest("org_test").withTeamType(ORGANIZATION);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, CatalogExceptionMessage.createOrganization());
+
+    // Organization by default has DataConsumer Role. Ensure Role lists organization as one of the teams
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role role = roleResourceTest.getEntityByName("DataConsumer", "teams", ADMIN_AUTH_HEADERS);
+    assertEntityReferencesContain(role.getTeams(), org.getEntityReference());
   }
 
   @Test
@@ -475,7 +479,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void patch_deleteUserAndDefaultRoleFromTeam_200(TestInfo test) throws IOException {
+  void patch_deleteUserAndDefaultRolesFromTeam_200(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     final int totalUsers = 20;
     ArrayList<UUID> users = new ArrayList<>();
@@ -743,10 +747,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create a policy with the rule
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
     CreatePolicy createPolicy =
-        policyResourceTest
-            .createRequest("TeamManagerPolicy", "", "", null)
-            .withPolicyType(PolicyType.AccessControl)
-            .withRules(List.of(rule));
+        policyResourceTest.createRequest("TeamManagerPolicy", "", "", null).withRules(List.of(rule));
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
 
     // Create TeamManager role with the policy to update team

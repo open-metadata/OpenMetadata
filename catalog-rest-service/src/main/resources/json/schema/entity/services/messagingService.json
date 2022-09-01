@@ -14,13 +14,16 @@
       "description": "Type of messaging service - Kafka or Pulsar.",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.catalog.EnumInterface"],
-      "enum": ["Kafka", "Pulsar"],
+      "enum": ["Kafka", "Pulsar", "Redpanda"],
       "javaEnums": [
         {
           "name": "Kafka"
         },
         {
           "name": "Pulsar"
+        },
+        {
+          "name": "Redpanda"
         }
       ]
     },
@@ -48,6 +51,9 @@
             },
             {
               "$ref": "./connections/messaging/pulsarConnection.json"
+            },
+            {
+              "$ref": "./connections/messaging/redpandaConnection.json"
             }
           ]
         }

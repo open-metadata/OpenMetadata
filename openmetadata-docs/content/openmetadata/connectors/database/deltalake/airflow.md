@@ -125,6 +125,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: "<OpenMetadata host and port>"
     authProvider: "<OpenMetadata auth provider>"
@@ -143,6 +144,26 @@ workflowConfig:
 
 We are internally running with `pyspark` 3.X and `delta-lake` 2.0.0. This means that we need to consider Spark
 configuration options for 3.X.
+
+##### Metastore Host Port
+
+When connecting to an External Metastore passing the parameter `Metastore Host Port`, we will be preparing a Spark Session with the configuration
+
+```
+.config("hive.metastore.uris", "thrift://{connection.metastoreHostPort}") 
+```
+
+Then, we will be using the `catalog` functions from the Spark Session to pick up the metadata exposed by the Hive Metastore.
+
+##### Metastore File Path
+
+If instead we use a local file path that contains the metastore information (e.g., for local testing with the default `metastore_db` directory), we will set
+
+```
+.config("spark.driver.extraJavaOptions", "-Dderby.system.home={connection.metastoreFilePath}") 
+```
+
+To update the `Derby` information. More information about this in a great [SO thread](https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell).
 
 - You can find all supported configurations [here](https://spark.apache.org/docs/latest/configuration.html)
 - If you need further information regarding the Hive metastore, you can find

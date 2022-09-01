@@ -550,7 +550,9 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: repeatFrequency,
+          scheduleInterval: isEmpty(repeatFrequency)
+            ? undefined
+            : repeatFrequency,
         },
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {

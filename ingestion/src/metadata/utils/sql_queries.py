@@ -487,3 +487,57 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
       LIMIT {result_limit}
     """
 )
+
+POSTGRES_GET_TABLE_NAMES = """
+    SELECT c.relname FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = :schema AND c.relkind in ('r', 'p') AND relispartition = false
+"""
+
+POSTGRES_PARTITION_DETAILS = textwrap.dedent(
+    """
+select 
+    par.relnamespace::regnamespace::text as schema, 
+    par.relname as table_name, 
+    partition_strategy,
+    col.column_name
+from   
+    (select
+         partrelid,
+         partnatts,
+         case partstrat 
+              when 'l' then 'list'
+              when 'h' then 'hash'
+              when 'r' then 'range' end as partition_strategy,
+         unnest(partattrs) column_index
+     from
+         pg_partitioned_table) pt 
+join   
+    pg_class par 
+on     
+    par.oid = pt.partrelid
+left join
+    information_schema.columns col
+on  
+    col.table_schema = par.relnamespace::regnamespace::text
+    and col.table_name = par.relname
+    and ordinal_position = pt.column_index
+ where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
+"""
+)
+
+SNOWFLAKE_GET_CLUSTER_KEY = """
+  select CLUSTERING_KEY,
+          TABLE_SCHEMA,
+          TABLE_NAME
+  from   information_schema.tables 
+  where  TABLE_TYPE = 'BASE TABLE'
+  and CLUSTERING_KEY is not null
+"""
+
+
+REDSHIFT_PARTITION_DETAILS = """
+  select "schema", "table", diststyle
+  from SVV_TABLE_INFO
+  where diststyle not like 'AUTO%%'
+"""

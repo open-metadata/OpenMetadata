@@ -647,7 +647,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                           pathname:
                             'https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata',
                         }}>
-                        MetaData Ingestion
+                        Metadata Ingestion
                       </Link>
                     </p>
                   </>

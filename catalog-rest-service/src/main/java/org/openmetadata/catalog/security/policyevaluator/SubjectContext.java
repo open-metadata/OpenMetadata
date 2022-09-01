@@ -256,15 +256,11 @@ public class SubjectContext {
    * roles are visited one by one, followed by the policies in the parent teams.
    */
   static class TeamPolicyIterator implements Iterator<PolicyContext> {
-    private final UUID teamId;
     private int iteratorIndex = 0;
     private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
-    private final List<UUID> teamsVisited;
 
     /** Policy iterator for a team */
     TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited) {
-      this.teamId = teamId;
-      this.teamsVisited = teamsVisited;
       Team team = SubjectCache.getInstance().getTeam(teamId);
 
       // If a team is already visited (because user can belong to multiple teams
