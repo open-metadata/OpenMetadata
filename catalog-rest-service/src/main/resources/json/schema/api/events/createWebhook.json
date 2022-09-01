@@ -51,12 +51,8 @@
       "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
       "type": "string"
     },
-    "kafkaProperties": {
-      "description": "Properties of Kafka Producer",
-      "$ref": "../../configuration/kafkaEventConfiguration.json"
-    },
     "webhookType": {
-      "description": "Type of webhook slack,generic,kafka etc",
+      "description": "Type of webhook slack,generic,msteams etc",
       "$ref": "../../entity/events/webhook.json#/definitions/webhookType"
     }
   },

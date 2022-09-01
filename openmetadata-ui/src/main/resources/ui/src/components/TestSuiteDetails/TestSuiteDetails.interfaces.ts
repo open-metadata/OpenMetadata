@@ -1,8 +1,10 @@
 import { ExtraInfo } from 'Models';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface TestSuiteDetailsProps {
+  permissions: OperationPermission;
   extraInfo: ExtraInfo[];
   slashedBreadCrumb: TitleBreadcrumbProps['titleLinks'];
   handleDeleteWidgetVisible: (isVisible: boolean) => void;

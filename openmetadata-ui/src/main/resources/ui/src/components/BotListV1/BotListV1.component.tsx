@@ -14,7 +14,6 @@
 import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getBots } from '../../axiosAPIs/botsAPI';
@@ -34,6 +33,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -48,9 +48,7 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const deletePermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Delete, ResourceEntity.BOT, permissions),
+    () => checkPermission(Operation.Delete, ResourceEntity.BOT, permissions),
     [permissions]
   );
 
@@ -96,6 +94,12 @@ const BotListV1 = ({ showDeleted }: BotListV1Props) => {
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
+        render: (_, record) =>
+          record?.description ? (
+            <RichTextEditorPreviewer markdown={record?.description || ''} />
+          ) : (
+            'No Description'
+          ),
       },
       {
         title: 'Actions',

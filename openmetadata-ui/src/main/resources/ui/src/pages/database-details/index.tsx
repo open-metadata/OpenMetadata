@@ -53,6 +53,11 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -88,6 +93,7 @@ import {
   getEntityFieldThreadCounts,
   updateThreadData,
 } from '../../utils/FeedUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getExplorePathWithInitFilters,
   getSettingPath,
@@ -104,6 +110,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const { getEntityPermission } = usePermissionProvider();
 
   const { databaseFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
@@ -143,6 +150,21 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const history = useHistory();
   const isMounting = useRef(true);
+
+  const [databasePermission, setDatabasePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchDatabasePermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.DATABASE,
+        database?.id as string
+      );
+      setDatabasePermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const tabs = [
     {
@@ -554,6 +576,12 @@ const DatabaseDetails: FunctionComponent = () => {
     fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
   }, [isInView, paging, isentityThreadLoading]);
 
+  useEffect(() => {
+    if (database?.id) {
+      fetchDatabasePermission();
+    }
+  }, [database]);
+
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -581,6 +609,7 @@ const DatabaseDetails: FunctionComponent = () => {
               <ManageButton
                 isRecursiveDelete
                 allowSoftDelete={false}
+                canDelete={databasePermission.Delete}
                 entityFQN={databaseFQN}
                 entityId={databaseId}
                 entityName={databaseName}
@@ -593,7 +622,11 @@ const DatabaseDetails: FunctionComponent = () => {
                 <span className="tw-flex" key={index}>
                   <EntitySummaryDetails
                     data={info}
-                    updateOwner={handleUpdateOwner}
+                    updateOwner={
+                      databasePermission.EditOwner
+                        ? handleUpdateOwner
+                        : undefined
+                    }
                   />
 
                   {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
@@ -615,6 +648,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 entityFqn={databaseFQN}
                 entityName={databaseName}
                 entityType={EntityType.DATABASE}
+                hasEditAccess={databasePermission.EditDescription}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}

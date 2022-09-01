@@ -7,27 +7,210 @@
         "filters": [
           {
             "eventType": "entityCreated",
-            "fields": [
+            "include": [
               "all"
-            ]
+            ],
+            "exclude": []
           },
           {
             "eventType": "entityUpdated",
-            "fields": [
+            "include": [
               "all"
-            ]
+            ],
+            "exclude": ["usageSummary"]
           },
           {
             "eventType": "entityDeleted",
-            "fields": [
+            "include": [
               "all"
-            ]
+            ],
+            "exclude": []
           },
           {
             "eventType": "entitySoftDeleted",
-            "fields": [
+            "include": [
               "all"
-            ]
+            ],
+            "exclude": []
+          }
+        ]
+      },
+      {
+        "entityType": "table",
+        "filters": [
+          {
+            "eventType": "entityCreated",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityUpdated",
+            "include": [
+              "description",
+              "owner",
+              "tags",
+              "followers"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entitySoftDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          }
+        ]
+      },
+      {
+        "entityType": "dashboard",
+        "filters": [
+          {
+            "eventType": "entityCreated",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityUpdated",
+            "include": [
+              "description",
+              "owner",
+              "tags",
+              "followers"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entitySoftDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          }
+        ]
+      },
+      {
+        "entityType": "pipeline",
+        "filters": [
+          {
+            "eventType": "entityCreated",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityUpdated",
+            "include": [
+              "description",
+              "owner",
+              "tags",
+              "followers"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entitySoftDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          }
+        ]
+      },
+      {
+        "entityType": "mlmodel",
+        "filters": [
+          {
+            "eventType": "entityCreated",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityUpdated",
+            "include": [
+              "description",
+              "owner",
+              "tags",
+              "followers"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entitySoftDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          }
+        ]
+      },
+      {
+        "entityType": "testCase",
+        "filters": [
+          {
+            "eventType": "entityCreated",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityUpdated",
+            "include": [
+              "testCaseResultSuccess",
+              "testCaseResultFailed",
+              "testCaseResultAborted"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entitySoftDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
           }
         ]
       }

@@ -22,6 +22,7 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.filter.FilterRegistry;
 import org.openmetadata.catalog.filter.Filters;
+import org.openmetadata.catalog.resources.settings.SettingsCache;
 import org.openmetadata.catalog.settings.Settings;
 import org.openmetadata.catalog.settings.SettingsType;
 import org.openmetadata.catalog.util.FilterUtil;
@@ -118,6 +119,7 @@ public class SettingsRepository {
           .insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       if (setting.getConfigType().equals(ACTIVITY_FEED_FILTER_SETTING)) {
         FilterRegistry.add(FilterUtil.getEventFilterFromSettings(setting));
+        SettingsCache.getInstance().putSettings(setting);
       }
     } catch (Exception ex) {
       throw new RuntimeException(ex);
