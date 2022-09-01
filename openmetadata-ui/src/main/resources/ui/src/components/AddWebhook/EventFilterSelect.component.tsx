@@ -9,14 +9,21 @@ import {
 } from '../../generated/api/events/createWebhook';
 import { Entities } from './WebhookConstants';
 
-interface SelectComponentProps {
+export enum EventUpdateTypes {
+  UpdatedFollowers = 'updatedFollowers',
+  UpdatedTags = 'updatedTags',
+  UpdatedOwner = 'updatedOwner',
+  UpdateDescription = 'updateDescription',
+}
+
+interface EventFilterSelectProps {
   eventFilterFormData: Store;
   setEventFilterFormData: (formData: EventFilter[]) => void;
 }
-const SelectComponent = ({
+const EventFilterSelect = ({
   eventFilterFormData,
   setEventFilterFormData,
-}: SelectComponentProps) => {
+}: EventFilterSelectProps) => {
   const metricsOptions = useMemo(
     () => [
       {
@@ -27,6 +34,14 @@ const SelectComponent = ({
           title: startCase(metric),
           value: metric,
           key: metric,
+          children:
+            metric === EventType.EntityUpdated
+              ? Object.values(EventUpdateTypes).map((updateType) => ({
+                  title: startCase(updateType),
+                  value: updateType,
+                  key: updateType,
+                }))
+              : undefined,
         })),
       },
     ],
@@ -71,4 +86,4 @@ const SelectComponent = ({
   );
 };
 
-export default SelectComponent;
+export default EventFilterSelect;

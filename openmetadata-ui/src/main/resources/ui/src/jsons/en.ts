@@ -21,6 +21,7 @@ const jsonData = {
     'add-column-test-error': 'Error while adding column test!',
     'add-ingestion-error': 'Error while adding ingestion workflow!',
     'add-service-error': 'Error while adding service!',
+    'add-settings-error': 'Error while adding settings',
 
     'check-status-airflow': 'Error while connecting to Airflow instance!',
     'create-user-error': 'Error while creating user!',
@@ -148,10 +149,12 @@ const jsonData = {
     'join-team-error': 'Error while joining the team!',
     'leave-team-error': 'Error while leaving the team!',
     'update-test-suite-error': 'Error while updating test suite',
+
+    'fetch-settings': 'Error while fetching settings',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
-
+    'add-settings-success': 'Settings added successfully!',
     'join-team-success': 'Team joined successfully!',
     'leave-team-success': 'Left the team successfully!',
 
