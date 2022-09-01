@@ -20,6 +20,7 @@ import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as TestSuite } from '../../src/assets/svg/icon-test-suite.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
+import { ReactComponent as MSTeamsIcon } from '../../src/assets/svg/ms-teams.svg';
 import { ReactComponent as PipelineIcon } from '../../src/assets/svg/pipeline-grey.svg';
 import { ReactComponent as PoliciesIcon } from '../../src/assets/svg/policies.svg';
 import { ReactComponent as SlackIcon } from '../../src/assets/svg/slack.svg';
@@ -252,6 +253,15 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <SlackIcon className="tw-w-4 side-panel-icons" />,
+        },
+        {
+          label: 'MS Teams',
+          isProtected: checkPermission(
+            Operation.ViewAll,
+            ResourceEntity.WEBHOOK,
+            permissions
+          ),
+          icon: <MSTeamsIcon className="tw-w-4 side-panel-icons" />,
         },
         {
           label: 'Bots',
