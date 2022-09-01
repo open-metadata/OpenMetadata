@@ -20,10 +20,7 @@ import { TERM_ALL } from '../../constants/constants';
 import { EventFilter, Filters } from '../../generated/settings/settings';
 import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import {
-  ActivityFeedEntity,
-  formData,
-} from './ActivityFeedSettingsPage.constants';
+import { ActivityFeedEntity } from './ActivityFeedSettingsPage.constants';
 import './ActivityFeedSettingsPage.style.less';
 import { getPayloadFromSelected } from './ActivityFeedSettingsPage.utils';
 
@@ -93,7 +90,7 @@ const ActivityFeedSettingsPage: React.FC = () => {
   };
 
   const generateTreeData = (entityType: string, data?: Filters[]) => {
-    return data?.map(({ eventType, include }) => {
+    return data?.map(({ eventType, include, exclude }) => {
       const key = `${entityType}-${eventType}` as string;
 
       return {
@@ -101,26 +98,20 @@ const ActivityFeedSettingsPage: React.FC = () => {
         title: startCase(eventType),
         data: include,
         children:
-          eventType === 'entityUpdated'
-            ? [
-                {
-                  key: `${key}-owner`,
-                  title: 'Owner',
-                },
-                {
-                  key: `${key}-description`,
-                  title: 'Description',
-                },
-                {
-                  key: `${key}-tags`,
-                  title: 'Tags',
-                },
-                {
-                  key: `${key}-followers`,
-                  title: 'Followers',
-                },
-              ]
-            : undefined,
+          include?.length === 1 && include[0] === TERM_ALL
+            ? undefined
+            : [
+                ...(include?.map((inc) => ({
+                  key: `${key}-${inc}`,
+                  title: startCase(inc),
+                  data: true,
+                })) || []),
+                ...(exclude?.map((ex) => ({
+                  key: `${key}-${ex}`,
+                  title: startCase(ex),
+                  data: false,
+                })) || []),
+              ],
       };
     });
   };
@@ -227,7 +218,7 @@ const ActivityFeedSettingsPage: React.FC = () => {
             );
           }}
           onChange={handleExpandStateChange}>
-          {map(eventFilters, ({ entityType }) => (
+          {map(eventFilters, ({ entityType, filters }) => (
             <>
               {entityType !== TERM_ALL ? (
                 <Collapse.Panel
@@ -255,7 +246,7 @@ const ActivityFeedSettingsPage: React.FC = () => {
                     checkable
                     defaultCheckedKeys={checkedKeys}
                     key={entityType}
-                    treeData={generateTreeData(entityType, formData)}
+                    treeData={generateTreeData(entityType, filters)}
                     onCheck={(keys) =>
                       handleTreeCheckChange(keys as Key[], entityType)
                     }
