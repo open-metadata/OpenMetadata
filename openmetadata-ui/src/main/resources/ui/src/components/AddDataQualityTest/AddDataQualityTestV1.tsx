@@ -97,7 +97,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       },
       {
         name: getEntityName(table),
-        url: getTableTabPath(fullyQualifiedName),
+        url: getTableTabPath(entityTypeFQN, 'profiler'),
       },
     ];
 
@@ -105,7 +105,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       const colVal = [
         {
           name: getNameFromFQN(entityTypeFQN),
-          url: getTableTabPath(fullyQualifiedName),
+          url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {
           name: 'Add Column Test',

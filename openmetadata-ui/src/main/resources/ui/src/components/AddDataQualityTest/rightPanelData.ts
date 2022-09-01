@@ -15,7 +15,7 @@
 export const TEST_FORM_DATA = [
   {
     title: 'Select/Create Test Suite',
-    body: 'To create a Table or Column level test for an entity, start by selecting the Test Suite. Select an existing test suite or create a new test suite.',
+    body: 'A Test Suite is a container consisting of multiple but related test cases. With a Test Suite, you can easily deploy a pipeline to execute the Test Cases. Start by selecting an existing test suite or create a new test suite to create a table or column level test for an entity.',
   },
   {
     title: 'Create Test Case',
