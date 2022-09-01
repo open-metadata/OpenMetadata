@@ -2,18 +2,19 @@
 title: Docker Volumes
 slug: /deployment/docker/volumes
 ---
-## Advance section
+## Docker Volumes
+Advance section
 
 Volumes provide the ability to connect specific filesystem paths of the container back to the host machine. If a directory or a file in the container is mounted, changes in that directory  or file can also be seen on the host machine.we are going to use a mapping of a directory present on the host macine with the container path.
 
 ## Volumes for MYSQL container:
-Following are the changes we have to do while mounting the directory for mysql in OpenMetadata
-- Create a directory to keep your MySQL data or files in the host machine
+Following are the changes we have to do while mounting the directory for mysql in OpenMetadata.
+- Create a directory to keep your MySQL data or files in the host machine.
 ```commandline
 mkdir -p /opt/openmetadata/db
 ```
 - Update or add the volume in the docker-compose.yml file
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/x.x.x-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.11.5-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -33,13 +34,13 @@ services:
         ipv4_address: 172.16.240.10
 ```
 ## Volumes for PostgreSQL container:
-Following are the changes we have to do while mounting the directory for postgressql in OpenMetadata
-- Create a directory to keep your PostgresSQL data or files in the host machine
+Following are the changes we have to do while mounting the directory for postgresql in OpenMetadata.
+- Create a directory to keep your PostgreSQL data or files in the host machine.
 ```commandline
 mkdir -p /opt/openmetadata/db
 ```
-- Update or add the volume in the docker-compose.yml file
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/x.x.x-release/docker-compose.yml) .
+- Update or add the volume in the docker-compose.yml file.
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.11.5-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -65,14 +66,12 @@ services:
 
 ## Volumes for ingestion container
 Following are the changes we have to do while mounting the directory for ingestion in OpenMetadata. Here we will maintaing different directory for dag_generated_configs, dags and secrets.
-- Create a directory to keep your ingestion data or files in the host machine
+- Create a directory to keep your ingestion data or files in the host machine.
 ```commandline
-mkdir -p /opt/openmetadata/dag_config
-mkdir -p /opt/openmetadata/dags
-mkdir -p /opt/openmetadata/secrets
+mkdir -p /opt/openmetadata/dag_config /opt/openmetadata/dags /opt/openmetadata/secrets
 ```
-- Update or add the volume in the docker-compose.yml file
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/x.x.x-release/docker-compose.yml) .
+- Update or add the volume in the docker-compose.yml file.
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.11.5-release/docker-compose.yml) .
 
 Once these changes are done in the docker-compose.yml file It should look simlarly in the below format
 
@@ -120,14 +119,14 @@ docker compose down && docker compose up -d
 ```
 
 ## Advanced Section for Named Volumes
-We can also use the Named Volumes with the Openmetadata Services in the `docker-compoe` file it self.
-Exxample: 
+We can also use the Named Volumes with the Openmetadata Services in the `docker-compose` file it self.
+Example: 
 
 Named Volume for MYSQL
 ```commandline
 version: "3.9"
 volumes:
-  dbdata::
+  dbdata:
 services:
   mysql:
     container_name: openmetadata_mysql
