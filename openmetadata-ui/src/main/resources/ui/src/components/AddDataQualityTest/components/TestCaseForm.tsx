@@ -98,7 +98,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const GenerateParamsField = useCallback(() => {
     const selectedDefinition = getSelectedTestDefinition();
     if (selectedDefinition && selectedDefinition.parameterDefinition) {
-      const name = selectedDefinition.parameterDefinition[0].name;
+      const name = selectedDefinition.parameterDefinition[0]?.name;
       if (name === 'sqlExpression') {
         return (
           <Row>

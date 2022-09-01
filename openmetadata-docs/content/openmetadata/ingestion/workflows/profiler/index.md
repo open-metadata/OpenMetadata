@@ -56,7 +56,7 @@ regex expression to filter tables.
 Sampling percentage to apply for profiling tables.
 
 **Thread Count**
-Number of thread to use when computing metrics for the profiler
+Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
 
 **Ingest Sample Data**
 Whether the profiler should ingest sample data

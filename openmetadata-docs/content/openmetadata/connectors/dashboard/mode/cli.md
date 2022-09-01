@@ -51,32 +51,38 @@ source:
   serviceName: local_mode
   serviceConnection:
     config:
+      type: Mode
       access_token: access_token
       access_token_password: access_token_password
       workspace_name: workspace_name
-      type: Mode
   sourceConfig:
     config:
-      chartFilterPattern:
-        includes:
-          - Gross Margin %
-          - Total Defect*
-          - "Number"
-        excludes:
-          - Total Revenue
-      dashboardFilterPattern:
-        includes:
-          - Supplier Quality Analysis Sample
-          - "Customer"
-      dbServiceNames: [local_redshift]
+      type: DashboardMetadata
+      # dbServiceNames:
+      #   - service1
+      #   - service2
+      # dashboardFilterPattern:
+      #   includes:
+      #     - dashboard1
+      #     - dashboard2
+      #   excludes:
+      #     - dashboard3
+      #     - dashboard4
+      # chartFilterPattern:
+      #   includes:
+      #     - chart1
+      #     - chart2
+      #   excludes:
+      #     - chart3
+      #     - chart4
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
-
 ```
 
 #### Source Configuration - Service Connection
