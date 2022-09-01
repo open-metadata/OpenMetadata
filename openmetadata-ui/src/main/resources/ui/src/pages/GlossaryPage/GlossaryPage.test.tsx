@@ -241,17 +241,10 @@ describe('Test GlossaryComponent page', () => {
     fireEvent.click(handleAddGlossaryTermClick);
     fireEvent.click(handleChildLoading);
     fireEvent.click(handleExpandedKey);
-    act(() => {
-      fireEvent.click(handleGlossaryDelete);
-    });
+    fireEvent.click(handleGlossaryDelete);
 
-    act(() => {
-      fireEvent.click(handleGlossaryTermUpdate);
-    });
-
-    act(() => {
-      fireEvent.click(handleGlossaryTermDelete);
-    });
+    fireEvent.click(handleGlossaryTermUpdate);
+    fireEvent.click(handleGlossaryTermDelete);
 
     fireEvent.click(handleSearchText);
   });

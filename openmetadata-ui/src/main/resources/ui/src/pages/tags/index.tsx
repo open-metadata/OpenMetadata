@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Divider, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
@@ -66,7 +66,7 @@ import {
   getTagPath,
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
@@ -444,35 +444,32 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <CardV1 id="tags" style={{ border: '0px' }}>
-        <>
+        <div>
           <div className="tw-flex tw-justify-between tw-items-center">
-            <span
-              className="tw-heading tw-text-base tw-my-0"
-              style={{ fontSize: '14px' }}>
-              Tag Categories
-            </span>
-            <Tooltip
-              title={
-                createCategoryPermission
-                  ? 'Add Category'
-                  : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className="tw-px-2 "
-                data-testid="add-category"
-                disabled={!createCategoryPermission}
-                size="small"
-                type="primary"
-                onClick={() => {
-                  setIsAddingCategory((prevState) => !prevState);
-                  setErrorDataCategory(undefined);
-                }}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
-            </Tooltip>
+            <h6 className="tw-heading tw-text-base">Tag Categories</h6>
           </div>
 
-          <Divider style={{ margin: '8px 0 8px 0' }} />
+          <div>
+            <div className="tw-mb-3">
+              <Tooltip
+                title={
+                  createCategoryPermission
+                    ? 'Add Category'
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <button
+                  className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                  disabled={!createCategoryPermission}
+                  onClick={() => {
+                    setIsAddingCategory((prevState) => !prevState);
+                    setErrorDataCategory(undefined);
+                  }}>
+                  <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                  <span>Add Tag</span>
+                </button>
+              </Tooltip>
+            </div>
+          </div>
 
           {categories &&
             categories.map((category: TagCategory) => (
@@ -503,7 +500,7 @@ const TagsPage = () => {
                 )}
               </div>
             ))}
-        </>
+        </div>
       </CardV1>
     );
   };

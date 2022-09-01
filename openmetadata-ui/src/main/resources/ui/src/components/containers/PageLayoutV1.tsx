@@ -38,7 +38,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Row className={className} gutter={[16, 16]} style={pageContainerStyles}>
       {leftPanel && (
-        <Col flex="284px">
+        <Col flex="284px" id="left-panelV1">
           <div
             className={classNames(
               { 'page-layout-v1-left-panel': defaultLeftPanelStyle },
@@ -59,7 +59,11 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         }>
         {children}
       </Col>
-      {rightPanel && <Col flex="284px">{rightPanel}</Col>}
+      {rightPanel && (
+        <Col flex="284px" id="right-panelV1">
+          {rightPanel}
+        </Col>
+      )}
     </Row>
   );
 };

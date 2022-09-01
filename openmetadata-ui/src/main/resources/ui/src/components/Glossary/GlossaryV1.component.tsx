@@ -318,7 +318,7 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-h-full tw-px-1" id="glossary-left-panel">
+      <div className="tw-h-full" id="glossary-left-panel">
         <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
             <h6 className="tw-heading tw-text-base">Glossary</h6>
@@ -387,7 +387,7 @@ const GlossaryV1 = ({
   }, [selectedData]);
 
   return glossaryList.length ? (
-    <PageLayoutV1 leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1 defaultLeftPanelStyle={false} leftPanel={fetchLeftPanel()}>
       <div
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
@@ -407,7 +407,7 @@ const GlossaryV1 = ({
                 : NO_PERMISSION_FOR_ACTION
             }>
             <ButtonAntd
-              className="tw-h-8 tw-rounded tw-mb-1 tw-mr-2"
+              className="tw-h-8 tw-rounded tw-mr-2"
               data-testid="add-new-tag-button"
               disabled={!createGlossaryTermPermission}
               type="primary"
@@ -436,7 +436,7 @@ const GlossaryV1 = ({
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
-                className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-mb-1 tw-flex"
+                className="tw-rounded tw-justify-center tw-w-8 tw-h-8 glossary-manage-button tw-flex"
                 data-testid="manage-button"
                 disabled={!glossaryPermission.Delete}
                 size="small"
