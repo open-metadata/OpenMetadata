@@ -12,18 +12,22 @@
  */
 
 import { Space } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
 import React, {
   FC,
   Fragment,
   HTMLAttributes,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import Select, { SingleValue } from 'react-select';
 import { getPipelineStatus } from '../../axiosAPIs/pipelineAPI';
 import { Pipeline, PipelineStatus } from '../../generated/entity/data/pipeline';
+import jsonData from '../../jsons/en';
 import { STATUS_OPTIONS } from '../../utils/PipelineDetailsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import ExecutionStrip from '../ExecutionStrip/ExecutionStrip';
 import CustomOption from './CustomOption';
@@ -49,6 +53,12 @@ const PipelineStatusList: FC<Prop> = ({
   const [selectedFilter, setSelectedFilter] = useState<string>();
   const [executions, setExecutions] = useState<Array<PipelineStatus>>([]);
 
+  const filteredExecutions = useMemo(() => {
+    return executions.filter((execution) =>
+      selectedFilter ? execution.executionStatus === selectedFilter : true
+    );
+  }, [selectedFilter, executions]);
+
   const handleOnChange = (
     value: SingleValue<unknown>,
     { action }: { action: string }
@@ -62,8 +72,15 @@ const PipelineStatusList: FC<Prop> = ({
   };
 
   const fetchPipelineStatus = async () => {
-    const statusList = await getPipelineStatus(pipelineFQN);
-    setExecutions(statusList);
+    try {
+      const response = await getPipelineStatus(pipelineFQN);
+      setExecutions(response.data);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-pipeline-status-error']
+      );
+    }
   };
 
   useEffect(() => {
@@ -99,22 +116,14 @@ const PipelineStatusList: FC<Prop> = ({
           </div>
           {!isEmpty(executions) ? (
             <Space size={2}>
-              {executions
-                .filter((execution) =>
-                  selectedFilter
-                    ? execution.executionStatus === selectedFilter
-                    : true
-                )
-                .map((execution) => (
-                  <Fragment
-                    key={`${execution.timestamp}${execution.executionStatus}`}>
-                    <ExecutionStrip
-                      executions={execution as PipelineStatus}
-                      selectedExecution={selectedExec}
-                      onSelectExecution={onSelectExecution}
-                    />
-                  </Fragment>
-                ))}
+              {filteredExecutions.map((execution) => (
+                <ExecutionStrip
+                  executions={execution as PipelineStatus}
+                  key={`${execution.timestamp}${execution.executionStatus}`}
+                  selectedExecution={selectedExec}
+                  onSelectExecution={onSelectExecution}
+                />
+              ))}
             </Space>
           ) : (
             <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">

@@ -45,13 +45,16 @@ jest.mock('../ExecutionStrip/ExecutionStrip', () => {
 
 jest.mock('../../axiosAPIs/pipelineAPI', () => ({
   getPipelineStatus: jest.fn().mockImplementation(() =>
-    Promise.resolve([
-      {
-        executionDate: 1649669589,
-        executionStatus: 'Successful',
-        name: 'dim_address_task',
-      },
-    ])
+    Promise.resolve({
+      data: [
+        {
+          executionDate: 1649669589,
+          executionStatus: 'Successful',
+          name: 'dim_address_task',
+        },
+      ],
+      paging: 1,
+    })
   ),
 }));
 
