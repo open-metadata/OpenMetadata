@@ -290,11 +290,6 @@ class Profiler(Generic[TMetric]):
 
     def _prepare_column_metrics_for_thread_pool(self):
         """prepare column metrics for thread pool"""
-        window_metrics = [
-            metric
-            for metric in self.get_col_metrics(self.static_metrics)
-            if metric.is_window_metric()
-        ]
         columns = [
             column
             for column in self.columns
