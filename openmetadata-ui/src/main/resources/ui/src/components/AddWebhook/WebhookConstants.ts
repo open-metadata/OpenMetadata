@@ -34,19 +34,19 @@ export const EVENT_FILTERS_DEFAULT_VALUE = {
   filters: [
     {
       eventType: 'entityCreated',
-      fields: ['all'],
+      include: ['all'],
     },
     {
       eventType: 'entityUpdated',
-      fields: ['all'],
+      include: ['all'],
     },
     {
       eventType: 'entityDeleted',
-      fields: ['all'],
+      include: ['all'],
     },
     {
       eventType: 'entitySoftDeleted',
-      fields: ['all'],
+      include: ['all'],
     },
   ],
 } as EventFilter;

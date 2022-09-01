@@ -3,19 +3,19 @@ import { Filters } from '../../generated/settings/settings';
 export const formData = [
   {
     eventType: 'entityCreated',
-    fields: [],
+    include: [],
   },
   {
     eventType: 'entityUpdated',
-    fields: [],
+    include: [],
   },
   {
     eventType: 'entitySoftDeleted',
-    fields: [],
+    include: [],
   },
   {
     eventType: 'entityDeleted',
-    fields: [],
+    include: [],
   },
 ] as Filters[];
 
