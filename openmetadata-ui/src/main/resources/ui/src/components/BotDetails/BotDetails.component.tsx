@@ -34,6 +34,7 @@ import {
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -79,7 +80,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
   const [botPermission, setBotPermission] = useState<OperationPermission>(
-    {} as OperationPermission
+    DEFAULT_ENTITY_PERMISSION
   );
 
   const editAllPermission = useMemo(
