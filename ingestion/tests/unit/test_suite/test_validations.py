@@ -614,7 +614,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableCustomSQLQuery"](
+        res = validation_enum_registry.registry["tableCustomSQLQuery"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
@@ -636,7 +636,7 @@ class testSuiteValidation(unittest.TestCase):
             ],
         )
 
-        res = validation_enum_registry.registry["TableCustomSQLQuery"](
+        res = validation_enum_registry.registry["tableCustomSQLQuery"](
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,

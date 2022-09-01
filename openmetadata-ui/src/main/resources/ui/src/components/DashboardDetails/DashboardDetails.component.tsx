@@ -177,7 +177,9 @@ const DashboardDetails = ({
   );
 
   useEffect(() => {
-    fetchResourcePermission();
+    if (dashboardDetails.id) {
+      fetchResourcePermission();
+    }
   }, [dashboardDetails.id]);
 
   const onEntityFieldSelect = (value: string) => {
