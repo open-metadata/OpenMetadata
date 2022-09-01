@@ -22,6 +22,9 @@ from typing import List, Optional, Set, Tuple
 import click
 from pydantic import ValidationError
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -195,6 +198,9 @@ class TestSuiteWorkflow:
         Args:
             entity: table entity
         """
+        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
+        if entity.serviceType != DatabaseServiceType.BigQuery:
+            return None
         if entity.tablePartition:
             if entity.tablePartition.intervalType in {
                 IntervalType.TIME_UNIT,

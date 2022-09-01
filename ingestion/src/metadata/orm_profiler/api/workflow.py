@@ -210,6 +210,7 @@ class ProfilerWorkflow:
         Args:
             entity: table entity
         """
+        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
         if entity.serviceType != DatabaseServiceType.BigQuery:
             return None
         entity_config: TableConfig = self.get_config_for_entity(entity)
