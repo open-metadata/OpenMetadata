@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Tooltip } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -29,10 +30,12 @@ const ListEntities = ({
   list,
   type,
   onDelete,
+  hasAccess,
 }: {
   list: EntityReference[];
   type: EntityType;
   onDelete: (record: EntityReference) => void;
+  hasAccess: boolean;
 }) => {
   const columns: ColumnsType<EntityReference> = useMemo(() => {
     return [
@@ -82,12 +85,21 @@ const ListEntities = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Button
-              data-testid={`remove-action-${getEntityName(record)}`}
-              type="text"
-              onClick={() => onDelete(record)}>
-              <SVGIcons alt="remove" icon={Icons.ICON_REMOVE} title="Remove" />
-            </Button>
+            <Tooltip
+              placement="bottomRight"
+              title={hasAccess ? 'Remove' : NO_PERMISSION_FOR_ACTION}>
+              <Button
+                data-testid={`remove-action-${getEntityName(record)}`}
+                disabled={!hasAccess}
+                type="text"
+                onClick={() => onDelete(record)}>
+                <SVGIcons
+                  alt="remove"
+                  icon={Icons.ICON_REMOVE}
+                  title="Remove"
+                />
+              </Button>
+            </Tooltip>
           );
         },
       },
