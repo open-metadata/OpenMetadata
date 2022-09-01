@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Row, Space, Table, Tooltip } from 'antd';
+import { Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
@@ -19,11 +19,12 @@ import React, { useMemo, useState } from 'react';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
 import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import SVGIcons from '../../../utils/SvgUtils';
 import { getTestResultBadgeIcon } from '../../../utils/TableUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
+import TestActions from './TestActions';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -32,6 +33,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 }) => {
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
   const [editTestCase, setEditTestCase] = useState<TestCase>();
+
   const columns: ColumnsType<TestCase> = useMemo(() => {
     return [
       {
@@ -75,47 +77,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         width: 100,
-        render: (_, record) => (
-          <Row align="middle">
-            <Tooltip placement="bottom" title="Delete">
-              <Button
-                className="flex-center"
-                icon={
-                  <SVGIcons
-                    alt="Delete"
-                    className="tw-h-4"
-                    icon={Icons.DELETE}
-                  />
-                }
-                type="text"
-                onClick={(e) => {
-                  // preventing expand/collapse on click of delete button
-                  e.stopPropagation();
-                  setSelectedTestCase(record);
-                }}
-              />
-            </Tooltip>
-            <Tooltip placement="bottom" title="Edit">
-              <Button
-                className="flex-center"
-                icon={
-                  <SVGIcons
-                    alt="edit"
-                    className="tw-h-4"
-                    icon={Icons.EDIT}
-                    title="Edit"
-                  />
-                }
-                type="text"
-                onClick={(e) => {
-                  // preventing expand/collapse on click of edit button
-                  e.stopPropagation();
-                  setEditTestCase(record);
-                }}
-              />
-            </Tooltip>
-          </Row>
-        ),
+        render: (_, record) => {
+          return (
+            <TestActions
+              record={record}
+              onTestEdit={(data) => setEditTestCase(data)}
+              onTestSelect={(data) => setSelectedTestCase(data)}
+            />
+          );
+        },
       },
     ];
   }, []);

@@ -19,13 +19,7 @@ import { Paging } from '../../generated/type/paging';
 import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
-const TestCasesTab = ({
-  testCases,
-  testCasesPaging,
-  currentPage,
-  onTestUpdate,
-  testCasePageHandler,
-}: {
+interface TestCasesTabProps {
   testCases: Array<TestCase>;
   testCasesPaging: Paging;
   currentPage: number;
@@ -34,7 +28,15 @@ const TestCasesTab = ({
     cursorValue: string | number,
     activePage?: number | undefined
   ) => void;
-}) => {
+}
+
+const TestCasesTab = ({
+  testCases,
+  testCasesPaging,
+  currentPage,
+  onTestUpdate,
+  testCasePageHandler,
+}: TestCasesTabProps) => {
   const sortedTestCases = orderBy(testCases || [], ['name'], 'asc');
 
   return (

@@ -28,6 +28,11 @@ import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
 import TestCasesTab from '../../components/TestCasesTab/TestCasesTab.component';
 import TestSuiteDetails from '../../components/TestSuiteDetails/TestSuiteDetails.component';
 import TestSuitePipelineTab from '../../components/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -47,11 +52,13 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
+  const { getEntityPermission } = usePermissionProvider();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
@@ -60,6 +67,8 @@ const TestSuiteDetailsPage = () => {
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [testCasesPaging, setTestCasesPaging] = useState<Paging>(pagingObject);
+  const [testSuitePermissions, setTestSuitePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -96,6 +105,18 @@ const TestSuiteDetailsPage = () => {
 
   const descriptionHandler = (value: boolean) => {
     setIsDescriptionEditable(value);
+  };
+
+  const fetchTestSuitePermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.TEST_SUITE,
+        testSuite?.id as string
+      );
+      setTestSuitePermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchTestCases = async (param?: ListTestCaseParams, limit?: number) => {
@@ -257,6 +278,12 @@ const TestSuiteDetailsPage = () => {
     fetchTestSuiteByName();
   }, []);
 
+  useEffect(() => {
+    if (testSuite?.id) {
+      fetchTestSuitePermission();
+    }
+  }, [testSuite]);
+
   return (
     <PageContainer>
       <Row className="tw-px-6 tw-w-full">
@@ -269,6 +296,7 @@ const TestSuiteDetailsPage = () => {
             handleUpdateOwner={onUpdateOwner}
             isDeleteWidgetVisible={isDeleteWidgetVisible}
             isDescriptionEditable={isDescriptionEditable}
+            permissions={testSuitePermissions}
             slashedBreadCrumb={slashedBreadCrumb}
             testSuite={testSuite}
             testSuiteDescription={testSuiteDescription}
