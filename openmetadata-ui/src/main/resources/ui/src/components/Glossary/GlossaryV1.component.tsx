@@ -321,12 +321,12 @@ const GlossaryV1 = ({
       <div className="tw-h-full" id="glossary-left-panel">
         <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
-            <h6 className="tw-heading tw-text-base">Glossary</h6>
+            <h6 className="tw-heading tw-text-sm tw-font-semibold">Glossary</h6>
           </div>
           <div>
             {treeData.length ? (
               <Fragment>
-                <div className="tw-px-3 tw-mb-3">
+                <div className="tw-px-3 tw-mb-2">
                   <Searchbar
                     showLoadingStatus
                     placeholder="Search term..."
@@ -341,7 +341,7 @@ const GlossaryV1 = ({
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <button
-                      className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                      className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}

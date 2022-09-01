@@ -27,7 +27,6 @@ import {
   updateTag,
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
-import CardV1 from '../../components/common/Card/CardV1';
 import Description from '../../components/common/description/Description';
 import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -443,13 +442,17 @@ const TagsPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <CardV1 id="tags" style={{ border: '0px' }}>
-        <div>
-          <div className="tw-flex tw-justify-between tw-items-center">
-            <h6 className="tw-heading tw-text-base">Tag Categories</h6>
-          </div>
-
-          <div>
+      <div
+        className="tw-h-full"
+        data-testid="data-summary-container"
+        id="tags-left-panel">
+        <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
+          <div className="tw-px-3">
+            <div className="tw-flex tw-justify-between tw-items-center">
+              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+                Tag Categories
+              </h6>
+            </div>
             <div className="tw-mb-3">
               <Tooltip
                 title={
@@ -459,6 +462,7 @@ const TagsPage = () => {
                 }>
                 <button
                   className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                  data-testid="add-category"
                   disabled={!createCategoryPermission}
                   onClick={() => {
                     setIsAddingCategory((prevState) => !prevState);
@@ -474,7 +478,7 @@ const TagsPage = () => {
           {categories &&
             categories.map((category: TagCategory) => (
               <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
                   category.name,
                   currentCategory?.name
                 )}`}
@@ -501,7 +505,7 @@ const TagsPage = () => {
               </div>
             ))}
         </div>
-      </CardV1>
+      </div>
     );
   };
 
