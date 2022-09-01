@@ -26,6 +26,9 @@ from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeType,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -55,6 +58,7 @@ from metadata.utils.constants import TEN_MIN
 from metadata.utils.dispatch import enum_register
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import sqa_interface_registry_logger
+from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 from metadata.utils.timeout import cls_timeout
 
 logger = sqa_interface_registry_logger()
@@ -89,6 +93,7 @@ class SQAInterface(InterfaceProtocol):
 
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()
+        self.set_session_tag(service_connection_config)
 
         self.profile_sample = profile_sample
         self.profile_query = profile_query
@@ -128,6 +133,23 @@ class SQAInterface(InterfaceProtocol):
         """
         engine = get_connection(service_connection_config)
         return create_and_bind_thread_safe_session(engine)
+
+    def set_session_tag(self, service_connection_config):
+        """
+        Set session query tag
+        Args:
+            service_connection_config: connection details for the specific service
+        """
+        if (
+            service_connection_config.type.value == SnowflakeType.Snowflake.value
+            and hasattr(service_connection_config, "queryTag")
+            and service_connection_config.queryTag
+        ):
+            self.session.execute(
+                SNOWFLAKE_SESSION_TAG_QUERY.format(
+                    query_tag=service_connection_config.queryTag
+                )
+            )
 
     def _get_engine(self, service_connection_config):
         """Get engine for database
@@ -248,8 +270,11 @@ class SQAInterface(InterfaceProtocol):
             sample=sample,
         )
 
-        if column is not None:
+        try:
             column = column.name
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception computing metrics: {exc}")
 
         return row, column
 
