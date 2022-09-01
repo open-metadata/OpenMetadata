@@ -478,8 +478,9 @@ const PipelineDetails = ({
                     )}
                   </div>
                   <hr className="tw-my-3" />
-                  <div>
+                  <div className="tw-px-6">
                     <PipelineStatusList
+                      pipelineFQN={pipelineFQN}
                       pipelineStatus={pipelineStatus}
                       selectedExec={selectedExecution}
                       onSelectExecution={(exec) => {

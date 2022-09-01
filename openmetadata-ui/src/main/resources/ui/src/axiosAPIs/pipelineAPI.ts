@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Pipeline } from '../generated/entity/data/pipeline';
+import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
@@ -120,4 +120,14 @@ export const patchPipelineDetails = async (id: string, data: Operation[]) => {
   );
 
   return response.data;
+};
+
+export const getPipelineStatus = async (fqn: string) => {
+  const url = `/pipelines/${fqn}/status`;
+
+  const response = await await APIClient.get<
+    AxiosResponse<Array<PipelineStatus>>
+  >(url);
+
+  return response.data.data;
 };
