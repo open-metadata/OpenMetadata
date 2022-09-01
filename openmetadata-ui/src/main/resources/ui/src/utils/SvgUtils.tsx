@@ -22,6 +22,7 @@ import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
+import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -347,6 +348,7 @@ export const Icons = {
   IC_EDIT_PRIMARY: 'ic-edit-primary',
   MSTEAMS: 'msteams',
   MSTEAMS_GREY: 'msteams-grey',
+  ALL_ACTIVITY: 'all-activity',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -1013,6 +1015,11 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TEST_SUITE:
       IconComponent = IconTestSuite;
+
+      break;
+
+    case Icons.ALL_ACTIVITY:
+      IconComponent = IconAllActivity;
 
       break;
     default:

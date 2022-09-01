@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isNil } from 'lodash';
+import { isNil } from 'lodash';
 import moment from 'moment';
 import React, {
   FC,
@@ -79,14 +79,11 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [selectedExpiry, setSelectedExpiry] = useState('7');
 
   const editAllPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.EditAll, ResourceEntity.BOT, permissions),
+    () => checkPermission(Operation.EditAll, ResourceEntity.BOT, permissions),
     [permissions]
   );
   const displayNamePermission = useMemo(
     () =>
-      !isEmpty(permissions) &&
       checkPermission(
         Operation.EditDisplayName,
         ResourceEntity.BOT,
@@ -97,7 +94,6 @@ const BotDetails: FC<BotsDetailProp> = ({
 
   const descriptionPermission = useMemo(
     () =>
-      !isEmpty(permissions) &&
       checkPermission(
         Operation.EditDescription,
         ResourceEntity.BOT,
