@@ -1,5 +1,8 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { Filters } from '../../generated/settings/settings';
+import { getDiffArray } from '../../utils/CommonUtils';
+
+const entityUpdatedFields = ['description', 'owner', 'tags', 'followers'];
 
 export const getPayloadFromSelected = (
   selectedOptions: Record<string, string[]>,
@@ -25,7 +28,8 @@ export const getPayloadFromSelected = (
               ...valueAcc,
               {
                 eventType: selected[1],
-                fields: ['all'],
+                include: ['all'],
+                exclude: [],
               },
             ];
           } else {
@@ -39,11 +43,14 @@ export const getPayloadFromSelected = (
     resultArr.push(...arr[0]);
 
     if (!isUndefined(nonUpdatedFields) && !isEmpty(nonUpdatedFields)) {
+      const selectedUpdatedData = nonUpdatedFields.filter(
+        (name) => !isUndefined(name) || (!isEmpty(name) && name)
+      );
+
       resultArr.push({
         eventType: 'entityUpdated',
-        fields: nonUpdatedFields.filter(
-          (name) => !isUndefined(name) || (!isEmpty(name) && name)
-        ),
+        include: selectedUpdatedData,
+        exclude: getDiffArray(entityUpdatedFields, selectedUpdatedData),
       });
     }
 
