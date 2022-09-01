@@ -31,11 +31,9 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, requiredField } from '../../utils/CommonUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -47,7 +45,10 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
@@ -66,7 +67,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   updateBotsDetails,
   revokeTokenHandler,
 }) => {
-  const { permissions } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
@@ -77,34 +78,35 @@ const BotDetails: FC<BotsDetailProp> = ({
     useState<boolean>(false);
   const [generateToken, setGenerateToken] = useState<boolean>(false);
   const [selectedExpiry, setSelectedExpiry] = useState('7');
+  const [botPermission, setBotPermission] = useState<OperationPermission>(
+    {} as OperationPermission
+  );
 
   const editAllPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.EditAll, ResourceEntity.BOT, permissions),
-    [permissions]
+    () => !isEmpty(botPermission) && botPermission.EditAll,
+    [botPermission]
   );
   const displayNamePermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(
-        Operation.EditDisplayName,
-        ResourceEntity.BOT,
-        permissions
-      ),
-    [permissions]
+    () => !isEmpty(botPermission) && botPermission.EditDisplayName,
+    [botPermission]
   );
 
   const descriptionPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(
-        Operation.EditDescription,
-        ResourceEntity.BOT,
-        permissions
-      ),
-    [permissions]
+    () => !isEmpty(botPermission) && botPermission.EditDescription,
+    [botPermission]
   );
+
+  const fetchBotPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.BOT,
+        botsData.id
+      );
+      setBotPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const getJWTTokenExpiryOptions = () => {
     return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -483,6 +485,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   useEffect(() => {
     if (botsData.id) {
       fetchBotsToken();
+      fetchBotPermission();
     }
   }, [botsData]);
 
