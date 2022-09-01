@@ -12,10 +12,14 @@
  */
 
 import { Col } from 'antd';
-import { orderBy } from 'lodash';
-import React from 'react';
+import { isEmpty, orderBy } from 'lodash';
+import React, { useMemo } from 'react';
+import { Operation } from '../../generated/entity/policies/policy';
 import { TestCase } from '../../generated/tests/testCase';
 import { Paging } from '../../generated/type/paging';
+import { checkPermission } from '../../utils/PermissionsUtils';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
@@ -37,13 +41,22 @@ const TestCasesTab = ({
   onTestUpdate,
   testCasePageHandler,
 }: TestCasesTabProps) => {
+  const { permissions } = usePermissionProvider();
   const sortedTestCases = orderBy(testCases || [], ['name'], 'asc');
+
+  const createPermission = useMemo(() => {
+    return (
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.TEST_CASE, permissions)
+    );
+  }, [permissions]);
 
   return (
     <TestCaseCommonTabContainer
       isPaging
       buttonName="Add Test"
       currentPage={currentPage}
+      hasAccess={createPermission}
       paging={testCasesPaging}
       showButton={false}
       testCasePageHandler={testCasePageHandler}>
