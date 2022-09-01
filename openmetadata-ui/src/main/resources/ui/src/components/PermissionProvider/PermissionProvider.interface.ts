@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 
 export type UIPermission = {
@@ -65,7 +64,10 @@ export interface PermissionContextType {
   getEntityPermission: (
     resource: ResourceEntity,
     entityId: string
-  ) => Promise<OperationPermission | AxiosError>;
+  ) => Promise<OperationPermission>;
+  getResourcePermission: (
+    resource: ResourceEntity
+  ) => Promise<OperationPermission>;
 }
 
 export interface EntityPermissionMap {

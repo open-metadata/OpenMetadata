@@ -63,6 +63,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
@@ -111,6 +112,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth

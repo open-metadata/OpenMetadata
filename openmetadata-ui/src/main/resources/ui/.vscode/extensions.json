@@ -4,6 +4,7 @@
     "dbaeumer.vscode-eslint", // ESLint
     "stylelint.vscode-stylelint", // stylelint
     "esbenp.prettier-vscode", // Prettier - Code formatter
-    "Orta.vscode-jest" // Jest - Test Environment
+    "Orta.vscode-jest", // Jest - Test Environment
+    "streetsidesoftware.code-spell-checker" // Code spell checker
   ]
 }

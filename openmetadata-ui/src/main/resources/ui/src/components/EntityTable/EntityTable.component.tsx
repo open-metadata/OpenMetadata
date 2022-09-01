@@ -25,7 +25,6 @@ import React, {
   useState,
 } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -37,13 +36,10 @@ import {
   JoinedWith,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { useAuth } from '../../hooks/authHooks';
 import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 import {
-  getHtmlForNonAdminAction,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
@@ -53,7 +49,6 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
-import { hasPemission } from '../../utils/PermissionsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
@@ -67,7 +62,6 @@ import {
   getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from '../../utils/TasksUtils';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -81,8 +75,8 @@ const EntityTable = ({
   tableColumns,
   searchText,
   onUpdate,
-  owner,
-  hasEditAccess,
+  hasDescriptionEditAccess,
+  hasTagEditAccess,
   joins,
   entityFieldThreads,
   isReadOnly = false,
@@ -91,8 +85,6 @@ const EntityTable = ({
   tableConstraints,
   entityFieldTasks,
 }: EntityTableProps) => {
-  const { isAdminUser, userPermissions } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
 
   const [searchedColumns, setSearchedColumns] = useState<ModifiedTableColumn[]>(
@@ -309,11 +301,6 @@ const EntityTable = ({
     return searchedValue;
   };
 
-  const checkPermission = () =>
-    isAdminUser ||
-    hasEditAccess ||
-    isAuthDisabled ||
-    hasPemission(Operation.EditDescription, EntityType.TABLE, userPermissions);
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const getColumnName = (cell: any) => {
     const fqn = cell?.fullyQualifiedName || '';
@@ -582,7 +569,7 @@ const EntityTable = ({
             <div className="tw-flex tw--mt-2">
               {!isReadOnly ? (
                 <Fragment>
-                  {checkPermission() && (
+                  {hasDescriptionEditAccess && (
                     <>
                       <button
                         className="tw-self-start tw-w-8 tw-h-8 tw-ml-1 focus:tw-outline-none tw-flex-none hover-cell-icon"
@@ -726,28 +713,22 @@ const EntityTable = ({
                 }
               }
             }}>
-            <NonAdminAction
-              html={getHtmlForNonAdminAction(Boolean(owner))}
-              isOwner={hasEditAccess}
-              permission={Operation.EditTags}
-              position="left"
-              trigger="click">
-              <TagsContainer
-                showAddTagButton
-                editable={editColumnTag?.index === index}
-                isLoading={isTagLoading && editColumnTag?.index === index}
-                selectedTags={record?.tags || []}
-                size="small"
-                tagList={allTags}
-                type="label"
-                onCancel={() => {
-                  handleTagSelection();
-                }}
-                onSelectionChange={(tags) => {
-                  handleTagSelection(tags, record?.name);
-                }}
-              />
-            </NonAdminAction>
+            <TagsContainer
+              editable={editColumnTag?.index === index}
+              isLoading={isTagLoading && editColumnTag?.index === index}
+              selectedTags={record?.tags || []}
+              showAddTagButton={hasTagEditAccess}
+              size="small"
+              tagList={allTags}
+              type="label"
+              onCancel={() => {
+                handleTagSelection();
+              }}
+              onSelectionChange={(tags) => {
+                handleTagSelection(tags, record?.name);
+              }}
+            />
+
             <div className="tw-mt-1 tw-flex">
               {getRequestTagsElement(record)}
               {getFieldThreadElement(

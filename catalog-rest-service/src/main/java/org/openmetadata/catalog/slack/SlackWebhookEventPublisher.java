@@ -24,8 +24,8 @@ public class SlackWebhookEventPublisher extends WebhookPublisher {
     super(webhook, dao);
     String slackWebhookURL = webhook.getEndpoint().toString();
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-    clientBuilder.connectTimeout(10, TimeUnit.SECONDS);
-    clientBuilder.readTimeout(12, TimeUnit.SECONDS);
+    clientBuilder.connectTimeout(webhook.getTimeout(), TimeUnit.SECONDS);
+    clientBuilder.readTimeout(webhook.getReadTimeout(), TimeUnit.SECONDS);
     client = clientBuilder.build();
     target = client.target(slackWebhookURL).request();
   }

@@ -498,14 +498,13 @@ const PoliciesDetailPage = () => {
                               </Typography.Text>
                             </Space>
                             {rule.condition && (
-                              <Space
-                                data-testid="condition"
-                                direction="vertical"
-                                size={4}>
+                              <Space direction="vertical" size={4}>
                                 <Typography.Text className="tw-text-grey-muted">
                                   Condition:
                                 </Typography.Text>
-                                <code>{rule.condition}</code>
+                                <code data-testid="condition">
+                                  {rule.condition}
+                                </code>
                               </Space>
                             )}
                           </Space>

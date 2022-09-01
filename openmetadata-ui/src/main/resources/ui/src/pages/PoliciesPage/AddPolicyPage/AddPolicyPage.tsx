@@ -33,7 +33,6 @@ import { ADD_POLICY_TEXT } from '../../../constants/HelperTextUtil';
 import {
   CreatePolicy,
   Effect,
-  PolicyType,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
 import {
@@ -84,7 +83,6 @@ const AddPolicyPage = () => {
     const data: CreatePolicy = {
       name,
       description,
-      policyType: PolicyType.AccessControl,
       rules: [condition ? { ...rest, condition } : rest],
     };
 

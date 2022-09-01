@@ -25,6 +25,7 @@ import React, {
   FC,
   Fragment,
   HTMLAttributes,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -43,9 +44,12 @@ import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import jsonData from '../../jsons/en';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
@@ -55,6 +59,8 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
 interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
@@ -97,6 +103,30 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
+
+  const [mlModelPermissions, setPipelinePermissions] = useState(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermission } = usePermissionProvider();
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      const entityPermission = await getEntityPermission(
+        ResourceEntity.ML_MODEL,
+        mlModelDetail.id
+      );
+      setPipelinePermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        jsonData['api-error-messages']['fetch-entity-permissions-error']
+      );
+    }
+  }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
+
+  useEffect(() => {
+    fetchResourcePermission();
+  }, [mlModelDetail.id]);
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -184,16 +214,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         ]
       : []),
   ];
-
-  const hasEditAccess = () => {
-    if (mlModelDetail.owner?.type === 'user') {
-      return mlModelDetail.owner?.id === currentUser?.id;
-    } else {
-      return Boolean(
-        currentUser?.teams?.some((team) => team.id === mlModelDetail.owner?.id)
-      );
-    }
-  };
 
   const tabs = [
     {
@@ -434,7 +454,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
         data-testid="mlmodel-details">
         <EntityPageInfo
-          isTagEditable
+          canDelete={mlModelPermissions.Delete}
           deleted={mlModelDetail.deleted}
           entityFqn={mlModelDetail.fullyQualifiedName}
           entityId={mlModelDetail.id}
@@ -444,14 +464,24 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           followHandler={followMlModel}
           followers={followersCount}
           followersList={mlModelDetail.followers || []}
-          hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
+          isTagEditable={
+            mlModelPermissions.EditAll || mlModelPermissions.EditTags
+          }
           tags={mlModelTags}
           tagsHandler={onTagUpdate}
           tier={mlModelTier}
           titleLinks={slashedMlModelName}
-          updateOwner={onOwnerUpdate}
-          updateTier={onTierUpdate}
+          updateOwner={
+            mlModelPermissions.EditAll || mlModelPermissions.EditOwner
+              ? onOwnerUpdate
+              : undefined
+          }
+          updateTier={
+            mlModelPermissions.EditAll || mlModelPermissions.EditTier
+              ? onTierUpdate
+              : undefined
+          }
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
@@ -470,7 +500,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     entityFqn={mlModelDetail.fullyQualifiedName}
                     entityName={mlModelDetail.name}
                     entityType={EntityType.MLMODEL}
-                    hasEditAccess={hasEditAccess()}
+                    hasEditAccess={
+                      mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditDescription
+                    }
                     isEdit={isEdit}
                     isReadOnly={mlModelDetail.deleted}
                     owner={mlModelDetail.owner}
@@ -480,7 +513,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                   <MlModelFeaturesList
                     handleFeaturesUpdate={onFeaturesUpdate}
-                    hasEditAccess={hasEditAccess()}
+                    hasEditAccess={mlModelPermissions.ViewAll}
                     mlFeatures={mlModelDetail.mlFeatures}
                     owner={mlModelDetail.owner}
                   />
@@ -502,9 +535,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     entityLineage={lineageTabData.entityLineage}
                     entityLineageHandler={lineageTabData.entityLineageHandler}
                     entityType={EntityType.MLMODEL}
+                    hasEditAccess={
+                      mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditLineage
+                    }
                     isLoading={lineageTabData.isLineageLoading}
                     isNodeLoading={lineageTabData.isNodeLoading}
-                    isOwner={hasEditAccess()}
                     lineageLeafNodes={lineageTabData.lineageLeafNodes}
                     loadNodeHandler={lineageTabData.loadNodeHandler}
                     removeLineageHandler={lineageTabData.removeLineageHandler}

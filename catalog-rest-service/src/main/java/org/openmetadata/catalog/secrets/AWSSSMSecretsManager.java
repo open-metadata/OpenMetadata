@@ -15,7 +15,7 @@ package org.openmetadata.catalog.secrets;
 import static org.openmetadata.catalog.services.connections.metadata.SecretsManagerProvider.AWS_SSM;
 
 import com.google.common.annotations.VisibleForTesting;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
@@ -38,7 +38,7 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   }
 
   @Override
-  void initClientWithCredentials(String region, StaticCredentialsProvider staticCredentialsProvider) {
+  void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider) {
     this.ssmClient =
         SsmClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
   }

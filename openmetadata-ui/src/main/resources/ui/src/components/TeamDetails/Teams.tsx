@@ -11,9 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Switch } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { Button, Col, Empty, Row, Space, Switch, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import {
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
+} from '../../constants/HelperTextUtil';
 import { Team } from '../../generated/entity/teams/team';
+import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -36,6 +48,10 @@ const Teams: FC<TeamsProps> = ({
   onAddTeamClick,
   onTeamExpand,
 }) => {
+  const { getResourcePermission } = usePermissionProvider();
+  const [resourcePermissions, setResourcePermissions] =
+    useState<OperationPermission>();
+
   const filteredData = useMemo(
     () =>
       data.filter(
@@ -45,7 +61,23 @@ const Teams: FC<TeamsProps> = ({
     [data, showDeletedTeam]
   );
 
-  return (
+  const fetchPermissions = async () => {
+    try {
+      const perms = await getResourcePermission(ResourceEntity.TEAM);
+      setResourcePermissions(perms);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-user-permission-error']
+      );
+    }
+  };
+
+  useEffect(() => {
+    fetchPermissions();
+  }, []);
+
+  return resourcePermissions?.ViewAll ? (
     <Row className="team-list-container" gutter={[16, 16]}>
       <Col span={24}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
@@ -57,13 +89,28 @@ const Teams: FC<TeamsProps> = ({
             />
             <span>Deleted Teams</span>
           </Space>
-          <Button type="primary" onClick={() => onAddTeamClick(true)}>
-            Add Team
-          </Button>
+          <Tooltip
+            placement="bottom"
+            title={
+              resourcePermissions.Create ? 'Add Team' : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              disabled={!resourcePermissions.Create}
+              type="primary"
+              onClick={() => onAddTeamClick(true)}>
+              Add Team
+            </Button>
+          </Tooltip>
         </Space>
       </Col>
       <Col span={24}>
         <TeamHierarchy data={filteredData} onTeamExpand={onTeamExpand} />
+      </Col>
+    </Row>
+  ) : (
+    <Row align="middle" className="tw-h-full">
+      <Col span={24}>
+        <Empty description={NO_PERMISSION_TO_VIEW} />
       </Col>
     </Row>
   );

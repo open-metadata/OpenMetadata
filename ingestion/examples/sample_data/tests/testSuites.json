@@ -37,7 +37,7 @@
                     "name": "column_value_max_to_be_between",
                     "description": "test the value of a column is between x and y",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>",
-                    "testDefinitionName": "ColumnValueMaxToBeBetween",
+                    "testDefinitionName": "columnValueMaxToBeBetween",
                     "parameterValues": [
                         {
                             "name": "minValueForMaxInCol",
@@ -53,7 +53,7 @@
                     "name": "column_values_to_match_regex",
                     "description": "test value of a column match regex",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
-                    "testDefinitionName": "ColumnValuesToMatchRegex",
+                    "testDefinitionName": "columnValuesToMatchRegex",
                     "parameterValues": [
                         {
                             "name": "regex",
@@ -65,7 +65,7 @@
                     "name": "column_values_to_be_between",
                     "description": "test the number of column in table is between x and y",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
-                    "testDefinitionName": "ColumnValuesToBeBetween",
+                    "testDefinitionName": "columnValuesToBeBetween",
                     "parameterValues": [
                         {
                             "name": "min",

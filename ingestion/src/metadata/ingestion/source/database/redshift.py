@@ -15,7 +15,7 @@ Redshift source ingestion
 import re
 import traceback
 from collections import defaultdict
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -23,11 +23,16 @@ from sqlalchemy import inspect, util
 from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect
 from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_names
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -44,6 +49,7 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
+    REDSHIFT_PARTITION_DETAILS,
 )
 
 sa_version = Version(sa.__version__)
@@ -443,6 +449,7 @@ STANDARD_TABLE_TYPES = {
 # pylint: disable=useless-super-delegation
 class RedshiftSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
+        self.partition_details = {}
         super().__init__(config, metadata_config)
 
     @classmethod
@@ -454,6 +461,15 @@ class RedshiftSource(CommonDbSourceService):
                 f"Expected RedshiftConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_partition_details(self) -> None:
+        """
+        Populate partition details
+        """
+        self.partition_details.clear()
+        results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+        for row in results:
+            self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
@@ -493,6 +509,7 @@ class RedshiftSource(CommonDbSourceService):
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             self.inspector = inspect(self.engine)
+            self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
             results = self.connection.execute("SELECT datname FROM pg_database")
@@ -508,9 +525,31 @@ class RedshiftSource(CommonDbSourceService):
 
                 try:
                     self.set_inspector(database_name=new_database)
+                    self.get_partition_details()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    def _get_partition_key(self, diststyle: str) -> Optional[List[str]]:
+        try:
+            regex = re.match(r"KEY\((\w+)\)", diststyle)
+            if regex:
+                return [regex.group(1)]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(err)
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, TablePartition]:
+        diststyle = self.partition_details.get(f"{schema_name}.{table_name}")
+        if diststyle:
+            partition_details = TablePartition(
+                columns=self._get_partition_key(diststyle),
+                intervalType=IntervalType.COLUMN_VALUE,
+            )
+            return True, partition_details
+        return False, None
