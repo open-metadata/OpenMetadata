@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.filter.EventFilter;
 import org.openmetadata.catalog.filter.Filters;
 import org.openmetadata.catalog.settings.Settings;
@@ -36,6 +37,7 @@ import org.openmetadata.catalog.type.FieldChange;
 public class FilterUtil {
 
   private static final String TEST_CASE_RESULT = "testCaseResult";
+  private static final String WILDCARD_FILTER = "all";
 
   public static boolean shouldProcessRequest(ChangeEvent changeEvent, Map<String, Map<EventType, Filters>> filtersMap) {
     if (filtersMap != null && !filtersMap.isEmpty()) {
@@ -44,22 +46,17 @@ public class FilterUtil {
       Map<EventType, Filters> filtersOfEntity = filtersMap.get(entityType);
       if (filtersOfEntity == null || filtersOfEntity.size() == 0) {
         // check if we have all entities Filter
-        return handleWithWildCardFilter(filtersMap.get("all"), eventType, getUpdateField(changeEvent));
+        return handleWithWildCardFilter(filtersMap.get(WILDCARD_FILTER), eventType, getUpdateField(changeEvent));
       } else {
         Filters sf;
         if ((sf = filtersOfEntity.get(eventType)) == null) {
           return false;
         } else {
-          if (sf.getFields().contains("all")) {
-            return true;
+          if (entityType.equals(Entity.TEST_CASE)) {
+            return handleTestCaseFilter(changeEvent, sf);
           } else {
-            if (entityType.equals("testCase")) {
-              return handleTestCaseFilter(changeEvent, sf);
-            } else {
-              return checkIfFilterContainField(sf, getUpdateField(changeEvent));
-            }
+            return checkIfFilterContainField(sf, getUpdateField(changeEvent));
           }
-          return checkIfFilterContainField(sf, getUpdateField(changeEvent));
         }
       }
     }
@@ -72,12 +69,15 @@ public class FilterUtil {
       if (fieldChange.getName().equals(TEST_CASE_RESULT)) {
         TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
-        if (sf.getFields().contains(TEST_CASE_RESULT + status.toString())) {
+        String statusField = TEST_CASE_RESULT + status.toString();
+        if (sf.getInclude().contains(statusField)) {
           return true;
+        } else if (sf.getExclude().contains(statusField)) {
+          return false;
         }
       }
     }
-    return checkIfFilterContainField(sf, getUpdateField(changeEvent));
+    return sf.getInclude().contains(WILDCARD_FILTER);
   }
 
   public static boolean handleWithWildCardFilter(
@@ -85,8 +85,7 @@ public class FilterUtil {
     if (wildCardFilter != null && !wildCardFilter.isEmpty()) {
       // check if we have all entities Filter
       Filters f = wildCardFilter.get(type);
-      boolean allFieldCheck = checkIfFilterContainField(f, updatedField);
-      // return f != null && (f.getFields().contains("all") || allFieldCheck);
+      return checkIfFilterContainField(f, updatedField);
     }
     return false;
   }
@@ -95,13 +94,13 @@ public class FilterUtil {
     if (f != null) {
       for (String changed : updatedField) {
         // field is present in excluded
-        if (f.getInclude().contains(changed)) {
-          return true;
-        } else if (f.getExclude().contains(changed)) {
+        if (f.getExclude().contains(changed)) {
           return false;
+        } else if (f.getInclude().contains(changed)) {
+          return true;
         }
       }
-      return f.getInclude().contains("all");
+      return f.getInclude().contains(WILDCARD_FILTER);
     }
     return false;
   }

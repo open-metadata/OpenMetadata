@@ -17,7 +17,7 @@
             "include": [
               "all"
             ],
-            "exclude": []
+            "exclude": ["usageSummary"]
           },
           {
             "eventType": "entityDeleted",
@@ -48,9 +48,13 @@
           {
             "eventType": "entityUpdated",
             "include": [
-              "all"
+              "description",
+              "owner",
+              "tags",
+              "followers",
+              "name"
             ],
-            "exclude": ["usageSummary", "testCaseResultSuccess", "testCaseResultFailed", "testCaseResultAborted"]
+            "exclude": ["usageSummary"]
           },
           {
             "eventType": "entityDeleted",
@@ -81,9 +85,13 @@
           {
             "eventType": "entityUpdated",
             "include": [
-              "all"
+              "description",
+              "owner",
+              "tags",
+              "followers",
+              "name"
             ],
-            "exclude": []
+            "exclude": ["usageSummary"]
           },
           {
             "eventType": "entityDeleted",
@@ -150,6 +158,39 @@
               "all"
             ],
             "exclude": []
+          },
+          {
+            "eventType": "entityDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entitySoftDeleted",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          }
+        ]
+      },
+      {
+        "entityType": "testCase",
+        "filters": [
+          {
+            "eventType": "entityCreated",
+            "include": [
+              "all"
+            ],
+            "exclude": []
+          },
+          {
+            "eventType": "entityUpdated",
+            "include": [
+              "all"
+            ],
+            "exclude": ["testCaseResultSuccess", "testCaseResultFailed", "testCaseResultAborted"]
           },
           {
             "eventType": "entityDeleted",
