@@ -133,11 +133,11 @@ class SQAInterface(InterfaceProtocol):
         """
         engine = get_connection(service_connection_config)
         session = create_and_bind_thread_safe_session(engine)
-        SQAInterface.set_session_tag(service_connection_config, session)
+        SQAInterface.set_session_tag(service_connection_config, engine)
         return session
 
     @staticmethod
-    def set_session_tag(service_connection_config, session):
+    def set_session_tag(service_connection_config, engine):
         """
         Set session query tag
         Args:
@@ -148,7 +148,7 @@ class SQAInterface(InterfaceProtocol):
             and hasattr(service_connection_config, "queryTag")
             and service_connection_config.queryTag
         ):
-            session.execute(
+            engine.execute(
                 SNOWFLAKE_SESSION_TAG_QUERY.format(
                     query_tag=service_connection_config.queryTag
                 )
