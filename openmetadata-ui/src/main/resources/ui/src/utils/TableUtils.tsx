@@ -323,6 +323,12 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
   }
 };
 
+export const getEntityFqnFromEntityLink = (entityLink: string) => {
+  const link = entityLink.split('>')[0];
+
+  return link.split('::')[2];
+};
+
 export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
   switch (status) {
     case TestCaseStatus.Success:
