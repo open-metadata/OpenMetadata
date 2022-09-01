@@ -36,7 +36,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { TagsCategory } from '../../pages/tags/tagsTypes';
 import { getOwnerList } from '../../utils/ManageUtils';
-import { hasPemission } from '../../utils/PermissionsUtils';
+import { hasPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   searchFormattedUsersAndTeams,
@@ -284,7 +284,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return (
       isAdminUser ||
       isAuthDisabled ||
-      hasPemission(
+      hasPermission(
         Operation.EditUsers,
         entityType as EntityType,
         userPermissions
