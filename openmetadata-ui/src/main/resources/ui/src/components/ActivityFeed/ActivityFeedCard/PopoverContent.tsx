@@ -78,6 +78,14 @@ const PopoverContent: FC<Props> = ({
     }
   }, [threadId, postId, onConfirmation, isAuthor, currentUser]);
 
+  const editCheck = useMemo(() => {
+    if (isAnnouncement) {
+      return isAuthor || currentUser?.isAdmin;
+    } else {
+      return !isThread && isAuthor;
+    }
+  }, [isAnnouncement, isThread, isAuthor, currentUser]);
+
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onConfirmation &&
@@ -152,9 +160,6 @@ const PopoverContent: FC<Props> = ({
     e.stopPropagation();
     onEdit && onEdit();
   };
-
-  const editCheck =
-    (isAnnouncement || !isThread) && (isAuthor || currentUser?.isAdmin);
 
   return (
     <Space>
