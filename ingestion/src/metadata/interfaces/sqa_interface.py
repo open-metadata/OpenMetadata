@@ -93,7 +93,6 @@ class SQAInterface(InterfaceProtocol):
 
         self.session_factory = self._session_factory(service_connection_config)
         self.session: Session = self.session_factory()
-        self.set_session_tag(service_connection_config)
 
         self.profile_sample = profile_sample
         self.profile_query = profile_query
