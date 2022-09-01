@@ -446,7 +446,7 @@ const TagsPage = () => {
         className="tw-h-full"
         data-testid="data-summary-container"
         id="tags-left-panel">
-        <div className="tw-bg-white tw-h-full tw-py-2 left-panel-container">
+        <div className="tw-bg-white tw-h-full tw-py-2">
           <div className="tw-px-3">
             <div className="tw-flex tw-justify-between tw-items-center">
               <h6 className="tw-heading tw-text-sm tw-font-semibold">
@@ -525,11 +525,11 @@ const TagsPage = () => {
                 className="tw-flex tw-justify-between tw-items-center"
                 data-testid="header">
                 <div
-                  className="tw-heading tw-text-link tw-text-base"
+                  className="tw-text-link tw-text-base tw-py-2"
                   data-testid="category-name">
                   {currentCategory.displayName ?? currentCategory.name}
                 </div>
-                <div>
+                <div className="tw-flex tw-justify-between tw-items-center">
                   <Tooltip
                     title={
                       createTagPermission || categoryPermissions.EditAll
@@ -537,7 +537,7 @@ const TagsPage = () => {
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <Button
-                      className="tw-h-8 tw-rounded tw-mb-3"
+                      className="tw-h-8 tw-rounded"
                       data-testid="add-new-tag-button"
                       disabled={
                         !createTagPermission && !categoryPermissions.EditAll
@@ -553,7 +553,7 @@ const TagsPage = () => {
                   </Tooltip>
 
                   <Button
-                    className="tw-h-8 tw-rounded tw-mb-3 tw-ml-2"
+                    className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
                     disabled={!categoryPermissions.Delete}
                     size="small"

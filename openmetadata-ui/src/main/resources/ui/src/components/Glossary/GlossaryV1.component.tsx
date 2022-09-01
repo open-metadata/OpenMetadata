@@ -399,7 +399,9 @@ const GlossaryV1 = ({
             }
           />
         </div>
-        <div className="tw-relative tw-mr-2 tw--mt-2" id="add-term-button">
+        <div
+          className="tw-relative tw-flex tw-justify-between tw-items-center"
+          id="add-term-button">
           <Tooltip
             title={
               createGlossaryTermPermission
