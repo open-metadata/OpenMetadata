@@ -192,9 +192,11 @@
           {
             "eventType": "entityUpdated",
             "include": [
-              "all"
+              "testCaseResultSuccess",
+              "testCaseResultFailed",
+              "testCaseResultAborted"
             ],
-            "exclude": ["testCaseResultSuccess", "testCaseResultFailed", "testCaseResultAborted"]
+            "exclude": []
           },
           {
             "eventType": "entityDeleted",
