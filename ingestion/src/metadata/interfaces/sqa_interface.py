@@ -132,9 +132,12 @@ class SQAInterface(InterfaceProtocol):
         garbage collected once the application thread ends
         """
         engine = get_connection(service_connection_config)
-        return create_and_bind_thread_safe_session(engine)
+        session = create_and_bind_thread_safe_session(engine)
+        SQAInterface.set_session_tag(service_connection_config, session)
+        return session
 
-    def set_session_tag(self, service_connection_config):
+    @staticmethod
+    def set_session_tag(service_connection_config, session):
         """
         Set session query tag
         Args:
@@ -145,7 +148,7 @@ class SQAInterface(InterfaceProtocol):
             and hasattr(service_connection_config, "queryTag")
             and service_connection_config.queryTag
         ):
-            self.session.execute(
+            session.execute(
                 SNOWFLAKE_SESSION_TAG_QUERY.format(
                     query_tag=service_connection_config.queryTag
                 )
