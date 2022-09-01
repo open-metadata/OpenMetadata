@@ -14,6 +14,7 @@ Workflow definition for the test suite
 """
 
 from __future__ import annotations
+from copy import deepcopy
 
 import traceback
 from logging import Logger
@@ -152,7 +153,10 @@ class TestSuiteWorkflow:
                         "databaseservice",
                     )
                 )
-                return service_connection.__root__.config
+                service_connection_config = deepcopy(service_connection.__root__.config)
+                if hasattr(service_connection_config, "supportsDatabase") and not service_connection_config.database:
+                    service_connection_config.database = table_fqn.split(".")[1]
+                return service_connection_config
 
             logger.error(
                 f"Could not retrive connection details for entity {entity_link}"
