@@ -30,12 +30,12 @@ const ListEntities = ({
   list,
   type,
   onDelete,
-  disableRemoveBtn,
+  hasAccess,
 }: {
   list: EntityReference[];
   type: EntityType;
   onDelete: (record: EntityReference) => void;
-  disableRemoveBtn: boolean;
+  hasAccess: boolean;
 }) => {
   const columns: ColumnsType<EntityReference> = useMemo(() => {
     return [
@@ -87,10 +87,10 @@ const ListEntities = ({
           return (
             <Tooltip
               placement="bottomRight"
-              title={!disableRemoveBtn ? 'Remove' : NO_PERMISSION_FOR_ACTION}>
+              title={hasAccess ? 'Remove' : NO_PERMISSION_FOR_ACTION}>
               <Button
                 data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={disableRemoveBtn}
+                disabled={!hasAccess}
                 type="text"
                 onClick={() => onDelete(record)}>
                 <SVGIcons
