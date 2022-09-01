@@ -17,7 +17,7 @@ import { Tooltip } from 'antd';
 import { Store } from 'antd/lib/form/interface';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isEmpty, isEqual, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, {
   FunctionComponent,
@@ -43,7 +43,6 @@ import { PageLayoutType } from '../../enums/layout.enum';
 import {
   CreateWebhook,
   EventFilter,
-  Filters,
 } from '../../generated/api/events/createWebhook';
 import { WebhookType } from '../../generated/entity/events/webhook';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -56,6 +55,7 @@ import {
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getEventFilters } from '../../utils/WebhookUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import CardV1 from '../common/Card/CardV1';
@@ -67,11 +67,8 @@ import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { AddWebhookProps } from './AddWebhook.interface';
-import SelectComponent from './select-component';
-import {
-  EVENT_FILTERS_DEFAULT_VALUE,
-  EVENT_FILTER_FORM_INITIAL_VALUE,
-} from './WebhookConstants';
+import EventFilterSelect from './EventFilterSelect.component';
+import { EVENT_FILTER_FORM_INITIAL_VALUE } from './WebhookConstants';
 
 const CONFIGURE_TEXT: { [key: string]: string } = {
   msteams: CONFIGURE_MS_TEAMS_TEXT,
@@ -101,42 +98,6 @@ const getFormData = (eventFilters: EventFilter[]): Store => {
   });
 
   return formEventFilters;
-};
-
-const getEventFilters = (eventFilterFormData: Store): EventFilter[] => {
-  if (isEqual(eventFilterFormData, EVENT_FILTER_FORM_INITIAL_VALUE)) {
-    return [EVENT_FILTERS_DEFAULT_VALUE];
-  }
-
-  const newFilters = Object.entries(eventFilterFormData).reduce(
-    (acc, [key, value]) => {
-      if (key.includes('-tree')) {
-        return acc;
-      }
-      if (value) {
-        const selectedFilter = eventFilterFormData[`${key}-tree`] as string[];
-
-        return [
-          ...acc,
-          {
-            entityType: key,
-            filters:
-              selectedFilter[0] === TERM_ALL
-                ? EVENT_FILTERS_DEFAULT_VALUE.filters
-                : (selectedFilter.map((filter) => ({
-                    eventType: filter,
-                    fields: [TERM_ALL],
-                  })) as Filters[]),
-          },
-        ];
-      }
-
-      return acc;
-    },
-    [] as EventFilter[]
-  );
-
-  return [EVENT_FILTERS_DEFAULT_VALUE, ...newFilters];
 };
 
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
@@ -509,7 +470,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               </span>,
               'tw-mt-3'
             )}
-            <SelectComponent
+            <EventFilterSelect
               eventFilterFormData={eventFilterFormData}
               setEventFilterFormData={(data) => setEventFilterFormData(data)}
             />
