@@ -66,7 +66,7 @@ public class FilterUtil {
   private static boolean handleTestCaseFilter(ChangeEvent changeEvent, Filters sf) {
     List<FieldChange> fieldChanges = getAllFieldChange(changeEvent);
     for (FieldChange fieldChange : fieldChanges) {
-      if (fieldChange.getName().equals(TEST_CASE_RESULT)) {
+      if (fieldChange.getName().equals(TEST_CASE_RESULT) && fieldChange.getNewValue() != null) {
         TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
         String statusField = TEST_CASE_RESULT + status.toString();
@@ -115,12 +115,13 @@ public class FilterUtil {
   }
 
   public static List<FieldChange> getAllFieldChange(ChangeEvent changeEvent) {
-    ChangeDescription description = changeEvent.getChangeDescription();
     List<FieldChange> allFieldChange = new ArrayList<>();
-    allFieldChange.addAll(description.getFieldsAdded());
-    allFieldChange.addAll(description.getFieldsUpdated());
-    allFieldChange.addAll(description.getFieldsDeleted());
-
+    ChangeDescription description = changeEvent.getChangeDescription();
+    if (description != null) {
+      allFieldChange.addAll(description.getFieldsAdded());
+      allFieldChange.addAll(description.getFieldsUpdated());
+      allFieldChange.addAll(description.getFieldsDeleted());
+    }
     return allFieldChange;
   }
 
