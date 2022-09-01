@@ -14,9 +14,9 @@ Workflow definition for the test suite
 """
 
 from __future__ import annotations
-from copy import deepcopy
 
 import traceback
+from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
@@ -154,7 +154,10 @@ class TestSuiteWorkflow:
                     )
                 )
                 service_connection_config = deepcopy(service_connection.__root__.config)
-                if hasattr(service_connection_config, "supportsDatabase") and not service_connection_config.database:
+                if (
+                    hasattr(service_connection_config, "supportsDatabase")
+                    and not service_connection_config.database
+                ):
                     service_connection_config.database = table_fqn.split(".")[1]
                 return service_connection_config
 
