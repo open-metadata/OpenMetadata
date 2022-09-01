@@ -35,7 +35,7 @@ default_args = {
 config = """
 source:
   type: sample_data
-  serviceName: sample_data
+  serviceName: sample_data_ingestion
   serviceConnection:
     config:
       type: SampleData
@@ -46,7 +46,7 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
+    hostPort: http://openmetadata-server:8585/api
     authProvider: no-auth
 """
 

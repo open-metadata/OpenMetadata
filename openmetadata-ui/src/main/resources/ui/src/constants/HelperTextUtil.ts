@@ -44,6 +44,7 @@ Create well-defined policies based on conditional rules to build rich access con
         `;
 
 export const NO_PERMISSION_FOR_ACTION =
-  'You do not have permissions to perform this action.';
+  'You do not have the necessary permissions to perform this action.';
 
-export const NO_PERMISSION_TO_VIEW = 'You do not have permission to view data';
+export const NO_PERMISSION_TO_VIEW =
+  'You do not have the necessary permissions to view this data.';

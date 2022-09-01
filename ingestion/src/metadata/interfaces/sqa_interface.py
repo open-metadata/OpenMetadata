@@ -248,11 +248,8 @@ class SQAInterface(InterfaceProtocol):
             sample=sample,
         )
 
-        try:
+        if column is not None:
             column = column.name
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")
 
         return row, column
 

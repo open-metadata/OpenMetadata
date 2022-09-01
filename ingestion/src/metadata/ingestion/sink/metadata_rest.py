@@ -46,7 +46,6 @@ from metadata.ingestion.lineage.sql_lineage import (
     _create_lineage_by_table_name,
     get_lineage_by_query,
 )
-from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -121,8 +120,6 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, OMetaPolicy):
-            self.write_policies(record)
         elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
         elif isinstance(record, OMetaUserProfile):
@@ -369,35 +366,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.warning(
                 f"Unexpected error writing db schema and table [{db_schema_and_table}]: {exc}"
             )
-
-    def write_policies(self, ometa_policy: OMetaPolicy) -> None:
-        try:
-            created_location = None
-            if ometa_policy.location is not None:
-                created_location = self._create_location(ometa_policy.location)
-                logger.info(f"Successfully ingested Location {created_location.name}")
-                self.status.records_written(f"Location: {created_location.name}")
-
-            policy_request = CreatePolicyRequest(
-                name=ometa_policy.policy.name,
-                displayName=ometa_policy.policy.displayName,
-                description=ometa_policy.policy.description,
-                owner=ometa_policy.policy.owner,
-                policyUrl=ometa_policy.policy.policyUrl,
-                policyType=ometa_policy.policy.policyType,
-                rules=ometa_policy.policy.rules,
-                location=created_location.id if created_location else None,
-            )
-            created_policy = self.metadata.create_or_update(policy_request)
-            logger.info(f"Successfully ingested Policy {created_policy.name}")
-            self.status.records_written(f"Policy: {created_policy.name}")
-
-        except (APIError, ValidationError) as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to ingest Policy [{ometa_policy.policy.name}]: {err}"
-            )
-            self.status.failure(f"Policy: {ometa_policy.policy.name}")
 
     def _create_location(self, location: Location) -> Location:
         try:

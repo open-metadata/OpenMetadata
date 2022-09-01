@@ -17,11 +17,11 @@ import { ColumnJoins, Table } from '../../generated/entity/data/table';
 import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 
 export interface EntityTableProps {
-  owner: Table['owner'];
   tableColumns: ModifiedTableColumn[];
   joins: Array<ColumnJoins>;
   columnName: string;
-  hasEditAccess: boolean;
+  hasDescriptionEditAccess?: boolean;
+  hasTagEditAccess?: boolean;
   tableConstraints: Table['tableConstraints'];
   searchText?: string;
   isReadOnly?: boolean;

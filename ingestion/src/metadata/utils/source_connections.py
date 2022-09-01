@@ -147,7 +147,7 @@ def _(connection):
 
 @get_connection_url.register
 def _(connection: MssqlConnection):
-    if connection.scheme.value == connection.scheme.mssql_pyodbc:
+    if connection.scheme.value == connection.scheme.mssql_pyodbc.value:
         return f"{connection.scheme.value}://{connection.uriString}"
     return get_connection_url_common(connection)
 
@@ -406,6 +406,9 @@ def _(connection: AthenaConnection):
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
     if connection.workgroup:
         url += f"&work_group={connection.workgroup}"
+    if connection.awsConfig.awsSessionToken:
+        url += f"&aws_session_token={quote_plus(connection.awsConfig.awsSessionToken)}"
+
     return url
 
 

@@ -20,6 +20,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
 import { Operation } from '../generated/entity/policies/policy';
+import { TeamType } from '../generated/entity/teams/team';
 import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { checkPermission } from '../utils/PermissionsUtils';
@@ -81,10 +82,10 @@ const GlobalSettingRouter = () => {
     <Switch>
       <Route exact path={getSettingPath()}>
         <Redirect
-          to={getSettingPath(
+          to={`${getSettingPath(
             GlobalSettingsMenuCategory.MEMBERS,
             GlobalSettingOptions.TEAMS
-          )}
+          )}/${TeamType.Organization}`}
         />
       </Route>
       <Route

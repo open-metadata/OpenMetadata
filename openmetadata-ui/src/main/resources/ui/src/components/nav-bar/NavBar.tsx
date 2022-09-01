@@ -154,7 +154,14 @@ const NavBar = ({
       icon: Logo,
     });
     notification.onclick = () => {
-      history.push(path);
+      const isChrome = window.navigator.userAgent.indexOf('Chrome');
+      // Applying logic to open a new window onclick of browser notification from chrome
+      // As it does not open the concerned tab by default.
+      if (isChrome > -1) {
+        window.open(path);
+      } else {
+        history.push(path);
+      }
     };
   };
 

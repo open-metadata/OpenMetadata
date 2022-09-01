@@ -67,7 +67,7 @@ def table_column_count_to_be_between(
         (
             int(param_value.value)
             for param_value in test_case.parameterValues
-            if param_value.name == "minColvalue"
+            if param_value.name == "minColValue"
         ),
         None,
     )
@@ -75,7 +75,7 @@ def table_column_count_to_be_between(
     max_ = next(
         int(param_value.value)
         for param_value in test_case.parameterValues
-        if param_value.name == "maxColvalue"
+        if param_value.name == "maxColValue"
     )
 
     status = (

@@ -534,3 +534,10 @@ SNOWFLAKE_GET_CLUSTER_KEY = """
   where  TABLE_TYPE = 'BASE TABLE'
   and CLUSTERING_KEY is not null
 """
+
+
+REDSHIFT_PARTITION_DETAILS = """
+  select "schema", "table", diststyle
+  from SVV_TABLE_INFO
+  where diststyle not like 'AUTO%%'
+"""
