@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Empty, Row, Tooltip } from 'antd';
+import {
+  Button,
+  Col,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Tooltip,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getListTestCase } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -35,6 +43,7 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import {
@@ -50,12 +59,16 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   hasEditAccess,
 }) => {
   const { profile, columns } = table;
+  const history = useHistory();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+  const [activeTab] = useState<ProfilerDashboardTab>(
+    ProfilerDashboardTab.SUMMARY
+  );
 
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
@@ -91,6 +104,24 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       },
     ];
   }, [profile, tableTests]);
+
+  const tabOptions = useMemo(() => {
+    return Object.values(ProfilerDashboardTab).filter(
+      (value) => value !== ProfilerDashboardTab.PROFILER
+    );
+  }, []);
+
+  const handleTabChange = (e: RadioChangeEvent) => {
+    const value = e.target.value as ProfilerDashboardTab;
+    if (ProfilerDashboardTab.DATA_QUALITY === value) {
+      history.push(
+        getProfilerDashboardWithFqnPath(
+          ProfilerDashboardType.TABLE,
+          table.fullyQualifiedName || ''
+        )
+      );
+    }
+  };
 
   const fetchAllTests = async () => {
     try {
@@ -130,67 +161,49 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     fetchAllTests();
   }, [table]);
 
-  if (isUndefined(profile)) {
-    return (
-      <div
-        className=" tw-m-2 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-        data-testid="no-profiler-placeholder-container">
-        <Empty
-          description={
-            <p>
-              <span>
-                Data Profiler is an optional configuration in Ingestion. Please
-                enable the data profiler by following the documentation
-              </span>
-              <Link
-                className="tw-ml-1"
-                target="_blank"
-                to={{
-                  pathname:
-                    'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
-                }}>
-                here.
-              </Link>
-            </p>
-          }
-        />
-      </div>
-    );
-  }
-
   return (
     <div
       className="table-profiler-container"
       data-testid="table-profiler-container">
-      <div className="tw-flex tw-justify-end tw-gap-4 tw-mb-4">
-        <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Link
-            to={
-              hasEditAccess
-                ? getAddDataQualityTableTestPath(
-                    ProfilerDashboardType.TABLE,
-                    table.fullyQualifiedName || ''
-                  )
-                : '#'
-            }>
-            <Button
-              className="tw-rounded"
-              data-testid="profiler-add-table-test-btn"
-              disabled={!hasEditAccess}
-              type="primary">
-              Add Test
-            </Button>
-          </Link>
-        </Tooltip>
-        <Button
-          className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
-          data-testid="profiler-setting-btn"
-          icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
-          type="default"
-          onClick={() => handleSettingModal(true)}>
-          Settings
-        </Button>
-      </div>
+      <Row className="tw-mb-4" justify="space-between">
+        <Radio.Group
+          buttonStyle="solid"
+          optionType="button"
+          options={tabOptions}
+          value={activeTab}
+          onChange={handleTabChange}
+        />
+
+        <Space>
+          <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
+            <Link
+              to={
+                hasEditAccess
+                  ? getAddDataQualityTableTestPath(
+                      ProfilerDashboardType.TABLE,
+                      `${table.fullyQualifiedName}`
+                    )
+                  : '#'
+              }>
+              <Button
+                className="tw-rounded"
+                data-testid="profiler-add-table-test-btn"
+                disabled={!hasEditAccess}
+                type="primary">
+                Add Test
+              </Button>
+            </Link>
+          </Tooltip>
+          <Button
+            className="profiler-setting-btn tw-border tw-border-primary tw-rounded tw-text-primary"
+            data-testid="profiler-setting-btn"
+            icon={<SVGIcons alt="setting" icon={Icons.SETTINGS_PRIMERY} />}
+            type="default"
+            onClick={() => handleSettingModal(true)}>
+            Settings
+          </Button>
+        </Space>
+      </Row>
 
       <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
         {overallSummery.map((summery) => (
@@ -211,15 +224,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             </p>
           </Col>
         ))}
-        <Col className="tw-flex tw-justify-end" span={24}>
-          <Link
-            to={getProfilerDashboardWithFqnPath(
-              ProfilerDashboardType.TABLE,
-              table.fullyQualifiedName || ''
-            )}>
-            View more detail
-          </Link>
-        </Col>
       </Row>
 
       <ColumnProfileTable

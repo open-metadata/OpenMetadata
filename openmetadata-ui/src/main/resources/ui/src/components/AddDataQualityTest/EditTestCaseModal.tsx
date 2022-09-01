@@ -17,12 +17,11 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { EditorContentRef } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../axiosAPIs/testAPI';
-import { codeMirrorOption } from '../../constants/profiler.constant';
+import { CSMode } from '../../enums/codemirror.enum';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,
@@ -32,6 +31,7 @@ import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import Loader from '../Loader/Loader';
+import SchemaEditor from '../schema-editor/SchemaEditor';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
 
@@ -63,16 +63,13 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               <Typography.Paragraph className="tw-mb-1.5">
                 Profile Sample Query
               </Typography.Paragraph>
-              <CodeMirror
-                data-testid="sql-editor"
-                options={codeMirrorOption}
+              <SchemaEditor
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  readOnly: false,
+                }}
                 value={sqlQuery.value || ''}
-                onBeforeChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
-                onChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
+                onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
               />
             </Col>
           </Row>
@@ -171,6 +168,12 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         testDefinition: testCase?.testDefinition?.name,
         params: getParamsValue(),
       });
+      setSqlQuery(
+        testCase?.parameterValues?.[0] ?? {
+          name: 'sqlExpression',
+          value: '',
+        }
+      );
     }
   }, [testCase]);
 
@@ -190,6 +193,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         <Loader />
       ) : (
         <Form
+          className="tw-h-70vh tw-overflow-auto"
           form={form}
           layout="vertical"
           name="tableTestForm"

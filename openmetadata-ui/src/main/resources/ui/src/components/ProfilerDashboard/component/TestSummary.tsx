@@ -33,13 +33,16 @@ import {
   COLORS,
   PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
+import { CSMode } from '../../../enums/codemirror.enum';
 import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../generated/tests/tableTest';
+import { TestCaseParameterValue } from '../../../generated/tests/testCase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
+import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 
 type ChartDataType = {
@@ -146,6 +149,34 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     fetchTestResults();
   }, [selectedTimeRange]);
 
+  const showParamsData = (param: TestCaseParameterValue) => {
+    const isSqlQuery = param.name === 'sqlExpression';
+
+    if (isSqlQuery) {
+      return (
+        <div key={param.name}>
+          <Typography.Text>{param.name}: </Typography.Text>
+          <SchemaEditor
+            className="tw-w-11/12 tw-mt-1"
+            editorClass="table-query-editor"
+            mode={{ name: CSMode.SQL }}
+            options={{
+              styleActiveLine: false,
+            }}
+            value={param.value ?? ''}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div key={param.name}>
+        <Typography.Text>{param.name}: </Typography.Text>
+        <Typography.Text>{param.value}</Typography.Text>
+      </div>
+    );
+  };
+
   const referenceArea = () => {
     const yValues = data.parameterValues?.reduce((acc, curr, i) => {
       return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
@@ -215,13 +246,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
           <Col span={24}>
             <Typography.Text type="secondary">Parameter: </Typography.Text>
           </Col>
-          <Col offset={2} span={24}>
-            {data.parameterValues?.map((param) => (
-              <Typography key={param.name}>
-                <Typography.Text>{param.name}: </Typography.Text>
-                <Typography.Text>{param.value}</Typography.Text>
-              </Typography>
-            ))}
+          <Col offset={1} span={24}>
+            {data.parameterValues && data.parameterValues.length > 0 ? (
+              data.parameterValues.map(showParamsData)
+            ) : (
+              <Typography.Text type="secondary">
+                No Parameter Available
+              </Typography.Text>
+            )}
           </Col>
 
           <Col className="tw-flex tw-gap-2" span={24}>
