@@ -21,6 +21,7 @@ import {
 } from '../constants/globalSettings.constants';
 import { Operation } from '../generated/entity/policies/policy';
 import { TeamType } from '../generated/entity/teams/team';
+import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { checkPermission } from '../utils/PermissionsUtils';
 import { getSettingCategoryPath, getSettingPath } from '../utils/RouterUtils';
@@ -225,7 +226,17 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.SLACK
         )}
       />
-
+      <AdminProtectedRoute
+        exact
+        // Currently we don't have any permission related to ActivityFeed settings page
+        // update below once we have it
+        hasPermission
+        component={ActivityFeedSettingsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingOptions.ACTIVITY_FEED
+        )}
+      />
       <AdminProtectedRoute
         exact
         component={MsTeamsPage}
