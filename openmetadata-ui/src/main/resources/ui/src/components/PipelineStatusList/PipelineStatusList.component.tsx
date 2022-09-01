@@ -11,23 +11,29 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
-import React, { FC, Fragment, HTMLAttributes, useMemo, useState } from 'react';
+import React, {
+  FC,
+  Fragment,
+  HTMLAttributes,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import Select, { SingleValue } from 'react-select';
-import {
-  Pipeline,
-  PipelineStatus,
-  StatusType,
-} from '../../generated/entity/data/pipeline';
-import {
-  getFilteredPipelineStatus,
-  STATUS_OPTIONS,
-} from '../../utils/PipelineDetailsUtils';
+import { getPipelineStatus } from '../../axiosAPIs/pipelineAPI';
+import { Pipeline, PipelineStatus } from '../../generated/entity/data/pipeline';
+import jsonData from '../../jsons/en';
+import { STATUS_OPTIONS } from '../../utils/PipelineDetailsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import ExecutionStrip from '../ExecutionStrip/ExecutionStrip';
 import CustomOption from './CustomOption';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
+  pipelineFQN: string;
   pipelineStatus: Pipeline['pipelineStatus'];
   selectedExec: PipelineStatus;
   onSelectExecution: (e: PipelineStatus) => void;
@@ -39,18 +45,19 @@ interface Option {
 
 const PipelineStatusList: FC<Prop> = ({
   className,
+  pipelineFQN,
   pipelineStatus,
   selectedExec,
   onSelectExecution,
 }: Prop) => {
-  const [selectedFilter, setSelectedFilter] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<string>();
+  const [executions, setExecutions] = useState<Array<PipelineStatus>>([]);
 
-  const executions = useMemo(() => {
-    return getFilteredPipelineStatus(
-      selectedFilter as StatusType,
-      pipelineStatus
+  const filteredExecutions = useMemo(() => {
+    return executions.filter((execution) =>
+      selectedFilter ? execution.executionStatus === selectedFilter : true
     );
-  }, [selectedFilter, pipelineStatus]);
+  }, [selectedFilter, executions]);
 
   const handleOnChange = (
     value: SingleValue<unknown>,
@@ -63,6 +70,22 @@ const PipelineStatusList: FC<Prop> = ({
       setSelectedFilter(selectedValue.value);
     }
   };
+
+  const fetchPipelineStatus = async () => {
+    try {
+      const response = await getPipelineStatus(pipelineFQN);
+      setExecutions(response.data);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-pipeline-status-error']
+      );
+    }
+  };
+
+  useEffect(() => {
+    fetchPipelineStatus();
+  }, []);
 
   if (isEmpty(pipelineStatus)) {
     return (
@@ -92,11 +115,16 @@ const PipelineStatusList: FC<Prop> = ({
             </div>
           </div>
           {!isEmpty(executions) ? (
-            <ExecutionStrip
-              executions={executions as PipelineStatus}
-              selectedExecution={selectedExec}
-              onSelectExecution={onSelectExecution}
-            />
+            <Space size={2}>
+              {filteredExecutions.map((execution) => (
+                <ExecutionStrip
+                  executions={execution as PipelineStatus}
+                  key={`${execution.timestamp}${execution.executionStatus}`}
+                  selectedExecution={selectedExec}
+                  onSelectExecution={onSelectExecution}
+                />
+              ))}
+            </Space>
           ) : (
             <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
               <span>No execution data is available</span>
