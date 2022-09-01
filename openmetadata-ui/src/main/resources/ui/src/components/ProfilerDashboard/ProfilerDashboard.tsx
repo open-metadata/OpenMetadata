@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Radio, Row, Select, Space } from 'antd';
+import { Button, Col, Form, Radio, Row, Select, Space } from 'antd';
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { AxiosError } from 'axios';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -119,7 +119,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       value: value,
     }));
     testCaseStatus.unshift({
-      label: 'All Status',
+      label: 'All',
       value: '',
     });
 
@@ -134,7 +134,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       value: value,
     }));
     testCaseStatus.unshift({
-      label: 'All Type',
+      label: 'All',
       value: '',
     });
 
@@ -162,11 +162,13 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       },
       {
         name: getPartialNameFromTableFQN(fqn, [FqnPart.Database]),
-        url: getDatabaseDetailsPath(fqn),
+        url: getDatabaseDetailsPath(table.database?.fullyQualifiedName || ''),
       },
       {
         name: getPartialNameFromTableFQN(fqn, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(fqn),
+        url: getDatabaseSchemaDetailsPath(
+          table.databaseSchema?.fullyQualifiedName || ''
+        ),
       },
       {
         name: getEntityName(table),
@@ -426,20 +428,22 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Space size={16}>
               {activeTab === ProfilerDashboardTab.DATA_QUALITY &&
                 !isColumnView && (
-                  <Select
-                    className="tw-w-32"
-                    options={testCaseTypeOption}
-                    value={selectedTestType}
-                    onChange={handleTestCaseTypeChange}
-                  />
+                  <Form.Item className="tw-mb-0 tw-w-40" label="Type">
+                    <Select
+                      options={testCaseTypeOption}
+                      value={selectedTestType}
+                      onChange={handleTestCaseTypeChange}
+                    />
+                  </Form.Item>
                 )}
               {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
-                <Select
-                  className="tw-w-32"
-                  options={testCaseStatusOption}
-                  value={selectedTestCaseStatus}
-                  onChange={handleTestCaseStatusChange}
-                />
+                <Form.Item className="tw-mb-0 tw-w-40" label="Status">
+                  <Select
+                    options={testCaseStatusOption}
+                    value={selectedTestCaseStatus}
+                    onChange={handleTestCaseStatusChange}
+                  />
+                </Form.Item>
               )}
               {activeTab === ProfilerDashboardTab.PROFILER && (
                 <Select
