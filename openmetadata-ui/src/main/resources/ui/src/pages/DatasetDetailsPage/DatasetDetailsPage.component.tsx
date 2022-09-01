@@ -256,7 +256,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
       getEntityFeedLink(EntityType.TABLE, tableFQN),
       after,
       threadType,
-      feedType
+      feedType,
+      undefined,
+      USERId
     )
       .then((res) => {
         const { data, paging: pagingObj } = res;
