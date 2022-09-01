@@ -119,7 +119,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           const isTask = isEqual(feed.type, ThreadType.Task);
           const isAnnouncement = feed.type === ThreadType.Announcement;
           const postLength = feed?.posts?.length || 0;
-          const replies = feed.postsCount || 0;
+          const replies = feed.postsCount ? feed.postsCount - 1 : 0;
           const repliedUsers = [
             ...new Set((feed?.posts || []).map((f) => f.from)),
           ];
@@ -175,6 +175,17 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                       feed.id,
                       lastPost
                     )}
+                    <ActivityFeedCard
+                      className="tw-ml-9"
+                      data-testid="latest-message"
+                      feed={lastPost as Post}
+                      feedType={feed.type || ThreadType.Conversation}
+                      isEntityFeed={isEntityFeed}
+                      threadId={feed.id}
+                      updateThreadHandler={updateThreadHandler}
+                      onConfirmation={onConfirmation}
+                      onReply={() => toggleReplyEditor(feed.id)}
+                    />
                     {getFeedEditor(feed.id)}
                   </Fragment>
                 ) : null}

@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
-import { isNil, isUndefined } from 'lodash';
-import React, { FC } from 'react';
+import { Button, Popover, Space } from 'antd';
+import { isNil, isUndefined, uniqueId } from 'lodash';
+import React, { FC, useMemo, useState } from 'react';
+import AppState from '../../../AppState';
+import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import Reaction from '../../Reactions/Reaction';
 import { ConfirmState } from './ActivityFeedCard.interface';
 
 interface Props {
@@ -44,10 +47,28 @@ const PopoverContent: FC<Props> = ({
   postId,
   onConfirmation,
   onReply,
+  reactions = [],
+  onReactionSelect,
   onPopoverHide,
   onEdit,
   isAnnouncement,
 }) => {
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  const [visible, setVisible] = useState<boolean>(false);
+
+  const hide = () => {
+    setVisible(false);
+  };
+
+  const handleVisibleChange = (newVisible: boolean) => {
+    setVisible(newVisible);
+  };
+
   const deleteButtonCheck = threadId && postId && onConfirmation && isAuthor;
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -96,6 +117,29 @@ const PopoverContent: FC<Props> = ({
    * @param reactionType
    * @returns true if current user has reacted with {reactionType}
    */
+  const isReacted = (reactionType: ReactionType) => {
+    return reactions.some(
+      (reactionItem) =>
+        reactionItem.user.id === currentUser?.id &&
+        reactionType === reactionItem.reactionType
+    );
+  };
+
+  // prepare reaction list for reaction popover
+  const reactionList = REACTION_LIST.map((reaction) => {
+    return (
+      <Reaction
+        isReacted={isReacted(reaction.reaction)}
+        key={uniqueId()}
+        reaction={reaction}
+        onHide={() => {
+          hide();
+          onPopoverHide();
+        }}
+        onReactionSelect={onReactionSelect}
+      />
+    );
+  });
 
   const handleEdit = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -106,6 +150,32 @@ const PopoverContent: FC<Props> = ({
 
   return (
     <Space>
+      <Popover
+        destroyTooltipOnHide
+        align={{ targetOffset: [0, -10] }}
+        content={reactionList}
+        id="reaction-popover"
+        overlayClassName="ant-popover-feed-reactions"
+        placement="topLeft"
+        trigger="click"
+        visible={visible}
+        zIndex={9999}
+        onVisibleChange={handleVisibleChange}>
+        <Button
+          className="tw-p-0"
+          data-testid="add-reactions"
+          size="small"
+          type="text"
+          onClick={(e) => e.stopPropagation()}>
+          <SVGIcons
+            alt="add-reaction"
+            icon={Icons.REACTION}
+            title="Add reactions"
+            width="20px"
+          />
+        </Button>
+      </Popover>
+
       {(onReply || isThread) && (
         <Button
           className="tw-p-0"
