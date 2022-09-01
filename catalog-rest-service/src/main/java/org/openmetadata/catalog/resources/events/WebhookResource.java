@@ -358,8 +358,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
         .withSecretKey(create.getSecretKey())
-        .withKafkaProperties(create.getKafkaProperties())
         .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED)
-        .withWebhookType(WebhookType.fromValue(create.getWebhookType().value()));
+        .withWebhookType(create.getWebhookType() == null ? WebhookType.generic : create.getWebhookType());
   }
 }

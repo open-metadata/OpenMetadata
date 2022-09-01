@@ -401,7 +401,10 @@ public final class EntityUtil {
     deleteFilter.ifPresent(
         eventFilter ->
             filters.add(
-                new Filters().withEventType(EventType.ENTITY_SOFT_DELETED).withFields(eventFilter.getFields())));
+                new Filters()
+                    .withEventType(EventType.ENTITY_SOFT_DELETED)
+                    .withInclude(eventFilter.getInclude())
+                    .withExclude(eventFilter.getExclude())));
   }
 
   public static EntityReference copy(EntityReference from, EntityReference to) {

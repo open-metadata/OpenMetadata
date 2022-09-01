@@ -17,6 +17,140 @@
         "entityDeleted"
       ]
     },
+    "entityTypes": {
+      "javaType": "org.openmetadata.catalog.filter.EntityTypes",
+      "description": "Type of event.",
+      "type": "string",
+      "enum": [
+        "All",
+        "Chart",
+        "Dashboard",
+        "Database",
+        "Database Schema",
+        "Glossary",
+        "Glossary Term",
+        "Location",
+        "Metrics",
+        "Ml Model",
+        "Pipeline",
+        "Report",
+        "Table",
+        "Topic",
+        "Test Case"
+      ],
+      "javaEnums": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "chart"
+        },
+        {
+          "name": "dashboard"
+        },
+        {
+          "name": "database"
+        },
+        {
+          "name": "databaseSchema"
+        },
+        {
+          "name": "glossary"
+        },
+        {
+          "name": "glossaryTerm"
+        },
+        {
+          "name": "location"
+        },
+        {
+          "name": "metrics"
+        },
+        {
+          "name": "mlmodel"
+        },
+        {
+          "name": "pipeline"
+        },
+        {
+          "name": "report"
+        },
+        {
+          "name": "table"
+        },
+        {
+          "name": "topic"
+        },
+        {
+          "name": "testCase"
+        }
+      ]
+    },
+    "fieldTypes": {
+      "javaType": "org.openmetadata.catalog.filter.FieldType",
+      "description": "Type of event.",
+      "type": "string",
+      "enum": [
+        "All",
+        "Display Name",
+        "Description",
+        "Owner",
+        "Location",
+        "Tags",
+        "Usage Summary",
+        "Followers",
+        "Sample Data",
+        "Synonyms",
+        "Glossary",
+        "Test Case Result Success",
+        "Test Case Result Failed",
+        "Test Case Result Aborted"
+      ],
+      "javaEnums": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "displayName"
+        },
+        {
+          "name": "description"
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "location"
+        },
+        {
+          "name": "tags"
+        },
+        {
+          "name": "usageSummary"
+        },
+        {
+          "name": "followers"
+        },
+        {
+          "name": "sampleData"
+        },
+        {
+          "name": "synonyms"
+        },
+        {
+          "name": "glossary"
+        },
+        {
+          "name": "testCaseResultSuccess"
+        },
+        {
+          "name": "testCaseResultFailure"
+        },
+        {
+          "name": "testCaseResultAborted"
+        }
+      ]
+    },
     "filters": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.filter.Filters",
@@ -25,13 +159,22 @@
           "description": "Event type that is being requested.",
           "$ref": "#/definitions/eventType"
         },
-        "fields": {
-          "description": "Field on which to apply the filter on",
+        "include": {
+          "description": "Field which are allowed to pass",
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": ["all"],
+          "uniqueItems": true
+        },
+        "exclude": {
+          "description": "Field which are not allowed to pass",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
           "uniqueItems": true
         }
       },

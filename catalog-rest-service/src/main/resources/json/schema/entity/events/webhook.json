@@ -8,7 +8,7 @@
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "webhookType": {
-      "description": "Type of webhook slack, generic, kafka, etc.",
+      "description": "Type of webhook slack, generic, msteams, etc.",
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.WebhookType",
       "default": "generic",
@@ -44,7 +44,7 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack, generic, kafka, etc.",
+      "description": "Type of webhook slack, generic, msteams, etc.",
       "$ref": "#/definitions/webhookType"
     },
     "description": {
@@ -67,10 +67,6 @@
       "description": "Maximum number of events sent in a batch (Default 10).",
       "type": "integer",
       "default": 10
-    },
-    "kafkaProperties": {
-      "description": "Properties of Kafka Producer",
-      "$ref": "../../configuration/kafkaEventConfiguration.json"
     },
     "timeout": {
       "description": "Connection timeout in seconds. (Default 10s).",
