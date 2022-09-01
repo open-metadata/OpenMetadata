@@ -90,6 +90,7 @@ class CommonDbSourceService(
 
         self._connection = None  # Lazy init as well
         self.data_models = {}
+        self.dbt_tests = {}
         self.table_constraints = None
         self.database_source_state = set()
         self.context.table_views = []
