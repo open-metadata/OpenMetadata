@@ -51,10 +51,9 @@
               "description",
               "owner",
               "tags",
-              "followers",
-              "name"
+              "followers"
             ],
-            "exclude": ["usageSummary"]
+            "exclude": []
           },
           {
             "eventType": "entityDeleted",
@@ -88,10 +87,9 @@
               "description",
               "owner",
               "tags",
-              "followers",
-              "name"
+              "followers"
             ],
-            "exclude": ["usageSummary"]
+            "exclude": []
           },
           {
             "eventType": "entityDeleted",
@@ -122,7 +120,10 @@
           {
             "eventType": "entityUpdated",
             "include": [
-              "all"
+              "description",
+              "owner",
+              "tags",
+              "followers"
             ],
             "exclude": []
           },
@@ -155,7 +156,10 @@
           {
             "eventType": "entityUpdated",
             "include": [
-              "all"
+              "description",
+              "owner",
+              "tags",
+              "followers"
             ],
             "exclude": []
           },
