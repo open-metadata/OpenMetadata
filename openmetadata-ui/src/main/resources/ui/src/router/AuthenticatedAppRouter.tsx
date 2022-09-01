@@ -466,14 +466,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.BOTS_PROFILE}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddCustomProperty}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.TYPE,
-          permissions
-        )}
         path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
       <Route

@@ -267,7 +267,7 @@ const GlobalSettingRouter = () => {
         component={CustomPropertiesPageV1}
         hasPermission={checkPermission(
           Operation.ViewAll,
-          ResourceEntity.ALL,
+          ResourceEntity.TYPE,
           permissions
         )}
         path={getSettingCategoryPath(
