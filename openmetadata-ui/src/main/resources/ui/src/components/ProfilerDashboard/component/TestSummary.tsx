@@ -170,10 +170,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     }
 
     return (
-      <Typography key={param.name}>
+      <div key={param.name}>
         <Typography.Text>{param.name}: </Typography.Text>
         <Typography.Text>{param.value}</Typography.Text>
-      </Typography>
+      </div>
     );
   };
 
