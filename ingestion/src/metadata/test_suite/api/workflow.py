@@ -30,7 +30,10 @@ from metadata.generated.schema.entity.data.table import IntervalType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -195,6 +198,9 @@ class TestSuiteWorkflow:
         Args:
             entity: table entity
         """
+        # Should remove this with https://github.com/open-metadata/OpenMetadata/issues/5458
+        if entity.serviceType != DatabaseServiceType.BigQuery:
+            return None
         if entity.tablePartition:
             if entity.tablePartition.intervalType in {
                 IntervalType.TIME_UNIT,
