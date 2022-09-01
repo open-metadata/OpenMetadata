@@ -23,6 +23,9 @@ from typing import Iterable, List, Optional
 import click
 from pydantic import ValidationError
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
@@ -207,6 +210,8 @@ class ProfilerWorkflow:
         Args:
             entity: table entity
         """
+        if entity.serviceType != DatabaseServiceType.BigQuery:
+            return None
         entity_config: TableConfig = self.get_config_for_entity(entity)
         if entity_config:
             return entity_config.partitionConfig
