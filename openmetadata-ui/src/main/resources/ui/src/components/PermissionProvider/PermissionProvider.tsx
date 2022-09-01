@@ -121,25 +121,12 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
         [resource]: operationPermission,
       }));
 
-      /**
-       * Store updated resource permission
-       */
-      setPermissions((prev) => ({
-        ...prev,
-        [resource]: operationPermission,
-      }));
-
       return operationPermission;
     }
   };
 
   useEffect(() => {
-    /**
-     * Only fetch permission if user is logged In
-     */
-    if (currentUser && currentUser.id) {
-      fetchLoggedInUserPermissions();
-    }
+    fetchLoggedInUserPermissions();
   }, [currentUser]);
 
   return (

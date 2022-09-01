@@ -11,6 +11,7 @@
 
 import importlib
 import time
+import traceback
 from typing import Type, TypeVar
 
 import click
@@ -279,16 +280,23 @@ class Workflow:
         if service_type is not ServiceType.Metadata and not self._is_sample_source(
             self.config.source.type
         ):
+            service_name = self.config.source.serviceName
             metadata = OpenMetadata(config=metadata_config)
-            service = metadata.get_by_name(
-                get_service_class_from_service_type(service_type),
-                self.config.source.serviceName,
-            )
-            if service:
-                self.config.source.serviceConnection = (
-                    metadata.secrets_manager_client.retrieve_service_connection(
-                        service, service_type.name.lower()
+            try:
+                service = metadata.get_by_name(
+                    get_service_class_from_service_type(service_type),
+                    service_name,
+                )
+                if service:
+                    self.config.source.serviceConnection = (
+                        metadata.secrets_manager_client.retrieve_service_connection(
+                            service, service_type.name.lower()
+                        )
                     )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting dbtConfigSource for service name [{service_name}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     def _retrieve_dbt_config_source_if_needed(
@@ -308,17 +316,23 @@ class Workflow:
             and config.type == DatabaseMetadataConfigType.DatabaseMetadata
         ):
             metadata = OpenMetadata(config=metadata_config)
-            dbt_config_source: object = (
-                metadata.secrets_manager_client.retrieve_dbt_source_config(
-                    self.config.source.sourceConfig,
-                    self.config.source.serviceName,
+            try:
+                dbt_config_source: object = (
+                    metadata.secrets_manager_client.retrieve_dbt_source_config(
+                        self.config.source.sourceConfig,
+                        self.config.source.serviceName,
+                    )
                 )
-            )
-            if dbt_config_source and self.config.source.sourceConfig.config:
-                config_dict = self.config.source.sourceConfig.config.dict()
-                config_dict["dbtConfigSource"] = dbt_config_source
-                self.config.source.sourceConfig.config = (
-                    DatabaseServiceMetadataPipeline.parse_obj(config_dict)
+                if dbt_config_source:
+                    config_dict = config.dict()
+                    config_dict["dbtConfigSource"] = dbt_config_source
+                    self.config.source.sourceConfig.config = (
+                        DatabaseServiceMetadataPipeline.parse_obj(config_dict)
+                    )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting dbtConfigSource for config [{config}] using the secrets manager provider [{metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     @staticmethod

@@ -187,7 +187,6 @@ export const POLICY_LIST_WITH_PAGING = {
       description:
         'Policy for Data Consumer to perform operations on metadata entities',
       href: 'http://localhost:8585/api/v1/policies/1ff8f95a-0fd7-4429-ba56-ea95ee582459',
-      policyType: 'AccessControl',
       enabled: true,
       version: 0.1,
       updatedAt: 1661318304992,
@@ -212,7 +211,6 @@ export const POLICY_LIST_WITH_PAGING = {
       description:
         'Policy for Data Steward Role to perform operations on metadata entities',
       href: 'http://localhost:8585/api/v1/policies/b0327d82-521f-4381-9f17-98c11408446f',
-      policyType: 'AccessControl',
       enabled: true,
       version: 0.1,
       updatedAt: 1661318304972,
@@ -241,7 +239,6 @@ export const POLICY_LIST_WITH_PAGING = {
       displayName: 'Organization Policy',
       description: 'Policy for all the users of an organization.',
       href: 'http://localhost:8585/api/v1/policies/2a34e7ab-0edd-428f-8d91-e70033c3c204',
-      policyType: 'AccessControl',
       enabled: true,
       version: 0.1,
       updatedAt: 1661318304689,
@@ -275,7 +272,6 @@ export const POLICY_LIST_WITH_PAGING = {
       description:
         'Policy when attached to a team allows only users with in the team hierarchy to access the resources.',
       href: 'http://localhost:8585/api/v1/policies/9216e93f-72c4-4158-a75f-406d1c65d78f',
-      policyType: 'AccessControl',
       enabled: true,
       version: 0.8,
       updatedAt: 1661439183482,

@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
 import { EntityField } from '../../../constants/feed.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { Table } from '../../../generated/entity/data/table';
-import { Operation } from '../../../generated/entity/policies/accessControl/rule';
-import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
@@ -47,7 +45,6 @@ interface Props {
   onEntityFieldSelect?: (value: string) => void;
 }
 const DescriptionV1 = ({
-  owner,
   hasEditAccess,
   onDescriptionEdit,
   description = '',
@@ -67,14 +64,12 @@ const DescriptionV1 = ({
 
   const editButton = () => {
     return !isReadOnly ? (
-      <NonAdminAction
-        html={getHtmlForNonAdminAction(Boolean(owner))}
-        isOwner={hasEditAccess}
-        permission={Operation.EditDescription}
-        position="right">
+      <Tooltip
+        title={hasEditAccess ? 'Edit Description' : NO_PERMISSION_FOR_ACTION}>
         <button
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-description"
+          disabled={!hasEditAccess}
           onClick={onDescriptionEdit}>
           <SVGIcons
             alt="edit"
@@ -83,7 +78,7 @@ const DescriptionV1 = ({
             width="16px"
           />
         </button>
-      </NonAdminAction>
+      </Tooltip>
     ) : (
       <></>
     );

@@ -164,11 +164,10 @@ class partition_filter_handler:
         def handle_and_execute(_self, *args, **kwargs):
             """Handle partitioned queries"""
             if _self._partition_details:
+                partition_field = _self._partition_details["partition_field"]
                 partition_filter = build_partition_predicate(
                     _self._partition_details,
-                    _self.table.__table__.c.get(
-                        _self._partition_details["partition_field"]
-                    ),
+                    _self.table.__table__.c.get(partition_field),
                 )
                 if self.build_sample:
                     return (

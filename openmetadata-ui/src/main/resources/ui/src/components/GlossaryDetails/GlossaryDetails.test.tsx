@@ -14,6 +14,7 @@
 import { findByText, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { mockedGlossaries } from '../../mocks/Glossary.mock';
+import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetails from './GlossaryDetails.component';
 
 jest.mock('react-router-dom', () => ({
@@ -61,7 +62,15 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () => {
 
 const mockProps = {
   glossary: mockedGlossaries[0],
-  isHasAccess: true,
+  permissions: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  } as OperationPermission,
   updateGlossary: jest.fn(),
 };
 

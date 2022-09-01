@@ -19,6 +19,14 @@ OpenMetadata.
 
 <Collapse title="OSX and Linux">
 
+### Python (version 3.7 or greater)
+
+To check what version of Python you have, you can use the following command:
+
+```bash
+python3 --version
+```
+
 ### Docker (version 20.10.0 or greater)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your
@@ -210,6 +218,18 @@ experiment with. This might take several minutes, depending on your system.
 - `metadata docker --clean` will clean/prune the containers, volumes, and networks.
 
 </Note>
+
+#### Running with Postgres
+
+From 0.12, OpenMetadata also supports Postgres local deployment out of the box!
+
+You just need to run:
+
+```bash
+metadata docker --start -db postgres
+```
+
+Note that the option `-db postgres` needs to be passed to the other commands as well to locate the proper compose file.
 
 ### 8. Wait for metadata ingestion to finish
 ˚

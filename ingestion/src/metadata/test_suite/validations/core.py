@@ -103,7 +103,7 @@ validation_enum_registry.add("TableColumnCountToBeBetween")(
 )
 validation_enum_registry.add("TableColumnToMatchSet")(table_column_to_match_set)
 validation_enum_registry.add("TableColumnNameToExist")(table_column_name_to_exist)
-validation_enum_registry.add("TableCustomSQLQuery")(table_custom_sql_query)
+validation_enum_registry.add("tableCustomSQLQuery")(table_custom_sql_query)
 
 # # Column Tests
 validation_enum_registry.add("columnValuesToBeBetween")(column_values_to_be_between)

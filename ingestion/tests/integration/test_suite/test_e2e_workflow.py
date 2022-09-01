@@ -65,8 +65,8 @@ test_suite_config = {
                             "testDefinitionName": "TableColumnCountToBeBetween",
                             "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users>",
                             "parameterValues": [
-                                {"name": "minColvalue", "value": 1},
-                                {"name": "maxColvalue", "value": 5},
+                                {"name": "minColValue", "value": 1},
+                                {"name": "maxColValue", "value": 5},
                             ],
                         },
                         {

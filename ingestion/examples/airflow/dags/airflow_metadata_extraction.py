@@ -58,7 +58,7 @@ sink:
 workflowConfig:
   loggerLevel: INFO
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
+    hostPort: http://openmetadata-server:8585/api
     authProvider: no-auth
 """
 

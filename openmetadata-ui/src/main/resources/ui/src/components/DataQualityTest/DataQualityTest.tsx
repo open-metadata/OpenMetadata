@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { ColumnTestType } from '../../generated/entity/data/table';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { useAuth } from '../../hooks/authHooks';
@@ -25,7 +26,6 @@ import {
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import { DropDownListItem } from '../dropdown/types';
 import DataQualityTable from './Table/DataQualityTable';
@@ -35,9 +35,10 @@ type Props = {
   columns: ModifiedTableColumn[];
   showDropDown: boolean;
   isTableDeleted?: boolean;
+  hasEditAccess: boolean;
   handleEditTest: (mode: DatasetTestModeType, obj: TableTestDataType) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
-  haandleDropDownClick: (
+  handleDropDownClick: (
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string | undefined
   ) => void;
@@ -53,11 +54,12 @@ const DataQualityTest = ({
   tableTestCase,
   columns,
   isTableDeleted,
+  hasEditAccess,
   handleEditTest,
   handleShowDropDown,
   handleRemoveTableTest,
   handleRemoveColumnTest,
-  haandleDropDownClick,
+  handleDropDownClick,
 }: Props) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
   const [columnsData, setColumnsData] = useState<ModifiedTableColumn[]>([]);
@@ -86,50 +88,46 @@ const DataQualityTest = ({
   const addTestButton = (horzPosRight: boolean) => {
     return (
       <div className="tw-flex tw-justify-end">
-        <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-          <span className="tw-relative">
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <Button
-                className={classNames('tw-h-8 tw-rounded tw-mb-1 tw--mt-2', {
-                  'tw-opacity-40': !isAuthDisabled && !isAdminUser,
-                })}
-                data-testid="add-new-test-button"
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={() => {
-                  handleShowDropDown(true);
-                }}>
-                Add Test{' '}
-                {showDropDown ? (
-                  <DropdownIcon
-                    style={{
-                      transform: 'rotate(180deg)',
-                      marginTop: '2px',
-                      color: '#fff',
-                    }}
-                  />
-                ) : (
-                  <DropdownIcon
-                    style={{
-                      marginTop: '2px',
-                      color: '#fff',
-                    }}
-                  />
-                )}
-              </Button>
-            </NonAdminAction>
-            {showDropDown && (
-              <DropDownList
-                dropDownList={dropdownList}
-                horzPosRight={horzPosRight}
-                onSelect={haandleDropDownClick}
-              />
-            )}
-          </span>
-        </NonAdminAction>
+        <span className="tw-relative">
+          <Tooltip title={hasEditAccess ? '' : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className={classNames('tw-h-8 tw-rounded tw-mb-1 tw--mt-2', {
+                'tw-opacity-40': !isAuthDisabled && !isAdminUser,
+              })}
+              data-testid="add-new-test-button"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => {
+                handleShowDropDown(true);
+              }}>
+              Add Test{' '}
+              {showDropDown ? (
+                <DropdownIcon
+                  style={{
+                    transform: 'rotate(180deg)',
+                    marginTop: '2px',
+                    color: '#fff',
+                  }}
+                />
+              ) : (
+                <DropdownIcon
+                  style={{
+                    marginTop: '2px',
+                    color: '#fff',
+                  }}
+                />
+              )}
+            </Button>
+          </Tooltip>
+          {showDropDown && (
+            <DropDownList
+              dropDownList={dropdownList}
+              horzPosRight={horzPosRight}
+              onSelect={handleDropDownClick}
+            />
+          )}
+        </span>
       </div>
     );
   };

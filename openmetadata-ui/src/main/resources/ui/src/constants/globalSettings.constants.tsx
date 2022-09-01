@@ -26,6 +26,7 @@ export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   SERVICES = 'services',
   CUSTOM_ATTRIBUTES = 'customAttributes',
+  DATA_QUALITY = 'dataQuality',
   INTEGRATIONS = 'integrations',
 }
 
@@ -45,6 +46,7 @@ export enum GlobalSettingOptions {
   BOTS = 'bots',
   TABLES = 'tables',
   MSTEAMS = 'msteams',
+  TEST_SUITE = 'testSuite',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

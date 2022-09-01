@@ -12,7 +12,6 @@
  */
 
 import { getByTestId, getByText, render } from '@testing-library/react';
-import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -57,11 +56,6 @@ const mockjoins = [
 
 const mockUpdate = jest.fn();
 
-const mockOwner: TableDetail['owner'] = {
-  id: 'string',
-  type: 'user',
-};
-
 const mockSampleData = {
   columns: ['column1', 'column2', 'column3'],
   rows: [
@@ -90,11 +84,11 @@ describe('Test SchemaTab Component', () => {
   it('Renders all the parts of the schema tab', () => {
     const { queryByTestId, container } = render(
       <SchemaTab
-        hasEditAccess
+        hasDescriptionEditAccess
+        hasTagEditAccess
         columnName="columnName"
         columns={mockColumns}
         joins={mockjoins}
-        owner={mockOwner}
         sampleData={mockSampleData}
         tableConstraints={mockTableConstraints}
         onUpdate={mockUpdate}

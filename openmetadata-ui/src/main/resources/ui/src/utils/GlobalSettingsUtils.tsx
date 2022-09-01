@@ -17,6 +17,7 @@ import React, { ReactNode } from 'react';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
+import { ReactComponent as TestSuite } from '../../src/assets/svg/icon-test-suite.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../../src/assets/svg/pipeline-grey.svg';
 import { ReactComponent as PoliciesIcon } from '../../src/assets/svg/policies.svg';
@@ -149,6 +150,20 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <MlModelIcon className="side-panel-icons" />,
+        },
+      ],
+    },
+    {
+      category: 'Data Quality',
+      items: [
+        {
+          label: 'Test Suite',
+          isProtected: checkPermission(
+            Operation.ViewAll,
+            ResourceEntity.TEST_SUITE,
+            permissions
+          ),
+          icon: <TestSuite className="side-panel-icons" />,
         },
       ],
     },
