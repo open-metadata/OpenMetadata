@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isNil } from 'lodash';
+import { isNil } from 'lodash';
 import moment from 'moment';
 import React, {
   FC,
@@ -84,16 +84,16 @@ const BotDetails: FC<BotsDetailProp> = ({
   );
 
   const editAllPermission = useMemo(
-    () => !isEmpty(botPermission) && botPermission.EditAll,
+    () => botPermission.EditAll,
     [botPermission]
   );
   const displayNamePermission = useMemo(
-    () => !isEmpty(botPermission) && botPermission.EditDisplayName,
+    () => botPermission.EditDisplayName,
     [botPermission]
   );
 
   const descriptionPermission = useMemo(
-    () => !isEmpty(botPermission) && botPermission.EditDescription,
+    () => botPermission.EditDescription,
     [botPermission]
   );
 

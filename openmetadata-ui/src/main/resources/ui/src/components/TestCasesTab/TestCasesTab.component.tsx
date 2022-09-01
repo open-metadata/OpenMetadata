@@ -12,7 +12,7 @@
  */
 
 import { Col } from 'antd';
-import { isEmpty, orderBy } from 'lodash';
+import { orderBy } from 'lodash';
 import React, { useMemo } from 'react';
 import { Operation } from '../../generated/entity/policies/policy';
 import { TestCase } from '../../generated/tests/testCase';
@@ -45,9 +45,10 @@ const TestCasesTab = ({
   const sortedTestCases = orderBy(testCases || [], ['name'], 'asc');
 
   const createPermission = useMemo(() => {
-    return (
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.TEST_CASE, permissions)
+    return checkPermission(
+      Operation.Create,
+      ResourceEntity.TEST_CASE,
+      permissions
     );
   }, [permissions]);
 

@@ -16,7 +16,6 @@ import { Button, Col, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
-import { isEmpty } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -71,7 +70,6 @@ const TestSuitePipelineTab = () => {
 
   const viewPermission = useMemo(
     () =>
-      !isEmpty(permissions) &&
       checkPermission(
         Operation.ViewAll,
         ResourceEntity.INGESTION_PIPELINE,
@@ -81,7 +79,6 @@ const TestSuitePipelineTab = () => {
   );
   const createPermission = useMemo(
     () =>
-      !isEmpty(permissions) &&
       checkPermission(
         Operation.Create,
         ResourceEntity.INGESTION_PIPELINE,
@@ -92,7 +89,6 @@ const TestSuitePipelineTab = () => {
 
   const deletePermission = useMemo(
     () =>
-      !isEmpty(permissions) &&
       checkPermission(
         Operation.Delete,
         ResourceEntity.INGESTION_PIPELINE,
@@ -103,7 +99,6 @@ const TestSuitePipelineTab = () => {
 
   const editPermission = useMemo(
     () =>
-      !isEmpty(permissions) &&
       checkPermission(
         Operation.EditAll,
         ResourceEntity.INGESTION_PIPELINE,
