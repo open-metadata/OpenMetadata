@@ -285,9 +285,6 @@ const GlossaryTermsV1 = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    if (permissions.EditAll) {
-      return;
-    }
     const value = event.target.value;
     const eleName = event.target.name;
 
@@ -418,6 +415,7 @@ const GlossaryTermsV1 = ({
               removeBlur
               description={glossaryTerm.description || ''}
               entityName={glossaryTerm?.displayName ?? glossaryTerm?.name}
+              hasEditAccess={permissions.EditDescription}
               isEdit={isDescriptionEditable}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}

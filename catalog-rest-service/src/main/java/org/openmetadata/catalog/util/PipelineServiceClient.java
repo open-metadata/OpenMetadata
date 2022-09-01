@@ -36,6 +36,7 @@ public abstract class PipelineServiceClient {
   protected final URL serviceURL;
   protected final String username;
   protected final String password;
+  protected final String hostIp;
   protected final HttpClient client;
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
@@ -53,7 +54,7 @@ public abstract class PipelineServiceClient {
     SERVER_VERSION = rawServerVersion;
   }
 
-  public PipelineServiceClient(String userName, String password, String apiEndpoint, int apiTimeout) {
+  public PipelineServiceClient(String userName, String password, String apiEndpoint, String hostIp, int apiTimeout) {
     try {
       this.serviceURL = new URL(apiEndpoint);
     } catch (MalformedURLException e) {
@@ -61,6 +62,7 @@ public abstract class PipelineServiceClient {
     }
     this.username = userName;
     this.password = password;
+    this.hostIp = hostIp;
     this.client =
         HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -115,6 +117,18 @@ public abstract class PipelineServiceClient {
     return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
   }
 
+  public final Map<String, String> getHostIp() {
+    try {
+      if (this.hostIp == null || this.hostIp.isEmpty()) {
+        return requestGetHostIp();
+      } else {
+        return Map.of("ip", this.hostIp);
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());
+    }
+  }
+
   /* Check the status of pipeline service to ensure it is healthy */
   public abstract Response getServiceStatus();
 
@@ -142,6 +156,9 @@ public abstract class PipelineServiceClient {
   /* Get the all last run logs of a deployed pipeline */
   public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
 
-  /* Get the Pipeline Service host IP to whitelist in source systems */
-  public abstract Map<String, String> getHostIp();
+  /*
+  Get the Pipeline Service host IP to whitelist in source systems
+  Should return a map in the shape {"ip": "111.11.11.1"}
+  */
+  public abstract Map<String, String> requestGetHostIp();
 }

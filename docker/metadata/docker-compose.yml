@@ -43,8 +43,8 @@ services:
       app_net:
         ipv4_address: 172.16.240.11
     ports:
-      - 9200:9200
-      - 9300:9300
+      - "9200:9200"
+      - "9300:9300"
 
   openmetadata-server:
     container_name: openmetadata_server
@@ -69,7 +69,7 @@ services:
       AUTHENTICATION_JWT_PRINCIPAL_CLAIMS: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
       # OpenMetadata Server Airflow Configuration
       AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
-      SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+      SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://openmetadata-server:8585/api}
       # OpenMetadata Airflow Azure SSO Configuration
       AIRFLOW_AUTH_PROVIDER: ${AIRFLOW_AUTH_PROVIDER:-no-auth}
       OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
@@ -93,6 +93,15 @@ services:
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+      # Database configuration for MySQL
+      DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
+      DB_SCHEME: ${DB_SCHEME:-mysql}
+      DB_USE_SSL: ${DB_USE_SSL:-false}
+      DB_USER: ${DB_USER:-openmetadata_user}
+      DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
     expose:
       - 8585
       - 8586
@@ -100,8 +109,8 @@ services:
       - 9300
       - 3306
     ports:
-      - 8585:8585
-      - 8586:8586
+      - "8585:8585"
+      - "8586:8586"
     depends_on:
       elasticsearch:
         condition: service_started
@@ -110,9 +119,6 @@ services:
     networks:
       app_net:
         ipv4_address: 172.16.240.13
-    extra_hosts:
-      - "localhost:172.16.240.10"
-      - "elasticsearch:172.16.240.11"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
 
@@ -129,13 +135,9 @@ services:
     expose:
       - 8080
     ports:
-      - 8080:8080
+      - "8080:8080"
     networks:
       - app_net
-    extra_hosts:
-      - "localhost:172.16.240.10"
-      - "localhost:172.16.240.11"
-      - "localhost:172.16.240.13"
     volumes:
       - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
       - ingestion-volume-dags:/ingestion/examples/airflow/dags
