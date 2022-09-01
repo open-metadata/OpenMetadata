@@ -1876,7 +1876,7 @@ public interface CollectionDAO {
         // validate parent team
         Team team = findEntityByName(parentTeam);
         if (ORGANIZATION_NAME.equals(team.getName())) {
-          // All the parentless teams should come under "organization" team
+          // All the teams without parent should come under "organization" team
           condition =
               String.format(
                   "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
@@ -1902,7 +1902,7 @@ public interface CollectionDAO {
         // validate parent team
         Team team = findEntityByName(parentTeam);
         if (ORGANIZATION_NAME.equals(team.getName())) {
-          // All the parentless teams should come under "organization" team
+          // All the teams without parent should come under "organization" team
           condition =
               String.format(
                   "%s AND id NOT IN ( (SELECT '%s') UNION (SELECT toId FROM entity_relationship WHERE fromId!='%s' AND fromEntity='team' AND toEntity='team' AND relation=%d) )",
@@ -2535,82 +2535,52 @@ public interface CollectionDAO {
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String entityFQN = filter.getQueryParam("entityFQN");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
       boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
       String condition = filter.getCondition();
 
-      if (entityFQN == null && testSuiteId == null) {
+      if (entityFQN == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
-      if (entityFQN != null) {
-        if (includeAllTests) {
-          condition =
-              String.format("%s AND entityFQN LIKE %s OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
-        } else {
-          condition = String.format("%s AND entityFQN = '%s') ", condition, entityFQN);
-        }
-      }
-      if (testSuiteId != null) {
+      if (includeAllTests) {
         condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
+            String.format("%s AND entityFQN LIKE %s OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
+      } else {
+        condition = String.format("%s AND entityFQN = '%s') ", condition, entityFQN);
       }
-
       return listBefore(getTableName(), getNameColumn(), condition, limit, before);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String entityFQN = filter.getQueryParam("entityFQN");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
       boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
       String condition = filter.getCondition();
-      if (entityFQN == null && testSuiteId == null) {
+      if (entityFQN == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
-      if (entityFQN != null) {
-        if (includeAllTests) {
-          condition =
-              String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
-        } else {
-          condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
-        }
-      }
-      if (testSuiteId != null) {
+      if (includeAllTests) {
         condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
+            String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
+      } else {
+        condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
       }
-
       return listAfter(getTableName(), getNameColumn(), condition, limit, after);
     }
 
     @Override
     default int listCount(ListFilter filter) {
       String entityFQN = filter.getQueryParam("entityFQN");
-      String testSuiteId = filter.getQueryParam("testSuiteId");
       boolean includeAllTests = Boolean.parseBoolean(filter.getQueryParam("includeAllTests"));
       String condition = filter.getCondition();
-      if (entityFQN == null && testSuiteId == null) {
+      if (entityFQN == null) {
         return EntityDAO.super.listCount(filter);
       }
-      if (entityFQN != null) {
-        if (includeAllTests) {
-          condition =
-              String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
-        } else {
-          condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
-        }
-      }
-      if (testSuiteId != null) {
+      if (includeAllTests) {
         condition =
-            String.format(
-                "%s AND id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-                condition, testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
+            String.format("%s AND entityFQN LIKE '%s' OR entityFQN = '%s'", condition, entityFQN + ".%", entityFQN);
+      } else {
+        condition = String.format("%s AND entityFQN = '%s'", condition, entityFQN);
       }
-
       return listCount(getTableName(), getNameColumn(), condition);
     }
   }
@@ -2850,14 +2820,12 @@ public interface CollectionDAO {
     public static Settings getSettings(SettingsType configType, String json) {
       Settings settings = new Settings();
       settings.setConfigType(configType);
-      Object value = null;
+      Object value;
       try {
-        switch (configType) {
-          case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-            break;
-          default:
-            throw new RuntimeException("Invalid Settings Type");
+        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
+          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+        } else {
+          throw new RuntimeException("Invalid Settings Type");
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

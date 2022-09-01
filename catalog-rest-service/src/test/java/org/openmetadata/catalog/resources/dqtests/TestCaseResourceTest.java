@@ -36,7 +36,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.test.TestCaseParameterValue;
 import org.openmetadata.catalog.tests.TestCase;
-import org.openmetadata.catalog.tests.TestSuite;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -335,9 +334,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseList = getTestCases(12, "*", TABLE_LINK_2, true, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.addAll(expectedColTestCaseList);
     verifyTestCases(testCaseList, expectedTestCaseList, 12);
-
-    testCaseList = getTestCases(12, "*", TEST_SUITE1, false, ADMIN_AUTH_HEADERS);
-    verifyTestCases(testCaseList, expectedTestCaseList, 12);
   }
 
   public static void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
@@ -368,19 +364,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     if (link != null) {
       target = target.queryParam("entityLink", link);
     }
-    if (includeAll) {
-      target = target.queryParam("includeAllTests", true);
-    }
-    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
-  }
-
-  public static ResultList<TestCase> getTestCases(
-      Integer limit, String fields, TestSuite testSuite, Boolean includeAll, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("testCase");
-    target = limit != null ? target.queryParam("limit", limit) : target;
-    target = target.queryParam("fields", fields);
-    target = target.queryParam("testSuiteId", testSuite.getId());
     if (includeAll) {
       target = target.queryParam("includeAllTests", true);
     }

@@ -136,13 +136,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("after")
           String after,
       @Parameter(
-              description = "Return list of tests by entity link",
+              description = "Return list of tests by entity link.",
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink,
-      @Parameter(description = "Returns list of tests filtered by the testSuite id", schema = @Schema(type = "string"))
-          @QueryParam("testSuiteId")
-          String testSuiteId,
       @Parameter(description = "Include all the tests at the entity level", schema = @Schema(type = "boolean"))
           @QueryParam("includeAllTests")
           @DefaultValue("false")
@@ -154,10 +151,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("testSuiteId", testSuiteId)
-            .addQueryParam("includeAllTests", includeAllTests.toString());
+    ListFilter filter = new ListFilter(include).addQueryParam("includeAllTests", includeAllTests.toString());
     if (entityLink != null) {
       MessageParser.EntityLink entityLinkParsed = MessageParser.EntityLink.parse(entityLink);
       filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());

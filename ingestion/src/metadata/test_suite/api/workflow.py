@@ -287,27 +287,6 @@ class TestSuiteWorkflow:
 
         return test_suite_entities
 
-    def get_test_cases_from_test_suite(
-        self, test_suites: List[TestSuite]
-    ) -> List[TestCase]:
-        """
-        Get test cases from test suite name
-
-        Args:
-            test_suite_name: the name of the test suite
-        """
-
-        test_cases_entity = []
-        for test_suite in test_suites:
-            test_case_entity_list = self.metadata.list_entities(
-                entity=TestCase,
-                fields=["testSuite", "entityLink", "testDefinition"],
-                params={"testSuiteId": test_suite.id.__root__},
-            )
-            test_cases_entity.extend(test_case_entity_list.entities)
-
-        return test_cases_entity
-
     def get_test_case_from_cli_config(self) -> List[str]:
         """Get all the test cases names defined in the CLI config file"""
         return [
